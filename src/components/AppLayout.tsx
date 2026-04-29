@@ -12,6 +12,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   IdCard,
+  CalendarClock,
+  ClipboardList,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -28,10 +30,12 @@ const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "coach", "coachee"] },
   { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee", "admin"] },
   { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"] },
-  { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee", "admin"] },
+  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"] },
+  { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"] },
   { to: "/messages", label: "Messages", icon: MessageSquare, roles: ["coach", "coachee"] },
-  { to: "/admin/coaches", label: "Manage coaches", icon: Users, roles: ["admin"] },
   { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"] },
+  { to: "/admin/coaches", label: "Manage coaches", icon: Users, roles: ["admin"] },
+  { to: "/admin/sessions", label: "All sessions", icon: ClipboardList, roles: ["admin"] },
   { to: "/settings", label: "Settings", icon: Settings, roles: ["admin", "coach", "coachee"] },
 ];
 
