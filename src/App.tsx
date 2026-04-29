@@ -13,8 +13,11 @@ import Coaches from "./pages/Coaches";
 import CoachDetail from "./pages/CoachDetail";
 import ComingSoon from "./pages/ComingSoon";
 import CoachProfileEditor from "./pages/CoachProfileEditor";
+import CoachAvailability from "./pages/CoachAvailability";
 import AdminRegistrations from "./pages/AdminRegistrations";
 import AdminCoaches from "./pages/AdminCoaches";
+import AdminSessions from "./pages/AdminSessions";
+import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +32,15 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+
+            <Route
+              path="/pending"
+              element={
+                <ProtectedRoute>
+                  <PendingApproval />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               element={
@@ -52,6 +64,14 @@ const App = () => (
                 }
               />
               <Route
+                path="/coach/availability"
+                element={
+                  <ProtectedRoute role="coach">
+                    <CoachAvailability />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/admin/coaches"
                 element={
                   <ProtectedRoute role="admin">
@@ -64,6 +84,14 @@ const App = () => (
                 element={
                   <ProtectedRoute role="admin">
                     <AdminRegistrations />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/sessions"
+                element={
+                  <ProtectedRoute role="admin">
+                    <AdminSessions />
                   </ProtectedRoute>
                 }
               />

@@ -47,7 +47,7 @@ export default function Auth() {
           description:
             signupRole === "coach"
               ? "Your coach account is pending admin approval. You can fill in your profile now."
-              : "You're signed in and ready to go.",
+              : "Your account is pending admin approval. We'll let you know as soon as you're in.",
         });
         navigate("/dashboard", { replace: true });
       }
