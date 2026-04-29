@@ -14,15 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      coach_availability: {
+        Row: {
+          coach_id: string
+          created_at: string
+          end_time: string
+          id: string
+          is_booked: boolean
+          session_id: string | null
+          slot_date: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          is_booked?: boolean
+          session_id?: string | null
+          slot_date: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_booked?: boolean
+          session_id?: string | null
+          slot_date?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coach_profiles: {
         Row: {
           approval_status: Database["public"]["Enums"]["user_status"]
+          calendly_url: string | null
           country_based: string | null
           created_at: string
           diplomas_certifications: string[] | null
           hourly_rate: number | null
           id: string
           is_featured: boolean
+          last_approved_at: string | null
+          last_profile_update_at: string
           nationality: string | null
           rating_avg: number
           sessions_completed: number
@@ -33,12 +72,15 @@ export type Database = {
         }
         Insert: {
           approval_status?: Database["public"]["Enums"]["user_status"]
+          calendly_url?: string | null
           country_based?: string | null
           created_at?: string
           diplomas_certifications?: string[] | null
           hourly_rate?: number | null
           id: string
           is_featured?: boolean
+          last_approved_at?: string | null
+          last_profile_update_at?: string
           nationality?: string | null
           rating_avg?: number
           sessions_completed?: number
@@ -49,12 +91,15 @@ export type Database = {
         }
         Update: {
           approval_status?: Database["public"]["Enums"]["user_status"]
+          calendly_url?: string | null
           country_based?: string | null
           created_at?: string
           diplomas_certifications?: string[] | null
           hourly_rate?: number | null
           id?: string
           is_featured?: boolean
+          last_approved_at?: string | null
+          last_profile_update_at?: string
           nationality?: string | null
           rating_avg?: number
           sessions_completed?: number
@@ -81,6 +126,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          last_profile_update_at: string
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
         }
@@ -91,6 +137,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          last_profile_update_at?: string
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }
@@ -101,6 +148,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          last_profile_update_at?: string
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }
