@@ -1,16 +1,75 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
+import { ArrowRight, ShieldCheck, Sparkles, Star } from "lucide-react";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+export default function Index() {
+  const { user, isLoading } = useAuth();
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="min-h-screen bg-background">
+      <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary font-bold text-primary-foreground shadow-glow">
+            C+
+          </div>
+          <span className="text-lg font-semibold tracking-tight">
+            Connect<span className="text-primary">+</span>
+          </span>
+        </div>
+        <Button asChild variant={user ? "default" : "outline"}>
+          <Link to={user ? "/dashboard" : "/auth"}>
+            {isLoading ? "…" : user ? "Open dashboard" : "Sign in"}
+          </Link>
+        </Button>
+      </header>
+
+      <main className="relative mx-auto max-w-7xl px-6 pt-12 pb-32 sm:pt-20">
+        <section className="mx-auto max-w-3xl text-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+            <Sparkles className="h-3 w-3" /> Premium coaching, redefined
+          </div>
+          <h1 className="mt-6 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+            Where leaders meet their{" "}
+            <span className="text-gradient-primary">peak coach.</span>
+          </h1>
+          <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
+            A private, invite-driven platform connecting top executives with vetted
+            coaches. Booking, sessions, and growth — all in one place.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button asChild size="lg" className="h-12 px-6 shadow-glow">
+              <Link to={user ? "/dashboard" : "/auth"}>
+                Get started <ArrowRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="h-12 px-6">
+              <Link to="/auth">Sign in</Link>
+            </Button>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4 text-success" /> Verified coaches
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Star className="h-4 w-4 text-warning" /> 4.9 average rating
+            </span>
+          </div>
+        </section>
+
+        <section className="mt-24 grid gap-6 sm:grid-cols-3">
+          {[
+            { title: "Discover", body: "Browse vetted coaches by specialty, experience, and approach." },
+            { title: "Book", body: "Schedule 30 / 45 / 60-minute sessions with one click." },
+            { title: "Grow", body: "Take notes, track action items, and measure progress over time." },
+          ].map((feat) => (
+            <div key={feat.title} className="rounded-2xl border border-border bg-card p-6">
+              <h3 className="text-base font-semibold">{feat.title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{feat.body}</p>
+            </div>
+          ))}
+        </section>
+      </main>
     </div>
   );
-};
-
-const Index = PlaceholderIndex;
-
-export default Index;
+}
