@@ -6,14 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { ArrowRight, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Loader2, ShieldCheck, Sparkles, GraduationCap, Compass } from "lucide-react";
 import authHero from "@/assets/auth-hero.jpg";
+import { cn } from "@/lib/utils";
+
+type SignupRole = "coachee" | "coach";
 
 export default function Auth() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", fullName: "" });
+  const [signupRole, setSignupRole] = useState<SignupRole>("coachee");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
