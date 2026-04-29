@@ -14,6 +14,7 @@ import {
   IdCard,
   CalendarClock,
   ClipboardList,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "coach", "coachee"] },
   { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee", "admin"] },
+  { to: "/coachee/profile", label: "My profile", icon: IdCard, roles: ["coachee"] },
   { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"] },
   { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"] },
   { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"] },
@@ -36,6 +38,7 @@ const NAV: NavItem[] = [
   { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"] },
   { to: "/admin/coaches", label: "Manage coaches", icon: Users, roles: ["admin"] },
   { to: "/admin/sessions", label: "All sessions", icon: ClipboardList, roles: ["admin"] },
+  { to: "/admin/limits", label: "Session limits", icon: ShieldCheck, roles: ["admin"] },
   { to: "/settings", label: "Settings", icon: Settings, roles: ["admin", "coach", "coachee"] },
 ];
 

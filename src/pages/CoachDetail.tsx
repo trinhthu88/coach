@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Award, Calendar, Loader2, MapPin, Star } from "lucide-react";
+import BookingDialog from "@/components/BookingDialog";
 
 interface CoachDetail {
   id: string;
@@ -28,8 +30,10 @@ interface CoachDetail {
 
 export default function CoachDetail() {
   const { coachId } = useParams<{ coachId: string }>();
+  const { role } = useAuth();
   const [coach, setCoach] = useState<CoachDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bookingOpen, setBookingOpen] = useState(false);
 
   useEffect(() => {
     if (!coachId) return;
@@ -106,9 +110,11 @@ export default function CoachDetail() {
                 <p className="text-muted-foreground">{coach.title}</p>
               </div>
             </div>
-            <Button size="lg" className="shadow-glow">
-              <Calendar className="mr-1 h-4 w-4" /> Book a session
-            </Button>
+            {role === "coachee" && (
+              <Button size="lg" className="shadow-glow" onClick={() => setBookingOpen(true)}>
+                <Calendar className="mr-1 h-4 w-4" /> Book a session
+              </Button>
+            )}
           </div>
 
           <div className="mt-6 grid gap-4 border-t border-border pt-6 sm:grid-cols-4">
@@ -184,6 +190,15 @@ export default function CoachDetail() {
           )}
         </Card>
       </div>
+
+      {coach && (
+        <BookingDialog
+          coachId={coach.id}
+          coachName={coach.profiles?.full_name || "this coach"}
+          open={bookingOpen}
+          onOpenChange={setBookingOpen}
+        />
+      )}
     </div>
   );
 }

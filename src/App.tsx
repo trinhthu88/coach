@@ -14,9 +14,12 @@ import CoachDetail from "./pages/CoachDetail";
 import ComingSoon from "./pages/ComingSoon";
 import CoachProfileEditor from "./pages/CoachProfileEditor";
 import CoachAvailability from "./pages/CoachAvailability";
+import CoacheeProfileEditor from "./pages/CoacheeProfileEditor";
+import Sessions from "./pages/Sessions";
 import AdminRegistrations from "./pages/AdminRegistrations";
 import AdminCoaches from "./pages/AdminCoaches";
 import AdminSessions from "./pages/AdminSessions";
+import AdminLimits from "./pages/AdminLimits";
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 
@@ -52,9 +55,17 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/coaches" element={<Coaches />} />
               <Route path="/coaches/:coachId" element={<CoachDetail />} />
-              <Route path="/sessions" element={<ComingSoon title="Sessions" description="Booking, approvals, notes and action items arrive in the next phase." />} />
+              <Route path="/sessions" element={<Sessions />} />
               <Route path="/messages" element={<ComingSoon title="Messages" description="Real-time chat with your coach or coachees is coming soon." />} />
               <Route path="/settings" element={<ComingSoon title="Settings" />} />
+              <Route
+                path="/coachee/profile"
+                element={
+                  <ProtectedRoute role="coachee">
+                    <CoacheeProfileEditor />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/coach/profile"
                 element={
@@ -92,6 +103,14 @@ const App = () => (
                 element={
                   <ProtectedRoute role="admin">
                     <AdminSessions />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/limits"
+                element={
+                  <ProtectedRoute role="admin">
+                    <AdminLimits />
                   </ProtectedRoute>
                 }
               />
