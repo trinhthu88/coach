@@ -13,23 +13,23 @@ import { Loader2, Save } from "lucide-react";
 interface CoachForm {
   title: string;
   bio: string;
-  hourly_rate: string;
   years_experience: string;
   nationality: string;
   country_based: string;
   specialties: string;
   diplomas_certifications: string;
+  calendly_url: string;
 }
 
 const empty: CoachForm = {
   title: "",
   bio: "",
-  hourly_rate: "",
   years_experience: "",
   nationality: "",
   country_based: "",
   specialties: "",
   diplomas_certifications: "",
+  calendly_url: "",
 };
 
 export default function CoachProfileEditor() {
@@ -54,12 +54,12 @@ export default function CoachProfileEditor() {
         setForm({
           title: data.title ?? "",
           bio: profile?.bio ?? "",
-          hourly_rate: data.hourly_rate?.toString() ?? "",
           years_experience: data.years_experience?.toString() ?? "",
           nationality: data.nationality ?? "",
           country_based: data.country_based ?? "",
           specialties: (data.specialties ?? []).join(", "),
           diplomas_certifications: (data.diplomas_certifications ?? []).join(", "),
+          calendly_url: (data as any).calendly_url ?? "",
         });
       }
       setLoading(false);
@@ -81,7 +81,6 @@ export default function CoachProfileEditor() {
         .from("coach_profiles")
         .update({
           title: form.title || null,
-          hourly_rate: form.hourly_rate ? Number(form.hourly_rate) : null,
           years_experience: form.years_experience ? Number(form.years_experience) : null,
           nationality: form.nationality || null,
           country_based: form.country_based || null,
@@ -93,7 +92,8 @@ export default function CoachProfileEditor() {
             .split(",")
             .map((s) => s.trim())
             .filter(Boolean),
-        })
+          calendly_url: form.calendly_url || null,
+        } as any)
         .eq("id", user.id);
       if (cErr) throw cErr;
 
@@ -175,15 +175,6 @@ export default function CoachProfileEditor() {
           <h2 className="text-lg font-semibold">Practice details</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Hourly rate (USD)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={form.hourly_rate}
-                onChange={(e) => setForm({ ...form, hourly_rate: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
               <Label>Years of experience</Label>
               <Input
                 type="number"
@@ -204,6 +195,15 @@ export default function CoachProfileEditor() {
               <Input
                 value={form.country_based}
                 onChange={(e) => setForm({ ...form, country_based: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Calendly URL (optional)</Label>
+              <Input
+                type="url"
+                value={form.calendly_url}
+                onChange={(e) => setForm({ ...form, calendly_url: e.target.value })}
+                placeholder="https://calendly.com/your-handle"
               />
             </div>
           </div>
