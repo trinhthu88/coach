@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronsLeft,
   ChevronsRight,
+  IdCard,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "coach", "coachee"] },
   { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee", "admin"] },
+  { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"] },
   { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee", "admin"] },
   { to: "/messages", label: "Messages", icon: MessageSquare, roles: ["coach", "coachee"] },
   { to: "/admin/coaches", label: "Manage coaches", icon: Users, roles: ["admin"] },
