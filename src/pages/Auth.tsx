@@ -38,13 +38,16 @@ export default function Auth() {
           password: form.password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { full_name: form.fullName },
+            data: { full_name: form.fullName, role: signupRole },
           },
         });
         if (error) throw error;
         toast({
           title: "Account created",
-          description: "You're signed in and ready to go.",
+          description:
+            signupRole === "coach"
+              ? "Your coach account is pending admin approval. You can fill in your profile now."
+              : "You're signed in and ready to go.",
         });
         navigate("/dashboard", { replace: true });
       }
