@@ -14,16 +14,216 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      coach_profiles: {
+        Row: {
+          approval_status: Database["public"]["Enums"]["user_status"]
+          country_based: string | null
+          created_at: string
+          diplomas_certifications: string[] | null
+          hourly_rate: number | null
+          id: string
+          is_featured: boolean
+          nationality: string | null
+          rating_avg: number
+          sessions_completed: number
+          specialties: string[] | null
+          title: string | null
+          updated_at: string
+          years_experience: number | null
+        }
+        Insert: {
+          approval_status?: Database["public"]["Enums"]["user_status"]
+          country_based?: string | null
+          created_at?: string
+          diplomas_certifications?: string[] | null
+          hourly_rate?: number | null
+          id: string
+          is_featured?: boolean
+          nationality?: string | null
+          rating_avg?: number
+          sessions_completed?: number
+          specialties?: string[] | null
+          title?: string | null
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Update: {
+          approval_status?: Database["public"]["Enums"]["user_status"]
+          country_based?: string | null
+          created_at?: string
+          diplomas_certifications?: string[] | null
+          hourly_rate?: number | null
+          id?: string
+          is_featured?: boolean
+          nationality?: string | null
+          rating_avg?: number
+          sessions_completed?: number
+          specialties?: string[] | null
+          title?: string | null
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          status: Database["public"]["Enums"]["user_status"]
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id: string
+          status?: Database["public"]["Enums"]["user_status"]
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          status?: Database["public"]["Enums"]["user_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sessions: {
+        Row: {
+          action_items: Json
+          coach_id: string
+          coach_notes: string | null
+          coach_private_notes: string | null
+          coachee_id: string
+          coachee_notes: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          meeting_url: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["session_status"]
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          action_items?: Json
+          coach_id: string
+          coach_notes?: string | null
+          coach_private_notes?: string | null
+          coachee_id: string
+          coachee_notes?: string | null
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          meeting_url?: string | null
+          start_time: string
+          status?: Database["public"]["Enums"]["session_status"]
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          action_items?: Json
+          coach_id?: string
+          coach_notes?: string | null
+          coach_private_notes?: string | null
+          coachee_id?: string
+          coachee_notes?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_url?: string | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_coachee_id_fkey"
+            columns: ["coachee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_primary_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "coach" | "coachee"
+      session_status:
+        | "pending_coach_approval"
+        | "confirmed"
+        | "completed"
+        | "cancelled"
+        | "rescheduled"
+      user_status:
+        | "inactive"
+        | "pending_approval"
+        | "active"
+        | "suspended"
+        | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +350,22 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "coach", "coachee"],
+      session_status: [
+        "pending_coach_approval",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "rescheduled",
+      ],
+      user_status: [
+        "inactive",
+        "pending_approval",
+        "active",
+        "suspended",
+        "rejected",
+      ],
+    },
   },
 } as const
