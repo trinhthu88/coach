@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { Loader2, User } from "lucide-react";
 
 export default function CoacheeProfileEditor() {
-  const { user, profile, refresh } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -75,7 +75,7 @@ export default function CoacheeProfileEditor() {
       return;
     }
     toast.success("Profile updated");
-    await refresh?.();
+    await refreshProfile();
   };
 
   if (loading) {
