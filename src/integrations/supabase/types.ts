@@ -118,6 +118,59 @@ export type Database = {
           },
         ]
       }
+      coachee_profiles: {
+        Row: {
+          approval_status: Database["public"]["Enums"]["user_status"]
+          created_at: string
+          goals: string | null
+          id: string
+          industry: string | null
+          job_title: string | null
+          last_approved_at: string | null
+          last_profile_update_at: string
+          location: string | null
+          phone: string | null
+          timezone: string | null
+          updated_at: string
+        }
+        Insert: {
+          approval_status?: Database["public"]["Enums"]["user_status"]
+          created_at?: string
+          goals?: string | null
+          id: string
+          industry?: string | null
+          job_title?: string | null
+          last_approved_at?: string | null
+          last_profile_update_at?: string
+          location?: string | null
+          phone?: string | null
+          timezone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approval_status?: Database["public"]["Enums"]["user_status"]
+          created_at?: string
+          goals?: string | null
+          id?: string
+          industry?: string | null
+          job_title?: string | null
+          last_approved_at?: string | null
+          last_profile_update_at?: string
+          location?: string | null
+          phone?: string | null
+          timezone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coachee_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -154,18 +207,91 @@ export type Database = {
         }
         Relationships: []
       }
+      session_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size_bytes: number | null
+          id: string
+          mime_type: string | null
+          session_id: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          session_id: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          session_id?: string
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_attachments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_limits: {
+        Row: {
+          coachee_id: string | null
+          created_at: string
+          id: string
+          monthly_limit: number
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          coachee_id?: string | null
+          created_at?: string
+          id?: string
+          monthly_limit?: number
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          coachee_id?: string | null
+          created_at?: string
+          id?: string
+          monthly_limit?: number
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           action_items: Json
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           coach_id: string
           coach_notes: string | null
           coach_private_notes: string | null
           coachee_id: string
           coachee_notes: string | null
+          confirmed_at: string | null
           created_at: string
           duration_minutes: number
           id: string
           meeting_url: string | null
+          slot_id: string | null
           start_time: string
           status: Database["public"]["Enums"]["session_status"]
           topic: string
@@ -173,15 +299,20 @@ export type Database = {
         }
         Insert: {
           action_items?: Json
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           coach_id: string
           coach_notes?: string | null
           coach_private_notes?: string | null
           coachee_id: string
           coachee_notes?: string | null
+          confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
           id?: string
           meeting_url?: string | null
+          slot_id?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["session_status"]
           topic: string
@@ -189,15 +320,20 @@ export type Database = {
         }
         Update: {
           action_items?: Json
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           coach_id?: string
           coach_notes?: string | null
           coach_private_notes?: string | null
           coachee_id?: string
           coachee_notes?: string | null
+          confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number
           id?: string
           meeting_url?: string | null
+          slot_id?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["session_status"]
           topic?: string
@@ -246,6 +382,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_coachee_session_usage: {
+        Args: { _coachee_id: string }
+        Returns: {
+          monthly_limit: number
+          used_this_month: number
+        }[]
+      }
       get_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
