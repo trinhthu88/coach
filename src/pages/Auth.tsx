@@ -129,17 +129,54 @@ export default function Auth() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {mode === "signup" && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full name</Label>
-                <Input
-                  id="fullName"
-                  required
-                  value={form.fullName}
-                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  placeholder="Marcus Aurelius"
-                  className="h-11"
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label>I'm joining as</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      { value: "coachee", label: "Coachee", desc: "Find and book coaches", icon: Compass },
+                      { value: "coach", label: "Coach", desc: "Offer coaching sessions", icon: GraduationCap },
+                    ] as const).map((opt) => {
+                      const Icon = opt.icon;
+                      const active = signupRole === opt.value;
+                      return (
+                        <button
+                          type="button"
+                          key={opt.value}
+                          onClick={() => setSignupRole(opt.value)}
+                          className={cn(
+                            "flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all",
+                            active
+                              ? "border-primary bg-primary-soft shadow-sm"
+                              : "border-border hover:border-primary/40 hover:bg-muted/40"
+                          )}
+                        >
+                          <Icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} />
+                          <span className="text-sm font-semibold">{opt.label}</span>
+                          <span className="text-[11px] text-muted-foreground">{opt.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {signupRole === "coach" && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Coach accounts require admin approval before appearing in the directory.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full name</Label>
+                  <Input
+                    id="fullName"
+                    required
+                    value={form.fullName}
+                    onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                    placeholder="Marcus Aurelius"
+                    className="h-11"
+                  />
+                </div>
+              </>
             )}
 
             <div className="space-y-2">
