@@ -27,6 +27,14 @@ export function ProtectedRoute({ children, role: requiredRole }: Props) {
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
+  // Block pending / suspended / rejected users (admin always passes)
+  const status = (useAuth().profile as any)?.status;
+  if (role !== "admin" && status && status !== "active") {
+    if (location.pathname !== "/pending") {
+      return <Navigate to="/pending" replace />;
+    }
+  }
+
   if (requiredRole && role !== requiredRole && role !== "admin") {
     return <Navigate to="/dashboard" replace />;
   }
