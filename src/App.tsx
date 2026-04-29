@@ -12,6 +12,9 @@ import Dashboard from "./pages/Dashboard";
 import Coaches from "./pages/Coaches";
 import CoachDetail from "./pages/CoachDetail";
 import ComingSoon from "./pages/ComingSoon";
+import CoachProfileEditor from "./pages/CoachProfileEditor";
+import AdminRegistrations from "./pages/AdminRegistrations";
+import AdminCoaches from "./pages/AdminCoaches";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,10 +44,18 @@ const App = () => (
               <Route path="/messages" element={<ComingSoon title="Messages" description="Real-time chat with your coach or coachees is coming soon." />} />
               <Route path="/settings" element={<ComingSoon title="Settings" />} />
               <Route
+                path="/coach/profile"
+                element={
+                  <ProtectedRoute role="coach">
+                    <CoachProfileEditor />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/admin/coaches"
                 element={
                   <ProtectedRoute role="admin">
-                    <ComingSoon title="Manage coaches" />
+                    <AdminCoaches />
                   </ProtectedRoute>
                 }
               />
@@ -52,7 +63,7 @@ const App = () => (
                 path="/admin/registrations"
                 element={
                   <ProtectedRoute role="admin">
-                    <ComingSoon title="Registrations" />
+                    <AdminRegistrations />
                   </ProtectedRoute>
                 }
               />
