@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { ArrowRight, Loader2, ShieldCheck, Sparkles, GraduationCap, Compass } from "lucide-react";
 import authHero from "@/assets/auth-hero.jpg";
-import clarivaLogo from "@/assets/clariva-logo.png";
+import clarivaLogo from "@/assets/clariva-logo-dark.png";
 import { cn } from "@/lib/utils";
 
 type SignupRole = "coachee" | "coach";
