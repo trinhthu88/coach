@@ -37,7 +37,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "coach", "coachee"] },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["coach", "coachee"] },
 
   // Coachee
   { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee"] },
