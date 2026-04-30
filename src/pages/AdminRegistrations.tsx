@@ -68,6 +68,13 @@ interface CoachListRow {
   rating_avg: number;
   country_based: string | null;
   years_experience: number | null;
+  // Coach-as-coachee
+  coach_limit: number;
+  coach_used: number;
+  peer_limit: number;
+  peer_used: number;
+  assigned_coaches: { id: string; name: string }[];
+  limit_row_id: string | null;
 }
 
 const STATUS_LABEL: Record<Status, string> = {
