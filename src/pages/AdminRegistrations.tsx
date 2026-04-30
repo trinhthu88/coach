@@ -937,3 +937,176 @@ function EditCoacheeDialog({
     </Dialog>
   );
 }
+
+function EditCoachDialog({
+  coach,
+  coachOpts,
+  defaultCoachLimit,
+  defaultPeerLimit,
+  onClose,
+  onSaved,
+}: {
+  coach: CoachListRow | null;
+  coachOpts: CoachOpt[];
+  defaultCoachLimit: number;
+  defaultPeerLimit: number;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [coachLimit, setCoachLimit] = useState<number>(defaultCoachLimit);
+  const [peerLimit, setPeerLimit] = useState<number>(defaultPeerLimit);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (coach) {
+      setCoachLimit(coach.coach_limit);
+      setPeerLimit(coach.peer_limit);
+      setPicked(new Set(coach.assigned_coaches.map((c) => c.id)));
+      setSearch("");
+    }
+  }, [coach]);
+
+  if (!coach) return null;
+
+  const filtered = coachOpts.filter(
+    (c) => c.id !== coach.id && c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const toggle = (id: string) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      // Upsert coach session limits (treated as totals)
+      if (coach.limit_row_id) {
+        await supabase
+          .from("coach_session_limits")
+          .update({ monthly_limit: coachLimit, peer_monthly_limit: peerLimit })
+          .eq("id", coach.limit_row_id);
+      } else {
+        await supabase.from("coach_session_limits").insert({
+          coach_user_id: coach.id,
+          monthly_limit: coachLimit,
+          peer_monthly_limit: peerLimit,
+        });
+      }
+
+      // Reset coach-as-coachee allowlist
+      await supabase
+        .from("coach_as_coachee_allowlist")
+        .delete()
+        .eq("coach_user_id", coach.id);
+
+      const inserts = Array.from(picked).map((selectable_coach_id) => ({
+        coach_user_id: coach.id,
+        selectable_coach_id,
+      }));
+      if (inserts.length) {
+        const { error } = await supabase
+          .from("coach_as_coachee_allowlist")
+          .insert(inserts);
+        if (error) throw error;
+      }
+      toast({ title: "Saved" });
+      onSaved();
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!coach} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit {coach.full_name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Coach session limit (total)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                value={coachLimit}
+                onChange={(e) => setCoachLimit(Number(e.target.value))}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Used: {coach.coach_used}
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Peer session limit (total)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                value={peerLimit}
+                onChange={(e) => setPeerLimit(Number(e.target.value))}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Used: {coach.peer_used}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Coaches assigned for this coach's coaching sessions ({picked.size})
+            </label>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search coaches…"
+              className="mb-2"
+            />
+            <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2">
+              {filtered.length === 0 ? (
+                <p className="px-2 py-4 text-center text-xs text-muted-foreground">
+                  No coaches.
+                </p>
+              ) : (
+                filtered.map((c) => (
+                  <label
+                    key={c.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+                  >
+                    <Checkbox
+                      checked={picked.has(c.id)}
+                      onCheckedChange={() => toggle(c.id)}
+                    />
+                    <span>{c.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={saving}>
+            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
