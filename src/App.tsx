@@ -22,7 +22,7 @@ import Messages from "./pages/Messages";
 import AdminRegistrations from "./pages/AdminRegistrations";
 import AdminCoaches from "./pages/AdminCoaches";
 import AdminSessions from "./pages/AdminSessions";
-import AdminLimits from "./pages/AdminLimits";
+
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 
@@ -115,14 +115,6 @@ const App = () => (
                 element={
                   <ProtectedRoute role="admin">
                     <AdminSessions />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/limits"
-                element={
-                  <ProtectedRoute role="admin">
-                    <AdminLimits />
                   </ProtectedRoute>
                 }
               />
