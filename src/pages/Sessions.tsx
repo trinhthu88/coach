@@ -232,18 +232,32 @@ function SessionCard({
 }) {
   const meta = STATUS_META[session.status];
   const Icon = meta.icon;
-  const counterpart = role === "coach" ? session.coachee : session.coach;
+  const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
+  // For peer sessions: peer_coach (giver) acts as "coach", peer_coachee (receiver) acts as "coachee"
+  const userIsPeerCoach = session.kind === "peer-give";
+  const counterpart = isPeer
+    ? userIsPeerCoach
+      ? session.coachee
+      : session.coach
+    : role === "coach"
+    ? session.coachee
+    : session.coach;
   const start = new Date(session.start_time);
-  const showRating = role === "coachee" && session.status === "completed";
+  const showRating =
+    (!isPeer && role === "coachee" && session.status === "completed") ||
+    (isPeer && !userIsPeerCoach && session.status === "completed");
   const canMarkComplete =
-    role === "coach" && session.status === "confirmed" && start < new Date();
+    ((isPeer && userIsPeerCoach) || (!isPeer && role === "coach")) &&
+    session.status === "confirmed" &&
+    start < new Date();
   const [completing, setCompleting] = useState(false);
 
   const markComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setCompleting(true);
+    const table = isPeer ? "peer_sessions" : "sessions";
     const { error } = await supabase
-      .from("sessions")
+      .from(table)
       .update({ status: "completed" })
       .eq("id", session.id);
     setCompleting(false);
