@@ -26,6 +26,8 @@ type SessionStatus =
   | "cancelled"
   | "rescheduled";
 
+type SessionKind = "coaching" | "peer-give" | "peer-receive";
+
 interface SessionRow {
   id: string;
   coach_id: string;
@@ -37,6 +39,7 @@ interface SessionRow {
   action_items: any;
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
+  kind: SessionKind;
   coach: { full_name: string; email: string; avatar_url: string | null } | null;
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
 }
