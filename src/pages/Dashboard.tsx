@@ -69,7 +69,7 @@ export default function Dashboard() {
     (async () => {
       const { data: ses } = await supabase
         .from("sessions")
-        .select("id, topic, start_time, duration_minutes, status, meeting_url, coach_id, coachee_id")
+        .select("id, topic, start_time, duration_minutes, status, meeting_url, coach_id, coachee_id, action_items")
         .eq("coachee_id", user.id)
         .order("start_time", { ascending: false });
       const list = (ses as SessionLite[]) || [];
