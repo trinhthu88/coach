@@ -351,10 +351,6 @@ export default function SessionDetail() {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   };
 
-  const updateItem = (idx: number, patch: Partial<ActionItem>) => {
-    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
-  };
-
   const addItem = () => {
     if (!newItem.trim()) return;
     setItems((prev) => [...prev, { text: newItem.trim(), done: false, due_date: null, milestone_id: null }]);
