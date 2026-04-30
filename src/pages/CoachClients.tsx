@@ -540,8 +540,23 @@ function ClientDetailDialog({
     ]);
     setProfile(prof);
     setCoacheeProfile(cprof);
-    setGoals(g || []);
-    setMilestones(m || []);
+
+    // Filter goals/milestones to only those linked via action items in THIS coach's sessions
+    const linkedMs = new Set<string>();
+    for (const sess of s || []) {
+      const items: RawAction[] = Array.isArray(sess.action_items)
+        ? (sess.action_items as any[]).map((it: any) => (typeof it === "string" ? { text: it } : it))
+        : [];
+      for (const it of items) {
+        if (it?.milestone_id) linkedMs.add(it.milestone_id);
+      }
+    }
+    const visibleMilestones = (m || []).filter((mi: any) => linkedMs.has(mi.id));
+    const visibleGoalIds = new Set(visibleMilestones.map((mi: any) => mi.goal_id));
+    const visibleGoals = (g || []).filter((go: any) => visibleGoalIds.has(go.id));
+
+    setGoals(visibleGoals);
+    setMilestones(visibleMilestones);
     setSessions(s || []);
     setNotes(n || []);
   }, [coacheeId, coachId]);
