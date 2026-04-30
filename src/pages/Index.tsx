@@ -29,9 +29,9 @@ export default function Index() {
           <div className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
             <Sparkles className="h-3 w-3" /> Premium coaching, redefined
           </div>
-          <h1 className="mt-6 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+          <h1 className="mt-6 font-display text-5xl font-light leading-[1.05] text-secondary sm:text-7xl">
             Where leaders meet their{" "}
-            <span className="text-gradient-primary">peak coach.</span>
+            <em className="text-primary">peak coach.</em>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
             A private, invite-driven platform connecting top executives with vetted
