@@ -19,6 +19,9 @@ interface Programme {
   duration_months: number;
   color: string;
   is_active: boolean;
+  coachee_session_limit: number;
+  coach_session_limit: number;
+  peer_session_limit: number;
 }
 
 const empty: Partial<Programme> = {
@@ -28,6 +31,9 @@ const empty: Partial<Programme> = {
   duration_months: 3,
   color: "cobalt",
   is_active: true,
+  coachee_session_limit: 8,
+  coach_session_limit: 8,
+  peer_session_limit: 4,
 };
 
 export default function AdminProgrammes() {
@@ -55,6 +61,9 @@ export default function AdminProgrammes() {
         duration_months: Number(editing.duration_months) || 3,
         color: editing.color || "cobalt",
         is_active: !!editing.is_active,
+        coachee_session_limit: Number(editing.coachee_session_limit) || 0,
+        coach_session_limit: Number(editing.coach_session_limit) || 0,
+        peer_session_limit: Number(editing.peer_session_limit) || 0,
       };
       if (editing.id) {
         const { error } = await supabase.from("programmes").update(payload).eq("id", editing.id);
@@ -102,12 +111,26 @@ export default function AdminProgrammes() {
             {p.description && <p className="text-[12px] text-muted-foreground">{p.description}</p>}
             <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
               <div className="rounded-md bg-muted/50 px-2 py-1.5">
-                <p className="text-muted-foreground">Sessions</p>
+                <p className="text-muted-foreground">Total sessions</p>
                 <p className="text-sm font-semibold">{p.total_sessions}</p>
               </div>
               <div className="rounded-md bg-muted/50 px-2 py-1.5">
                 <p className="text-muted-foreground">Duration</p>
                 <p className="text-sm font-semibold">{p.duration_months} mo</p>
+              </div>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+              <div className="rounded-md bg-primary/5 px-2 py-1.5">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Coachee limit</p>
+                <p className="text-sm font-semibold">{p.coachee_session_limit}</p>
+              </div>
+              <div className="rounded-md bg-secondary/5 px-2 py-1.5">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Coach limit</p>
+                <p className="text-sm font-semibold">{p.coach_session_limit}</p>
+              </div>
+              <div className="rounded-md bg-accent/5 px-2 py-1.5">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Peer limit</p>
+                <p className="text-sm font-semibold">{p.peer_session_limit}</p>
               </div>
             </div>
             <div className="mt-3 flex gap-2">
@@ -133,8 +156,27 @@ export default function AdminProgrammes() {
               <div><Label>Name</Label><Input value={editing.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
               <div><Label>Description</Label><Textarea rows={3} value={editing.description || ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Sessions</Label><Input type="number" min={1} value={editing.total_sessions ?? 8} onChange={(e) => setEditing({ ...editing, total_sessions: Number(e.target.value) })} /></div>
+                <div><Label>Total sessions</Label><Input type="number" min={1} value={editing.total_sessions ?? 8} onChange={(e) => setEditing({ ...editing, total_sessions: Number(e.target.value) })} /></div>
                 <div><Label>Duration (months)</Label><Input type="number" min={1} value={editing.duration_months ?? 3} onChange={(e) => setEditing({ ...editing, duration_months: Number(e.target.value) })} /></div>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session limits</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-[11px]">Coachee (received)</Label>
+                    <Input type="number" min={0} value={editing.coachee_session_limit ?? 8} onChange={(e) => setEditing({ ...editing, coachee_session_limit: Number(e.target.value) })} />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Coach (received)</Label>
+                    <Input type="number" min={0} value={editing.coach_session_limit ?? 8} onChange={(e) => setEditing({ ...editing, coach_session_limit: Number(e.target.value) })} />
+                    <p className="mt-1 text-[10px] text-muted-foreground">For coaches only</p>
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Peer sessions</Label>
+                    <Input type="number" min={0} value={editing.peer_session_limit ?? 4} onChange={(e) => setEditing({ ...editing, peer_session_limit: Number(e.target.value) })} />
+                    <p className="mt-1 text-[10px] text-muted-foreground">For coaches only</p>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center justify-between rounded-md border p-3">
                 <div><p className="text-sm font-medium">Active</p><p className="text-[11px] text-muted-foreground">Visible for new enrollments.</p></div>
