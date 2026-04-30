@@ -31,6 +31,7 @@ import {
   ListTodo,
   ChevronDown,
   ChevronRight,
+  Users,
 } from "lucide-react";
 import { format, isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
 import { toast } from "sonner";
@@ -175,6 +176,37 @@ export default function CoacheeJourney() {
 
   const nextSession = upcoming[0];
 
+  // Coaches in this programme (derived from sessions)
+  const coachSummaries = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; total: number; completed: number; upcoming: number; firstDate: Date | null; lastDate: Date | null; nextDate: Date | null; }>();
+    for (const s of sessions) {
+      if (!s.coach_id) continue;
+      const cur = map.get(s.coach_id) || {
+        id: s.coach_id,
+        name: coachNames[s.coach_id] || "Coach",
+        total: 0,
+        completed: 0,
+        upcoming: 0,
+        firstDate: null,
+        lastDate: null,
+        nextDate: null,
+      };
+      const d = new Date(s.start_time);
+      cur.total += 1;
+      if (s.status === "completed") cur.completed += 1;
+      if (["confirmed", "pending_coach_approval"].includes(s.status) && d >= now) {
+        cur.upcoming += 1;
+        if (!cur.nextDate || d < cur.nextDate) cur.nextDate = d;
+      }
+      if (!cur.firstDate || d < cur.firstDate) cur.firstDate = d;
+      if (!cur.lastDate || d > cur.lastDate) cur.lastDate = d;
+      cur.name = coachNames[s.coach_id] || cur.name;
+      map.set(s.coach_id, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [sessions, coachNames, now]);
+
+
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
     setSavingRef(true);
@@ -269,6 +301,50 @@ export default function CoacheeJourney() {
           sub={nextSession ? format(new Date(nextSession.start_time), "p") : "Nothing scheduled"}
         />
       </div>
+
+      {/* Coaches in this programme */}
+      {coachSummaries.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="border-b bg-muted/30 px-4 py-2.5">
+            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Users className="h-3.5 w-3.5" /> Coaches in this programme
+            </p>
+          </div>
+          <ul className="divide-y">
+            {coachSummaries.map((c, i) => {
+              const accent = ACCENTS[i % ACCENTS.length];
+              const lead = i === 0;
+              const dateRange =
+                c.firstDate && c.lastDate
+                  ? `${format(c.firstDate, "MMM d")} → ${format(c.lastDate, "MMM d")}`
+                  : "—";
+              return (
+                <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", accent.bg, accent.text)}>
+                    {initials(c.name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{c.name}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {c.completed}/{c.total} sessions completed
+                      {c.nextDate ? ` · Next ${format(c.nextDate, "MMM d, p")}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
+                      lead ? "bg-primary/15 text-primary" : "bg-success/15 text-success"
+                    )}
+                  >
+                    {lead ? "Lead coach" : "Specialist"}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
 
       <Tabs defaultValue="home">
         <TabsList>

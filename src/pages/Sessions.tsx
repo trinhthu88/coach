@@ -13,6 +13,7 @@ import {
   XCircle,
   AlertCircle,
   Star,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -206,6 +207,22 @@ function SessionCard({
   const counterpart = role === "coach" ? session.coachee : session.coach;
   const start = new Date(session.start_time);
   const showRating = role === "coachee" && session.status === "completed";
+  const canMarkComplete =
+    role === "coach" && session.status === "confirmed" && start < new Date();
+  const [completing, setCompleting] = useState(false);
+
+  const markComplete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCompleting(true);
+    const { error } = await supabase
+      .from("sessions")
+      .update({ status: "completed" })
+      .eq("id", session.id);
+    setCompleting(false);
+    if (error) return toast.error(error.message);
+    toast.success("Session marked completed");
+    onChanged();
+  };
 
   return (
     <Card
@@ -236,14 +253,31 @@ function SessionCard({
             </p>
           </div>
         </div>
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
-            meta.className
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
+              meta.className
+            )}
+          >
+            <Icon className="h-3 w-3" /> {meta.label}
+          </span>
+          {canMarkComplete && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={markComplete}
+              disabled={completing}
+            >
+              {completing ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <Check className="mr-1 h-3 w-3" />
+              )}
+              Mark complete
+            </Button>
           )}
-        >
-          <Icon className="h-3 w-3" /> {meta.label}
-        </span>
+        </div>
       </div>
       <ActionItemsList items={session.action_items} date={session.start_time} />
       {showRating && (
