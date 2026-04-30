@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   ChevronLeft,
@@ -15,6 +16,7 @@ import {
   Trash2,
   CalendarDays,
   CalendarRange,
+  MessagesSquare,
 } from "lucide-react";
 import BulkAvailabilityDialog from "@/components/BulkAvailabilityDialog";
 import {
@@ -31,12 +33,15 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 
+type SlotType = "coaching" | "peer";
+
 interface Slot {
   id: string;
   slot_date: string; // yyyy-MM-dd
   start_time: string; // HH:mm:ss
   end_time: string;
   is_booked: boolean;
+  slot_type: SlotType;
 }
 
 export default function CoachAvailability() {
@@ -47,8 +52,11 @@ export default function CoachAvailability() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:00");
+  const [slotType, setSlotType] = useState<SlotType>("coaching");
   const [adding, setAdding] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [peerOptIn, setPeerOptIn] = useState(false);
+  const [savingOptIn, setSavingOptIn] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -74,6 +82,41 @@ export default function CoachAvailability() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Load peer opt-in setting
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("coach_profiles")
+        .select("peer_coaching_opt_in")
+        .eq("id", user.id)
+        .maybeSingle();
+      setPeerOptIn(!!data?.peer_coaching_opt_in);
+    })();
+  }, [user]);
+
+  const handleTogglePeer = async (checked: boolean) => {
+    if (!user) return;
+    setSavingOptIn(true);
+    setPeerOptIn(checked);
+    const { error } = await supabase
+      .from("coach_profiles")
+      .update({ peer_coaching_opt_in: checked })
+      .eq("id", user.id);
+    setSavingOptIn(false);
+    if (error) {
+      setPeerOptIn(!checked);
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: checked ? "Peer coaching enabled" : "Peer coaching disabled",
+        description: checked
+          ? "Other coaches can now book your peer slots."
+          : "Your peer slots are hidden from peers.",
+      });
+    }
+  };
 
   const days: Date[] = [];
   const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
@@ -105,6 +148,7 @@ export default function CoachAvailability() {
       slot_date: format(selectedDate, "yyyy-MM-dd"),
       start_time: start + ":00",
       end_time: end + ":00",
+      slot_type: slotType,
     });
     if (error) {
       toast({ title: "Add failed", description: error.message, variant: "destructive" });
@@ -141,6 +185,23 @@ export default function CoachAvailability() {
       </div>
 
       <BulkAvailabilityDialog open={bulkOpen} onOpenChange={setBulkOpen} onCreated={load} />
+
+      {/* Peer coaching opt-in */}
+      <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
+            <MessagesSquare className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold">Available for peer coaching</p>
+            <p className="text-xs text-muted-foreground">
+              When on, other coaches can book your <strong>peer</strong> slots to be coached by you.
+              Your coaching slots stay reserved for coachees.
+            </p>
+          </div>
+        </div>
+        <Switch checked={peerOptIn} onCheckedChange={handleTogglePeer} disabled={savingOptIn} />
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-5">
@@ -226,12 +287,28 @@ export default function CoachAvailability() {
                 {selectedSlots.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center justify-between rounded-lg border p-2.5"
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border p-2.5",
+                      s.slot_type === "peer" && "border-success/30 bg-success/5"
+                    )}
                   >
-                    <div className="text-sm">
-                      {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                    <div className="flex items-center gap-2 text-sm">
+                      <span>
+                        {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[10px]",
+                          s.slot_type === "peer"
+                            ? "bg-success/15 text-success"
+                            : "bg-primary/10 text-primary"
+                        )}
+                      >
+                        {s.slot_type === "peer" ? "Peer" : "Coaching"}
+                      </Badge>
                       {s.is_booked && (
-                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                        <Badge variant="secondary" className="text-[10px]">
                           Booked
                         </Badge>
                       )}
@@ -250,8 +327,37 @@ export default function CoachAvailability() {
                 ))}
               </div>
 
-              <div className="space-y-2 border-t pt-4">
+              <div className="space-y-3 border-t pt-4">
                 <Label>Add a slot</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSlotType("coaching")}
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                      slotType === "coaching"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary/40"
+                    )}
+                  >
+                    Coaching
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSlotType("peer")}
+                    disabled={!peerOptIn}
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                      slotType === "peer"
+                        ? "border-success bg-success text-success-foreground"
+                        : "border-border hover:border-success/40",
+                      !peerOptIn && "cursor-not-allowed opacity-50"
+                    )}
+                    title={!peerOptIn ? "Enable peer coaching above first" : undefined}
+                  >
+                    Peer
+                  </button>
+                </div>
                 <div className="flex items-center gap-2">
                   <Input
                     type="time"

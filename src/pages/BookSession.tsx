@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -71,7 +71,9 @@ function dateKey(d: Date) {
 
 export default function BookSession() {
   const { coachId } = useParams<{ coachId: string }>();
-  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const mode = (searchParams.get("mode") === "peer" ? "peer" : "coaching") as "peer" | "coaching";
+  const { user, role } = useAuth();
   const navigate = useNavigate();
 
   const [coach, setCoach] = useState<CoachDetail | null>(null);
@@ -92,42 +94,68 @@ export default function BookSession() {
     if (!coachId) return;
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
+      const slotQuery = supabase
+        .from("coach_availability")
+        .select("id, slot_date, start_time, end_time, slot_type")
+        .eq("coach_id", coachId)
+        .eq("is_booked", false)
+        .eq("slot_type", mode === "peer" ? "peer" : "coaching")
+        .gte("slot_date", today)
+        .order("slot_date")
+        .order("start_time");
+
       const [{ data: coachData }, { data: slotData }] = await Promise.all([
         supabase
           .from("coach_profiles")
           .select(
-            "id, title, specialties, years_experience, country_based, nationality, rating_avg, sessions_completed, diplomas_certifications, profiles!inner(full_name, avatar_url, bio)"
+            "id, title, specialties, years_experience, country_based, nationality, rating_avg, sessions_completed, diplomas_certifications, peer_coaching_opt_in, profiles!inner(full_name, avatar_url, bio)"
           )
           .eq("id", coachId)
           .maybeSingle(),
-        supabase
-          .from("coach_availability")
-          .select("id, slot_date, start_time, end_time")
-          .eq("coach_id", coachId)
-          .eq("is_booked", false)
-          .gte("slot_date", today)
-          .order("slot_date")
-          .order("start_time"),
+        slotQuery,
       ]);
       setCoach(coachData as unknown as CoachDetail | null);
-      setSlots((slotData as Slot[]) || []);
+      setSlots(((slotData as Slot[]) || []).map((s) => ({ ...s })));
 
       if (user) {
-        // Limit is total completed sessions (lifetime), not monthly.
-        const [{ data: u }, { count }] = await Promise.all([
-          supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
-          supabase
-            .from("sessions")
-            .select("id", { count: "exact", head: true })
-            .eq("coachee_id", user.id)
-            .eq("status", "completed"),
-        ]);
-        const limit = u && u.length ? u[0].monthly_limit : 4;
-        setUsage({ monthly_limit: limit, used_this_month: count || 0 });
+        if (mode === "peer" || role === "coach") {
+          // Peer / coach-as-coachee: use coach_session_limits + peer_sessions count
+          const [{ data: lim }, peerCount, coachCount] = await Promise.all([
+            supabase
+              .from("coach_session_limits")
+              .select("monthly_limit")
+              .eq("coach_user_id", user.id)
+              .maybeSingle(),
+            supabase
+              .from("peer_sessions")
+              .select("id", { count: "exact", head: true })
+              .eq("peer_coachee_id", user.id)
+              .eq("status", "completed"),
+            supabase
+              .from("sessions")
+              .select("id", { count: "exact", head: true })
+              .eq("coachee_id", user.id)
+              .eq("status", "completed"),
+          ]);
+          const limit = lim?.monthly_limit ?? 4;
+          const used = (peerCount.count || 0) + (coachCount.count || 0);
+          setUsage({ monthly_limit: limit, used_this_month: used });
+        } else {
+          const [{ data: u }, { count }] = await Promise.all([
+            supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
+            supabase
+              .from("sessions")
+              .select("id", { count: "exact", head: true })
+              .eq("coachee_id", user.id)
+              .eq("status", "completed"),
+          ]);
+          const limit = u && u.length ? u[0].monthly_limit : 4;
+          setUsage({ monthly_limit: limit, used_this_month: count || 0 });
+        }
       }
       setLoading(false);
     })();
-  }, [coachId, user]);
+  }, [coachId, user, mode, role]);
 
   const datesWithSlots = useMemo(() => new Set(slots.map((s) => s.slot_date)), [slots]);
   const week = useMemo(
@@ -163,18 +191,35 @@ export default function BookSession() {
     const ds = dateKey(selectedDate);
     const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
 
-    const { error } = await supabase.from("sessions").insert({
-      coach_id: coach.id,
-      coachee_id: user.id,
-      topic: topic.trim(),
-      start_time: startISO,
-      duration_minutes: duration,
-      status: "pending_coach_approval",
-      slot_id: opt.slotId,
-    });
+    let error;
+    if (mode === "peer") {
+      ({ error } = await supabase.from("peer_sessions").insert({
+        peer_coach_id: coach.id,
+        peer_coachee_id: user.id,
+        topic: topic.trim(),
+        start_time: startISO,
+        duration_minutes: duration,
+        status: "pending_coach_approval",
+        slot_id: opt.slotId,
+      }));
+    } else {
+      ({ error } = await supabase.from("sessions").insert({
+        coach_id: coach.id,
+        coachee_id: user.id,
+        topic: topic.trim(),
+        start_time: startISO,
+        duration_minutes: duration,
+        status: "pending_coach_approval",
+        slot_id: opt.slotId,
+      }));
+    }
     setSubmitting(false);
     if (error) return toast.error(error.message);
-    toast.success("Session requested. Awaiting coach confirmation.");
+    toast.success(
+      mode === "peer"
+        ? "Peer session requested. Awaiting peer coach confirmation."
+        : "Session requested. Awaiting coach confirmation."
+    );
     navigate("/sessions");
   };
 
@@ -266,11 +311,20 @@ export default function BookSession() {
 
         {/* Booking panel */}
         <Card className="space-y-6 p-6">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Book Your Session</h1>
-            <p className="text-sm text-muted-foreground">
-              Select your preferred duration and time to get started.
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {mode === "peer" ? "Book a peer coaching session" : "Book your session"}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {mode === "peer"
+                  ? "You're booking a peer session — to be coached by another coach."
+                  : "Select your preferred duration and time to get started."}
+              </p>
+            </div>
+            {mode === "peer" && (
+              <Badge className="bg-success/15 text-success hover:bg-success/15">Peer</Badge>
+            )}
           </div>
 
           {overLimit && (

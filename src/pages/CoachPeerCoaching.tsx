@@ -89,9 +89,14 @@ export default function CoachPeerCoaching() {
                   {Number(c.rating_avg).toFixed(1)}
                 </span>
               </div>
-              <Button asChild className="mt-4 w-full" size="sm">
-                <Link to={`/coaches/${c.id}`}>View profile</Link>
-              </Button>
+              <div className="mt-4 flex gap-2">
+                <Button asChild variant="outline" size="sm" className="flex-1">
+                  <Link to={`/coaches/${c.id}`}>View</Link>
+                </Button>
+                <Button asChild size="sm" className="flex-1">
+                  <Link to={`/coaches/${c.id}/book?mode=peer`}>Book peer</Link>
+                </Button>
+              </div>
             </Card>
           ))}
         </div>

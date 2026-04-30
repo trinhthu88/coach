@@ -66,7 +66,7 @@ const App = () => (
               <Route
                 path="/coaches/:coachId/book"
                 element={
-                  <ProtectedRoute role="coachee">
+                  <ProtectedRoute>
                     <BookSession />
                   </ProtectedRoute>
                 }

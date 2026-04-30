@@ -113,6 +113,9 @@ export default function CoachFindCoach() {
               <Button asChild size="sm" variant="outline">
                 <Link to={`/coaches/${c.id}`}>View</Link>
               </Button>
+              <Button asChild size="sm">
+                <Link to={`/coaches/${c.id}/book`}>Book</Link>
+              </Button>
             </Card>
           ))}
         </div>

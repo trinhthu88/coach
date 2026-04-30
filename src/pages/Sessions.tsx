@@ -26,6 +26,8 @@ type SessionStatus =
   | "cancelled"
   | "rescheduled";
 
+type SessionKind = "coaching" | "peer-give" | "peer-receive";
+
 interface SessionRow {
   id: string;
   coach_id: string;
@@ -37,6 +39,7 @@ interface SessionRow {
   action_items: any;
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
+  kind: SessionKind;
   coach: { full_name: string; email: string; avatar_url: string | null } | null;
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
 }
@@ -78,28 +81,53 @@ export default function Sessions() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const filterCol = role === "coach" ? "coach_id" : "coachee_id";
-    const { data } = await supabase
-      .from("sessions")
-      .select("*")
-      .eq(filterCol, user.id)
-      .order("start_time", { ascending: false });
 
-    if (!data) {
-      setSessions([]);
-      setLoading(false);
-      return;
+    let sess: any[] = [];
+    let peer: any[] = [];
+
+    if (role === "coach" || role === "coachee") {
+      const col = role === "coach" ? "coach_id" : "coachee_id";
+      const { data } = await supabase
+        .from("sessions")
+        .select("*")
+        .eq(col, user.id)
+        .order("start_time", { ascending: false });
+      sess = data || [];
     }
 
-    const ids = Array.from(new Set([...data.map((s) => s.coach_id), ...data.map((s) => s.coachee_id)]));
-    const { data: profs } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, avatar_url")
-      .in("id", ids);
-    const byId = new Map((profs || []).map((p) => [p.id, p]));
+    if (role === "coach") {
+      const { data } = await supabase
+        .from("peer_sessions")
+        .select("*")
+        .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
+        .order("start_time", { ascending: false });
+      peer = data || [];
+    }
+
+    const allRows = [
+      ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
+      ...peer.map((s) => ({
+        ...s,
+        coach_id: s.peer_coach_id,
+        coachee_id: s.peer_coachee_id,
+        kind: (s.peer_coach_id === user.id ? "peer-give" : "peer-receive") as SessionKind,
+      })),
+    ].sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+
+    const ids = Array.from(
+      new Set(allRows.flatMap((s: any) => [s.coach_id, s.coachee_id]))
+    );
+    let byId = new Map<string, any>();
+    if (ids.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url")
+        .in("id", ids);
+      byId = new Map((profs || []).map((p) => [p.id, p]));
+    }
 
     setSessions(
-      data.map((s: any) => ({
+      allRows.map((s: any) => ({
         ...s,
         coach: byId.get(s.coach_id) || null,
         coachee: byId.get(s.coachee_id) || null,
@@ -204,18 +232,32 @@ function SessionCard({
 }) {
   const meta = STATUS_META[session.status];
   const Icon = meta.icon;
-  const counterpart = role === "coach" ? session.coachee : session.coach;
+  const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
+  // For peer sessions: peer_coach (giver) acts as "coach", peer_coachee (receiver) acts as "coachee"
+  const userIsPeerCoach = session.kind === "peer-give";
+  const counterpart = isPeer
+    ? userIsPeerCoach
+      ? session.coachee
+      : session.coach
+    : role === "coach"
+    ? session.coachee
+    : session.coach;
   const start = new Date(session.start_time);
-  const showRating = role === "coachee" && session.status === "completed";
+  const showRating =
+    (!isPeer && role === "coachee" && session.status === "completed") ||
+    (isPeer && !userIsPeerCoach && session.status === "completed");
   const canMarkComplete =
-    role === "coach" && session.status === "confirmed" && start < new Date();
+    ((isPeer && userIsPeerCoach) || (!isPeer && role === "coach")) &&
+    session.status === "confirmed" &&
+    start < new Date();
   const [completing, setCompleting] = useState(false);
 
   const markComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setCompleting(true);
+    const table = isPeer ? "peer_sessions" : "sessions";
     const { error } = await supabase
-      .from("sessions")
+      .from(table)
       .update({ status: "completed" })
       .eq("id", session.id);
     setCompleting(false);
@@ -235,9 +277,16 @@ function SessionCard({
             {(counterpart?.full_name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="truncate font-semibold">{session.topic}</p>
+            <div className="flex items-center gap-2">
+              <p className="truncate font-semibold">{session.topic}</p>
+              {isPeer && (
+                <span className="inline-flex shrink-0 items-center rounded-full bg-success/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-success">
+                  {userIsPeerCoach ? "Peer · give" : "Peer · receive"}
+                </span>
+              )}
+            </div>
             <p className="truncate text-sm text-muted-foreground">
-              {role === "coach" ? "with " : "Coach: "}
+              {(isPeer ? userIsPeerCoach : role === "coach") ? "with " : "Coach: "}
               <span className="font-medium text-foreground">
                 {counterpart?.full_name || counterpart?.email || "—"}
               </span>
@@ -298,8 +347,9 @@ function RateSession({ session, onChanged }: { session: SessionRow; onChanged: (
   const submit = async (value: number) => {
     setSaving(true);
     setRating(value);
+    const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
     const { error } = await supabase
-      .from("sessions")
+      .from(isPeer ? "peer_sessions" : "sessions")
       .update({ coachee_rating: value, coachee_rated_at: new Date().toISOString() })
       .eq("id", session.id);
     setSaving(false);
