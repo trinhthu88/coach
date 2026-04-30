@@ -726,6 +726,27 @@ export default function SessionDetail() {
         </div>
       </div>
 
+      {/* Peer-coachee competency feedback (only on completed peer sessions, only for the peer-coachee) */}
+      {isPeer && session.status === "completed" && session.coachee_id === user?.id && (
+        <PeerCompetencyFeedback
+          sessionId={session.id}
+          peerCoachId={session.coach_id}
+          peerCoacheeId={session.coachee_id}
+          existing={feedback}
+          onSaved={load}
+        />
+      )}
+      {/* Read-only view of received feedback for peer-coach */}
+      {isPeer && session.status === "completed" && session.coach_id === user?.id && feedback.existed && (
+        <PeerCompetencyFeedback
+          sessionId={session.id}
+          peerCoachId={session.coach_id}
+          peerCoacheeId={session.coachee_id}
+          existing={feedback}
+          readOnly
+        />
+      )}
+
       {/* Participants */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="p-5">
