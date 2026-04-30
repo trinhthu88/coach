@@ -105,6 +105,7 @@ export default function AdminRegistrations() {
   const [coacheeStatus, setCoacheeStatus] = useState<"all" | Status>("all");
   const [coachStatus, setCoachStatus] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<CoacheeRow | null>(null);
+  const [editingCoach, setEditingCoach] = useState<CoachListRow | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
