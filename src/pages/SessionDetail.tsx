@@ -63,6 +63,15 @@ interface SessionRow {
 interface ActionItem {
   text: string;
   done?: boolean;
+  due_date?: string | null;
+  milestone_id?: string | null;
+}
+
+interface MilestoneLite {
+  id: string;
+  title: string;
+  goal_id: string;
+  goal_title?: string;
 }
 
 interface Attachment {
