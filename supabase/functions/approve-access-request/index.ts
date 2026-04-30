@@ -118,24 +118,59 @@ Deno.serve(async (req) => {
     const role = reqRow.role === "coach" ? "coach" : "coachee";
     const tempPassword = generatePassword();
 
-    // Create the auth user (auto-confirm so they can sign in immediately)
-    const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email: reqRow.email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: {
-        full_name: reqRow.full_name,
-        role,
-      },
-    });
-    if (createErr || !created.user) {
-      return new Response(
-        JSON.stringify({ error: createErr?.message || "Failed to create user" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    let userId: string | null = null;
+
+    // Reuse an existing auth account if a previous attempt already created it.
+    const { data: existingProfile } = await admin
+      .from("profiles")
+      .select("id")
+      .ilike("email", reqRow.email)
+      .maybeSingle();
+
+    if (existingProfile?.id) {
+      userId = existingProfile.id;
+      const { error: updateUserErr } = await admin.auth.admin.updateUserById(userId, {
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: reqRow.full_name,
+          role,
+        },
+      });
+
+      if (updateUserErr) {
+        return new Response(
+          JSON.stringify({ error: updateUserErr.message || "Failed to update existing user" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email: reqRow.email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: reqRow.full_name,
+          role,
+        },
+      });
+
+      if (createErr || !created.user) {
+        return new Response(
+          JSON.stringify({ error: createErr?.message || "Failed to create user" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      userId = created.user.id;
     }
 
-    const userId = created.user.id;
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Could not resolve user account" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // The handle_new_user trigger created profile + role + role-specific profile
     // already with status = pending_approval. Promote to active and mark must_change_password.
