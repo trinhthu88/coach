@@ -28,16 +28,13 @@ import CoachFindCoach from "./pages/CoachFindCoach";
 import CoachPeerCoaching from "./pages/CoachPeerCoaching";
 import CoachPracticeJourney from "./pages/CoachPracticeJourney";
 import CoachMyJourney from "./pages/CoachMyJourney";
-import AdminSessionLimits from "./pages/AdminSessionLimits";
+
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminCoachees from "./pages/admin/AdminCoachees";
-import AdminTrainees from "./pages/admin/AdminTrainees";
 import AdminAlerts from "./pages/admin/AdminAlerts";
 import AdminActivity from "./pages/admin/AdminActivity";
 import AdminProgrammes from "./pages/admin/AdminProgrammes";
 import AdminCohorts from "./pages/admin/AdminCohorts";
-import AdminAssignments from "./pages/admin/AdminAssignments";
-import AdminCoachAccess from "./pages/admin/AdminCoachAccess";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 import PendingApproval from "./pages/PendingApproval";
@@ -152,14 +149,6 @@ const App = () => (
                 }
               />
               <Route
-                path="/admin/session-limits"
-                element={
-                  <ProtectedRoute role="admin">
-                    <AdminSessionLimits />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/coachee/journey"
                 element={
                   <ProtectedRoute role="coachee">
@@ -193,13 +182,10 @@ const App = () => (
               />
               <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/coachees" element={<ProtectedRoute role="admin"><AdminCoachees /></ProtectedRoute>} />
-              <Route path="/admin/trainees" element={<ProtectedRoute role="admin"><AdminTrainees /></ProtectedRoute>} />
               <Route path="/admin/alerts" element={<ProtectedRoute role="admin"><AdminAlerts /></ProtectedRoute>} />
               <Route path="/admin/activity" element={<ProtectedRoute role="admin"><AdminActivity /></ProtectedRoute>} />
               <Route path="/admin/programmes" element={<ProtectedRoute role="admin"><AdminProgrammes /></ProtectedRoute>} />
               <Route path="/admin/cohorts" element={<ProtectedRoute role="admin"><AdminCohorts /></ProtectedRoute>} />
-              <Route path="/admin/assignments" element={<ProtectedRoute role="admin"><AdminAssignments /></ProtectedRoute>} />
-              <Route path="/admin/coach-access" element={<ProtectedRoute role="admin"><AdminCoachAccess /></ProtectedRoute>} />
               <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
             </Route>
 
