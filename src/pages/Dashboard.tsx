@@ -27,6 +27,7 @@ import {
 import { format, isAfter } from "date-fns";
 import { toast } from "sonner";
 import { useFavorites } from "@/hooks/useFavorites";
+import { cn } from "@/lib/utils";
 
 interface SessionLite {
   id: string;
