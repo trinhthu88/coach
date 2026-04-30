@@ -722,12 +722,14 @@ function SessionsBlock({
   expandable,
   milestones,
   goals,
+  onToggleAction,
 }: {
   title: string;
   items: any[];
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
+  onToggleAction?: (a: FlatAction) => void;
 }) {
   return (
     <Card className="p-4">
@@ -739,7 +741,7 @@ function SessionsBlock({
       ) : (
         <div className="divide-y">
           {items.map((s) => (
-            <SessionRow key={s.id} s={s} expandable={expandable} milestones={milestones} goals={goals} />
+            <SessionRow key={s.id} s={s} expandable={expandable} milestones={milestones} goals={goals} onToggleAction={onToggleAction} />
           ))}
         </div>
       )}
