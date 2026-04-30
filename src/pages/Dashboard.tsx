@@ -1047,12 +1047,14 @@ function AdminDashboard() {
     cancelledSessions: 0,
     totalSessions: 0,
     pendingLinkSessions: 0,
+    pendingCoaches: 0,
+    pendingCoachees: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [coacheeRolesRes, sessionsRes, pendingLinkRes] = await Promise.all([
+      const [coacheeRolesRes, sessionsRes, pendingLinkRes, pendingCoachesRes, pendingCoacheesRes] = await Promise.all([
         supabase
           .from("user_roles")
           .select("user_id", { count: "exact", head: true })
@@ -1063,6 +1065,14 @@ function AdminDashboard() {
           .select("id", { count: "exact", head: true })
           .in("status", ["confirmed", "pending_coach_approval"])
           .or("meeting_url.is.null,meeting_url.eq."),
+        supabase
+          .from("coach_profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("approval_status", "pending_approval"),
+        supabase
+          .from("coachee_profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("approval_status", "pending_approval"),
       ]);
 
       const all = sessionsRes.data || [];
@@ -1079,6 +1089,8 @@ function AdminDashboard() {
         cancelledSessions: cancelled,
         totalSessions: all.length,
         pendingLinkSessions: pendingLinkRes.count || 0,
+        pendingCoaches: pendingCoachesRes.count || 0,
+        pendingCoachees: pendingCoacheesRes.count || 0,
       });
       setLoading(false);
     })();
@@ -1124,7 +1136,7 @@ function AdminDashboard() {
         />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-1">
+      <section className="grid gap-4 md:grid-cols-3">
         <Card className="p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1137,8 +1149,42 @@ function AdminDashboard() {
                   : `${stats.pendingLinkSessions} session${stats.pendingLinkSessions === 1 ? "" : "s"} still need a meeting link.`}
               </p>
             </div>
-            <Button asChild>
-              <Link to="/admin/sessions">Set meeting links</Link>
+            <Button asChild size="sm">
+              <Link to="/admin/sessions">Set links</Link>
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                Pending coaches
+              </p>
+              <p className="mt-2 text-2xl font-semibold">{stats.pendingCoaches}</p>
+              <p className="text-sm text-muted-foreground">
+                {stats.pendingCoaches === 0 ? "No coaches awaiting approval." : "Awaiting your review."}
+              </p>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/admin/registrations">Review</Link>
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                Pending coachees
+              </p>
+              <p className="mt-2 text-2xl font-semibold">{stats.pendingCoachees}</p>
+              <p className="text-sm text-muted-foreground">
+                {stats.pendingCoachees === 0 ? "No coachees awaiting approval." : "Awaiting your review."}
+              </p>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/admin/registrations">Review</Link>
             </Button>
           </div>
         </Card>
