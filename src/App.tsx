@@ -69,7 +69,7 @@ const App = () => (
               <Route path="/sessions" element={<Sessions />} />
               <Route path="/sessions/:sessionId" element={<SessionDetail />} />
               <Route path="/messages" element={<Messages />} />
-              <Route path="/settings" element={<ComingSoon title="Settings" />} />
+              
               <Route
                 path="/coachee/profile"
                 element={
