@@ -28,7 +28,7 @@ import CoachFindCoach from "./pages/CoachFindCoach";
 import CoachPeerCoaching from "./pages/CoachPeerCoaching";
 import CoachPracticeJourney from "./pages/CoachPracticeJourney";
 import CoachMyJourney from "./pages/CoachMyJourney";
-import AdminSessionLimits from "./pages/AdminSessionLimits";
+
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminCoachees from "./pages/admin/AdminCoachees";
 import AdminAlerts from "./pages/admin/AdminAlerts";
