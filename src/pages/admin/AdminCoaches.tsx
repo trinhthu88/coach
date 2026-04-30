@@ -326,6 +326,8 @@ export default function AdminCoaches() {
         }
       />
 
+      <PendingAccessRequests variant="coach" onApproved={load} />
+
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
         <Kpi label="Total" value={rows.length} icon={Users} tone="primary" />
         <Kpi label="Active" value={active} icon={Users} tone="success" />
