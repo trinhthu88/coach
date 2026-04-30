@@ -418,6 +418,7 @@ export default function AdminRegistrations() {
                 <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="pending_approval">Awaiting approval</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="reach_limit">Reached limit</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
