@@ -68,6 +68,13 @@ interface CoachListRow {
   rating_avg: number;
   country_based: string | null;
   years_experience: number | null;
+  // Coach-as-coachee
+  coach_limit: number;
+  coach_used: number;
+  peer_limit: number;
+  peer_used: number;
+  assigned_coaches: { id: string; name: string }[];
+  limit_row_id: string | null;
 }
 
 const STATUS_LABEL: Record<Status, string> = {
@@ -92,12 +99,15 @@ export default function AdminRegistrations() {
   const [coaches, setCoaches] = useState<CoachListRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<CoachOpt[]>([]);
   const [defaultLimit, setDefaultLimit] = useState(4);
+  const [defaultCoachLimit, setDefaultCoachLimit] = useState(4);
+  const [defaultPeerLimit, setDefaultPeerLimit] = useState(4);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [coacheeQuery, setCoacheeQuery] = useState("");
   const [coachQuery, setCoachQuery] = useState("");
   const [coacheeStatus, setCoacheeStatus] = useState<"all" | Status>("all");
   const [coachStatus, setCoachStatus] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<CoacheeRow | null>(null);
+  const [editingCoach, setEditingCoach] = useState<CoachListRow | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,14 +121,25 @@ export default function AdminRegistrations() {
     const coacheeIds = (roles || []).filter((r) => r.role === "coachee").map((r) => r.user_id);
     const coachIds = (roles || []).filter((r) => r.role === "coach").map((r) => r.user_id);
 
-    const [{ data: profiles }, { data: limits }, { data: allowlist }, { data: sess }, { data: cps }] =
-      await Promise.all([
-        supabase.from("profiles").select("id, full_name, email, status, created_at"),
-        supabase.from("session_limits").select("coachee_id, monthly_limit"),
-        supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
-        supabase.from("sessions").select("id, coach_id, coachee_id, status"),
-        supabase.from("coach_profiles").select("*"),
-      ]);
+    const [
+      { data: profiles },
+      { data: limits },
+      { data: allowlist },
+      { data: sess },
+      { data: cps },
+      { data: coachLimits },
+      { data: peerSess },
+      { data: coachAllow },
+    ] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, email, status, created_at"),
+      supabase.from("session_limits").select("coachee_id, monthly_limit"),
+      supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
+      supabase.from("sessions").select("id, coach_id, coachee_id, status"),
+      supabase.from("coach_profiles").select("*"),
+      supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit"),
+      supabase.from("peer_sessions").select("id, peer_coach_id, peer_coachee_id, status"),
+      supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
+    ]);
 
     const profilesById = new Map((profiles || []).map((p: any) => [p.id, p]));
     const cpById = new Map((cps || []).map((c: any) => [c.id, c]));
@@ -188,11 +209,47 @@ export default function AdminRegistrations() {
       })
       .filter(Boolean) as CoacheeRow[];
 
+    // Defaults & per-coach limit overrides
+    const defCoachLimitRow = (coachLimits || []).find((l: any) => l.coach_user_id === null);
+    const defCoach = defCoachLimitRow?.monthly_limit ?? 4;
+    const defPeer = defCoachLimitRow?.peer_monthly_limit ?? 4;
+    setDefaultCoachLimit(defCoach);
+    setDefaultPeerLimit(defPeer);
+    const coachLimitByCoach = new Map<string, any>();
+    (coachLimits || [])
+      .filter((l: any) => l.coach_user_id)
+      .forEach((l: any) => coachLimitByCoach.set(l.coach_user_id, l));
+
+    // Coach-as-coachee usage (completed coaching sessions where coach is the coachee)
+    const coachAsCoacheeDone = new Map<string, number>();
+    (sess || []).forEach((s: any) => {
+      if (s.status === "completed" && coachIds.includes(s.coachee_id)) {
+        coachAsCoacheeDone.set(s.coachee_id, (coachAsCoacheeDone.get(s.coachee_id) || 0) + 1);
+      }
+    });
+
+    // Peer-as-receiver usage (completed peer sessions)
+    const peerReceivedDone = new Map<string, number>();
+    (peerSess || []).forEach((s: any) => {
+      if (s.status === "completed") {
+        peerReceivedDone.set(s.peer_coachee_id, (peerReceivedDone.get(s.peer_coachee_id) || 0) + 1);
+      }
+    });
+
+    // Assigned coaches (for coach-as-coachee)
+    const assignedByCoach = new Map<string, { id: string; name: string }[]>();
+    (coachAllow || []).forEach((a: any) => {
+      const arr = assignedByCoach.get(a.coach_user_id) || [];
+      arr.push({ id: a.selectable_coach_id, name: coachNameById.get(a.selectable_coach_id) || "—" });
+      assignedByCoach.set(a.coach_user_id, arr);
+    });
+
     const coachRows: CoachListRow[] = coachIds
       .map((id) => {
         const p: any = profilesById.get(id);
         const cp: any = cpById.get(id);
         if (!p) return null;
+        const lim = coachLimitByCoach.get(id);
         return {
           id,
           full_name: p.full_name,
@@ -205,6 +262,12 @@ export default function AdminRegistrations() {
           rating_avg: Number(cp?.rating_avg || 0),
           country_based: cp?.country_based || null,
           years_experience: cp?.years_experience || null,
+          coach_limit: lim?.monthly_limit ?? defCoach,
+          coach_used: coachAsCoacheeDone.get(id) || 0,
+          peer_limit: lim?.peer_monthly_limit ?? defPeer,
+          peer_used: peerReceivedDone.get(id) || 0,
+          assigned_coaches: assignedByCoach.get(id) || [],
+          limit_row_id: lim?.id ?? null,
         } as CoachListRow;
       })
       .filter(Boolean) as CoachListRow[];
@@ -383,8 +446,7 @@ export default function AdminRegistrations() {
         <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Admin</p>
         <h1 className="text-3xl font-semibold tracking-tight">Registrations</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage all coaches and coachees. Default monthly limit:{" "}
-          <span className="font-semibold text-foreground">{defaultLimit}</span> sessions.
+          Manage all coaches and coachees.
         </p>
       </div>
 
@@ -556,41 +618,74 @@ export default function AdminRegistrations() {
                 <tr>
                   <th className="px-4 py-3 text-left">Name</th>
                   <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Registered</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left">Country</th>
-                  <th className="px-4 py-3 text-right">Completed</th>
-                  <th className="px-4 py-3 text-right">Coachees</th>
-                  <th className="px-4 py-3 text-right">Rating</th>
+                  <th className="px-4 py-3 text-left">Status (get coached)</th>
+                  <th className="px-4 py-3 text-right">Coach limit (total)</th>
+                  <th className="px-4 py-3 text-left">Assigned coaches</th>
+                  <th className="px-4 py-3 text-right">Peer limit (total)</th>
+                  <th className="px-4 py-3 text-right">Given (sessions / coachees / ★)</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCoaches.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                       No coaches match your filters.
                     </td>
                   </tr>
                 ) : (
                   filteredCoaches.map((c) => (
                     <tr key={c.id} className="border-t hover:bg-muted/20">
-                      <td className="px-4 py-3 font-semibold">{c.full_name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{c.email}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {format(new Date(c.created_at), "PP")}
+                      <td className="px-4 py-3">
+                        <div className="font-semibold">{c.full_name}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {c.country_based || "—"} · Reg. {format(new Date(c.created_at), "PP")}
+                        </div>
                       </td>
+                      <td className="px-4 py-3 text-muted-foreground">{c.email}</td>
                       <td className="px-4 py-3">
                         <Badge variant={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {c.country_based || "—"}
+                      <td className="px-4 py-3 text-right">
+                        <span className={c.coach_used >= c.coach_limit ? "font-semibold text-destructive" : ""}>
+                          {c.coach_used} / {c.coach_limit}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-right">{c.sessions_completed}</td>
-                      <td className="px-4 py-3 text-right">{c.coachees_count}</td>
-                      <td className="px-4 py-3 text-right">★ {c.rating_avg.toFixed(1)}</td>
+                      <td className="px-4 py-3">
+                        {c.assigned_coaches.length === 0 ? (
+                          <span className="text-xs italic text-muted-foreground">None</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {c.assigned_coaches.slice(0, 3).map((s) => (
+                              <Badge key={s.id} variant="outline" className="text-[10px]">
+                                {s.name}
+                              </Badge>
+                            ))}
+                            {c.assigned_coaches.length > 3 && (
+                              <Badge variant="outline" className="text-[10px]">
+                                +{c.assigned_coaches.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={c.peer_used >= c.peer_limit ? "font-semibold text-destructive" : ""}>
+                          {c.peer_used} / {c.peer_limit}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                        {c.sessions_completed} · {c.coachees_count} · ★ {c.rating_avg.toFixed(1)}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingCoach(c)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" /> Edit
+                          </Button>
                           {c.status === "pending_approval" && (
                             <>
                               <Button
@@ -599,14 +694,14 @@ export default function AdminRegistrations() {
                                 disabled={busyId === c.id}
                                 onClick={() => setCoachStatusValue(c.id, "rejected")}
                               >
-                                <X className="h-3.5 w-3.5" /> Reject
+                                <X className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 size="sm"
                                 disabled={busyId === c.id}
                                 onClick={() => setCoachStatusValue(c.id, "active")}
                               >
-                                <Check className="h-3.5 w-3.5" /> Approve
+                                <Check className="h-3.5 w-3.5" />
                               </Button>
                             </>
                           )}
@@ -647,6 +742,18 @@ export default function AdminRegistrations() {
         onClose={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);
+          load();
+        }}
+      />
+
+      <EditCoachDialog
+        coach={editingCoach}
+        coachOpts={coachOpts}
+        defaultCoachLimit={defaultCoachLimit}
+        defaultPeerLimit={defaultPeerLimit}
+        onClose={() => setEditingCoach(null)}
+        onSaved={() => {
+          setEditingCoach(null);
           load();
         }}
       />
@@ -788,6 +895,179 @@ function EditCoacheeDialog({
           <div>
             <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Coaches this coachee can book ({picked.size})
+            </label>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search coaches…"
+              className="mb-2"
+            />
+            <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2">
+              {filtered.length === 0 ? (
+                <p className="px-2 py-4 text-center text-xs text-muted-foreground">
+                  No coaches.
+                </p>
+              ) : (
+                filtered.map((c) => (
+                  <label
+                    key={c.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+                  >
+                    <Checkbox
+                      checked={picked.has(c.id)}
+                      onCheckedChange={() => toggle(c.id)}
+                    />
+                    <span>{c.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={saving}>
+            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditCoachDialog({
+  coach,
+  coachOpts,
+  defaultCoachLimit,
+  defaultPeerLimit,
+  onClose,
+  onSaved,
+}: {
+  coach: CoachListRow | null;
+  coachOpts: CoachOpt[];
+  defaultCoachLimit: number;
+  defaultPeerLimit: number;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [coachLimit, setCoachLimit] = useState<number>(defaultCoachLimit);
+  const [peerLimit, setPeerLimit] = useState<number>(defaultPeerLimit);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (coach) {
+      setCoachLimit(coach.coach_limit);
+      setPeerLimit(coach.peer_limit);
+      setPicked(new Set(coach.assigned_coaches.map((c) => c.id)));
+      setSearch("");
+    }
+  }, [coach]);
+
+  if (!coach) return null;
+
+  const filtered = coachOpts.filter(
+    (c) => c.id !== coach.id && c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const toggle = (id: string) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      // Upsert coach session limits (treated as totals)
+      if (coach.limit_row_id) {
+        await supabase
+          .from("coach_session_limits")
+          .update({ monthly_limit: coachLimit, peer_monthly_limit: peerLimit })
+          .eq("id", coach.limit_row_id);
+      } else {
+        await supabase.from("coach_session_limits").insert({
+          coach_user_id: coach.id,
+          monthly_limit: coachLimit,
+          peer_monthly_limit: peerLimit,
+        });
+      }
+
+      // Reset coach-as-coachee allowlist
+      await supabase
+        .from("coach_as_coachee_allowlist")
+        .delete()
+        .eq("coach_user_id", coach.id);
+
+      const inserts = Array.from(picked).map((selectable_coach_id) => ({
+        coach_user_id: coach.id,
+        selectable_coach_id,
+      }));
+      if (inserts.length) {
+        const { error } = await supabase
+          .from("coach_as_coachee_allowlist")
+          .insert(inserts);
+        if (error) throw error;
+      }
+      toast({ title: "Saved" });
+      onSaved();
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!coach} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit {coach.full_name}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Coach session limit (total)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                value={coachLimit}
+                onChange={(e) => setCoachLimit(Number(e.target.value))}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Used: {coach.coach_used}
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Peer session limit (total)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                value={peerLimit}
+                onChange={(e) => setPeerLimit(Number(e.target.value))}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Used: {coach.peer_used}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Coaches assigned for this coach's coaching sessions ({picked.size})
             </label>
             <Input
               value={search}
