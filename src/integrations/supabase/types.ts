@@ -50,6 +50,33 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_client_notes: {
+        Row: {
+          body: string
+          coach_id: string
+          coachee_id: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          coach_id: string
+          coachee_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          coach_id?: string
+          coachee_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coach_profiles: {
         Row: {
           approval_status: Database["public"]["Enums"]["user_status"]
@@ -142,6 +169,89 @@ export type Database = {
         }
         Relationships: []
       }
+      coachee_goals: {
+        Row: {
+          coachee_id: string
+          created_at: string
+          description: string | null
+          id: string
+          sort_order: number
+          status: string
+          target_date: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          coachee_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          sort_order?: number
+          status?: string
+          target_date?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          coachee_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          sort_order?: number
+          status?: string
+          target_date?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coachee_milestones: {
+        Row: {
+          coachee_id: string
+          created_at: string
+          done_at: string | null
+          goal_id: string
+          id: string
+          is_done: boolean
+          sort_order: number
+          target_date: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          coachee_id: string
+          created_at?: string
+          done_at?: string | null
+          goal_id: string
+          id?: string
+          is_done?: boolean
+          sort_order?: number
+          target_date?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          coachee_id?: string
+          created_at?: string
+          done_at?: string | null
+          goal_id?: string
+          id?: string
+          is_done?: boolean
+          sort_order?: number
+          target_date?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coachee_milestones_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "coachee_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coachee_profiles: {
         Row: {
           approval_status: Database["public"]["Enums"]["user_status"]
@@ -194,6 +304,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      coachee_reflections: {
+        Row: {
+          body: string
+          coachee_id: string
+          created_at: string
+          id: string
+          mood: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          coachee_id: string
+          created_at?: string
+          id?: string
+          mood?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          coachee_id?: string
+          created_at?: string
+          id?: string
+          mood?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -452,6 +589,10 @@ export type Database = {
       }
       can_message_session: {
         Args: { _session_id: string; _user_id: string }
+        Returns: boolean
+      }
+      coach_has_client: {
+        Args: { _coach_id: string; _coachee_id: string }
         Returns: boolean
       }
       coach_visible_to_coachee: {
