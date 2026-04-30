@@ -347,8 +347,9 @@ function RateSession({ session, onChanged }: { session: SessionRow; onChanged: (
   const submit = async (value: number) => {
     setSaving(true);
     setRating(value);
+    const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
     const { error } = await supabase
-      .from("sessions")
+      .from(isPeer ? "peer_sessions" : "sessions")
       .update({ coachee_rating: value, coachee_rated_at: new Date().toISOString() })
       .eq("id", session.id);
     setSaving(false);
