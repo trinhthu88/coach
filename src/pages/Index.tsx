@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight, ShieldCheck, Sparkles, Star } from "lucide-react";
+import clarivaLogo from "@/assets/clariva-logo.png";
 
 export default function Index() {
   const { user, isLoading } = useAuth();
@@ -9,14 +10,7 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary font-display text-lg text-primary-foreground shadow-glow">
-            <span className="text-primary-glow">C</span>
-          </div>
-          <span className="font-display text-xl tracking-tight text-secondary">
-            Clar<em className="not-italic text-primary">i</em>va
-          </span>
-        </div>
+        <img src={clarivaLogo} alt="Clariva" className="h-9 w-auto object-contain" />
         <Button asChild variant={user ? "default" : "outline"}>
           <Link to={user ? "/dashboard" : "/auth"}>
             {isLoading ? "…" : user ? "Open dashboard" : "Sign in"}
