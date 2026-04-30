@@ -558,7 +558,8 @@ export default function AdminRegistrations() {
                   <th className="px-4 py-3 text-left">Registered</th>
                   <th className="px-4 py-3 text-left">Status</th>
                   <th className="px-4 py-3 text-left">Country</th>
-                  <th className="px-4 py-3 text-right">Sessions</th>
+                  <th className="px-4 py-3 text-right">Completed</th>
+                  <th className="px-4 py-3 text-right">Coachees</th>
                   <th className="px-4 py-3 text-right">Rating</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -566,7 +567,7 @@ export default function AdminRegistrations() {
               <tbody>
                 {filteredCoaches.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                       No coaches match your filters.
                     </td>
                   </tr>
@@ -585,6 +586,7 @@ export default function AdminRegistrations() {
                         {c.country_based || "—"}
                       </td>
                       <td className="px-4 py-3 text-right">{c.sessions_completed}</td>
+                      <td className="px-4 py-3 text-right">{c.coachees_count}</td>
                       <td className="px-4 py-3 text-right">★ {c.rating_avg.toFixed(1)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
@@ -655,8 +657,10 @@ export default function AdminRegistrations() {
           </DialogHeader>
           <div className="space-y-4 text-sm">
             <p className="text-muted-foreground">
-              Upload an Excel file (.xlsx) with two columns: <code>Name</code> and{" "}
-              <code>Email</code>. Each coachee receives an email invite to set their password.
+              Upload an Excel file (.xlsx) with columns: <code>Name</code>,{" "}
+              <code>Email</code>, and <code>Session limit</code> (optional — falls back to the
+              platform default of {defaultLimit}). Each coachee receives an email invite to
+              set their password.
             </p>
             <Button variant="outline" onClick={downloadTemplate}>
               <FileDown className="h-4 w-4" /> Download template
