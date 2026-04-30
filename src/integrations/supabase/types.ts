@@ -673,6 +673,7 @@ export type Database = {
           full_name: string
           id: string
           last_profile_update_at: string
+          must_change_password: boolean
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
         }
@@ -684,6 +685,7 @@ export type Database = {
           full_name: string
           id: string
           last_profile_update_at?: string
+          must_change_password?: boolean
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }
@@ -695,6 +697,7 @@ export type Database = {
           full_name?: string
           id?: string
           last_profile_update_at?: string
+          must_change_password?: boolean
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }

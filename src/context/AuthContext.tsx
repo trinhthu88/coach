@@ -11,6 +11,7 @@ interface Profile {
   avatar_url: string | null;
   bio: string | null;
   status: string;
+  must_change_password?: boolean;
 }
 
 interface AuthContextValue {

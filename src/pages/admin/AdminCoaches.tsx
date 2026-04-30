@@ -20,6 +20,7 @@ import {
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
+import PendingAccessRequests from "@/components/PendingAccessRequests";
 
 type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 const STATUS_LABEL: Record<Status, string> = {
@@ -324,6 +325,8 @@ export default function AdminCoaches() {
           </Button>
         }
       />
+
+      <PendingAccessRequests variant="coach" onApproved={load} />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
         <Kpi label="Total" value={rows.length} icon={Users} tone="primary" />
