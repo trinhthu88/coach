@@ -186,6 +186,23 @@ export default function CoachAvailability() {
 
       <BulkAvailabilityDialog open={bulkOpen} onOpenChange={setBulkOpen} onCreated={load} />
 
+      {/* Peer coaching opt-in */}
+      <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
+            <MessagesSquare className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold">Available for peer coaching</p>
+            <p className="text-xs text-muted-foreground">
+              When on, other coaches can book your <strong>peer</strong> slots to be coached by you.
+              Your coaching slots stay reserved for coachees.
+            </p>
+          </div>
+        </div>
+        <Switch checked={peerOptIn} onCheckedChange={handleTogglePeer} disabled={savingOptIn} />
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-5">
           <div className="mb-4 flex items-center justify-between">
