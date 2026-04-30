@@ -900,55 +900,44 @@ function ActionItemsPanel({
 // ============= Admin dashboard =============
 function AdminDashboard() {
   const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalCoaches: 0,
+    totalCoachees: 0,
     bookedSessions: 0,
+    completedSessions: 0,
     cancelledSessions: 0,
-    pendingCoaches: 0,
-    pendingCoachees: 0,
+    totalSessions: 0,
+    pendingLinkSessions: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [
-        usersRes,
-        coachesRes,
-        bookedRes,
-        cancelledRes,
-        pendingCoachRes,
-        pendingCoacheeRes,
-      ] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
+      const [coacheeRolesRes, sessionsRes, pendingLinkRes] = await Promise.all([
         supabase
           .from("user_roles")
           .select("user_id", { count: "exact", head: true })
-          .eq("role", "coach"),
+          .eq("role", "coachee"),
+        supabase.from("sessions").select("id, status, meeting_url"),
         supabase
           .from("sessions")
           .select("id", { count: "exact", head: true })
-          .in("status", ["pending_coach_approval", "confirmed", "completed"]),
-        supabase
-          .from("sessions")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "cancelled"),
-        supabase
-          .from("coach_profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("approval_status", "pending_approval"),
-        supabase
-          .from("coachee_profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("approval_status", "pending_approval"),
+          .in("status", ["confirmed", "pending_coach_approval"])
+          .or("meeting_url.is.null,meeting_url.eq."),
       ]);
 
+      const all = sessionsRes.data || [];
+      const booked = all.filter((s) =>
+        ["pending_coach_approval", "confirmed", "completed"].includes(s.status)
+      ).length;
+      const completed = all.filter((s) => s.status === "completed").length;
+      const cancelled = all.filter((s) => s.status === "cancelled").length;
+
       setStats({
-        totalUsers: usersRes.count || 0,
-        totalCoaches: coachesRes.count || 0,
-        bookedSessions: bookedRes.count || 0,
-        cancelledSessions: cancelledRes.count || 0,
-        pendingCoaches: pendingCoachRes.count || 0,
-        pendingCoachees: pendingCoacheeRes.count || 0,
+        totalCoachees: coacheeRolesRes.count || 0,
+        bookedSessions: booked,
+        completedSessions: completed,
+        cancelledSessions: cancelled,
+        totalSessions: all.length,
+        pendingLinkSessions: pendingLinkRes.count || 0,
       });
       setLoading(false);
     })();
@@ -962,50 +951,55 @@ function AdminDashboard() {
     );
   }
 
+  const pct = (n: number) =>
+    stats.totalSessions > 0 ? Math.round((n / stats.totalSessions) * 100) : 0;
+
   return (
     <>
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Total users" value={String(stats.totalUsers)} hint="All accounts" icon={Users} />
-        <StatCard label="Total coaches" value={String(stats.totalCoaches)} hint="On the platform" icon={UserCheck} />
-        <StatCard label="Booked sessions" value={String(stats.bookedSessions)} hint="Pending + confirmed + done" icon={CalendarCheck} />
-        <StatCard label="Cancelled sessions" value={String(stats.cancelledSessions)} hint="All time" icon={XCircle} />
-        <StatCard label="Pending coaches" value={String(stats.pendingCoaches)} hint="Awaiting approval" icon={Clock} />
-        <StatCard label="Pending coachees" value={String(stats.pendingCoachees)} hint="Awaiting approval" icon={Clock} />
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Total users"
+          value={String(stats.totalCoachees)}
+          hint="Coachee accounts"
+          icon={Users}
+        />
+        <StatCard
+          label="Booked sessions"
+          value={String(stats.bookedSessions)}
+          hint="Pending + confirmed + done"
+          icon={CalendarCheck}
+        />
+        <StatCard
+          label="Completed sessions"
+          value={`${stats.completedSessions} (${pct(stats.completedSessions)}%)`}
+          hint="Of all sessions"
+          icon={CheckCircle2}
+        />
+        <StatCard
+          label="Cancelled sessions"
+          value={`${stats.cancelledSessions} (${pct(stats.cancelledSessions)}%)`}
+          hint="Of all sessions"
+          icon={XCircle}
+        />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-1">
         <Card className="p-5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-            Registrations
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Approve new coaches and coachees, manage allowlists and limits.
-          </p>
-          <Button asChild className="mt-4 w-full" variant="outline">
-            <Link to="/admin/registrations">Open registrations</Link>
-          </Button>
-        </Card>
-        <Card className="p-5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-            Manage coaches
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Review profile updates and feature top performers.
-          </p>
-          <Button asChild className="mt-4 w-full" variant="outline">
-            <Link to="/admin/coaches">Open coach management</Link>
-          </Button>
-        </Card>
-        <Card className="p-5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-            Sessions
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Track every session and add the meeting link once confirmed.
-          </p>
-          <Button asChild className="mt-4 w-full">
-            <Link to="/admin/sessions">Set meeting links</Link>
-          </Button>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                Pending sessions
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {stats.pendingLinkSessions === 0
+                  ? "All upcoming sessions have a meeting link."
+                  : `${stats.pendingLinkSessions} session${stats.pendingLinkSessions === 1 ? "" : "s"} still need a meeting link.`}
+              </p>
+            </div>
+            <Button asChild>
+              <Link to="/admin/sessions">Set meeting links</Link>
+            </Button>
+          </div>
         </Card>
       </section>
     </>
