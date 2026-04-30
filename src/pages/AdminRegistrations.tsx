@@ -316,19 +316,36 @@ export default function AdminRegistrations() {
         const email =
           (row.Email || row.email || row.EMAIL || "").toString().trim().toLowerCase();
         const name = (row.Name || row.name || row["Full name"] || "").toString().trim();
+        const limitRaw =
+          row["Session limit"] ?? row.SessionLimit ?? row.session_limit ?? row.Limit ?? "";
+        const limitNum = Number(limitRaw);
+        const sessionLimit = Number.isFinite(limitNum) && limitNum > 0 ? Math.floor(limitNum) : null;
         if (!email) {
           fail++;
           continue;
         }
-        const { error } = await supabase.auth.signInWithOtp({
+        const { data: otpData, error } = await supabase.auth.signInWithOtp({
           email,
           options: {
             data: { full_name: name || email.split("@")[0], role: "coachee" },
             emailRedirectTo: redirectTo,
           },
         });
-        if (error) fail++;
-        else ok++;
+        if (error) {
+          fail++;
+          continue;
+        }
+        ok++;
+        // If we have a user id back and a custom limit, save it
+        const newUserId = (otpData as any)?.user?.id;
+        if (newUserId && sessionLimit !== null) {
+          await supabase
+            .from("session_limits")
+            .upsert(
+              { coachee_id: newUserId, monthly_limit: sessionLimit },
+              { onConflict: "coachee_id" }
+            );
+        }
       }
       toast({
         title: "Import finished",
@@ -344,8 +361,8 @@ export default function AdminRegistrations() {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { Name: "Jane Doe", Email: "jane@example.com" },
-      { Name: "John Smith", Email: "john@example.com" },
+      { Name: "Jane Doe", Email: "jane@example.com", "Session limit": 6 },
+      { Name: "John Smith", Email: "john@example.com", "Session limit": 4 },
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Coachees");
