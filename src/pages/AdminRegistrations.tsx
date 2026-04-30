@@ -209,11 +209,47 @@ export default function AdminRegistrations() {
       })
       .filter(Boolean) as CoacheeRow[];
 
+    // Defaults & per-coach limit overrides
+    const defCoachLimitRow = (coachLimits || []).find((l: any) => l.coach_user_id === null);
+    const defCoach = defCoachLimitRow?.monthly_limit ?? 4;
+    const defPeer = defCoachLimitRow?.peer_monthly_limit ?? 4;
+    setDefaultCoachLimit(defCoach);
+    setDefaultPeerLimit(defPeer);
+    const coachLimitByCoach = new Map<string, any>();
+    (coachLimits || [])
+      .filter((l: any) => l.coach_user_id)
+      .forEach((l: any) => coachLimitByCoach.set(l.coach_user_id, l));
+
+    // Coach-as-coachee usage (completed coaching sessions where coach is the coachee)
+    const coachAsCoacheeDone = new Map<string, number>();
+    (sess || []).forEach((s: any) => {
+      if (s.status === "completed" && coachIds.includes(s.coachee_id)) {
+        coachAsCoacheeDone.set(s.coachee_id, (coachAsCoacheeDone.get(s.coachee_id) || 0) + 1);
+      }
+    });
+
+    // Peer-as-receiver usage (completed peer sessions)
+    const peerReceivedDone = new Map<string, number>();
+    (peerSess || []).forEach((s: any) => {
+      if (s.status === "completed") {
+        peerReceivedDone.set(s.peer_coachee_id, (peerReceivedDone.get(s.peer_coachee_id) || 0) + 1);
+      }
+    });
+
+    // Assigned coaches (for coach-as-coachee)
+    const assignedByCoach = new Map<string, { id: string; name: string }[]>();
+    (coachAllow || []).forEach((a: any) => {
+      const arr = assignedByCoach.get(a.coach_user_id) || [];
+      arr.push({ id: a.selectable_coach_id, name: coachNameById.get(a.selectable_coach_id) || "—" });
+      assignedByCoach.set(a.coach_user_id, arr);
+    });
+
     const coachRows: CoachListRow[] = coachIds
       .map((id) => {
         const p: any = profilesById.get(id);
         const cp: any = cpById.get(id);
         if (!p) return null;
+        const lim = coachLimitByCoach.get(id);
         return {
           id,
           full_name: p.full_name,
@@ -226,6 +262,12 @@ export default function AdminRegistrations() {
           rating_avg: Number(cp?.rating_avg || 0),
           country_based: cp?.country_based || null,
           years_experience: cp?.years_experience || null,
+          coach_limit: lim?.monthly_limit ?? defCoach,
+          coach_used: coachAsCoacheeDone.get(id) || 0,
+          peer_limit: lim?.peer_monthly_limit ?? defPeer,
+          peer_used: peerReceivedDone.get(id) || 0,
+          assigned_coaches: assignedByCoach.get(id) || [],
+          limit_row_id: lim?.id ?? null,
         } as CoachListRow;
       })
       .filter(Boolean) as CoachListRow[];
