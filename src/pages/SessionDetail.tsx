@@ -494,34 +494,67 @@ export default function SessionDetail() {
         <div className="space-y-6">
           <Card className="space-y-3 p-5">
             <SectionTitle icon={CheckSquare}>Action items</SectionTitle>
-            <ul className="space-y-2">
-              {items.map((it, idx) => (
-                <li key={idx} className="flex items-center gap-2 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => toggleItem(idx)}
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
-                      it.done
-                        ? "border-success bg-success/10 text-success"
-                        : "border-border text-transparent"
-                    )}
-                    aria-label={it.done ? "Mark incomplete" : "Mark complete"}
-                  >
-                    <CheckSquare className="h-3.5 w-3.5" />
-                  </button>
-                  <span className={cn("flex-1", it.done && "text-muted-foreground line-through")}>
-                    {it.text}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(idx)}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </li>
-              ))}
+            <ul className="space-y-3">
+              {items.map((it, idx) => {
+                const ms = milestones.find((m) => m.id === it.milestone_id);
+                return (
+                  <li key={idx} className="rounded-md border bg-muted/20 p-2.5 text-sm">
+                    <div className="flex items-start gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateItem(idx, { done: !it.done })}
+                        className={cn(
+                          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                          it.done
+                            ? "border-success bg-success/10 text-success"
+                            : "border-border text-transparent"
+                        )}
+                        aria-label={it.done ? "Mark incomplete" : "Mark complete"}
+                      >
+                        <CheckSquare className="h-3.5 w-3.5" />
+                      </button>
+                      <Input
+                        value={it.text}
+                        onChange={(e) => updateItem(idx, { text: e.target.value })}
+                        className={cn("h-8 flex-1 text-sm", it.done && "text-muted-foreground line-through")}
+                        placeholder="Action item"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateItem(-1, {}) || setItems((p) => p.filter((_, i) => i !== idx))}
+                        className="mt-1 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 pl-7 text-xs">
+                      <Input
+                        type="date"
+                        value={it.due_date || ""}
+                        onChange={(e) => updateItem(idx, { due_date: e.target.value || null })}
+                        className="h-7 w-auto text-xs"
+                      />
+                      <select
+                        value={it.milestone_id || ""}
+                        onChange={(e) => updateItem(idx, { milestone_id: e.target.value || null })}
+                        className="h-7 rounded-md border bg-background px-2 text-xs"
+                      >
+                        <option value="">— No milestone —</option>
+                        {milestones.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.goal_title ? `${m.goal_title} → ${m.title}` : m.title}
+                          </option>
+                        ))}
+                      </select>
+                      {ms && (
+                        <span className="text-[10px] text-primary">
+                          ↳ {ms.goal_title} → {ms.title}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
             <div className="flex gap-2">
               <Input
@@ -539,6 +572,11 @@ export default function SessionDetail() {
                 Add
               </Button>
             </div>
+            {milestones.length === 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Tip: the coachee can create goals & milestones in <Link to="/coachee/journey" className="text-primary underline">My journey</Link> so action items can be linked.
+              </p>
+            )}
           </Card>
 
           {isAdmin ? (
