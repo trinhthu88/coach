@@ -162,7 +162,7 @@ export default function Sessions() {
               />
             ) : (
               upcoming.map((s) => (
-                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} />
+                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} onChanged={load} />
               ))
             )}
           </TabsContent>
@@ -171,7 +171,7 @@ export default function Sessions() {
               <EmptyState title="Nothing yet" subtitle="Past sessions will show up here." />
             ) : (
               past.map((s) => (
-                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} />
+                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} onChanged={load} />
               ))
             )}
           </TabsContent>
