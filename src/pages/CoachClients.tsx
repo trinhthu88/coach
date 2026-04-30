@@ -126,7 +126,7 @@ export default function CoachClients() {
       }
       const items = Array.isArray(s.action_items) ? s.action_items : [];
       for (const it of items) {
-        const obj = typeof it === "string" ? { text: it, done: false } : it;
+        const obj: any = typeof it === "string" ? { text: it, done: false } : it;
         if (obj?.text) {
           c.actionItemsTotal++;
           if (obj.done) c.actionItemsDone++;
