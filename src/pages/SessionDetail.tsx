@@ -822,3 +822,122 @@ function SectionTitle({ icon: Icon, children }: { icon: any; children: React.Rea
     </div>
   );
 }
+
+const COMPETENCIES: { key: keyof PeerFeedbackState; label: string }[] = [
+  { key: "ethical_practice", label: "Demonstrates Ethical Practice" },
+  { key: "coaching_mindset", label: "Embodies a Coaching Mindset" },
+  { key: "maintains_agreements", label: "Establishes & Maintains Agreements" },
+  { key: "trust_safety", label: "Cultivates Trust and Safety" },
+  { key: "maintains_presence", label: "Maintains Presence" },
+  { key: "listens_actively", label: "Listens Actively" },
+  { key: "evokes_awareness", label: "Evokes Awareness" },
+  { key: "facilitates_growth", label: "Facilitates Client Growth" },
+];
+
+type PeerFeedbackState = {
+  ethical_practice: number; coaching_mindset: number; maintains_agreements: number;
+  trust_safety: number; maintains_presence: number; listens_actively: number;
+  evokes_awareness: number; facilitates_growth: number; feedback_note: string;
+  existed: boolean;
+};
+
+function PeerCompetencyFeedback({
+  sessionId, peerCoachId, peerCoacheeId, existing, onSaved, readOnly,
+}: {
+  sessionId: string;
+  peerCoachId: string;
+  peerCoacheeId: string;
+  existing: PeerFeedbackState;
+  onSaved?: () => void;
+  readOnly?: boolean;
+}) {
+  const [state, setState] = useState<PeerFeedbackState>(existing);
+  const [saving, setSaving] = useState(false);
+
+  const setScore = (k: keyof PeerFeedbackState, v: number) =>
+    setState((p) => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    setSaving(true);
+    const payload = {
+      peer_session_id: sessionId,
+      peer_coach_id: peerCoachId,
+      peer_coachee_id: peerCoacheeId,
+      ethical_practice: state.ethical_practice,
+      coaching_mindset: state.coaching_mindset,
+      maintains_agreements: state.maintains_agreements,
+      trust_safety: state.trust_safety,
+      maintains_presence: state.maintains_presence,
+      listens_actively: state.listens_actively,
+      evokes_awareness: state.evokes_awareness,
+      facilitates_growth: state.facilitates_growth,
+      feedback_note: state.feedback_note || null,
+    };
+    const { error } = state.existed
+      ? await supabase
+          .from("peer_session_competency_feedback")
+          .update(payload)
+          .eq("peer_session_id", sessionId)
+      : await supabase.from("peer_session_competency_feedback").insert(payload);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Feedback saved");
+    setState((p) => ({ ...p, existed: true }));
+    onSaved?.();
+  };
+
+  return (
+    <Card className="space-y-5 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">
+            ICF competency feedback {readOnly && <span className="text-xs font-normal text-muted-foreground">(read only)</span>}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Rate your peer coach on the 8 ICF coaching competencies (0–100).
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {COMPETENCIES.map((c) => (
+          <div key={c.key} className="space-y-1.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">{c.label}</span>
+              <span className="font-bold text-primary">{state[c.key] as number}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              disabled={readOnly}
+              value={state[c.key] as number}
+              onChange={(e) => setScore(c.key, Number(e.target.value))}
+              className="w-full accent-primary"
+            />
+          </div>
+        ))}
+      </div>
+      <div>
+        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Written feedback
+        </p>
+        <Textarea
+          rows={4}
+          disabled={readOnly}
+          value={state.feedback_note}
+          onChange={(e) => setState((p) => ({ ...p, feedback_note: e.target.value }))}
+          placeholder="What went well? What could grow further?"
+        />
+      </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          <Button onClick={save} disabled={saving}>
+            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
+            {state.existed ? "Update feedback" : "Submit feedback"}
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
