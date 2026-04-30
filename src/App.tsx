@@ -191,6 +191,16 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin/coachees" element={<ProtectedRoute role="admin"><AdminCoachees /></ProtectedRoute>} />
+              <Route path="/admin/trainees" element={<ProtectedRoute role="admin"><AdminTrainees /></ProtectedRoute>} />
+              <Route path="/admin/alerts" element={<ProtectedRoute role="admin"><AdminAlerts /></ProtectedRoute>} />
+              <Route path="/admin/activity" element={<ProtectedRoute role="admin"><AdminActivity /></ProtectedRoute>} />
+              <Route path="/admin/programmes" element={<ProtectedRoute role="admin"><AdminProgrammes /></ProtectedRoute>} />
+              <Route path="/admin/cohorts" element={<ProtectedRoute role="admin"><AdminCohorts /></ProtectedRoute>} />
+              <Route path="/admin/assignments" element={<ProtectedRoute role="admin"><AdminAssignments /></ProtectedRoute>} />
+              <Route path="/admin/coach-access" element={<ProtectedRoute role="admin"><AdminCoachAccess /></ProtectedRoute>} />
+              <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
