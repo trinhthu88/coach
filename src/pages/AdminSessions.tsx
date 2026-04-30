@@ -55,6 +55,7 @@ interface SessionRow {
   created_at: string;
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
+  kind: "coaching" | "peer";
   coach?: { full_name: string; email: string };
   coachee?: { full_name: string; email: string };
 }
@@ -69,14 +70,21 @@ export default function AdminSessions() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data: sessions } = await supabase
-      .from("sessions")
-      .select("*")
-      .order("start_time", { ascending: false });
+    const [{ data: sessions }, { data: peerSessions }] = await Promise.all([
+      supabase.from("sessions").select("*").order("start_time", { ascending: false }),
+      supabase.from("peer_sessions").select("*").order("start_time", { ascending: false }),
+    ]);
 
-    const userIds = Array.from(
-      new Set((sessions ?? []).flatMap((s) => [s.coach_id, s.coachee_id]))
-    );
+    const coaching: any[] = (sessions || []).map((s: any) => ({ ...s, kind: "coaching" }));
+    const peer: any[] = (peerSessions || []).map((s: any) => ({
+      ...s,
+      kind: "peer",
+      coach_id: s.peer_coach_id,
+      coachee_id: s.peer_coachee_id,
+    }));
+    const all = [...coaching, ...peer].sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
+
+    const userIds = Array.from(new Set(all.flatMap((s) => [s.coach_id, s.coachee_id])));
     let profilesById: Record<string, any> = {};
     if (userIds.length) {
       const { data: profs } = await supabase
@@ -85,13 +93,11 @@ export default function AdminSessions() {
         .in("id", userIds);
       profilesById = Object.fromEntries((profs ?? []).map((p) => [p.id, p]));
     }
-    setRows(
-      (sessions ?? []).map((s: any) => ({
-        ...s,
-        coach: profilesById[s.coach_id],
-        coachee: profilesById[s.coachee_id],
-      }))
-    );
+    setRows(all.map((s: any) => ({
+      ...s,
+      coach: profilesById[s.coach_id],
+      coachee: profilesById[s.coachee_id],
+    })));
     setLoading(false);
   }, []);
 
@@ -114,8 +120,9 @@ export default function AdminSessions() {
     if (!editing) return;
     setSaving(true);
     try {
+      const table = editing.kind === "peer" ? "peer_sessions" : "sessions";
       const { error } = await supabase
-        .from("sessions")
+        .from(table)
         .update({
           topic: editing.topic,
           start_time: editing.start_time,
@@ -193,6 +200,7 @@ export default function AdminSessions() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Type</TableHead>
                 <TableHead>Topic</TableHead>
                 <TableHead>Coach</TableHead>
                 <TableHead>Coachee</TableHead>
@@ -217,6 +225,11 @@ export default function AdminSessions() {
                         : undefined
                     }
                   >
+                    <TableCell>
+                      <Badge variant={s.kind === "peer" ? "outline" : "secondary"} className="text-[10px]">
+                        {s.kind === "peer" ? "Peer" : "Coaching"}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {missingLink && (
