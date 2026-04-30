@@ -27,6 +27,7 @@ import {
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import clarivaLogo from "@/assets/clariva-logo.png";
 
 interface NavItem {
   to: string;
@@ -148,14 +149,11 @@ export default function AppLayout() {
       >
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary font-display text-lg shadow-glow">
-              <span className="text-primary-glow">C</span>
-            </div>
-            {!collapsed && (
-              <span className="whitespace-nowrap font-display text-xl tracking-tight text-secondary">
-                Clar<em className="not-italic text-primary">i</em>va
-              </span>
-            )}
+            <img
+              src={clarivaLogo}
+              alt="Clariva"
+              className={cn("h-8 w-auto object-contain", collapsed && "h-9")}
+            />
           </div>
           <button
             onClick={() => setCollapsed(!collapsed)}
