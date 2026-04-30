@@ -31,6 +31,7 @@ import {
   ListTodo,
   ChevronDown,
   ChevronRight,
+  Users,
 } from "lucide-react";
 import { format, isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
 import { toast } from "sonner";
