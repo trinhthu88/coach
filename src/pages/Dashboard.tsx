@@ -416,7 +416,7 @@ function CoachDashboard({ userId }: { userId: string }) {
           id: s.id,
           topic: s.topic,
           start_time: s.start_time,
-          kind: (isCoaching ? "peer-give" : "peer-receive") as const,
+          kind: (isCoaching ? "peer-give" : "peer-receive") as "peer-give" | "peer-receive",
           counterpart: profilesById[counterpartId]?.full_name || "Peer",
         };
       }),
