@@ -199,6 +199,29 @@ export default function CoachMyJourney() {
     }
   };
 
+  const linkActionMilestone = async (a: FlatAction, milestoneId: string | null) => {
+    const list = a.source === "coaching" ? sessions : peerReceived;
+    const setList = a.source === "coaching" ? setSessions : setPeerReceived;
+    const sess = list.find((s) => s.id === a.sessionId);
+    if (!sess) return;
+    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
+    const cur = items[a.idx];
+    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
+    norm.milestone_id = milestoneId;
+    items[a.idx] = norm;
+    setList((prev: any[]) =>
+      prev.map((s) => (s.id === a.sessionId ? { ...s, action_items: items } : s))
+    );
+    const table = a.source === "coaching" ? "sessions" : "peer_sessions";
+    const { error } = await supabase.from(table as any).update({ action_items: items }).eq("id", a.sessionId);
+    if (error) {
+      toast.error(error.message);
+      refresh();
+    } else {
+      toast.success(milestoneId ? "Linked to milestone" : "Unlinked");
+    }
+  };
+
   const now = new Date();
   const upcomingSessions = sessions.filter(
     (s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status)
@@ -423,7 +446,7 @@ export default function CoachMyJourney() {
                           <p className={cn("text-sm", a.done && "text-muted-foreground line-through")}>
                             {a.text}
                           </p>
-                          <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
                             <span
                               className={cn(
                                 "rounded-full px-1.5 py-0.5 font-bold uppercase tracking-widest",
@@ -446,6 +469,32 @@ export default function CoachMyJourney() {
                             >
                               · {a.sessionTopic}
                             </Link>
+                            <select
+                              value={a.milestone_id || ""}
+                              onChange={(e) => linkActionMilestone(a, e.target.value || null)}
+                              className="ml-auto h-6 rounded-md border bg-background px-1.5 text-[10px]"
+                              title="Link to a milestone"
+                            >
+                              <option value="">— No milestone —</option>
+                              {milestones.map((m) => {
+                                const goal = goals.find((g) => g.id === m.goal_id);
+                                return (
+                                  <option key={m.id} value={m.id}>
+                                    {goal ? `${goal.title} → ${m.title}` : m.title}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            {a.milestone_id && (() => {
+                              const ms = milestones.find((m) => m.id === a.milestone_id);
+                              if (!ms) return null;
+                              const goal = goals.find((g) => g.id === ms.goal_id);
+                              return (
+                                <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-primary">
+                                  ↳ {goal ? `${goal.title} → ` : ""}{ms.title}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>

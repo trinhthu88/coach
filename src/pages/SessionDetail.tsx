@@ -194,6 +194,17 @@ export default function SessionDetail() {
     setCoach((byId.get(norm.coach_id) as ProfileLite) || null);
     setCoachee((byId.get(norm.coachee_id) as ProfileLite) || null);
 
+    // Load milestones of the coachee (or peer-coachee) so action items can be linked
+    const coacheeId = norm.coachee_id;
+    const [{ data: gs }, { data: ms }] = await Promise.all([
+      supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
+      supabase.from("coachee_milestones").select("id, title, goal_id").eq("coachee_id", coacheeId).order("created_at"),
+    ]);
+    const goalById = new Map((gs || []).map((g: any) => [g.id, g.title]));
+    setMilestones(
+      (ms || []).map((m: any) => ({ id: m.id, title: m.title, goal_id: m.goal_id, goal_title: goalById.get(m.goal_id) }))
+    );
+
     if (!isPeer) {
       const { data: atts } = await supabase
         .from("session_attachments")
@@ -201,19 +212,8 @@ export default function SessionDetail() {
         .eq("session_id", sessionId)
         .order("created_at", { ascending: false });
       setAttachments((atts as Attachment[]) || []);
-
-      const coacheeId = norm.coachee_id;
-      const [{ data: gs }, { data: ms }] = await Promise.all([
-        supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
-        supabase.from("coachee_milestones").select("id, title, goal_id").eq("coachee_id", coacheeId).order("created_at"),
-      ]);
-      const goalById = new Map((gs || []).map((g: any) => [g.id, g.title]));
-      setMilestones(
-        (ms || []).map((m: any) => ({ id: m.id, title: m.title, goal_id: m.goal_id, goal_title: goalById.get(m.goal_id) }))
-      );
     } else {
       setAttachments([]);
-      setMilestones([]);
       // Load existing competency feedback for this peer session (if any)
       const { data: fb } = await supabase
         .from("peer_session_competency_feedback")
@@ -262,8 +262,13 @@ export default function SessionDetail() {
     );
   }
 
-  const isCoach = role === "coach" && session.coach_id === user?.id;
-  const isCoachee = role === "coachee" && session.coachee_id === user?.id;
+  // Peer sessions: both participants have role="coach". Use session position, not global role.
+  const isCoach = isPeer
+    ? session.coach_id === user?.id
+    : role === "coach" && session.coach_id === user?.id;
+  const isCoachee = isPeer
+    ? session.coachee_id === user?.id
+    : role === "coachee" && session.coachee_id === user?.id;
   const isAdmin = role === "admin";
 
   const start = new Date(session.start_time);
