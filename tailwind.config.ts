@@ -18,6 +18,7 @@ export default {
         serif: ["Fraunces", "Georgia", "serif"],
         display: ["Fraunces", "Georgia", "serif"],
       },
+      colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
