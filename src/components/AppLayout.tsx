@@ -13,6 +13,8 @@ import {
   IdCard,
   CalendarClock,
   ClipboardList,
+  Compass,
+  UsersRound,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -31,6 +33,8 @@ const NAV: NavItem[] = [
   { to: "/coachee/profile", label: "My profile", icon: IdCard, roles: ["coachee"] },
   { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"] },
   { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"] },
+  { to: "/coach/clients", label: "My clients", icon: UsersRound, roles: ["coach"] },
+  { to: "/coachee/journey", label: "My journey", icon: Compass, roles: ["coachee"] },
   { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"] },
   { to: "/messages", label: "Messages", icon: MessageSquare, roles: ["coach", "coachee"] },
   { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"] },
