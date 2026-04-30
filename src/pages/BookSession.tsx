@@ -115,31 +115,70 @@ export default function BookSession() {
         slotQuery,
       ]);
       setCoach(coachData as unknown as CoachDetail | null);
+
+      // --- Conflict filtering: hide booker's own existing sessions overlap ---
+      let bookerBusy: { start: number; end: number }[] = [];
+      if (user) {
+        const horizonStart = new Date();
+        horizonStart.setHours(0, 0, 0, 0);
+        const horizonEnd = new Date();
+        horizonEnd.setDate(horizonEnd.getDate() + 90);
+
+        const [{ data: mySess }, { data: myPeer }] = await Promise.all([
+          supabase
+            .from("sessions")
+            .select("start_time, duration_minutes, status, coach_id, coachee_id")
+            .or(`coach_id.eq.${user.id},coachee_id.eq.${user.id}`)
+            .in("status", ["pending_coach_approval", "confirmed"])
+            .gte("start_time", horizonStart.toISOString())
+            .lte("start_time", horizonEnd.toISOString()),
+          supabase
+            .from("peer_sessions")
+            .select("start_time, duration_minutes, status, peer_coach_id, peer_coachee_id")
+            .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
+            .in("status", ["pending_coach_approval", "confirmed"])
+            .gte("start_time", horizonStart.toISOString())
+            .lte("start_time", horizonEnd.toISOString()),
+        ]);
+        const toBusy = (rows: any[] | null) =>
+          (rows || []).map((r) => {
+            const s = new Date(r.start_time).getTime();
+            return { start: s, end: s + r.duration_minutes * 60_000 };
+          });
+        bookerBusy = [...toBusy(mySess), ...toBusy(myPeer)];
+      }
+      setBookerBusy(bookerBusy);
       setSlots(((slotData as Slot[]) || []).map((s) => ({ ...s })));
 
       if (user) {
-        if (mode === "peer" || role === "coach") {
-          // Peer / coach-as-coachee: use coach_session_limits + peer_sessions count
-          const [{ data: lim }, peerCount, coachCount] = await Promise.all([
+        if (mode === "peer") {
+          // Peer mode: use new RPC for peer-only monthly limit
+          const { data: u } = await supabase.rpc("get_coach_peer_session_usage", {
+            _coach_id: user.id,
+          });
+          const row = Array.isArray(u) ? u[0] : u;
+          setUsage({
+            monthly_limit: row?.peer_monthly_limit ?? 4,
+            used_this_month: row?.used_this_month ?? 0,
+          });
+        } else if (role === "coach") {
+          // Coach booking a regular coaching session (coach-as-coachee allowlist path)
+          const [{ data: lim }, coachCount] = await Promise.all([
             supabase
               .from("coach_session_limits")
               .select("monthly_limit")
               .eq("coach_user_id", user.id)
               .maybeSingle(),
             supabase
-              .from("peer_sessions")
-              .select("id", { count: "exact", head: true })
-              .eq("peer_coachee_id", user.id)
-              .eq("status", "completed"),
-            supabase
               .from("sessions")
               .select("id", { count: "exact", head: true })
               .eq("coachee_id", user.id)
               .eq("status", "completed"),
           ]);
-          const limit = lim?.monthly_limit ?? 4;
-          const used = (peerCount.count || 0) + (coachCount.count || 0);
-          setUsage({ monthly_limit: limit, used_this_month: used });
+          setUsage({
+            monthly_limit: lim?.monthly_limit ?? 4,
+            used_this_month: coachCount.count || 0,
+          });
         } else {
           const [{ data: u }, { count }] = await Promise.all([
             supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
