@@ -27,6 +27,11 @@ export function ProtectedRoute({ children, role: requiredRole }: Props) {
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
+  // First-login forced password change
+  if (profile?.must_change_password && location.pathname !== "/set-new-password") {
+    return <Navigate to="/set-new-password" replace />;
+  }
+
   // Pending / suspended / rejected users (admin always passes)
   const status = profile?.status;
   if (role !== "admin" && status && status !== "active" && location.pathname !== "/pending") {
