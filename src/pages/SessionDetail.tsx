@@ -262,8 +262,13 @@ export default function SessionDetail() {
     );
   }
 
-  const isCoach = role === "coach" && session.coach_id === user?.id;
-  const isCoachee = role === "coachee" && session.coachee_id === user?.id;
+  // Peer sessions: both participants have role="coach". Use session position, not global role.
+  const isCoach = isPeer
+    ? session.coach_id === user?.id
+    : role === "coach" && session.coach_id === user?.id;
+  const isCoachee = isPeer
+    ? session.coachee_id === user?.id
+    : role === "coachee" && session.coachee_id === user?.id;
   const isAdmin = role === "admin";
 
   const start = new Date(session.start_time);
