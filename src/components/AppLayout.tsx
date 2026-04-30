@@ -41,6 +41,7 @@ const NAV: NavItem[] = [
 export default function AppLayout() {
   const { user, profile, role, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
   const items = NAV.filter((n) => role && n.roles.includes(role));
@@ -51,6 +52,46 @@ export default function AppLayout() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  // Fetch unread message count for coach/coachee
+  useEffect(() => {
+    if (!user || !role || (role !== "coach" && role !== "coachee")) return;
+    const filterCol = role === "coach" ? "coach_id" : "coachee_id";
+
+    const refresh = async () => {
+      const { data: ses } = await supabase
+        .from("sessions")
+        .select("id")
+        .eq(filterCol, user.id)
+        .in("status", ["confirmed", "completed"]);
+      const sessionIds = (ses || []).map((s: any) => s.id);
+      if (!sessionIds.length) {
+        setUnreadCount(0);
+        return;
+      }
+      const { count } = await supabase
+        .from("session_messages")
+        .select("id", { count: "exact", head: true })
+        .in("session_id", sessionIds)
+        .neq("sender_id", user.id)
+        .is("read_at", null);
+      setUnreadCount(count || 0);
+    };
+
+    refresh();
+
+    const channel = supabase
+      .channel(`unread-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "session_messages" },
+        () => refresh()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, role]);
 
   const handleSignOut = async () => {
     await signOut();
