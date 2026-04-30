@@ -446,8 +446,7 @@ export default function AdminRegistrations() {
         <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Admin</p>
         <h1 className="text-3xl font-semibold tracking-tight">Registrations</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage all coaches and coachees. Default monthly limit:{" "}
-          <span className="font-semibold text-foreground">{defaultLimit}</span> sessions.
+          Manage all coaches and coachees.
         </p>
       </div>
 
