@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -132,6 +132,11 @@ function normalizeItems(raw: any): ActionItem[] {
 
 export default function SessionDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const [searchParams] = useSearchParams();
+  const isPeer = searchParams.get("type") === "peer";
+  const tableName = isPeer ? "peer_sessions" : "sessions";
+  const coachField = isPeer ? "peer_coach_id" : "coach_id";
+  const coacheeField = isPeer ? "peer_coachee_id" : "coachee_id";
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const [session, setSession] = useState<SessionRow | null>(null);
@@ -151,48 +156,88 @@ export default function SessionDetail() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
 
+  // Peer-only: 8 ICF competency feedback
+  const [feedback, setFeedback] = useState<{
+    ethical_practice: number; coaching_mindset: number; maintains_agreements: number;
+    trust_safety: number; maintains_presence: number; listens_actively: number;
+    evokes_awareness: number; facilitates_growth: number; feedback_note: string;
+    existed: boolean;
+  }>({
+    ethical_practice: 70, coaching_mindset: 70, maintains_agreements: 70,
+    trust_safety: 70, maintains_presence: 70, listens_actively: 70,
+    evokes_awareness: 70, facilitates_growth: 70, feedback_note: "", existed: false,
+  });
+
   const load = useCallback(async () => {
     if (!sessionId) return;
-    const { data } = await supabase.from("sessions").select("*").eq("id", sessionId).maybeSingle();
+    const { data } = await supabase.from(tableName as any).select("*").eq("id", sessionId).maybeSingle();
     if (!data) {
       setLoading(false);
       return;
     }
-    setSession(data as SessionRow);
-    setCoachNotes((data as any).coach_notes || "");
-    setCoachPrivate((data as any).coach_private_notes || "");
-    setCoacheeNotes((data as any).coachee_notes || "");
-    setMeetingUrl((data as any).meeting_url || "");
-    setItems(normalizeItems((data as any).action_items));
+    // Normalize peer rows to look like SessionRow
+    const norm: any = isPeer
+      ? { ...(data as any), coach_id: (data as any)[coachField], coachee_id: (data as any)[coacheeField] }
+      : data;
+    setSession(norm as SessionRow);
+    setCoachNotes(norm.coach_notes || "");
+    setCoachPrivate(norm.coach_private_notes || "");
+    setCoacheeNotes(norm.coachee_notes || "");
+    setMeetingUrl(norm.meeting_url || "");
+    setItems(normalizeItems(norm.action_items));
 
     const { data: profs } = await supabase
       .from("profiles")
       .select("id, full_name, email, avatar_url")
-      .in("id", [(data as any).coach_id, (data as any).coachee_id]);
+      .in("id", [norm.coach_id, norm.coachee_id]);
     const byId = new Map((profs || []).map((p) => [p.id, p]));
-    setCoach((byId.get((data as any).coach_id) as ProfileLite) || null);
-    setCoachee((byId.get((data as any).coachee_id) as ProfileLite) || null);
+    setCoach((byId.get(norm.coach_id) as ProfileLite) || null);
+    setCoachee((byId.get(norm.coachee_id) as ProfileLite) || null);
 
-    const { data: atts } = await supabase
-      .from("session_attachments")
-      .select("*")
-      .eq("session_id", sessionId)
-      .order("created_at", { ascending: false });
-    setAttachments((atts as Attachment[]) || []);
+    if (!isPeer) {
+      const { data: atts } = await supabase
+        .from("session_attachments")
+        .select("*")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: false });
+      setAttachments((atts as Attachment[]) || []);
 
-    // Load coachee's goals + milestones so action items can be linked
-    const coacheeId = (data as any).coachee_id;
-    const [{ data: gs }, { data: ms }] = await Promise.all([
-      supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
-      supabase.from("coachee_milestones").select("id, title, goal_id").eq("coachee_id", coacheeId).order("created_at"),
-    ]);
-    const goalById = new Map((gs || []).map((g: any) => [g.id, g.title]));
-    setMilestones(
-      (ms || []).map((m: any) => ({ id: m.id, title: m.title, goal_id: m.goal_id, goal_title: goalById.get(m.goal_id) }))
-    );
+      const coacheeId = norm.coachee_id;
+      const [{ data: gs }, { data: ms }] = await Promise.all([
+        supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
+        supabase.from("coachee_milestones").select("id, title, goal_id").eq("coachee_id", coacheeId).order("created_at"),
+      ]);
+      const goalById = new Map((gs || []).map((g: any) => [g.id, g.title]));
+      setMilestones(
+        (ms || []).map((m: any) => ({ id: m.id, title: m.title, goal_id: m.goal_id, goal_title: goalById.get(m.goal_id) }))
+      );
+    } else {
+      setAttachments([]);
+      setMilestones([]);
+      // Load existing competency feedback for this peer session (if any)
+      const { data: fb } = await supabase
+        .from("peer_session_competency_feedback")
+        .select("*")
+        .eq("peer_session_id", sessionId)
+        .maybeSingle();
+      if (fb) {
+        setFeedback({
+          ethical_practice: fb.ethical_practice ?? 70,
+          coaching_mindset: fb.coaching_mindset ?? 70,
+          maintains_agreements: fb.maintains_agreements ?? 70,
+          trust_safety: fb.trust_safety ?? 70,
+          maintains_presence: fb.maintains_presence ?? 70,
+          listens_actively: fb.listens_actively ?? 70,
+          evokes_awareness: fb.evokes_awareness ?? 70,
+          facilitates_growth: fb.facilitates_growth ?? 70,
+          feedback_note: fb.feedback_note ?? "",
+          existed: true,
+        });
+      }
+    }
 
     setLoading(false);
-  }, [sessionId]);
+  }, [sessionId, tableName, isPeer, coachField, coacheeField]);
 
   useEffect(() => {
     load();
@@ -242,7 +287,7 @@ export default function SessionDetail() {
     if (isCoachee || isAdmin) {
       update.coachee_notes = coacheeNotes;
     }
-    const { error } = await supabase.from("sessions").update(update).eq("id", session.id);
+    const { error } = await supabase.from(tableName as any).update(update).eq("id", session.id);
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -255,7 +300,7 @@ export default function SessionDetail() {
   const confirmSession = async () => {
     setSaving(true);
     const { error } = await supabase
-      .from("sessions")
+      .from(tableName as any)
       .update({
         status: "confirmed",
         confirmed_at: new Date().toISOString(),
@@ -276,7 +321,7 @@ export default function SessionDetail() {
   const cancelSession = async () => {
     setSaving(true);
     const { error } = await supabase
-      .from("sessions")
+      .from(tableName as any)
       .update({
         status: "cancelled",
         cancelled_at: new Date().toISOString(),
@@ -297,7 +342,7 @@ export default function SessionDetail() {
 
   const completeSession = async () => {
     setSaving(true);
-    const { error } = await supabase.from("sessions").update({ status: "completed" }).eq("id", session.id);
+    const { error } = await supabase.from(tableName as any).update({ status: "completed" }).eq("id", session.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Marked complete");
@@ -608,7 +653,7 @@ export default function SessionDetail() {
                     }
                     setSaving(true);
                     const { error } = await supabase
-                      .from("sessions")
+                      .from(tableName as any)
                       .update({ meeting_url: trimmed || null })
                       .eq("id", session.id);
                     setSaving(false);
@@ -680,6 +725,27 @@ export default function SessionDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Peer-coachee competency feedback (only on completed peer sessions, only for the peer-coachee) */}
+      {isPeer && session.status === "completed" && session.coachee_id === user?.id && (
+        <PeerCompetencyFeedback
+          sessionId={session.id}
+          peerCoachId={session.coach_id}
+          peerCoacheeId={session.coachee_id}
+          existing={feedback}
+          onSaved={load}
+        />
+      )}
+      {/* Read-only view of received feedback for peer-coach */}
+      {isPeer && session.status === "completed" && session.coach_id === user?.id && feedback.existed && (
+        <PeerCompetencyFeedback
+          sessionId={session.id}
+          peerCoachId={session.coach_id}
+          peerCoacheeId={session.coachee_id}
+          existing={feedback}
+          readOnly
+        />
+      )}
 
       {/* Participants */}
       <div className="grid gap-6 md:grid-cols-2">
@@ -754,5 +820,124 @@ function SectionTitle({ icon: Icon, children }: { icon: any; children: React.Rea
       <Icon className="h-3.5 w-3.5 text-primary" />
       {children}
     </div>
+  );
+}
+
+const COMPETENCIES: { key: keyof PeerFeedbackState; label: string }[] = [
+  { key: "ethical_practice", label: "Demonstrates Ethical Practice" },
+  { key: "coaching_mindset", label: "Embodies a Coaching Mindset" },
+  { key: "maintains_agreements", label: "Establishes & Maintains Agreements" },
+  { key: "trust_safety", label: "Cultivates Trust and Safety" },
+  { key: "maintains_presence", label: "Maintains Presence" },
+  { key: "listens_actively", label: "Listens Actively" },
+  { key: "evokes_awareness", label: "Evokes Awareness" },
+  { key: "facilitates_growth", label: "Facilitates Client Growth" },
+];
+
+type PeerFeedbackState = {
+  ethical_practice: number; coaching_mindset: number; maintains_agreements: number;
+  trust_safety: number; maintains_presence: number; listens_actively: number;
+  evokes_awareness: number; facilitates_growth: number; feedback_note: string;
+  existed: boolean;
+};
+
+function PeerCompetencyFeedback({
+  sessionId, peerCoachId, peerCoacheeId, existing, onSaved, readOnly,
+}: {
+  sessionId: string;
+  peerCoachId: string;
+  peerCoacheeId: string;
+  existing: PeerFeedbackState;
+  onSaved?: () => void;
+  readOnly?: boolean;
+}) {
+  const [state, setState] = useState<PeerFeedbackState>(existing);
+  const [saving, setSaving] = useState(false);
+
+  const setScore = (k: keyof PeerFeedbackState, v: number) =>
+    setState((p) => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    setSaving(true);
+    const payload = {
+      peer_session_id: sessionId,
+      peer_coach_id: peerCoachId,
+      peer_coachee_id: peerCoacheeId,
+      ethical_practice: state.ethical_practice,
+      coaching_mindset: state.coaching_mindset,
+      maintains_agreements: state.maintains_agreements,
+      trust_safety: state.trust_safety,
+      maintains_presence: state.maintains_presence,
+      listens_actively: state.listens_actively,
+      evokes_awareness: state.evokes_awareness,
+      facilitates_growth: state.facilitates_growth,
+      feedback_note: state.feedback_note || null,
+    };
+    const { error } = state.existed
+      ? await supabase
+          .from("peer_session_competency_feedback")
+          .update(payload)
+          .eq("peer_session_id", sessionId)
+      : await supabase.from("peer_session_competency_feedback").insert(payload);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Feedback saved");
+    setState((p) => ({ ...p, existed: true }));
+    onSaved?.();
+  };
+
+  return (
+    <Card className="space-y-5 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">
+            ICF competency feedback {readOnly && <span className="text-xs font-normal text-muted-foreground">(read only)</span>}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Rate your peer coach on the 8 ICF coaching competencies (0–100).
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {COMPETENCIES.map((c) => (
+          <div key={c.key} className="space-y-1.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">{c.label}</span>
+              <span className="font-bold text-primary">{state[c.key] as number}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              disabled={readOnly}
+              value={state[c.key] as number}
+              onChange={(e) => setScore(c.key, Number(e.target.value))}
+              className="w-full accent-primary"
+            />
+          </div>
+        ))}
+      </div>
+      <div>
+        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Written feedback
+        </p>
+        <Textarea
+          rows={4}
+          disabled={readOnly}
+          value={state.feedback_note}
+          onChange={(e) => setState((p) => ({ ...p, feedback_note: e.target.value }))}
+          placeholder="What went well? What could grow further?"
+        />
+      </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          <Button onClick={save} disabled={saving}>
+            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
+            {state.existed ? "Update feedback" : "Submit feedback"}
+          </Button>
+        </div>
+      )}
+    </Card>
   );
 }

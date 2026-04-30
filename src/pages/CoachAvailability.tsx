@@ -189,7 +189,7 @@ export default function CoachAvailability() {
       {/* Peer coaching opt-in */}
       <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent">
             <MessagesSquare className="h-5 w-5" />
           </div>
           <div>
@@ -202,6 +202,20 @@ export default function CoachAvailability() {
         </div>
         <Switch checked={peerOptIn} onCheckedChange={handleTogglePeer} disabled={savingOptIn} />
       </Card>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 rounded-xl border bg-card/40 px-4 py-2.5 text-xs text-muted-foreground">
+        <span className="font-bold uppercase tracking-widest text-[10px]">Legend</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm bg-primary" /> Coaching slot
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm bg-accent" /> Peer slot
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm bg-muted-foreground/30" /> Booked
+        </span>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-5">
@@ -231,9 +245,14 @@ export default function CoachAvailability() {
               ))}
               {days.map((d) => {
                 const key = format(d, "yyyy-MM-dd");
-                const count = slotsByDate[key]?.length ?? 0;
+                const daySlots = slotsByDate[key] ?? [];
+                const count = daySlots.length;
+                const coachingCount = daySlots.filter((s) => s.slot_type === "coaching").length;
+                const peerCount = daySlots.filter((s) => s.slot_type === "peer").length;
                 const inMonth = isSameMonth(d, month);
                 const isSelected = selectedDate && isSameDay(d, selectedDate);
+                const onlyPeer = peerCount > 0 && coachingCount === 0;
+                const mixed = peerCount > 0 && coachingCount > 0;
                 return (
                   <button
                     key={key}
@@ -243,6 +262,8 @@ export default function CoachAvailability() {
                       inMonth ? "" : "opacity-40",
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground"
+                        : onlyPeer
+                        ? "border-accent/40 bg-accent/10 hover:bg-accent/15"
                         : count > 0
                         ? "border-primary/40 bg-primary-soft hover:bg-primary-soft/80"
                         : "border-border hover:bg-muted"
@@ -250,14 +271,26 @@ export default function CoachAvailability() {
                   >
                     <span>{format(d, "d")}</span>
                     {count > 0 && (
-                      <span
-                        className={cn(
-                          "text-[10px] font-semibold",
-                          isSelected ? "text-primary-foreground/80" : "text-primary"
+                      <>
+                        <span
+                          className={cn(
+                            "text-[10px] font-semibold",
+                            isSelected
+                              ? "text-primary-foreground/80"
+                              : onlyPeer
+                              ? "text-accent"
+                              : "text-primary"
+                          )}
+                        >
+                          {count} slot{count > 1 ? "s" : ""}
+                        </span>
+                        {mixed && !isSelected && (
+                          <div className="mt-0.5 flex gap-0.5">
+                            <span className="h-1 w-1.5 rounded-full bg-primary" />
+                            <span className="h-1 w-1.5 rounded-full bg-accent" />
+                          </div>
                         )}
-                      >
-                        {count} slot{count > 1 ? "s" : ""}
-                      </span>
+                      </>
                     )}
                   </button>
                 );
@@ -289,7 +322,9 @@ export default function CoachAvailability() {
                     key={s.id}
                     className={cn(
                       "flex items-center justify-between rounded-lg border p-2.5",
-                      s.slot_type === "peer" && "border-success/30 bg-success/5"
+                      s.slot_type === "peer"
+                        ? "border-accent/40 bg-accent/5"
+                        : "border-primary/30 bg-primary-soft/40"
                     )}
                   >
                     <div className="flex items-center gap-2 text-sm">
@@ -301,8 +336,8 @@ export default function CoachAvailability() {
                         className={cn(
                           "text-[10px]",
                           s.slot_type === "peer"
-                            ? "bg-success/15 text-success"
-                            : "bg-primary/10 text-primary"
+                            ? "bg-accent/20 text-accent-foreground"
+                            : "bg-primary/15 text-primary"
                         )}
                       >
                         {s.slot_type === "peer" ? "Peer" : "Coaching"}
@@ -349,8 +384,8 @@ export default function CoachAvailability() {
                     className={cn(
                       "flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                       slotType === "peer"
-                        ? "border-success bg-success text-success-foreground"
-                        : "border-border hover:border-success/40",
+                        ? "border-accent bg-accent text-accent-foreground"
+                        : "border-border hover:border-accent/40",
                       !peerOptIn && "cursor-not-allowed opacity-50"
                     )}
                     title={!peerOptIn ? "Enable peer coaching above first" : undefined}

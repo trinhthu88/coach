@@ -182,6 +182,7 @@ export type Database = {
           id: string
           monthly_limit: number
           notes: string | null
+          peer_monthly_limit: number
           updated_at: string
         }
         Insert: {
@@ -190,6 +191,7 @@ export type Database = {
           id?: string
           monthly_limit?: number
           notes?: string | null
+          peer_monthly_limit?: number
           updated_at?: string
         }
         Update: {
@@ -198,6 +200,7 @@ export type Database = {
           id?: string
           monthly_limit?: number
           notes?: string | null
+          peer_monthly_limit?: number
           updated_at?: string
         }
         Relationships: []
@@ -385,6 +388,60 @@ export type Database = {
           created_at?: string
           id?: string
           mood?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      peer_session_competency_feedback: {
+        Row: {
+          coaching_mindset: number | null
+          created_at: string
+          ethical_practice: number | null
+          evokes_awareness: number | null
+          facilitates_growth: number | null
+          feedback_note: string | null
+          id: string
+          listens_actively: number | null
+          maintains_agreements: number | null
+          maintains_presence: number | null
+          peer_coach_id: string
+          peer_coachee_id: string
+          peer_session_id: string
+          trust_safety: number | null
+          updated_at: string
+        }
+        Insert: {
+          coaching_mindset?: number | null
+          created_at?: string
+          ethical_practice?: number | null
+          evokes_awareness?: number | null
+          facilitates_growth?: number | null
+          feedback_note?: string | null
+          id?: string
+          listens_actively?: number | null
+          maintains_agreements?: number | null
+          maintains_presence?: number | null
+          peer_coach_id: string
+          peer_coachee_id: string
+          peer_session_id: string
+          trust_safety?: number | null
+          updated_at?: string
+        }
+        Update: {
+          coaching_mindset?: number | null
+          created_at?: string
+          ethical_practice?: number | null
+          evokes_awareness?: number | null
+          facilitates_growth?: number | null
+          feedback_note?: string | null
+          id?: string
+          listens_actively?: number | null
+          maintains_agreements?: number | null
+          maintains_presence?: number | null
+          peer_coach_id?: string
+          peer_coachee_id?: string
+          peer_session_id?: string
+          trust_safety?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -741,6 +798,13 @@ export type Database = {
         Returns: boolean
       }
       coachee_has_allowlist: { Args: { _coachee_id: string }; Returns: boolean }
+      get_coach_peer_session_usage: {
+        Args: { _coach_id: string }
+        Returns: {
+          peer_monthly_limit: number
+          used_this_month: number
+        }[]
+      }
       get_coachee_session_usage: {
         Args: { _coachee_id: string }
         Returns: {

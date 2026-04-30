@@ -38,15 +38,16 @@ const NAV: NavItem[] = [
   { to: "/coachee/profile", label: "My profile", icon: IdCard, roles: ["coachee"] },
   { to: "/coachee/journey", label: "My journey", icon: Compass, roles: ["coachee"] },
 
-  // Coach — Practice
-  { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"], group: "Practice" },
-  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"], group: "Practice" },
-  { to: "/coach/clients", label: "My clients", icon: UsersRound, roles: ["coach"], group: "Practice" },
-  { to: "/coach/peer-coaching", label: "Peer coaching", icon: MessagesSquare, roles: ["coach"], group: "Practice" },
+  // Coach — My Coaching Profile
+  { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"], group: "My Coaching Profile" },
+  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"], group: "My Coaching Profile" },
+  { to: "/coach/clients", label: "My clients", icon: UsersRound, roles: ["coach"], group: "My Coaching Profile" },
 
-  // Coach — My journey
-  { to: "/coach/find-coach", label: "Find a coach", icon: Search, roles: ["coach"], group: "My journey" },
-  { to: "/coach/practice-journey", label: "My practice journey", icon: Layers, roles: ["coach"], group: "My journey" },
+  // Coach — My Practice Journey
+  { to: "/coach/peer-coaching", label: "Peer coaching", icon: MessagesSquare, roles: ["coach"], group: "My Practice Journey" },
+  { to: "/coach/find-coach", label: "Find a coach", icon: Search, roles: ["coach"], group: "My Practice Journey" },
+  { to: "/coach/my-journey", label: "My journey", icon: Compass, roles: ["coach"], group: "My Practice Journey" },
+  { to: "/coach/practice-journey", label: "Practice analytics", icon: Layers, roles: ["coach"], group: "My Practice Journey" },
 
   // Communication (shared)
   { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"], group: "Communication" },
