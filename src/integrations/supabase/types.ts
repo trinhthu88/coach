@@ -705,6 +705,8 @@ export type Database = {
       }
       programmes: {
         Row: {
+          coach_session_limit: number
+          coachee_session_limit: number
           color: string | null
           created_at: string
           description: string | null
@@ -712,10 +714,13 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          peer_session_limit: number
           total_sessions: number
           updated_at: string
         }
         Insert: {
+          coach_session_limit?: number
+          coachee_session_limit?: number
           color?: string | null
           created_at?: string
           description?: string | null
@@ -723,10 +728,13 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          peer_session_limit?: number
           total_sessions?: number
           updated_at?: string
         }
         Update: {
+          coach_session_limit?: number
+          coachee_session_limit?: number
           color?: string | null
           created_at?: string
           description?: string | null
@@ -734,6 +742,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          peer_session_limit?: number
           total_sessions?: number
           updated_at?: string
         }
@@ -928,6 +937,54 @@ export type Database = {
             columns: ["coachee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staged_enrollments: {
+        Row: {
+          applied_at: string | null
+          cohort_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string
+          full_name: string | null
+          id: string
+          programme_id: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          cohort_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          programme_id?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          cohort_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          programme_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staged_enrollments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staged_enrollments_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
             referencedColumns: ["id"]
           },
         ]
