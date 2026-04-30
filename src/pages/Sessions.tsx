@@ -263,9 +263,14 @@ function SessionCard({
           </p>
         </div>
       </div>
-      <Badge variant={meta.variant} className="shrink-0">
-        <Icon className="mr-1 h-3 w-3" /> {meta.label}
-      </Badge>
+      <span
+        className={cn(
+          "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
+          meta.className
+        )}
+      >
+        <Icon className="h-3 w-3" /> {meta.label}
+      </span>
     </Card>
   );
 }
@@ -473,9 +478,14 @@ function SessionDetailDialog({
 
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge variant={STATUS_META[session.status].variant}>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
+                STATUS_META[session.status].className
+              )}
+            >
               {STATUS_META[session.status].label}
-            </Badge>
+            </span>
             <span className="text-sm text-muted-foreground">
               {role === "coach" ? "Coachee" : "Coach"}:{" "}
               <strong className="text-foreground">
