@@ -9,6 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Compass,
   Loader2,
   BookOpen,
@@ -16,8 +25,11 @@ import {
   MessagesSquare,
   Trash2,
   Plus,
+  Check,
+  ListTodo,
+  Target,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isBefore } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +46,20 @@ interface Milestone {
   title: string;
   is_done: boolean;
   target_date: string | null;
+  done_at?: string | null;
+}
+interface RawActionItem {
+  text: string;
+  done?: boolean;
+  due_date?: string | null;
+  milestone_id?: string | null;
+}
+interface FlatAction extends RawActionItem {
+  sessionId: string;
+  sessionTopic: string;
+  sessionDate: string;
+  source: "coaching" | "peer";
+  idx: number;
 }
 
 export default function CoachMyJourney() {
@@ -110,6 +136,69 @@ export default function CoachMyJourney() {
     return Math.round((ms.filter((m) => m.is_done).length / ms.length) * 100);
   };
 
+  // Aggregate action items from BOTH coaching sessions and peer-received sessions
+  const allActions: FlatAction[] = useMemo(() => {
+    const out: FlatAction[] = [];
+    for (const s of sessions) {
+      const items = Array.isArray(s.action_items) ? s.action_items : [];
+      items.forEach((it: any, idx: number) => {
+        const obj: RawActionItem = typeof it === "string" ? { text: it, done: false } : it;
+        if (obj?.text)
+          out.push({
+            ...obj,
+            sessionId: s.id,
+            sessionTopic: s.topic,
+            sessionDate: s.start_time,
+            source: "coaching",
+            idx,
+          });
+      });
+    }
+    for (const s of peerReceived) {
+      const items = Array.isArray(s.action_items) ? s.action_items : [];
+      items.forEach((it: any, idx: number) => {
+        const obj: RawActionItem = typeof it === "string" ? { text: it, done: false } : it;
+        if (obj?.text)
+          out.push({
+            ...obj,
+            sessionId: s.id,
+            sessionTopic: s.topic,
+            sessionDate: s.start_time,
+            source: "peer",
+            idx,
+          });
+      });
+    }
+    return out;
+  }, [sessions, peerReceived]);
+
+  const aiTotal = allActions.length;
+  const aiDone = allActions.filter((a) => a.done).length;
+  const aiOverdue = allActions.filter(
+    (a) => !a.done && a.due_date && isBefore(new Date(a.due_date), new Date())
+  ).length;
+
+  const toggleAction = async (a: FlatAction) => {
+    const list = a.source === "coaching" ? sessions : peerReceived;
+    const setList = a.source === "coaching" ? setSessions : setPeerReceived;
+    const sess = list.find((s) => s.id === a.sessionId);
+    if (!sess) return;
+    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
+    const cur = items[a.idx];
+    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
+    norm.done = !norm.done;
+    items[a.idx] = norm;
+    setList((prev: any[]) =>
+      prev.map((s) => (s.id === a.sessionId ? { ...s, action_items: items } : s))
+    );
+    const table = a.source === "coaching" ? "sessions" : "peer_sessions";
+    const { error } = await supabase.from(table as any).update({ action_items: items }).eq("id", a.sessionId);
+    if (error) {
+      toast.error(error.message);
+      refresh();
+    }
+  };
+
   const now = new Date();
   const upcomingSessions = sessions.filter(
     (s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status)
@@ -117,16 +206,6 @@ export default function CoachMyJourney() {
   const upcomingPeer = peerReceived.filter(
     (s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status)
   );
-
-  const addGoal = async () => {
-    const title = window.prompt("Goal title?");
-    if (!title || !user) return;
-    const { error } = await supabase
-      .from("coachee_goals")
-      .insert({ coachee_id: user.id, title });
-    if (error) return toast.error(error.message);
-    refresh();
-  };
 
   const toggleMilestone = async (m: Milestone) => {
     const { error } = await supabase
@@ -137,12 +216,15 @@ export default function CoachMyJourney() {
     refresh();
   };
 
-  const addMilestone = async (goalId: string) => {
-    const title = window.prompt("Milestone?");
-    if (!title || !user) return;
-    const { error } = await supabase
-      .from("coachee_milestones")
-      .insert({ coachee_id: user.id, goal_id: goalId, title });
+  const deleteGoal = async (id: string) => {
+    if (!confirm("Delete this goal and all its milestones?")) return;
+    const { error } = await supabase.from("coachee_goals").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    refresh();
+  };
+
+  const deleteMilestone = async (id: string) => {
+    const { error } = await supabase.from("coachee_milestones").delete().eq("id", id);
     if (error) return toast.error(error.message);
     refresh();
   };
@@ -187,7 +269,7 @@ export default function CoachMyJourney() {
             My <em className="not-italic text-primary">journey</em>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Your growth as a coachee — goals, reflections, and the sessions you've received.
+            Your growth as a coachee — goals, action items, and the sessions you've received.
           </p>
         </div>
       </div>
@@ -195,6 +277,12 @@ export default function CoachMyJourney() {
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Metric label="Overall progress" value={`${overallPct}%`} sub={`${goals.length} goal${goals.length === 1 ? "" : "s"}`} />
+        <Metric
+          label="Action items"
+          value={`${aiDone}/${aiTotal}`}
+          sub={aiOverdue ? `${aiOverdue} overdue` : "all on track"}
+          subClass={aiOverdue ? "text-destructive" : ""}
+        />
         <Metric
           label="Sessions received"
           value={String(sessions.filter((s) => s.status === "completed").length)}
@@ -205,30 +293,32 @@ export default function CoachMyJourney() {
           value={String(peerReceived.filter((s) => s.status === "completed").length)}
           sub={`${upcomingPeer.length} upcoming`}
         />
-        <Metric
-          label="Reflections"
-          value={String(reflections.length)}
-          sub="personal notes"
-        />
       </div>
 
       <Tabs defaultValue="goals">
         <TabsList>
           <TabsTrigger value="goals">Goals & milestones</TabsTrigger>
+          <TabsTrigger value="actions">Action items ({aiTotal})</TabsTrigger>
           <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
           <TabsTrigger value="peer">Peer received ({peerReceived.length})</TabsTrigger>
           <TabsTrigger value="reflections">Reflections ({reflections.length})</TabsTrigger>
         </TabsList>
 
+        {/* GOALS */}
         <TabsContent value="goals" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <Button size="sm" onClick={addGoal}>
-              <Plus className="h-4 w-4" /> New goal
-            </Button>
+            <GoalDialog userId={user!.id} onSaved={refresh} />
           </div>
           {goals.length === 0 ? (
-            <Card className="p-8 text-center text-sm text-muted-foreground">
-              No goals yet. Add one to start tracking.
+            <Card className="p-12 text-center">
+              <Target className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+              <h3 className="font-semibold">Set your first goal</h3>
+              <p className="mt-1 mb-4 text-sm text-muted-foreground">
+                Define what you want to grow into and break it down into milestones.
+              </p>
+              <div className="flex justify-center">
+                <GoalDialog userId={user!.id} onSaved={refresh} />
+              </div>
             </Card>
           ) : (
             goals.map((g) => {
@@ -237,56 +327,145 @@ export default function CoachMyJourney() {
               return (
                 <Card key={g.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="font-semibold">{g.title}</p>
                       {g.description && (
-                        <p className="text-xs text-muted-foreground">{g.description}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{g.description}</p>
                       )}
                     </div>
-                    <span className="text-xs font-semibold text-primary">{pct}%</span>
+                    <span className="shrink-0 text-xs font-semibold text-primary">{pct}%</span>
                   </div>
                   <Progress value={pct} className="mt-2 h-1.5" />
-                  <ul className="mt-3 space-y-1.5">
-                    {ms.map((m) => (
-                      <li key={m.id} className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={m.is_done}
-                          onChange={() => toggleMilestone(m)}
-                          className="h-4 w-4 cursor-pointer accent-primary"
-                        />
-                        <span className={cn(m.is_done && "line-through text-muted-foreground")}>
-                          {m.title}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 h-7 text-xs"
-                    onClick={() => addMilestone(g.id)}
-                  >
-                    <Plus className="h-3 w-3" /> Add milestone
-                  </Button>
+
+                  {ms.length > 0 && (
+                    <ul className="mt-3 space-y-1.5">
+                      {ms.map((m) => (
+                        <li key={m.id} className="flex items-center gap-2 text-sm">
+                          <button
+                            onClick={() => toggleMilestone(m)}
+                            className={cn(
+                              "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
+                              m.is_done ? "border-success bg-success" : "border-border bg-muted"
+                            )}
+                            aria-label="Toggle milestone"
+                          >
+                            {m.is_done && <Check className="h-2.5 w-2.5 text-success-foreground" strokeWidth={3} />}
+                          </button>
+                          <span className={cn("flex-1", m.is_done && "line-through text-muted-foreground")}>
+                            {m.title}
+                          </span>
+                          {m.target_date && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {format(new Date(m.target_date), "MMM d")}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => deleteMilestone(m.id)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="mt-3 flex items-center justify-between border-t pt-2">
+                    <MilestoneDialog goalId={g.id} userId={user!.id} onSaved={refresh} />
+                    <button
+                      onClick={() => deleteGoal(g.id)}
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Delete goal
+                    </button>
+                  </div>
                 </Card>
               );
             })
           )}
         </TabsContent>
 
+        {/* ACTION ITEMS — synced from all sessions received */}
+        <TabsContent value="actions" className="mt-4 space-y-3">
+          <Card className="p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <ListTodo className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">All action items</p>
+              <span className="text-xs text-muted-foreground">
+                · synced from coaching & peer sessions you've received
+              </span>
+            </div>
+            {allActions.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No action items yet. They'll appear here as your coaches assign them.
+              </p>
+            ) : (
+              <div className="divide-y">
+                {allActions
+                  .sort((a, b) => +new Date(b.sessionDate) - +new Date(a.sessionDate))
+                  .map((a, i) => {
+                    const overdue =
+                      !a.done && a.due_date && isBefore(new Date(a.due_date), new Date());
+                    return (
+                      <div key={`${a.sessionId}-${a.idx}-${i}`} className="flex items-start gap-2 py-2">
+                        <button
+                          onClick={() => toggleAction(a)}
+                          className={cn(
+                            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border",
+                            a.done && "border-success bg-success text-success-foreground",
+                            !a.done && overdue && "border-destructive bg-destructive/10",
+                            !a.done && !overdue && "border-border bg-muted hover:bg-muted/70"
+                          )}
+                        >
+                          {a.done && <Check className="h-3 w-3" strokeWidth={3} />}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("text-sm", a.done && "text-muted-foreground line-through")}>
+                            {a.text}
+                          </p>
+                          <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
+                            <span
+                              className={cn(
+                                "rounded-full px-1.5 py-0.5 font-bold uppercase tracking-widest",
+                                a.source === "peer"
+                                  ? "bg-warning/15 text-warning"
+                                  : "bg-primary/15 text-primary"
+                              )}
+                            >
+                              {a.source === "peer" ? "Peer" : "Coaching"}
+                            </span>
+                            {a.due_date && (
+                              <span className={cn(overdue && "text-destructive font-semibold")}>
+                                {a.done ? "Done" : overdue ? "Overdue" : "Due"}{" "}
+                                {format(new Date(a.due_date), "MMM d")}
+                              </span>
+                            )}
+                            <Link
+                              to={`/sessions/${a.sessionId}${a.source === "peer" ? "?type=peer" : ""}`}
+                              className="hover:text-primary"
+                            >
+                              · {a.sessionTopic}
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        {/* SESSIONS */}
         <TabsContent value="sessions" className="mt-4 space-y-2">
           {sessions.length === 0 ? (
             <Card className="p-8 text-center text-sm text-muted-foreground">
-              No sessions received yet. <Link to="/coach/find-coach" className="text-primary underline">Find a coach</Link>.
+              No sessions received yet.{" "}
+              <Link to="/coach/find-coach" className="text-primary underline">Find a coach</Link>.
             </Card>
           ) : (
             sessions.map((s) => (
-              <Link
-                key={s.id}
-                to={`/sessions/${s.id}`}
-                className="block"
-              >
+              <Link key={s.id} to={`/sessions/${s.id}`} className="block">
                 <Card className="p-4 transition hover:bg-accent/40">
                   <div className="flex items-center gap-2">
                     <Users className="h-3.5 w-3.5 text-primary" />
@@ -314,11 +493,7 @@ export default function CoachMyJourney() {
             </Card>
           ) : (
             peerReceived.map((s) => (
-              <Link
-                key={s.id}
-                to={`/sessions/${s.id}?type=peer`}
-                className="block"
-              >
+              <Link key={s.id} to={`/sessions/${s.id}?type=peer`} className="block">
                 <Card className="p-4 transition hover:bg-accent/40">
                   <div className="flex items-center gap-2">
                     <MessagesSquare className="h-3.5 w-3.5 text-warning" />
@@ -390,14 +565,173 @@ export default function CoachMyJourney() {
   );
 }
 
-function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Metric({
+  label,
+  value,
+  sub,
+  subClass,
+}: { label: string; value: string; sub?: string; subClass?: string }) {
   return (
     <Card className="p-4">
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         {label}
       </p>
       <p className="mt-1.5 text-2xl font-semibold">{value}</p>
-      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
+      {sub && <p className={cn("mt-0.5 text-[11px] text-muted-foreground", subClass)}>{sub}</p>}
     </Card>
+  );
+}
+
+function GoalDialog({ userId, onSaved }: { userId: string; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [targetDate, setTargetDate] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => {
+    setTitle("");
+    setDescription("");
+    setTargetDate("");
+  };
+
+  const submit = async () => {
+    if (!title.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from("coachee_goals").insert({
+      coachee_id: userId,
+      title: title.trim(),
+      description: description.trim() || null,
+      target_date: targetDate || null,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Goal added");
+    reset();
+    setOpen(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="h-4 w-4" /> New goal
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New goal</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="g-title">Title</Label>
+            <Input
+              id="g-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Build a sustainable peer-coaching practice"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="g-desc">Description (optional)</Label>
+            <Textarea
+              id="g-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Why does this matter to you?"
+              rows={3}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="g-date">Target date (optional)</Label>
+            <Input
+              id="g-date"
+              type="date"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={saving || !title.trim()}>
+            {saving && <Loader2 className="h-3 w-3 animate-spin" />} Save goal
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MilestoneDialog({
+  goalId,
+  userId,
+  onSaved,
+}: { goalId: string; userId: string; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [targetDate, setTargetDate] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!title.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from("coachee_milestones").insert({
+      coachee_id: userId,
+      goal_id: goalId,
+      title: title.trim(),
+      target_date: targetDate || null,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Milestone added");
+    setTitle("");
+    setTargetDate("");
+    setOpen(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">
+          <Plus className="h-3 w-3" /> Add milestone
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New milestone</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="m-title">Title</Label>
+            <Input
+              id="m-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Complete 10 peer practice sessions"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="m-date">Target date (optional)</Label>
+            <Input
+              id="m-date"
+              type="date"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={saving || !title.trim()}>
+            {saving && <Loader2 className="h-3 w-3 animate-spin" />} Save milestone
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
