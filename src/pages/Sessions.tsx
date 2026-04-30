@@ -328,9 +328,8 @@ function ActionItemsList({ items, date }: { items: any; date: string }) {
       <ul className="space-y-1.5">
         {list.slice(0, 4).map((it: any, idx: number) => (
           <li key={idx} className="flex items-start justify-between gap-3 text-xs">
-            <span className={cn("flex flex-1 items-center gap-1", it.done && "text-muted-foreground")}>
-              {it.done ? <Star className="hidden" /> : null}
-              <span className="inline-flex h-3.5 w-3.5 items-center justify-center">
+            <span className={cn("flex flex-1 items-start gap-1.5", it.done && "text-muted-foreground")}>
+              <span className={cn("mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[10px]", it.done && "text-success font-bold")}>
                 {it.done ? "✓" : "•"}
               </span>
               <span>{it.text}</span>
