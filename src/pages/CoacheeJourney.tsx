@@ -546,7 +546,8 @@ function GoalAccordion({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className={cn("text-sm font-medium", m.is_done && "text-muted-foreground line-through")}>
+                      <p className={cn("flex items-center gap-1.5 text-sm font-medium", m.is_done && "text-muted-foreground")}>
+                        {m.is_done && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
                         {m.title}
                       </p>
                       <button onClick={() => deleteMs(m.id)} className="text-muted-foreground hover:text-destructive">
@@ -567,7 +568,7 @@ function GoalAccordion({
                           Linked actions
                         </p>
                         {linked.map((a, i) => (
-                          <ActionRow key={i} a={a} hideMilestone />
+                          <ActionRow key={i} a={a} hideMilestone onToggle={onToggleAction} />
                         ))}
                       </div>
                     )}
