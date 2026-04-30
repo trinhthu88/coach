@@ -12,9 +12,11 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 type SessionStatus =
   | "pending_coach_approval"
