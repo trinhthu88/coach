@@ -346,7 +346,7 @@ export default function CoacheeJourney() {
         </Card>
       )}
 
-
+      <Tabs defaultValue="home">
         <TabsList>
           <TabsTrigger value="home">Overview</TabsTrigger>
           <TabsTrigger value="goals">Goals & milestones</TabsTrigger>
