@@ -199,6 +199,29 @@ export default function CoachMyJourney() {
     }
   };
 
+  const linkActionMilestone = async (a: FlatAction, milestoneId: string | null) => {
+    const list = a.source === "coaching" ? sessions : peerReceived;
+    const setList = a.source === "coaching" ? setSessions : setPeerReceived;
+    const sess = list.find((s) => s.id === a.sessionId);
+    if (!sess) return;
+    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
+    const cur = items[a.idx];
+    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
+    norm.milestone_id = milestoneId;
+    items[a.idx] = norm;
+    setList((prev: any[]) =>
+      prev.map((s) => (s.id === a.sessionId ? { ...s, action_items: items } : s))
+    );
+    const table = a.source === "coaching" ? "sessions" : "peer_sessions";
+    const { error } = await supabase.from(table as any).update({ action_items: items }).eq("id", a.sessionId);
+    if (error) {
+      toast.error(error.message);
+      refresh();
+    } else {
+      toast.success(milestoneId ? "Linked to milestone" : "Unlinked");
+    }
+  };
+
   const now = new Date();
   const upcomingSessions = sessions.filter(
     (s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status)
