@@ -27,18 +27,32 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   roles: AppRole[];
+  group?: string;
 }
 
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "coach", "coachee"] },
+
+  // Coachee
   { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee"] },
   { to: "/coachee/profile", label: "My profile", icon: IdCard, roles: ["coachee"] },
-  { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"] },
-  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"] },
-  { to: "/coach/clients", label: "My clients", icon: UsersRound, roles: ["coach"] },
   { to: "/coachee/journey", label: "My journey", icon: Compass, roles: ["coachee"] },
-  { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"] },
-  { to: "/messages", label: "Messages", icon: MessageSquare, roles: ["coach", "coachee"] },
+
+  // Coach — Practice
+  { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"], group: "Practice" },
+  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"], group: "Practice" },
+  { to: "/coach/clients", label: "My clients", icon: UsersRound, roles: ["coach"], group: "Practice" },
+  { to: "/coach/peer-coaching", label: "Peer coaching", icon: MessagesSquare, roles: ["coach"], group: "Practice" },
+
+  // Coach — My journey
+  { to: "/coach/find-coach", label: "Find a coach", icon: Search, roles: ["coach"], group: "My journey" },
+  { to: "/coach/practice-journey", label: "My practice journey", icon: Layers, roles: ["coach"], group: "My journey" },
+
+  // Communication (shared)
+  { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"], group: "Communication" },
+  { to: "/messages", label: "Messages", icon: MessageSquare, roles: ["coach", "coachee"], group: "Communication" },
+
+  // Admin
   { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"] },
   { to: "/admin/coaches", label: "Manage coaches", icon: Users, roles: ["admin"] },
   { to: "/admin/sessions", label: "All sessions", icon: ClipboardList, roles: ["admin"] },
