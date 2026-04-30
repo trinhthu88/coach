@@ -607,24 +607,33 @@ function ActionRow({
   a,
   milestoneLabel,
   hideMilestone,
+  onToggle,
 }: {
   a: FlatAction;
   milestoneLabel?: string;
   hideMilestone?: boolean;
+  onToggle?: (a: FlatAction) => void;
 }) {
   const overdue = !a.done && a.due_date && isBefore(new Date(a.due_date), new Date());
   return (
     <div className="flex items-start gap-2 py-1">
-      <div
+      <button
+        type="button"
+        onClick={() => onToggle?.(a)}
+        disabled={!onToggle}
+        aria-label={a.done ? "Mark as not done" : "Mark as done"}
         className={cn(
-          "mt-0.5 h-3.5 w-3.5 shrink-0 rounded-sm border",
-          a.done && "border-success bg-success",
-          !a.done && overdue && "border-destructive bg-destructive/10",
-          !a.done && !overdue && "border-border bg-muted"
+          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+          a.done && "border-success bg-success text-success-foreground",
+          !a.done && overdue && "border-destructive bg-destructive/10 hover:bg-destructive/20",
+          !a.done && !overdue && "border-border bg-muted hover:bg-muted/70",
+          onToggle ? "cursor-pointer" : "cursor-default"
         )}
-      />
+      >
+        {a.done && <Check className="h-3 w-3" strokeWidth={3} />}
+      </button>
       <div className="min-w-0 flex-1">
-        <p className={cn("text-xs leading-snug", a.done && "text-muted-foreground line-through")}>
+        <p className={cn("text-xs leading-snug", a.done && "text-muted-foreground")}>
           {a.text}
         </p>
         <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
@@ -650,11 +659,13 @@ function ActionGroups({
   milestones,
   goals,
   compact,
+  onToggleAction,
 }: {
   grouped: { overdue: FlatAction[]; thisWeek: FlatAction[]; upcoming: FlatAction[]; completed: FlatAction[] };
   milestones?: Milestone[];
   goals?: Goal[];
   compact?: boolean;
+  onToggleAction?: (a: FlatAction) => void;
 }) {
   const labelFor = (a: FlatAction) => {
     if (!milestones || !goals || !a.milestone_id) return undefined;
@@ -688,7 +699,7 @@ function ActionGroups({
         </p>
         <div className="divide-y">
           {items.map((a, i) => (
-            <ActionRow key={i} a={a} milestoneLabel={labelFor(a)} />
+            <ActionRow key={i} a={a} milestoneLabel={labelFor(a)} onToggle={onToggleAction} />
           ))}
         </div>
       </div>
