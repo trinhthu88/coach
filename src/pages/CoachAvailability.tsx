@@ -365,8 +365,8 @@ export default function CoachAvailability() {
                     className={cn(
                       "flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                       slotType === "peer"
-                        ? "border-success bg-success text-success-foreground"
-                        : "border-border hover:border-success/40",
+                        ? "border-accent bg-accent text-accent-foreground"
+                        : "border-border hover:border-accent/40",
                       !peerOptIn && "cursor-not-allowed opacity-50"
                     )}
                     title={!peerOptIn ? "Enable peer coaching above first" : undefined}
