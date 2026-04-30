@@ -27,6 +27,8 @@ import CoacheeJourney from "./pages/CoacheeJourney";
 import CoachFindCoach from "./pages/CoachFindCoach";
 import CoachPeerCoaching from "./pages/CoachPeerCoaching";
 import CoachPracticeJourney from "./pages/CoachPracticeJourney";
+import CoachMyJourney from "./pages/CoachMyJourney";
+import AdminSessionLimits from "./pages/AdminSessionLimits";
 
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
@@ -128,6 +130,22 @@ const App = () => (
                 element={
                   <ProtectedRoute role="coach">
                     <CoachPracticeJourney />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coach/my-journey"
+                element={
+                  <ProtectedRoute role="coach">
+                    <CoachMyJourney />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/session-limits"
+                element={
+                  <ProtectedRoute role="admin">
+                    <AdminSessionLimits />
                   </ProtectedRoute>
                 }
               />

@@ -57,6 +57,7 @@ const NAV: NavItem[] = [
   { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"] },
   { to: "/admin/coaches", label: "Manage coaches", icon: Users, roles: ["admin"] },
   { to: "/admin/sessions", label: "All sessions", icon: ClipboardList, roles: ["admin"] },
+  { to: "/admin/session-limits", label: "Session limits", icon: Layers, roles: ["admin"] },
 ];
 
 export default function AppLayout() {
