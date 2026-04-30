@@ -89,6 +89,7 @@ export default function BookSession() {
   const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(
     null
   );
+  const [bookerBusy, setBookerBusy] = useState<{ start: number; end: number }[]>([]);
 
   useEffect(() => {
     if (!coachId) return;
