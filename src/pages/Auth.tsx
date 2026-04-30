@@ -75,9 +75,7 @@ export default function Auth() {
         <div className="absolute inset-0 bg-gradient-hero opacity-90" />
         <div className="relative z-10 flex w-full flex-col justify-between p-12 text-primary-foreground">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-white/95 px-3 py-2 shadow-glow backdrop-blur-sm">
-              <img src={clarivaLogo} alt="Clariva" className="h-9 w-auto object-contain" />
-            </div>
+            <img src={clarivaLogo} alt="Clariva" className="h-11 w-auto object-contain" />
           </div>
 
           <div className="space-y-6 max-w-lg">
