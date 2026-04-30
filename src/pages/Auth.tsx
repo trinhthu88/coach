@@ -221,7 +221,7 @@ export default function Auth() {
           </form>
 
           <div className="mt-8 border-t border-border/60 pt-6 text-center text-sm text-muted-foreground">
-            {mode === "signin" ? "New to Connect+?" : "Already have an account?"}{" "}
+            {mode === "signin" ? "New to Clariva?" : "Already have an account?"}{" "}
             <button
               type="button"
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
