@@ -303,7 +303,9 @@ export default function CoachAvailability() {
                     key={s.id}
                     className={cn(
                       "flex items-center justify-between rounded-lg border p-2.5",
-                      s.slot_type === "peer" && "border-success/30 bg-success/5"
+                      s.slot_type === "peer"
+                        ? "border-accent/40 bg-accent/5"
+                        : "border-primary/30 bg-primary-soft/40"
                     )}
                   >
                     <div className="flex items-center gap-2 text-sm">
@@ -315,8 +317,8 @@ export default function CoachAvailability() {
                         className={cn(
                           "text-[10px]",
                           s.slot_type === "peer"
-                            ? "bg-success/15 text-success"
-                            : "bg-primary/10 text-primary"
+                            ? "bg-accent/20 text-accent-foreground"
+                            : "bg-primary/15 text-primary"
                         )}
                       >
                         {s.slot_type === "peer" ? "Peer" : "Coaching"}
