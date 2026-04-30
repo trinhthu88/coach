@@ -9,12 +9,12 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary font-bold text-primary-foreground shadow-glow">
-            C+
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary font-display text-lg text-primary-foreground shadow-glow">
+            <span className="text-primary-glow">C</span>
           </div>
-          <span className="text-lg font-semibold tracking-tight">
-            Connect<span className="text-primary">+</span>
+          <span className="font-display text-xl tracking-tight text-secondary">
+            Clar<em className="not-italic text-primary">i</em>va
           </span>
         </div>
         <Button asChild variant={user ? "default" : "outline"}>
