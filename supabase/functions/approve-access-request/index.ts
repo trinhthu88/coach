@@ -49,23 +49,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify caller is admin
+    // Verify caller via JWT claims (works with signing-keys system)
     const userClient = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) {
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims?.sub) {
       return new Response(JSON.stringify({ error: "Invalid session" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const callerId = claimsData.claims.sub as string;
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const { data: roleRows } = await admin
       .from("user_roles")
       .select("role")
-      .eq("user_id", userData.user.id);
+      .eq("user_id", callerId);
     const isAdmin = (roleRows ?? []).some((r: any) => r.role === "admin");
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
@@ -147,7 +149,7 @@ Deno.serve(async (req) => {
       .update({
         status: "approved",
         reviewed_at: new Date().toISOString(),
-        reviewed_by: userData.user.id,
+        reviewed_by: callerId,
       })
       .eq("id", request_id);
 
