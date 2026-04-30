@@ -1,13 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -16,20 +15,22 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Compass,
   Loader2,
+  Target,
+  Plus,
+  Trash2,
+  Check,
+  Sparkles,
   BookOpen,
+  ChevronDown,
+  ChevronRight,
   Users,
   MessagesSquare,
-  Trash2,
-  Plus,
-  Check,
-  ListTodo,
-  Target,
 } from "lucide-react";
-import { format, isBefore } from "date-fns";
+import { format, isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -44,9 +45,9 @@ interface Milestone {
   id: string;
   goal_id: string;
   title: string;
-  is_done: boolean;
   target_date: string | null;
-  done_at?: string | null;
+  is_done: boolean;
+  done_at: string | null;
 }
 interface RawActionItem {
   text: string;
@@ -62,14 +63,31 @@ interface FlatAction extends RawActionItem {
   idx: number;
 }
 
+const ACCENTS = [
+  { bg: "bg-success/15", text: "text-success", fill: "bg-success" },
+  { bg: "bg-primary/15", text: "text-primary", fill: "bg-primary" },
+  { bg: "bg-warning/15", text: "text-warning", fill: "bg-warning" },
+  { bg: "bg-accent", text: "text-accent-foreground", fill: "bg-foreground/60" },
+];
+
+function initials(s: string) {
+  return s
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 export default function CoachMyJourney() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [reflections, setReflections] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [peerReceived, setPeerReceived] = useState<any[]>([]);
+  const [reflections, setReflections] = useState<any[]>([]);
   const [coachNames, setCoachNames] = useState<Record<string, string>>({});
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
@@ -78,42 +96,30 @@ export default function CoachMyJourney() {
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: g }, { data: m }, { data: r }, { data: s }, { data: p }] = await Promise.all([
+    const [{ data: g }, { data: m }, { data: s }, { data: p }, { data: r }] = await Promise.all([
       supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
-      supabase
-        .from("coachee_reflections")
-        .select("*")
-        .eq("coachee_id", user.id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("sessions")
-        .select("*")
-        .eq("coachee_id", user.id)
-        .order("start_time", { ascending: false }),
-      supabase
-        .from("peer_sessions")
-        .select("*")
-        .eq("peer_coachee_id", user.id)
-        .order("start_time", { ascending: false }),
+      supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
+      supabase.from("peer_sessions").select("*").eq("peer_coachee_id", user.id).order("start_time", { ascending: false }),
+      supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
     ]);
     setGoals(g || []);
     setMilestones(m || []);
-    setReflections(r || []);
     setSessions(s || []);
     setPeerReceived(p || []);
+    setReflections(r || []);
 
     const ids = Array.from(
       new Set([
         ...(s || []).map((x: any) => x.coach_id),
         ...(p || []).map((x: any) => x.peer_coach_id),
       ])
-    ).filter(Boolean);
+    ).filter(Boolean) as string[];
     if (ids.length) {
       const { data: profs } = await supabase
         .from("profiles")
         .select("id, full_name")
-        .in("id", ids as string[]);
+        .in("id", ids);
       const map: Record<string, string> = {};
       (profs || []).forEach((p: any) => (map[p.id] = p.full_name));
       setCoachNames(map);
@@ -125,18 +131,15 @@ export default function CoachMyJourney() {
     refresh();
   }, [refresh]);
 
-  const overallPct = useMemo(() => {
-    if (!milestones.length) return 0;
-    return Math.round((milestones.filter((m) => m.is_done).length / milestones.length) * 100);
-  }, [milestones]);
-
   const goalProgress = (goalId: string) => {
     const ms = milestones.filter((m) => m.goal_id === goalId);
     if (!ms.length) return 0;
     return Math.round((ms.filter((m) => m.is_done).length / ms.length) * 100);
   };
+  const totalMs = milestones.length;
+  const doneMs = milestones.filter((m) => m.is_done).length;
+  const overallPct = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
 
-  // Aggregate action items from BOTH coaching sessions and peer-received sessions
   const allActions: FlatAction[] = useMemo(() => {
     const out: FlatAction[] = [];
     for (const s of sessions) {
@@ -177,6 +180,86 @@ export default function CoachMyJourney() {
   const aiOverdue = allActions.filter(
     (a) => !a.done && a.due_date && isBefore(new Date(a.due_date), new Date())
   ).length;
+
+  const now = new Date();
+  const wkEnd = endOfWeek(now, { weekStartsOn: 1 });
+  const grouped = {
+    overdue: allActions.filter((a) => !a.done && a.due_date && isBefore(new Date(a.due_date), now)),
+    thisWeek: allActions.filter(
+      (a) =>
+        !a.done &&
+        a.due_date &&
+        !isBefore(new Date(a.due_date), now) &&
+        !isAfter(new Date(a.due_date), wkEnd)
+    ),
+    upcoming: allActions.filter(
+      (a) => !a.done && (!a.due_date || isAfter(new Date(a.due_date), wkEnd))
+    ),
+    completed: allActions.filter((a) => a.done),
+  };
+
+  // Combined sessions list (coaching + peer received), tagged with source
+  const combinedSessions = useMemo(
+    () => [
+      ...sessions.map((s) => ({ ...s, _source: "coaching" as const, _otherCoachId: s.coach_id })),
+      ...peerReceived.map((s) => ({ ...s, _source: "peer" as const, _otherCoachId: s.peer_coach_id })),
+    ],
+    [sessions, peerReceived]
+  );
+
+  const upcoming = combinedSessions
+    .filter(
+      (s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status)
+    )
+    .sort((a, b) => +new Date(a.start_time) - +new Date(b.start_time));
+  const past = combinedSessions
+    .filter(
+      (s) => new Date(s.start_time) < now || ["cancelled", "completed"].includes(s.status)
+    )
+    .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
+  const nextSession = upcoming[0];
+
+  // Coaches in this programme — merged from both sources
+  const coachSummaries = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; total: number; completed: number; upcoming: number; firstDate: Date | null; lastDate: Date | null; nextDate: Date | null; source: Set<string> }>();
+    for (const s of combinedSessions) {
+      const cid = s._otherCoachId;
+      if (!cid) continue;
+      const cur = map.get(cid) || {
+        id: cid,
+        name: coachNames[cid] || "Coach",
+        total: 0,
+        completed: 0,
+        upcoming: 0,
+        firstDate: null,
+        lastDate: null,
+        nextDate: null,
+        source: new Set<string>(),
+      };
+      const d = new Date(s.start_time);
+      cur.total += 1;
+      cur.source.add(s._source);
+      if (s.status === "completed") cur.completed += 1;
+      if (["confirmed", "pending_coach_approval"].includes(s.status) && d >= now) {
+        cur.upcoming += 1;
+        if (!cur.nextDate || d < cur.nextDate) cur.nextDate = d;
+      }
+      if (!cur.firstDate || d < cur.firstDate) cur.firstDate = d;
+      if (!cur.lastDate || d > cur.lastDate) cur.lastDate = d;
+      cur.name = coachNames[cid] || cur.name;
+      map.set(cid, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [combinedSessions, coachNames]);
+
+  const toggleMilestone = async (m: Milestone) => {
+    const { error } = await supabase
+      .from("coachee_milestones")
+      .update({ is_done: !m.is_done, done_at: !m.is_done ? new Date().toISOString() : null })
+      .eq("id", m.id);
+    if (error) return toast.error(error.message);
+    refresh();
+  };
 
   const toggleAction = async (a: FlatAction) => {
     const list = a.source === "coaching" ? sessions : peerReceived;
@@ -222,36 +305,6 @@ export default function CoachMyJourney() {
     }
   };
 
-  const now = new Date();
-  const upcomingSessions = sessions.filter(
-    (s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status)
-  );
-  const upcomingPeer = peerReceived.filter(
-    (s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status)
-  );
-
-  const toggleMilestone = async (m: Milestone) => {
-    const { error } = await supabase
-      .from("coachee_milestones")
-      .update({ is_done: !m.is_done, done_at: !m.is_done ? new Date().toISOString() : null })
-      .eq("id", m.id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
-  const deleteGoal = async (id: string) => {
-    if (!confirm("Delete this goal and all its milestones?")) return;
-    const { error } = await supabase.from("coachee_goals").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
-  const deleteMilestone = async (id: string) => {
-    const { error } = await supabase.from("coachee_milestones").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
     setSavingRef(true);
@@ -292,318 +345,220 @@ export default function CoachMyJourney() {
             My <em className="not-italic text-primary">journey</em>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Your growth as a coachee — goals, action items, and the sessions you've received.
+            Track your goals, action items, sessions and personal reflections.
           </p>
         </div>
       </div>
 
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label="Overall progress" value={`${overallPct}%`} sub={`${goals.length} goal${goals.length === 1 ? "" : "s"}`} />
+        <Metric label="Overall progress" value={`${overallPct}%`} sub={`across ${goals.length} goal${goals.length === 1 ? "" : "s"}`} />
         <Metric
-          label="Action items"
-          value={`${aiDone}/${aiTotal}`}
-          sub={aiOverdue ? `${aiOverdue} overdue` : "all on track"}
+          label="Actions done"
+          value={String(aiDone)}
+          sub={aiOverdue ? `${aiOverdue} overdue` : `of ${aiTotal} total`}
           subClass={aiOverdue ? "text-destructive" : ""}
         />
         <Metric
-          label="Sessions received"
-          value={String(sessions.filter((s) => s.status === "completed").length)}
-          sub={`${upcomingSessions.length} upcoming`}
+          label="Session recap"
+          value={`${combinedSessions.filter((s) => s.status === "completed").length} / ${combinedSessions.length}`}
+          sub={`${upcoming.length} upcoming`}
         />
         <Metric
-          label="Peer received"
-          value={String(peerReceived.filter((s) => s.status === "completed").length)}
-          sub={`${upcomingPeer.length} upcoming`}
+          label="Next session"
+          value={nextSession ? format(new Date(nextSession.start_time), "MMM d") : "—"}
+          sub={nextSession ? format(new Date(nextSession.start_time), "p") : "Nothing scheduled"}
         />
       </div>
 
-      <Tabs defaultValue="goals">
+      {/* Coaches in this programme */}
+      {coachSummaries.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="border-b bg-muted/30 px-4 py-2.5">
+            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Users className="h-3.5 w-3.5" /> Coaches in this programme
+            </p>
+          </div>
+          <ul className="divide-y">
+            {coachSummaries.map((c, i) => {
+              const accent = ACCENTS[i % ACCENTS.length];
+              const lead = i === 0;
+              const dateRange =
+                c.firstDate && c.lastDate
+                  ? `${format(c.firstDate, "MMM d")} → ${format(c.lastDate, "MMM d")}`
+                  : "—";
+              const both = c.source.has("coaching") && c.source.has("peer");
+              const isPeerOnly = c.source.has("peer") && !c.source.has("coaching");
+              return (
+                <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", accent.bg, accent.text)}>
+                    {initials(c.name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{c.name}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {c.completed}/{c.total} sessions completed
+                      {c.nextDate ? ` · Next ${format(c.nextDate, "MMM d, p")}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
+                      lead && !isPeerOnly ? "bg-primary/15 text-primary" :
+                      isPeerOnly ? "bg-warning/15 text-warning" :
+                      "bg-success/15 text-success"
+                    )}
+                  >
+                    {both ? "Coach + Peer" : isPeerOnly ? "Peer" : lead ? "Lead coach" : "Coach"}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+
+      <Tabs defaultValue="home">
         <TabsList>
+          <TabsTrigger value="home">Overview</TabsTrigger>
           <TabsTrigger value="goals">Goals & milestones</TabsTrigger>
           <TabsTrigger value="actions">Action items ({aiTotal})</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
-          <TabsTrigger value="peer">Peer received ({peerReceived.length})</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions ({combinedSessions.length})</TabsTrigger>
           <TabsTrigger value="reflections">Reflections ({reflections.length})</TabsTrigger>
         </TabsList>
 
-        {/* GOALS */}
+        {/* OVERVIEW */}
+        <TabsContent value="home" className="mt-4 space-y-6">
+          <SectionHeader title="Goals & milestones" />
+          {goals.length === 0 ? (
+            <EmptyGoals userId={user!.id} onSaved={refresh} />
+          ) : (
+            <div className="space-y-2">
+              {goals.map((g, i) => (
+                <GoalAccordion
+                  key={g.id}
+                  goal={g}
+                  milestones={milestones.filter((m) => m.goal_id === g.id)}
+                  actions={allActions}
+                  pct={goalProgress(g.id)}
+                  accent={ACCENTS[i % ACCENTS.length]}
+                  onToggle={toggleMilestone}
+                  onToggleAction={toggleAction}
+                  onChanged={refresh}
+                  userId={user!.id}
+                  defaultOpen={i === 0}
+                />
+              ))}
+            </div>
+          )}
+
+          <SectionHeader title="Action items" />
+          <ActionGroups grouped={grouped} milestones={milestones} goals={goals} compact onToggleAction={toggleAction} />
+        </TabsContent>
+
+        {/* GOALS FULL */}
         <TabsContent value="goals" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <GoalDialog userId={user!.id} onSaved={refresh} />
+            <GoalDialog onSaved={refresh} userId={user!.id} />
           </div>
           {goals.length === 0 ? (
-            <Card className="p-12 text-center">
-              <Target className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-              <h3 className="font-semibold">Set your first goal</h3>
-              <p className="mt-1 mb-4 text-sm text-muted-foreground">
-                Define what you want to grow into and break it down into milestones.
-              </p>
-              <div className="flex justify-center">
-                <GoalDialog userId={user!.id} onSaved={refresh} />
-              </div>
-            </Card>
+            <EmptyGoals userId={user!.id} onSaved={refresh} />
           ) : (
-            goals.map((g) => {
-              const ms = milestones.filter((m) => m.goal_id === g.id);
-              const pct = goalProgress(g.id);
-              return (
-                <Card key={g.id} className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold">{g.title}</p>
-                      {g.description && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">{g.description}</p>
-                      )}
-                    </div>
-                    <span className="shrink-0 text-xs font-semibold text-primary">{pct}%</span>
-                  </div>
-                  <Progress value={pct} className="mt-2 h-1.5" />
-
-                  {ms.length > 0 && (
-                    <ul className="mt-3 space-y-1.5">
-                      {ms.map((m) => (
-                        <li key={m.id} className="flex items-center gap-2 text-sm">
-                          <button
-                            onClick={() => toggleMilestone(m)}
-                            className={cn(
-                              "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
-                              m.is_done ? "border-success bg-success" : "border-border bg-muted"
-                            )}
-                            aria-label="Toggle milestone"
-                          >
-                            {m.is_done && <Check className="h-2.5 w-2.5 text-success-foreground" strokeWidth={3} />}
-                          </button>
-                          <span className={cn("flex-1", m.is_done && "line-through text-muted-foreground")}>
-                            {m.title}
-                          </span>
-                          {m.target_date && (
-                            <span className="text-[10px] text-muted-foreground">
-                              {format(new Date(m.target_date), "MMM d")}
-                            </span>
-                          )}
-                          <button
-                            onClick={() => deleteMilestone(m.id)}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  <div className="mt-3 flex items-center justify-between border-t pt-2">
-                    <MilestoneDialog goalId={g.id} userId={user!.id} onSaved={refresh} />
-                    <button
-                      onClick={() => deleteGoal(g.id)}
-                      className="text-xs text-muted-foreground hover:text-destructive"
-                    >
-                      Delete goal
-                    </button>
-                  </div>
-                </Card>
-              );
-            })
+            <div className="space-y-2">
+              {goals.map((g, i) => (
+                <GoalAccordion
+                  key={g.id}
+                  goal={g}
+                  milestones={milestones.filter((m) => m.goal_id === g.id)}
+                  actions={allActions}
+                  pct={goalProgress(g.id)}
+                  accent={ACCENTS[i % ACCENTS.length]}
+                  onToggle={toggleMilestone}
+                  onToggleAction={toggleAction}
+                  onChanged={refresh}
+                  userId={user!.id}
+                  showLinkedActions
+                  defaultOpen={i === 0}
+                />
+              ))}
+            </div>
           )}
         </TabsContent>
 
-        {/* ACTION ITEMS — synced from all sessions received */}
-        <TabsContent value="actions" className="mt-4 space-y-3">
-          <Card className="p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <ListTodo className="h-4 w-4 text-primary" />
-              <p className="text-sm font-semibold">All action items</p>
-              <span className="text-xs text-muted-foreground">
-                · synced from coaching & peer sessions you've received
-              </span>
-            </div>
-            {allActions.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No action items yet. They'll appear here as your coaches assign them.
-              </p>
-            ) : (
-              <div className="divide-y">
-                {allActions
-                  .sort((a, b) => +new Date(b.sessionDate) - +new Date(a.sessionDate))
-                  .map((a, i) => {
-                    const overdue =
-                      !a.done && a.due_date && isBefore(new Date(a.due_date), new Date());
-                    return (
-                      <div key={`${a.sessionId}-${a.idx}-${i}`} className="flex items-start gap-2 py-2">
-                        <button
-                          onClick={() => toggleAction(a)}
-                          className={cn(
-                            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border",
-                            a.done && "border-success bg-success text-success-foreground",
-                            !a.done && overdue && "border-destructive bg-destructive/10",
-                            !a.done && !overdue && "border-border bg-muted hover:bg-muted/70"
-                          )}
-                        >
-                          {a.done && <Check className="h-3 w-3" strokeWidth={3} />}
-                        </button>
-                        <div className="min-w-0 flex-1">
-                          <p className={cn("text-sm", a.done && "text-muted-foreground line-through")}>
-                            {a.text}
-                          </p>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
-                            <span
-                              className={cn(
-                                "rounded-full px-1.5 py-0.5 font-bold uppercase tracking-widest",
-                                a.source === "peer"
-                                  ? "bg-warning/15 text-warning"
-                                  : "bg-primary/15 text-primary"
-                              )}
-                            >
-                              {a.source === "peer" ? "Peer" : "Coaching"}
-                            </span>
-                            {a.due_date && (
-                              <span className={cn(overdue && "text-destructive font-semibold")}>
-                                {a.done ? "Done" : overdue ? "Overdue" : "Due"}{" "}
-                                {format(new Date(a.due_date), "MMM d")}
-                              </span>
-                            )}
-                            <Link
-                              to={`/sessions/${a.sessionId}${a.source === "peer" ? "?type=peer" : ""}`}
-                              className="hover:text-primary"
-                            >
-                              · {a.sessionTopic}
-                            </Link>
-                            <select
-                              value={a.milestone_id || ""}
-                              onChange={(e) => linkActionMilestone(a, e.target.value || null)}
-                              className="ml-auto h-6 rounded-md border bg-background px-1.5 text-[10px]"
-                              title="Link to a milestone"
-                            >
-                              <option value="">— No milestone —</option>
-                              {milestones.map((m) => {
-                                const goal = goals.find((g) => g.id === m.goal_id);
-                                return (
-                                  <option key={m.id} value={m.id}>
-                                    {goal ? `${goal.title} → ${m.title}` : m.title}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                            {a.milestone_id && (() => {
-                              const ms = milestones.find((m) => m.id === a.milestone_id);
-                              if (!ms) return null;
-                              const goal = goals.find((g) => g.id === ms.goal_id);
-                              return (
-                                <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-primary">
-                                  ↳ {goal ? `${goal.title} → ` : ""}{ms.title}
-                                </span>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </Card>
+        {/* ACTION ITEMS */}
+        <TabsContent value="actions" className="mt-4">
+          <p className="mb-3 text-xs text-muted-foreground">
+            {aiTotal} total · {aiDone} done · {aiOverdue} overdue
+          </p>
+          <ActionGroups
+            grouped={grouped}
+            milestones={milestones}
+            goals={goals}
+            onToggleAction={toggleAction}
+            onLinkMilestone={linkActionMilestone}
+          />
         </TabsContent>
 
         {/* SESSIONS */}
-        <TabsContent value="sessions" className="mt-4 space-y-2">
-          {sessions.length === 0 ? (
-            <Card className="p-8 text-center text-sm text-muted-foreground">
-              No sessions received yet.{" "}
-              <Link to="/coach/find-coach" className="text-primary underline">Find a coach</Link>.
-            </Card>
-          ) : (
-            sessions.map((s) => (
-              <Link key={s.id} to={`/sessions/${s.id}`} className="block">
-                <Card className="p-4 transition hover:bg-accent/40">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-3.5 w-3.5 text-primary" />
-                    <p className="font-semibold">{s.topic}</p>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    with {coachNames[s.coach_id] || "Coach"} ·{" "}
-                    {format(new Date(s.start_time), "MMM d, yyyy · p")} · {s.duration_minutes} min ·{" "}
-                    {s.status.replace(/_/g, " ")}
-                  </p>
-                </Card>
-              </Link>
-            ))
-          )}
+        <TabsContent value="sessions" className="mt-4 space-y-4">
+          <SessionsBlock title="Upcoming" items={upcoming} coachNames={coachNames} />
+          <SessionsBlock
+            title="Completed & past"
+            items={past}
+            milestones={milestones}
+            goals={goals}
+            expandable
+            onToggleAction={toggleAction}
+            coachNames={coachNames}
+          />
         </TabsContent>
 
-        <TabsContent value="peer" className="mt-4 space-y-2">
-          {peerReceived.length === 0 ? (
-            <Card className="p-8 text-center text-sm text-muted-foreground">
-              No peer sessions received yet.{" "}
-              <Link to="/coach/peer-coaching" className="text-primary underline">
-                Browse peer coaches
-              </Link>
-              .
-            </Card>
-          ) : (
-            peerReceived.map((s) => (
-              <Link key={s.id} to={`/sessions/${s.id}?type=peer`} className="block">
-                <Card className="p-4 transition hover:bg-accent/40">
-                  <div className="flex items-center gap-2">
-                    <MessagesSquare className="h-3.5 w-3.5 text-warning" />
-                    <p className="font-semibold">{s.topic}</p>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    with {coachNames[s.peer_coach_id] || "Peer coach"} ·{" "}
-                    {format(new Date(s.start_time), "MMM d, yyyy · p")} · {s.duration_minutes} min ·{" "}
-                    {s.status.replace(/_/g, " ")}
-                  </p>
-                </Card>
-              </Link>
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="reflections" className="mt-4 space-y-3">
+        {/* REFLECTIONS */}
+        <TabsContent value="reflections" className="mt-4 space-y-4">
           <Card className="p-4">
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <BookOpen className="h-4 w-4 text-primary" /> New reflection
             </div>
             <Input
-              placeholder="Mood (optional)"
+              placeholder="Mood (optional, e.g. focused, stuck, proud)…"
               value={reflectionMood}
               onChange={(e) => setReflectionMood(e.target.value)}
               className="mb-2"
             />
             <Textarea
-              placeholder="What's on your mind?"
+              placeholder="What's on your mind? Wins, blockers, insights…"
               value={newReflection}
               onChange={(e) => setNewReflection(e.target.value)}
-              rows={3}
+              rows={4}
             />
             <div className="mt-2 flex justify-end">
               <Button size="sm" onClick={addReflection} disabled={savingRef || !newReflection.trim()}>
-                {savingRef && <Loader2 className="h-3 w-3 animate-spin" />} Save
+                <Sparkles className="mr-1 h-4 w-4" /> Save reflection
               </Button>
             </div>
           </Card>
 
           {reflections.length === 0 ? (
-            <Card className="p-8 text-center text-sm text-muted-foreground">No reflections yet.</Card>
+            <p className="text-center text-sm text-muted-foreground">Your private reflections will appear here.</p>
           ) : (
             reflections.map((r) => (
               <Card key={r.id} className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(r.created_at), "MMM d, yyyy · p")}
-                      {r.mood && ` · mood: ${r.mood}`}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    {r.mood && (
+                      <span className="mb-1 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                        {r.mood}
+                      </span>
+                    )}
+                    <p className="whitespace-pre-wrap text-sm">{r.body}</p>
+                    <p className="mt-2 text-[10px] text-muted-foreground">
+                      {format(new Date(r.created_at), "EEE, MMM d, yyyy · p")}
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm">{r.body}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => deleteReflection(r.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
+                  <button onClick={() => deleteReflection(r.id)} className="text-muted-foreground hover:text-destructive">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </Card>
             ))
@@ -614,6 +569,8 @@ export default function CoachMyJourney() {
   );
 }
 
+/* ---------- sub components ---------- */
+
 function Metric({
   label,
   value,
@@ -622,122 +579,535 @@ function Metric({
 }: { label: string; value: string; sub?: string; subClass?: string }) {
   return (
     <Card className="p-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1.5 text-2xl font-semibold">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold">{value}</p>
       {sub && <p className={cn("mt-0.5 text-[11px] text-muted-foreground", subClass)}>{sub}</p>}
     </Card>
   );
 }
 
-function GoalDialog({ userId, onSaved }: { userId: string; onSaved: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [targetDate, setTargetDate] = useState("");
-  const [saving, setSaving] = useState(false);
+function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="text-sm font-semibold">{title}</h2>
+      {action}
+    </div>
+  );
+}
 
-  const reset = () => {
-    setTitle("");
-    setDescription("");
-    setTargetDate("");
+function EmptyGoals({ userId, onSaved }: { userId: string; onSaved: () => void }) {
+  return (
+    <Card className="p-12 text-center">
+      <Target className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+      <h3 className="font-semibold">Set your first goal</h3>
+      <p className="mt-1 mb-4 text-sm text-muted-foreground">
+        Define what you want to grow into and break it down into milestones with action items.
+      </p>
+      <div className="flex justify-center">
+        <GoalDialog onSaved={onSaved} userId={userId} />
+      </div>
+    </Card>
+  );
+}
+
+function GoalAccordion({
+  goal,
+  milestones,
+  actions,
+  pct,
+  accent,
+  onToggle,
+  onToggleAction,
+  onChanged,
+  userId,
+  defaultOpen,
+  showLinkedActions = true,
+}: {
+  goal: Goal;
+  milestones: Milestone[];
+  actions: FlatAction[];
+  pct: number;
+  accent: typeof ACCENTS[number];
+  onToggle: (m: Milestone) => void;
+  onToggleAction: (a: FlatAction) => void;
+  onChanged: () => void;
+  userId: string;
+  defaultOpen?: boolean;
+  showLinkedActions?: boolean;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  const [adding, setAdding] = useState(false);
+  const [newMs, setNewMs] = useState("");
+  const [newDate, setNewDate] = useState("");
+
+  const goalDone = milestones.length > 0 && milestones.every((m) => m.is_done);
+
+  const addMs = async () => {
+    if (!newMs.trim()) return;
+    const { error } = await supabase.from("coachee_milestones").insert({
+      goal_id: goal.id,
+      coachee_id: userId,
+      title: newMs.trim(),
+      target_date: newDate || null,
+    });
+    if (error) return toast.error(error.message);
+    setNewMs("");
+    setNewDate("");
+    setAdding(false);
+    onChanged();
   };
 
-  const submit = async () => {
+  const deleteGoal = async () => {
+    if (!confirm("Delete this goal and all its milestones?")) return;
+    const { error } = await supabase.from("coachee_goals").delete().eq("id", goal.id);
+    if (error) return toast.error(error.message);
+    onChanged();
+  };
+
+  const deleteMs = async (id: string) => {
+    const { error } = await supabase.from("coachee_milestones").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    onChanged();
+  };
+
+  return (
+    <Card className="overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-3 bg-muted/30 px-3 py-2.5 text-left hover:bg-muted/50"
+      >
+        <div className={cn("flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-semibold", accent.bg, accent.text)}>
+          {initials(goal.title)}
+        </div>
+        <span className="flex-1 text-sm font-semibold inline-flex items-center gap-1.5">
+          {goalDone && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
+          <span className={cn(goalDone && "line-through text-muted-foreground")}>{goal.title}</span>
+        </span>
+        {goal.target_date && (
+          <span className="hidden text-[10px] text-muted-foreground sm:inline">
+            Target {format(new Date(goal.target_date), "MMM d")}
+          </span>
+        )}
+        <span className="text-xs text-muted-foreground">{pct}%</span>
+        <div className="hidden h-1 w-14 overflow-hidden rounded-full bg-background sm:block">
+          <div className={cn("h-full", accent.fill)} style={{ width: `${pct}%` }} />
+        </div>
+        {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="border-t p-4">
+          {goal.description && <p className="mb-3 text-xs text-muted-foreground">{goal.description}</p>}
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {showLinkedActions ? "Milestones & linked actions" : "Milestones"}
+          </p>
+          <ul className="space-y-3">
+            {milestones.map((m) => {
+              const linked = actions.filter((a) => a.milestone_id === m.id);
+              return (
+                <li key={m.id} className="flex items-start gap-3">
+                  <button
+                    onClick={() => onToggle(m)}
+                    className={cn(
+                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
+                      m.is_done ? "border-success bg-success" : "border-border bg-muted",
+                    )}
+                    aria-label="Toggle milestone"
+                  >
+                    {m.is_done && <Check className="h-2.5 w-2.5 text-success-foreground" strokeWidth={3} />}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={cn("flex items-center gap-1.5 text-sm font-medium", m.is_done && "text-muted-foreground")}>
+                        {m.is_done && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
+                        <span className={cn(m.is_done && "line-through")}>{m.title}</span>
+                      </p>
+                      <button onClick={() => deleteMs(m.id)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {m.is_done && m.done_at
+                        ? `Done ${format(new Date(m.done_at), "MMM d")}`
+                        : m.target_date
+                        ? `Target ${format(new Date(m.target_date), "MMM d")}`
+                        : "No target date"}
+                      {linked.length > 0 && ` · ${linked.filter((a) => a.done).length}/${linked.length} actions`}
+                    </p>
+                    {showLinkedActions && linked.length > 0 && (
+                      <div className="mt-2 space-y-1.5 rounded-md border bg-muted/20 p-2">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          Linked actions
+                        </p>
+                        {linked.map((a, i) => (
+                          <ActionRow key={i} a={a} hideMilestone onToggle={onToggleAction} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {adding ? (
+            <div className="mt-3 space-y-2 rounded-lg border bg-muted/30 p-3">
+              <Input placeholder="Milestone title" value={newMs} onChange={(e) => setNewMs(e.target.value)} />
+              <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>Cancel</Button>
+                <Button size="sm" onClick={addMs}>Add</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center justify-between">
+              <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
+                <Plus className="mr-1 h-3 w-3" /> Add milestone
+              </Button>
+              <button onClick={deleteGoal} className="text-xs text-muted-foreground hover:text-destructive">
+                Delete goal
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function ActionRow({
+  a,
+  milestoneLabel,
+  hideMilestone,
+  onToggle,
+}: {
+  a: FlatAction;
+  milestoneLabel?: string;
+  hideMilestone?: boolean;
+  onToggle?: (a: FlatAction) => void;
+}) {
+  const overdue = !a.done && a.due_date && isBefore(new Date(a.due_date), new Date());
+  return (
+    <div className="flex items-start gap-2 py-1">
+      <button
+        type="button"
+        onClick={() => onToggle?.(a)}
+        disabled={!onToggle}
+        aria-label={a.done ? "Mark as not done" : "Mark as done"}
+        className={cn(
+          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+          a.done && "border-success bg-success text-success-foreground",
+          !a.done && overdue && "border-destructive bg-destructive/10 hover:bg-destructive/20",
+          !a.done && !overdue && "border-border bg-muted hover:bg-muted/70",
+          onToggle ? "cursor-pointer" : "cursor-default"
+        )}
+      >
+        {a.done && <Check className="h-3 w-3" strokeWidth={3} />}
+      </button>
+      <div className="min-w-0 flex-1">
+        <p className={cn("text-xs leading-snug inline-flex items-center gap-1", a.done && "text-muted-foreground")}>
+          {a.done && <Check className="h-3 w-3 text-success" strokeWidth={3} />}
+          <span className={cn(a.done && "line-through")}>{a.text}</span>
+        </p>
+        <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 font-bold uppercase tracking-widest",
+              a.source === "peer" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
+            )}
+          >
+            {a.source === "peer" ? "Peer" : "Coaching"}
+          </span>
+          {a.due_date && (
+            <span className={cn(overdue ? "text-destructive font-medium" : "text-muted-foreground")}>
+              {a.done ? "Done" : overdue ? "Overdue" : "Due"} {format(new Date(a.due_date), "MMM d")}
+            </span>
+          )}
+          {!hideMilestone && milestoneLabel && (
+            <span className="text-primary">· {milestoneLabel}</span>
+          )}
+          <Link
+            to={`/sessions/${a.sessionId}${a.source === "peer" ? "?type=peer" : ""}`}
+            className="text-muted-foreground hover:text-primary"
+          >
+            · {a.sessionTopic}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionGroups({
+  grouped,
+  milestones,
+  goals,
+  compact,
+  onToggleAction,
+  onLinkMilestone,
+}: {
+  grouped: { overdue: FlatAction[]; thisWeek: FlatAction[]; upcoming: FlatAction[]; completed: FlatAction[] };
+  milestones?: Milestone[];
+  goals?: Goal[];
+  compact?: boolean;
+  onToggleAction?: (a: FlatAction) => void;
+  onLinkMilestone?: (a: FlatAction, milestoneId: string | null) => void;
+}) {
+  const labelFor = (a: FlatAction) => {
+    if (!milestones || !goals || !a.milestone_id) return undefined;
+    const m = milestones.find((x) => x.id === a.milestone_id);
+    if (!m) return undefined;
+    const g = goals.find((x) => x.id === m.goal_id);
+    return g ? `${g.title} → ${m.title}` : m.title;
+  };
+
+  const total =
+    grouped.overdue.length + grouped.thisWeek.length + grouped.upcoming.length + grouped.completed.length;
+  if (!total) {
+    return (
+      <Card className="p-12 text-center text-sm text-muted-foreground">
+        No action items yet. They'll appear here as your coaches assign them.
+      </Card>
+    );
+  }
+
+  const RowWithLink = ({ a }: { a: FlatAction }) => (
+    <div className="flex items-start gap-2 py-1">
+      <div className="flex-1">
+        <ActionRow a={a} milestoneLabel={labelFor(a)} onToggle={onToggleAction} />
+      </div>
+      {onLinkMilestone && milestones && goals && (
+        <select
+          value={a.milestone_id || ""}
+          onChange={(e) => onLinkMilestone(a, e.target.value || null)}
+          className="mt-1 h-6 shrink-0 rounded-md border bg-background px-1.5 text-[10px]"
+          title="Link to a milestone"
+        >
+          <option value="">— No milestone —</option>
+          {milestones.map((m) => {
+            const goal = goals.find((g) => g.id === m.goal_id);
+            return (
+              <option key={m.id} value={m.id}>
+                {goal ? `${goal.title} → ${m.title}` : m.title}
+              </option>
+            );
+          })}
+        </select>
+      )}
+    </div>
+  );
+
+  const Group = ({ title, items, danger }: { title: string; items: FlatAction[]; danger?: boolean }) => {
+    if (!items.length) return null;
+    return (
+      <div>
+        <p
+          className={cn(
+            "mb-1 border-b py-1 text-[11px] font-semibold",
+            danger ? "border-destructive/30 text-destructive" : "border-border text-muted-foreground"
+          )}
+        >
+          {title} · {items.length}
+        </p>
+        <div className="divide-y">
+          {items.map((a, i) => (
+            <RowWithLink key={i} a={a} />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <Card className={cn("p-4", compact && "space-y-1")}>
+      <Group title="Overdue" items={grouped.overdue} danger />
+      <Group title="Due this week" items={grouped.thisWeek} />
+      <Group title="Upcoming" items={grouped.upcoming} />
+      {!compact && <Group title="Completed" items={grouped.completed} />}
+    </Card>
+  );
+}
+
+function SessionsBlock({
+  title,
+  items,
+  expandable,
+  milestones,
+  goals,
+  onToggleAction,
+  coachNames,
+}: {
+  title: string;
+  items: any[];
+  expandable?: boolean;
+  milestones?: Milestone[];
+  goals?: Goal[];
+  onToggleAction?: (a: FlatAction) => void;
+  coachNames?: Record<string, string>;
+}) {
+  return (
+    <Card className="p-4">
+      <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        {title} · {items.length}
+      </p>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nothing here yet.</p>
+      ) : (
+        <div className="divide-y">
+          {items.map((s) => (
+            <SessionRow
+              key={`${s._source}-${s.id}`}
+              s={s}
+              expandable={expandable}
+              milestones={milestones}
+              goals={goals}
+              onToggleAction={onToggleAction}
+              coachName={coachNames?.[s._otherCoachId]}
+            />
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function SessionRow({
+  s,
+  expandable,
+  milestones,
+  goals,
+  onToggleAction,
+  coachName,
+}: {
+  s: any;
+  expandable?: boolean;
+  milestones?: Milestone[];
+  goals?: Goal[];
+  onToggleAction?: (a: FlatAction) => void;
+  coachName?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const d = new Date(s.start_time);
+  const items: RawActionItem[] = Array.isArray(s.action_items)
+    ? s.action_items.map((it: any) => (typeof it === "string" ? { text: it } : it))
+    : [];
+
+  const labelFor = (mid?: string | null) => {
+    if (!mid || !milestones || !goals) return undefined;
+    const m = milestones.find((x) => x.id === mid);
+    if (!m) return undefined;
+    const g = goals.find((x) => x.id === m.goal_id);
+    return g ? `${g.title} → ${m.title}` : m.title;
+  };
+
+  const isPeer = s._source === "peer";
+  const linkPath = `/sessions/${s.id}${isPeer ? "?type=peer" : ""}`;
+
+  return (
+    <div className="py-3">
+      <div className="flex items-start gap-3">
+        <div className="w-11 shrink-0 text-center">
+          <p className="text-lg font-semibold leading-none">{format(d, "d")}</p>
+          <p className="text-[10px] uppercase text-muted-foreground">{format(d, "MMM")}</p>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to={linkPath} className="text-sm font-medium hover:text-primary">
+              {s.topic}
+            </Link>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
+                isPeer ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
+              )}
+            >
+              {isPeer ? <MessagesSquare className="h-2.5 w-2.5" /> : <Users className="h-2.5 w-2.5" />}
+              {isPeer ? "Peer" : "Coaching"}
+            </span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {format(d, "p")} · {s.duration_minutes}m{coachName ? ` · ${isPeer ? "Peer coach" : "Coach"}: ${coachName}` : ""}
+          </p>
+          <span
+            className={cn(
+              "mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium",
+              s.status === "completed" && "bg-success/15 text-success",
+              s.status === "confirmed" && "bg-primary/15 text-primary",
+              s.status === "cancelled" && "bg-destructive/15 text-destructive",
+              s.status === "pending_coach_approval" && "bg-warning/15 text-warning"
+            )}
+          >
+            {s.status.replace(/_/g, " ")}
+          </span>
+          {expandable && (s.coachee_notes || items.length > 0) && (
+            <button
+              onClick={() => setOpen((o) => !o)}
+              className="ml-2 text-[11px] text-primary hover:underline"
+            >
+              {open ? "Hide details ▴" : "Show details ▾"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {expandable && open && (
+        <div className="mt-2 ml-14 space-y-2 rounded-md bg-muted/30 p-3">
+          {s.coachee_notes && (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Reflection note
+              </p>
+              <p className="text-xs italic text-muted-foreground">"{s.coachee_notes}"</p>
+            </>
+          )}
+          {items.length > 0 && (
+            <>
+              <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Action items from this session
+              </p>
+              {items.map((it, i) => (
+                <ActionRow
+                  key={i}
+                  a={{
+                    ...it,
+                    sessionId: s.id,
+                    sessionTopic: s.topic,
+                    sessionDate: s.start_time,
+                    source: s._source,
+                    idx: i,
+                  } as FlatAction}
+                  milestoneLabel={labelFor(it.milestone_id)}
+                  onToggle={onToggleAction}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GoalDialog({ onSaved, userId }: { onSaved: () => void; userId: string }) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [date, setDate] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
     if (!title.trim()) return;
     setSaving(true);
     const { error } = await supabase.from("coachee_goals").insert({
       coachee_id: userId,
       title: title.trim(),
-      description: description.trim() || null,
-      target_date: targetDate || null,
+      description: desc.trim() || null,
+      target_date: date || null,
     });
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Goal added");
-    reset();
-    setOpen(false);
-    onSaved();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="h-4 w-4" /> New goal
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New goal</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="g-title">Title</Label>
-            <Input
-              id="g-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Build a sustainable peer-coaching practice"
-              autoFocus
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="g-desc">Description (optional)</Label>
-            <Textarea
-              id="g-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Why does this matter to you?"
-              rows={3}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="g-date">Target date (optional)</Label>
-            <Input
-              id="g-date"
-              type="date"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={saving || !title.trim()}>
-            {saving && <Loader2 className="h-3 w-3 animate-spin" />} Save goal
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function MilestoneDialog({
-  goalId,
-  userId,
-  onSaved,
-}: { goalId: string; userId: string; onSaved: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [targetDate, setTargetDate] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const submit = async () => {
-    if (!title.trim()) return;
-    setSaving(true);
-    const { error } = await supabase.from("coachee_milestones").insert({
-      coachee_id: userId,
-      goal_id: goalId,
-      title: title.trim(),
-      target_date: targetDate || null,
-    });
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Milestone added");
-    setTitle("");
-    setTargetDate("");
+    setTitle(""); setDesc(""); setDate("");
     setOpen(false);
     onSaved();
   };
@@ -745,39 +1115,28 @@ function MilestoneDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <Plus className="h-3 w-3" /> Add milestone
-        </Button>
+        <Button size="sm"><Plus className="mr-1 h-4 w-4" /> New goal</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New milestone</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>New goal</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="m-title">Title</Label>
-            <Input
-              id="m-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Complete 10 peer practice sessions"
-              autoFocus
-            />
+            <Label htmlFor="g-title">Title</Label>
+            <Input id="g-title" placeholder="e.g. Build a sustainable peer-coaching practice" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="m-date">Target date (optional)</Label>
-            <Input
-              id="m-date"
-              type="date"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-            />
+            <Label htmlFor="g-desc">Description (optional)</Label>
+            <Textarea id="g-desc" placeholder="Why does this matter to you?" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="g-date">Target date (optional)</Label>
+            <Input id="g-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={saving || !title.trim()}>
-            {saving && <Loader2 className="h-3 w-3 animate-spin" />} Save milestone
+          <Button onClick={save} disabled={saving || !title.trim()}>
+            {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Save goal
           </Button>
         </DialogFooter>
       </DialogContent>
