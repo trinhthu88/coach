@@ -117,8 +117,34 @@ export default function CoachClients() {
     const [{ data: profs }, { data: goals }, { data: miles }] = await Promise.all([
       supabase.from("profiles").select("id, full_name, email, avatar_url").in("id", coacheeIds),
       supabase.from("coachee_goals").select("id, coachee_id, title, status").in("coachee_id", coacheeIds),
-      supabase.from("coachee_milestones").select("id, coachee_id, is_done").in("coachee_id", coacheeIds),
+      supabase.from("coachee_milestones").select("id, goal_id, coachee_id, is_done").in("coachee_id", coacheeIds),
     ]);
+
+    // Build per-coachee set of milestone_ids referenced by THIS coach's session action items
+    const linkedMsByCoachee = new Map<string, Set<string>>();
+    for (const s of ses || []) {
+      const items: RawAction[] = Array.isArray(s.action_items)
+        ? (s.action_items as any[]).map((it) => (typeof it === "string" ? { text: it } : it))
+        : [];
+      for (const it of items) {
+        if (it?.milestone_id) {
+          if (!linkedMsByCoachee.has(s.coachee_id)) linkedMsByCoachee.set(s.coachee_id, new Set());
+          linkedMsByCoachee.get(s.coachee_id)!.add(it.milestone_id);
+        }
+      }
+    }
+    // Visible milestones = those linked. Visible goals = goals owning a visible milestone.
+    const visibleMsIds = new Map<string, Set<string>>(); // coachee -> milestone ids
+    const visibleGoalIds = new Map<string, Set<string>>(); // coachee -> goal ids
+    for (const m of miles || []) {
+      const linked = linkedMsByCoachee.get(m.coachee_id);
+      if (linked && linked.has(m.id)) {
+        if (!visibleMsIds.has(m.coachee_id)) visibleMsIds.set(m.coachee_id, new Set());
+        visibleMsIds.get(m.coachee_id)!.add(m.id);
+        if (!visibleGoalIds.has(m.coachee_id)) visibleGoalIds.set(m.coachee_id, new Set());
+        visibleGoalIds.get(m.coachee_id)!.add(m.goal_id);
+      }
+    }
 
     const now = new Date();
     const byCoachee = new Map<string, Client>();
@@ -163,7 +189,6 @@ export default function CoachClients() {
         c.upcomingCount++;
         if (!c.nextSession || t < new Date(c.nextSession)) c.nextSession = s.start_time;
       }
-      // Earliest session date = programme start
       if (!c.weekStart || t < new Date(c.weekStart)) c.weekStart = s.start_time;
 
       const items: RawAction[] = Array.isArray(s.action_items)
@@ -179,12 +204,16 @@ export default function CoachClients() {
     for (const g of goals || []) {
       const c = byCoachee.get(g.coachee_id);
       if (!c) continue;
+      const visG = visibleGoalIds.get(g.coachee_id);
+      if (!visG || !visG.has(g.id)) continue; // hide goals not linked
       c.goalsAll.push({ id: g.id, title: g.title });
       if (g.status === "active") c.goalsActive++;
     }
     for (const m of miles || []) {
       const c = byCoachee.get(m.coachee_id);
       if (!c) continue;
+      const visM = visibleMsIds.get(m.coachee_id);
+      if (!visM || !visM.has(m.id)) continue; // hide milestones not linked
       c.milestonesTotal++;
       if (m.is_done) c.milestonesDone++;
     }
