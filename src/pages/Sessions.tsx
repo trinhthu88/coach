@@ -277,9 +277,16 @@ function SessionCard({
             {(counterpart?.full_name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="truncate font-semibold">{session.topic}</p>
+            <div className="flex items-center gap-2">
+              <p className="truncate font-semibold">{session.topic}</p>
+              {isPeer && (
+                <span className="inline-flex shrink-0 items-center rounded-full bg-success/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-success">
+                  {userIsPeerCoach ? "Peer · give" : "Peer · receive"}
+                </span>
+              )}
+            </div>
             <p className="truncate text-sm text-muted-foreground">
-              {role === "coach" ? "with " : "Coach: "}
+              {(isPeer ? userIsPeerCoach : role === "coach") ? "with " : "Coach: "}
               <span className="font-medium text-foreground">
                 {counterpart?.full_name || counterpart?.email || "—"}
               </span>
