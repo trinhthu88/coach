@@ -446,7 +446,7 @@ export default function CoachMyJourney() {
                           <p className={cn("text-sm", a.done && "text-muted-foreground line-through")}>
                             {a.text}
                           </p>
-                          <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
                             <span
                               className={cn(
                                 "rounded-full px-1.5 py-0.5 font-bold uppercase tracking-widest",
@@ -469,7 +469,34 @@ export default function CoachMyJourney() {
                             >
                               · {a.sessionTopic}
                             </Link>
+                            <select
+                              value={a.milestone_id || ""}
+                              onChange={(e) => linkActionMilestone(a, e.target.value || null)}
+                              className="ml-auto h-6 rounded-md border bg-background px-1.5 text-[10px]"
+                              title="Link to a milestone"
+                            >
+                              <option value="">— No milestone —</option>
+                              {milestones.map((m) => {
+                                const goal = goals.find((g) => g.id === m.goal_id);
+                                return (
+                                  <option key={m.id} value={m.id}>
+                                    {goal ? `${goal.title} → ${m.title}` : m.title}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            {a.milestone_id && (() => {
+                              const ms = milestones.find((m) => m.id === a.milestone_id);
+                              if (!ms) return null;
+                              const goal = goals.find((g) => g.id === ms.goal_id);
+                              return (
+                                <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-primary">
+                                  ↳ {goal ? `${goal.title} → ` : ""}{ms.title}
+                                </span>
+                              );
+                            })()}
                           </div>
+                        </div>
                         </div>
                       </div>
                     );
