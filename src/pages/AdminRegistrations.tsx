@@ -36,7 +36,7 @@ import {
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 
-type Status = "pending_approval" | "active" | "rejected" | "suspended";
+type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 
 interface CoacheeRow {
   id: string;
@@ -64,6 +64,7 @@ interface CoachListRow {
   created_at: string;
   approval_status: string;
   sessions_completed: number;
+  coachees_count: number;
   rating_avg: number;
   country_based: string | null;
   years_experience: number | null;
@@ -74,6 +75,7 @@ const STATUS_LABEL: Record<Status, string> = {
   active: "Active",
   rejected: "Rejected",
   suspended: "Suspended",
+  reach_limit: "Reached limit",
 };
 
 const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "outline"> = {
@@ -81,6 +83,7 @@ const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "out
   active: "default",
   rejected: "destructive",
   suspended: "outline",
+  reach_limit: "outline",
 };
 
 export default function AdminRegistrations() {
@@ -113,7 +116,7 @@ export default function AdminRegistrations() {
         supabase.from("profiles").select("id, full_name, email, status, created_at"),
         supabase.from("session_limits").select("coachee_id, monthly_limit"),
         supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
-        supabase.from("sessions").select("id, coachee_id, status"),
+        supabase.from("sessions").select("id, coach_id, coachee_id, status"),
         supabase.from("coach_profiles").select("*"),
       ]);
 
@@ -137,6 +140,20 @@ export default function AdminRegistrations() {
       }
       if (s.status === "completed") {
         doneByCoachee.set(s.coachee_id, (doneByCoachee.get(s.coachee_id) || 0) + 1);
+      }
+    });
+
+    // Per-coach completed sessions and unique coachees (confirmed/completed)
+    const coachCompletedById = new Map<string, number>();
+    const coachCoacheesById = new Map<string, Set<string>>();
+    (sess || []).forEach((s: any) => {
+      if (s.status === "completed") {
+        coachCompletedById.set(s.coach_id, (coachCompletedById.get(s.coach_id) || 0) + 1);
+      }
+      if (["confirmed", "completed"].includes(s.status)) {
+        const set = coachCoacheesById.get(s.coach_id) || new Set<string>();
+        set.add(s.coachee_id);
+        coachCoacheesById.set(s.coach_id, set);
       }
     });
 
@@ -183,7 +200,8 @@ export default function AdminRegistrations() {
           status: p.status as Status,
           created_at: p.created_at,
           approval_status: cp?.approval_status || "pending_approval",
-          sessions_completed: cp?.sessions_completed || 0,
+          sessions_completed: coachCompletedById.get(id) || 0,
+          coachees_count: (coachCoacheesById.get(id) || new Set()).size,
           rating_avg: Number(cp?.rating_avg || 0),
           country_based: cp?.country_based || null,
           years_experience: cp?.years_experience || null,
@@ -298,19 +316,36 @@ export default function AdminRegistrations() {
         const email =
           (row.Email || row.email || row.EMAIL || "").toString().trim().toLowerCase();
         const name = (row.Name || row.name || row["Full name"] || "").toString().trim();
+        const limitRaw =
+          row["Session limit"] ?? row.SessionLimit ?? row.session_limit ?? row.Limit ?? "";
+        const limitNum = Number(limitRaw);
+        const sessionLimit = Number.isFinite(limitNum) && limitNum > 0 ? Math.floor(limitNum) : null;
         if (!email) {
           fail++;
           continue;
         }
-        const { error } = await supabase.auth.signInWithOtp({
+        const { data: otpData, error } = await supabase.auth.signInWithOtp({
           email,
           options: {
             data: { full_name: name || email.split("@")[0], role: "coachee" },
             emailRedirectTo: redirectTo,
           },
         });
-        if (error) fail++;
-        else ok++;
+        if (error) {
+          fail++;
+          continue;
+        }
+        ok++;
+        // If we have a user id back and a custom limit, save it
+        const newUserId = (otpData as any)?.user?.id;
+        if (newUserId && sessionLimit !== null) {
+          await supabase
+            .from("session_limits")
+            .upsert(
+              { coachee_id: newUserId, monthly_limit: sessionLimit },
+              { onConflict: "coachee_id" }
+            );
+        }
       }
       toast({
         title: "Import finished",
@@ -326,8 +361,8 @@ export default function AdminRegistrations() {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { Name: "Jane Doe", Email: "jane@example.com" },
-      { Name: "John Smith", Email: "john@example.com" },
+      { Name: "Jane Doe", Email: "jane@example.com", "Session limit": 6 },
+      { Name: "John Smith", Email: "john@example.com", "Session limit": 4 },
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Coachees");
@@ -383,6 +418,7 @@ export default function AdminRegistrations() {
                 <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="pending_approval">Awaiting approval</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="reach_limit">Reached limit</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
@@ -523,7 +559,8 @@ export default function AdminRegistrations() {
                   <th className="px-4 py-3 text-left">Registered</th>
                   <th className="px-4 py-3 text-left">Status</th>
                   <th className="px-4 py-3 text-left">Country</th>
-                  <th className="px-4 py-3 text-right">Sessions</th>
+                  <th className="px-4 py-3 text-right">Completed</th>
+                  <th className="px-4 py-3 text-right">Coachees</th>
                   <th className="px-4 py-3 text-right">Rating</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -531,7 +568,7 @@ export default function AdminRegistrations() {
               <tbody>
                 {filteredCoaches.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                       No coaches match your filters.
                     </td>
                   </tr>
@@ -550,6 +587,7 @@ export default function AdminRegistrations() {
                         {c.country_based || "—"}
                       </td>
                       <td className="px-4 py-3 text-right">{c.sessions_completed}</td>
+                      <td className="px-4 py-3 text-right">{c.coachees_count}</td>
                       <td className="px-4 py-3 text-right">★ {c.rating_avg.toFixed(1)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
@@ -620,8 +658,10 @@ export default function AdminRegistrations() {
           </DialogHeader>
           <div className="space-y-4 text-sm">
             <p className="text-muted-foreground">
-              Upload an Excel file (.xlsx) with two columns: <code>Name</code> and{" "}
-              <code>Email</code>. Each coachee receives an email invite to set their password.
+              Upload an Excel file (.xlsx) with columns: <code>Name</code>,{" "}
+              <code>Email</code>, and <code>Session limit</code> (optional — falls back to the
+              platform default of {defaultLimit}). Each coachee receives an email invite to
+              set their password.
             </p>
             <Button variant="outline" onClick={downloadTemplate}>
               <FileDown className="h-4 w-4" /> Download template

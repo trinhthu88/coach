@@ -29,7 +29,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Search, ExternalLink, Pencil, Save } from "lucide-react";
+import { Loader2, Search, ExternalLink, Pencil, Save, AlertCircle, Star } from "lucide-react";
 import { format } from "date-fns";
 
 const STATUSES = [
@@ -53,6 +53,8 @@ interface SessionRow {
   coach_id: string;
   coachee_id: string;
   created_at: string;
+  coachee_rating: number | null;
+  coachee_rating_comment: string | null;
   coach?: { full_name: string; email: string };
   coachee?: { full_name: string; email: string };
 }
@@ -197,55 +199,93 @@ export default function AdminSessions() {
                 <TableHead>When</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Link</TableHead>
+                <TableHead>Rating</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.topic}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">{s.coach?.full_name ?? "—"}</div>
-                    <div className="text-xs text-muted-foreground">{s.coach?.email}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">{s.coachee?.full_name ?? "—"}</div>
-                    <div className="text-xs text-muted-foreground">{s.coachee?.email}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {format(new Date(s.start_time), "PP")}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(new Date(s.start_time), "p")} · {s.duration_minutes} min
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="capitalize">
-                      {s.status.replace(/_/g, " ")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {s.meeting_url ? (
-                      <a
-                        href={s.meeting_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                      >
-                        Open <ExternalLink className="h-3 w-3" />
-                      </a>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => setEditing(s)}>
-                      <Pencil className="h-4 w-4" /> Edit
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.map((s) => {
+                const missingLink =
+                  !s.meeting_url &&
+                  ["pending_coach_approval", "confirmed"].includes(s.status);
+                return (
+                  <TableRow
+                    key={s.id}
+                    className={
+                      missingLink
+                        ? "bg-warning/10 hover:bg-warning/15"
+                        : undefined
+                    }
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {missingLink && (
+                          <AlertCircle className="h-4 w-4 shrink-0 text-warning" />
+                        )}
+                        {s.topic}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">{s.coach?.full_name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground">{s.coach?.email}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">{s.coachee?.full_name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground">{s.coachee?.email}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {format(new Date(s.start_time), "PP")}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(s.start_time), "p")} · {s.duration_minutes} min
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="capitalize">
+                        {s.status.replace(/_/g, " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {s.meeting_url ? (
+                        <a
+                          href={s.meeting_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          Open <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 border-warning/40 text-warning"
+                        >
+                          <AlertCircle className="h-3 w-3" /> Missing
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {s.coachee_rating ? (
+                        <span
+                          title={s.coachee_rating_comment || ""}
+                          className="inline-flex items-center gap-1 text-sm font-semibold"
+                        >
+                          <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+                          {s.coachee_rating}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => setEditing(s)}>
+                        <Pencil className="h-4 w-4" /> Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

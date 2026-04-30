@@ -642,6 +642,7 @@ export type Database = {
         | "active"
         | "suspended"
         | "rejected"
+        | "reach_limit"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -783,6 +784,7 @@ export const Constants = {
         "active",
         "suspended",
         "rejected",
+        "reach_limit",
       ],
     },
   },
