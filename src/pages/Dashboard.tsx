@@ -775,3 +775,227 @@ function RecommendedCoachCard({ coach }: { coach: CoachLite }) {
     </Link>
   );
 }
+
+// ============= Recent sessions log (coachee) =============
+function RecentSessionsLog({
+  sessions,
+  coachesById,
+}: {
+  sessions: SessionLite[];
+  coachesById: Record<string, { full_name: string; avatar_url: string | null }>;
+}) {
+  const recent = sessions.slice(0, 6);
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <History className="h-4 w-4 text-primary" />
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          Recent session log
+        </p>
+      </div>
+      {recent.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No sessions yet.</p>
+      ) : (
+        <ul className="divide-y">
+          {recent.map((s) => {
+            const coach = coachesById[s.coach_id];
+            return (
+              <li key={s.id}>
+                <Link
+                  to={`/sessions/${s.id}`}
+                  className="flex items-center justify-between gap-3 py-3 transition-colors hover:bg-muted/40"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{s.topic}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      with {coach?.full_name || "coach"} ·{" "}
+                      {format(new Date(s.start_time), "MMM d, yyyy")}
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="shrink-0 rounded-full text-[10px]">
+                    {s.status.replace(/_/g, " ")}
+                  </Badge>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+// ============= Action items panel (coachee) =============
+function ActionItemsPanel({
+  sessions,
+  coachesById,
+}: {
+  sessions: SessionLite[];
+  coachesById: Record<string, { full_name: string; avatar_url: string | null }>;
+}) {
+  const items: { text: string; done: boolean; sessionId: string; topic: string; date: string; coach: string }[] = [];
+  sessions.forEach((s) => {
+    const arr = Array.isArray(s.action_items) ? s.action_items : [];
+    arr.forEach((it: any) => {
+      const text = typeof it === "string" ? it : it?.text || "";
+      const done = typeof it === "string" ? false : !!it?.done;
+      if (text) {
+        items.push({
+          text,
+          done,
+          sessionId: s.id,
+          topic: s.topic,
+          date: s.start_time,
+          coach: coachesById[s.coach_id]?.full_name || "coach",
+        });
+      }
+    });
+  });
+
+  const open = items.filter((i) => !i.done).slice(0, 8);
+
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <ListChecks className="h-4 w-4 text-primary" />
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          Action items
+        </p>
+      </div>
+      {open.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No open action items. 🎉</p>
+      ) : (
+        <ul className="space-y-2">
+          {open.map((it, idx) => (
+            <li key={idx}>
+              <Link
+                to={`/sessions/${it.sessionId}`}
+                className="block rounded-lg border p-3 transition-colors hover:bg-muted/40"
+              >
+                <p className="text-sm font-medium">{it.text}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {it.coach} · {format(new Date(it.date), "MMM d, yyyy")}
+                </p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+// ============= Admin dashboard =============
+function AdminDashboard() {
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalCoaches: 0,
+    bookedSessions: 0,
+    cancelledSessions: 0,
+    pendingCoaches: 0,
+    pendingCoachees: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const [
+        usersRes,
+        coachesRes,
+        bookedRes,
+        cancelledRes,
+        pendingCoachRes,
+        pendingCoacheeRes,
+      ] = await Promise.all([
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase
+          .from("user_roles")
+          .select("user_id", { count: "exact", head: true })
+          .eq("role", "coach"),
+        supabase
+          .from("sessions")
+          .select("id", { count: "exact", head: true })
+          .in("status", ["pending_coach_approval", "confirmed", "completed"]),
+        supabase
+          .from("sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "cancelled"),
+        supabase
+          .from("coach_profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("approval_status", "pending_approval"),
+        supabase
+          .from("coachee_profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("approval_status", "pending_approval"),
+      ]);
+
+      setStats({
+        totalUsers: usersRes.count || 0,
+        totalCoaches: coachesRes.count || 0,
+        bookedSessions: bookedRes.count || 0,
+        cancelledSessions: cancelledRes.count || 0,
+        pendingCoaches: pendingCoachRes.count || 0,
+        pendingCoachees: pendingCoacheeRes.count || 0,
+      });
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard label="Total users" value={String(stats.totalUsers)} hint="All accounts" icon={Users} />
+        <StatCard label="Total coaches" value={String(stats.totalCoaches)} hint="On the platform" icon={UserCheck} />
+        <StatCard label="Booked sessions" value={String(stats.bookedSessions)} hint="Pending + confirmed + done" icon={CalendarCheck} />
+        <StatCard label="Cancelled sessions" value={String(stats.cancelledSessions)} hint="All time" icon={XCircle} />
+        <StatCard label="Pending coaches" value={String(stats.pendingCoaches)} hint="Awaiting approval" icon={Clock} />
+        <StatCard label="Pending coachees" value={String(stats.pendingCoachees)} hint="Awaiting approval" icon={Clock} />
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="p-5">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Registrations
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Approve new coaches and coachees, manage allowlists and limits.
+          </p>
+          <Button asChild className="mt-4 w-full" variant="outline">
+            <Link to="/admin/registrations">Open registrations</Link>
+          </Button>
+        </Card>
+        <Card className="p-5">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Manage coaches
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Review profile updates and feature top performers.
+          </p>
+          <Button asChild className="mt-4 w-full" variant="outline">
+            <Link to="/admin/coaches">Open coach management</Link>
+          </Button>
+        </Card>
+        <Card className="p-5">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Sessions
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Track every session and add the meeting link once confirmed.
+          </p>
+          <Button asChild className="mt-4 w-full">
+            <Link to="/admin/sessions">Set meeting links</Link>
+          </Button>
+        </Card>
+      </section>
+    </>
+  );
+}
