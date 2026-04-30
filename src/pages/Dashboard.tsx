@@ -62,6 +62,7 @@ export default function Dashboard() {
   const [coachesById, setCoachesById] = useState<Record<string, { full_name: string; avatar_url: string | null }>>({});
   const [favCoaches, setFavCoaches] = useState<CoachLite[]>([]);
   const [recCoaches, setRecCoaches] = useState<CoachLite[]>([]);
+  const [sessionLimit, setSessionLimit] = useState<number>(0);
   const { favorites } = useFavorites();
 
   useEffect(() => {
@@ -84,6 +85,12 @@ export default function Dashboard() {
         const map: Record<string, any> = {};
         (profs || []).forEach((p: any) => (map[p.id] = p));
         setCoachesById(map);
+      }
+
+      // Session limit (monthly limit acts as the cap shown in the recap)
+      const { data: usage } = await supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id });
+      if (usage && usage.length > 0) {
+        setSessionLimit(usage[0].monthly_limit || 0);
       }
 
       // Recommended (top-rated active coaches, max 3)
