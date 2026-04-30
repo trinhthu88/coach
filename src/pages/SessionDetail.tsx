@@ -753,10 +753,19 @@ export default function SessionDetail() {
                   )}
                 </div>
               ))}
-              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed py-3 text-sm text-muted-foreground hover:bg-muted/30">
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                Add attachment
-                <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} />
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed py-3 text-sm text-muted-foreground hover:bg-muted/30">
+                <span className="flex items-center gap-2">
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Add attachment
+                </span>
+                <span className="text-[10px] uppercase tracking-widest">PDF · JPG · MP3 · MP4</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.mp3,.mp4,application/pdf,image/jpeg,audio/mpeg,video/mp4"
+                  onChange={handleUpload}
+                  disabled={uploading}
+                />
               </label>
             </div>
           </Card>
