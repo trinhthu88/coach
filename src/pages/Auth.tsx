@@ -119,8 +119,8 @@ export default function Auth() {
               <Sparkles className="h-3 w-3" />
               {mode === "signin" ? "Welcome back" : "Get started"}
             </div>
-            <h2 className="text-3xl font-semibold tracking-tight">
-              {mode === "signin" ? "Sign in to Connect+" : "Create your account"}
+            <h2 className="font-display text-4xl font-light tracking-tight text-secondary">
+              {mode === "signin" ? "Sign in to Clariva" : "Create your account"}
             </h2>
             <p className="text-sm text-muted-foreground">
               {mode === "signin"
