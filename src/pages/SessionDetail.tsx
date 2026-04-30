@@ -119,7 +119,14 @@ const STATUS_META: Record<
 function normalizeItems(raw: any): ActionItem[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((it) =>
-    typeof it === "string" ? { text: it, done: false } : { text: it.text || "", done: !!it.done }
+    typeof it === "string"
+      ? { text: it, done: false, due_date: null, milestone_id: null }
+      : {
+          text: it.text || "",
+          done: !!it.done,
+          due_date: it.due_date || null,
+          milestone_id: it.milestone_id || null,
+        }
   );
 }
 
