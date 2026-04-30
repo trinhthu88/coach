@@ -256,8 +256,9 @@ export default function BookSession() {
             <div className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 text-xs">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
-                Booking a session uses <strong>1 coaching credit</strong> from your monthly balance.
-                ({usage.used_this_month}/{usage.monthly_limit} used)
+                You've completed <strong>{usage.used_this_month}</strong> of your{" "}
+                <strong>{usage.monthly_limit}</strong> total coaching sessions. You can book
+                until you reach your limit.
               </span>
             </div>
           )}
@@ -275,7 +276,7 @@ export default function BookSession() {
           {overLimit && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
-              Monthly session limit reached ({usage?.used_this_month}/{usage?.monthly_limit}).
+              Session limit reached ({usage?.used_this_month}/{usage?.monthly_limit} completed). You can't book another session.
             </div>
           )}
 
