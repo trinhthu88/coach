@@ -191,7 +191,19 @@ export default function Sessions() {
               />
             ) : (
               upcoming.map((s) => (
-                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} onChanged={load} />
+                <SessionCard
+                  key={`${s.kind}-${s.id}`}
+                  session={s}
+                  role={role!}
+                  onOpen={() =>
+                    navigate(
+                      s.kind === "coaching"
+                        ? `/sessions/${s.id}`
+                        : `/sessions/${s.id}?type=peer`
+                    )
+                  }
+                  onChanged={load}
+                />
               ))
             )}
           </TabsContent>
@@ -200,7 +212,19 @@ export default function Sessions() {
               <EmptyState title="Nothing yet" subtitle="Past sessions will show up here." />
             ) : (
               past.map((s) => (
-                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} onChanged={load} />
+                <SessionCard
+                  key={`${s.kind}-${s.id}`}
+                  session={s}
+                  role={role!}
+                  onOpen={() =>
+                    navigate(
+                      s.kind === "coaching"
+                        ? `/sessions/${s.id}`
+                        : `/sessions/${s.id}?type=peer`
+                    )
+                  }
+                  onChanged={load}
+                />
               ))
             )}
           </TabsContent>
