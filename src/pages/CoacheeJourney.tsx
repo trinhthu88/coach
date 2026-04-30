@@ -254,7 +254,11 @@ export default function CoacheeJourney() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Metric label="Overall progress" value={`${overallPct}%`} sub={`across ${goals.length} goal${goals.length === 1 ? "" : "s"}`} />
         <Metric label="Actions done" value={String(aiDone)} sub={aiOverdue ? `${aiOverdue} overdue` : `of ${aiTotal} total`} subClass={aiOverdue ? "text-destructive" : ""} />
-        <Metric label="Sessions" value={`${past.length} / ${sessions.length}`} sub={`${upcoming.length} upcoming`} />
+        <Metric
+          label="Session recap"
+          value={usage ? `${usage.used_this_month} / ${usage.monthly_limit}` : `${past.length} / —`}
+          sub={usage ? "this month" : `${upcoming.length} upcoming`}
+        />
         <Metric
           label="Next session"
           value={nextSession ? format(new Date(nextSession.start_time), "MMM d") : "—"}
