@@ -17,6 +17,14 @@ import {
   UsersRound,
   MessagesSquare,
   Layers,
+  Bell,
+  Activity,
+  GraduationCap,
+  BookOpen,
+  Network,
+  ShieldCheck,
+  BarChart3,
+  UserPlus,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -53,11 +61,27 @@ const NAV: NavItem[] = [
   { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"], group: "Communication" },
   { to: "/messages", label: "Messages", icon: MessageSquare, roles: ["coach", "coachee"], group: "Communication" },
 
-  // Admin
-  { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"] },
-  { to: "/admin/coaches", label: "Manage coaches", icon: Users, roles: ["admin"] },
-  { to: "/admin/sessions", label: "All sessions", icon: ClipboardList, roles: ["admin"] },
-  { to: "/admin/session-limits", label: "Session limits", icon: Layers, roles: ["admin"] },
+  // Admin — Overview
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: ["admin"], group: "Overview" },
+  { to: "/admin/alerts", label: "Alerts", icon: Bell, roles: ["admin"], group: "Overview" },
+  { to: "/admin/activity", label: "Activity", icon: Activity, roles: ["admin"], group: "Overview" },
+
+  // Admin — People
+  { to: "/admin/coaches", label: "Coaches", icon: Users, roles: ["admin"], group: "People" },
+  { to: "/admin/coachees", label: "Coachees", icon: GraduationCap, roles: ["admin"], group: "People" },
+  { to: "/admin/trainees", label: "Trainees", icon: UsersRound, roles: ["admin"], group: "People" },
+  { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"], group: "People" },
+
+  // Admin — Programmes
+  { to: "/admin/programmes", label: "Programmes", icon: BookOpen, roles: ["admin"], group: "Programmes" },
+  { to: "/admin/cohorts", label: "Cohorts", icon: Network, roles: ["admin"], group: "Programmes" },
+  { to: "/admin/assignments", label: "Assignments", icon: UserPlus, roles: ["admin"], group: "Programmes" },
+
+  // Admin — Operations
+  { to: "/admin/sessions", label: "Sessions", icon: ClipboardList, roles: ["admin"], group: "Operations" },
+  { to: "/admin/session-limits", label: "Limits", icon: Layers, roles: ["admin"], group: "Operations" },
+  { to: "/admin/coach-access", label: "Coach access", icon: ShieldCheck, roles: ["admin"], group: "Operations" },
+  { to: "/admin/analytics", label: "Analytics", icon: BarChart3, roles: ["admin"], group: "Operations" },
 ];
 
 export default function AppLayout() {
