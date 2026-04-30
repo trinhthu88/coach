@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      coach_as_coachee_allowlist: {
+        Row: {
+          coach_user_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          selectable_coach_id: string
+        }
+        Insert: {
+          coach_user_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          selectable_coach_id: string
+        }
+        Update: {
+          coach_user_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          selectable_coach_id?: string
+        }
+        Relationships: []
+      }
       coach_availability: {
         Row: {
           coach_id: string
@@ -23,6 +47,7 @@ export type Database = {
           is_booked: boolean
           session_id: string | null
           slot_date: string
+          slot_type: Database["public"]["Enums"]["availability_slot_type"]
           start_time: string
           updated_at: string
         }
@@ -34,6 +59,7 @@ export type Database = {
           is_booked?: boolean
           session_id?: string | null
           slot_date: string
+          slot_type?: Database["public"]["Enums"]["availability_slot_type"]
           start_time: string
           updated_at?: string
         }
@@ -45,6 +71,7 @@ export type Database = {
           is_booked?: boolean
           session_id?: string | null
           slot_date?: string
+          slot_type?: Database["public"]["Enums"]["availability_slot_type"]
           start_time?: string
           updated_at?: string
         }
@@ -90,6 +117,7 @@ export type Database = {
           last_approved_at: string | null
           last_profile_update_at: string
           nationality: string | null
+          peer_coaching_opt_in: boolean
           rating_avg: number
           sessions_completed: number
           specialties: string[] | null
@@ -109,6 +137,7 @@ export type Database = {
           last_approved_at?: string | null
           last_profile_update_at?: string
           nationality?: string | null
+          peer_coaching_opt_in?: boolean
           rating_avg?: number
           sessions_completed?: number
           specialties?: string[] | null
@@ -128,6 +157,7 @@ export type Database = {
           last_approved_at?: string | null
           last_profile_update_at?: string
           nationality?: string | null
+          peer_coaching_opt_in?: boolean
           rating_avg?: number
           sessions_completed?: number
           specialties?: string[] | null
@@ -144,6 +174,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      coach_session_limits: {
+        Row: {
+          coach_user_id: string | null
+          created_at: string
+          id: string
+          monthly_limit: number
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          coach_user_id?: string | null
+          created_at?: string
+          id?: string
+          monthly_limit?: number
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          coach_user_id?: string | null
+          created_at?: string
+          id?: string
+          monthly_limit?: number
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       coachee_coach_allowlist: {
         Row: {
@@ -328,6 +385,81 @@ export type Database = {
           created_at?: string
           id?: string
           mood?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      peer_sessions: {
+        Row: {
+          action_items: Json
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          coach_notes: string | null
+          coach_private_notes: string | null
+          coachee_notes: string | null
+          coachee_rated_at: string | null
+          coachee_rating: number | null
+          coachee_rating_comment: string | null
+          confirmed_at: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          meeting_url: string | null
+          peer_coach_id: string
+          peer_coachee_id: string
+          slot_id: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["session_status"]
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          action_items?: Json
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          coach_notes?: string | null
+          coach_private_notes?: string | null
+          coachee_notes?: string | null
+          coachee_rated_at?: string | null
+          coachee_rating?: number | null
+          coachee_rating_comment?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          meeting_url?: string | null
+          peer_coach_id: string
+          peer_coachee_id: string
+          slot_id?: string | null
+          start_time: string
+          status?: Database["public"]["Enums"]["session_status"]
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          action_items?: Json
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          coach_notes?: string | null
+          coach_private_notes?: string | null
+          coachee_notes?: string | null
+          coachee_rated_at?: string | null
+          coachee_rating?: number | null
+          coachee_rating_comment?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_url?: string | null
+          peer_coach_id?: string
+          peer_coachee_id?: string
+          slot_id?: string | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          topic?: string
           updated_at?: string
         }
         Relationships: []
@@ -630,6 +762,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "coach" | "coachee"
+      availability_slot_type: "coaching" | "peer"
       session_status:
         | "pending_coach_approval"
         | "confirmed"
@@ -771,6 +904,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "coach", "coachee"],
+      availability_slot_type: ["coaching", "peer"],
       session_status: [
         "pending_coach_approval",
         "confirmed",

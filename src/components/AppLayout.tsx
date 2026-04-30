@@ -15,6 +15,8 @@ import {
   ClipboardList,
   Compass,
   UsersRound,
+  MessagesSquare,
+  Layers,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -25,18 +27,32 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   roles: AppRole[];
+  group?: string;
 }
 
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "coach", "coachee"] },
+
+  // Coachee
   { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee"] },
   { to: "/coachee/profile", label: "My profile", icon: IdCard, roles: ["coachee"] },
-  { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"] },
-  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"] },
-  { to: "/coach/clients", label: "My clients", icon: UsersRound, roles: ["coach"] },
   { to: "/coachee/journey", label: "My journey", icon: Compass, roles: ["coachee"] },
-  { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"] },
-  { to: "/messages", label: "Messages", icon: MessageSquare, roles: ["coach", "coachee"] },
+
+  // Coach — Practice
+  { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"], group: "Practice" },
+  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"], group: "Practice" },
+  { to: "/coach/clients", label: "My clients", icon: UsersRound, roles: ["coach"], group: "Practice" },
+  { to: "/coach/peer-coaching", label: "Peer coaching", icon: MessagesSquare, roles: ["coach"], group: "Practice" },
+
+  // Coach — My journey
+  { to: "/coach/find-coach", label: "Find a coach", icon: Search, roles: ["coach"], group: "My journey" },
+  { to: "/coach/practice-journey", label: "My practice journey", icon: Layers, roles: ["coach"], group: "My journey" },
+
+  // Communication (shared)
+  { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"], group: "Communication" },
+  { to: "/messages", label: "Messages", icon: MessageSquare, roles: ["coach", "coachee"], group: "Communication" },
+
+  // Admin
   { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"] },
   { to: "/admin/coaches", label: "Manage coaches", icon: Users, roles: ["admin"] },
   { to: "/admin/sessions", label: "All sessions", icon: ClipboardList, roles: ["admin"] },
@@ -131,38 +147,49 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {items.map((item) => {
-            const showBadge = item.to === "/messages" && unreadCount > 0;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-                  )
-                }
-              >
-                <span className="relative shrink-0">
-                  <item.icon className="h-5 w-5" />
-                  {showBadge && collapsed && (
-                    <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
+          {(() => {
+            let lastGroup: string | undefined = undefined;
+            return items.map((item) => {
+              const showBadge = item.to === "/messages" && unreadCount > 0;
+              const showHeader = !collapsed && item.group && item.group !== lastGroup;
+              if (item.group) lastGroup = item.group;
+              return (
+                <div key={item.to}>
+                  {showHeader && (
+                    <p className="mt-3 px-3 pb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">
+                      {item.group}
+                    </p>
                   )}
-                </span>
-                {!collapsed && <span className="truncate">{item.label}</span>}
-                {showBadge && !collapsed && (
-                  <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </NavLink>
-            );
-          })}
+                  <NavLink
+                    to={item.to}
+                    className={({ isActive }) =>
+                      cn(
+                        "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                      )
+                    }
+                  >
+                    <span className="relative shrink-0">
+                      <item.icon className="h-5 w-5" />
+                      {showBadge && collapsed && (
+                        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </span>
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    {showBadge && !collapsed && (
+                      <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </NavLink>
+                </div>
+              );
+            });
+          })()}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">

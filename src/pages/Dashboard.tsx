@@ -27,6 +27,7 @@ import {
 import { format, isAfter } from "date-fns";
 import { toast } from "sonner";
 import { useFavorites } from "@/hooks/useFavorites";
+import { cn } from "@/lib/utils";
 
 interface SessionLite {
   id: string;
@@ -265,26 +266,69 @@ interface CoachSession {
   coachee_id: string;
 }
 
+interface PeerSession {
+  id: string;
+  topic: string;
+  start_time: string;
+  duration_minutes: number;
+  status: string;
+  peer_coach_id: string;
+  peer_coachee_id: string;
+}
+
 function CoachDashboard({ userId }: { userId: string }) {
   const [sessions, setSessions] = useState<CoachSession[]>([]);
+  const [peerSessions, setPeerSessions] = useState<PeerSession[]>([]);
   const [profilesById, setProfilesById] = useState<
     Record<string, { full_name: string; avatar_url: string | null; email: string }>
   >({});
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [peerOptIn, setPeerOptIn] = useState(false);
+  const [coachProfile, setCoachProfile] = useState<{
+    rating_avg: number;
+    sessions_completed: number;
+  } | null>(null);
 
   const reload = async () => {
-    const { data } = await supabase
-      .from("sessions")
-      .select(
-        "id, topic, start_time, duration_minutes, status, coach_notes, meeting_url, coachee_id"
-      )
-      .eq("coach_id", userId)
-      .order("start_time", { ascending: false });
-    const list = (data as CoachSession[]) || [];
-    setSessions(list);
+    const [{ data: sess }, { data: peer }, { data: cp }] = await Promise.all([
+      supabase
+        .from("sessions")
+        .select(
+          "id, topic, start_time, duration_minutes, status, coach_notes, meeting_url, coachee_id"
+        )
+        .eq("coach_id", userId)
+        .order("start_time", { ascending: false }),
+      supabase
+        .from("peer_sessions")
+        .select(
+          "id, topic, start_time, duration_minutes, status, peer_coach_id, peer_coachee_id"
+        )
+        .or(`peer_coach_id.eq.${userId},peer_coachee_id.eq.${userId}`)
+        .order("start_time", { ascending: false }),
+      supabase
+        .from("coach_profiles")
+        .select("rating_avg, sessions_completed, peer_coaching_opt_in")
+        .eq("id", userId)
+        .maybeSingle(),
+    ]);
 
-    const ids = Array.from(new Set(list.map((s) => s.coachee_id)));
+    const list = (sess as CoachSession[]) || [];
+    const peerList = (peer as PeerSession[]) || [];
+    setSessions(list);
+    setPeerSessions(peerList);
+    if (cp) {
+      setCoachProfile({ rating_avg: cp.rating_avg, sessions_completed: cp.sessions_completed });
+      setPeerOptIn(!!cp.peer_coaching_opt_in);
+    }
+
+    const ids = Array.from(
+      new Set([
+        ...list.map((s) => s.coachee_id),
+        ...peerList.map((s) => s.peer_coach_id),
+        ...peerList.map((s) => s.peer_coachee_id),
+      ])
+    );
     if (ids.length) {
       const { data: profs } = await supabase
         .from("profiles")
@@ -304,33 +348,20 @@ function CoachDashboard({ userId }: { userId: string }) {
 
   const now = new Date();
   const upcoming = sessions.filter(
-    (s) =>
-      s.status === "confirmed" && new Date(s.start_time) >= now
+    (s) => s.status === "confirmed" && new Date(s.start_time) >= now
   );
   const nextSession = upcoming
     .slice()
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
   const pendingRequests = sessions.filter((s) => s.status === "pending_coach_approval");
+  const peerPending = peerSessions.filter(
+    (s) => s.status === "pending_coach_approval" && s.peer_coach_id === userId
+  );
   const completed = sessions.filter((s) => s.status === "completed");
-  const pendingNotes = completed.filter((s) => !s.coach_notes || !s.coach_notes.trim());
-
-  // Avg rating + total — use coach profile
-  const [coachProfile, setCoachProfile] = useState<{
-    rating_avg: number;
-    sessions_completed: number;
-  } | null>(null);
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("coach_profiles")
-        .select("rating_avg, sessions_completed")
-        .eq("id", userId)
-        .maybeSingle();
-      if (data) setCoachProfile(data as any);
-    })();
-  }, [userId]);
-
-  const clientRoster = Array.from(new Set(sessions.map((s) => s.coachee_id))).slice(0, 6);
+  const peerCompleted = peerSessions.filter((s) => s.status === "completed");
+  const activeClients = new Set(
+    sessions.filter((s) => ["confirmed", "completed"].includes(s.status)).map((s) => s.coachee_id)
+  ).size;
 
   const approve = async (s: CoachSession) => {
     setActingId(s.id);
@@ -365,13 +396,43 @@ function CoachDashboard({ userId }: { userId: string }) {
 
   const nextCoachee = nextSession ? profilesById[nextSession.coachee_id] : null;
 
+  // Combined upcoming feed for the "Sessions" card on the dashboard
+  const mixedUpcoming = [
+    ...sessions
+      .filter((s) => s.status === "confirmed" && new Date(s.start_time) >= now)
+      .map((s) => ({
+        id: s.id,
+        topic: s.topic,
+        start_time: s.start_time,
+        kind: "coaching" as const,
+        counterpart: profilesById[s.coachee_id]?.full_name || "Coachee",
+      })),
+    ...peerSessions
+      .filter((s) => s.status === "confirmed" && new Date(s.start_time) >= now)
+      .map((s) => {
+        const isCoaching = s.peer_coach_id === userId;
+        const counterpartId = isCoaching ? s.peer_coachee_id : s.peer_coach_id;
+        return {
+          id: s.id,
+          topic: s.topic,
+          start_time: s.start_time,
+          kind: (isCoaching ? "peer-give" : "peer-receive") as "peer-give" | "peer-receive",
+          counterpart: profilesById[counterpartId]?.full_name || "Peer",
+        };
+      }),
+  ]
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+    .slice(0, 6);
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Coach Dashboard</h2>
+          <h2 className="font-display text-3xl tracking-tight text-secondary">
+            Coach <em className="not-italic text-primary">workspace</em>
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Elevate your practice. Manage sessions and coachee growth.
+            Confirm sessions, support clients, and grow through peer coaching.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -384,25 +445,48 @@ function CoachDashboard({ userId }: { userId: string }) {
         </div>
       </div>
 
+      {/* Role indicators */}
+      <section className="grid gap-3 sm:grid-cols-3">
+        <RoleIndicator
+          tone="primary"
+          label="Coaching"
+          desc={`${activeClients} active client${activeClients === 1 ? "" : "s"}`}
+        />
+        <RoleIndicator
+          tone="success"
+          label="Peer coaching"
+          desc={peerOptIn ? "Available for peers" : "Not opted in"}
+        />
+        <RoleIndicator
+          tone="accent"
+          label="Coachee"
+          desc="Open to being coached"
+        />
+      </section>
+
       {/* Stats */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Completed sessions"
+          label="Sessions completed"
           value={String(completed.length)}
-          hint="All time"
+          hint="As coach"
           icon={CheckCircle2}
         />
         <StatCard
-          label="Upcoming sessions"
-          value={String(upcoming.length)}
-          hint="Confirmed"
-          icon={CalendarCheck}
+          label="Peer sessions"
+          value={String(peerCompleted.length)}
+          hint="Completed peer"
+          icon={Users}
         />
         <StatCard
-          label="Coachees"
-          value={String(new Set(sessions.filter((s) => ["confirmed", "completed"].includes(s.status)).map((s) => s.coachee_id)).size)}
-          hint="Active clients"
-          icon={Users}
+          label="Upcoming"
+          value={String(
+            upcoming.length +
+              peerSessions.filter((s) => s.status === "confirmed" && new Date(s.start_time) >= now)
+                .length
+          )}
+          hint="Confirmed"
+          icon={CalendarCheck}
         />
         <StatCard
           label="Avg. rating"
@@ -429,29 +513,31 @@ function CoachDashboard({ userId }: { userId: string }) {
           />
         </div>
 
-        {/* Pending notes */}
+        {/* Pending peer requests */}
         <Card className="p-5">
-          <p className="mb-3 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-warning">
-            <Clock className="h-3.5 w-3.5" /> Pending notes
+          <p className="mb-3 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-success">
+            <Clock className="h-3.5 w-3.5" /> Peer requests
           </p>
-          {pendingNotes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">All caught up — no notes pending.</p>
+          {peerPending.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {peerOptIn
+                ? "No peer requests right now."
+                : "Opt in to peer coaching from My availability."}
+            </p>
           ) : (
             <ul className="space-y-2">
-              {pendingNotes.slice(0, 4).map((s) => {
-                const p = profilesById[s.coachee_id];
+              {peerPending.slice(0, 4).map((s) => {
+                const p = profilesById[s.peer_coachee_id];
                 return (
-                  <li key={s.id}>
-                    <Link
-                      to={`/sessions/${s.id}`}
-                      className="block rounded-lg border border-warning/30 bg-warning/5 p-3 transition-colors hover:bg-warning/10"
-                    >
-                      <p className="text-sm font-semibold">{p?.full_name || "Coachee"}</p>
-                      <p className="text-xs text-muted-foreground">{s.topic}</p>
-                      <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-warning">
-                        Write notes <ArrowUpRight className="h-3 w-3" />
-                      </span>
-                    </Link>
+                  <li
+                    key={s.id}
+                    className="rounded-lg border border-success/30 bg-success/5 p-3"
+                  >
+                    <p className="text-sm font-semibold">{p?.full_name || "Peer"}</p>
+                    <p className="text-xs text-muted-foreground">{s.topic}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {format(new Date(s.start_time), "MMM d · p")}
+                    </p>
                   </li>
                 );
               })}
@@ -526,51 +612,106 @@ function CoachDashboard({ userId }: { userId: string }) {
         </Card>
       </section>
 
-      {/* Client roster */}
-      <section>
+      {/* Mixed upcoming sessions */}
+      <section className="grid gap-5 lg:grid-cols-2">
         <Card className="p-5">
-          <p className="mb-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-            Client roster
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Upcoming sessions
           </p>
-          {clientRoster.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              You don't have any active coachees yet.
-            </p>
+          {mixedUpcoming.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No confirmed sessions ahead.</p>
           ) : (
             <ul className="divide-y">
-              {clientRoster.map((id) => {
-                const p = profilesById[id];
-                const sessCount = sessions.filter((s) => s.coachee_id === id).length;
-                const initials = (p?.full_name || "?")
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase();
-                return (
-                  <li key={id} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft text-xs font-bold text-primary">
-                        {initials}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{p?.full_name || "Coachee"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {sessCount} session{sessCount > 1 ? "s" : ""}
-                        </p>
-                      </div>
+              {mixedUpcoming.map((s) => (
+                <li key={`${s.kind}-${s.id}`} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <KindPill kind={s.kind} />
+                      <p className="truncate font-semibold">{s.topic}</p>
                     </div>
-                    <Badge variant="secondary" className="rounded-full">
-                      Active
-                    </Badge>
-                  </li>
-                );
-              })}
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      with {s.counterpart} · {format(new Date(s.start_time), "MMM d, yyyy · p")}
+                    </p>
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
         </Card>
+
+        <Card className="p-5">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Practice journey preview
+          </p>
+          {peerCompleted.length === 0 && completed.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Your peer-coaching and coached sessions will appear here.
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              <li className="flex justify-between">
+                <span className="text-muted-foreground">Sessions delivered</span>
+                <span className="font-semibold">{completed.length}</span>
+              </li>
+              <li className="flex justify-between">
+                <span className="text-muted-foreground">Peer sessions completed</span>
+                <span className="font-semibold">{peerCompleted.length}</span>
+              </li>
+            </ul>
+          )}
+          <div className="mt-4">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/coach/practice-journey">
+                Open practice journey <ArrowUpRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+        </Card>
       </section>
     </>
+  );
+}
+
+function RoleIndicator({
+  tone,
+  label,
+  desc,
+}: {
+  tone: "primary" | "success" | "accent";
+  label: string;
+  desc: string;
+}) {
+  const map = {
+    primary: "border-primary/20 bg-primary-soft text-primary",
+    success: "border-success/20 bg-success/10 text-success",
+    accent: "border-accent/30 bg-accent/10 text-accent",
+  } as const;
+  return (
+    <div className={`flex items-center gap-3 rounded-xl border p-3 ${map[tone]}`}>
+      <div className="flex-1">
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-xs text-muted-foreground">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+function KindPill({ kind }: { kind: "coaching" | "peer-give" | "peer-receive" }) {
+  const map = {
+    coaching: { label: "Coaching", className: "bg-primary/10 text-primary" },
+    "peer-give": { label: "Peer · give", className: "bg-success/10 text-success" },
+    "peer-receive": { label: "Peer · receive", className: "bg-success/15 text-success" },
+  } as const;
+  const m = map[kind];
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest",
+        m.className
+      )}
+    >
+      {m.label}
+    </span>
   );
 }
 
