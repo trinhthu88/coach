@@ -7,18 +7,16 @@ import {
   UserCheck,
   Calendar,
   MessageSquare,
-  Settings,
   LogOut,
   ChevronsLeft,
   ChevronsRight,
   IdCard,
   CalendarClock,
   ClipboardList,
-  
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NavItem {
   to: string;
@@ -29,7 +27,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "coach", "coachee"] },
-  { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee", "admin"] },
+  { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee"] },
   { to: "/coachee/profile", label: "My profile", icon: IdCard, roles: ["coachee"] },
   { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"] },
   { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"] },
@@ -38,12 +36,12 @@ const NAV: NavItem[] = [
   { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"] },
   { to: "/admin/coaches", label: "Manage coaches", icon: Users, roles: ["admin"] },
   { to: "/admin/sessions", label: "All sessions", icon: ClipboardList, roles: ["admin"] },
-  { to: "/settings", label: "Settings", icon: Settings, roles: ["admin", "coach", "coachee"] },
 ];
 
 export default function AppLayout() {
   const { user, profile, role, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
   const items = NAV.filter((n) => role && n.roles.includes(role));
@@ -54,6 +52,46 @@ export default function AppLayout() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  // Fetch unread message count for coach/coachee
+  useEffect(() => {
+    if (!user || !role || (role !== "coach" && role !== "coachee")) return;
+    const filterCol = role === "coach" ? "coach_id" : "coachee_id";
+
+    const refresh = async () => {
+      const { data: ses } = await supabase
+        .from("sessions")
+        .select("id")
+        .eq(filterCol, user.id)
+        .in("status", ["confirmed", "completed"]);
+      const sessionIds = (ses || []).map((s: any) => s.id);
+      if (!sessionIds.length) {
+        setUnreadCount(0);
+        return;
+      }
+      const { count } = await supabase
+        .from("session_messages")
+        .select("id", { count: "exact", head: true })
+        .in("session_id", sessionIds)
+        .neq("sender_id", user.id)
+        .is("read_at", null);
+      setUnreadCount(count || 0);
+    };
+
+    refresh();
+
+    const channel = supabase
+      .channel(`unread-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "session_messages" },
+        () => refresh()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, role]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -89,23 +127,38 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-                )
-              }
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </NavLink>
-          ))}
+          {items.map((item) => {
+            const showBadge = item.to === "/messages" && unreadCount > 0;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn(
+                    "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                  )
+                }
+              >
+                <span className="relative shrink-0">
+                  <item.icon className="h-5 w-5" />
+                  {showBadge && collapsed && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </span>
+                {!collapsed && <span className="truncate">{item.label}</span>}
+                {showBadge && !collapsed && (
+                  <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">

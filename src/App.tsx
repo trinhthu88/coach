@@ -11,7 +11,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Coaches from "./pages/Coaches";
 import CoachDetail from "./pages/CoachDetail";
-import ComingSoon from "./pages/ComingSoon";
+
 import CoachProfileEditor from "./pages/CoachProfileEditor";
 import CoachAvailability from "./pages/CoachAvailability";
 import CoacheeProfileEditor from "./pages/CoacheeProfileEditor";
@@ -69,7 +69,7 @@ const App = () => (
               <Route path="/sessions" element={<Sessions />} />
               <Route path="/sessions/:sessionId" element={<SessionDetail />} />
               <Route path="/messages" element={<Messages />} />
-              <Route path="/settings" element={<ComingSoon title="Settings" />} />
+              
               <Route
                 path="/coachee/profile"
                 element={
