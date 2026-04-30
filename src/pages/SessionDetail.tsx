@@ -287,7 +287,7 @@ export default function SessionDetail() {
     if (isCoachee || isAdmin) {
       update.coachee_notes = coacheeNotes;
     }
-    const { error } = await supabase.from("sessions").update(update).eq("id", session.id);
+    const { error } = await supabase.from(tableName as any).update(update).eq("id", session.id);
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -300,7 +300,7 @@ export default function SessionDetail() {
   const confirmSession = async () => {
     setSaving(true);
     const { error } = await supabase
-      .from("sessions")
+      .from(tableName as any)
       .update({
         status: "confirmed",
         confirmed_at: new Date().toISOString(),
@@ -321,7 +321,7 @@ export default function SessionDetail() {
   const cancelSession = async () => {
     setSaving(true);
     const { error } = await supabase
-      .from("sessions")
+      .from(tableName as any)
       .update({
         status: "cancelled",
         cancelled_at: new Date().toISOString(),
@@ -342,7 +342,7 @@ export default function SessionDetail() {
 
   const completeSession = async () => {
     setSaving(true);
-    const { error } = await supabase.from("sessions").update({ status: "completed" }).eq("id", session.id);
+    const { error } = await supabase.from(tableName as any).update({ status: "completed" }).eq("id", session.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Marked complete");
@@ -653,7 +653,7 @@ export default function SessionDetail() {
                     }
                     setSaving(true);
                     const { error } = await supabase
-                      .from("sessions")
+                      .from(tableName as any)
                       .update({ meeting_url: trimmed || null })
                       .eq("id", session.id);
                     setSaving(false);
