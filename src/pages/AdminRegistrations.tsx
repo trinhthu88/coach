@@ -746,6 +746,18 @@ export default function AdminRegistrations() {
         }}
       />
 
+      <EditCoachDialog
+        coach={editingCoach}
+        coachOpts={coachOpts}
+        defaultCoachLimit={defaultCoachLimit}
+        defaultPeerLimit={defaultPeerLimit}
+        onClose={() => setEditingCoach(null)}
+        onSaved={() => {
+          setEditingCoach(null);
+          load();
+        }}
+      />
+
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent>
           <DialogHeader>
