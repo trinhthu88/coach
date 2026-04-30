@@ -34,6 +34,8 @@ interface SessionRow {
   duration_minutes: number;
   status: SessionStatus;
   action_items: any;
+  coachee_rating: number | null;
+  coachee_rating_comment: string | null;
   coach: { full_name: string; email: string; avatar_url: string | null } | null;
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
 }
