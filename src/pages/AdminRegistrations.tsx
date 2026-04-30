@@ -119,14 +119,25 @@ export default function AdminRegistrations() {
     const coacheeIds = (roles || []).filter((r) => r.role === "coachee").map((r) => r.user_id);
     const coachIds = (roles || []).filter((r) => r.role === "coach").map((r) => r.user_id);
 
-    const [{ data: profiles }, { data: limits }, { data: allowlist }, { data: sess }, { data: cps }] =
-      await Promise.all([
-        supabase.from("profiles").select("id, full_name, email, status, created_at"),
-        supabase.from("session_limits").select("coachee_id, monthly_limit"),
-        supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
-        supabase.from("sessions").select("id, coach_id, coachee_id, status"),
-        supabase.from("coach_profiles").select("*"),
-      ]);
+    const [
+      { data: profiles },
+      { data: limits },
+      { data: allowlist },
+      { data: sess },
+      { data: cps },
+      { data: coachLimits },
+      { data: peerSess },
+      { data: coachAllow },
+    ] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, email, status, created_at"),
+      supabase.from("session_limits").select("coachee_id, monthly_limit"),
+      supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
+      supabase.from("sessions").select("id, coach_id, coachee_id, status"),
+      supabase.from("coach_profiles").select("*"),
+      supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit"),
+      supabase.from("peer_sessions").select("id, peer_coach_id, peer_coachee_id, status"),
+      supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
+    ]);
 
     const profilesById = new Map((profiles || []).map((p: any) => [p.id, p]));
     const cpById = new Map((cps || []).map((c: any) => [c.id, c]));
