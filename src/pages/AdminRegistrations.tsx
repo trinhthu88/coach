@@ -618,41 +618,74 @@ export default function AdminRegistrations() {
                 <tr>
                   <th className="px-4 py-3 text-left">Name</th>
                   <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Registered</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left">Country</th>
-                  <th className="px-4 py-3 text-right">Completed</th>
-                  <th className="px-4 py-3 text-right">Coachees</th>
-                  <th className="px-4 py-3 text-right">Rating</th>
+                  <th className="px-4 py-3 text-left">Status (get coached)</th>
+                  <th className="px-4 py-3 text-right">Coach limit (total)</th>
+                  <th className="px-4 py-3 text-left">Assigned coaches</th>
+                  <th className="px-4 py-3 text-right">Peer limit (total)</th>
+                  <th className="px-4 py-3 text-right">Given (sessions / coachees / ★)</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCoaches.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                       No coaches match your filters.
                     </td>
                   </tr>
                 ) : (
                   filteredCoaches.map((c) => (
                     <tr key={c.id} className="border-t hover:bg-muted/20">
-                      <td className="px-4 py-3 font-semibold">{c.full_name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{c.email}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {format(new Date(c.created_at), "PP")}
+                      <td className="px-4 py-3">
+                        <div className="font-semibold">{c.full_name}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {c.country_based || "—"} · Reg. {format(new Date(c.created_at), "PP")}
+                        </div>
                       </td>
+                      <td className="px-4 py-3 text-muted-foreground">{c.email}</td>
                       <td className="px-4 py-3">
                         <Badge variant={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {c.country_based || "—"}
+                      <td className="px-4 py-3 text-right">
+                        <span className={c.coach_used >= c.coach_limit ? "font-semibold text-destructive" : ""}>
+                          {c.coach_used} / {c.coach_limit}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-right">{c.sessions_completed}</td>
-                      <td className="px-4 py-3 text-right">{c.coachees_count}</td>
-                      <td className="px-4 py-3 text-right">★ {c.rating_avg.toFixed(1)}</td>
+                      <td className="px-4 py-3">
+                        {c.assigned_coaches.length === 0 ? (
+                          <span className="text-xs italic text-muted-foreground">None</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {c.assigned_coaches.slice(0, 3).map((s) => (
+                              <Badge key={s.id} variant="outline" className="text-[10px]">
+                                {s.name}
+                              </Badge>
+                            ))}
+                            {c.assigned_coaches.length > 3 && (
+                              <Badge variant="outline" className="text-[10px]">
+                                +{c.assigned_coaches.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={c.peer_used >= c.peer_limit ? "font-semibold text-destructive" : ""}>
+                          {c.peer_used} / {c.peer_limit}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                        {c.sessions_completed} · {c.coachees_count} · ★ {c.rating_avg.toFixed(1)}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingCoach(c)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" /> Edit
+                          </Button>
                           {c.status === "pending_approval" && (
                             <>
                               <Button
@@ -661,14 +694,14 @@ export default function AdminRegistrations() {
                                 disabled={busyId === c.id}
                                 onClick={() => setCoachStatusValue(c.id, "rejected")}
                               >
-                                <X className="h-3.5 w-3.5" /> Reject
+                                <X className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 size="sm"
                                 disabled={busyId === c.id}
                                 onClick={() => setCoachStatusValue(c.id, "active")}
                               >
-                                <Check className="h-3.5 w-3.5" /> Approve
+                                <Check className="h-3.5 w-3.5" />
                               </Button>
                             </>
                           )}
