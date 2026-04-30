@@ -63,6 +63,15 @@ interface SessionRow {
 interface ActionItem {
   text: string;
   done?: boolean;
+  due_date?: string | null;
+  milestone_id?: string | null;
+}
+
+interface MilestoneLite {
+  id: string;
+  title: string;
+  goal_id: string;
+  goal_title?: string;
 }
 
 interface Attachment {
@@ -110,7 +119,14 @@ const STATUS_META: Record<
 function normalizeItems(raw: any): ActionItem[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((it) =>
-    typeof it === "string" ? { text: it, done: false } : { text: it.text || "", done: !!it.done }
+    typeof it === "string"
+      ? { text: it, done: false, due_date: null, milestone_id: null }
+      : {
+          text: it.text || "",
+          done: !!it.done,
+          due_date: it.due_date || null,
+          milestone_id: it.milestone_id || null,
+        }
   );
 }
 
@@ -130,6 +146,7 @@ export default function SessionDetail() {
   const [meetingUrl, setMeetingUrl] = useState("");
   const [items, setItems] = useState<ActionItem[]>([]);
   const [newItem, setNewItem] = useState("");
+  const [milestones, setMilestones] = useState<MilestoneLite[]>([]);
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -162,6 +179,17 @@ export default function SessionDetail() {
       .eq("session_id", sessionId)
       .order("created_at", { ascending: false });
     setAttachments((atts as Attachment[]) || []);
+
+    // Load coachee's goals + milestones so action items can be linked
+    const coacheeId = (data as any).coachee_id;
+    const [{ data: gs }, { data: ms }] = await Promise.all([
+      supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
+      supabase.from("coachee_milestones").select("id, title, goal_id").eq("coachee_id", coacheeId).order("created_at"),
+    ]);
+    const goalById = new Map((gs || []).map((g: any) => [g.id, g.title]));
+    setMilestones(
+      (ms || []).map((m: any) => ({ id: m.id, title: m.title, goal_id: m.goal_id, goal_title: goalById.get(m.goal_id) }))
+    );
 
     setLoading(false);
   }, [sessionId]);
@@ -319,17 +347,13 @@ export default function SessionDetail() {
     setAttachments((prev) => prev.filter((x) => x.id !== a.id));
   };
 
-  const toggleItem = (idx: number) => {
-    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, done: !it.done } : it)));
-  };
-
-  const removeItem = (idx: number) => {
-    setItems((prev) => prev.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, patch: Partial<ActionItem>) => {
+    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   };
 
   const addItem = () => {
     if (!newItem.trim()) return;
-    setItems((prev) => [...prev, { text: newItem.trim(), done: false }]);
+    setItems((prev) => [...prev, { text: newItem.trim(), done: false, due_date: null, milestone_id: null }]);
     setNewItem("");
   };
 
@@ -462,34 +486,67 @@ export default function SessionDetail() {
         <div className="space-y-6">
           <Card className="space-y-3 p-5">
             <SectionTitle icon={CheckSquare}>Action items</SectionTitle>
-            <ul className="space-y-2">
-              {items.map((it, idx) => (
-                <li key={idx} className="flex items-center gap-2 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => toggleItem(idx)}
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
-                      it.done
-                        ? "border-success bg-success/10 text-success"
-                        : "border-border text-transparent"
-                    )}
-                    aria-label={it.done ? "Mark incomplete" : "Mark complete"}
-                  >
-                    <CheckSquare className="h-3.5 w-3.5" />
-                  </button>
-                  <span className={cn("flex-1", it.done && "text-muted-foreground line-through")}>
-                    {it.text}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(idx)}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </li>
-              ))}
+            <ul className="space-y-3">
+              {items.map((it, idx) => {
+                const ms = milestones.find((m) => m.id === it.milestone_id);
+                return (
+                  <li key={idx} className="rounded-md border bg-muted/20 p-2.5 text-sm">
+                    <div className="flex items-start gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateItem(idx, { done: !it.done })}
+                        className={cn(
+                          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                          it.done
+                            ? "border-success bg-success/10 text-success"
+                            : "border-border text-transparent"
+                        )}
+                        aria-label={it.done ? "Mark incomplete" : "Mark complete"}
+                      >
+                        <CheckSquare className="h-3.5 w-3.5" />
+                      </button>
+                      <Input
+                        value={it.text}
+                        onChange={(e) => updateItem(idx, { text: e.target.value })}
+                        className={cn("h-8 flex-1 text-sm", it.done && "text-muted-foreground line-through")}
+                        placeholder="Action item"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}
+                        className="mt-1 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 pl-7 text-xs">
+                      <Input
+                        type="date"
+                        value={it.due_date || ""}
+                        onChange={(e) => updateItem(idx, { due_date: e.target.value || null })}
+                        className="h-7 w-auto text-xs"
+                      />
+                      <select
+                        value={it.milestone_id || ""}
+                        onChange={(e) => updateItem(idx, { milestone_id: e.target.value || null })}
+                        className="h-7 rounded-md border bg-background px-2 text-xs"
+                      >
+                        <option value="">— No milestone —</option>
+                        {milestones.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.goal_title ? `${m.goal_title} → ${m.title}` : m.title}
+                          </option>
+                        ))}
+                      </select>
+                      {ms && (
+                        <span className="text-[10px] text-primary">
+                          ↳ {ms.goal_title} → {ms.title}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
             <div className="flex gap-2">
               <Input
@@ -507,6 +564,11 @@ export default function SessionDetail() {
                 Add
               </Button>
             </div>
+            {milestones.length === 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Tip: the coachee can create goals & milestones in <Link to="/coachee/journey" className="text-primary underline">My journey</Link> so action items can be linked.
+              </p>
+            )}
           </Card>
 
           {isAdmin ? (
