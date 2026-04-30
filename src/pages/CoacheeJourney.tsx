@@ -70,6 +70,8 @@ export default function CoacheeJourney() {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [reflections, setReflections] = useState<any[]>([]);
+  const [coachNames, setCoachNames] = useState<Record<string, string>>({});
+  const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
@@ -77,16 +79,30 @@ export default function CoacheeJourney() {
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: g }, { data: m }, { data: s }, { data: r }] = await Promise.all([
+    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }] = await Promise.all([
       supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
       supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
+      supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
     ]);
     setGoals(g || []);
     setMilestones(m || []);
     setSessions(s || []);
     setReflections(r || []);
+    const usageRow = Array.isArray(u) ? u[0] : u;
+    if (usageRow) setUsage(usageRow as any);
+
+    const coachIds = Array.from(new Set((s || []).map((x: any) => x.coach_id).filter(Boolean)));
+    if (coachIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", coachIds);
+      const map: Record<string, string> = {};
+      for (const p of profs || []) map[p.id] = p.full_name;
+      setCoachNames(map);
+    }
     setLoading(false);
   }, [user]);
 
@@ -238,7 +254,11 @@ export default function CoacheeJourney() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Metric label="Overall progress" value={`${overallPct}%`} sub={`across ${goals.length} goal${goals.length === 1 ? "" : "s"}`} />
         <Metric label="Actions done" value={String(aiDone)} sub={aiOverdue ? `${aiOverdue} overdue` : `of ${aiTotal} total`} subClass={aiOverdue ? "text-destructive" : ""} />
-        <Metric label="Sessions" value={`${past.length} / ${sessions.length}`} sub={`${upcoming.length} upcoming`} />
+        <Metric
+          label="Session recap"
+          value={usage ? `${usage.used_this_month} / ${usage.monthly_limit}` : `${past.length} / —`}
+          sub={usage ? "this month" : `${upcoming.length} upcoming`}
+        />
         <Metric
           label="Next session"
           value={nextSession ? format(new Date(nextSession.start_time), "MMM d") : "—"}
@@ -342,8 +362,8 @@ export default function CoacheeJourney() {
 
         {/* SESSIONS */}
         <TabsContent value="sessions" className="mt-4 space-y-4">
-          <SessionsBlock title="Upcoming" items={upcoming} />
-          <SessionsBlock title="Completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} />
+          <SessionsBlock title="Upcoming" items={upcoming} coachNames={coachNames} />
+          <SessionsBlock title="Completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} coachNames={coachNames} />
         </TabsContent>
 
         {/* REFLECTIONS */}
@@ -723,6 +743,7 @@ function SessionsBlock({
   milestones,
   goals,
   onToggleAction,
+  coachNames,
 }: {
   title: string;
   items: any[];
@@ -730,6 +751,7 @@ function SessionsBlock({
   milestones?: Milestone[];
   goals?: Goal[];
   onToggleAction?: (a: FlatAction) => void;
+  coachNames?: Record<string, string>;
 }) {
   return (
     <Card className="p-4">
@@ -741,7 +763,7 @@ function SessionsBlock({
       ) : (
         <div className="divide-y">
           {items.map((s) => (
-            <SessionRow key={s.id} s={s} expandable={expandable} milestones={milestones} goals={goals} onToggleAction={onToggleAction} />
+            <SessionRow key={s.id} s={s} expandable={expandable} milestones={milestones} goals={goals} onToggleAction={onToggleAction} coachName={coachNames?.[s.coach_id]} />
           ))}
         </div>
       )}
@@ -755,12 +777,14 @@ function SessionRow({
   milestones,
   goals,
   onToggleAction,
+  coachName,
 }: {
   s: any;
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
   onToggleAction?: (a: FlatAction) => void;
+  coachName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const d = new Date(s.start_time);
@@ -788,7 +812,7 @@ function SessionRow({
             {s.topic}
           </Link>
           <p className="text-[11px] text-muted-foreground">
-            {format(d, "p")} · {s.duration_minutes}m
+            {format(d, "p")} · {s.duration_minutes}m{coachName ? ` · Coach: ${coachName}` : ""}
           </p>
           <span
             className={cn(
