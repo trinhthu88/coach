@@ -513,13 +513,56 @@ export default function SessionDetail() {
           </Card>
 
           {(isCoach || isAdmin) && (
-            <Card className="space-y-2 p-5">
+            <Card className="space-y-3 p-5">
               <SectionTitle icon={Video}>Meeting link</SectionTitle>
               <Input
                 value={meetingUrl}
                 onChange={(e) => setMeetingUrl(e.target.value)}
-                placeholder="https://meet.google.com/..."
+                placeholder="https://meet.google.com/... or https://zoom.us/..."
+                type="url"
+                maxLength={500}
               />
+              <p className="text-xs text-muted-foreground">
+                Share the Zoom or Google Meet link with your coachee. They'll see a "Join meeting" button once the session is confirmed.
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                {meetingUrl && /^https?:\/\//i.test(meetingUrl) ? (
+                  <a
+                    href={meetingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-primary hover:underline"
+                  >
+                    <Video className="h-3 w-3" /> Test link
+                  </a>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No link saved yet</span>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    const trimmed = meetingUrl.trim();
+                    if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+                      toast.error("Meeting link must start with http:// or https://");
+                      return;
+                    }
+                    setSaving(true);
+                    const { error } = await supabase
+                      .from("sessions")
+                      .update({ meeting_url: trimmed || null })
+                      .eq("id", session.id);
+                    setSaving(false);
+                    if (error) return toast.error(error.message);
+                    toast.success("Meeting link saved");
+                    load();
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}
+                  Save link
+                </Button>
+              </div>
             </Card>
           )}
 
