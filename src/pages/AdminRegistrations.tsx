@@ -36,7 +36,7 @@ import {
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 
-type Status = "pending_approval" | "active" | "rejected" | "suspended";
+type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 
 interface CoacheeRow {
   id: string;
@@ -64,6 +64,7 @@ interface CoachListRow {
   created_at: string;
   approval_status: string;
   sessions_completed: number;
+  coachees_count: number;
   rating_avg: number;
   country_based: string | null;
   years_experience: number | null;
@@ -74,6 +75,7 @@ const STATUS_LABEL: Record<Status, string> = {
   active: "Active",
   rejected: "Rejected",
   suspended: "Suspended",
+  reach_limit: "Reached limit",
 };
 
 const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "outline"> = {
@@ -81,6 +83,7 @@ const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "out
   active: "default",
   rejected: "destructive",
   suspended: "outline",
+  reach_limit: "outline",
 };
 
 export default function AdminRegistrations() {
