@@ -521,7 +521,7 @@ export default function SessionDetail() {
                       />
                       <button
                         type="button"
-                        onClick={() => updateItem(-1, {}) || setItems((p) => p.filter((_, i) => i !== idx))}
+                        onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}
                         className="mt-1 text-muted-foreground hover:text-destructive"
                       >
                         <X className="h-3.5 w-3.5" />
