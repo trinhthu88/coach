@@ -256,8 +256,12 @@ export default function CoacheeJourney() {
         <Metric label="Actions done" value={String(aiDone)} sub={aiOverdue ? `${aiOverdue} overdue` : `of ${aiTotal} total`} subClass={aiOverdue ? "text-destructive" : ""} />
         <Metric
           label="Session recap"
-          value={usage ? `${usage.used_this_month} / ${usage.monthly_limit}` : `${past.length} / —`}
-          sub={usage ? "this month" : `${upcoming.length} upcoming`}
+          value={
+            usage
+              ? `${sessions.filter((s) => s.status === "completed").length} / ${usage.monthly_limit}`
+              : `${sessions.filter((s) => s.status === "completed").length} / —`
+          }
+          sub={`${upcoming.length} upcoming`}
         />
         <Metric
           label="Next session"
