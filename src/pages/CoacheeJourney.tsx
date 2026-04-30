@@ -271,6 +271,7 @@ export default function CoacheeJourney() {
                   pct={goalProgress(g.id)}
                   accent={ACCENTS[i % ACCENTS.length]}
                   onToggle={toggleMilestone}
+                  onToggleAction={toggleAction}
                   onChanged={refresh}
                   userId={user!.id}
                   defaultOpen={i === 0}
@@ -280,7 +281,7 @@ export default function CoacheeJourney() {
           )}
 
           <SectionHeader title="Action items" />
-          <ActionGroups grouped={grouped} compact />
+          <ActionGroups grouped={grouped} compact onToggleAction={toggleAction} />
         </TabsContent>
 
         {/* GOALS FULL */}
@@ -319,6 +320,7 @@ export default function CoacheeJourney() {
                     pct={goalProgress(g.id)}
                     accent={ACCENTS[i % ACCENTS.length]}
                     onToggle={toggleMilestone}
+                    onToggleAction={toggleAction}
                     onChanged={refresh}
                     userId={user!.id}
                     showLinkedActions
@@ -335,13 +337,13 @@ export default function CoacheeJourney() {
           <p className="mb-3 text-xs text-muted-foreground">
             {aiTotal} total · {aiDone} done · {aiOverdue} overdue
           </p>
-          <ActionGroups grouped={grouped} milestones={milestones} goals={goals} />
+          <ActionGroups grouped={grouped} milestones={milestones} goals={goals} onToggleAction={toggleAction} />
         </TabsContent>
 
         {/* SESSIONS */}
         <TabsContent value="sessions" className="mt-4 space-y-4">
           <SessionsBlock title="Upcoming" items={upcoming} />
-          <SessionsBlock title="Completed" items={past} milestones={milestones} goals={goals} expandable />
+          <SessionsBlock title="Completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} />
         </TabsContent>
 
         {/* REFLECTIONS */}
