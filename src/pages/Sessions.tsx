@@ -81,28 +81,59 @@ export default function Sessions() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const filterCol = role === "coach" ? "coach_id" : "coachee_id";
-    const { data } = await supabase
-      .from("sessions")
-      .select("*")
-      .eq(filterCol, user.id)
-      .order("start_time", { ascending: false });
 
-    if (!data) {
-      setSessions([]);
-      setLoading(false);
-      return;
+    // Regular coaching sessions
+    const sessQueries: Promise<any>[] = [];
+    if (role === "coach" || role === "coachee") {
+      const col = role === "coach" ? "coach_id" : "coachee_id";
+      sessQueries.push(
+        supabase.from("sessions").select("*").eq(col, user.id).order("start_time", { ascending: false })
+      );
+    } else {
+      sessQueries.push(Promise.resolve({ data: [] }));
     }
 
-    const ids = Array.from(new Set([...data.map((s) => s.coach_id), ...data.map((s) => s.coachee_id)]));
-    const { data: profs } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, avatar_url")
-      .in("id", ids);
-    const byId = new Map((profs || []).map((p) => [p.id, p]));
+    // Peer sessions (only relevant when user is a coach)
+    if (role === "coach") {
+      sessQueries.push(
+        supabase
+          .from("peer_sessions")
+          .select("*")
+          .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
+          .order("start_time", { ascending: false })
+      );
+    } else {
+      sessQueries.push(Promise.resolve({ data: [] }));
+    }
+
+    const [{ data: sessData }, { data: peerData }] = await Promise.all(sessQueries);
+    const sess = (sessData as any[]) || [];
+    const peer = (peerData as any[]) || [];
+
+    const allRows = [
+      ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
+      ...peer.map((s) => ({
+        ...s,
+        coach_id: s.peer_coach_id,
+        coachee_id: s.peer_coachee_id,
+        kind: (s.peer_coach_id === user.id ? "peer-give" : "peer-receive") as SessionKind,
+      })),
+    ].sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+
+    const ids = Array.from(
+      new Set(allRows.flatMap((s: any) => [s.coach_id, s.coachee_id]))
+    );
+    let byId = new Map<string, any>();
+    if (ids.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url")
+        .in("id", ids);
+      byId = new Map((profs || []).map((p) => [p.id, p]));
+    }
 
     setSessions(
-      data.map((s: any) => ({
+      allRows.map((s: any) => ({
         ...s,
         coach: byId.get(s.coach_id) || null,
         coachee: byId.get(s.coachee_id) || null,
