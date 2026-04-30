@@ -49,21 +49,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify caller via JWT claims (works with signing-keys system)
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
     const token = authHeader.replace(/^Bearer\s+/i, "");
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims?.sub) {
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    // Verify caller by asking the admin client to resolve the user from the JWT.
+    const { data: userData, error: userErr } = await admin.auth.getUser(token);
+    if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Invalid session" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const callerId = claimsData.claims.sub as string;
-
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const callerId = userData.user.id;
     const { data: roleRows } = await admin
       .from("user_roles")
       .select("role")
