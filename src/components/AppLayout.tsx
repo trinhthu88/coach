@@ -68,7 +68,6 @@ const NAV: NavItem[] = [
   // Admin — People
   { to: "/admin/coaches", label: "Coaches", icon: Users, roles: ["admin"], group: "People" },
   { to: "/admin/coachees", label: "Coachees", icon: GraduationCap, roles: ["admin"], group: "People" },
-  { to: "/admin/registrations", label: "Registrations", icon: UserCheck, roles: ["admin"], group: "People" },
 
   // Admin — Programmes
   { to: "/admin/programmes", label: "Programmes", icon: BookOpen, roles: ["admin"], group: "Programmes" },
