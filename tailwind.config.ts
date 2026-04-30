@@ -13,7 +13,11 @@ export default {
       },
     },
     extend: {
-      colors: {
+      fontFamily: {
+        sans: ["Montserrat", "system-ui", "-apple-system", "sans-serif"],
+        serif: ["Fraunces", "Georgia", "serif"],
+        display: ["Fraunces", "Georgia", "serif"],
+      },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
