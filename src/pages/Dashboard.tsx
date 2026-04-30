@@ -17,8 +17,10 @@ import {
   Heart,
   Star,
   CalendarCheck,
+  Loader2,
 } from "lucide-react";
 import { format, isAfter } from "date-fns";
+import { toast } from "sonner";
 import { useFavorites } from "@/hooks/useFavorites";
 
 interface SessionLite {
