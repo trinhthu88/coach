@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          company: string | null
+          created_at: string
+          credential: string | null
+          email: string
+          full_name: string
+          id: string
+          industry: string | null
+          job_title: string | null
+          linkedin_url: string | null
+          motivation: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          credential?: string | null
+          email: string
+          full_name: string
+          id?: string
+          industry?: string | null
+          job_title?: string | null
+          linkedin_url?: string | null
+          motivation?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          credential?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          industry?: string | null
+          job_title?: string | null
+          linkedin_url?: string | null
+          motivation?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_alerts: {
         Row: {
           alert_type: string
