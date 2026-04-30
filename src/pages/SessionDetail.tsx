@@ -207,6 +207,8 @@ export default function SessionDetail() {
     if (isCoach || isAdmin) {
       update.coach_notes = coachNotes;
       update.coach_private_notes = coachPrivate;
+    }
+    if (isAdmin) {
       update.meeting_url = meetingUrl || null;
     }
     if (isCoachee || isAdmin) {
@@ -223,16 +225,11 @@ export default function SessionDetail() {
   };
 
   const confirmSession = async () => {
-    if (!meetingUrl.trim()) {
-      toast.error("Add a Zoom or Google Meet link before confirming.");
-      return;
-    }
     setSaving(true);
     const { error } = await supabase
       .from("sessions")
       .update({
         status: "confirmed",
-        meeting_url: meetingUrl,
         confirmed_at: new Date().toISOString(),
       })
       .eq("id", session.id);
@@ -244,7 +241,7 @@ export default function SessionDetail() {
     }
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Session confirmed");
+    toast.success("Session confirmed. An admin will add the meeting link shortly.");
     load();
   };
 
@@ -512,9 +509,9 @@ export default function SessionDetail() {
             </div>
           </Card>
 
-          {(isCoach || isAdmin) && (
+          {isAdmin ? (
             <Card className="space-y-3 p-5">
-              <SectionTitle icon={Video}>Meeting link</SectionTitle>
+              <SectionTitle icon={Video}>Meeting link (admin)</SectionTitle>
               <Input
                 value={meetingUrl}
                 onChange={(e) => setMeetingUrl(e.target.value)}
@@ -523,7 +520,7 @@ export default function SessionDetail() {
                 maxLength={500}
               />
               <p className="text-xs text-muted-foreground">
-                Share the Zoom or Google Meet link with your coachee. They'll see a "Join meeting" button once the session is confirmed.
+                Only admins manage the meeting link. Both coach and coachee will see a "Join meeting" button once it is saved and the session is confirmed.
               </p>
               <div className="flex items-center justify-between gap-2">
                 {meetingUrl && /^https?:\/\//i.test(meetingUrl) ? (
@@ -564,6 +561,23 @@ export default function SessionDetail() {
                 </Button>
               </div>
             </Card>
+          ) : (
+            session.status === "confirmed" && (
+              <Card className="space-y-2 p-5">
+                <SectionTitle icon={Video}>Meeting link</SectionTitle>
+                {session.meeting_url ? (
+                  <Button asChild className="w-full">
+                    <a href={session.meeting_url} target="_blank" rel="noreferrer">
+                      <Video className="mr-1 h-4 w-4" /> Join meeting
+                    </a>
+                  </Button>
+                ) : (
+                  <p className="rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
+                    The platform admin will share the meeting link here shortly.
+                  </p>
+                )}
+              </Card>
+            )
           )}
 
           <Card className="space-y-3 p-5">

@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Award, Calendar, Loader2, MapPin, Star } from "lucide-react";
-import BookingDialog from "@/components/BookingDialog";
 
 interface CoachDetail {
   id: string;
@@ -33,7 +32,6 @@ export default function CoachDetail() {
   const { role } = useAuth();
   const [coach, setCoach] = useState<CoachDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [bookingOpen, setBookingOpen] = useState(false);
 
   useEffect(() => {
     if (!coachId) return;
@@ -87,18 +85,15 @@ export default function CoachDetail() {
       </Link>
 
       <Card className="overflow-hidden">
-        <div className="relative h-32 bg-gradient-hero">
+        <div className="px-8 pt-8 pb-8">
           {coach.is_featured && (
-            <div className="absolute right-6 top-6 rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground backdrop-blur-sm">
+            <div className="mb-4 inline-flex rounded-full bg-primary-soft px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
               Featured coach
             </div>
           )}
-        </div>
-
-        <div className="px-8 pb-8">
-          <div className="-mt-12 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-end gap-5">
-              <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border-4 border-card bg-primary-soft text-2xl font-bold text-primary shadow-md">
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-primary-soft text-2xl font-bold text-primary shadow-md">
                 {coach.profiles?.avatar_url ? (
                   <img src={coach.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
                 ) : (
@@ -111,8 +106,10 @@ export default function CoachDetail() {
               </div>
             </div>
             {role === "coachee" && (
-              <Button size="lg" className="shadow-glow" onClick={() => setBookingOpen(true)}>
-                <Calendar className="mr-1 h-4 w-4" /> Book a session
+              <Button asChild size="lg" className="shadow-glow">
+                <Link to={`/coaches/${coach.id}/book`}>
+                  <Calendar className="mr-1 h-4 w-4" /> Book a session
+                </Link>
               </Button>
             )}
           </div>
@@ -191,14 +188,6 @@ export default function CoachDetail() {
         </Card>
       </div>
 
-      {coach && (
-        <BookingDialog
-          coachId={coach.id}
-          coachName={coach.profiles?.full_name || "this coach"}
-          open={bookingOpen}
-          onOpenChange={setBookingOpen}
-        />
-      )}
     </div>
   );
 }

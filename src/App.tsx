@@ -17,6 +17,8 @@ import CoachAvailability from "./pages/CoachAvailability";
 import CoacheeProfileEditor from "./pages/CoacheeProfileEditor";
 import Sessions from "./pages/Sessions";
 import SessionDetail from "./pages/SessionDetail";
+import BookSession from "./pages/BookSession";
+import Messages from "./pages/Messages";
 import AdminRegistrations from "./pages/AdminRegistrations";
 import AdminCoaches from "./pages/AdminCoaches";
 import AdminSessions from "./pages/AdminSessions";
@@ -56,9 +58,17 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/coaches" element={<Coaches />} />
               <Route path="/coaches/:coachId" element={<CoachDetail />} />
+              <Route
+                path="/coaches/:coachId/book"
+                element={
+                  <ProtectedRoute role="coachee">
+                    <BookSession />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/sessions" element={<Sessions />} />
               <Route path="/sessions/:sessionId" element={<SessionDetail />} />
-              <Route path="/messages" element={<ComingSoon title="Messages" description="Real-time chat with your coach or coachees is coming soon." />} />
+              <Route path="/messages" element={<Messages />} />
               <Route path="/settings" element={<ComingSoon title="Settings" />} />
               <Route
                 path="/coachee/profile"

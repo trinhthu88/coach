@@ -275,6 +275,41 @@ export type Database = {
         }
         Relationships: []
       }
+      session_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_id: string
+          session_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id: string
+          session_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           action_items: Json
@@ -382,6 +417,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bulk_create_availability: {
+        Args: {
+          _coach_id: string
+          _start_date: string
+          _template: Json
+          _weeks: number
+        }
+        Returns: number
+      }
+      can_message_session: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: boolean
+      }
       get_coachee_session_usage: {
         Args: { _coachee_id: string }
         Returns: {

@@ -14,7 +14,9 @@ import {
   Plus,
   Trash2,
   CalendarDays,
+  CalendarRange,
 } from "lucide-react";
+import BulkAvailabilityDialog from "@/components/BulkAvailabilityDialog";
 import {
   format,
   startOfMonth,
@@ -46,6 +48,7 @@ export default function CoachAvailability() {
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:00");
   const [adding, setAdding] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -124,21 +127,20 @@ export default function CoachAvailability() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Coach</p>
-        <h1 className="text-3xl font-semibold tracking-tight">My availability</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Set the time slots when coachees can book sessions with you.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Coach</p>
+          <h1 className="text-3xl font-semibold tracking-tight">My availability</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Set the time slots when coachees can book sessions with you.
+          </p>
+        </div>
+        <Button onClick={() => setBulkOpen(true)} className="shadow-glow">
+          <CalendarRange className="mr-1 h-4 w-4" /> Set weekly template
+        </Button>
       </div>
 
-      <Card className="p-4 border-primary/20 bg-primary-soft/40 text-sm">
-        <p className="font-medium">Coming soon</p>
-        <p className="text-muted-foreground">
-          Google Calendar sync per coach is on the roadmap. For now, manage your slots manually
-          like Calendly.
-        </p>
-      </Card>
+      <BulkAvailabilityDialog open={bulkOpen} onOpenChange={setBulkOpen} onCreated={load} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-5">
