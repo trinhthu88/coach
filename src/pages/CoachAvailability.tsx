@@ -245,9 +245,14 @@ export default function CoachAvailability() {
               ))}
               {days.map((d) => {
                 const key = format(d, "yyyy-MM-dd");
-                const count = slotsByDate[key]?.length ?? 0;
+                const daySlots = slotsByDate[key] ?? [];
+                const count = daySlots.length;
+                const coachingCount = daySlots.filter((s) => s.slot_type === "coaching").length;
+                const peerCount = daySlots.filter((s) => s.slot_type === "peer").length;
                 const inMonth = isSameMonth(d, month);
                 const isSelected = selectedDate && isSameDay(d, selectedDate);
+                const onlyPeer = peerCount > 0 && coachingCount === 0;
+                const mixed = peerCount > 0 && coachingCount > 0;
                 return (
                   <button
                     key={key}
@@ -257,6 +262,8 @@ export default function CoachAvailability() {
                       inMonth ? "" : "opacity-40",
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground"
+                        : onlyPeer
+                        ? "border-accent/40 bg-accent/10 hover:bg-accent/15"
                         : count > 0
                         ? "border-primary/40 bg-primary-soft hover:bg-primary-soft/80"
                         : "border-border hover:bg-muted"
@@ -264,14 +271,26 @@ export default function CoachAvailability() {
                   >
                     <span>{format(d, "d")}</span>
                     {count > 0 && (
-                      <span
-                        className={cn(
-                          "text-[10px] font-semibold",
-                          isSelected ? "text-primary-foreground/80" : "text-primary"
+                      <>
+                        <span
+                          className={cn(
+                            "text-[10px] font-semibold",
+                            isSelected
+                              ? "text-primary-foreground/80"
+                              : onlyPeer
+                              ? "text-accent"
+                              : "text-primary"
+                          )}
+                        >
+                          {count} slot{count > 1 ? "s" : ""}
+                        </span>
+                        {mixed && !isSelected && (
+                          <div className="mt-0.5 flex gap-0.5">
+                            <span className="h-1 w-1.5 rounded-full bg-primary" />
+                            <span className="h-1 w-1.5 rounded-full bg-accent" />
+                          </div>
                         )}
-                      >
-                        {count} slot{count > 1 ? "s" : ""}
-                      </span>
+                      </>
                     )}
                   </button>
                 );
