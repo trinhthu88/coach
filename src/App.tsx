@@ -29,6 +29,16 @@ import CoachPeerCoaching from "./pages/CoachPeerCoaching";
 import CoachPracticeJourney from "./pages/CoachPracticeJourney";
 import CoachMyJourney from "./pages/CoachMyJourney";
 import AdminSessionLimits from "./pages/AdminSessionLimits";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminCoachees from "./pages/admin/AdminCoachees";
+import AdminTrainees from "./pages/admin/AdminTrainees";
+import AdminAlerts from "./pages/admin/AdminAlerts";
+import AdminActivity from "./pages/admin/AdminActivity";
+import AdminProgrammes from "./pages/admin/AdminProgrammes";
+import AdminCohorts from "./pages/admin/AdminCohorts";
+import AdminAssignments from "./pages/admin/AdminAssignments";
+import AdminCoachAccess from "./pages/admin/AdminCoachAccess";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
