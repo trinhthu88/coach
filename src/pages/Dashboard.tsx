@@ -141,11 +141,23 @@ export default function Dashboard() {
           <p className="text-lg text-white/75">{greetingByRole[role || "coachee"]}</p>
           <div className="flex flex-wrap gap-3 pt-2">
             {role === "coachee" && (
-              <Button asChild size="lg" variant="secondary" className="font-semibold">
-                <Link to="/coaches">
-                  <Search className="mr-1 h-4 w-4" /> Browse coaches
-                </Link>
-              </Button>
+              <>
+                <Button asChild size="lg" variant="secondary" className="font-semibold">
+                  <Link to="/coaches">
+                    <Calendar className="mr-1 h-4 w-4" /> Book a session
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="border-white/20 bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Link to="/coaches">
+                    <Search className="mr-1 h-4 w-4" /> Browse coaches
+                  </Link>
+                </Button>
+              </>
             )}
             <Button
               asChild
