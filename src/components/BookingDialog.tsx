@@ -7,16 +7,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Clock, AlertCircle } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, ChevronRightCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { addDays, format, startOfDay } from "date-fns";
 
 interface BookingDialogProps {
   coachId: string;
@@ -51,12 +50,16 @@ function fmtTime(t: string) {
   const display = hh % 12 || 12;
   return `${display}:${m} ${ampm}`;
 }
+function dateKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 export default function BookingDialog({ coachId, coachName, open, onOpenChange, onBooked }: BookingDialogProps) {
   const { user } = useAuth();
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(false);
-  const [duration, setDuration] = useState<number>(60);
+  const [duration, setDuration] = useState<number>(45);
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfDay(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
@@ -66,6 +69,10 @@ export default function BookingDialog({ coachId, coachName, open, onOpenChange, 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
+    setSelectedDate(undefined);
+    setSelectedStart(null);
+    setTopic("");
+    setWeekStart(startOfDay(new Date()));
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
       const { data } = await supabase
@@ -85,21 +92,20 @@ export default function BookingDialog({ coachId, coachName, open, onOpenChange, 
     })();
   }, [open, coachId, user]);
 
-  const datesWithSlots = useMemo(() => {
-    const set = new Set(slots.map((s) => s.slot_date));
-    return set;
-  }, [slots]);
+  const datesWithSlots = useMemo(() => new Set(slots.map((s) => s.slot_date)), [slots]);
 
-  // Generate possible start times for selected date that fit the chosen duration inside an availability window
+  const week = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
+  }, [weekStart]);
+
   const startOptions = useMemo(() => {
     if (!selectedDate) return [] as { start: string; slotId: string }[];
-    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
-    const daySlots = slots.filter((s) => s.slot_date === dateStr);
+    const ds = dateKey(selectedDate);
+    const daySlots = slots.filter((s) => s.slot_date === ds);
     const opts: { start: string; slotId: string }[] = [];
     for (const s of daySlots) {
       const startMin = timeToMinutes(s.start_time);
       const endMin = timeToMinutes(s.end_time);
-      // 15-minute granularity
       for (let m = startMin; m + duration <= endMin; m += 15) {
         opts.push({ start: minutesToTime(m), slotId: s.id });
       }
@@ -112,14 +118,15 @@ export default function BookingDialog({ coachId, coachName, open, onOpenChange, 
   }, [selectedDate, duration]);
 
   const overLimit = usage ? usage.used_this_month >= usage.monthly_limit : false;
+  const canSubmit = !!selectedDate && !!selectedStart && topic.trim().length > 0 && !overLimit;
 
   const handleBook = async () => {
     if (!user || !selectedDate || !selectedStart || !topic.trim()) return;
     const opt = startOptions.find((o) => o.start === selectedStart);
     if (!opt) return;
     setSubmitting(true);
-    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
-    const startISO = new Date(`${dateStr}T${selectedStart}:00`).toISOString();
+    const ds = dateKey(selectedDate);
+    const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
 
     const { error } = await supabase.from("sessions").insert({
       coach_id: coachId,
@@ -137,28 +144,25 @@ export default function BookingDialog({ coachId, coachName, open, onOpenChange, 
     }
     toast.success("Session requested. Awaiting coach confirmation.");
     onOpenChange(false);
-    setTopic("");
-    setSelectedDate(undefined);
-    setSelectedStart(null);
     onBooked?.();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Book a session with {coachName}</DialogTitle>
+          <DialogTitle className="text-2xl">Book Your Session</DialogTitle>
           <DialogDescription>
-            Pick a duration, then choose a date and time from {coachName}'s availability.
+            Select your preferred duration and time with {coachName} to get started.
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {usage && (
               <div
                 className={cn(
@@ -175,74 +179,118 @@ export default function BookingDialog({ coachId, coachName, open, onOpenChange, 
               </div>
             )}
 
-            <div>
-              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Duration
-              </Label>
-              <div className="mt-2 flex gap-2">
+            {/* Step 1: Duration */}
+            <Step number={1} label="Select duration">
+              <div className="mt-3 grid grid-cols-3 gap-3">
                 {DURATIONS.map((d) => (
-                  <Button
+                  <button
                     key={d}
                     type="button"
-                    variant={duration === d ? "default" : "outline"}
                     onClick={() => setDuration(d)}
-                    className="flex-1"
+                    className={cn(
+                      "rounded-full border px-4 py-3 text-sm font-semibold transition-colors",
+                      duration === d
+                        ? "border-primary bg-primary text-primary-foreground shadow-glow"
+                        : "border-border bg-card hover:border-primary/40"
+                    )}
                   >
-                    <Clock className="mr-1 h-4 w-4" /> {d} min
-                  </Button>
+                    {d} Minutes
+                  </button>
                 ))}
               </div>
-            </div>
+            </Step>
 
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Date
-                </Label>
-                <div className="mt-2 rounded-lg border">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    disabled={(date) => {
-                      const ds = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                      return !datesWithSlots.has(ds) || date < new Date(new Date().toDateString());
-                    }}
-                  />
+            {/* Step 2: Date strip */}
+            <Step number={2} label="Select date">
+              <div className="mt-3 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setWeekStart(addDays(weekStart, -7))}
+                  disabled={weekStart <= startOfDay(new Date())}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="grid flex-1 grid-cols-7 gap-2">
+                  {week.map((d) => {
+                    const ds = dateKey(d);
+                    const has = datesWithSlots.has(ds);
+                    const isPast = d < startOfDay(new Date());
+                    const disabled = !has || isPast;
+                    const isSelected = selectedDate && dateKey(selectedDate) === ds;
+                    return (
+                      <button
+                        key={ds}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => setSelectedDate(d)}
+                        className={cn(
+                          "rounded-2xl border py-3 text-center transition-colors",
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground shadow-glow"
+                            : disabled
+                            ? "border-border bg-muted/30 text-muted-foreground/50"
+                            : "border-border bg-card hover:border-primary/40"
+                        )}
+                      >
+                        <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">
+                          {format(d, "EEE")}
+                        </div>
+                        <div className="text-xl font-semibold">{format(d, "d")}</div>
+                      </button>
+                    );
+                  })}
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setWeekStart(addDays(weekStart, 7))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Time
-                  </Label>
-                  {!selectedDate ? (
-                    <p className="mt-2 text-sm text-muted-foreground">Pick a date first.</p>
-                  ) : startOptions.length === 0 ? (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      No {duration}-minute window available on this day.
-                    </p>
-                  ) : (
-                    <div className="mt-2 grid max-h-56 grid-cols-2 gap-2 overflow-y-auto pr-1">
-                      {startOptions.map((o) => (
-                        <Button
-                          key={`${o.slotId}-${o.start}`}
-                          type="button"
-                          size="sm"
-                          variant={selectedStart === o.start ? "default" : "outline"}
-                          onClick={() => setSelectedStart(o.start)}
-                        >
-                          {fmtTime(o.start)}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            </Step>
 
+            {/* Step 3: Time */}
+            <Step
+              number={3}
+              label={`Select time (${Intl.DateTimeFormat().resolvedOptions().timeZone})`}
+            >
+              {!selectedDate ? (
+                <p className="mt-3 text-sm text-muted-foreground">Pick a date above to see times.</p>
+              ) : startOptions.length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  No {duration}-minute window available on this day.
+                </p>
+              ) : (
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {startOptions.map((o) => (
+                    <button
+                      key={`${o.slotId}-${o.start}`}
+                      type="button"
+                      onClick={() => setSelectedStart(o.start)}
+                      className={cn(
+                        "rounded-xl border py-2.5 text-sm font-medium transition-colors",
+                        selectedStart === o.start
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card hover:border-primary/40"
+                      )}
+                    >
+                      {fmtTime(o.start)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Step>
+
+            {/* Topic */}
             <div>
-              <Label htmlFor="topic" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              <Label
+                htmlFor="topic"
+                className="text-xs font-bold uppercase tracking-widest text-muted-foreground"
+              >
                 Coaching topic
               </Label>
               <Textarea
@@ -254,29 +302,63 @@ export default function BookingDialog({ coachId, coachName, open, onOpenChange, 
                 rows={3}
               />
             </div>
+
+            {/* Footer summary */}
+            <div className="flex flex-col items-start justify-between gap-3 border-t pt-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Selected schedule
+                </p>
+                <p className="mt-1 flex items-center gap-2 font-semibold">
+                  {selectedDate && selectedStart
+                    ? `${format(selectedDate, "EEE, MMM d")} · ${fmtTime(selectedStart)}`
+                    : "Select a time slot"}
+                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-success">
+                    {duration} min
+                  </span>
+                </p>
+              </div>
+              <Button
+                onClick={handleBook}
+                disabled={!canSubmit || submitting}
+                size="lg"
+                className="shadow-glow"
+              >
+                {submitting ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <ChevronRightCircle className="mr-1 h-4 w-4" />
+                )}
+                Confirm Booking
+              </Button>
+            </div>
           </div>
         )}
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleBook}
-            disabled={
-              submitting ||
-              loading ||
-              overLimit ||
-              !selectedDate ||
-              !selectedStart ||
-              !topic.trim()
-            }
-          >
-            {submitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            Request session
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Step({
+  number,
+  label,
+  children,
+}: {
+  number: number;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
+          {number}
+        </span>
+        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </span>
+      </div>
+      {children}
+    </div>
   );
 }
