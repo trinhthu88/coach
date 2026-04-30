@@ -449,6 +449,7 @@ function GoalAccordion({
   pct,
   accent,
   onToggle,
+  onToggleAction,
   onChanged,
   userId,
   defaultOpen,
@@ -460,6 +461,7 @@ function GoalAccordion({
   pct: number;
   accent: typeof ACCENTS[number];
   onToggle: (m: Milestone) => void;
+  onToggleAction: (a: FlatAction) => void;
   onChanged: () => void;
   userId: string;
   defaultOpen?: boolean;
