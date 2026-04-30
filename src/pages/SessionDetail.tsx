@@ -146,6 +146,7 @@ export default function SessionDetail() {
   const [meetingUrl, setMeetingUrl] = useState("");
   const [items, setItems] = useState<ActionItem[]>([]);
   const [newItem, setNewItem] = useState("");
+  const [milestones, setMilestones] = useState<MilestoneLite[]>([]);
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
