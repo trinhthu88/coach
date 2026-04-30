@@ -83,6 +83,41 @@ export default function CoachAvailability() {
     load();
   }, [load]);
 
+  // Load peer opt-in setting
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("coach_profiles")
+        .select("peer_coaching_opt_in")
+        .eq("id", user.id)
+        .maybeSingle();
+      setPeerOptIn(!!data?.peer_coaching_opt_in);
+    })();
+  }, [user]);
+
+  const handleTogglePeer = async (checked: boolean) => {
+    if (!user) return;
+    setSavingOptIn(true);
+    setPeerOptIn(checked);
+    const { error } = await supabase
+      .from("coach_profiles")
+      .update({ peer_coaching_opt_in: checked })
+      .eq("id", user.id);
+    setSavingOptIn(false);
+    if (error) {
+      setPeerOptIn(!checked);
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: checked ? "Peer coaching enabled" : "Peer coaching disabled",
+        description: checked
+          ? "Other coaches can now book your peer slots."
+          : "Your peer slots are hidden from peers.",
+      });
+    }
+  };
+
   const days: Date[] = [];
   const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
   const gridEnd = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
@@ -113,6 +148,7 @@ export default function CoachAvailability() {
       slot_date: format(selectedDate, "yyyy-MM-dd"),
       start_time: start + ":00",
       end_time: end + ":00",
+      slot_type: slotType,
     });
     if (error) {
       toast({ title: "Add failed", description: error.message, variant: "destructive" });
