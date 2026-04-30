@@ -12,9 +12,11 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 type SessionStatus =
   | "pending_coach_approval"
@@ -32,6 +34,8 @@ interface SessionRow {
   duration_minutes: number;
   status: SessionStatus;
   action_items: any;
+  coachee_rating: number | null;
+  coachee_rating_comment: string | null;
   coach: { full_name: string; email: string; avatar_url: string | null } | null;
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
 }
@@ -158,7 +162,7 @@ export default function Sessions() {
               />
             ) : (
               upcoming.map((s) => (
-                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} />
+                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} onChanged={load} />
               ))
             )}
           </TabsContent>
@@ -167,7 +171,7 @@ export default function Sessions() {
               <EmptyState title="Nothing yet" subtitle="Past sessions will show up here." />
             ) : (
               past.map((s) => (
-                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} />
+                <SessionCard key={s.id} session={s} role={role!} onOpen={() => navigate(`/sessions/${s.id}`)} onChanged={load} />
               ))
             )}
           </TabsContent>
@@ -190,15 +194,18 @@ function SessionCard({
   session,
   role,
   onOpen,
+  onChanged,
 }: {
   session: SessionRow;
   role: "coach" | "coachee" | "admin";
   onOpen: () => void;
+  onChanged: () => void;
 }) {
   const meta = STATUS_META[session.status];
   const Icon = meta.icon;
   const counterpart = role === "coach" ? session.coachee : session.coach;
   const start = new Date(session.start_time);
+  const showRating = role === "coachee" && session.status === "completed";
 
   return (
     <Card
@@ -213,7 +220,10 @@ function SessionCard({
           <div className="min-w-0">
             <p className="truncate font-semibold">{session.topic}</p>
             <p className="truncate text-sm text-muted-foreground">
-              with {counterpart?.full_name || counterpart?.email || "—"}
+              {role === "coach" ? "with " : "Coach: "}
+              <span className="font-medium text-foreground">
+                {counterpart?.full_name || counterpart?.email || "—"}
+              </span>
             </p>
             <p className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
@@ -236,7 +246,70 @@ function SessionCard({
         </span>
       </div>
       <ActionItemsList items={session.action_items} date={session.start_time} />
+      {showRating && (
+        <div className="mt-4 border-t pt-3" onClick={(e) => e.stopPropagation()}>
+          <RateSession session={session} onChanged={onChanged} />
+        </div>
+      )}
     </Card>
+  );
+}
+
+function RateSession({ session, onChanged }: { session: SessionRow; onChanged: () => void }) {
+  const [rating, setRating] = useState<number>(session.coachee_rating || 0);
+  const [hover, setHover] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const isRated = !!session.coachee_rating;
+
+  const submit = async (value: number) => {
+    setSaving(true);
+    setRating(value);
+    const { error } = await supabase
+      .from("sessions")
+      .update({ coachee_rating: value, coachee_rated_at: new Date().toISOString() })
+      .eq("id", session.id);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(isRated ? "Rating updated" : "Thanks for your rating!");
+    onChanged();
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        {isRated ? "Your rating" : "Rate this session"}
+      </span>
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((n) => {
+          const active = (hover || rating) >= n;
+          return (
+            <button
+              key={n}
+              type="button"
+              disabled={saving}
+              onMouseEnter={() => setHover(n)}
+              onMouseLeave={() => setHover(0)}
+              onClick={() => submit(n)}
+              className="p-0.5 transition-transform hover:scale-110 disabled:opacity-50"
+              aria-label={`Rate ${n} star${n > 1 ? "s" : ""}`}
+            >
+              <Star
+                className={cn(
+                  "h-5 w-5",
+                  active ? "fill-warning text-warning" : "text-muted-foreground"
+                )}
+              />
+            </button>
+          );
+        })}
+      </div>
+      {isRated && (
+        <span className="text-xs text-muted-foreground">({rating}/5)</span>
+      )}
+    </div>
   );
 }
 
@@ -255,8 +328,11 @@ function ActionItemsList({ items, date }: { items: any; date: string }) {
       <ul className="space-y-1.5">
         {list.slice(0, 4).map((it: any, idx: number) => (
           <li key={idx} className="flex items-start justify-between gap-3 text-xs">
-            <span className={cn("flex-1", it.done && "text-muted-foreground line-through")}>
-              • {it.text}
+            <span className={cn("flex flex-1 items-start gap-1.5", it.done && "text-muted-foreground")}>
+              <span className={cn("mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[10px]", it.done && "text-success font-bold")}>
+                {it.done ? "✓" : "•"}
+              </span>
+              <span>{it.text}</span>
             </span>
             <span className="shrink-0 text-muted-foreground">
               {format(new Date(date), "MMM d, yyyy")}

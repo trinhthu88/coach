@@ -62,6 +62,7 @@ export default function Dashboard() {
   const [coachesById, setCoachesById] = useState<Record<string, { full_name: string; avatar_url: string | null }>>({});
   const [favCoaches, setFavCoaches] = useState<CoachLite[]>([]);
   const [recCoaches, setRecCoaches] = useState<CoachLite[]>([]);
+  const [sessionLimit, setSessionLimit] = useState<number>(0);
   const { favorites } = useFavorites();
 
   useEffect(() => {
@@ -84,6 +85,12 @@ export default function Dashboard() {
         const map: Record<string, any> = {};
         (profs || []).forEach((p: any) => (map[p.id] = p));
         setCoachesById(map);
+      }
+
+      // Session limit (monthly limit acts as the cap shown in the recap)
+      const { data: usage } = await supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id });
+      if (usage && usage.length > 0) {
+        setSessionLimit(usage[0].monthly_limit || 0);
       }
 
       // Recommended (top-rated active coaches, max 3)
@@ -178,7 +185,12 @@ export default function Dashboard() {
         <>
           {/* Stats */}
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total sessions" value={String(stats.total)} hint="All time" icon={Calendar} />
+            <StatCard
+              label="Session recap"
+              value={sessionLimit > 0 ? `${stats.completed} / ${sessionLimit}` : String(stats.completed)}
+              hint={sessionLimit > 0 ? `Used of ${sessionLimit} session limit` : "Completed sessions"}
+              icon={Calendar}
+            />
             <StatCard label="Completed" value={String(stats.completed)} hint="Finished" icon={CheckCircle2} />
             <StatCard label="Upcoming" value={String(stats.upcoming.length)} hint="Booked" icon={CalendarCheck} />
             <StatCard

@@ -482,6 +482,9 @@ export type Database = {
           coach_private_notes: string | null
           coachee_id: string
           coachee_notes: string | null
+          coachee_rated_at: string | null
+          coachee_rating: number | null
+          coachee_rating_comment: string | null
           confirmed_at: string | null
           created_at: string
           duration_minutes: number
@@ -503,6 +506,9 @@ export type Database = {
           coach_private_notes?: string | null
           coachee_id: string
           coachee_notes?: string | null
+          coachee_rated_at?: string | null
+          coachee_rating?: number | null
+          coachee_rating_comment?: string | null
           confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
@@ -524,6 +530,9 @@ export type Database = {
           coach_private_notes?: string | null
           coachee_id?: string
           coachee_notes?: string | null
+          coachee_rated_at?: string | null
+          coachee_rating?: number | null
+          coachee_rating_comment?: string | null
           confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number

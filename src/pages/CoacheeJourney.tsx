@@ -25,6 +25,7 @@ import {
   Trash2,
   Calendar,
   CheckCircle2,
+  Check,
   Sparkles,
   BookOpen,
   ListTodo,
@@ -188,6 +189,29 @@ export default function CoacheeJourney() {
     refresh();
   };
 
+  const toggleAction = async (a: FlatAction) => {
+    const sess = sessions.find((s) => s.id === a.sessionId);
+    if (!sess) return;
+    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
+    const cur = items[a.idx];
+    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
+    norm.done = !norm.done;
+    items[a.idx] = norm;
+    // Optimistic
+    setSessions((prev) =>
+      prev.map((s) => (s.id === a.sessionId ? { ...s, action_items: items } : s))
+    );
+    const { error } = await supabase
+      .from("sessions")
+      .update({ action_items: items })
+      .eq("id", a.sessionId);
+    if (error) {
+      toast.error(error.message);
+      refresh();
+    }
+  };
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -247,6 +271,7 @@ export default function CoacheeJourney() {
                   pct={goalProgress(g.id)}
                   accent={ACCENTS[i % ACCENTS.length]}
                   onToggle={toggleMilestone}
+                  onToggleAction={toggleAction}
                   onChanged={refresh}
                   userId={user!.id}
                   defaultOpen={i === 0}
@@ -256,7 +281,7 @@ export default function CoacheeJourney() {
           )}
 
           <SectionHeader title="Action items" />
-          <ActionGroups grouped={grouped} compact />
+          <ActionGroups grouped={grouped} compact onToggleAction={toggleAction} />
         </TabsContent>
 
         {/* GOALS FULL */}
@@ -295,6 +320,7 @@ export default function CoacheeJourney() {
                     pct={goalProgress(g.id)}
                     accent={ACCENTS[i % ACCENTS.length]}
                     onToggle={toggleMilestone}
+                    onToggleAction={toggleAction}
                     onChanged={refresh}
                     userId={user!.id}
                     showLinkedActions
@@ -311,13 +337,13 @@ export default function CoacheeJourney() {
           <p className="mb-3 text-xs text-muted-foreground">
             {aiTotal} total · {aiDone} done · {aiOverdue} overdue
           </p>
-          <ActionGroups grouped={grouped} milestones={milestones} goals={goals} />
+          <ActionGroups grouped={grouped} milestones={milestones} goals={goals} onToggleAction={toggleAction} />
         </TabsContent>
 
         {/* SESSIONS */}
         <TabsContent value="sessions" className="mt-4 space-y-4">
           <SessionsBlock title="Upcoming" items={upcoming} />
-          <SessionsBlock title="Completed" items={past} milestones={milestones} goals={goals} expandable />
+          <SessionsBlock title="Completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} />
         </TabsContent>
 
         {/* REFLECTIONS */}
@@ -423,6 +449,7 @@ function GoalAccordion({
   pct,
   accent,
   onToggle,
+  onToggleAction,
   onChanged,
   userId,
   defaultOpen,
@@ -434,6 +461,7 @@ function GoalAccordion({
   pct: number;
   accent: typeof ACCENTS[number];
   onToggle: (m: Milestone) => void;
+  onToggleAction: (a: FlatAction) => void;
   onChanged: () => void;
   userId: string;
   defaultOpen?: boolean;
@@ -518,7 +546,8 @@ function GoalAccordion({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className={cn("text-sm font-medium", m.is_done && "text-muted-foreground line-through")}>
+                      <p className={cn("flex items-center gap-1.5 text-sm font-medium", m.is_done && "text-muted-foreground")}>
+                        {m.is_done && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
                         {m.title}
                       </p>
                       <button onClick={() => deleteMs(m.id)} className="text-muted-foreground hover:text-destructive">
@@ -539,7 +568,7 @@ function GoalAccordion({
                           Linked actions
                         </p>
                         {linked.map((a, i) => (
-                          <ActionRow key={i} a={a} hideMilestone />
+                          <ActionRow key={i} a={a} hideMilestone onToggle={onToggleAction} />
                         ))}
                       </div>
                     )}
@@ -578,24 +607,33 @@ function ActionRow({
   a,
   milestoneLabel,
   hideMilestone,
+  onToggle,
 }: {
   a: FlatAction;
   milestoneLabel?: string;
   hideMilestone?: boolean;
+  onToggle?: (a: FlatAction) => void;
 }) {
   const overdue = !a.done && a.due_date && isBefore(new Date(a.due_date), new Date());
   return (
     <div className="flex items-start gap-2 py-1">
-      <div
+      <button
+        type="button"
+        onClick={() => onToggle?.(a)}
+        disabled={!onToggle}
+        aria-label={a.done ? "Mark as not done" : "Mark as done"}
         className={cn(
-          "mt-0.5 h-3.5 w-3.5 shrink-0 rounded-sm border",
-          a.done && "border-success bg-success",
-          !a.done && overdue && "border-destructive bg-destructive/10",
-          !a.done && !overdue && "border-border bg-muted"
+          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+          a.done && "border-success bg-success text-success-foreground",
+          !a.done && overdue && "border-destructive bg-destructive/10 hover:bg-destructive/20",
+          !a.done && !overdue && "border-border bg-muted hover:bg-muted/70",
+          onToggle ? "cursor-pointer" : "cursor-default"
         )}
-      />
+      >
+        {a.done && <Check className="h-3 w-3" strokeWidth={3} />}
+      </button>
       <div className="min-w-0 flex-1">
-        <p className={cn("text-xs leading-snug", a.done && "text-muted-foreground line-through")}>
+        <p className={cn("text-xs leading-snug", a.done && "text-muted-foreground")}>
           {a.text}
         </p>
         <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
@@ -621,11 +659,13 @@ function ActionGroups({
   milestones,
   goals,
   compact,
+  onToggleAction,
 }: {
   grouped: { overdue: FlatAction[]; thisWeek: FlatAction[]; upcoming: FlatAction[]; completed: FlatAction[] };
   milestones?: Milestone[];
   goals?: Goal[];
   compact?: boolean;
+  onToggleAction?: (a: FlatAction) => void;
 }) {
   const labelFor = (a: FlatAction) => {
     if (!milestones || !goals || !a.milestone_id) return undefined;
@@ -659,7 +699,7 @@ function ActionGroups({
         </p>
         <div className="divide-y">
           {items.map((a, i) => (
-            <ActionRow key={i} a={a} milestoneLabel={labelFor(a)} />
+            <ActionRow key={i} a={a} milestoneLabel={labelFor(a)} onToggle={onToggleAction} />
           ))}
         </div>
       </div>
@@ -682,12 +722,14 @@ function SessionsBlock({
   expandable,
   milestones,
   goals,
+  onToggleAction,
 }: {
   title: string;
   items: any[];
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
+  onToggleAction?: (a: FlatAction) => void;
 }) {
   return (
     <Card className="p-4">
@@ -699,7 +741,7 @@ function SessionsBlock({
       ) : (
         <div className="divide-y">
           {items.map((s) => (
-            <SessionRow key={s.id} s={s} expandable={expandable} milestones={milestones} goals={goals} />
+            <SessionRow key={s.id} s={s} expandable={expandable} milestones={milestones} goals={goals} onToggleAction={onToggleAction} />
           ))}
         </div>
       )}
@@ -712,11 +754,13 @@ function SessionRow({
   expandable,
   milestones,
   goals,
+  onToggleAction,
 }: {
   s: any;
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
+  onToggleAction?: (a: FlatAction) => void;
 }) {
   const [open, setOpen] = useState(false);
   const d = new Date(s.start_time);
@@ -794,6 +838,7 @@ function SessionRow({
                     idx: i,
                   } as FlatAction}
                   milestoneLabel={labelFor(it.milestone_id)}
+                  onToggle={onToggleAction}
                 />
               ))}
             </>
