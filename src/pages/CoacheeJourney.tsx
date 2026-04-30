@@ -302,7 +302,51 @@ export default function CoacheeJourney() {
         />
       </div>
 
-      <Tabs defaultValue="home">
+      {/* Coaches in this programme */}
+      {coachSummaries.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="border-b bg-muted/30 px-4 py-2.5">
+            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Users className="h-3.5 w-3.5" /> Coaches in this programme
+            </p>
+          </div>
+          <ul className="divide-y">
+            {coachSummaries.map((c, i) => {
+              const accent = ACCENTS[i % ACCENTS.length];
+              const lead = i === 0;
+              const dateRange =
+                c.firstDate && c.lastDate
+                  ? `${format(c.firstDate, "MMM d")} → ${format(c.lastDate, "MMM d")}`
+                  : "—";
+              return (
+                <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", accent.bg, accent.text)}>
+                    {initials(c.name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{c.name}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {c.completed}/{c.total} sessions completed
+                      {c.nextDate ? ` · Next ${format(c.nextDate, "MMM d, p")}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
+                      lead ? "bg-primary/15 text-primary" : "bg-success/15 text-success"
+                    )}
+                  >
+                    {lead ? "Lead coach" : "Specialist"}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+
+
         <TabsList>
           <TabsTrigger value="home">Overview</TabsTrigger>
           <TabsTrigger value="goals">Goals & milestones</TabsTrigger>
