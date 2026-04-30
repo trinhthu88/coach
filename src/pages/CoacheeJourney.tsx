@@ -189,6 +189,29 @@ export default function CoacheeJourney() {
     refresh();
   };
 
+  const toggleAction = async (a: FlatAction) => {
+    const sess = sessions.find((s) => s.id === a.sessionId);
+    if (!sess) return;
+    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
+    const cur = items[a.idx];
+    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
+    norm.done = !norm.done;
+    items[a.idx] = norm;
+    // Optimistic
+    setSessions((prev) =>
+      prev.map((s) => (s.id === a.sessionId ? { ...s, action_items: items } : s))
+    );
+    const { error } = await supabase
+      .from("sessions")
+      .update({ action_items: items })
+      .eq("id", a.sessionId);
+    if (error) {
+      toast.error(error.message);
+      refresh();
+    }
+  };
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
