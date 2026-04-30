@@ -33,13 +33,26 @@ function generatePassword(): string {
   return chars.join("");
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    const json = atob(padded);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANON_KEY = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!;
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -52,15 +65,17 @@ Deno.serve(async (req) => {
     const token = authHeader.replace(/^Bearer\s+/i, "");
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Verify caller by asking the admin client to resolve the user from the JWT.
-    const { data: userData, error: userErr } = await admin.auth.getUser(token);
-    if (userErr || !userData?.user) {
+    // This function is configured with verify_jwt = true, so a request that reaches
+    // this code already has a valid session. Decode the verified token to get the caller id.
+    const claims = decodeJwtPayload(token);
+    const callerId = typeof claims?.sub === "string" ? claims.sub : null;
+    if (!callerId) {
       return new Response(JSON.stringify({ error: "Invalid session" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const callerId = userData.user.id;
+
     const { data: roleRows } = await admin
       .from("user_roles")
       .select("role")
@@ -103,24 +118,59 @@ Deno.serve(async (req) => {
     const role = reqRow.role === "coach" ? "coach" : "coachee";
     const tempPassword = generatePassword();
 
-    // Create the auth user (auto-confirm so they can sign in immediately)
-    const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email: reqRow.email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: {
-        full_name: reqRow.full_name,
-        role,
-      },
-    });
-    if (createErr || !created.user) {
-      return new Response(
-        JSON.stringify({ error: createErr?.message || "Failed to create user" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    let userId: string | null = null;
+
+    // Reuse an existing auth account if a previous attempt already created it.
+    const { data: existingProfile } = await admin
+      .from("profiles")
+      .select("id")
+      .ilike("email", reqRow.email)
+      .maybeSingle();
+
+    if (existingProfile?.id) {
+      userId = existingProfile.id;
+      const { error: updateUserErr } = await admin.auth.admin.updateUserById(userId, {
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: reqRow.full_name,
+          role,
+        },
+      });
+
+      if (updateUserErr) {
+        return new Response(
+          JSON.stringify({ error: updateUserErr.message || "Failed to update existing user" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email: reqRow.email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: reqRow.full_name,
+          role,
+        },
+      });
+
+      if (createErr || !created.user) {
+        return new Response(
+          JSON.stringify({ error: createErr?.message || "Failed to create user" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      userId = created.user.id;
     }
 
-    const userId = created.user.id;
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Could not resolve user account" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // The handle_new_user trigger created profile + role + role-specific profile
     // already with status = pending_approval. Promote to active and mark must_change_password.
