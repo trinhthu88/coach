@@ -191,18 +191,35 @@ export default function BookSession() {
     const ds = dateKey(selectedDate);
     const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
 
-    const { error } = await supabase.from("sessions").insert({
-      coach_id: coach.id,
-      coachee_id: user.id,
-      topic: topic.trim(),
-      start_time: startISO,
-      duration_minutes: duration,
-      status: "pending_coach_approval",
-      slot_id: opt.slotId,
-    });
+    let error;
+    if (mode === "peer") {
+      ({ error } = await supabase.from("peer_sessions").insert({
+        peer_coach_id: coach.id,
+        peer_coachee_id: user.id,
+        topic: topic.trim(),
+        start_time: startISO,
+        duration_minutes: duration,
+        status: "pending_coach_approval",
+        slot_id: opt.slotId,
+      }));
+    } else {
+      ({ error } = await supabase.from("sessions").insert({
+        coach_id: coach.id,
+        coachee_id: user.id,
+        topic: topic.trim(),
+        start_time: startISO,
+        duration_minutes: duration,
+        status: "pending_coach_approval",
+        slot_id: opt.slotId,
+      }));
+    }
     setSubmitting(false);
     if (error) return toast.error(error.message);
-    toast.success("Session requested. Awaiting coach confirmation.");
+    toast.success(
+      mode === "peer"
+        ? "Peer session requested. Awaiting peer coach confirmation."
+        : "Session requested. Awaiting coach confirmation."
+    );
     navigate("/sessions");
   };
 
