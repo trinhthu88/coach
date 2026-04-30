@@ -347,12 +347,8 @@ export default function SessionDetail() {
     setAttachments((prev) => prev.filter((x) => x.id !== a.id));
   };
 
-  const toggleItem = (idx: number) => {
-    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, done: !it.done } : it)));
-  };
-
-  const removeItem = (idx: number) => {
-    setItems((prev) => prev.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, patch: Partial<ActionItem>) => {
+    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   };
 
   const updateItem = (idx: number, patch: Partial<ActionItem>) => {
