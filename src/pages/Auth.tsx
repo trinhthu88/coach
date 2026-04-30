@@ -73,16 +73,18 @@ export default function Auth() {
         />
         <div className="absolute inset-0 bg-gradient-hero opacity-90" />
         <div className="relative z-10 flex w-full flex-col justify-between p-12 text-primary-foreground">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm font-bold">
-              C+
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 font-display text-xl backdrop-blur-sm">
+              <span className="text-primary-glow">C</span>
             </div>
-            <span className="text-2xl font-semibold tracking-tight">Connect+</span>
+            <span className="font-display text-2xl tracking-tight">
+              Clar<em className="not-italic text-primary-glow">i</em>va
+            </span>
           </div>
 
           <div className="space-y-6 max-w-lg">
-            <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight">
-              Unlock your <span className="block bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">peak potential.</span>
+            <h1 className="font-display text-5xl font-light leading-[1.05] sm:text-6xl">
+              Unlock your <em className="block text-primary-glow">peak potential.</em>
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
               The private marketplace for elite executive coaching. Vetted coaches.
@@ -117,8 +119,8 @@ export default function Auth() {
               <Sparkles className="h-3 w-3" />
               {mode === "signin" ? "Welcome back" : "Get started"}
             </div>
-            <h2 className="text-3xl font-semibold tracking-tight">
-              {mode === "signin" ? "Sign in to Connect+" : "Create your account"}
+            <h2 className="font-display text-4xl font-light tracking-tight text-secondary">
+              {mode === "signin" ? "Sign in to Clariva" : "Create your account"}
             </h2>
             <p className="text-sm text-muted-foreground">
               {mode === "signin"
@@ -219,7 +221,7 @@ export default function Auth() {
           </form>
 
           <div className="mt-8 border-t border-border/60 pt-6 text-center text-sm text-muted-foreground">
-            {mode === "signin" ? "New to Connect+?" : "Already have an account?"}{" "}
+            {mode === "signin" ? "New to Clariva?" : "Already have an account?"}{" "}
             <button
               type="button"
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}

@@ -9,12 +9,12 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary font-bold text-primary-foreground shadow-glow">
-            C+
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary font-display text-lg text-primary-foreground shadow-glow">
+            <span className="text-primary-glow">C</span>
           </div>
-          <span className="text-lg font-semibold tracking-tight">
-            Connect<span className="text-primary">+</span>
+          <span className="font-display text-xl tracking-tight text-secondary">
+            Clar<em className="not-italic text-primary">i</em>va
           </span>
         </div>
         <Button asChild variant={user ? "default" : "outline"}>
@@ -29,9 +29,9 @@ export default function Index() {
           <div className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
             <Sparkles className="h-3 w-3" /> Premium coaching, redefined
           </div>
-          <h1 className="mt-6 text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+          <h1 className="mt-6 font-display text-5xl font-light leading-[1.05] text-secondary sm:text-7xl">
             Where leaders meet their{" "}
-            <span className="text-gradient-primary">peak coach.</span>
+            <em className="text-primary">peak coach.</em>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
             A private, invite-driven platform connecting top executives with vetted
