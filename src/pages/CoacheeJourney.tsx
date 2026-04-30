@@ -176,6 +176,37 @@ export default function CoacheeJourney() {
 
   const nextSession = upcoming[0];
 
+  // Coaches in this programme (derived from sessions)
+  const coachSummaries = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; total: number; completed: number; upcoming: number; firstDate: Date | null; lastDate: Date | null; nextDate: Date | null; }>();
+    for (const s of sessions) {
+      if (!s.coach_id) continue;
+      const cur = map.get(s.coach_id) || {
+        id: s.coach_id,
+        name: coachNames[s.coach_id] || "Coach",
+        total: 0,
+        completed: 0,
+        upcoming: 0,
+        firstDate: null,
+        lastDate: null,
+        nextDate: null,
+      };
+      const d = new Date(s.start_time);
+      cur.total += 1;
+      if (s.status === "completed") cur.completed += 1;
+      if (["confirmed", "pending_coach_approval"].includes(s.status) && d >= now) {
+        cur.upcoming += 1;
+        if (!cur.nextDate || d < cur.nextDate) cur.nextDate = d;
+      }
+      if (!cur.firstDate || d < cur.firstDate) cur.firstDate = d;
+      if (!cur.lastDate || d > cur.lastDate) cur.lastDate = d;
+      cur.name = coachNames[s.coach_id] || cur.name;
+      map.set(s.coach_id, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [sessions, coachNames, now]);
+
+
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
     setSavingRef(true);
