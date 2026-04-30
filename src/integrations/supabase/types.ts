@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          id: string
+          message: string | null
+          related_coach_id: string | null
+          related_coachee_id: string | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: Database["public"]["Enums"]["alert_severity"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          related_coach_id?: string | null
+          related_coachee_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["alert_severity"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          id?: string
+          message?: string | null
+          related_coach_id?: string | null
+          related_coachee_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["alert_severity"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coach_as_coachee_allowlist: {
         Row: {
           coach_user_id: string
@@ -392,6 +437,50 @@ export type Database = {
         }
         Relationships: []
       }
+      cohorts: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          programme_id: string | null
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          programme_id?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          programme_id?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohorts_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       peer_session_competency_feedback: {
         Row: {
           coaching_mindset: number | null
@@ -553,6 +642,99 @@ export type Database = {
           id?: string
           last_profile_update_at?: string
           status?: Database["public"]["Enums"]["user_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      programme_enrollments: {
+        Row: {
+          coachee_id: string
+          cohort_id: string | null
+          created_at: string
+          end_date: string | null
+          id: string
+          notes: string | null
+          programme_id: string
+          progress_pct: number
+          start_date: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          updated_at: string
+        }
+        Insert: {
+          coachee_id: string
+          cohort_id?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          programme_id: string
+          progress_pct?: number
+          start_date?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          updated_at?: string
+        }
+        Update: {
+          coachee_id?: string
+          cohort_id?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          programme_id?: string
+          progress_pct?: number
+          start_date?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programme_enrollments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programme_enrollments_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      programmes: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          duration_months: number
+          id: string
+          is_active: boolean
+          name: string
+          total_sessions: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          total_sessions?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          total_sessions?: number
           updated_at?: string
         }
         Relationships: []
@@ -825,8 +1007,10 @@ export type Database = {
       }
     }
     Enums: {
+      alert_severity: "info" | "warning" | "critical"
       app_role: "admin" | "coach" | "coachee"
       availability_slot_type: "coaching" | "peer"
+      enrollment_status: "active" | "completed" | "paused" | "at_risk"
       session_status:
         | "pending_coach_approval"
         | "confirmed"
@@ -967,8 +1151,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      alert_severity: ["info", "warning", "critical"],
       app_role: ["admin", "coach", "coachee"],
       availability_slot_type: ["coaching", "peer"],
+      enrollment_status: ["active", "completed", "paused", "at_risk"],
       session_status: [
         "pending_coach_approval",
         "confirmed",
