@@ -82,33 +82,27 @@ export default function Sessions() {
   const load = useCallback(async () => {
     if (!user) return;
 
-    // Regular coaching sessions
-    const sessQueries: Promise<any>[] = [];
+    let sess: any[] = [];
+    let peer: any[] = [];
+
     if (role === "coach" || role === "coachee") {
       const col = role === "coach" ? "coach_id" : "coachee_id";
-      sessQueries.push(
-        supabase.from("sessions").select("*").eq(col, user.id).order("start_time", { ascending: false })
-      );
-    } else {
-      sessQueries.push(Promise.resolve({ data: [] }));
+      const { data } = await supabase
+        .from("sessions")
+        .select("*")
+        .eq(col, user.id)
+        .order("start_time", { ascending: false });
+      sess = data || [];
     }
 
-    // Peer sessions (only relevant when user is a coach)
     if (role === "coach") {
-      sessQueries.push(
-        supabase
-          .from("peer_sessions")
-          .select("*")
-          .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
-          .order("start_time", { ascending: false })
-      );
-    } else {
-      sessQueries.push(Promise.resolve({ data: [] }));
+      const { data } = await supabase
+        .from("peer_sessions")
+        .select("*")
+        .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
+        .order("start_time", { ascending: false });
+      peer = data || [];
     }
-
-    const [{ data: sessData }, { data: peerData }] = await Promise.all(sessQueries);
-    const sess = (sessData as any[]) || [];
-    const peer = (peerData as any[]) || [];
 
     const allRows = [
       ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
