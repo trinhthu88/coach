@@ -185,7 +185,12 @@ export default function Dashboard() {
         <>
           {/* Stats */}
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total sessions" value={String(stats.total)} hint="All time" icon={Calendar} />
+            <StatCard
+              label="Session recap"
+              value={sessionLimit > 0 ? `${stats.completed} / ${sessionLimit}` : String(stats.completed)}
+              hint={sessionLimit > 0 ? `Used of ${sessionLimit} session limit` : "Completed sessions"}
+              icon={Calendar}
+            />
             <StatCard label="Completed" value={String(stats.completed)} hint="Finished" icon={CheckCircle2} />
             <StatCard label="Upcoming" value={String(stats.upcoming.length)} hint="Booked" icon={CalendarCheck} />
             <StatCard
