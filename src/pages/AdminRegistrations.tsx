@@ -116,7 +116,7 @@ export default function AdminRegistrations() {
         supabase.from("profiles").select("id, full_name, email, status, created_at"),
         supabase.from("session_limits").select("coachee_id, monthly_limit"),
         supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
-        supabase.from("sessions").select("id, coachee_id, status"),
+        supabase.from("sessions").select("id, coach_id, coachee_id, status"),
         supabase.from("coach_profiles").select("*"),
       ]);
 
@@ -140,6 +140,20 @@ export default function AdminRegistrations() {
       }
       if (s.status === "completed") {
         doneByCoachee.set(s.coachee_id, (doneByCoachee.get(s.coachee_id) || 0) + 1);
+      }
+    });
+
+    // Per-coach completed sessions and unique coachees (confirmed/completed)
+    const coachCompletedById = new Map<string, number>();
+    const coachCoacheesById = new Map<string, Set<string>>();
+    (sess || []).forEach((s: any) => {
+      if (s.status === "completed") {
+        coachCompletedById.set(s.coach_id, (coachCompletedById.get(s.coach_id) || 0) + 1);
+      }
+      if (["confirmed", "completed"].includes(s.status)) {
+        const set = coachCoacheesById.get(s.coach_id) || new Set<string>();
+        set.add(s.coachee_id);
+        coachCoacheesById.set(s.coach_id, set);
       }
     });
 
@@ -186,7 +200,8 @@ export default function AdminRegistrations() {
           status: p.status as Status,
           created_at: p.created_at,
           approval_status: cp?.approval_status || "pending_approval",
-          sessions_completed: cp?.sessions_completed || 0,
+          sessions_completed: coachCompletedById.get(id) || 0,
+          coachees_count: (coachCoacheesById.get(id) || new Set()).size,
           rating_avg: Number(cp?.rating_avg || 0),
           country_based: cp?.country_based || null,
           years_experience: cp?.years_experience || null,
