@@ -189,7 +189,7 @@ export default function CoachAvailability() {
       {/* Peer coaching opt-in */}
       <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent">
             <MessagesSquare className="h-5 w-5" />
           </div>
           <div>
@@ -202,6 +202,20 @@ export default function CoachAvailability() {
         </div>
         <Switch checked={peerOptIn} onCheckedChange={handleTogglePeer} disabled={savingOptIn} />
       </Card>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 rounded-xl border bg-card/40 px-4 py-2.5 text-xs text-muted-foreground">
+        <span className="font-bold uppercase tracking-widest text-[10px]">Legend</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm bg-primary" /> Coaching slot
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm bg-accent" /> Peer slot
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm bg-muted-foreground/30" /> Booked
+        </span>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card className="p-5">
