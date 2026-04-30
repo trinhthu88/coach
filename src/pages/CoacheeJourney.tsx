@@ -838,6 +838,7 @@ function SessionRow({
                     idx: i,
                   } as FlatAction}
                   milestoneLabel={labelFor(it.milestone_id)}
+                  onToggle={onToggleAction}
                 />
               ))}
             </>
