@@ -224,13 +224,7 @@ export default function AppLayout() {
       </aside>
 
       <main className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/60 px-8 backdrop-blur">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              System operational
-            </span>
-          </div>
+        <header className="flex h-16 shrink-0 items-center justify-end border-b border-border bg-card/60 px-8 backdrop-blur">
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm font-semibold leading-tight">{displayName}</p>
