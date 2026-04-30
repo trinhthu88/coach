@@ -197,6 +197,12 @@ export default function Dashboard() {
             <FavoritesPanel coaches={favCoaches} />
           </section>
 
+          {/* Recent sessions log + Action items */}
+          <section className="grid gap-5 lg:grid-cols-2">
+            <RecentSessionsLog sessions={sessions} coachesById={coachesById} />
+            <ActionItemsPanel sessions={sessions} coachesById={coachesById} />
+          </section>
+
           {/* Recommended coaches */}
           <section>
             <div className="mb-4 flex items-end justify-between">
@@ -228,11 +234,7 @@ export default function Dashboard() {
       ) : role === "coach" ? (
         <CoachDashboard userId={user!.id} />
       ) : (
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard label="Active sessions" value="—" hint="Coming online" icon={Calendar} />
-          <StatCard label="Hours coached" value="—" hint="Lifetime" icon={TrendingUp} />
-          <StatCard label="Network" value="—" hint="Connections" icon={Sparkles} />
-        </section>
+        <AdminDashboard />
       )}
     </div>
   );
