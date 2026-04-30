@@ -25,6 +25,7 @@ import {
   Trash2,
   Calendar,
   CheckCircle2,
+  Check,
   Sparkles,
   BookOpen,
   ListTodo,
