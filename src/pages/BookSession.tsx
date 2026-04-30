@@ -311,11 +311,20 @@ export default function BookSession() {
 
         {/* Booking panel */}
         <Card className="space-y-6 p-6">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Book Your Session</h1>
-            <p className="text-sm text-muted-foreground">
-              Select your preferred duration and time to get started.
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {mode === "peer" ? "Book a peer coaching session" : "Book your session"}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {mode === "peer"
+                  ? "You're booking a peer session — to be coached by another coach."
+                  : "Select your preferred duration and time to get started."}
+              </p>
+            </div>
+            {mode === "peer" && (
+              <Badge className="bg-success/15 text-success hover:bg-success/15">Peer</Badge>
+            )}
           </div>
 
           {overLimit && (
