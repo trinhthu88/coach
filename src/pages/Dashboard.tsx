@@ -205,6 +205,8 @@ export default function Dashboard() {
             )}
           </section>
         </>
+      ) : role === "coach" ? (
+        <CoachDashboard userId={user!.id} />
       ) : (
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard label="Active sessions" value="—" hint="Coming online" icon={Calendar} />
@@ -213,6 +215,328 @@ export default function Dashboard() {
         </section>
       )}
     </div>
+  );
+}
+
+// ============= Coach dashboard =============
+
+interface CoachSession {
+  id: string;
+  topic: string;
+  start_time: string;
+  duration_minutes: number;
+  status: string;
+  coach_notes: string | null;
+  meeting_url: string | null;
+  coachee_id: string;
+}
+
+function CoachDashboard({ userId }: { userId: string }) {
+  const [sessions, setSessions] = useState<CoachSession[]>([]);
+  const [profilesById, setProfilesById] = useState<
+    Record<string, { full_name: string; avatar_url: string | null; email: string }>
+  >({});
+  const [loading, setLoading] = useState(true);
+  const [actingId, setActingId] = useState<string | null>(null);
+
+  const reload = async () => {
+    const { data } = await supabase
+      .from("sessions")
+      .select(
+        "id, topic, start_time, duration_minutes, status, coach_notes, meeting_url, coachee_id"
+      )
+      .eq("coach_id", userId)
+      .order("start_time", { ascending: false });
+    const list = (data as CoachSession[]) || [];
+    setSessions(list);
+
+    const ids = Array.from(new Set(list.map((s) => s.coachee_id)));
+    if (ids.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, email")
+        .in("id", ids);
+      const map: Record<string, any> = {};
+      (profs || []).forEach((p: any) => (map[p.id] = p));
+      setProfilesById(map);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  const now = new Date();
+  const upcoming = sessions.filter(
+    (s) =>
+      s.status === "confirmed" && new Date(s.start_time) >= now
+  );
+  const nextSession = upcoming
+    .slice()
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
+  const pendingRequests = sessions.filter((s) => s.status === "pending_coach_approval");
+  const completed = sessions.filter((s) => s.status === "completed");
+  const pendingNotes = completed.filter((s) => !s.coach_notes || !s.coach_notes.trim());
+
+  // Avg rating + total — use coach profile
+  const [coachProfile, setCoachProfile] = useState<{
+    rating_avg: number;
+    sessions_completed: number;
+  } | null>(null);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("coach_profiles")
+        .select("rating_avg, sessions_completed")
+        .eq("id", userId)
+        .maybeSingle();
+      if (data) setCoachProfile(data as any);
+    })();
+  }, [userId]);
+
+  const clientRoster = Array.from(new Set(sessions.map((s) => s.coachee_id))).slice(0, 6);
+
+  const approve = async (s: CoachSession) => {
+    setActingId(s.id);
+    const { error } = await supabase
+      .from("sessions")
+      .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
+      .eq("id", s.id);
+    setActingId(null);
+    if (error) return toast.error(error.message);
+    toast.success("Session confirmed");
+    reload();
+  };
+  const decline = async (s: CoachSession) => {
+    setActingId(s.id);
+    const { error } = await supabase
+      .from("sessions")
+      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+      .eq("id", s.id);
+    setActingId(null);
+    if (error) return toast.error(error.message);
+    toast.success("Request declined");
+    reload();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const nextCoachee = nextSession ? profilesById[nextSession.coachee_id] : null;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Coach Dashboard</h2>
+          <p className="text-sm text-muted-foreground">
+            Elevate your practice. Manage sessions and coachee growth.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link to="/coach/profile">Edit profile</Link>
+          </Button>
+          <Button asChild className="shadow-glow">
+            <Link to="/coach/availability">Set availability</Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Total sessions"
+          value={String(sessions.length)}
+          hint="All time"
+          icon={Calendar}
+        />
+        <StatCard
+          label="Completed"
+          value={String(completed.length)}
+          hint="Finished"
+          icon={CheckCircle2}
+        />
+        <StatCard
+          label="Upcoming"
+          value={String(upcoming.length)}
+          hint="Confirmed"
+          icon={CalendarCheck}
+        />
+        <StatCard
+          label="Avg. rating"
+          value={(coachProfile?.rating_avg ?? 5).toFixed(1)}
+          hint="From coachees"
+          icon={Star}
+        />
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-3">
+        {/* Next session */}
+        <div className="lg:col-span-2">
+          <NextSessionCard
+            session={
+              nextSession
+                ? {
+                    ...nextSession,
+                    meeting_url: nextSession.meeting_url,
+                    coach_id: userId,
+                  } as any
+                : undefined
+            }
+            coach={nextCoachee || null}
+          />
+        </div>
+
+        {/* Pending notes */}
+        <Card className="p-5">
+          <p className="mb-3 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-warning">
+            <Clock className="h-3.5 w-3.5" /> Pending notes
+          </p>
+          {pendingNotes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">All caught up — no notes pending.</p>
+          ) : (
+            <ul className="space-y-2">
+              {pendingNotes.slice(0, 4).map((s) => {
+                const p = profilesById[s.coachee_id];
+                return (
+                  <li key={s.id}>
+                    <Link
+                      to={`/sessions/${s.id}`}
+                      className="block rounded-lg border border-warning/30 bg-warning/5 p-3 transition-colors hover:bg-warning/10"
+                    >
+                      <p className="text-sm font-semibold">{p?.full_name || "Coachee"}</p>
+                      <p className="text-xs text-muted-foreground">{s.topic}</p>
+                      <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-warning">
+                        Write notes <ArrowUpRight className="h-3 w-3" />
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      </section>
+
+      {/* Booking requests */}
+      <section>
+        <Card className="p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" /> Booking requests
+            </p>
+            {pendingRequests.length > 0 && (
+              <Badge className="bg-warning/15 text-warning hover:bg-warning/15">
+                {pendingRequests.length} new
+              </Badge>
+            )}
+          </div>
+          {pendingRequests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pending requests right now.</p>
+          ) : (
+            <ul className="divide-y">
+              {pendingRequests.map((s) => {
+                const p = profilesById[s.coachee_id];
+                const initials = (p?.full_name || "?")
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase();
+                return (
+                  <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-xs font-bold text-primary">
+                        {initials}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{p?.full_name || "Coachee"}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {s.topic} · {s.duration_minutes}m
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {format(new Date(s.start_time), "MMM d, yyyy · p")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => approve(s)}
+                        disabled={actingId === s.id}
+                      >
+                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => decline(s)}
+                        disabled={actingId === s.id}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      </section>
+
+      {/* Client roster */}
+      <section>
+        <Card className="p-5">
+          <p className="mb-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Client roster
+          </p>
+          {clientRoster.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              You don't have any active coachees yet.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {clientRoster.map((id) => {
+                const p = profilesById[id];
+                const sessCount = sessions.filter((s) => s.coachee_id === id).length;
+                const initials = (p?.full_name || "?")
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase();
+                return (
+                  <li key={id} className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-soft text-xs font-bold text-primary">
+                        {initials}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{p?.full_name || "Coachee"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {sessCount} session{sessCount > 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="rounded-full">
+                      Active
+                    </Badge>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      </section>
+    </>
   );
 }
 
