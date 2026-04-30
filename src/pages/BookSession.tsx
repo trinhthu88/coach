@@ -212,11 +212,16 @@ export default function BookSession() {
       const startMin = timeToMinutes(s.start_time);
       const endMin = timeToMinutes(s.end_time);
       for (let m = startMin; m + duration <= endMin; m += 15) {
-        opts.push({ start: minutesToTime(m), slotId: s.id });
+        const startISO = new Date(`${ds}T${minutesToTime(m)}:00`).getTime();
+        const endISO = startISO + duration * 60_000;
+        const conflicts = bookerBusy.some(
+          (b) => startISO < b.end && endISO > b.start
+        );
+        if (!conflicts) opts.push({ start: minutesToTime(m), slotId: s.id });
       }
     }
     return opts;
-  }, [selectedDate, slots, duration]);
+  }, [selectedDate, slots, duration, bookerBusy]);
 
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
 
