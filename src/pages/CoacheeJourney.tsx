@@ -362,8 +362,8 @@ export default function CoacheeJourney() {
 
         {/* SESSIONS */}
         <TabsContent value="sessions" className="mt-4 space-y-4">
-          <SessionsBlock title="Upcoming" items={upcoming} />
-          <SessionsBlock title="Completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} />
+          <SessionsBlock title="Upcoming" items={upcoming} coachNames={coachNames} />
+          <SessionsBlock title="Completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} coachNames={coachNames} />
         </TabsContent>
 
         {/* REFLECTIONS */}
