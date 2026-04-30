@@ -346,9 +346,9 @@ export default function BookSession() {
             <div className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 text-xs">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
-                You've completed <strong>{usage.used_this_month}</strong> of your{" "}
-                <strong>{usage.monthly_limit}</strong> total coaching sessions. You can book
-                until you reach your limit.
+                You've used <strong>{usage.used_this_month}</strong> of your{" "}
+                <strong>{usage.monthly_limit}</strong>{" "}
+                {mode === "peer" ? "peer coaching" : "coaching"} sessions this month.
               </span>
             </div>
           )}
