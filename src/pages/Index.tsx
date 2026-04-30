@@ -11,11 +11,20 @@ export default function Index() {
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
         <img src={clarivaLogo} alt="Clariva" className="h-9 w-auto object-contain" />
-        <Button asChild variant={user ? "default" : "outline"}>
-          <Link to={user ? "/dashboard" : "/auth"}>
-            {isLoading ? "…" : user ? "Open dashboard" : "Sign in"}
-          </Link>
-        </Button>
+        {user ? (
+          <Button asChild>
+            <Link to="/dashboard">{isLoading ? "…" : "Open dashboard"}</Link>
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/auth">Sign in</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/request-access">Request access</Link>
+            </Button>
+          </div>
+        )}
       </header>
 
       <main className="relative mx-auto max-w-7xl px-6 pt-12 pb-32 sm:pt-20">
@@ -33,8 +42,8 @@ export default function Index() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" className="h-12 px-6 shadow-glow">
-              <Link to={user ? "/dashboard" : "/auth"}>
-                Get started <ArrowRight className="ml-1 h-4 w-4" />
+              <Link to={user ? "/dashboard" : "/request-access"}>
+                {user ? "Open dashboard" : "Request access"} <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-12 px-6">

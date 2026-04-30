@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import RequestAccess from "./pages/RequestAccess";
 import Dashboard from "./pages/Dashboard";
 import Coaches from "./pages/Coaches";
 import CoachDetail from "./pages/CoachDetail";
@@ -52,6 +53,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/request-access" element={<RequestAccess />} />
 
             <Route
               path="/pending"

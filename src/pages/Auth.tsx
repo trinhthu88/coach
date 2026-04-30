@@ -216,16 +216,14 @@ export default function Auth() {
             </Button>
           </form>
 
-          <div className="mt-8 border-t border-border/60 pt-6 text-center text-sm text-muted-foreground">
-            {mode === "signin" ? "New to Clariva?" : "Already have an account?"}{" "}
-            <button
-              type="button"
-              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-              className="font-semibold text-primary hover:underline"
-            >
-              {mode === "signin" ? "Create an account" : "Sign in"}
-            </button>
-          </div>
+          {mode === "signin" && (
+            <div className="mt-8 border-t border-border/60 pt-6 text-center text-sm text-muted-foreground">
+              New to Clariva?{" "}
+              <Link to="/request-access" className="font-semibold text-primary hover:underline">
+                Request access
+              </Link>
+            </div>
+          )}
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
             <Link to="/" className="hover:text-foreground">← Back to home</Link>
