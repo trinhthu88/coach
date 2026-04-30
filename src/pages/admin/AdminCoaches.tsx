@@ -20,6 +20,7 @@ import {
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
+import PendingAccessRequests from "@/components/PendingAccessRequests";
 
 type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 const STATUS_LABEL: Record<Status, string> = {
