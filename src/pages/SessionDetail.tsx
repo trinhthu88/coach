@@ -132,6 +132,11 @@ function normalizeItems(raw: any): ActionItem[] {
 
 export default function SessionDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const [searchParams] = useSearchParams();
+  const isPeer = searchParams.get("type") === "peer";
+  const tableName = isPeer ? "peer_sessions" : "sessions";
+  const coachField = isPeer ? "peer_coach_id" : "coach_id";
+  const coacheeField = isPeer ? "peer_coachee_id" : "coachee_id";
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const [session, setSession] = useState<SessionRow | null>(null);
@@ -151,48 +156,88 @@ export default function SessionDetail() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
 
+  // Peer-only: 8 ICF competency feedback
+  const [feedback, setFeedback] = useState<{
+    ethical_practice: number; coaching_mindset: number; maintains_agreements: number;
+    trust_safety: number; maintains_presence: number; listens_actively: number;
+    evokes_awareness: number; facilitates_growth: number; feedback_note: string;
+    existed: boolean;
+  }>({
+    ethical_practice: 70, coaching_mindset: 70, maintains_agreements: 70,
+    trust_safety: 70, maintains_presence: 70, listens_actively: 70,
+    evokes_awareness: 70, facilitates_growth: 70, feedback_note: "", existed: false,
+  });
+
   const load = useCallback(async () => {
     if (!sessionId) return;
-    const { data } = await supabase.from("sessions").select("*").eq("id", sessionId).maybeSingle();
+    const { data } = await supabase.from(tableName as any).select("*").eq("id", sessionId).maybeSingle();
     if (!data) {
       setLoading(false);
       return;
     }
-    setSession(data as SessionRow);
-    setCoachNotes((data as any).coach_notes || "");
-    setCoachPrivate((data as any).coach_private_notes || "");
-    setCoacheeNotes((data as any).coachee_notes || "");
-    setMeetingUrl((data as any).meeting_url || "");
-    setItems(normalizeItems((data as any).action_items));
+    // Normalize peer rows to look like SessionRow
+    const norm: any = isPeer
+      ? { ...data, coach_id: (data as any)[coachField], coachee_id: (data as any)[coacheeField] }
+      : data;
+    setSession(norm as SessionRow);
+    setCoachNotes(norm.coach_notes || "");
+    setCoachPrivate(norm.coach_private_notes || "");
+    setCoacheeNotes(norm.coachee_notes || "");
+    setMeetingUrl(norm.meeting_url || "");
+    setItems(normalizeItems(norm.action_items));
 
     const { data: profs } = await supabase
       .from("profiles")
       .select("id, full_name, email, avatar_url")
-      .in("id", [(data as any).coach_id, (data as any).coachee_id]);
+      .in("id", [norm.coach_id, norm.coachee_id]);
     const byId = new Map((profs || []).map((p) => [p.id, p]));
-    setCoach((byId.get((data as any).coach_id) as ProfileLite) || null);
-    setCoachee((byId.get((data as any).coachee_id) as ProfileLite) || null);
+    setCoach((byId.get(norm.coach_id) as ProfileLite) || null);
+    setCoachee((byId.get(norm.coachee_id) as ProfileLite) || null);
 
-    const { data: atts } = await supabase
-      .from("session_attachments")
-      .select("*")
-      .eq("session_id", sessionId)
-      .order("created_at", { ascending: false });
-    setAttachments((atts as Attachment[]) || []);
+    if (!isPeer) {
+      const { data: atts } = await supabase
+        .from("session_attachments")
+        .select("*")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: false });
+      setAttachments((atts as Attachment[]) || []);
 
-    // Load coachee's goals + milestones so action items can be linked
-    const coacheeId = (data as any).coachee_id;
-    const [{ data: gs }, { data: ms }] = await Promise.all([
-      supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
-      supabase.from("coachee_milestones").select("id, title, goal_id").eq("coachee_id", coacheeId).order("created_at"),
-    ]);
-    const goalById = new Map((gs || []).map((g: any) => [g.id, g.title]));
-    setMilestones(
-      (ms || []).map((m: any) => ({ id: m.id, title: m.title, goal_id: m.goal_id, goal_title: goalById.get(m.goal_id) }))
-    );
+      const coacheeId = norm.coachee_id;
+      const [{ data: gs }, { data: ms }] = await Promise.all([
+        supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
+        supabase.from("coachee_milestones").select("id, title, goal_id").eq("coachee_id", coacheeId).order("created_at"),
+      ]);
+      const goalById = new Map((gs || []).map((g: any) => [g.id, g.title]));
+      setMilestones(
+        (ms || []).map((m: any) => ({ id: m.id, title: m.title, goal_id: m.goal_id, goal_title: goalById.get(m.goal_id) }))
+      );
+    } else {
+      setAttachments([]);
+      setMilestones([]);
+      // Load existing competency feedback for this peer session (if any)
+      const { data: fb } = await supabase
+        .from("peer_session_competency_feedback")
+        .select("*")
+        .eq("peer_session_id", sessionId)
+        .maybeSingle();
+      if (fb) {
+        setFeedback({
+          ethical_practice: fb.ethical_practice ?? 70,
+          coaching_mindset: fb.coaching_mindset ?? 70,
+          maintains_agreements: fb.maintains_agreements ?? 70,
+          trust_safety: fb.trust_safety ?? 70,
+          maintains_presence: fb.maintains_presence ?? 70,
+          listens_actively: fb.listens_actively ?? 70,
+          evokes_awareness: fb.evokes_awareness ?? 70,
+          facilitates_growth: fb.facilitates_growth ?? 70,
+          feedback_note: fb.feedback_note ?? "",
+          existed: true,
+        });
+      }
+    }
 
     setLoading(false);
-  }, [sessionId]);
+  }, [sessionId, tableName, isPeer, coachField, coacheeField]);
 
   useEffect(() => {
     load();
