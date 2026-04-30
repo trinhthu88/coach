@@ -530,7 +530,39 @@ export default function SessionDetail() {
         {/* Right column: action items + attachments + meeting */}
         <div className="space-y-6">
           <Card className="space-y-3 p-5">
-            <SectionTitle icon={CheckSquare}>Action items</SectionTitle>
+            <div className="flex items-center justify-between">
+              <SectionTitle icon={CheckSquare}>Action items</SectionTitle>
+              {(isCoach || isCoachee || isAdmin) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    setSaving(true);
+                    const { error } = await supabase
+                      .from(tableName as any)
+                      .update({ action_items: items })
+                      .eq("id", session.id);
+                    setSaving(false);
+                    if (error) return toast.error(error.message);
+                    toast.success("Action items saved");
+                    load();
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <Save className="mr-1 h-3 w-3" />
+                  )}
+                  Save
+                </Button>
+              )}
+            </div>
+            {session.status === "completed" && (
+              <p className="rounded-md border border-success/30 bg-success/5 p-2 text-[11px] text-success">
+                Session completed — you can still add or update action items anytime and click Save.
+              </p>
+            )}
             <ul className="space-y-3">
               {items.map((it, idx) => {
                 const ms = milestones.find((m) => m.id === it.milestone_id);
