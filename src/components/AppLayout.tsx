@@ -127,23 +127,38 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-                )
-              }
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </NavLink>
-          ))}
+          {items.map((item) => {
+            const showBadge = item.to === "/messages" && unreadCount > 0;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn(
+                    "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                  )
+                }
+              >
+                <span className="relative shrink-0">
+                  <item.icon className="h-5 w-5" />
+                  {showBadge && collapsed && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </span>
+                {!collapsed && <span className="truncate">{item.label}</span>}
+                {showBadge && !collapsed && (
+                  <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
