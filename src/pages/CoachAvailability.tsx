@@ -287,12 +287,28 @@ export default function CoachAvailability() {
                 {selectedSlots.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center justify-between rounded-lg border p-2.5"
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border p-2.5",
+                      s.slot_type === "peer" && "border-success/30 bg-success/5"
+                    )}
                   >
-                    <div className="text-sm">
-                      {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                    <div className="flex items-center gap-2 text-sm">
+                      <span>
+                        {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[10px]",
+                          s.slot_type === "peer"
+                            ? "bg-success/15 text-success"
+                            : "bg-primary/10 text-primary"
+                        )}
+                      >
+                        {s.slot_type === "peer" ? "Peer" : "Coaching"}
+                      </Badge>
                       {s.is_booked && (
-                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                        <Badge variant="secondary" className="text-[10px]">
                           Booked
                         </Badge>
                       )}
@@ -311,8 +327,37 @@ export default function CoachAvailability() {
                 ))}
               </div>
 
-              <div className="space-y-2 border-t pt-4">
+              <div className="space-y-3 border-t pt-4">
                 <Label>Add a slot</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSlotType("coaching")}
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                      slotType === "coaching"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary/40"
+                    )}
+                  >
+                    Coaching
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSlotType("peer")}
+                    disabled={!peerOptIn}
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                      slotType === "peer"
+                        ? "border-success bg-success text-success-foreground"
+                        : "border-border hover:border-success/40",
+                      !peerOptIn && "cursor-not-allowed opacity-50"
+                    )}
+                    title={!peerOptIn ? "Enable peer coaching above first" : undefined}
+                  >
+                    Peer
+                  </button>
+                </div>
                 <div className="flex items-center gap-2">
                   <Input
                     type="time"
