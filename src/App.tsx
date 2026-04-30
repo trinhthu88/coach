@@ -9,6 +9,9 @@ import AppLayout from "@/components/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import RequestAccess from "./pages/RequestAccess";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import SetNewPassword from "./pages/SetNewPassword";
 import Dashboard from "./pages/Dashboard";
 import Coaches from "./pages/Coaches";
 import CoachDetail from "./pages/CoachDetail";
@@ -54,6 +57,16 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/request-access" element={<RequestAccess />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route
+              path="/set-new-password"
+              element={
+                <ProtectedRoute>
+                  <SetNewPassword />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/pending"
