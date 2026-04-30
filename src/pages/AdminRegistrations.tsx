@@ -99,6 +99,8 @@ export default function AdminRegistrations() {
   const [coaches, setCoaches] = useState<CoachListRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<CoachOpt[]>([]);
   const [defaultLimit, setDefaultLimit] = useState(4);
+  const [defaultCoachLimit, setDefaultCoachLimit] = useState(4);
+  const [defaultPeerLimit, setDefaultPeerLimit] = useState(4);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [coacheeQuery, setCoacheeQuery] = useState("");
   const [coachQuery, setCoachQuery] = useState("");
