@@ -754,11 +754,13 @@ function SessionRow({
   expandable,
   milestones,
   goals,
+  onToggleAction,
 }: {
   s: any;
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
+  onToggleAction?: (a: FlatAction) => void;
 }) {
   const [open, setOpen] = useState(false);
   const d = new Date(s.start_time);
