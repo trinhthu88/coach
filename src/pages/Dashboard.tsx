@@ -37,6 +37,7 @@ interface SessionLite {
   meeting_url: string | null;
   coach_id: string;
   coachee_id: string;
+  action_items?: any;
 }
 interface CoachLite {
   id: string;
