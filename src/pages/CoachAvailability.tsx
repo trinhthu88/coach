@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   ChevronLeft,
@@ -15,6 +16,7 @@ import {
   Trash2,
   CalendarDays,
   CalendarRange,
+  MessagesSquare,
 } from "lucide-react";
 import BulkAvailabilityDialog from "@/components/BulkAvailabilityDialog";
 import {
@@ -31,12 +33,15 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 
+type SlotType = "coaching" | "peer";
+
 interface Slot {
   id: string;
   slot_date: string; // yyyy-MM-dd
   start_time: string; // HH:mm:ss
   end_time: string;
   is_booked: boolean;
+  slot_type: SlotType;
 }
 
 export default function CoachAvailability() {
@@ -47,8 +52,11 @@ export default function CoachAvailability() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:00");
+  const [slotType, setSlotType] = useState<SlotType>("coaching");
   const [adding, setAdding] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [peerOptIn, setPeerOptIn] = useState(false);
+  const [savingOptIn, setSavingOptIn] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
