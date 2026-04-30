@@ -180,6 +180,17 @@ export default function SessionDetail() {
       .order("created_at", { ascending: false });
     setAttachments((atts as Attachment[]) || []);
 
+    // Load coachee's goals + milestones so action items can be linked
+    const coacheeId = (data as any).coachee_id;
+    const [{ data: gs }, { data: ms }] = await Promise.all([
+      supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
+      supabase.from("coachee_milestones").select("id, title, goal_id").eq("coachee_id", coacheeId).order("created_at"),
+    ]);
+    const goalById = new Map((gs || []).map((g: any) => [g.id, g.title]));
+    setMilestones(
+      (ms || []).map((m: any) => ({ id: m.id, title: m.title, goal_id: m.goal_id, goal_title: goalById.get(m.goal_id) }))
+    );
+
     setLoading(false);
   }, [sessionId]);
 
