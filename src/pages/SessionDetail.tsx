@@ -177,7 +177,7 @@ export default function SessionDetail() {
     }
     // Normalize peer rows to look like SessionRow
     const norm: any = isPeer
-      ? { ...data, coach_id: (data as any)[coachField], coachee_id: (data as any)[coacheeField] }
+      ? { ...(data as any), coach_id: (data as any)[coachField], coachee_id: (data as any)[coacheeField] }
       : data;
     setSession(norm as SessionRow);
     setCoachNotes(norm.coach_notes || "");
