@@ -497,7 +497,6 @@ export default function CoachMyJourney() {
                             })()}
                           </div>
                         </div>
-                        </div>
                       </div>
                     );
                   })}
