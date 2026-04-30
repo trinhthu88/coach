@@ -70,6 +70,8 @@ export default function CoacheeJourney() {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [reflections, setReflections] = useState<any[]>([]);
+  const [coachNames, setCoachNames] = useState<Record<string, string>>({});
+  const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
@@ -77,16 +79,30 @@ export default function CoacheeJourney() {
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: g }, { data: m }, { data: s }, { data: r }] = await Promise.all([
+    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }] = await Promise.all([
       supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
       supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
+      supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
     ]);
     setGoals(g || []);
     setMilestones(m || []);
     setSessions(s || []);
     setReflections(r || []);
+    const usageRow = Array.isArray(u) ? u[0] : u;
+    if (usageRow) setUsage(usageRow as any);
+
+    const coachIds = Array.from(new Set((s || []).map((x: any) => x.coach_id).filter(Boolean)));
+    if (coachIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", coachIds);
+      const map: Record<string, string> = {};
+      for (const p of profs || []) map[p.id] = p.full_name;
+      setCoachNames(map);
+    }
     setLoading(false);
   }, [user]);
 
