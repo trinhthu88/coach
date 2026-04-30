@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -28,39 +27,20 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
-  MessagesSquare,
 } from "lucide-react";
 import { format, isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface Goal {
-  id: string;
-  title: string;
-  description: string | null;
-  target_date: string | null;
-  status: string;
-}
-interface Milestone {
-  id: string;
-  goal_id: string;
-  title: string;
-  target_date: string | null;
-  is_done: boolean;
-  done_at: string | null;
-}
-interface RawActionItem {
-  text: string;
-  done?: boolean;
-  due_date?: string | null;
-  milestone_id?: string | null;
-}
+interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; }
+interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
+interface RawActionItem { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null; }
 interface FlatAction extends RawActionItem {
   sessionId: string;
   sessionTopic: string;
   sessionDate: string;
-  source: "coaching" | "peer";
   idx: number;
+  source: "coaching" | "peer";
 }
 
 const ACCENTS = [
@@ -80,15 +60,18 @@ function initials(s: string) {
     .toUpperCase();
 }
 
+type AnySession = any;
+
 export default function CoachMyJourney() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [peerReceived, setPeerReceived] = useState<any[]>([]);
+  const [coachingSessions, setCoachingSessions] = useState<AnySession[]>([]);
+  const [peerSessions, setPeerSessions] = useState<AnySession[]>([]);
   const [reflections, setReflections] = useState<any[]>([]);
   const [coachNames, setCoachNames] = useState<Record<string, string>>({});
+  const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
@@ -96,40 +79,97 @@ export default function CoachMyJourney() {
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: g }, { data: m }, { data: s }, { data: p }, { data: r }] = await Promise.all([
+    const [{ data: g }, { data: m }, { data: s }, { data: ps }, { data: r }, { data: u }] = await Promise.all([
       supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
       supabase.from("peer_sessions").select("*").eq("peer_coachee_id", user.id).order("start_time", { ascending: false }),
       supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
+      supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
     ]);
     setGoals(g || []);
     setMilestones(m || []);
-    setSessions(s || []);
-    setPeerReceived(p || []);
+    setCoachingSessions(s || []);
+    setPeerSessions(ps || []);
     setReflections(r || []);
+    const usageRow = Array.isArray(u) ? u[0] : u;
+    if (usageRow) setUsage(usageRow as any);
 
-    const ids = Array.from(
-      new Set([
-        ...(s || []).map((x: any) => x.coach_id),
-        ...(p || []).map((x: any) => x.peer_coach_id),
-      ])
-    ).filter(Boolean) as string[];
-    if (ids.length) {
+    const ids = new Set<string>();
+    (s || []).forEach((x: any) => x.coach_id && ids.add(x.coach_id));
+    (ps || []).forEach((x: any) => x.peer_coach_id && ids.add(x.peer_coach_id));
+    if (ids.size) {
       const { data: profs } = await supabase
         .from("profiles")
         .select("id, full_name")
-        .in("id", ids);
+        .in("id", Array.from(ids));
       const map: Record<string, string> = {};
-      (profs || []).forEach((p: any) => (map[p.id] = p.full_name));
+      for (const p of profs || []) map[p.id] = p.full_name;
       setCoachNames(map);
     }
     setLoading(false);
   }, [user]);
 
+  useEffect(() => { refresh(); }, [refresh]);
+
+  // Unified sessions list (each carries _source / _otherCoachId)
+  const sessions = useMemo<AnySession[]>(() => [
+    ...coachingSessions.map((s) => ({ ...s, _source: "coaching" as const, _otherCoachId: s.coach_id })),
+    ...peerSessions.map((s) => ({ ...s, _source: "peer" as const, _otherCoachId: s.peer_coach_id })),
+  ], [coachingSessions, peerSessions]);
+
+  // Flatten action items from BOTH sources
+  const allActionItems: FlatAction[] = useMemo(() => {
+    const out: FlatAction[] = [];
+    for (const s of sessions) {
+      const items = Array.isArray(s.action_items) ? s.action_items : [];
+      items.forEach((it: any, idx: number) => {
+        const obj: RawActionItem = typeof it === "string" ? { text: it, done: false } : it;
+        if (obj?.text) {
+          out.push({
+            ...obj,
+            sessionId: s.id,
+            sessionTopic: s.topic,
+            sessionDate: s.start_time,
+            idx,
+            source: s._source,
+          });
+        }
+      });
+    }
+    return out;
+  }, [sessions]);
+
+  // Auto-complete milestones when all linked actions are done
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (loading || !milestones.length) return;
+    milestones.forEach((m) => {
+      const linked = allActionItems.filter((a) => a.milestone_id === m.id);
+      if (!linked.length) return;
+      const allDone = linked.every((a) => a.done);
+      if (allDone && !m.is_done) {
+        supabase
+          .from("coachee_milestones")
+          .update({ is_done: true, done_at: new Date().toISOString() })
+          .eq("id", m.id)
+          .then(({ error }) => {
+            if (!error) {
+              setMilestones((prev) => prev.map((x) => x.id === m.id ? { ...x, is_done: true, done_at: new Date().toISOString() } : x));
+            }
+          });
+      } else if (!allDone && m.is_done) {
+        supabase
+          .from("coachee_milestones")
+          .update({ is_done: false, done_at: null })
+          .eq("id", m.id)
+          .then(({ error }) => {
+            if (!error) {
+              setMilestones((prev) => prev.map((x) => x.id === m.id ? { ...x, is_done: false, done_at: null } : x));
+            }
+          });
+      }
+    });
+  }, [allActionItems, milestones, loading]);
 
   const goalProgress = (goalId: string) => {
     const ms = milestones.filter((m) => m.goal_id === goalId);
@@ -140,105 +180,54 @@ export default function CoachMyJourney() {
   const doneMs = milestones.filter((m) => m.is_done).length;
   const overallPct = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
 
-  const allActions: FlatAction[] = useMemo(() => {
-    const out: FlatAction[] = [];
-    for (const s of sessions) {
-      const items = Array.isArray(s.action_items) ? s.action_items : [];
-      items.forEach((it: any, idx: number) => {
-        const obj: RawActionItem = typeof it === "string" ? { text: it, done: false } : it;
-        if (obj?.text)
-          out.push({
-            ...obj,
-            sessionId: s.id,
-            sessionTopic: s.topic,
-            sessionDate: s.start_time,
-            source: "coaching",
-            idx,
-          });
-      });
-    }
-    for (const s of peerReceived) {
-      const items = Array.isArray(s.action_items) ? s.action_items : [];
-      items.forEach((it: any, idx: number) => {
-        const obj: RawActionItem = typeof it === "string" ? { text: it, done: false } : it;
-        if (obj?.text)
-          out.push({
-            ...obj,
-            sessionId: s.id,
-            sessionTopic: s.topic,
-            sessionDate: s.start_time,
-            source: "peer",
-            idx,
-          });
-      });
-    }
-    return out;
-  }, [sessions, peerReceived]);
-
-  const aiTotal = allActions.length;
-  const aiDone = allActions.filter((a) => a.done).length;
-  const aiOverdue = allActions.filter(
+  const aiTotal = allActionItems.length;
+  const aiDone = allActionItems.filter((a) => a.done).length;
+  const aiOverdue = allActionItems.filter(
     (a) => !a.done && a.due_date && isBefore(new Date(a.due_date), new Date())
   ).length;
 
   const now = new Date();
   const wkEnd = endOfWeek(now, { weekStartsOn: 1 });
   const grouped = {
-    overdue: allActions.filter((a) => !a.done && a.due_date && isBefore(new Date(a.due_date), now)),
-    thisWeek: allActions.filter(
-      (a) =>
-        !a.done &&
-        a.due_date &&
-        !isBefore(new Date(a.due_date), now) &&
-        !isAfter(new Date(a.due_date), wkEnd)
+    overdue: allActionItems.filter((a) => !a.done && a.due_date && isBefore(new Date(a.due_date), now)),
+    thisWeek: allActionItems.filter(
+      (a) => !a.done && a.due_date && !isBefore(new Date(a.due_date), now) && !isAfter(new Date(a.due_date), wkEnd)
     ),
-    upcoming: allActions.filter(
+    upcoming: allActionItems.filter(
       (a) => !a.done && (!a.due_date || isAfter(new Date(a.due_date), wkEnd))
     ),
-    completed: allActions.filter((a) => a.done),
+    completed: allActionItems.filter((a) => a.done),
   };
 
-  // Combined sessions list (coaching + peer received), tagged with source
-  const combinedSessions = useMemo(
-    () => [
-      ...sessions.map((s) => ({ ...s, _source: "coaching" as const, _otherCoachId: s.coach_id })),
-      ...peerReceived.map((s) => ({ ...s, _source: "peer" as const, _otherCoachId: s.peer_coach_id })),
-    ],
-    [sessions, peerReceived]
-  );
-
-  const upcoming = combinedSessions
-    .filter(
-      (s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status)
-    )
+  const upcoming = sessions
+    .filter((s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status))
     .sort((a, b) => +new Date(a.start_time) - +new Date(b.start_time));
-  const past = combinedSessions
-    .filter(
-      (s) => new Date(s.start_time) < now || ["cancelled", "completed"].includes(s.status)
-    )
+  const past = sessions
+    .filter((s) => new Date(s.start_time) < now || ["cancelled", "completed"].includes(s.status))
     .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
+
   const nextSession = upcoming[0];
 
-  // Coaches in this programme — merged from both sources
+  // Coaches (combining coaching + peer)
   const coachSummaries = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; total: number; completed: number; upcoming: number; firstDate: Date | null; lastDate: Date | null; nextDate: Date | null; source: Set<string> }>();
-    for (const s of combinedSessions) {
-      const cid = s._otherCoachId;
-      if (!cid) continue;
-      const cur = map.get(cid) || {
-        id: cid,
-        name: coachNames[cid] || "Coach",
+    const map = new Map<string, { id: string; name: string; total: number; completed: number; upcoming: number; firstDate: Date | null; lastDate: Date | null; nextDate: Date | null; sources: Set<"coaching" | "peer">; }>();
+    for (const s of sessions) {
+      const otherId: string | undefined = s._otherCoachId;
+      if (!otherId) continue;
+      const cur = map.get(otherId) || {
+        id: otherId,
+        name: coachNames[otherId] || (s._source === "peer" ? "Peer coach" : "Coach"),
         total: 0,
         completed: 0,
         upcoming: 0,
         firstDate: null,
         lastDate: null,
         nextDate: null,
-        source: new Set<string>(),
+        sources: new Set<"coaching" | "peer">(),
       };
       const d = new Date(s.start_time);
       cur.total += 1;
-      cur.source.add(s._source);
+      cur.sources.add(s._source);
       if (s.status === "completed") cur.completed += 1;
       if (["confirmed", "pending_coach_approval"].includes(s.status) && d >= now) {
         cur.upcoming += 1;
@@ -246,64 +235,11 @@ export default function CoachMyJourney() {
       }
       if (!cur.firstDate || d < cur.firstDate) cur.firstDate = d;
       if (!cur.lastDate || d > cur.lastDate) cur.lastDate = d;
-      cur.name = coachNames[cid] || cur.name;
-      map.set(cid, cur);
+      cur.name = coachNames[otherId] || cur.name;
+      map.set(otherId, cur);
     }
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [combinedSessions, coachNames]);
-
-  const toggleMilestone = async (m: Milestone) => {
-    const { error } = await supabase
-      .from("coachee_milestones")
-      .update({ is_done: !m.is_done, done_at: !m.is_done ? new Date().toISOString() : null })
-      .eq("id", m.id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
-  const toggleAction = async (a: FlatAction) => {
-    const list = a.source === "coaching" ? sessions : peerReceived;
-    const setList = a.source === "coaching" ? setSessions : setPeerReceived;
-    const sess = list.find((s) => s.id === a.sessionId);
-    if (!sess) return;
-    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
-    const cur = items[a.idx];
-    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
-    norm.done = !norm.done;
-    items[a.idx] = norm;
-    setList((prev: any[]) =>
-      prev.map((s) => (s.id === a.sessionId ? { ...s, action_items: items } : s))
-    );
-    const table = a.source === "coaching" ? "sessions" : "peer_sessions";
-    const { error } = await supabase.from(table as any).update({ action_items: items }).eq("id", a.sessionId);
-    if (error) {
-      toast.error(error.message);
-      refresh();
-    }
-  };
-
-  const linkActionMilestone = async (a: FlatAction, milestoneId: string | null) => {
-    const list = a.source === "coaching" ? sessions : peerReceived;
-    const setList = a.source === "coaching" ? setSessions : setPeerReceived;
-    const sess = list.find((s) => s.id === a.sessionId);
-    if (!sess) return;
-    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
-    const cur = items[a.idx];
-    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
-    norm.milestone_id = milestoneId;
-    items[a.idx] = norm;
-    setList((prev: any[]) =>
-      prev.map((s) => (s.id === a.sessionId ? { ...s, action_items: items } : s))
-    );
-    const table = a.source === "coaching" ? "sessions" : "peer_sessions";
-    const { error } = await supabase.from(table as any).update({ action_items: items }).eq("id", a.sessionId);
-    if (error) {
-      toast.error(error.message);
-      refresh();
-    } else {
-      toast.success(milestoneId ? "Linked to milestone" : "Unlinked");
-    }
-  };
+  }, [sessions, coachNames, now]);
 
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
@@ -326,6 +262,39 @@ export default function CoachMyJourney() {
     refresh();
   };
 
+  const toggleMilestone = async (m: Milestone) => {
+    const { error } = await supabase
+      .from("coachee_milestones")
+      .update({ is_done: !m.is_done, done_at: !m.is_done ? new Date().toISOString() : null })
+      .eq("id", m.id);
+    if (error) return toast.error(error.message);
+    refresh();
+  };
+
+  const toggleAction = async (a: FlatAction) => {
+    const table = a.source === "coaching" ? "sessions" : "peer_sessions";
+    const list = a.source === "coaching" ? coachingSessions : peerSessions;
+    const sess = list.find((s) => s.id === a.sessionId);
+    if (!sess) return;
+    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
+    const cur = items[a.idx];
+    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
+    norm.done = !norm.done;
+    items[a.idx] = norm;
+
+    if (a.source === "coaching") {
+      setCoachingSessions((prev) => prev.map((s) => s.id === a.sessionId ? { ...s, action_items: items } : s));
+    } else {
+      setPeerSessions((prev) => prev.map((s) => s.id === a.sessionId ? { ...s, action_items: items } : s));
+    }
+
+    const { error } = await supabase.from(table).update({ action_items: items }).eq("id", a.sessionId);
+    if (error) {
+      toast.error(error.message);
+      refresh();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -337,15 +306,13 @@ export default function CoachMyJourney() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
           <Compass className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="font-display text-3xl tracking-tight text-secondary">
-            My <em className="not-italic text-primary">journey</em>
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">My journey</h1>
           <p className="text-sm text-muted-foreground">
-            Track your goals, action items, sessions and personal reflections.
+            Your growth as a coachee — across coaching and peer sessions you receive.
           </p>
         </div>
       </div>
@@ -353,15 +320,14 @@ export default function CoachMyJourney() {
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Metric label="Overall progress" value={`${overallPct}%`} sub={`across ${goals.length} goal${goals.length === 1 ? "" : "s"}`} />
+        <Metric label="Actions done" value={String(aiDone)} sub={aiOverdue ? `${aiOverdue} overdue` : `of ${aiTotal} total`} subClass={aiOverdue ? "text-destructive" : ""} />
         <Metric
-          label="Actions done"
-          value={String(aiDone)}
-          sub={aiOverdue ? `${aiOverdue} overdue` : `of ${aiTotal} total`}
-          subClass={aiOverdue ? "text-destructive" : ""}
-        />
-        <Metric
-          label="Session recap"
-          value={`${combinedSessions.filter((s) => s.status === "completed").length} / ${combinedSessions.length}`}
+          label="Sessions received"
+          value={
+            usage
+              ? `${sessions.filter((s) => s.status === "completed").length} / ${usage.monthly_limit}`
+              : `${sessions.filter((s) => s.status === "completed").length}`
+          }
           sub={`${upcoming.length} upcoming`}
         />
         <Metric
@@ -371,7 +337,7 @@ export default function CoachMyJourney() {
         />
       </div>
 
-      {/* Coaches in this programme */}
+      {/* Coaches */}
       {coachSummaries.length > 0 && (
         <Card className="overflow-hidden">
           <div className="border-b bg-muted/30 px-4 py-2.5">
@@ -382,13 +348,13 @@ export default function CoachMyJourney() {
           <ul className="divide-y">
             {coachSummaries.map((c, i) => {
               const accent = ACCENTS[i % ACCENTS.length];
-              const lead = i === 0;
               const dateRange =
                 c.firstDate && c.lastDate
                   ? `${format(c.firstDate, "MMM d")} → ${format(c.lastDate, "MMM d")}`
                   : "—";
-              const both = c.source.has("coaching") && c.source.has("peer");
-              const isPeerOnly = c.source.has("peer") && !c.source.has("coaching");
+              const isCoach = c.sources.has("coaching");
+              const isPeer = c.sources.has("peer");
+              const tag = isCoach && isPeer ? "Coach + Peer" : isCoach ? "Coach" : "Peer";
               return (
                 <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", accent.bg, accent.text)}>
@@ -404,12 +370,10 @@ export default function CoachMyJourney() {
                   <span
                     className={cn(
                       "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
-                      lead && !isPeerOnly ? "bg-primary/15 text-primary" :
-                      isPeerOnly ? "bg-warning/15 text-warning" :
-                      "bg-success/15 text-success"
+                      isCoach && isPeer ? "bg-warning/15 text-warning" : isCoach ? "bg-primary/15 text-primary" : "bg-success/15 text-success"
                     )}
                   >
-                    {both ? "Coach + Peer" : isPeerOnly ? "Peer" : lead ? "Lead coach" : "Coach"}
+                    {tag}
                   </span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange}</span>
                 </li>
@@ -424,11 +388,10 @@ export default function CoachMyJourney() {
           <TabsTrigger value="home">Overview</TabsTrigger>
           <TabsTrigger value="goals">Goals & milestones</TabsTrigger>
           <TabsTrigger value="actions">Action items ({aiTotal})</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions ({combinedSessions.length})</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
           <TabsTrigger value="reflections">Reflections ({reflections.length})</TabsTrigger>
         </TabsList>
 
-        {/* OVERVIEW */}
         <TabsContent value="home" className="mt-4 space-y-6">
           <SectionHeader title="Goals & milestones" />
           {goals.length === 0 ? (
@@ -440,7 +403,7 @@ export default function CoachMyJourney() {
                   key={g.id}
                   goal={g}
                   milestones={milestones.filter((m) => m.goal_id === g.id)}
-                  actions={allActions}
+                  actions={allActionItems}
                   pct={goalProgress(g.id)}
                   accent={ACCENTS[i % ACCENTS.length]}
                   onToggle={toggleMilestone}
@@ -454,10 +417,9 @@ export default function CoachMyJourney() {
           )}
 
           <SectionHeader title="Action items" />
-          <ActionGroups grouped={grouped} milestones={milestones} goals={goals} compact onToggleAction={toggleAction} />
+          <ActionGroups grouped={grouped} compact onToggleAction={toggleAction} />
         </TabsContent>
 
-        {/* GOALS FULL */}
         <TabsContent value="goals" className="mt-4 space-y-3">
           <div className="flex justify-end">
             <GoalDialog onSaved={refresh} userId={user!.id} />
@@ -465,56 +427,66 @@ export default function CoachMyJourney() {
           {goals.length === 0 ? (
             <EmptyGoals userId={user!.id} onSaved={refresh} />
           ) : (
-            <div className="space-y-2">
-              {goals.map((g, i) => (
-                <GoalAccordion
-                  key={g.id}
-                  goal={g}
-                  milestones={milestones.filter((m) => m.goal_id === g.id)}
-                  actions={allActions}
-                  pct={goalProgress(g.id)}
-                  accent={ACCENTS[i % ACCENTS.length]}
-                  onToggle={toggleMilestone}
-                  onToggleAction={toggleAction}
-                  onChanged={refresh}
-                  userId={user!.id}
-                  showLinkedActions
-                  defaultOpen={i === 0}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid gap-3 md:grid-cols-3">
+                {goals.map((g, i) => {
+                  const ac = ACCENTS[i % ACCENTS.length];
+                  const pct = goalProgress(g.id);
+                  const goalDone = pct === 100 && milestones.filter((m) => m.goal_id === g.id).length > 0;
+                  return (
+                    <Card key={g.id} className="p-4">
+                      <p className={cn(
+                        "text-[10px] font-bold uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1",
+                        goalDone && "line-through"
+                      )}>
+                        {goalDone && <Check className="h-3 w-3 text-success" strokeWidth={3} />}
+                        {g.title}
+                      </p>
+                      <p className="mt-1 text-2xl font-semibold">{pct}%</p>
+                      {g.target_date && (
+                        <p className="text-[10px] text-muted-foreground">Target {format(new Date(g.target_date), "MMM d, yyyy")}</p>
+                      )}
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className={cn("h-full", ac.fill)} style={{ width: `${pct}%` }} />
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+              <div className="space-y-2">
+                {goals.map((g, i) => (
+                  <GoalAccordion
+                    key={g.id}
+                    goal={g}
+                    milestones={milestones.filter((m) => m.goal_id === g.id)}
+                    actions={allActionItems}
+                    pct={goalProgress(g.id)}
+                    accent={ACCENTS[i % ACCENTS.length]}
+                    onToggle={toggleMilestone}
+                    onToggleAction={toggleAction}
+                    onChanged={refresh}
+                    userId={user!.id}
+                    showLinkedActions
+                    defaultOpen={i === 0}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </TabsContent>
 
-        {/* ACTION ITEMS */}
         <TabsContent value="actions" className="mt-4">
           <p className="mb-3 text-xs text-muted-foreground">
             {aiTotal} total · {aiDone} done · {aiOverdue} overdue
           </p>
-          <ActionGroups
-            grouped={grouped}
-            milestones={milestones}
-            goals={goals}
-            onToggleAction={toggleAction}
-            onLinkMilestone={linkActionMilestone}
-          />
+          <ActionGroups grouped={grouped} milestones={milestones} goals={goals} onToggleAction={toggleAction} />
         </TabsContent>
 
-        {/* SESSIONS */}
         <TabsContent value="sessions" className="mt-4 space-y-4">
           <SessionsBlock title="Upcoming" items={upcoming} coachNames={coachNames} />
-          <SessionsBlock
-            title="Completed & past"
-            items={past}
-            milestones={milestones}
-            goals={goals}
-            expandable
-            onToggleAction={toggleAction}
-            coachNames={coachNames}
-          />
+          <SessionsBlock title="Past & completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} coachNames={coachNames} />
         </TabsContent>
 
-        {/* REFLECTIONS */}
         <TabsContent value="reflections" className="mt-4 space-y-4">
           <Card className="p-4">
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
@@ -571,12 +543,7 @@ export default function CoachMyJourney() {
 
 /* ---------- sub components ---------- */
 
-function Metric({
-  label,
-  value,
-  sub,
-  subClass,
-}: { label: string; value: string; sub?: string; subClass?: string }) {
+function Metric({ label, value, sub, subClass }: { label: string; value: string; sub?: string; subClass?: string }) {
   return (
     <Card className="p-4">
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
@@ -601,7 +568,7 @@ function EmptyGoals({ userId, onSaved }: { userId: string; onSaved: () => void }
       <Target className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
       <h3 className="font-semibold">Set your first goal</h3>
       <p className="mt-1 mb-4 text-sm text-muted-foreground">
-        Define what you want to grow into and break it down into milestones with action items.
+        Define what you want to achieve in your own coaching journey.
       </p>
       <div className="flex justify-center">
         <GoalDialog onSaved={onSaved} userId={userId} />
@@ -640,7 +607,7 @@ function GoalAccordion({
   const [newMs, setNewMs] = useState("");
   const [newDate, setNewDate] = useState("");
 
-  const goalDone = milestones.length > 0 && milestones.every((m) => m.is_done);
+  const goalDone = pct === 100 && milestones.length > 0;
 
   const addMs = async () => {
     if (!newMs.trim()) return;
@@ -683,12 +650,12 @@ function GoalAccordion({
         <span className="flex-1 text-sm font-semibold inline-flex items-center gap-1.5">
           {goalDone && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
           <span className={cn(goalDone && "line-through text-muted-foreground")}>{goal.title}</span>
+          {goal.target_date && (
+            <span className="ml-2 text-[10px] font-normal text-muted-foreground">
+              · target {format(new Date(goal.target_date), "MMM d")}
+            </span>
+          )}
         </span>
-        {goal.target_date && (
-          <span className="hidden text-[10px] text-muted-foreground sm:inline">
-            Target {format(new Date(goal.target_date), "MMM d")}
-          </span>
-        )}
         <span className="text-xs text-muted-foreground">{pct}%</span>
         <div className="hidden h-1 w-14 overflow-hidden rounded-full bg-background sm:block">
           <div className={cn("h-full", accent.fill)} style={{ width: `${pct}%` }} />
@@ -705,23 +672,30 @@ function GoalAccordion({
           <ul className="space-y-3">
             {milestones.map((m) => {
               const linked = actions.filter((a) => a.milestone_id === m.id);
+              const status: "done" | "active" | "todo" = m.is_done
+                ? "done"
+                : linked.length || (m.target_date && new Date(m.target_date) < new Date(Date.now() + 1000 * 60 * 60 * 24 * 30))
+                ? "active"
+                : "todo";
               return (
                 <li key={m.id} className="flex items-start gap-3">
                   <button
                     onClick={() => onToggle(m)}
                     className={cn(
                       "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
-                      m.is_done ? "border-success bg-success" : "border-border bg-muted",
+                      status === "done" && "border-success bg-success text-success-foreground",
+                      status === "active" && "border-primary bg-primary/40",
+                      status === "todo" && "border-border bg-muted",
                     )}
                     aria-label="Toggle milestone"
                   >
-                    {m.is_done && <Check className="h-2.5 w-2.5 text-success-foreground" strokeWidth={3} />}
+                    {m.is_done && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
                   </button>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className={cn("flex items-center gap-1.5 text-sm font-medium", m.is_done && "text-muted-foreground")}>
+                      <p className="flex items-center gap-1.5 text-sm font-medium">
                         {m.is_done && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
-                        <span className={cn(m.is_done && "line-through")}>{m.title}</span>
+                        <span className={cn(m.is_done && "line-through text-muted-foreground")}>{m.title}</span>
                       </p>
                       <button onClick={() => deleteMs(m.id)} className="text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-3 w-3" />
@@ -811,14 +785,6 @@ function ActionRow({
           <span className={cn(a.done && "line-through")}>{a.text}</span>
         </p>
         <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
-          <span
-            className={cn(
-              "rounded-full px-1.5 py-0.5 font-bold uppercase tracking-widest",
-              a.source === "peer" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
-            )}
-          >
-            {a.source === "peer" ? "Peer" : "Coaching"}
-          </span>
           {a.due_date && (
             <span className={cn(overdue ? "text-destructive font-medium" : "text-muted-foreground")}>
               {a.done ? "Done" : overdue ? "Overdue" : "Due"} {format(new Date(a.due_date), "MMM d")}
@@ -827,10 +793,13 @@ function ActionRow({
           {!hideMilestone && milestoneLabel && (
             <span className="text-primary">· {milestoneLabel}</span>
           )}
-          <Link
-            to={`/sessions/${a.sessionId}${a.source === "peer" ? "?type=peer" : ""}`}
-            className="text-muted-foreground hover:text-primary"
-          >
+          <span className={cn(
+            "rounded-full px-1.5 text-[9px] font-bold uppercase tracking-wider",
+            a.source === "peer" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
+          )}>
+            {a.source === "peer" ? "Peer" : "Coaching"}
+          </span>
+          <Link to={`/sessions/${a.sessionId}`} className="text-muted-foreground hover:text-primary">
             · {a.sessionTopic}
           </Link>
         </div>
@@ -845,14 +814,12 @@ function ActionGroups({
   goals,
   compact,
   onToggleAction,
-  onLinkMilestone,
 }: {
   grouped: { overdue: FlatAction[]; thisWeek: FlatAction[]; upcoming: FlatAction[]; completed: FlatAction[] };
   milestones?: Milestone[];
   goals?: Goal[];
   compact?: boolean;
   onToggleAction?: (a: FlatAction) => void;
-  onLinkMilestone?: (a: FlatAction, milestoneId: string | null) => void;
 }) {
   const labelFor = (a: FlatAction) => {
     if (!milestones || !goals || !a.milestone_id) return undefined;
@@ -862,41 +829,14 @@ function ActionGroups({
     return g ? `${g.title} → ${m.title}` : m.title;
   };
 
-  const total =
-    grouped.overdue.length + grouped.thisWeek.length + grouped.upcoming.length + grouped.completed.length;
+  const total = grouped.overdue.length + grouped.thisWeek.length + grouped.upcoming.length + grouped.completed.length;
   if (!total) {
     return (
       <Card className="p-12 text-center text-sm text-muted-foreground">
-        No action items yet. They'll appear here as your coaches assign them.
+        No action items yet. They'll appear here once a coach assigns them.
       </Card>
     );
   }
-
-  const RowWithLink = ({ a }: { a: FlatAction }) => (
-    <div className="flex items-start gap-2 py-1">
-      <div className="flex-1">
-        <ActionRow a={a} milestoneLabel={labelFor(a)} onToggle={onToggleAction} />
-      </div>
-      {onLinkMilestone && milestones && goals && (
-        <select
-          value={a.milestone_id || ""}
-          onChange={(e) => onLinkMilestone(a, e.target.value || null)}
-          className="mt-1 h-6 shrink-0 rounded-md border bg-background px-1.5 text-[10px]"
-          title="Link to a milestone"
-        >
-          <option value="">— No milestone —</option>
-          {milestones.map((m) => {
-            const goal = goals.find((g) => g.id === m.goal_id);
-            return (
-              <option key={m.id} value={m.id}>
-                {goal ? `${goal.title} → ${m.title}` : m.title}
-              </option>
-            );
-          })}
-        </select>
-      )}
-    </div>
-  );
 
   const Group = ({ title, items, danger }: { title: string; items: FlatAction[]; danger?: boolean }) => {
     if (!items.length) return null;
@@ -912,7 +852,7 @@ function ActionGroups({
         </p>
         <div className="divide-y">
           {items.map((a, i) => (
-            <RowWithLink key={i} a={a} />
+            <ActionRow key={i} a={a} milestoneLabel={labelFor(a)} onToggle={onToggleAction} />
           ))}
         </div>
       </div>
@@ -939,7 +879,7 @@ function SessionsBlock({
   coachNames,
 }: {
   title: string;
-  items: any[];
+  items: AnySession[];
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
@@ -980,7 +920,7 @@ function SessionRow({
   onToggleAction,
   coachName,
 }: {
-  s: any;
+  s: AnySession;
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
@@ -1001,9 +941,6 @@ function SessionRow({
     return g ? `${g.title} → ${m.title}` : m.title;
   };
 
-  const isPeer = s._source === "peer";
-  const linkPath = `/sessions/${s.id}${isPeer ? "?type=peer" : ""}`;
-
   return (
     <div className="py-3">
       <div className="flex items-start gap-3">
@@ -1012,42 +949,36 @@ function SessionRow({
           <p className="text-[10px] uppercase text-muted-foreground">{format(d, "MMM")}</p>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link to={linkPath} className="text-sm font-medium hover:text-primary">
-              {s.topic}
-            </Link>
+          <Link to={`/sessions/${s.id}`} className="text-sm font-medium hover:text-primary">
+            {s.topic}
+          </Link>
+          <p className="text-[11px] text-muted-foreground">
+            {format(d, "p")} · {s.duration_minutes}m{coachName ? ` · ${s._source === "peer" ? "Peer coach" : "Coach"}: ${coachName}` : ""}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
-                isPeer ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
+                "inline-block rounded-full px-2 py-0.5 text-[10px] font-medium",
+                s.status === "completed" && "bg-success/15 text-success",
+                s.status === "confirmed" && "bg-primary/15 text-primary",
+                s.status === "cancelled" && "bg-destructive/15 text-destructive",
+                s.status === "pending_coach_approval" && "bg-warning/15 text-warning"
               )}
             >
-              {isPeer ? <MessagesSquare className="h-2.5 w-2.5" /> : <Users className="h-2.5 w-2.5" />}
-              {isPeer ? "Peer" : "Coaching"}
+              {s.status.replace(/_/g, " ")}
             </span>
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {format(d, "p")} · {s.duration_minutes}m{coachName ? ` · ${isPeer ? "Peer coach" : "Coach"}: ${coachName}` : ""}
-          </p>
-          <span
-            className={cn(
-              "mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium",
-              s.status === "completed" && "bg-success/15 text-success",
-              s.status === "confirmed" && "bg-primary/15 text-primary",
-              s.status === "cancelled" && "bg-destructive/15 text-destructive",
-              s.status === "pending_coach_approval" && "bg-warning/15 text-warning"
+            <span className={cn(
+              "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+              s._source === "peer" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
+            )}>
+              {s._source === "peer" ? "Peer" : "Coaching"}
+            </span>
+            {expandable && (s.coachee_notes || items.length > 0) && (
+              <button onClick={() => setOpen((o) => !o)} className="ml-1 text-[11px] text-primary hover:underline">
+                {open ? "Hide details ▴" : "Show details ▾"}
+              </button>
             )}
-          >
-            {s.status.replace(/_/g, " ")}
-          </span>
-          {expandable && (s.coachee_notes || items.length > 0) && (
-            <button
-              onClick={() => setOpen((o) => !o)}
-              className="ml-2 text-[11px] text-primary hover:underline"
-            >
-              {open ? "Hide details ▴" : "Show details ▾"}
-            </button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -1055,9 +986,7 @@ function SessionRow({
         <div className="mt-2 ml-14 space-y-2 rounded-md bg-muted/30 p-3">
           {s.coachee_notes && (
             <>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Reflection note
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Reflection note</p>
               <p className="text-xs italic text-muted-foreground">"{s.coachee_notes}"</p>
             </>
           )}
@@ -1074,8 +1003,8 @@ function SessionRow({
                     sessionId: s.id,
                     sessionTopic: s.topic,
                     sessionDate: s.start_time,
-                    source: s._source,
                     idx: i,
+                    source: s._source,
                   } as FlatAction}
                   milestoneLabel={labelFor(it.milestone_id)}
                   onToggle={onToggleAction}
@@ -1120,24 +1049,16 @@ function GoalDialog({ onSaved, userId }: { onSaved: () => void; userId: string }
       <DialogContent>
         <DialogHeader><DialogTitle>New goal</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="g-title">Title</Label>
-            <Input id="g-title" placeholder="e.g. Build a sustainable peer-coaching practice" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="g-desc">Description (optional)</Label>
-            <Textarea id="g-desc" placeholder="Why does this matter to you?" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="g-date">Target date (optional)</Label>
-            <Input id="g-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input placeholder="Goal title (e.g. Become a confident public speaker)" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Textarea placeholder="Why does this matter to you? (optional)" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
+          <div>
+            <p className="mb-1 text-xs font-medium text-muted-foreground">Target date (optional)</p>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving || !title.trim()}>
-            {saving && <Loader2 className="mr-1 h-3 w-3 animate-spin" />} Save goal
-          </Button>
+          <Button onClick={save} disabled={saving || !title.trim()}>Save goal</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
