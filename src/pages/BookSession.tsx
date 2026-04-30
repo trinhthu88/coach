@@ -113,10 +113,17 @@ export default function BookSession() {
       setSlots((slotData as Slot[]) || []);
 
       if (user) {
-        const { data: u } = await supabase.rpc("get_coachee_session_usage", {
-          _coachee_id: user.id,
-        });
-        if (u && u.length) setUsage(u[0]);
+        // Limit is total completed sessions (lifetime), not monthly.
+        const [{ data: u }, { count }] = await Promise.all([
+          supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
+          supabase
+            .from("sessions")
+            .select("id", { count: "exact", head: true })
+            .eq("coachee_id", user.id)
+            .eq("status", "completed"),
+        ]);
+        const limit = u && u.length ? u[0].monthly_limit : 4;
+        setUsage({ monthly_limit: limit, used_this_month: count || 0 });
       }
       setLoading(false);
     })();
