@@ -202,37 +202,71 @@ function SessionCard({
 
   return (
     <Card
-      className="group flex cursor-pointer items-center justify-between gap-4 p-5 transition-colors hover:border-primary/40"
+      className="group cursor-pointer p-5 transition-colors hover:border-primary/40"
       onClick={onOpen}
     >
-      <div className="flex min-w-0 items-center gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary font-bold">
-          {(counterpart?.full_name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary font-bold">
+            {(counterpart?.full_name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-semibold">{session.topic}</p>
+            <p className="truncate text-sm text-muted-foreground">
+              with {counterpart?.full_name || counterpart?.email || "—"}
+            </p>
+            <p className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {format(start, "EEE, MMM d · p")}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" /> {session.duration_minutes} min
+              </span>
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="truncate font-semibold">{session.topic}</p>
-          <p className="truncate text-sm text-muted-foreground">
-            with {counterpart?.full_name || counterpart?.email || "—"}
-          </p>
-          <p className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              {format(start, "EEE, MMM d · p")}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" /> {session.duration_minutes} min
-            </span>
-          </p>
-        </div>
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
+            meta.className
+          )}
+        >
+          <Icon className="h-3 w-3" /> {meta.label}
+        </span>
       </div>
-      <span
-        className={cn(
-          "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
-          meta.className
-        )}
-      >
-        <Icon className="h-3 w-3" /> {meta.label}
-      </span>
+      <ActionItemsList items={session.action_items} date={session.start_time} />
     </Card>
+  );
+}
+
+function ActionItemsList({ items, date }: { items: any; date: string }) {
+  const list = Array.isArray(items)
+    ? items
+        .map((it: any) => (typeof it === "string" ? { text: it, done: false } : it))
+        .filter((it: any) => it?.text)
+    : [];
+  if (list.length === 0) return null;
+  return (
+    <div className="mt-4 border-t pt-3">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        Action items
+      </p>
+      <ul className="space-y-1.5">
+        {list.slice(0, 4).map((it: any, idx: number) => (
+          <li key={idx} className="flex items-start justify-between gap-3 text-xs">
+            <span className={cn("flex-1", it.done && "text-muted-foreground line-through")}>
+              • {it.text}
+            </span>
+            <span className="shrink-0 text-muted-foreground">
+              {format(new Date(date), "MMM d, yyyy")}
+            </span>
+          </li>
+        ))}
+        {list.length > 4 && (
+          <li className="text-[10px] text-muted-foreground">+{list.length - 4} more</li>
+        )}
+      </ul>
+    </div>
   );
 }
