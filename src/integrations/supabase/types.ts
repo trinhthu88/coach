@@ -118,6 +118,30 @@ export type Database = {
           },
         ]
       }
+      coachee_coach_allowlist: {
+        Row: {
+          coach_id: string
+          coachee_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+        }
+        Insert: {
+          coach_id: string
+          coachee_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Update: {
+          coach_id?: string
+          coachee_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       coachee_profiles: {
         Row: {
           approval_status: Database["public"]["Enums"]["user_status"]
@@ -430,6 +454,11 @@ export type Database = {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
       }
+      coach_visible_to_coachee: {
+        Args: { _coach_id: string; _coachee_id: string }
+        Returns: boolean
+      }
+      coachee_has_allowlist: { Args: { _coachee_id: string }; Returns: boolean }
       get_coachee_session_usage: {
         Args: { _coachee_id: string }
         Returns: {
