@@ -357,6 +357,12 @@ export default function SessionDetail() {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    const allowedExt = ["pdf", "jpg", "jpeg", "mp3", "mp4"];
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!allowedExt.includes(ext)) {
+      e.target.value = "";
+      return toast.error("Only PDF, JPG, MP3 or MP4 files are allowed");
+    }
     setUploading(true);
     const path = `${session.id}/${crypto.randomUUID()}-${file.name}`;
     const { error: upErr } = await supabase.storage.from("session-attachments").upload(path, file);
