@@ -812,7 +812,7 @@ function SessionRow({
             {s.topic}
           </Link>
           <p className="text-[11px] text-muted-foreground">
-            {format(d, "p")} · {s.duration_minutes}m
+            {format(d, "p")} · {s.duration_minutes}m{coachName ? ` · Coach: ${coachName}` : ""}
           </p>
           <span
             className={cn(
