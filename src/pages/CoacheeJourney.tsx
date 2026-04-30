@@ -743,6 +743,7 @@ function SessionsBlock({
   milestones,
   goals,
   onToggleAction,
+  coachNames,
 }: {
   title: string;
   items: any[];
@@ -750,6 +751,7 @@ function SessionsBlock({
   milestones?: Milestone[];
   goals?: Goal[];
   onToggleAction?: (a: FlatAction) => void;
+  coachNames?: Record<string, string>;
 }) {
   return (
     <Card className="p-4">
@@ -761,7 +763,7 @@ function SessionsBlock({
       ) : (
         <div className="divide-y">
           {items.map((s) => (
-            <SessionRow key={s.id} s={s} expandable={expandable} milestones={milestones} goals={goals} onToggleAction={onToggleAction} />
+            <SessionRow key={s.id} s={s} expandable={expandable} milestones={milestones} goals={goals} onToggleAction={onToggleAction} coachName={coachNames?.[s.coach_id]} />
           ))}
         </div>
       )}
@@ -775,12 +777,14 @@ function SessionRow({
   milestones,
   goals,
   onToggleAction,
+  coachName,
 }: {
   s: any;
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
   onToggleAction?: (a: FlatAction) => void;
+  coachName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const d = new Date(s.start_time);
