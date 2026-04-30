@@ -188,14 +188,6 @@ export default function CoachDetail() {
         </Card>
       </div>
 
-      {coach && (
-        <BookingDialog
-          coachId={coach.id}
-          coachName={coach.profiles?.full_name || "this coach"}
-          open={bookingOpen}
-          onOpenChange={setBookingOpen}
-        />
-      )}
     </div>
   );
 }
