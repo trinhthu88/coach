@@ -435,10 +435,7 @@ export default function CoachMyJourney() {
                   const goalDone = pct === 100 && milestones.filter((m) => m.goal_id === g.id).length > 0;
                   return (
                     <Card key={g.id} className="p-4">
-                      <p className={cn(
-                        "text-[10px] font-bold uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1",
-                        goalDone && "line-through"
-                      )}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1">
                         {goalDone && <Check className="h-3 w-3 text-success" strokeWidth={3} />}
                         {g.title}
                       </p>
@@ -649,7 +646,7 @@ function GoalAccordion({
         </div>
         <span className="flex-1 text-sm font-semibold inline-flex items-center gap-1.5">
           {goalDone && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
-          <span className={cn(goalDone && "line-through text-muted-foreground")}>{goal.title}</span>
+          <span>{goal.title}</span>
           {goal.target_date && (
             <span className="ml-2 text-[10px] font-normal text-muted-foreground">
               · target {format(new Date(goal.target_date), "MMM d")}
@@ -695,7 +692,7 @@ function GoalAccordion({
                     <div className="flex items-center justify-between gap-2">
                       <p className="flex items-center gap-1.5 text-sm font-medium">
                         {m.is_done && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
-                        <span className={cn(m.is_done && "line-through text-muted-foreground")}>{m.title}</span>
+                        <span>{m.title}</span>
                       </p>
                       <button onClick={() => deleteMs(m.id)} className="text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-3 w-3" />
@@ -780,9 +777,9 @@ function ActionRow({
         {a.done && <Check className="h-3 w-3" strokeWidth={3} />}
       </button>
       <div className="min-w-0 flex-1">
-        <p className={cn("text-xs leading-snug inline-flex items-center gap-1", a.done && "text-muted-foreground")}>
+        <p className="text-xs leading-snug inline-flex items-center gap-1">
           {a.done && <Check className="h-3 w-3 text-success" strokeWidth={3} />}
-          <span className={cn(a.done && "line-through")}>{a.text}</span>
+          <span>{a.text}</span>
         </p>
         <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
           {a.due_date && (
