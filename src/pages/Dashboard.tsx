@@ -387,22 +387,22 @@ function CoachDashboard({ userId }: { userId: string }) {
       {/* Stats */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Total sessions"
-          value={String(sessions.length)}
-          hint="All time"
-          icon={Calendar}
-        />
-        <StatCard
-          label="Completed"
+          label="Completed sessions"
           value={String(completed.length)}
-          hint="Finished"
+          hint="All time"
           icon={CheckCircle2}
         />
         <StatCard
-          label="Upcoming"
+          label="Upcoming sessions"
           value={String(upcoming.length)}
           hint="Confirmed"
           icon={CalendarCheck}
+        />
+        <StatCard
+          label="Coachees"
+          value={String(new Set(sessions.filter((s) => ["confirmed", "completed"].includes(s.status)).map((s) => s.coachee_id)).size)}
+          hint="Active clients"
+          icon={Users}
         />
         <StatCard
           label="Avg. rating"
