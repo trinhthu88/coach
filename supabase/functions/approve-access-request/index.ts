@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
       .update({
         status: "approved",
         reviewed_at: new Date().toISOString(),
-        reviewed_by: userData.user.id,
+        reviewed_by: callerId,
       })
       .eq("id", request_id);
 
