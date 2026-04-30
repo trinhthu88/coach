@@ -69,12 +69,35 @@ interface Attachment {
   created_at: string;
 }
 
-const STATUS_META: Record<SessionStatus, { label: string; variant: any; icon: any }> = {
-  pending_coach_approval: { label: "Awaiting confirmation", variant: "secondary", icon: AlertCircle },
-  confirmed: { label: "Confirmed", variant: "default", icon: CheckCircle2 },
-  completed: { label: "Completed", variant: "outline", icon: CheckCircle2 },
-  cancelled: { label: "Cancelled", variant: "destructive", icon: XCircle },
-  rescheduled: { label: "Rescheduled", variant: "secondary", icon: Clock },
+const STATUS_META: Record<
+  SessionStatus,
+  { label: string; icon: any; className: string }
+> = {
+  pending_coach_approval: {
+    label: "Awaiting confirmation",
+    icon: AlertCircle,
+    className: "bg-warning/10 text-warning border-warning/20",
+  },
+  confirmed: {
+    label: "Confirmed",
+    icon: CheckCircle2,
+    className: "bg-primary/10 text-primary border-primary/20",
+  },
+  completed: {
+    label: "Completed",
+    icon: CheckCircle2,
+    className: "bg-success/10 text-success border-success/20",
+  },
+  cancelled: {
+    label: "Cancelled",
+    icon: XCircle,
+    className: "bg-destructive/10 text-destructive border-destructive/20",
+  },
+  rescheduled: {
+    label: "Rescheduled",
+    icon: Clock,
+    className: "bg-secondary text-secondary-foreground border-border",
+  },
 };
 
 export default function Sessions() {
