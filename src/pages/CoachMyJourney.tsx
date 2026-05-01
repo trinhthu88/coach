@@ -341,7 +341,21 @@ export default function CoachMyJourney() {
   }, [programme, now]);
 
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
-  const startTargetLocked = sessionsCompletedCount >= 1;
+  // Per-goal lock: locks once any session completes AFTER the goal was created.
+  const completedSessionTimes = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.status === "completed")
+        .map((s) => new Date(s.start_time).getTime()),
+    [sessions]
+  );
+  const isGoalLocked = useCallback(
+    (goalCreatedAt: string) => {
+      const created = new Date(goalCreatedAt).getTime();
+      return completedSessionTimes.some((t) => t > created);
+    },
+    [completedSessionTimes]
+  );
 
   const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
     const sessionById = new Map(sessions.map((s) => [s.id, s]));
