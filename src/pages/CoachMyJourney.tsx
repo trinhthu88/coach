@@ -648,6 +648,29 @@ export default function CoachMyJourney() {
         </TabsList>
 
         <TabsContent value="home" className="mt-4 space-y-6">
+          {/* Update prompt banner after a completed session */}
+          {needsRatingUpdate && pendingReflectionSession && (
+            <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
+              <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div className="flex-1">
+                <p className="font-semibold text-primary">
+                  Reflection time — rate your goals after this session
+                </p>
+                <p className="text-xs text-primary/80">
+                  Open <Link to={`/sessions/${pendingReflectionSession.id}`} className="font-semibold underline">{pendingReflectionSession.topic}</Link> ({format(new Date(pendingReflectionSession.start_time), "MMM d")}) to log a 0–100 self-rating per goal. Each reflection becomes a new layer on the wheel.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Goal wheel + score cards */}
+          {goals.length > 0 && (
+            <div className="grid gap-3 lg:grid-cols-2">
+              <GoalWheel rows={ratingRows} sessionSeries={sessionRatingSeries} />
+              <GoalScoreCards rows={ratingRows} />
+            </div>
+          )}
+
           <SectionHeader title="Goals & milestones" />
           {goals.length === 0 ? (
             <EmptyGoals userId={user!.id} onSaved={refresh} />
@@ -666,6 +689,9 @@ export default function CoachMyJourney() {
                   onChanged={refresh}
                   userId={user!.id}
                   defaultOpen={i === 0}
+                  rating={ratingRows.find((r) => r.goalId === g.id)}
+                  onRatingChange={(patch) => saveRating(g.id, patch)}
+                  startTargetLocked={startTargetLocked}
                 />
               ))}
             </div>
