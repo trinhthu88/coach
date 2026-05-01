@@ -71,6 +71,7 @@ export default function AdminCoachees() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [saving, setSaving] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [resetCredential, setResetCredential] = useState<{ email: string; password: string; full_name: string } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
