@@ -17,6 +17,16 @@ import { toast } from "sonner";
 import {
   Loader2, Search, FileDown, Eye, Star, Users, Pencil, Save,
 } from "lucide-react";
+
+function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
+  if (!startDate || !durationMonths) return null;
+  const start = new Date(startDate).getTime();
+  const end = start + durationMonths * 30.4375 * 24 * 3600 * 1000;
+  const now = Date.now();
+  if (now <= start) return 0;
+  if (now >= end) return 100;
+  return Math.round(((now - start) / (end - start)) * 100);
+}
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
@@ -51,6 +61,8 @@ interface CoachRow {
   coach_used: number;
   peer_session_limit: number;
   peer_used: number;
+  peer_given_limit: number;
+  peer_given_used: number;
   assigned_coaches: { id: string; name: string }[];
   // Coach as deliverer
   coachees_count: number;
@@ -61,6 +73,11 @@ interface CoachRow {
   cohort_name: string | null;
   programme_id: string | null;
   programme_name: string | null;
+  programme_default_coach_limit: number | null;
+  programme_default_peer_limit: number | null;
+  programme_default_peer_given_limit: number | null;
+  programme_duration_months: number | null;
+  enrollment_start_date: string | null;
   limit_row_id: string | null;
   enrollment_id: string | null;
 }
@@ -70,9 +87,10 @@ export default function AdminCoaches() {
   const [rows, setRows] = useState<CoachRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
   const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
-  const [programmes, setProgrammes] = useState<{ id: string; name: string; coach_session_limit: number; peer_session_limit: number; peer_given_limit: number }[]>([]);
+  const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; peer_session_limit: number; peer_given_limit: number; duration_months: number }[]>([]);
   const [defaultCoachLimit, setDefaultCoachLimit] = useState(4);
   const [defaultPeerLimit, setDefaultPeerLimit] = useState(4);
+  const [defaultPeerGivenLimit, setDefaultPeerGivenLimit] = useState(4);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<CoachRow | null>(null);
@@ -97,11 +115,11 @@ export default function AdminCoaches() {
       supabase.from("coach_profiles").select("id, approval_status, rating_avg"),
       supabase.from("sessions").select("coach_id, coachee_id, status"),
       supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, status"),
-      supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit"),
+      supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit, peer_given_monthly_limit"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
       supabase.from("cohorts").select("id, name"),
-      supabase.from("programmes").select("id, name, coach_session_limit, peer_session_limit, peer_given_limit"),
-      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id"),
+      supabase.from("programmes").select("id, name, coachee_session_limit, peer_session_limit, peer_given_limit, duration_months"),
+      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id, start_date"),
     ]);
 
     const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
