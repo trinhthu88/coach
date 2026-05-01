@@ -56,8 +56,6 @@ interface Row {
   selected_coaches: { id: string; name: string }[];
   session_limit: number;
   limit_row_id: string | null;
-  temp_password: string | null;
-  temp_password_issued_at: string | null;
   access_request_id: string | null;
 }
 
