@@ -683,15 +683,26 @@ function CoacheeProfileSheet({ row, onClose }: ProfileSheetProps) {
   const [loading, setLoading] = useState(false);
   const [goals, setGoals] = useState<ProfileGoal[]>([]);
   const [sessions, setSessions] = useState<ProfileSession[]>([]);
+  const [profileData, setProfileData] = useState<{
+    bio: string | null;
+    job_title: string | null;
+    industry: string | null;
+    location: string | null;
+    phone: string | null;
+    timezone: string | null;
+    goals: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (!row) return;
     (async () => {
       setLoading(true);
-      const [{ data: gs }, { data: rs }, { data: ss }] = await Promise.all([
+      const [{ data: gs }, { data: rs }, { data: ss }, { data: prof }, { data: cprof }] = await Promise.all([
         supabase.from("coachee_goals").select("id, title").eq("coachee_id", row.id).eq("status", "active").order("sort_order"),
         supabase.from("coachee_goal_ratings").select("goal_id, start_rating, current_rating, target_rating").eq("coachee_id", row.id),
         supabase.from("sessions").select("id, topic, start_time, status").eq("coachee_id", row.id).order("start_time", { ascending: false }).limit(10),
+        supabase.from("profiles").select("bio").eq("id", row.id).maybeSingle(),
+        supabase.from("coachee_profiles").select("job_title, industry, location, phone, timezone, goals").eq("id", row.id).maybeSingle(),
       ]);
       const ratingByGoal = new Map((rs || []).map((r: any) => [r.goal_id, r]));
       setGoals((gs || []).map((g: any) => {
@@ -705,6 +716,15 @@ function CoacheeProfileSheet({ row, onClose }: ProfileSheetProps) {
         };
       }));
       setSessions((ss || []) as any);
+      setProfileData({
+        bio: (prof as any)?.bio ?? null,
+        job_title: (cprof as any)?.job_title ?? null,
+        industry: (cprof as any)?.industry ?? null,
+        location: (cprof as any)?.location ?? null,
+        phone: (cprof as any)?.phone ?? null,
+        timezone: (cprof as any)?.timezone ?? null,
+        goals: (cprof as any)?.goals ?? null,
+      });
       setLoading(false);
     })();
   }, [row]);
@@ -723,15 +743,42 @@ function CoacheeProfileSheet({ row, onClose }: ProfileSheetProps) {
         </SheetHeader>
 
         <div className="mt-5 space-y-5 text-sm">
-          {/* Profile + programme */}
+          {/* Profile information (from coachee's own profile editor) */}
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Profile information
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <ProfileField label="Job title" value={profileData?.job_title} />
+              <ProfileField label="Industry" value={profileData?.industry} />
+              <ProfileField label="Location" value={profileData?.location} />
+              <ProfileField label="Timezone" value={profileData?.timezone} />
+              <ProfileField label="Phone" value={profileData?.phone} />
+              <ProfileField label="Registered" value={format(new Date(row.created_at), "MMM d, yyyy")} />
+            </div>
+            {profileData?.bio && (
+              <div className="mt-2 rounded-lg border bg-muted/20 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Bio</p>
+                <p className="mt-1 whitespace-pre-wrap text-[12px]">{profileData.bio}</p>
+              </div>
+            )}
+            {profileData?.goals && (
+              <div className="mt-2 rounded-lg border bg-muted/20 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Goals (free text)</p>
+                <p className="mt-1 whitespace-pre-wrap text-[12px]">{profileData.goals}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Status + programme */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border bg-muted/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</p>
               <p className="mt-1"><Pill tone={STATUS_TONE[row.status]}>{STATUS_LABEL[row.status]}</Pill></p>
             </div>
             <div className="rounded-lg border bg-muted/20 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Registered</p>
-              <p className="mt-1 text-[12px]">{format(new Date(row.created_at), "MMM d, yyyy")}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
+              <p className="mt-1 font-mono text-[13px]">{row.done}/{row.session_limit} <span className="text-muted-foreground">· booked {row.booked}</span></p>
             </div>
             <div className="col-span-2 rounded-lg border bg-muted/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Layers className="h-3 w-3" /> Programme</p>
@@ -747,14 +794,6 @@ function CoacheeProfileSheet({ row, onClose }: ProfileSheetProps) {
                   </div>
                 </div>
               )}
-            </div>
-            <div className="rounded-lg border bg-muted/20 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sessions limit</p>
-              <p className="mt-1 font-mono text-[13px]">{row.done}/{row.session_limit}</p>
-            </div>
-            <div className="rounded-lg border bg-muted/20 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Booked / Done</p>
-              <p className="mt-1 font-mono text-[13px]">{row.booked} / {row.done}</p>
             </div>
           </div>
 
@@ -826,5 +865,14 @@ function CoacheeProfileSheet({ row, onClose }: ProfileSheetProps) {
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function ProfileField({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="rounded-lg border bg-muted/10 px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="mt-0.5 break-words text-[12px]">{value || <span className="italic text-muted-foreground">—</span>}</p>
+    </div>
   );
 }

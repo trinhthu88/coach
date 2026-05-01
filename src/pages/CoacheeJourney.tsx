@@ -296,12 +296,9 @@ export default function CoacheeJourney() {
   }, [sessions]);
 
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
-  const sessionsCountedTowardsLock = sessions.filter((s) =>
-    ["confirmed", "completed"].includes(s.status)
-  ).length;
-  // Start/Target editable ONLY before session 2 begins. Once 2 sessions are
-  // either completed or scheduled, lock both inputs.
-  const startTargetLocked = sessionsCountedTowardsLock >= 2;
+  // Start/Target editable ONLY until the first session is completed.
+  // Once any session is marked completed, both inputs lock.
+  const startTargetLocked = sessionsCompletedCount >= 1;
 
   // Per-session rating snapshots, ordered oldest → newest, joined to session date.
   const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
@@ -986,7 +983,7 @@ function GoalAccordion({
                   Start &amp; Target · 0–100
                 </p>
                 {startTargetLocked && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title="Editable only before session 2 starts">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title="Locked after the first completed session">
                     <Lock className="h-3 w-3" /> Locked
                   </span>
                 )}
@@ -994,7 +991,7 @@ function GoalAccordion({
               <div className="space-y-3">
                 <RatingSlider
                   label="Start"
-                  hint={startTargetLocked ? "Locked after session 2" : "Where you are today"}
+                  hint={startTargetLocked ? "Locked after first completed session" : "Where you are today"}
                   value={rating.start}
                   trackColor="bg-primary/40"
                   disabled={startTargetLocked}
@@ -1002,7 +999,7 @@ function GoalAccordion({
                 />
                 <RatingSlider
                   label="Target"
-                  hint={startTargetLocked ? "Locked after session 2" : "Where you want to be"}
+                  hint={startTargetLocked ? "Locked after first completed session" : "Where you want to be"}
                   value={rating.target}
                   trackColor="bg-accent"
                   disabled={startTargetLocked}
