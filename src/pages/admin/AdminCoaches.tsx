@@ -481,21 +481,82 @@ export default function AdminCoaches() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Programme <span className="text-destructive">*</span></Label>
+                  <Select
+                    value={editing.programme_id || ""}
+                    onValueChange={(v) => {
+                      const prog = programmes.find((p) => p.id === v);
+                      setEditing({
+                        ...editing,
+                        programme_id: v,
+                        programme_name: prog?.name || null,
+                        programme_default_coach_limit: prog?.coachee_session_limit ?? null,
+                        programme_default_peer_limit: prog?.peer_session_limit ?? null,
+                        programme_default_peer_given_limit: prog?.peer_given_limit ?? null,
+                        programme_duration_months: prog?.duration_months ?? null,
+                        coach_session_limit: prog?.coachee_session_limit ?? editing.coach_session_limit,
+                        peer_session_limit: prog?.peer_session_limit ?? editing.peer_session_limit,
+                        peer_given_limit: prog?.peer_given_limit ?? editing.peer_given_limit,
+                      });
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select a programme…" /></SelectTrigger>
+                    <SelectContent>
+                      {programmes.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Required. Defaults the limits below.</p>
+                </div>
+                <div>
+                  <Label>Cohort</Label>
+                  <Select value={editing.cohort_id || "none"} onValueChange={(v) => setEditing({ ...editing, cohort_id: v === "none" ? null : v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— None —</SelectItem>
+                      {cohorts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="rounded-lg border p-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">As coachee — limits</p>
-                <div className="grid grid-cols-2 gap-3">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session limits (override programme defaults)</p>
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label>Coach session limit</Label>
+                    <Label>Coaching received</Label>
                     <Input type="number" min={0} value={editing.coach_session_limit} onChange={(e) => setEditing({ ...editing, coach_session_limit: Number(e.target.value) })} />
-                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.coach_used} · default {defaultCoachLimit}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.coach_used} · default {editing.programme_default_coach_limit ?? defaultCoachLimit}</p>
                   </div>
                   <div>
-                    <Label>Peer session limit</Label>
+                    <Label>Peer received</Label>
                     <Input type="number" min={0} value={editing.peer_session_limit} onChange={(e) => setEditing({ ...editing, peer_session_limit: Number(e.target.value) })} />
-                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.peer_used} · default {defaultPeerLimit}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.peer_used} · default {editing.programme_default_peer_limit ?? defaultPeerLimit}</p>
+                  </div>
+                  <div>
+                    <Label>Peer given</Label>
+                    <Input type="number" min={0} value={editing.peer_given_limit} onChange={(e) => setEditing({ ...editing, peer_given_limit: Number(e.target.value) })} />
+                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.peer_given_used} · default {editing.programme_default_peer_given_limit ?? defaultPeerGivenLimit}</p>
                   </div>
                 </div>
               </div>
+
+              {(() => {
+                const pct = programmeCompletionPct(editing.enrollment_start_date, editing.programme_duration_months);
+                if (pct === null) return null;
+                return (
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      <span>Programme progress</span>
+                      <span className="font-mono text-foreground">{pct}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="rounded-lg border p-3">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Assigned coaches (when this coach is being coached)</p>
@@ -514,29 +575,6 @@ export default function AdminCoaches() {
                       </label>
                     );
                   })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Programme</Label>
-                  <Select value={editing.programme_id || "none"} onValueChange={(v) => setEditing({ ...editing, programme_id: v === "none" ? null : v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— None —</SelectItem>
-                      {programmes.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Cohort</Label>
-                  <Select value={editing.cohort_id || "none"} onValueChange={(v) => setEditing({ ...editing, cohort_id: v === "none" ? null : v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— None —</SelectItem>
-                      {cohorts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 
