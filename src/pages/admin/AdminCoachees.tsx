@@ -272,6 +272,10 @@ export default function AdminCoachees() {
 
   const saveEdit = async () => {
     if (!editing) return;
+    if (!editing.programme_id) {
+      toast.error("Programme is required");
+      return;
+    }
     setSaving(true);
     try {
       await supabase.from("profiles").update({
