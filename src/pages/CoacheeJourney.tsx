@@ -296,9 +296,23 @@ export default function CoacheeJourney() {
   }, [sessions]);
 
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
-  // Start/Target editable ONLY until the first session is completed.
-  // Once any session is marked completed, both inputs lock.
-  const startTargetLocked = sessionsCompletedCount >= 1;
+  // Per-goal lock: a goal's Start/Target lock once the user completes
+  // any session that took place AFTER the goal was created. This lets
+  // users add new goals later in the programme without instantly locking them.
+  const completedSessionTimes = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.status === "completed")
+        .map((s) => new Date(s.start_time).getTime()),
+    [sessions]
+  );
+  const isGoalLocked = useCallback(
+    (goalCreatedAt: string) => {
+      const created = new Date(goalCreatedAt).getTime();
+      return completedSessionTimes.some((t) => t > created);
+    },
+    [completedSessionTimes]
+  );
 
   // Per-session rating snapshots, ordered oldest → newest, joined to session date.
   const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
