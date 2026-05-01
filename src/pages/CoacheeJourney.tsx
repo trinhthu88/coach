@@ -35,11 +35,12 @@ import {
   Users,
   Bell,
   GraduationCap,
+  Lock,
 } from "lucide-react";
 import { format, isAfter, isBefore, startOfWeek, endOfWeek, differenceInCalendarWeeks, differenceInCalendarDays } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { GoalWheel, GoalScoreCards, type GoalRatingRow } from "./journey/GoalWheel";
+import { GoalWheel, GoalScoreCards, type GoalRatingRow, type SessionRatingSeries } from "./journey/GoalWheel";
 
 interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; }
 interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
@@ -49,7 +50,7 @@ interface ProgrammeInfo {
   programmeName: string;
   startDate: string | null;
   endDate: string | null;
-  totalSessions: number;
+  sessionsAllowed: number;
   durationMonths: number;
 }
 interface RawActionItem { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null; }
@@ -87,6 +88,7 @@ export default function CoacheeJourney() {
   const [coachNames, setCoachNames] = useState<Record<string, string>>({});
   const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
   const [ratings, setRatings] = useState<Record<string, GoalRating>>({});
+  const [sessionRatings, setSessionRatings] = useState<any[]>([]);
   const [programme, setProgramme] = useState<ProgrammeInfo | null>(null);
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
@@ -95,16 +97,17 @@ export default function CoacheeJourney() {
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }, { data: gr }, { data: enr }] = await Promise.all([
+    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }, { data: gr }, { data: sgr }, { data: enr }] = await Promise.all([
       supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
       supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
       supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
       supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", user.id),
+      supabase.from("session_goal_ratings").select("*").eq("coachee_id", user.id),
       supabase
         .from("programme_enrollments")
-        .select("id, start_date, end_date, programme_id, programmes(name, total_sessions, duration_months)")
+        .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")
         .eq("coachee_id", user.id)
         .eq("status", "active")
         .order("start_date", { ascending: false })
@@ -114,6 +117,7 @@ export default function CoacheeJourney() {
     setMilestones(m || []);
     setSessions(s || []);
     setReflections(r || []);
+    setSessionRatings(sgr || []);
     const usageRow = Array.isArray(u) ? u[0] : u;
     if (usageRow) setUsage(usageRow as any);
 
@@ -128,7 +132,7 @@ export default function CoacheeJourney() {
         programmeName: e.programmes.name,
         startDate: e.start_date,
         endDate: e.end_date,
-        totalSessions: e.programmes.total_sessions ?? 0,
+        sessionsAllowed: e.programmes.coachee_session_limit ?? 0,
         durationMonths: e.programmes.duration_months ?? 0,
       });
     } else {
@@ -291,15 +295,42 @@ export default function CoacheeJourney() {
     return dates.length ? Math.max(...dates) : null;
   }, [sessions]);
 
-  const lastRatingUpdate = useMemo(() => {
-    const ts = Object.values(ratings).map((r) => new Date(r.current_updated_at).getTime());
-    return ts.length ? Math.max(...ts) : 0;
-  }, [ratings]);
-
-  const needsRatingUpdate =
-    goals.length > 0 && !!lastCompletedAt && lastCompletedAt > lastRatingUpdate;
-
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
+  const sessionsCountedTowardsLock = sessions.filter((s) =>
+    ["confirmed", "completed"].includes(s.status)
+  ).length;
+  // Start/Target editable ONLY before session 2 begins. Once 2 sessions are
+  // either completed or scheduled, lock both inputs.
+  const startTargetLocked = sessionsCountedTowardsLock >= 2;
+
+  // Per-session rating snapshots, ordered oldest → newest, joined to session date.
+  const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
+    const sessionById = new Map(sessions.map((s) => [s.id, s]));
+    const grouped = new Map<string, { date: string; rows: { goalId: string; rating: number }[] }>();
+    for (const row of sessionRatings as any[]) {
+      const sess = sessionById.get(row.session_id);
+      if (!sess) continue;
+      const key = row.session_id;
+      const cur = grouped.get(key) || { date: sess.start_time, rows: [] };
+      cur.rows.push({ goalId: row.goal_id, rating: row.rating });
+      grouped.set(key, cur);
+    }
+    return Array.from(grouped.entries())
+      .map(([sessionId, v]) => ({ sessionId, date: v.date, rows: v.rows }))
+      .sort((a, b) => +new Date(a.date) - +new Date(b.date));
+  }, [sessionRatings, sessions]);
+
+  // After any completed session, prompt to add the latest reflection rating
+  // if no snapshot exists for it yet.
+  const pendingReflectionSession = useMemo(() => {
+    const completed = sessions
+      .filter((s) => s.status === "completed")
+      .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
+    const ratedSessionIds = new Set((sessionRatings as any[]).map((r) => r.session_id));
+    return completed.find((s) => !ratedSessionIds.has(s.id)) || null;
+  }, [sessions, sessionRatings]);
+
+  const needsRatingUpdate = goals.length > 0 && !!pendingReflectionSession;
 
   const saveRating = async (
     goalId: string,
@@ -472,13 +503,13 @@ export default function CoacheeJourney() {
               <p className="mt-1 text-xl font-semibold">
                 {sessionsCompletedCount}
                 <span className="text-sm font-normal text-muted-foreground">
-                  {" "}/ {programme.totalSessions || "—"}
+                  {" "}/ {programme.sessionsAllowed || "—"}
                 </span>
               </p>
               <Progress
                 value={
-                  programme.totalSessions
-                    ? Math.min(100, (sessionsCompletedCount / programme.totalSessions) * 100)
+                  programme.sessionsAllowed
+                    ? Math.min(100, (sessionsCompletedCount / programme.sessionsAllowed) * 100)
                     : 0
                 }
                 className="mt-2 h-1.5"
@@ -608,15 +639,15 @@ export default function CoacheeJourney() {
         {/* OVERVIEW */}
         <TabsContent value="home" className="mt-4 space-y-6">
           {/* Update prompt banner after a completed session */}
-          {needsRatingUpdate && (
+          {needsRatingUpdate && pendingReflectionSession && (
             <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
               <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div className="flex-1">
                 <p className="font-semibold text-primary">
-                  You've completed a coaching session — update your current ratings
+                  Reflection time — rate your goals after this session
                 </p>
                 <p className="text-xs text-primary/80">
-                  Slide the <strong>Current</strong> score on each goal to reflect where you are now. The wheel updates as you go.
+                  Open <Link to={`/sessions/${pendingReflectionSession.id}`} className="font-semibold underline">{pendingReflectionSession.topic}</Link> ({format(new Date(pendingReflectionSession.start_time), "MMM d")}) to log a 0–100 self-rating per goal. Each reflection becomes a new layer on the wheel.
                 </p>
               </div>
             </div>
@@ -625,7 +656,7 @@ export default function CoacheeJourney() {
           {/* Goal wheel + score cards */}
           {goals.length > 0 && (
             <div className="grid gap-3 lg:grid-cols-2">
-              <GoalWheel rows={ratingRows} />
+              <GoalWheel rows={ratingRows} sessionSeries={sessionRatingSeries} />
               <GoalScoreCards rows={ratingRows} />
             </div>
           )}
@@ -650,6 +681,7 @@ export default function CoacheeJourney() {
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
+                  startTargetLocked={startTargetLocked}
                 />
               ))}
             </div>
@@ -702,6 +734,7 @@ export default function CoacheeJourney() {
                     defaultOpen={i === 0}
                     rating={ratingRows.find((r) => r.goalId === g.id)}
                     onRatingChange={(patch) => saveRating(g.id, patch)}
+                    startTargetLocked={startTargetLocked}
                   />
                 ))}
               </div>
@@ -800,19 +833,20 @@ function RatingSlider({
   hint,
   value,
   trackColor,
+  disabled,
   onChange,
 }: {
   label: string;
   hint?: string;
   value: number;
   trackColor: string;
+  disabled?: boolean;
   onChange: (v: number) => void;
 }) {
   const [local, setLocal] = useState(value);
-  // keep in sync if external value changes
   useEffect(() => setLocal(value), [value]);
   return (
-    <div>
+    <div className={cn(disabled && "opacity-60")}>
       <div className="mb-1 flex items-center justify-between gap-2">
         <div>
           <span className="text-[11px] font-semibold">{label}</span>
@@ -825,6 +859,7 @@ function RatingSlider({
         min={0}
         max={100}
         step={1}
+        disabled={disabled}
         onValueChange={(v) => setLocal(v[0])}
         onValueCommit={(v) => onChange(v[0])}
         className={cn("[&_[data-orientation=horizontal]>span]:h-1.5", trackColor && "")}
@@ -871,6 +906,7 @@ function GoalAccordion({
   showLinkedActions = true,
   rating,
   onRatingChange,
+  startTargetLocked,
 }: {
   goal: Goal;
   milestones: Milestone[];
@@ -885,6 +921,7 @@ function GoalAccordion({
   showLinkedActions?: boolean;
   rating?: GoalRatingRow;
   onRatingChange?: (patch: { start_rating?: number; current_rating?: number; target_rating?: number }) => void;
+  startTargetLocked?: boolean;
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
   const [adding, setAdding] = useState(false);
@@ -941,35 +978,40 @@ function GoalAccordion({
         <div className="border-t p-4">
           {goal.description && <p className="mb-3 text-xs text-muted-foreground">{goal.description}</p>}
 
-          {/* Self-rating sliders */}
+          {/* Self-rating sliders — Start & Target only, locked once 2nd session is in motion */}
           {rating && onRatingChange && (
             <div className="mb-4 rounded-lg border bg-muted/20 p-3">
-              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Self-rating · 0–100
-              </p>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Start &amp; Target · 0–100
+                </p>
+                {startTargetLocked && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title="Editable only before session 2 starts">
+                    <Lock className="h-3 w-3" /> Locked
+                  </span>
+                )}
+              </div>
               <div className="space-y-3">
                 <RatingSlider
                   label="Start"
-                  hint="Set once at programme start"
+                  hint={startTargetLocked ? "Locked after session 2" : "Where you are today"}
                   value={rating.start}
                   trackColor="bg-primary/40"
+                  disabled={startTargetLocked}
                   onChange={(v) => onRatingChange({ start_rating: v })}
                 />
                 <RatingSlider
-                  label="Current"
-                  hint="Update after each session"
-                  value={rating.current}
-                  trackColor="bg-primary"
-                  onChange={(v) => onRatingChange({ current_rating: v })}
-                />
-                <RatingSlider
                   label="Target"
-                  hint="Where you want to be"
+                  hint={startTargetLocked ? "Locked after session 2" : "Where you want to be"}
                   value={rating.target}
                   trackColor="bg-accent"
+                  disabled={startTargetLocked}
                   onChange={(v) => onRatingChange({ target_rating: v })}
                 />
               </div>
+              <p className="mt-3 text-[10px] text-muted-foreground">
+                Your <strong>current</strong> rating is captured after each session in the session log and traced on the wheel.
+              </p>
             </div>
           )}
 

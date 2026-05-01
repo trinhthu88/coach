@@ -70,7 +70,7 @@ export default function AdminCoaches() {
   const [rows, setRows] = useState<CoachRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
   const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
-  const [programmes, setProgrammes] = useState<{ id: string; name: string; coach_session_limit: number; peer_session_limit: number }[]>([]);
+  const [programmes, setProgrammes] = useState<{ id: string; name: string; coach_session_limit: number; peer_session_limit: number; peer_given_limit: number }[]>([]);
   const [defaultCoachLimit, setDefaultCoachLimit] = useState(4);
   const [defaultPeerLimit, setDefaultPeerLimit] = useState(4);
   const [q, setQ] = useState("");
@@ -100,7 +100,7 @@ export default function AdminCoaches() {
       supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
       supabase.from("cohorts").select("id, name"),
-      supabase.from("programmes").select("id, name, coach_session_limit, peer_session_limit"),
+      supabase.from("programmes").select("id, name, coach_session_limit, peer_session_limit, peer_given_limit"),
       supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id"),
     ]);
 

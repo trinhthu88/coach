@@ -281,6 +281,7 @@ export type Database = {
           id: string
           monthly_limit: number
           notes: string | null
+          peer_given_monthly_limit: number
           peer_monthly_limit: number
           updated_at: string
         }
@@ -290,6 +291,7 @@ export type Database = {
           id?: string
           monthly_limit?: number
           notes?: string | null
+          peer_given_monthly_limit?: number
           peer_monthly_limit?: number
           updated_at?: string
         }
@@ -299,6 +301,7 @@ export type Database = {
           id?: string
           monthly_limit?: number
           notes?: string | null
+          peer_given_monthly_limit?: number
           peer_monthly_limit?: number
           updated_at?: string
         }
@@ -852,8 +855,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          peer_given_limit: number
           peer_session_limit: number
-          total_sessions: number
           updated_at: string
         }
         Insert: {
@@ -866,8 +869,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          peer_given_limit?: number
           peer_session_limit?: number
-          total_sessions?: number
           updated_at?: string
         }
         Update: {
@@ -880,8 +883,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          peer_given_limit?: number
           peer_session_limit?: number
-          total_sessions?: number
           updated_at?: string
         }
         Relationships: []
@@ -926,6 +929,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      session_goal_ratings: {
+        Row: {
+          coachee_id: string
+          created_at: string
+          goal_id: string
+          id: string
+          note: string | null
+          rating: number
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          coachee_id: string
+          created_at?: string
+          goal_id: string
+          id?: string
+          note?: string | null
+          rating: number
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          coachee_id?: string
+          created_at?: string
+          goal_id?: string
+          id?: string
+          note?: string | null
+          rating?: number
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       session_limits: {
         Row: {
