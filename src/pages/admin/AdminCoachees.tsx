@@ -324,6 +324,31 @@ export default function AdminCoachees() {
     }
   };
 
+  const resetTempPassword = async () => {
+    if (!editing?.access_request_id) return;
+    setResettingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("approve-access-request", {
+        body: { request_id: editing.access_request_id, force_reset_password: true },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const payload = data as { temp_password: string };
+      setEditing({
+        ...editing,
+        temp_password: payload.temp_password,
+        temp_password_issued_at: new Date().toISOString(),
+      });
+      toast.success("Temporary password reset");
+      await load();
+    } catch (err: any) {
+      toast.error(err.message || "Could not reset password");
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   const active = rows.filter(r => r.status === "active").length;
@@ -489,6 +514,31 @@ export default function AdminCoachees() {
 
               <div className="rounded-lg bg-muted/40 p-3 text-[11px] text-muted-foreground">
                 <p>Sessions: <strong>{editing.done}</strong> completed · <strong>{editing.booked}</strong> booked</p>
+              </div>
+
+              <div className="rounded-lg border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Temporary password</p>
+                    <p className="mt-2 font-mono text-sm text-foreground">
+                      {editing.temp_password || "No temporary password stored yet"}
+                    </p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      {editing.temp_password_issued_at
+                        ? `Issued ${format(new Date(editing.temp_password_issued_at), "MMM d, yyyy · HH:mm")}`
+                        : "Visible to admins only"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetTempPassword}
+                    disabled={!editing.access_request_id || resettingPassword}
+                  >
+                    {resettingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Reset password
+                  </Button>
+                </div>
               </div>
             </div>
           )}
