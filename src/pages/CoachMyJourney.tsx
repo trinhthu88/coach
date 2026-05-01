@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -27,10 +29,38 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
+  Bell,
+  GraduationCap,
+  Lock,
 } from "lucide-react";
-import { format, isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
+import {
+  format,
+  isAfter,
+  isBefore,
+  startOfWeek,
+  endOfWeek,
+  differenceInCalendarWeeks,
+} from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  GoalWheel,
+  GoalScoreCards,
+  type GoalRatingRow,
+  type SessionRatingSeries,
+} from "./journey/GoalWheel";
+
+interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; }
+interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
+interface GoalRating { id: string; goal_id: string; coachee_id: string; start_rating: number; current_rating: number; target_rating: number; current_updated_at: string; }
+interface ProgrammeInfo {
+  enrollmentId: string;
+  programmeName: string;
+  startDate: string | null;
+  endDate: string | null;
+  sessionsAllowed: number;
+  durationMonths: number;
+}
 
 interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; }
 interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
