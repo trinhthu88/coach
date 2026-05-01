@@ -639,15 +639,15 @@ export default function CoacheeJourney() {
         {/* OVERVIEW */}
         <TabsContent value="home" className="mt-4 space-y-6">
           {/* Update prompt banner after a completed session */}
-          {needsRatingUpdate && (
+          {needsRatingUpdate && pendingReflectionSession && (
             <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
               <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div className="flex-1">
                 <p className="font-semibold text-primary">
-                  You've completed a coaching session — update your current ratings
+                  Reflection time — rate your goals after this session
                 </p>
                 <p className="text-xs text-primary/80">
-                  Slide the <strong>Current</strong> score on each goal to reflect where you are now. The wheel updates as you go.
+                  Open <Link to={`/sessions/${pendingReflectionSession.id}`} className="font-semibold underline">{pendingReflectionSession.topic}</Link> ({format(new Date(pendingReflectionSession.start_time), "MMM d")}) to log a 0–100 self-rating per goal. Each reflection becomes a new layer on the wheel.
                 </p>
               </div>
             </div>
@@ -656,7 +656,7 @@ export default function CoacheeJourney() {
           {/* Goal wheel + score cards */}
           {goals.length > 0 && (
             <div className="grid gap-3 lg:grid-cols-2">
-              <GoalWheel rows={ratingRows} />
+              <GoalWheel rows={ratingRows} sessionSeries={sessionRatingSeries} />
               <GoalScoreCards rows={ratingRows} />
             </div>
           )}
