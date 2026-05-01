@@ -902,6 +902,39 @@ function GoalAccordion({
       {open && (
         <div className="border-t p-4">
           {goal.description && <p className="mb-3 text-xs text-muted-foreground">{goal.description}</p>}
+
+          {/* Self-rating sliders */}
+          {rating && onRatingChange && (
+            <div className="mb-4 rounded-lg border bg-muted/20 p-3">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Self-rating · 0–100
+              </p>
+              <div className="space-y-3">
+                <RatingSlider
+                  label="Start"
+                  hint="Set once at programme start"
+                  value={rating.start}
+                  trackColor="bg-primary/40"
+                  onChange={(v) => onRatingChange({ start_rating: v })}
+                />
+                <RatingSlider
+                  label="Current"
+                  hint="Update after each session"
+                  value={rating.current}
+                  trackColor="bg-primary"
+                  onChange={(v) => onRatingChange({ current_rating: v })}
+                />
+                <RatingSlider
+                  label="Target"
+                  hint="Where you want to be"
+                  value={rating.target}
+                  trackColor="bg-accent"
+                  onChange={(v) => onRatingChange({ target_rating: v })}
+                />
+              </div>
+            </div>
+          )}
+
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             {showLinkedActions ? "Milestones & linked actions" : "Milestones"}
           </p>
