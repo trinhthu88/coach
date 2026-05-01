@@ -748,7 +748,7 @@ export default function CoacheeJourney() {
                     defaultOpen={i === 0}
                     rating={ratingRows.find((r) => r.goalId === g.id)}
                     onRatingChange={(patch) => saveRating(g.id, patch)}
-                    startTargetLocked={startTargetLocked}
+                    startTargetLocked={isGoalLocked(g.created_at)}
                   />
                 ))}
               </div>
