@@ -326,13 +326,13 @@ export default function AdminCoachees() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
 
-      const payload = data as { temp_password: string };
-      setEditing({
-        ...editing,
-        temp_password: payload.temp_password,
-        temp_password_issued_at: new Date().toISOString(),
+      const payload = data as { temp_password: string; email: string };
+      setResetCredential({
+        email: payload.email ?? editing.email,
+        password: payload.temp_password,
+        full_name: editing.full_name,
       });
-      toast.success("Temporary password reset");
+      toast.success("Temporary password generated");
       await load();
     } catch (err: any) {
       toast.error(err.message || "Could not reset password");
