@@ -391,14 +391,16 @@ export default function AdminCoaches() {
                 <th className="px-3 py-2.5 text-left font-semibold">Coach</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Status</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Registered</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Coach limit</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Coaching received</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Peer received</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Peer given</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Programme</th>
+                <th className="px-3 py-2.5 text-left font-semibold">% Complete</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Assigned</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Peer limit</th>
                 <th className="px-3 py-2.5 text-left font-semibold"># Coachees</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Rating</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Booked</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Done</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Cohort</th>
                 <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -417,21 +419,30 @@ export default function AdminCoaches() {
                   <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Pill></td>
                   <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{format(new Date(r.created_at), "MMM d, yyyy")}</td>
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.coach_used}/{r.coach_session_limit}</span></td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.assigned_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : `${r.assigned_coaches.length} coach${r.assigned_coaches.length === 1 ? "" : "es"}`}</td>
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_used}/{r.peer_session_limit}</span></td>
+                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_given_used}/{r.peer_given_limit}</span></td>
+                  <td className="px-3 py-2.5 text-[11px]">{r.programme_name || <span className="italic text-muted-foreground">—</span>}{r.cohort_name && <p className="text-[10px] text-muted-foreground">{r.cohort_name}</p>}</td>
+                  <td className="px-3 py-2.5 text-[11px]">
+                    {(() => {
+                      const pct = programmeCompletionPct(r.enrollment_start_date, r.programme_duration_months);
+                      if (pct === null) return <span className="italic text-muted-foreground">—</span>;
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
+                            <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="font-mono text-[10px] text-muted-foreground">{pct}%</span>
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-3 py-2.5 text-[11px]">{r.assigned_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : `${r.assigned_coaches.length} coach${r.assigned_coaches.length === 1 ? "" : "es"}`}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.coachees_count}</td>
                   <td className="px-3 py-2.5 text-[11px]">
                     <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-warning text-warning" /> {r.rating_avg.toFixed(1)}</span>
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked_sessions}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.completed_sessions}</td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.cohort_name || <span className="italic text-muted-foreground">—</span>}</td>
-                  <td className="px-3 py-2.5 text-right">
-                    <div className="inline-flex gap-1">
-                      <Button asChild variant="ghost" size="sm" title="View profile"><Link to={`/coaches/${r.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                      <Button variant="ghost" size="sm" onClick={() => setEditing({ ...r, assigned_coaches: [...r.assigned_coaches] })}><Pencil className="h-3.5 w-3.5" /></Button>
-                    </div>
-                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
