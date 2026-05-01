@@ -1,4 +1,7 @@
 project_id = "fgzhdyeneycdzitbimhk"
 
-[functions.approve-access-request]
-verify_jwt = true
+[functions]
+  [functions.approve-access-request]
+    verify_jwt = true
+  [functions.auth-email-hook]
+    verify_jwt = false
