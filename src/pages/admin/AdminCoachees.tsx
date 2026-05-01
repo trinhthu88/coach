@@ -471,6 +471,9 @@ export default function AdminCoachees() {
         </div>
       </Card>
 
+      {/* Read-only profile drawer */}
+      <CoacheeProfileSheet row={viewing} onClose={() => setViewing(null)} />
+
       {/* Edit drawer */}
       <Sheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
