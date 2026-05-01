@@ -56,8 +56,6 @@ interface Row {
   selected_coaches: { id: string; name: string }[];
   session_limit: number;
   limit_row_id: string | null;
-  temp_password: string | null;
-  temp_password_issued_at: string | null;
   access_request_id: string | null;
 }
 
@@ -73,6 +71,7 @@ export default function AdminCoachees() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [saving, setSaving] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [resetCredential, setResetCredential] = useState<{ email: string; password: string; full_name: string } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -88,7 +87,6 @@ export default function AdminCoachees() {
       { data: cohortsData },
       { data: allow },
       { data: limits },
-      { data: credentials },
       { data: requests },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
@@ -99,7 +97,6 @@ export default function AdminCoachees() {
       supabase.from("cohorts").select("id, name"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
       supabase.from("session_limits").select("id, coachee_id, monthly_limit"),
-      supabase.from("admin_user_credentials").select("user_id, temporary_password, issued_at"),
       supabase.from("access_requests").select("id, email, status").eq("status", "approved"),
     ]);
 
@@ -131,8 +128,6 @@ export default function AdminCoachees() {
     setDefaultLimit(defLimit);
     const limByCoachee = new Map<string, any>();
     (limits || []).filter((l: any) => l.coachee_id).forEach((l: any) => limByCoachee.set(l.coachee_id, l));
-    const credentialByUser = new Map<string, any>();
-    (credentials || []).forEach((c: any) => credentialByUser.set(c.user_id, c));
     const requestIdByEmail = new Map<string, string>();
     (requests || []).forEach((r: any) => {
       if (!requestIdByEmail.has(String(r.email).toLowerCase())) {
@@ -145,7 +140,6 @@ export default function AdminCoachees() {
       if (!p) return null;
       const enr = enrByUser.get(id);
       const lim = limByCoachee.get(id);
-      const cred = credentialByUser.get(id);
       return {
         id,
         full_name: p.full_name,
@@ -162,8 +156,6 @@ export default function AdminCoachees() {
         selected_coaches: allowByCoachee.get(id) || [],
         session_limit: lim?.monthly_limit ?? defLimit,
         limit_row_id: lim?.id || null,
-        temp_password: cred?.temporary_password ?? null,
-        temp_password_issued_at: cred?.issued_at ?? null,
         access_request_id: requestIdByEmail.get(String(p.email).toLowerCase()) ?? null,
       } as Row;
     }).filter(Boolean) as Row[];
@@ -334,13 +326,13 @@ export default function AdminCoachees() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
 
-      const payload = data as { temp_password: string };
-      setEditing({
-        ...editing,
-        temp_password: payload.temp_password,
-        temp_password_issued_at: new Date().toISOString(),
+      const payload = data as { temp_password: string; email: string };
+      setResetCredential({
+        email: payload.email ?? editing.email,
+        password: payload.temp_password,
+        full_name: editing.full_name,
       });
-      toast.success("Temporary password reset");
+      toast.success("Temporary password generated");
       await load();
     } catch (err: any) {
       toast.error(err.message || "Could not reset password");
@@ -520,13 +512,8 @@ export default function AdminCoachees() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Temporary password</p>
-                    <p className="mt-2 font-mono text-sm text-foreground">
-                      {editing.temp_password || "No temporary password stored yet"}
-                    </p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      {editing.temp_password_issued_at
-                        ? `Issued ${format(new Date(editing.temp_password_issued_at), "MMM d, yyyy · HH:mm")}`
-                        : "Visible to admins only"}
+                    <p className="mt-2 text-[12px] text-muted-foreground">
+                      For security, temporary passwords are never stored. Click <strong>Reset password</strong> to generate a new one — it will be shown once so you can share it with the user.
                     </p>
                   </div>
                   <Button
@@ -550,6 +537,39 @@ export default function AdminCoachees() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* One-time temporary password dialog */}
+      <Dialog open={!!resetCredential} onOpenChange={(o) => !o && setResetCredential(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>New temporary password for {resetCredential?.full_name}</DialogTitle>
+            <DialogDescription>
+              Copy and share this password privately. It is shown only once and is not stored anywhere — generate a new one if you lose it.
+            </DialogDescription>
+          </DialogHeader>
+          {resetCredential && (
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Email</p>
+                <div className="mt-1 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                  <code className="flex-1 text-[13px]">{resetCredential.email}</code>
+                  <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(resetCredential.email); toast.success("Copied"); }}>Copy</Button>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Temporary password</p>
+                <div className="mt-1 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                  <code className="flex-1 font-mono text-[13px]">{resetCredential.password}</code>
+                  <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(resetCredential.password); toast.success("Copied"); }}>Copy</Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setResetCredential(null)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Import dialog */}
       <Dialog open={importOpen} onOpenChange={setImportOpen}>

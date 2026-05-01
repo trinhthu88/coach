@@ -113,42 +113,6 @@ export type Database = {
         }
         Relationships: []
       }
-      admin_user_credentials: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          issued_at: string
-          issued_by: string | null
-          must_reset: boolean
-          temporary_password: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          issued_at?: string
-          issued_by?: string | null
-          must_reset?: boolean
-          temporary_password: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          issued_at?: string
-          issued_by?: string | null
-          must_reset?: boolean
-          temporary_password?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       coach_as_coachee_allowlist: {
         Row: {
           coach_user_id: string
