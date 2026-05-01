@@ -266,6 +266,10 @@ export default function AdminCoaches() {
 
   const saveEdit = async () => {
     if (!editing) return;
+    if (!editing.programme_id) {
+      toast.error("Programme is required");
+      return;
+    }
     setSaving(true);
     try {
       // 1. Profile + coach_profiles status
@@ -283,12 +287,14 @@ export default function AdminCoaches() {
         await supabase.from("coach_session_limits").update({
           monthly_limit: editing.coach_session_limit,
           peer_monthly_limit: editing.peer_session_limit,
+          peer_given_monthly_limit: editing.peer_given_limit,
         }).eq("id", editing.limit_row_id);
       } else {
         await supabase.from("coach_session_limits").insert({
           coach_user_id: editing.id,
           monthly_limit: editing.coach_session_limit,
           peer_monthly_limit: editing.peer_session_limit,
+          peer_given_monthly_limit: editing.peer_given_limit,
         });
       }
 
@@ -308,22 +314,18 @@ export default function AdminCoaches() {
           .eq("coach_user_id", editing.id).eq("selectable_coach_id", sid);
       }
 
-      // 4. Cohort enrollment (a coach can be in a cohort only via programme_enrollments — we use it loosely)
-      if (editing.cohort_id || editing.programme_id) {
-        if (editing.enrollment_id) {
-          await supabase.from("programme_enrollments").update({
-            cohort_id: editing.cohort_id,
-            programme_id: editing.programme_id || original?.programme_id || (programmes[0]?.id ?? null),
-          }).eq("id", editing.enrollment_id);
-        } else if (editing.programme_id) {
-          await supabase.from("programme_enrollments").insert({
-            coachee_id: editing.id,
-            programme_id: editing.programme_id,
-            cohort_id: editing.cohort_id,
-          });
-        }
-      } else if (editing.enrollment_id) {
-        await supabase.from("programme_enrollments").delete().eq("id", editing.enrollment_id);
+      // 4. Programme enrollment (mandatory). Coach is treated as coachee here.
+      if (editing.enrollment_id) {
+        await supabase.from("programme_enrollments").update({
+          cohort_id: editing.cohort_id,
+          programme_id: editing.programme_id,
+        }).eq("id", editing.enrollment_id);
+      } else {
+        await supabase.from("programme_enrollments").insert({
+          coachee_id: editing.id,
+          programme_id: editing.programme_id,
+          cohort_id: editing.cohort_id,
+        });
       }
 
       toast.success("Coach updated");
