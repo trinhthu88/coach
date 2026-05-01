@@ -138,73 +138,73 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
     );
   }
 
-  if (rows.length === 0) return null;
-
   return (
     <>
-      <Card className="mb-4 overflow-hidden border-warning/40">
-        <div className="flex items-center justify-between gap-2 border-b bg-warning/10 px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <Inbox className="h-4 w-4 text-warning" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-warning">
-              {rows.length} access request{rows.length === 1 ? "" : "s"} awaiting approval
-            </p>
+      {rows.length > 0 && (
+        <Card className="mb-4 overflow-hidden border-warning/40">
+          <div className="flex items-center justify-between gap-2 border-b bg-warning/10 px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <Inbox className="h-4 w-4 text-warning" />
+              <p className="text-[11px] font-bold uppercase tracking-widest text-warning">
+                {rows.length} access request{rows.length === 1 ? "" : "s"} awaiting approval
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[12px]">
-            <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2.5 text-left font-semibold">Name</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Email</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{variant === "coach" ? "Credential" : "Job · Company"}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Industry</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Submitted</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {rows.map(r => (
-                <tr key={r.id} className="hover:bg-muted/30">
-                  <td className="px-3 py-2.5 font-medium">{r.full_name}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{r.email}</td>
-                  <td className="px-3 py-2.5 text-[11px]">
-                    {variant === "coach"
-                      ? (r.credential ?? "—")
-                      : `${r.job_title ?? "—"}${r.company ? ` · ${r.company}` : ""}`}
-                  </td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.industry ?? "—"}</td>
-                  <td className="px-3 py-2.5 text-[11px] text-muted-foreground">
-                    {format(new Date(r.created_at), "MMM d, yyyy")}
-                  </td>
-                  <td className="px-3 py-2.5 text-right">
-                    <div className="inline-flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setViewing(r)} title="View details">
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="sm" variant="outline"
-                        onClick={() => reject(r)}
-                        disabled={busyId === r.id}
-                      >
-                        <X className="h-3.5 w-3.5" /> Reject
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => approve(r)}
-                        disabled={busyId === r.id}
-                      >
-                        {busyId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                        Approve
-                      </Button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2.5 text-left font-semibold">Name</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Email</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">{variant === "coach" ? "Credential" : "Job · Company"}</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Industry</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Submitted</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </thead>
+              <tbody className="divide-y">
+                {rows.map(r => (
+                  <tr key={r.id} className="hover:bg-muted/30">
+                    <td className="px-3 py-2.5 font-medium">{r.full_name}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.email}</td>
+                    <td className="px-3 py-2.5 text-[11px]">
+                      {variant === "coach"
+                        ? (r.credential ?? "—")
+                        : `${r.job_title ?? "—"}${r.company ? ` · ${r.company}` : ""}`}
+                    </td>
+                    <td className="px-3 py-2.5 text-[11px]">{r.industry ?? "—"}</td>
+                    <td className="px-3 py-2.5 text-[11px] text-muted-foreground">
+                      {format(new Date(r.created_at), "MMM d, yyyy")}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <div className="inline-flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setViewing(r)} title="View details">
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm" variant="outline"
+                          onClick={() => reject(r)}
+                          disabled={busyId === r.id}
+                        >
+                          <X className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => approve(r)}
+                          disabled={busyId === r.id}
+                        >
+                          {busyId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                          Approve
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* Details dialog */}
       <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
