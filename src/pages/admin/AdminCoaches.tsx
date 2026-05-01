@@ -443,10 +443,16 @@ export default function AdminCoaches() {
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked_sessions}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.completed_sessions}</td>
+                  <td className="px-3 py-2.5 text-right">
+                    <div className="inline-flex gap-1">
+                      <Button asChild variant="ghost" size="sm" title="View profile"><Link to={`/coaches/${r.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                      <Button variant="ghost" size="sm" onClick={() => setEditing({ ...r, assigned_coaches: [...r.assigned_coaches] })}><Pencil className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={12} className="p-12 text-center text-sm text-muted-foreground">No coaches match your filters.</td></tr>
+                <tr><td colSpan={14} className="p-12 text-center text-sm text-muted-foreground">No coaches match your filters.</td></tr>
               )}
             </tbody>
           </table>
