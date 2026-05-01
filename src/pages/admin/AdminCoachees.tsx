@@ -538,6 +538,39 @@ export default function AdminCoachees() {
         </SheetContent>
       </Sheet>
 
+      {/* One-time temporary password dialog */}
+      <Dialog open={!!resetCredential} onOpenChange={(o) => !o && setResetCredential(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>New temporary password for {resetCredential?.full_name}</DialogTitle>
+            <DialogDescription>
+              Copy and share this password privately. It is shown only once and is not stored anywhere — generate a new one if you lose it.
+            </DialogDescription>
+          </DialogHeader>
+          {resetCredential && (
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Email</p>
+                <div className="mt-1 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                  <code className="flex-1 text-[13px]">{resetCredential.email}</code>
+                  <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(resetCredential.email); toast.success("Copied"); }}>Copy</Button>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Temporary password</p>
+                <div className="mt-1 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                  <code className="flex-1 font-mono text-[13px]">{resetCredential.password}</code>
+                  <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(resetCredential.password); toast.success("Copied"); }}>Copy</Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setResetCredential(null)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Import dialog */}
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent>
