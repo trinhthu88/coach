@@ -352,6 +352,42 @@ export type Database = {
         }
         Relationships: []
       }
+      coachee_goal_ratings: {
+        Row: {
+          coachee_id: string
+          created_at: string
+          current_rating: number
+          current_updated_at: string
+          goal_id: string
+          id: string
+          start_rating: number
+          target_rating: number
+          updated_at: string
+        }
+        Insert: {
+          coachee_id: string
+          created_at?: string
+          current_rating?: number
+          current_updated_at?: string
+          goal_id: string
+          id?: string
+          start_rating?: number
+          target_rating?: number
+          updated_at?: string
+        }
+        Update: {
+          coachee_id?: string
+          created_at?: string
+          current_rating?: number
+          current_updated_at?: string
+          goal_id?: string
+          id?: string
+          start_rating?: number
+          target_rating?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coachee_goals: {
         Row: {
           coachee_id: string

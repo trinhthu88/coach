@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
 import {
   Compass,
   Loader2,
@@ -32,13 +33,25 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
+  Bell,
+  GraduationCap,
 } from "lucide-react";
-import { format, isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
+import { format, isAfter, isBefore, startOfWeek, endOfWeek, differenceInCalendarWeeks, differenceInCalendarDays } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { GoalWheel, GoalScoreCards, type GoalRatingRow } from "./journey/GoalWheel";
 
 interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; }
 interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
+interface GoalRating { id: string; goal_id: string; coachee_id: string; start_rating: number; current_rating: number; target_rating: number; current_updated_at: string; }
+interface ProgrammeInfo {
+  enrollmentId: string;
+  programmeName: string;
+  startDate: string | null;
+  endDate: string | null;
+  totalSessions: number;
+  durationMonths: number;
+}
 interface RawActionItem { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null; }
 interface FlatAction extends RawActionItem {
   sessionId: string;
@@ -73,6 +86,8 @@ export default function CoacheeJourney() {
   const [reflections, setReflections] = useState<any[]>([]);
   const [coachNames, setCoachNames] = useState<Record<string, string>>({});
   const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
+  const [ratings, setRatings] = useState<Record<string, GoalRating>>({});
+  const [programme, setProgramme] = useState<ProgrammeInfo | null>(null);
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
@@ -80,12 +95,20 @@ export default function CoacheeJourney() {
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }] = await Promise.all([
+    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }, { data: gr }, { data: enr }] = await Promise.all([
       supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
       supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
       supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
+      supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", user.id),
+      supabase
+        .from("programme_enrollments")
+        .select("id, start_date, end_date, programme_id, programmes(name, total_sessions, duration_months)")
+        .eq("coachee_id", user.id)
+        .eq("status", "active")
+        .order("start_date", { ascending: false })
+        .limit(1),
     ]);
     setGoals(g || []);
     setMilestones(m || []);
@@ -93,6 +116,24 @@ export default function CoacheeJourney() {
     setReflections(r || []);
     const usageRow = Array.isArray(u) ? u[0] : u;
     if (usageRow) setUsage(usageRow as any);
+
+    const rmap: Record<string, GoalRating> = {};
+    for (const row of (gr || []) as any[]) rmap[row.goal_id] = row;
+    setRatings(rmap);
+
+    const e = (enr || [])[0] as any;
+    if (e && e.programmes) {
+      setProgramme({
+        enrollmentId: e.id,
+        programmeName: e.programmes.name,
+        startDate: e.start_date,
+        endDate: e.end_date,
+        totalSessions: e.programmes.total_sessions ?? 0,
+        durationMonths: e.programmes.duration_months ?? 0,
+      });
+    } else {
+      setProgramme(null);
+    }
 
     const coachIds = Array.from(new Set((s || []).map((x: any) => x.coach_id).filter(Boolean)));
     if (coachIds.length) {
@@ -206,6 +247,93 @@ export default function CoacheeJourney() {
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [sessions, coachNames, now]);
 
+  // Goal rating rows for radar chart
+  const ratingRows: GoalRatingRow[] = useMemo(
+    () =>
+      goals.map((g) => {
+        const r = ratings[g.id];
+        return {
+          goalId: g.id,
+          title: g.title,
+          start: r?.start_rating ?? 30,
+          current: r?.current_rating ?? 30,
+          target: r?.target_rating ?? 80,
+        };
+      }),
+    [goals, ratings]
+  );
+
+  const avgGoalProgress = useMemo(() => {
+    if (!ratingRows.length) return 0;
+    const vals = ratingRows.map((r) => {
+      const span = Math.max(1, r.target - r.start);
+      const got = Math.max(0, r.current - r.start);
+      return Math.min(100, Math.round((got / span) * 100));
+    });
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  }, [ratingRows]);
+
+  const programmeWeeks = useMemo(() => {
+    if (!programme?.startDate) return null;
+    const start = new Date(programme.startDate);
+    const end = programme.endDate
+      ? new Date(programme.endDate)
+      : new Date(start.getTime() + (programme.durationMonths || 3) * 30 * 86400000);
+    const totalWeeks = Math.max(1, differenceInCalendarWeeks(end, start, { weekStartsOn: 1 }));
+    const elapsedWeeks = Math.max(0, Math.min(totalWeeks, differenceInCalendarWeeks(now, start, { weekStartsOn: 1 })));
+    return { start, end, totalWeeks, elapsedWeeks };
+  }, [programme, now]);
+
+  const lastCompletedAt = useMemo(() => {
+    const dates = sessions
+      .filter((s) => s.status === "completed")
+      .map((s) => new Date(s.start_time).getTime());
+    return dates.length ? Math.max(...dates) : null;
+  }, [sessions]);
+
+  const lastRatingUpdate = useMemo(() => {
+    const ts = Object.values(ratings).map((r) => new Date(r.current_updated_at).getTime());
+    return ts.length ? Math.max(...ts) : 0;
+  }, [ratings]);
+
+  const needsRatingUpdate =
+    goals.length > 0 && !!lastCompletedAt && lastCompletedAt > lastRatingUpdate;
+
+  const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
+
+  const saveRating = async (
+    goalId: string,
+    patch: Partial<{ start_rating: number; current_rating: number; target_rating: number }>
+  ) => {
+    if (!user) return;
+    const existing = ratings[goalId];
+    const merged: any = {
+      goal_id: goalId,
+      coachee_id: user.id,
+      start_rating: existing?.start_rating ?? 30,
+      current_rating: existing?.current_rating ?? 30,
+      target_rating: existing?.target_rating ?? 80,
+      current_updated_at: existing?.current_updated_at ?? new Date().toISOString(),
+      ...patch,
+    };
+    if (patch.current_rating !== undefined) {
+      merged.current_updated_at = new Date().toISOString();
+    }
+    setRatings((prev) => ({
+      ...prev,
+      [goalId]: { ...(existing as any), ...merged, id: existing?.id ?? "" },
+    }));
+    const { data, error } = await supabase
+      .from("coachee_goal_ratings")
+      .upsert(merged, { onConflict: "goal_id" })
+      .select()
+      .single();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (data) setRatings((prev) => ({ ...prev, [goalId]: data as any }));
+  };
 
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
@@ -302,8 +430,136 @@ export default function CoacheeJourney() {
         />
       </div>
 
-      {/* Coaches in this programme */}
-      {coachSummaries.length > 0 && (
+      {/* PROGRAMME BLOCK */}
+      {programme && (
+        <Card className="overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                  Programme
+                </p>
+                <p className="text-base font-semibold leading-tight">
+                  {programme.programmeName}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {programme.startDate ? format(new Date(programme.startDate), "MMM d, yyyy") : "—"}
+                  {" → "}
+                  {programme.endDate
+                    ? format(new Date(programme.endDate), "MMM d, yyyy")
+                    : programmeWeeks
+                    ? format(programmeWeeks.end, "MMM d, yyyy")
+                    : "—"}
+                </p>
+              </div>
+            </div>
+            {programmeWeeks && (
+              <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-secondary">
+                Week {Math.min(programmeWeeks.elapsedWeeks + 1, programmeWeeks.totalWeeks)} / {programmeWeeks.totalWeeks}
+              </span>
+            )}
+          </div>
+
+          {/* Stat tiles */}
+          <div className="grid gap-3 p-4 md:grid-cols-3">
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Sessions received
+              </p>
+              <p className="mt-1 text-xl font-semibold">
+                {sessionsCompletedCount}
+                <span className="text-sm font-normal text-muted-foreground">
+                  {" "}/ {programme.totalSessions || "—"}
+                </span>
+              </p>
+              <Progress
+                value={
+                  programme.totalSessions
+                    ? Math.min(100, (sessionsCompletedCount / programme.totalSessions) * 100)
+                    : 0
+                }
+                className="mt-2 h-1.5"
+              />
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Programme duration
+              </p>
+              <p className="mt-1 text-xl font-semibold">
+                {programmeWeeks ? `${programmeWeeks.elapsedWeeks}w` : "—"}
+                <span className="text-sm font-normal text-muted-foreground">
+                  {" "}/ {programmeWeeks?.totalWeeks ?? "—"}w
+                </span>
+              </p>
+              <Progress
+                value={
+                  programmeWeeks
+                    ? Math.min(100, (programmeWeeks.elapsedWeeks / programmeWeeks.totalWeeks) * 100)
+                    : 0
+                }
+                className="mt-2 h-1.5"
+              />
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Goal progress
+              </p>
+              <p className="mt-1 text-xl font-semibold text-primary">{avgGoalProgress}%</p>
+              <Progress value={avgGoalProgress} className="mt-2 h-1.5" />
+            </div>
+          </div>
+
+          {/* Coach row with role badges */}
+          {coachSummaries.length > 0 && (
+            <div className="border-t">
+              <div className="border-b bg-muted/20 px-4 py-2">
+                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" /> Assigned coaches
+                </p>
+              </div>
+              <ul className="divide-y">
+                {coachSummaries.map((c, i) => {
+                  const accent = ACCENTS[i % ACCENTS.length];
+                  const lead = i === 0;
+                  const dateRange =
+                    c.firstDate && c.lastDate
+                      ? `${format(c.firstDate, "MMM d")} → ${format(c.lastDate, "MMM d")}`
+                      : "—";
+                  return (
+                    <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", accent.bg, accent.text)}>
+                        {initials(c.name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{c.name}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {c.completed}/{c.total} sessions completed
+                          {c.nextDate ? ` · Next ${format(c.nextDate, "MMM d, p")}` : ""}
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
+                          lead ? "bg-primary/15 text-primary" : "bg-success/15 text-success"
+                        )}
+                      >
+                        {lead ? "Lead coach" : "Specialist"}
+                      </span>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Fallback: just the coaches list when no active programme */}
+      {!programme && coachSummaries.length > 0 && (
         <Card className="overflow-hidden">
           <div className="border-b bg-muted/30 px-4 py-2.5">
             <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -314,10 +570,6 @@ export default function CoacheeJourney() {
             {coachSummaries.map((c, i) => {
               const accent = ACCENTS[i % ACCENTS.length];
               const lead = i === 0;
-              const dateRange =
-                c.firstDate && c.lastDate
-                  ? `${format(c.firstDate, "MMM d")} → ${format(c.lastDate, "MMM d")}`
-                  : "—";
               return (
                 <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", accent.bg, accent.text)}>
@@ -327,7 +579,6 @@ export default function CoacheeJourney() {
                     <p className="truncate text-sm font-semibold">{c.name}</p>
                     <p className="truncate text-[11px] text-muted-foreground">
                       {c.completed}/{c.total} sessions completed
-                      {c.nextDate ? ` · Next ${format(c.nextDate, "MMM d, p")}` : ""}
                     </p>
                   </div>
                   <span
@@ -338,7 +589,6 @@ export default function CoacheeJourney() {
                   >
                     {lead ? "Lead coach" : "Specialist"}
                   </span>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange}</span>
                 </li>
               );
             })}
@@ -357,6 +607,29 @@ export default function CoacheeJourney() {
 
         {/* OVERVIEW */}
         <TabsContent value="home" className="mt-4 space-y-6">
+          {/* Update prompt banner after a completed session */}
+          {needsRatingUpdate && (
+            <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
+              <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div className="flex-1">
+                <p className="font-semibold text-primary">
+                  You've completed a coaching session — update your current ratings
+                </p>
+                <p className="text-xs text-primary/80">
+                  Slide the <strong>Current</strong> score on each goal to reflect where you are now. The wheel updates as you go.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Goal wheel + score cards */}
+          {goals.length > 0 && (
+            <div className="grid gap-3 lg:grid-cols-2">
+              <GoalWheel rows={ratingRows} />
+              <GoalScoreCards rows={ratingRows} />
+            </div>
+          )}
+
           <SectionHeader title="Goals & milestones" />
           {goals.length === 0 ? (
             <EmptyGoals userId={user!.id} onSaved={refresh} />
@@ -375,6 +648,8 @@ export default function CoacheeJourney() {
                   onChanged={refresh}
                   userId={user!.id}
                   defaultOpen={i === 0}
+                  rating={ratingRows.find((r) => r.goalId === g.id)}
+                  onRatingChange={(patch) => saveRating(g.id, patch)}
                 />
               ))}
             </div>
@@ -425,6 +700,8 @@ export default function CoacheeJourney() {
                     userId={user!.id}
                     showLinkedActions
                     defaultOpen={i === 0}
+                    rating={ratingRows.find((r) => r.goalId === g.id)}
+                    onRatingChange={(patch) => saveRating(g.id, patch)}
                   />
                 ))}
               </div>
@@ -518,6 +795,44 @@ function Metric({
   );
 }
 
+function RatingSlider({
+  label,
+  hint,
+  value,
+  trackColor,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  trackColor: string;
+  onChange: (v: number) => void;
+}) {
+  const [local, setLocal] = useState(value);
+  // keep in sync if external value changes
+  useEffect(() => setLocal(value), [value]);
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <div>
+          <span className="text-[11px] font-semibold">{label}</span>
+          {hint && <span className="ml-2 text-[10px] text-muted-foreground">{hint}</span>}
+        </div>
+        <span className="text-xs font-semibold tabular-nums text-foreground">{local}</span>
+      </div>
+      <Slider
+        value={[local]}
+        min={0}
+        max={100}
+        step={1}
+        onValueChange={(v) => setLocal(v[0])}
+        onValueCommit={(v) => onChange(v[0])}
+        className={cn("[&_[data-orientation=horizontal]>span]:h-1.5", trackColor && "")}
+      />
+    </div>
+  );
+}
+
 function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between">
@@ -554,6 +869,8 @@ function GoalAccordion({
   userId,
   defaultOpen,
   showLinkedActions = true,
+  rating,
+  onRatingChange,
 }: {
   goal: Goal;
   milestones: Milestone[];
@@ -566,6 +883,8 @@ function GoalAccordion({
   userId: string;
   defaultOpen?: boolean;
   showLinkedActions?: boolean;
+  rating?: GoalRatingRow;
+  onRatingChange?: (patch: { start_rating?: number; current_rating?: number; target_rating?: number }) => void;
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
   const [adding, setAdding] = useState(false);
@@ -621,6 +940,39 @@ function GoalAccordion({
       {open && (
         <div className="border-t p-4">
           {goal.description && <p className="mb-3 text-xs text-muted-foreground">{goal.description}</p>}
+
+          {/* Self-rating sliders */}
+          {rating && onRatingChange && (
+            <div className="mb-4 rounded-lg border bg-muted/20 p-3">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Self-rating · 0–100
+              </p>
+              <div className="space-y-3">
+                <RatingSlider
+                  label="Start"
+                  hint="Set once at programme start"
+                  value={rating.start}
+                  trackColor="bg-primary/40"
+                  onChange={(v) => onRatingChange({ start_rating: v })}
+                />
+                <RatingSlider
+                  label="Current"
+                  hint="Update after each session"
+                  value={rating.current}
+                  trackColor="bg-primary"
+                  onChange={(v) => onRatingChange({ current_rating: v })}
+                />
+                <RatingSlider
+                  label="Target"
+                  hint="Where you want to be"
+                  value={rating.target}
+                  trackColor="bg-accent"
+                  onChange={(v) => onRatingChange({ target_rating: v })}
+                />
+              </div>
+            </div>
+          )}
+
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             {showLinkedActions ? "Milestones & linked actions" : "Milestones"}
           </p>
