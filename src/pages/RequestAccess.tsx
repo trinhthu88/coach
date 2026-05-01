@@ -61,10 +61,11 @@ export default function RequestAccess() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const email = form.email.trim().toLowerCase();
       const { error } = await supabase.from("access_requests").insert({
         role,
         full_name: form.fullName,
-        email: form.email,
+        email,
         job_title: form.jobTitle || null,
         company: form.company || null,
         industry: form.industry || null,
@@ -75,9 +76,12 @@ export default function RequestAccess() {
       if (error) throw error;
       setDone(true);
     } catch (err: any) {
+      const duplicate = err?.code === "23505" || String(err?.message ?? "").toLowerCase().includes("access_requests_email_unique");
       toast({
         title: "Submission failed",
-        description: err.message ?? "Please try again.",
+        description: duplicate
+          ? "This email already has an application on file. Please contact the administrator if you need help."
+          : err.message ?? "Please try again.",
         variant: "destructive",
       });
     } finally {

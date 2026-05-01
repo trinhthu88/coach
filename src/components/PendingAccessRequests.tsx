@@ -6,7 +6,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Check, X, Loader2, Inbox, Copy, Eye } from "lucide-react";
+import { Check, X, Loader2, Inbox, Copy, Eye, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { Pill } from "@/pages/admin/_shared";
 
@@ -37,7 +37,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [viewing, setViewing] = useState<AccessRequest | null>(null);
   const [credential, setCredential] = useState<{
-    email: string; password: string; full_name: string;
+    email: string; password: string; full_name: string; request_id: string;
   } | null>(null);
 
   const targetRole = variant === "coach" ? "coach" : "executive";
@@ -70,6 +70,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
         email: payload.email,
         password: payload.temp_password,
         full_name: req.full_name,
+        request_id: req.id,
       });
       toast.success("Account created");
       await load();
@@ -104,6 +105,31 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
     }
   };
 
+  const resetTemporaryPassword = async () => {
+    if (!credential) return;
+    const resetKey = `reset-${credential.request_id}`;
+    setBusyId(resetKey);
+    try {
+      const { data, error } = await supabase.functions.invoke("approve-access-request", {
+        body: { request_id: credential.request_id, force_reset_password: true },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const payload = data as { temp_password: string; email: string };
+      setCredential((current) => current ? {
+        ...current,
+        email: payload.email,
+        password: payload.temp_password,
+      } : current);
+      toast.success("Temporary password reset");
+      onApproved?.();
+    } catch (err: any) {
+      toast.error(err.message ?? "Password reset failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) {
     return (
       <Card className="mb-4 flex items-center justify-center p-6">
@@ -112,73 +138,73 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
     );
   }
 
-  if (rows.length === 0) return null;
-
   return (
     <>
-      <Card className="mb-4 overflow-hidden border-warning/40">
-        <div className="flex items-center justify-between gap-2 border-b bg-warning/10 px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <Inbox className="h-4 w-4 text-warning" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-warning">
-              {rows.length} access request{rows.length === 1 ? "" : "s"} awaiting approval
-            </p>
+      {rows.length > 0 && (
+        <Card className="mb-4 overflow-hidden border-warning/40">
+          <div className="flex items-center justify-between gap-2 border-b bg-warning/10 px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <Inbox className="h-4 w-4 text-warning" />
+              <p className="text-[11px] font-bold uppercase tracking-widest text-warning">
+                {rows.length} access request{rows.length === 1 ? "" : "s"} awaiting approval
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[12px]">
-            <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2.5 text-left font-semibold">Name</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Email</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{variant === "coach" ? "Credential" : "Job · Company"}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Industry</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Submitted</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {rows.map(r => (
-                <tr key={r.id} className="hover:bg-muted/30">
-                  <td className="px-3 py-2.5 font-medium">{r.full_name}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{r.email}</td>
-                  <td className="px-3 py-2.5 text-[11px]">
-                    {variant === "coach"
-                      ? (r.credential ?? "—")
-                      : `${r.job_title ?? "—"}${r.company ? ` · ${r.company}` : ""}`}
-                  </td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.industry ?? "—"}</td>
-                  <td className="px-3 py-2.5 text-[11px] text-muted-foreground">
-                    {format(new Date(r.created_at), "MMM d, yyyy")}
-                  </td>
-                  <td className="px-3 py-2.5 text-right">
-                    <div className="inline-flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setViewing(r)} title="View details">
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="sm" variant="outline"
-                        onClick={() => reject(r)}
-                        disabled={busyId === r.id}
-                      >
-                        <X className="h-3.5 w-3.5" /> Reject
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => approve(r)}
-                        disabled={busyId === r.id}
-                      >
-                        {busyId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                        Approve
-                      </Button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2.5 text-left font-semibold">Name</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Email</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">{variant === "coach" ? "Credential" : "Job · Company"}</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Industry</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Submitted</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </thead>
+              <tbody className="divide-y">
+                {rows.map(r => (
+                  <tr key={r.id} className="hover:bg-muted/30">
+                    <td className="px-3 py-2.5 font-medium">{r.full_name}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.email}</td>
+                    <td className="px-3 py-2.5 text-[11px]">
+                      {variant === "coach"
+                        ? (r.credential ?? "—")
+                        : `${r.job_title ?? "—"}${r.company ? ` · ${r.company}` : ""}`}
+                    </td>
+                    <td className="px-3 py-2.5 text-[11px]">{r.industry ?? "—"}</td>
+                    <td className="px-3 py-2.5 text-[11px] text-muted-foreground">
+                      {format(new Date(r.created_at), "MMM d, yyyy")}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <div className="inline-flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setViewing(r)} title="View details">
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm" variant="outline"
+                          onClick={() => reject(r)}
+                          disabled={busyId === r.id}
+                        >
+                          <X className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => approve(r)}
+                          disabled={busyId === r.id}
+                        >
+                          {busyId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                          Approve
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* Details dialog */}
       <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
@@ -234,11 +260,15 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
               <CopyRow label="Email" value={credential.email} />
               <CopyRow label="Temporary password" value={credential.password} mono />
               <p className="rounded-lg bg-warning/10 p-3 text-[11px] text-warning">
-                ⚠ This password is shown only once. Copy it now — it cannot be retrieved later.
+                The latest temporary password is also stored in the admin record and can be reset if needed.
               </p>
             </div>
           )}
           <DialogFooter>
+            <Button variant="outline" onClick={resetTemporaryPassword} disabled={busyId === `reset-${credential?.request_id}`}>
+              {busyId === `reset-${credential?.request_id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              Reset temp password
+            </Button>
             <Button onClick={() => setCredential(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
