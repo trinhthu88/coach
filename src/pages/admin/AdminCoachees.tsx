@@ -40,6 +40,16 @@ const STATUS_TONE: Record<Status, "muted"|"success"|"warning"|"destructive"> = {
   reach_limit: "warning",
 };
 
+function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
+  if (!startDate || !durationMonths) return null;
+  const start = new Date(startDate).getTime();
+  const end = start + durationMonths * 30.4375 * 24 * 3600 * 1000;
+  const now = Date.now();
+  if (now <= start) return 0;
+  if (now >= end) return 100;
+  return Math.round(((now - start) / (end - start)) * 100);
+}
+
 interface Row {
   id: string;
   full_name: string;
