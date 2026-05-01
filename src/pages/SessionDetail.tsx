@@ -26,6 +26,7 @@ import {
   AlertCircle,
   HelpCircle,
 } from "lucide-react";
+import { SessionGoalRatings } from "./session/SessionGoalRatings";
 import { cn } from "@/lib/utils";
 import { format, isAfter, addHours } from "date-fns";
 
@@ -806,6 +807,16 @@ export default function SessionDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Per-goal rating snapshot (non-peer sessions only) */}
+      {!isPeer && (
+        <SessionGoalRatings
+          sessionId={session.id}
+          coacheeId={session.coachee_id}
+          canEdit={isCoachee && session.status === "completed"}
+          sessionStatus={session.status}
+        />
+      )}
 
       {/* Peer-coachee competency feedback (only on completed peer sessions, only for the peer-coachee) */}
       {isPeer && session.status === "completed" && session.coachee_id === user?.id && (
