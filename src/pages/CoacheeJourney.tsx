@@ -681,6 +681,7 @@ export default function CoacheeJourney() {
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
+                  startTargetLocked={startTargetLocked}
                 />
               ))}
             </div>
@@ -733,6 +734,7 @@ export default function CoacheeJourney() {
                     defaultOpen={i === 0}
                     rating={ratingRows.find((r) => r.goalId === g.id)}
                     onRatingChange={(patch) => saveRating(g.id, patch)}
+                    startTargetLocked={startTargetLocked}
                   />
                 ))}
               </div>
@@ -831,19 +833,20 @@ function RatingSlider({
   hint,
   value,
   trackColor,
+  disabled,
   onChange,
 }: {
   label: string;
   hint?: string;
   value: number;
   trackColor: string;
+  disabled?: boolean;
   onChange: (v: number) => void;
 }) {
   const [local, setLocal] = useState(value);
-  // keep in sync if external value changes
   useEffect(() => setLocal(value), [value]);
   return (
-    <div>
+    <div className={cn(disabled && "opacity-60")}>
       <div className="mb-1 flex items-center justify-between gap-2">
         <div>
           <span className="text-[11px] font-semibold">{label}</span>
@@ -856,6 +859,7 @@ function RatingSlider({
         min={0}
         max={100}
         step={1}
+        disabled={disabled}
         onValueChange={(v) => setLocal(v[0])}
         onValueCommit={(v) => onChange(v[0])}
         className={cn("[&_[data-orientation=horizontal]>span]:h-1.5", trackColor && "")}
@@ -902,6 +906,7 @@ function GoalAccordion({
   showLinkedActions = true,
   rating,
   onRatingChange,
+  startTargetLocked,
 }: {
   goal: Goal;
   milestones: Milestone[];
@@ -916,6 +921,7 @@ function GoalAccordion({
   showLinkedActions?: boolean;
   rating?: GoalRatingRow;
   onRatingChange?: (patch: { start_rating?: number; current_rating?: number; target_rating?: number }) => void;
+  startTargetLocked?: boolean;
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
   const [adding, setAdding] = useState(false);
