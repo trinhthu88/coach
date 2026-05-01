@@ -6,7 +6,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Check, X, Loader2, Inbox, Copy, Eye } from "lucide-react";
+import { Check, X, Loader2, Inbox, Copy, Eye, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { Pill } from "@/pages/admin/_shared";
 
@@ -37,7 +37,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [viewing, setViewing] = useState<AccessRequest | null>(null);
   const [credential, setCredential] = useState<{
-    email: string; password: string; full_name: string;
+    email: string; password: string; full_name: string; request_id: string;
   } | null>(null);
 
   const targetRole = variant === "coach" ? "coach" : "executive";
@@ -70,6 +70,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
         email: payload.email,
         password: payload.temp_password,
         full_name: req.full_name,
+        request_id: req.id,
       });
       toast.success("Account created");
       await load();
@@ -99,6 +100,31 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       await load();
     } catch (err: any) {
       toast.error(err.message ?? "Failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const resetTemporaryPassword = async () => {
+    if (!credential) return;
+    const resetKey = `reset-${credential.request_id}`;
+    setBusyId(resetKey);
+    try {
+      const { data, error } = await supabase.functions.invoke("approve-access-request", {
+        body: { request_id: credential.request_id, force_reset_password: true },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const payload = data as { temp_password: string; email: string };
+      setCredential((current) => current ? {
+        ...current,
+        email: payload.email,
+        password: payload.temp_password,
+      } : current);
+      toast.success("Temporary password reset");
+      onApproved?.();
+    } catch (err: any) {
+      toast.error(err.message ?? "Password reset failed");
     } finally {
       setBusyId(null);
     }
@@ -234,11 +260,15 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
               <CopyRow label="Email" value={credential.email} />
               <CopyRow label="Temporary password" value={credential.password} mono />
               <p className="rounded-lg bg-warning/10 p-3 text-[11px] text-warning">
-                ⚠ This password is shown only once. Copy it now — it cannot be retrieved later.
+                The latest temporary password is also stored in the admin record and can be reset if needed.
               </p>
             </div>
           )}
           <DialogFooter>
+            <Button variant="outline" onClick={resetTemporaryPassword} disabled={busyId === `reset-${credential?.request_id}`}>
+              {busyId === `reset-${credential?.request_id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              Reset temp password
+            </Button>
             <Button onClick={() => setCredential(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
