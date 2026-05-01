@@ -87,7 +87,6 @@ export default function AdminCoachees() {
       { data: cohortsData },
       { data: allow },
       { data: limits },
-      { data: credentials },
       { data: requests },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
@@ -98,7 +97,6 @@ export default function AdminCoachees() {
       supabase.from("cohorts").select("id, name"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
       supabase.from("session_limits").select("id, coachee_id, monthly_limit"),
-      supabase.from("admin_user_credentials").select("user_id, temporary_password, issued_at"),
       supabase.from("access_requests").select("id, email, status").eq("status", "approved"),
     ]);
 
