@@ -304,6 +304,30 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_session_private_notes: {
+        Row: {
+          body: string
+          coach_id: string
+          created_at: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          coach_id: string
+          created_at?: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          coach_id?: string
+          created_at?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coachee_coach_allowlist: {
         Row: {
           coach_id: string
@@ -535,6 +559,30 @@ export type Database = {
           },
         ]
       }
+      peer_coach_session_private_notes: {
+        Row: {
+          body: string
+          created_at: string
+          peer_coach_id: string
+          peer_session_id: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          peer_coach_id: string
+          peer_session_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          peer_coach_id?: string
+          peer_session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       peer_session_competency_feedback: {
         Row: {
           coaching_mindset: number | null
@@ -596,7 +644,6 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           coach_notes: string | null
-          coach_private_notes: string | null
           coachee_notes: string | null
           coachee_rated_at: string | null
           coachee_rating: number | null
@@ -620,7 +667,6 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           coach_notes?: string | null
-          coach_private_notes?: string | null
           coachee_notes?: string | null
           coachee_rated_at?: string | null
           coachee_rating?: number | null
@@ -644,7 +690,6 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           coach_notes?: string | null
-          coach_private_notes?: string | null
           coachee_notes?: string | null
           coachee_rated_at?: string | null
           coachee_rating?: number | null
@@ -916,7 +961,6 @@ export type Database = {
           cancelled_by: string | null
           coach_id: string
           coach_notes: string | null
-          coach_private_notes: string | null
           coachee_id: string
           coachee_notes: string | null
           coachee_rated_at: string | null
@@ -940,7 +984,6 @@ export type Database = {
           cancelled_by?: string | null
           coach_id: string
           coach_notes?: string | null
-          coach_private_notes?: string | null
           coachee_id: string
           coachee_notes?: string | null
           coachee_rated_at?: string | null
@@ -964,7 +1007,6 @@ export type Database = {
           cancelled_by?: string | null
           coach_id?: string
           coach_notes?: string | null
-          coach_private_notes?: string | null
           coachee_id?: string
           coachee_notes?: string | null
           coachee_rated_at?: string | null
@@ -1117,6 +1159,14 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_allowlisted_pair: {
+        Args: { _target: string; _viewer: string }
+        Returns: boolean
+      }
+      shares_session_with: {
+        Args: { _target: string; _viewer: string }
         Returns: boolean
       }
     }

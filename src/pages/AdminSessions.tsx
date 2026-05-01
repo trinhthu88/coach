@@ -48,7 +48,6 @@ interface SessionRow {
   status: string;
   meeting_url: string | null;
   coach_notes: string | null;
-  coach_private_notes: string | null;
   coachee_notes: string | null;
   coach_id: string;
   coachee_id: string;

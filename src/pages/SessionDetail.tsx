@@ -53,7 +53,6 @@ interface SessionRow {
   status: SessionStatus;
   meeting_url: string | null;
   coach_notes: string | null;
-  coach_private_notes: string | null;
   coachee_notes: string | null;
   action_items: any;
   cancelled_at: string | null;
@@ -181,10 +180,21 @@ export default function SessionDetail() {
       : data;
     setSession(norm as SessionRow);
     setCoachNotes(norm.coach_notes || "");
-    setCoachPrivate(norm.coach_private_notes || "");
     setCoacheeNotes(norm.coachee_notes || "");
     setMeetingUrl(norm.meeting_url || "");
     setItems(normalizeItems(norm.action_items));
+
+    // Load coach private notes from dedicated coach-only table (RLS will return nothing for coachees)
+    {
+      const privateTable = isPeer ? "peer_coach_session_private_notes" : "coach_session_private_notes";
+      const idCol = isPeer ? "peer_session_id" : "session_id";
+      const { data: pn } = await supabase
+        .from(privateTable as any)
+        .select("body")
+        .eq(idCol, sessionId)
+        .maybeSingle();
+      setCoachPrivate((pn as any)?.body || "");
+    }
 
     const { data: profs } = await supabase
       .from("profiles")
@@ -284,7 +294,6 @@ export default function SessionDetail() {
     const update: any = { action_items: items };
     if (isCoach || isAdmin) {
       update.coach_notes = coachNotes;
-      update.coach_private_notes = coachPrivate;
     }
     if (isAdmin) {
       update.meeting_url = meetingUrl || null;
@@ -293,11 +302,31 @@ export default function SessionDetail() {
       update.coachee_notes = coacheeNotes;
     }
     const { error } = await supabase.from(tableName as any).update(update).eq("id", session.id);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error(error.message);
       return;
     }
+
+    // Save coach private notes to dedicated table (only coach/admin attempts this).
+    if (isCoach || isAdmin) {
+      const privateTable = isPeer ? "peer_coach_session_private_notes" : "coach_session_private_notes";
+      const idCol = isPeer ? "peer_session_id" : "session_id";
+      const coachIdCol = isPeer ? "peer_coach_id" : "coach_id";
+      const payload: any = { body: coachPrivate };
+      payload[idCol] = session.id;
+      payload[coachIdCol] = session.coach_id;
+      const { error: pErr } = await supabase
+        .from(privateTable as any)
+        .upsert(payload, { onConflict: idCol });
+      if (pErr) {
+        setSaving(false);
+        toast.error(pErr.message);
+        return;
+      }
+    }
+
+    setSaving(false);
     toast.success("Progress saved");
     load();
   };
