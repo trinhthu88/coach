@@ -17,7 +17,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  Loader2, Search, FileDown, FileUp, Eye, Users, Pencil, Save, Download,
+  Loader2, Search, FileDown, FileUp, Eye, Users, Pencil, Save, Download, Target, Calendar, Layers,
 } from "lucide-react";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
@@ -50,9 +50,12 @@ interface Row {
   done: number;
   programme_id: string | null;
   programme_name: string | null;
+  programme_default_limit: number | null;
+  programme_duration_months: number | null;
   cohort_id: string | null;
   cohort_name: string | null;
   enrollment_id: string | null;
+  enrollment_start_date: string | null;
   selected_coaches: { id: string; name: string }[];
   session_limit: number;
   limit_row_id: string | null;
@@ -63,12 +66,13 @@ export default function AdminCoachees() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
-  const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number }[]>([]);
+  const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; duration_months: number }[]>([]);
   const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
   const [defaultLimit, setDefaultLimit] = useState(4);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<Row | null>(null);
+  const [viewing, setViewing] = useState<Row | null>(null);
   const [saving, setSaving] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [resetCredential, setResetCredential] = useState<{ email: string; password: string; full_name: string } | null>(null);
@@ -92,8 +96,8 @@ export default function AdminCoachees() {
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
       supabase.from("sessions").select("coachee_id, status"),
-      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id"),
-      supabase.from("programmes").select("id, name, coachee_session_limit").eq("is_active", true),
+      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id, start_date"),
+      supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
       supabase.from("cohorts").select("id, name"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
       supabase.from("session_limits").select("id, coachee_id, monthly_limit"),
@@ -110,7 +114,7 @@ export default function AdminCoachees() {
     });
     const enrByUser = new Map<string, any>();
     (enrolls || []).forEach((e: any) => enrByUser.set(e.coachee_id, e));
-    const progById = new Map((progs || []).map((p: any) => [p.id, p.name]));
+    const progById = new Map((progs || []).map((p: any) => [p.id, p]));
     const cohortById = new Map((cohortsData || []).map((c: any) => [c.id, c.name]));
     const allowByCoachee = new Map<string, { id: string; name: string }[]>();
     (allow || []).forEach((a: any) => {
@@ -140,6 +144,7 @@ export default function AdminCoachees() {
       if (!p) return null;
       const enr = enrByUser.get(id);
       const lim = limByCoachee.get(id);
+      const prog: any = enr?.programme_id ? progById.get(enr.programme_id) : null;
       return {
         id,
         full_name: p.full_name,
@@ -149,10 +154,13 @@ export default function AdminCoachees() {
         booked: booked.get(id) || 0,
         done: done.get(id) || 0,
         programme_id: enr?.programme_id || null,
-        programme_name: enr?.programme_id ? (progById.get(enr.programme_id) as string) || null : null,
+        programme_name: prog?.name || null,
+        programme_default_limit: prog?.coachee_session_limit ?? null,
+        programme_duration_months: prog?.duration_months ?? null,
         cohort_id: enr?.cohort_id || null,
         cohort_name: enr?.cohort_id ? (cohortById.get(enr.cohort_id) as string) || null : null,
         enrollment_id: enr?.id || null,
+        enrollment_start_date: enr?.start_date || null,
         selected_coaches: allowByCoachee.get(id) || [],
         session_limit: lim?.monthly_limit ?? defLimit,
         limit_row_id: lim?.id || null,
