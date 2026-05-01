@@ -303,6 +303,105 @@ export default function CoachMyJourney() {
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
   }, [sessions, coachNames, now]);
 
+  // ===== Goal ratings + wheel =====
+  const ratingRows: GoalRatingRow[] = useMemo(
+    () =>
+      goals.map((g) => {
+        const r = ratings[g.id];
+        return {
+          goalId: g.id,
+          title: g.title,
+          start: r?.start_rating ?? 30,
+          current: r?.current_rating ?? 30,
+          target: r?.target_rating ?? 80,
+        };
+      }),
+    [goals, ratings]
+  );
+
+  const avgGoalProgress = useMemo(() => {
+    if (!ratingRows.length) return 0;
+    const vals = ratingRows.map((r) => {
+      const span = Math.max(1, r.target - r.start);
+      const got = Math.max(0, r.current - r.start);
+      return Math.min(100, Math.round((got / span) * 100));
+    });
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  }, [ratingRows]);
+
+  const programmeWeeks = useMemo(() => {
+    if (!programme?.startDate) return null;
+    const start = new Date(programme.startDate);
+    const end = programme.endDate
+      ? new Date(programme.endDate)
+      : new Date(start.getTime() + (programme.durationMonths || 3) * 30 * 86400000);
+    const totalWeeks = Math.max(1, differenceInCalendarWeeks(end, start, { weekStartsOn: 1 }));
+    const elapsedWeeks = Math.max(0, Math.min(totalWeeks, differenceInCalendarWeeks(now, start, { weekStartsOn: 1 })));
+    return { start, end, totalWeeks, elapsedWeeks };
+  }, [programme, now]);
+
+  const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
+  const startTargetLocked = sessionsCompletedCount >= 1;
+
+  const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
+    const sessionById = new Map(sessions.map((s) => [s.id, s]));
+    const grouped = new Map<string, { date: string; rows: { goalId: string; rating: number }[] }>();
+    for (const row of sessionRatings as any[]) {
+      const sess = sessionById.get(row.session_id);
+      if (!sess) continue;
+      const cur = grouped.get(row.session_id) || { date: sess.start_time, rows: [] };
+      cur.rows.push({ goalId: row.goal_id, rating: row.rating });
+      grouped.set(row.session_id, cur);
+    }
+    return Array.from(grouped.entries())
+      .map(([sessionId, v]) => ({ sessionId, date: v.date, rows: v.rows }))
+      .sort((a, b) => +new Date(a.date) - +new Date(b.date));
+  }, [sessionRatings, sessions]);
+
+  const pendingReflectionSession = useMemo(() => {
+    const completed = sessions
+      .filter((s) => s.status === "completed" && s._source === "coaching")
+      .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
+    const ratedSessionIds = new Set((sessionRatings as any[]).map((r) => r.session_id));
+    return completed.find((s) => !ratedSessionIds.has(s.id)) || null;
+  }, [sessions, sessionRatings]);
+
+  const needsRatingUpdate = goals.length > 0 && !!pendingReflectionSession;
+
+  const saveRating = async (
+    goalId: string,
+    patch: Partial<{ start_rating: number; current_rating: number; target_rating: number }>
+  ) => {
+    if (!user) return;
+    const existing = ratings[goalId];
+    const merged: any = {
+      goal_id: goalId,
+      coachee_id: user.id,
+      start_rating: existing?.start_rating ?? 30,
+      current_rating: existing?.current_rating ?? 30,
+      target_rating: existing?.target_rating ?? 80,
+      current_updated_at: existing?.current_updated_at ?? new Date().toISOString(),
+      ...patch,
+    };
+    if (patch.current_rating !== undefined) {
+      merged.current_updated_at = new Date().toISOString();
+    }
+    setRatings((prev) => ({
+      ...prev,
+      [goalId]: { ...(existing as any), ...merged, id: existing?.id ?? "" },
+    }));
+    const { data, error } = await supabase
+      .from("coachee_goal_ratings")
+      .upsert(merged, { onConflict: "goal_id" })
+      .select()
+      .single();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (data) setRatings((prev) => ({ ...prev, [goalId]: data as any }));
+  };
+
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
     setSavingRef(true);
