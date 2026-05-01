@@ -296,12 +296,9 @@ export default function CoacheeJourney() {
   }, [sessions]);
 
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
-  const sessionsCountedTowardsLock = sessions.filter((s) =>
-    ["confirmed", "completed"].includes(s.status)
-  ).length;
-  // Start/Target editable ONLY before session 2 begins. Once 2 sessions are
-  // either completed or scheduled, lock both inputs.
-  const startTargetLocked = sessionsCountedTowardsLock >= 2;
+  // Start/Target editable ONLY until the first session is completed.
+  // Once any session is marked completed, both inputs lock.
+  const startTargetLocked = sessionsCompletedCount >= 1;
 
   // Per-session rating snapshots, ordered oldest → newest, joined to session date.
   const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
