@@ -35,11 +35,12 @@ import {
   Users,
   Bell,
   GraduationCap,
+  Lock,
 } from "lucide-react";
 import { format, isAfter, isBefore, startOfWeek, endOfWeek, differenceInCalendarWeeks, differenceInCalendarDays } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { GoalWheel, GoalScoreCards, type GoalRatingRow } from "./journey/GoalWheel";
+import { GoalWheel, GoalScoreCards, type GoalRatingRow, type SessionRatingSeries } from "./journey/GoalWheel";
 
 interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; }
 interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
@@ -87,6 +88,7 @@ export default function CoacheeJourney() {
   const [coachNames, setCoachNames] = useState<Record<string, string>>({});
   const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
   const [ratings, setRatings] = useState<Record<string, GoalRating>>({});
+  const [sessionRatings, setSessionRatings] = useState<any[]>([]);
   const [programme, setProgramme] = useState<ProgrammeInfo | null>(null);
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
