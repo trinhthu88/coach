@@ -128,8 +128,6 @@ export default function AdminCoachees() {
     setDefaultLimit(defLimit);
     const limByCoachee = new Map<string, any>();
     (limits || []).filter((l: any) => l.coachee_id).forEach((l: any) => limByCoachee.set(l.coachee_id, l));
-    const credentialByUser = new Map<string, any>();
-    (credentials || []).forEach((c: any) => credentialByUser.set(c.user_id, c));
     const requestIdByEmail = new Map<string, string>();
     (requests || []).forEach((r: any) => {
       if (!requestIdByEmail.has(String(r.email).toLowerCase())) {
@@ -142,7 +140,6 @@ export default function AdminCoachees() {
       if (!p) return null;
       const enr = enrByUser.get(id);
       const lim = limByCoachee.get(id);
-      const cred = credentialByUser.get(id);
       return {
         id,
         full_name: p.full_name,
@@ -159,8 +156,6 @@ export default function AdminCoachees() {
         selected_coaches: allowByCoachee.get(id) || [],
         session_limit: lim?.monthly_limit ?? defLimit,
         limit_row_id: lim?.id || null,
-        temp_password: cred?.temporary_password ?? null,
-        temp_password_issued_at: cred?.issued_at ?? null,
         access_request_id: requestIdByEmail.get(String(p.email).toLowerCase()) ?? null,
       } as Row;
     }).filter(Boolean) as Row[];
