@@ -17,6 +17,16 @@ import { toast } from "sonner";
 import {
   Loader2, Search, FileDown, Eye, Star, Users, Pencil, Save,
 } from "lucide-react";
+
+function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
+  if (!startDate || !durationMonths) return null;
+  const start = new Date(startDate).getTime();
+  const end = start + durationMonths * 30.4375 * 24 * 3600 * 1000;
+  const now = Date.now();
+  if (now <= start) return 0;
+  if (now >= end) return 100;
+  return Math.round(((now - start) / (end - start)) * 100);
+}
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
@@ -51,6 +61,8 @@ interface CoachRow {
   coach_used: number;
   peer_session_limit: number;
   peer_used: number;
+  peer_given_limit: number;
+  peer_given_used: number;
   assigned_coaches: { id: string; name: string }[];
   // Coach as deliverer
   coachees_count: number;
@@ -61,6 +73,11 @@ interface CoachRow {
   cohort_name: string | null;
   programme_id: string | null;
   programme_name: string | null;
+  programme_default_coach_limit: number | null;
+  programme_default_peer_limit: number | null;
+  programme_default_peer_given_limit: number | null;
+  programme_duration_months: number | null;
+  enrollment_start_date: string | null;
   limit_row_id: string | null;
   enrollment_id: string | null;
 }
@@ -70,9 +87,10 @@ export default function AdminCoaches() {
   const [rows, setRows] = useState<CoachRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
   const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
-  const [programmes, setProgrammes] = useState<{ id: string; name: string; coach_session_limit: number; peer_session_limit: number; peer_given_limit: number }[]>([]);
+  const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; peer_session_limit: number; peer_given_limit: number; duration_months: number }[]>([]);
   const [defaultCoachLimit, setDefaultCoachLimit] = useState(4);
   const [defaultPeerLimit, setDefaultPeerLimit] = useState(4);
+  const [defaultPeerGivenLimit, setDefaultPeerGivenLimit] = useState(4);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<CoachRow | null>(null);
@@ -97,11 +115,11 @@ export default function AdminCoaches() {
       supabase.from("coach_profiles").select("id, approval_status, rating_avg"),
       supabase.from("sessions").select("coach_id, coachee_id, status"),
       supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, status"),
-      supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit"),
+      supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit, peer_given_monthly_limit"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
       supabase.from("cohorts").select("id, name"),
-      supabase.from("programmes").select("id, name, coach_session_limit, peer_session_limit, peer_given_limit"),
-      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id"),
+      supabase.from("programmes").select("id, name, coachee_session_limit, peer_session_limit, peer_given_limit, duration_months"),
+      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id, start_date"),
     ]);
 
     const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
@@ -116,8 +134,10 @@ export default function AdminCoaches() {
     const def = (limits || []).find((l: any) => l.coach_user_id === null);
     const defCoach = def?.monthly_limit ?? 4;
     const defPeer = def?.peer_monthly_limit ?? 4;
+    const defPeerGiven = def?.peer_given_monthly_limit ?? 4;
     setDefaultCoachLimit(defCoach);
     setDefaultPeerLimit(defPeer);
+    setDefaultPeerGivenLimit(defPeerGiven);
     const limitByCoach = new Map<string, any>();
     (limits || []).filter((l: any) => l.coach_user_id).forEach((l: any) => limitByCoach.set(l.coach_user_id, l));
 
@@ -144,9 +164,11 @@ export default function AdminCoaches() {
       }
     });
     const peerReceived = new Map<string, number>();
+    const peerGiven = new Map<string, number>();
     (peerSess || []).forEach((s: any) => {
       if (s.status === "completed") {
         peerReceived.set(s.peer_coachee_id, (peerReceived.get(s.peer_coachee_id) || 0) + 1);
+        peerGiven.set(s.peer_coach_id, (peerGiven.get(s.peer_coach_id) || 0) + 1);
       }
     });
 
@@ -160,7 +182,7 @@ export default function AdminCoaches() {
     const enrollByUser = new Map<string, any>();
     (enrolls || []).forEach((e: any) => enrollByUser.set(e.coachee_id, e));
     const cohortById = new Map((cohortsData || []).map((c: any) => [c.id, c.name]));
-    const progById = new Map((progsData || []).map((p: any) => [p.id, p.name]));
+    const progById = new Map((progsData || []).map((p: any) => [p.id, p]));
 
     const out: CoachRow[] = coachIds.map(id => {
       const p: any = profileById.get(id);
@@ -168,6 +190,7 @@ export default function AdminCoaches() {
       if (!p) return null;
       const lim = limitByCoach.get(id);
       const enr = enrollByUser.get(id);
+      const prog: any = enr?.programme_id ? progById.get(enr.programme_id) : null;
       return {
         id,
         full_name: p.full_name,
@@ -180,6 +203,8 @@ export default function AdminCoaches() {
         coach_used: receivedDone.get(id) || 0,
         peer_session_limit: lim?.peer_monthly_limit ?? defPeer,
         peer_used: peerReceived.get(id) || 0,
+        peer_given_limit: lim?.peer_given_monthly_limit ?? defPeerGiven,
+        peer_given_used: peerGiven.get(id) || 0,
         assigned_coaches: assignedByCoach.get(id) || [],
         coachees_count: (uniqueCoachees.get(id) || new Set()).size,
         booked_sessions: bookedDelivered.get(id) || 0,
@@ -187,7 +212,12 @@ export default function AdminCoaches() {
         cohort_id: enr?.cohort_id || null,
         cohort_name: enr?.cohort_id ? (cohortById.get(enr.cohort_id) as string) || null : null,
         programme_id: enr?.programme_id || null,
-        programme_name: enr?.programme_id ? (progById.get(enr.programme_id) as string) || null : null,
+        programme_name: prog?.name || null,
+        programme_default_coach_limit: prog?.coachee_session_limit ?? null,
+        programme_default_peer_limit: prog?.peer_session_limit ?? null,
+        programme_default_peer_given_limit: prog?.peer_given_limit ?? null,
+        programme_duration_months: prog?.duration_months ?? null,
+        enrollment_start_date: enr?.start_date || null,
         limit_row_id: lim?.id ?? null,
         enrollment_id: enr?.id ?? null,
       } as CoachRow;
@@ -218,8 +248,10 @@ export default function AdminCoaches() {
       "Coach session limit": c.coach_session_limit,
       "Coach sessions used": c.coach_used,
       "Assigned coaches": c.assigned_coaches.map(x => x.name).join("; "),
-      "Peer session limit": c.peer_session_limit,
-      "Peer sessions used": c.peer_used,
+      "Peer received limit": c.peer_session_limit,
+      "Peer received used": c.peer_used,
+      "Peer given limit": c.peer_given_limit,
+      "Peer given used": c.peer_given_used,
       "# Coachees": c.coachees_count,
       "Avg rating": c.rating_avg.toFixed(2),
       "Booked coaching sessions": c.booked_sessions,
@@ -236,6 +268,10 @@ export default function AdminCoaches() {
 
   const saveEdit = async () => {
     if (!editing) return;
+    if (!editing.programme_id) {
+      toast.error("Programme is required");
+      return;
+    }
     setSaving(true);
     try {
       // 1. Profile + coach_profiles status
@@ -253,12 +289,14 @@ export default function AdminCoaches() {
         await supabase.from("coach_session_limits").update({
           monthly_limit: editing.coach_session_limit,
           peer_monthly_limit: editing.peer_session_limit,
+          peer_given_monthly_limit: editing.peer_given_limit,
         }).eq("id", editing.limit_row_id);
       } else {
         await supabase.from("coach_session_limits").insert({
           coach_user_id: editing.id,
           monthly_limit: editing.coach_session_limit,
           peer_monthly_limit: editing.peer_session_limit,
+          peer_given_monthly_limit: editing.peer_given_limit,
         });
       }
 
@@ -278,22 +316,18 @@ export default function AdminCoaches() {
           .eq("coach_user_id", editing.id).eq("selectable_coach_id", sid);
       }
 
-      // 4. Cohort enrollment (a coach can be in a cohort only via programme_enrollments — we use it loosely)
-      if (editing.cohort_id || editing.programme_id) {
-        if (editing.enrollment_id) {
-          await supabase.from("programme_enrollments").update({
-            cohort_id: editing.cohort_id,
-            programme_id: editing.programme_id || original?.programme_id || (programmes[0]?.id ?? null),
-          }).eq("id", editing.enrollment_id);
-        } else if (editing.programme_id) {
-          await supabase.from("programme_enrollments").insert({
-            coachee_id: editing.id,
-            programme_id: editing.programme_id,
-            cohort_id: editing.cohort_id,
-          });
-        }
-      } else if (editing.enrollment_id) {
-        await supabase.from("programme_enrollments").delete().eq("id", editing.enrollment_id);
+      // 4. Programme enrollment (mandatory). Coach is treated as coachee here.
+      if (editing.enrollment_id) {
+        await supabase.from("programme_enrollments").update({
+          cohort_id: editing.cohort_id,
+          programme_id: editing.programme_id,
+        }).eq("id", editing.enrollment_id);
+      } else {
+        await supabase.from("programme_enrollments").insert({
+          coachee_id: editing.id,
+          programme_id: editing.programme_id,
+          cohort_id: editing.cohort_id,
+        });
       }
 
       toast.success("Coach updated");
@@ -359,14 +393,16 @@ export default function AdminCoaches() {
                 <th className="px-3 py-2.5 text-left font-semibold">Coach</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Status</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Registered</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Coach limit</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Coaching received</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Peer received</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Peer given</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Programme</th>
+                <th className="px-3 py-2.5 text-left font-semibold">% Complete</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Assigned</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Peer limit</th>
                 <th className="px-3 py-2.5 text-left font-semibold"># Coachees</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Rating</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Booked</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Done</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Cohort</th>
                 <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -385,15 +421,30 @@ export default function AdminCoaches() {
                   <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Pill></td>
                   <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{format(new Date(r.created_at), "MMM d, yyyy")}</td>
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.coach_used}/{r.coach_session_limit}</span></td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.assigned_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : `${r.assigned_coaches.length} coach${r.assigned_coaches.length === 1 ? "" : "es"}`}</td>
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_used}/{r.peer_session_limit}</span></td>
+                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_given_used}/{r.peer_given_limit}</span></td>
+                  <td className="px-3 py-2.5 text-[11px]">{r.programme_name || <span className="italic text-muted-foreground">—</span>}{r.cohort_name && <p className="text-[10px] text-muted-foreground">{r.cohort_name}</p>}</td>
+                  <td className="px-3 py-2.5 text-[11px]">
+                    {(() => {
+                      const pct = programmeCompletionPct(r.enrollment_start_date, r.programme_duration_months);
+                      if (pct === null) return <span className="italic text-muted-foreground">—</span>;
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
+                            <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="font-mono text-[10px] text-muted-foreground">{pct}%</span>
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-3 py-2.5 text-[11px]">{r.assigned_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : `${r.assigned_coaches.length} coach${r.assigned_coaches.length === 1 ? "" : "es"}`}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.coachees_count}</td>
                   <td className="px-3 py-2.5 text-[11px]">
                     <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-warning text-warning" /> {r.rating_avg.toFixed(1)}</span>
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked_sessions}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.completed_sessions}</td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.cohort_name || <span className="italic text-muted-foreground">—</span>}</td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
                       <Button asChild variant="ghost" size="sm" title="View profile"><Link to={`/coaches/${r.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
@@ -403,7 +454,7 @@ export default function AdminCoaches() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={12} className="p-12 text-center text-sm text-muted-foreground">No coaches match your filters.</td></tr>
+                <tr><td colSpan={14} className="p-12 text-center text-sm text-muted-foreground">No coaches match your filters.</td></tr>
               )}
             </tbody>
           </table>
@@ -432,21 +483,82 @@ export default function AdminCoaches() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Programme <span className="text-destructive">*</span></Label>
+                  <Select
+                    value={editing.programme_id || ""}
+                    onValueChange={(v) => {
+                      const prog = programmes.find((p) => p.id === v);
+                      setEditing({
+                        ...editing,
+                        programme_id: v,
+                        programme_name: prog?.name || null,
+                        programme_default_coach_limit: prog?.coachee_session_limit ?? null,
+                        programme_default_peer_limit: prog?.peer_session_limit ?? null,
+                        programme_default_peer_given_limit: prog?.peer_given_limit ?? null,
+                        programme_duration_months: prog?.duration_months ?? null,
+                        coach_session_limit: prog?.coachee_session_limit ?? editing.coach_session_limit,
+                        peer_session_limit: prog?.peer_session_limit ?? editing.peer_session_limit,
+                        peer_given_limit: prog?.peer_given_limit ?? editing.peer_given_limit,
+                      });
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select a programme…" /></SelectTrigger>
+                    <SelectContent>
+                      {programmes.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Required. Defaults the limits below.</p>
+                </div>
+                <div>
+                  <Label>Cohort</Label>
+                  <Select value={editing.cohort_id || "none"} onValueChange={(v) => setEditing({ ...editing, cohort_id: v === "none" ? null : v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— None —</SelectItem>
+                      {cohorts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="rounded-lg border p-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">As coachee — limits</p>
-                <div className="grid grid-cols-2 gap-3">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session limits (override programme defaults)</p>
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label>Coach session limit</Label>
+                    <Label>Coaching received</Label>
                     <Input type="number" min={0} value={editing.coach_session_limit} onChange={(e) => setEditing({ ...editing, coach_session_limit: Number(e.target.value) })} />
-                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.coach_used} · default {defaultCoachLimit}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.coach_used} · default {editing.programme_default_coach_limit ?? defaultCoachLimit}</p>
                   </div>
                   <div>
-                    <Label>Peer session limit</Label>
+                    <Label>Peer received</Label>
                     <Input type="number" min={0} value={editing.peer_session_limit} onChange={(e) => setEditing({ ...editing, peer_session_limit: Number(e.target.value) })} />
-                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.peer_used} · default {defaultPeerLimit}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.peer_used} · default {editing.programme_default_peer_limit ?? defaultPeerLimit}</p>
+                  </div>
+                  <div>
+                    <Label>Peer given</Label>
+                    <Input type="number" min={0} value={editing.peer_given_limit} onChange={(e) => setEditing({ ...editing, peer_given_limit: Number(e.target.value) })} />
+                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.peer_given_used} · default {editing.programme_default_peer_given_limit ?? defaultPeerGivenLimit}</p>
                   </div>
                 </div>
               </div>
+
+              {(() => {
+                const pct = programmeCompletionPct(editing.enrollment_start_date, editing.programme_duration_months);
+                if (pct === null) return null;
+                return (
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      <span>Programme progress</span>
+                      <span className="font-mono text-foreground">{pct}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="rounded-lg border p-3">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Assigned coaches (when this coach is being coached)</p>
@@ -465,29 +577,6 @@ export default function AdminCoaches() {
                       </label>
                     );
                   })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Programme</Label>
-                  <Select value={editing.programme_id || "none"} onValueChange={(v) => setEditing({ ...editing, programme_id: v === "none" ? null : v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— None —</SelectItem>
-                      {programmes.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Cohort</Label>
-                  <Select value={editing.cohort_id || "none"} onValueChange={(v) => setEditing({ ...editing, cohort_id: v === "none" ? null : v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— None —</SelectItem>
-                      {cohorts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 
