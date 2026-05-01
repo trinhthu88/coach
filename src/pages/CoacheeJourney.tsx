@@ -49,7 +49,7 @@ interface ProgrammeInfo {
   programmeName: string;
   startDate: string | null;
   endDate: string | null;
-  totalSessions: number;
+  sessionsAllowed: number;
   durationMonths: number;
 }
 interface RawActionItem { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null; }
@@ -104,7 +104,7 @@ export default function CoacheeJourney() {
       supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", user.id),
       supabase
         .from("programme_enrollments")
-        .select("id, start_date, end_date, programme_id, programmes(name, total_sessions, duration_months)")
+        .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")
         .eq("coachee_id", user.id)
         .eq("status", "active")
         .order("start_date", { ascending: false })
@@ -128,7 +128,7 @@ export default function CoacheeJourney() {
         programmeName: e.programmes.name,
         startDate: e.start_date,
         endDate: e.end_date,
-        totalSessions: e.programmes.total_sessions ?? 0,
+        sessionsAllowed: e.programmes.coachee_session_limit ?? 0,
         durationMonths: e.programmes.duration_months ?? 0,
       });
     } else {
@@ -472,13 +472,13 @@ export default function CoacheeJourney() {
               <p className="mt-1 text-xl font-semibold">
                 {sessionsCompletedCount}
                 <span className="text-sm font-normal text-muted-foreground">
-                  {" "}/ {programme.totalSessions || "—"}
+                  {" "}/ {programme.sessionsAllowed || "—"}
                 </span>
               </p>
               <Progress
                 value={
-                  programme.totalSessions
-                    ? Math.min(100, (sessionsCompletedCount / programme.totalSessions) * 100)
+                  programme.sessionsAllowed
+                    ? Math.min(100, (sessionsCompletedCount / programme.sessionsAllowed) * 100)
                     : 0
                 }
                 className="mt-2 h-1.5"
