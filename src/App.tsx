@@ -24,7 +24,7 @@ import SessionDetail from "./pages/SessionDetail";
 import BookSession from "./pages/BookSession";
 import Messages from "./pages/Messages";
 import AdminRegistrations from "./pages/AdminRegistrations";
-import AdminCoaches from "./pages/AdminCoaches";
+import AdminCoaches from "./pages/admin/AdminCoaches";
 import AdminSessions from "./pages/AdminSessions";
 import CoachClients from "./pages/CoachClients";
 import CoacheeJourney from "./pages/CoacheeJourney";
