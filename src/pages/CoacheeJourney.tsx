@@ -672,7 +672,10 @@ export default function CoacheeJourney() {
             </div>
           )}
 
-          <SectionHeader title="Goals & milestones" />
+          <SectionHeader
+            title="Goals & milestones"
+            action={goals.length > 0 ? <GoalDialog onSaved={refresh} userId={user!.id} /> : undefined}
+          />
           {goals.length === 0 ? (
             <EmptyGoals userId={user!.id} onSaved={refresh} />
           ) : (
@@ -692,7 +695,7 @@ export default function CoacheeJourney() {
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
-                  startTargetLocked={startTargetLocked}
+                  startTargetLocked={isGoalLocked(g.created_at)}
                 />
               ))}
             </div>
