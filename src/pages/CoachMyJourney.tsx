@@ -50,7 +50,7 @@ import {
   type SessionRatingSeries,
 } from "./journey/GoalWheel";
 
-interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; }
+interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; created_at: string; }
 interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
 interface GoalRating { id: string; goal_id: string; coachee_id: string; start_rating: number; current_rating: number; target_rating: number; current_updated_at: string; }
 interface ProgrammeInfo {
