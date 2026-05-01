@@ -464,7 +464,7 @@ export default function AdminCoachees() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={9} className="p-12 text-center text-sm text-muted-foreground">No coachees match your filters.</td></tr>
+                <tr><td colSpan={10} className="p-12 text-center text-sm text-muted-foreground">No coachees match your filters.</td></tr>
               )}
             </tbody>
           </table>
