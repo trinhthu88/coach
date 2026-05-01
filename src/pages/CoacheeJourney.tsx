@@ -295,15 +295,42 @@ export default function CoacheeJourney() {
     return dates.length ? Math.max(...dates) : null;
   }, [sessions]);
 
-  const lastRatingUpdate = useMemo(() => {
-    const ts = Object.values(ratings).map((r) => new Date(r.current_updated_at).getTime());
-    return ts.length ? Math.max(...ts) : 0;
-  }, [ratings]);
-
-  const needsRatingUpdate =
-    goals.length > 0 && !!lastCompletedAt && lastCompletedAt > lastRatingUpdate;
-
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
+  const sessionsCountedTowardsLock = sessions.filter((s) =>
+    ["confirmed", "completed"].includes(s.status)
+  ).length;
+  // Start/Target editable ONLY before session 2 begins. Once 2 sessions are
+  // either completed or scheduled, lock both inputs.
+  const startTargetLocked = sessionsCountedTowardsLock >= 2;
+
+  // Per-session rating snapshots, ordered oldest → newest, joined to session date.
+  const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
+    const sessionById = new Map(sessions.map((s) => [s.id, s]));
+    const grouped = new Map<string, { date: string; rows: { goalId: string; rating: number }[] }>();
+    for (const row of sessionRatings as any[]) {
+      const sess = sessionById.get(row.session_id);
+      if (!sess) continue;
+      const key = row.session_id;
+      const cur = grouped.get(key) || { date: sess.start_time, rows: [] };
+      cur.rows.push({ goalId: row.goal_id, rating: row.rating });
+      grouped.set(key, cur);
+    }
+    return Array.from(grouped.entries())
+      .map(([sessionId, v]) => ({ sessionId, date: v.date, rows: v.rows }))
+      .sort((a, b) => +new Date(a.date) - +new Date(b.date));
+  }, [sessionRatings, sessions]);
+
+  // After any completed session, prompt to add the latest reflection rating
+  // if no snapshot exists for it yet.
+  const pendingReflectionSession = useMemo(() => {
+    const completed = sessions
+      .filter((s) => s.status === "completed")
+      .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
+    const ratedSessionIds = new Set((sessionRatings as any[]).map((r) => r.session_id));
+    return completed.find((s) => !ratedSessionIds.has(s.id)) || null;
+  }, [sessions, sessionRatings]);
+
+  const needsRatingUpdate = goals.length > 0 && !!pendingReflectionSession;
 
   const saveRating = async (
     goalId: string,
