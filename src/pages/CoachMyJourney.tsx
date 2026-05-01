@@ -62,8 +62,6 @@ interface ProgrammeInfo {
   durationMonths: number;
 }
 
-interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; }
-interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
 interface RawActionItem { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null; }
 interface FlatAction extends RawActionItem {
   sessionId: string;
