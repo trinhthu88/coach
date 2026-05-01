@@ -867,3 +867,12 @@ function CoacheeProfileSheet({ row, onClose }: ProfileSheetProps) {
     </Sheet>
   );
 }
+
+function ProfileField({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="rounded-lg border bg-muted/10 px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="mt-0.5 break-words text-[12px]">{value || <span className="italic text-muted-foreground">—</span>}</p>
+    </div>
+  );
+}
