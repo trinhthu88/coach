@@ -512,13 +512,8 @@ export default function AdminCoachees() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Temporary password</p>
-                    <p className="mt-2 font-mono text-sm text-foreground">
-                      {editing.temp_password || "No temporary password stored yet"}
-                    </p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      {editing.temp_password_issued_at
-                        ? `Issued ${format(new Date(editing.temp_password_issued_at), "MMM d, yyyy · HH:mm")}`
-                        : "Visible to admins only"}
+                    <p className="mt-2 text-[12px] text-muted-foreground">
+                      For security, temporary passwords are never stored. Click <strong>Reset password</strong> to generate a new one — it will be shown once so you can share it with the user.
                     </p>
                   </div>
                   <Button
