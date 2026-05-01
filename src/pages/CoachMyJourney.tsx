@@ -950,14 +950,6 @@ function GoalAccordion({
       {open && (
         <div className="border-t p-4">
           {goal.description && <p className="mb-3 text-xs text-muted-foreground">{goal.description}</p>}
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            {showLinkedActions ? "Milestones & linked actions" : "Milestones"}
-          </p>
-          <ul className="space-y-3">
-            {milestones.map((m) => {
-      {open && (
-        <div className="border-t p-4">
-          {goal.description && <p className="mb-3 text-xs text-muted-foreground">{goal.description}</p>}
 
           {/* Self-rating sliders — Start & Target only, locked once first session is completed */}
           {rating && onRatingChange && (
