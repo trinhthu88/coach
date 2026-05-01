@@ -134,8 +134,10 @@ export default function AdminCoaches() {
     const def = (limits || []).find((l: any) => l.coach_user_id === null);
     const defCoach = def?.monthly_limit ?? 4;
     const defPeer = def?.peer_monthly_limit ?? 4;
+    const defPeerGiven = def?.peer_given_monthly_limit ?? 4;
     setDefaultCoachLimit(defCoach);
     setDefaultPeerLimit(defPeer);
+    setDefaultPeerGivenLimit(defPeerGiven);
     const limitByCoach = new Map<string, any>();
     (limits || []).filter((l: any) => l.coach_user_id).forEach((l: any) => limitByCoach.set(l.coach_user_id, l));
 
@@ -162,9 +164,11 @@ export default function AdminCoaches() {
       }
     });
     const peerReceived = new Map<string, number>();
+    const peerGiven = new Map<string, number>();
     (peerSess || []).forEach((s: any) => {
       if (s.status === "completed") {
         peerReceived.set(s.peer_coachee_id, (peerReceived.get(s.peer_coachee_id) || 0) + 1);
+        peerGiven.set(s.peer_coach_id, (peerGiven.get(s.peer_coach_id) || 0) + 1);
       }
     });
 
@@ -178,7 +182,7 @@ export default function AdminCoaches() {
     const enrollByUser = new Map<string, any>();
     (enrolls || []).forEach((e: any) => enrollByUser.set(e.coachee_id, e));
     const cohortById = new Map((cohortsData || []).map((c: any) => [c.id, c.name]));
-    const progById = new Map((progsData || []).map((p: any) => [p.id, p.name]));
+    const progById = new Map((progsData || []).map((p: any) => [p.id, p]));
 
     const out: CoachRow[] = coachIds.map(id => {
       const p: any = profileById.get(id);
@@ -186,6 +190,7 @@ export default function AdminCoaches() {
       if (!p) return null;
       const lim = limitByCoach.get(id);
       const enr = enrollByUser.get(id);
+      const prog: any = enr?.programme_id ? progById.get(enr.programme_id) : null;
       return {
         id,
         full_name: p.full_name,
@@ -198,6 +203,8 @@ export default function AdminCoaches() {
         coach_used: receivedDone.get(id) || 0,
         peer_session_limit: lim?.peer_monthly_limit ?? defPeer,
         peer_used: peerReceived.get(id) || 0,
+        peer_given_limit: lim?.peer_given_monthly_limit ?? defPeerGiven,
+        peer_given_used: peerGiven.get(id) || 0,
         assigned_coaches: assignedByCoach.get(id) || [],
         coachees_count: (uniqueCoachees.get(id) || new Set()).size,
         booked_sessions: bookedDelivered.get(id) || 0,
@@ -205,7 +212,12 @@ export default function AdminCoaches() {
         cohort_id: enr?.cohort_id || null,
         cohort_name: enr?.cohort_id ? (cohortById.get(enr.cohort_id) as string) || null : null,
         programme_id: enr?.programme_id || null,
-        programme_name: enr?.programme_id ? (progById.get(enr.programme_id) as string) || null : null,
+        programme_name: prog?.name || null,
+        programme_default_coach_limit: prog?.coachee_session_limit ?? null,
+        programme_default_peer_limit: prog?.peer_session_limit ?? null,
+        programme_default_peer_given_limit: prog?.peer_given_limit ?? null,
+        programme_duration_months: prog?.duration_months ?? null,
+        enrollment_start_date: enr?.start_date || null,
         limit_row_id: lim?.id ?? null,
         enrollment_id: enr?.id ?? null,
       } as CoachRow;
