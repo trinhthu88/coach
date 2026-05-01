@@ -417,6 +417,7 @@ export default function AdminCoachees() {
                 <th className="px-3 py-2.5 text-left font-semibold">Booked</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Done</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Programme</th>
+                <th className="px-3 py-2.5 text-left font-semibold">% Complete</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Selected coaches</th>
                 <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
               </tr>
@@ -439,9 +440,24 @@ export default function AdminCoachees() {
                   <td className="px-3 py-2.5 text-[11px]">{r.booked}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.done}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.programme_name || <span className="italic text-muted-foreground">—</span>}{r.cohort_name && <p className="text-[10px] text-muted-foreground">{r.cohort_name}</p>}</td>
+                  <td className="px-3 py-2.5 text-[11px]">
+                    {(() => {
+                      const pct = programmeCompletionPct(r.enrollment_start_date, r.programme_duration_months);
+                      if (pct === null) return <span className="italic text-muted-foreground">—</span>;
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                            <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="font-mono text-[10px] text-muted-foreground">{pct}%</span>
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className="px-3 py-2.5 text-[11px]">{r.selected_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : `${r.selected_coaches.length} coach${r.selected_coaches.length === 1 ? "" : "es"}`}</td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
+                      <Button variant="ghost" size="sm" title="View profile" onClick={() => setViewing(r)}><Eye className="h-3.5 w-3.5" /></Button>
                       <Button variant="ghost" size="sm" title="Edit" onClick={() => setEditing({ ...r, selected_coaches: [...r.selected_coaches] })}><Pencil className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
