@@ -656,3 +656,175 @@ export default function AdminCoachees() {
     </div>
   );
 }
+
+// ---------- Read-only profile drawer ----------
+
+interface ProfileSheetProps {
+  row: Row | null;
+  onClose: () => void;
+}
+
+interface ProfileGoal {
+  id: string;
+  title: string;
+  start_rating: number;
+  current_rating: number;
+  target_rating: number;
+}
+
+interface ProfileSession {
+  id: string;
+  topic: string;
+  start_time: string;
+  status: string;
+}
+
+function CoacheeProfileSheet({ row, onClose }: ProfileSheetProps) {
+  const [loading, setLoading] = useState(false);
+  const [goals, setGoals] = useState<ProfileGoal[]>([]);
+  const [sessions, setSessions] = useState<ProfileSession[]>([]);
+
+  useEffect(() => {
+    if (!row) return;
+    (async () => {
+      setLoading(true);
+      const [{ data: gs }, { data: rs }, { data: ss }] = await Promise.all([
+        supabase.from("coachee_goals").select("id, title").eq("coachee_id", row.id).eq("status", "active").order("sort_order"),
+        supabase.from("coachee_goal_ratings").select("goal_id, start_rating, current_rating, target_rating").eq("coachee_id", row.id),
+        supabase.from("sessions").select("id, topic, start_time, status").eq("coachee_id", row.id).order("start_time", { ascending: false }).limit(10),
+      ]);
+      const ratingByGoal = new Map((rs || []).map((r: any) => [r.goal_id, r]));
+      setGoals((gs || []).map((g: any) => {
+        const r: any = ratingByGoal.get(g.id) || {};
+        return {
+          id: g.id,
+          title: g.title,
+          start_rating: r.start_rating ?? 30,
+          current_rating: r.current_rating ?? 30,
+          target_rating: r.target_rating ?? 80,
+        };
+      }));
+      setSessions((ss || []) as any);
+      setLoading(false);
+    })();
+  }, [row]);
+
+  if (!row) return null;
+  const pct = programmeCompletionPct(row.enrollment_start_date, row.programme_duration_months);
+
+  return (
+    <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-primary" /> {row.full_name}
+          </SheetTitle>
+          <SheetDescription>{row.email} · read-only</SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-5 space-y-5 text-sm">
+          {/* Profile + programme */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</p>
+              <p className="mt-1"><Pill tone={STATUS_TONE[row.status]}>{STATUS_LABEL[row.status]}</Pill></p>
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Registered</p>
+              <p className="mt-1 text-[12px]">{format(new Date(row.created_at), "MMM d, yyyy")}</p>
+            </div>
+            <div className="col-span-2 rounded-lg border bg-muted/20 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Layers className="h-3 w-3" /> Programme</p>
+              <p className="mt-1 text-[13px] font-semibold">{row.programme_name || "—"}</p>
+              {row.cohort_name && <p className="text-[11px] text-muted-foreground">Cohort · {row.cohort_name}</p>}
+              {pct !== null && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>Programme progress</span><span className="font-mono">{pct}%</span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sessions limit</p>
+              <p className="mt-1 font-mono text-[13px]">{row.done}/{row.session_limit}</p>
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Booked / Done</p>
+              <p className="mt-1 font-mono text-[13px]">{row.booked} / {row.done}</p>
+            </div>
+          </div>
+
+          {/* Goals + ratings */}
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Target className="h-3 w-3" /> Goals & ratings
+            </p>
+            {loading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            {!loading && goals.length === 0 && (
+              <p className="rounded-lg border border-dashed p-4 text-center text-[12px] text-muted-foreground">No active goals.</p>
+            )}
+            <div className="space-y-2">
+              {goals.map((g) => (
+                <div key={g.id} className="rounded-lg border p-2.5">
+                  <p className="text-[12px] font-semibold">{g.title}</p>
+                  <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <span>Start <strong className="text-foreground">{g.start_rating}</strong></span>
+                    <span>Current <strong className="text-foreground">{g.current_rating}</strong></span>
+                    <span>Target <strong className="text-foreground">{g.target_rating}</strong></span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full bg-primary" style={{ width: `${Math.min(100, g.current_rating)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Selected coaches */}
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Selected coaches</p>
+            <div className="flex flex-wrap gap-1.5">
+              {row.selected_coaches.length === 0 && <span className="text-[11px] italic text-muted-foreground">None</span>}
+              {row.selected_coaches.map((c) => (
+                <span key={c.id} className="rounded-full border bg-muted/40 px-2 py-0.5 text-[11px]">{c.name}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Sessions */}
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Calendar className="h-3 w-3" /> Recent sessions
+            </p>
+            <div className="space-y-1">
+              {sessions.length === 0 && (
+                <p className="rounded-lg border border-dashed p-3 text-center text-[12px] text-muted-foreground">No sessions yet.</p>
+              )}
+              {sessions.map((s) => (
+                <Link
+                  key={s.id}
+                  to={`/sessions/${s.id}`}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2 text-[12px] hover:bg-muted/30"
+                >
+                  <span className="truncate pr-2">{s.topic}</span>
+                  <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span>{format(new Date(s.start_time), "MMM d")}</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5">{s.status}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <SheetFooter className="mt-6">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
