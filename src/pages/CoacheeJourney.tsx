@@ -42,7 +42,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GoalWheel, GoalScoreCards, type GoalRatingRow, type SessionRatingSeries } from "./journey/GoalWheel";
 
-interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; }
+interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; created_at: string; }
 interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
 interface GoalRating { id: string; goal_id: string; coachee_id: string; start_rating: number; current_rating: number; target_rating: number; current_updated_at: string; }
 interface ProgrammeInfo {
@@ -296,9 +296,23 @@ export default function CoacheeJourney() {
   }, [sessions]);
 
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
-  // Start/Target editable ONLY until the first session is completed.
-  // Once any session is marked completed, both inputs lock.
-  const startTargetLocked = sessionsCompletedCount >= 1;
+  // Per-goal lock: a goal's Start/Target lock once the user completes
+  // any session that took place AFTER the goal was created. This lets
+  // users add new goals later in the programme without instantly locking them.
+  const completedSessionTimes = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.status === "completed")
+        .map((s) => new Date(s.start_time).getTime()),
+    [sessions]
+  );
+  const isGoalLocked = useCallback(
+    (goalCreatedAt: string) => {
+      const created = new Date(goalCreatedAt).getTime();
+      return completedSessionTimes.some((t) => t > created);
+    },
+    [completedSessionTimes]
+  );
 
   // Per-session rating snapshots, ordered oldest → newest, joined to session date.
   const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
@@ -658,7 +672,10 @@ export default function CoacheeJourney() {
             </div>
           )}
 
-          <SectionHeader title="Goals & milestones" />
+          <SectionHeader
+            title="Goals & milestones"
+            action={goals.length > 0 ? <GoalDialog onSaved={refresh} userId={user!.id} /> : undefined}
+          />
           {goals.length === 0 ? (
             <EmptyGoals userId={user!.id} onSaved={refresh} />
           ) : (
@@ -678,7 +695,7 @@ export default function CoacheeJourney() {
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
-                  startTargetLocked={startTargetLocked}
+                  startTargetLocked={isGoalLocked(g.created_at)}
                 />
               ))}
             </div>
@@ -731,7 +748,7 @@ export default function CoacheeJourney() {
                     defaultOpen={i === 0}
                     rating={ratingRows.find((r) => r.goalId === g.id)}
                     onRatingChange={(patch) => saveRating(g.id, patch)}
-                    startTargetLocked={startTargetLocked}
+                    startTargetLocked={isGoalLocked(g.created_at)}
                   />
                 ))}
               </div>
@@ -983,7 +1000,7 @@ function GoalAccordion({
                   Start &amp; Target · 0–100
                 </p>
                 {startTargetLocked && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title="Locked after the first completed session">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title="Locked once you complete a session after adding this goal">
                     <Lock className="h-3 w-3" /> Locked
                   </span>
                 )}
@@ -991,7 +1008,7 @@ function GoalAccordion({
               <div className="space-y-3">
                 <RatingSlider
                   label="Start"
-                  hint={startTargetLocked ? "Locked after first completed session" : "Where you are today"}
+                  hint={startTargetLocked ? "Locked after your next completed session" : "Where you are today"}
                   value={rating.start}
                   trackColor="bg-primary/40"
                   disabled={startTargetLocked}
@@ -999,7 +1016,7 @@ function GoalAccordion({
                 />
                 <RatingSlider
                   label="Target"
-                  hint={startTargetLocked ? "Locked after first completed session" : "Where you want to be"}
+                  hint={startTargetLocked ? "Locked after your next completed session" : "Where you want to be"}
                   value={rating.target}
                   trackColor="bg-accent"
                   disabled={startTargetLocked}
