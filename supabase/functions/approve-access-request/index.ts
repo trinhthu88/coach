@@ -200,6 +200,27 @@ Deno.serve(async (req) => {
       })
       .eq("id", request_id);
 
+    const { error: credentialErr } = await admin
+      .from("admin_user_credentials")
+      .upsert(
+        {
+          user_id: userId,
+          email: reqRow.email,
+          temporary_password: tempPassword,
+          issued_at: new Date().toISOString(),
+          issued_by: callerId,
+          must_reset: true,
+        },
+        { onConflict: "user_id" },
+      );
+
+    if (credentialErr) {
+      return new Response(
+        JSON.stringify({ error: credentialErr.message || "Failed to store temporary password" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
