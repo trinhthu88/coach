@@ -700,6 +700,8 @@ export default function CoacheeJourney() {
                     userId={user!.id}
                     showLinkedActions
                     defaultOpen={i === 0}
+                    rating={ratingRows.find((r) => r.goalId === g.id)}
+                    onRatingChange={(patch) => saveRating(g.id, patch)}
                   />
                 ))}
               </div>
