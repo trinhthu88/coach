@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { request_id } = body as { request_id?: string };
+    const { request_id, force_reset_password } = body as { request_id?: string; force_reset_password?: boolean };
     if (!request_id) {
       return new Response(JSON.stringify({ error: "request_id required" }), {
         status: 400,
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (reqRow.status === "approved") {
+    if (reqRow.status === "approved" && !force_reset_password) {
       return new Response(JSON.stringify({ error: "Already approved" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
