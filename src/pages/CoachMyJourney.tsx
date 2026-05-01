@@ -955,6 +955,52 @@ function GoalAccordion({
           </p>
           <ul className="space-y-3">
             {milestones.map((m) => {
+      {open && (
+        <div className="border-t p-4">
+          {goal.description && <p className="mb-3 text-xs text-muted-foreground">{goal.description}</p>}
+
+          {/* Self-rating sliders — Start & Target only, locked once first session is completed */}
+          {rating && onRatingChange && (
+            <div className="mb-4 rounded-lg border bg-muted/20 p-3">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Start &amp; Target · 0–100
+                </p>
+                {startTargetLocked && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title="Locked after the first completed session">
+                    <Lock className="h-3 w-3" /> Locked
+                  </span>
+                )}
+              </div>
+              <div className="space-y-3">
+                <RatingSlider
+                  label="Start"
+                  hint={startTargetLocked ? "Locked after first completed session" : "Where you are today"}
+                  value={rating.start}
+                  trackColor="bg-primary/40"
+                  disabled={startTargetLocked}
+                  onChange={(v) => onRatingChange({ start_rating: v })}
+                />
+                <RatingSlider
+                  label="Target"
+                  hint={startTargetLocked ? "Locked after first completed session" : "Where you want to be"}
+                  value={rating.target}
+                  trackColor="bg-accent"
+                  disabled={startTargetLocked}
+                  onChange={(v) => onRatingChange({ target_rating: v })}
+                />
+              </div>
+              <p className="mt-3 text-[10px] text-muted-foreground">
+                Your <strong>current</strong> rating is captured after each session in the session log and traced on the wheel.
+              </p>
+            </div>
+          )}
+
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {showLinkedActions ? "Milestones & linked actions" : "Milestones"}
+          </p>
+          <ul className="space-y-3">
+            {milestones.map((m) => {
               const linked = actions.filter((a) => a.milestone_id === m.id);
               const status: "done" | "active" | "todo" = m.is_done
                 ? "done"
