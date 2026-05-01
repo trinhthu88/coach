@@ -983,7 +983,7 @@ function GoalAccordion({
                   Start &amp; Target · 0–100
                 </p>
                 {startTargetLocked && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title="Editable only before session 2 starts">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title="Locked after the first completed session">
                     <Lock className="h-3 w-3" /> Locked
                   </span>
                 )}
@@ -991,7 +991,7 @@ function GoalAccordion({
               <div className="space-y-3">
                 <RatingSlider
                   label="Start"
-                  hint={startTargetLocked ? "Locked after session 2" : "Where you are today"}
+                  hint={startTargetLocked ? "Locked after first completed session" : "Where you are today"}
                   value={rating.start}
                   trackColor="bg-primary/40"
                   disabled={startTargetLocked}
@@ -999,7 +999,7 @@ function GoalAccordion({
                 />
                 <RatingSlider
                   label="Target"
-                  hint={startTargetLocked ? "Locked after session 2" : "Where you want to be"}
+                  hint={startTargetLocked ? "Locked after first completed session" : "Where you want to be"}
                   value={rating.target}
                   trackColor="bg-accent"
                   disabled={startTargetLocked}
