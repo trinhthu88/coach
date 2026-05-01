@@ -493,22 +493,43 @@ export default function AdminCoachees() {
                 </div>
               </div>
 
-              <div>
-                <Label>Session limit (received)</Label>
-                <Input type="number" min={0} value={editing.session_limit} onChange={(e) => setEditing({ ...editing, session_limit: Number(e.target.value) })} />
-                <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.done} · default {defaultLimit}</p>
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Programme</Label>
-                  <Select value={editing.programme_id || "none"} onValueChange={(v) => setEditing({ ...editing, programme_id: v === "none" ? null : v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Label>Programme <span className="text-destructive">*</span></Label>
+                  <Select
+                    value={editing.programme_id || ""}
+                    onValueChange={(v) => {
+                      const prog = programmes.find((p) => p.id === v);
+                      setEditing({
+                        ...editing,
+                        programme_id: v,
+                        programme_name: prog?.name || null,
+                        programme_default_limit: prog?.coachee_session_limit ?? null,
+                        programme_duration_months: prog?.duration_months ?? null,
+                        // Auto-default the limit when programme changes (admin can still override below)
+                        session_limit: prog?.coachee_session_limit ?? editing.session_limit,
+                      });
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select a programme…" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">— None —</SelectItem>
                       {programmes.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Required. Defaults the session limit below.</p>
+                </div>
+                <div>
+                  <Label>Session limit (received)</Label>
+                  <Input type="number" min={0} value={editing.session_limit} onChange={(e) => setEditing({ ...editing, session_limit: Number(e.target.value) })} />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Used {editing.done} · programme default {editing.programme_default_limit ?? defaultLimit} (override allowed)
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="hidden">
+                  {/* Programme moved above next to limit */}
                 </div>
                 <div>
                   <Label>Cohort</Label>
