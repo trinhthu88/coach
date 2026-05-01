@@ -100,6 +100,9 @@ export default function CoachMyJourney() {
   const [reflections, setReflections] = useState<any[]>([]);
   const [coachNames, setCoachNames] = useState<Record<string, string>>({});
   const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
+  const [ratings, setRatings] = useState<Record<string, GoalRating>>({});
+  const [sessionRatings, setSessionRatings] = useState<any[]>([]);
+  const [programme, setProgramme] = useState<ProgrammeInfo | null>(null);
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
