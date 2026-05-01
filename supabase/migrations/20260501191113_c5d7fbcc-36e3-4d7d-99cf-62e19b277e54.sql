@@ -1,0 +1,26 @@
+REVOKE EXECUTE ON FUNCTION public.apply_staged_enrollment() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.bulk_create_availability(uuid, date, integer, jsonb) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.can_message_session(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.coach_has_client(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.coach_visible_to_coachee(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.coachee_has_allowlist(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.delete_booked_availability_slot() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.enforce_coach_as_coachee_limit() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.enforce_session_completion_limit() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.get_coach_peer_session_usage(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.is_allowlisted_pair(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.recompute_coach_rating() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.reevaluate_coach_limits_on_change() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.shares_session_with(uuid, uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.touch_access_requests_updated_at() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.validate_competency_scores() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.validate_session_rating() FROM anon, public;
+
+GRANT EXECUTE ON FUNCTION public.bulk_create_availability(uuid, date, integer, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_message_session(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.coach_has_client(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.coach_visible_to_coachee(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.coachee_has_allowlist(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_coach_peer_session_usage(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_allowlisted_pair(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.shares_session_with(uuid, uuid) TO authenticated;
