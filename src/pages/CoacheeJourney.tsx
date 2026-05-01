@@ -97,13 +97,14 @@ export default function CoacheeJourney() {
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }, { data: gr }, { data: enr }] = await Promise.all([
+    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }, { data: gr }, { data: sgr }, { data: enr }] = await Promise.all([
       supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
       supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
       supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
       supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", user.id),
+      supabase.from("session_goal_ratings").select("*").eq("coachee_id", user.id),
       supabase
         .from("programme_enrollments")
         .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")
@@ -116,6 +117,7 @@ export default function CoacheeJourney() {
     setMilestones(m || []);
     setSessions(s || []);
     setReflections(r || []);
+    setSessionRatings(sgr || []);
     const usageRow = Array.isArray(u) ? u[0] : u;
     if (usageRow) setUsage(usageRow as any);
 
