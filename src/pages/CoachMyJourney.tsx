@@ -867,6 +867,9 @@ function GoalAccordion({
   userId,
   defaultOpen,
   showLinkedActions = true,
+  rating,
+  onRatingChange,
+  startTargetLocked,
 }: {
   goal: Goal;
   milestones: Milestone[];
@@ -879,6 +882,9 @@ function GoalAccordion({
   userId: string;
   defaultOpen?: boolean;
   showLinkedActions?: boolean;
+  rating?: GoalRatingRow;
+  onRatingChange?: (patch: { start_rating?: number; current_rating?: number; target_rating?: number }) => void;
+  startTargetLocked?: boolean;
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
   const [adding, setAdding] = useState(false);
