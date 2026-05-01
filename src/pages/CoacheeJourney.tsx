@@ -86,6 +86,8 @@ export default function CoacheeJourney() {
   const [reflections, setReflections] = useState<any[]>([]);
   const [coachNames, setCoachNames] = useState<Record<string, string>>({});
   const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
+  const [ratings, setRatings] = useState<Record<string, GoalRating>>({});
+  const [programme, setProgramme] = useState<ProgrammeInfo | null>(null);
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
@@ -93,12 +95,20 @@ export default function CoacheeJourney() {
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }] = await Promise.all([
+    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }, { data: gr }, { data: enr }] = await Promise.all([
       supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
       supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
       supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
       supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
+      supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", user.id),
+      supabase
+        .from("programme_enrollments")
+        .select("id, start_date, end_date, programme_id, programmes(name, total_sessions, duration_months)")
+        .eq("coachee_id", user.id)
+        .eq("status", "active")
+        .order("start_date", { ascending: false })
+        .limit(1),
     ]);
     setGoals(g || []);
     setMilestones(m || []);
@@ -106,6 +116,24 @@ export default function CoacheeJourney() {
     setReflections(r || []);
     const usageRow = Array.isArray(u) ? u[0] : u;
     if (usageRow) setUsage(usageRow as any);
+
+    const rmap: Record<string, GoalRating> = {};
+    for (const row of (gr || []) as any[]) rmap[row.goal_id] = row;
+    setRatings(rmap);
+
+    const e = (enr || [])[0] as any;
+    if (e && e.programmes) {
+      setProgramme({
+        enrollmentId: e.id,
+        programmeName: e.programmes.name,
+        startDate: e.start_date,
+        endDate: e.end_date,
+        totalSessions: e.programmes.total_sessions ?? 0,
+        durationMonths: e.programmes.duration_months ?? 0,
+      });
+    } else {
+      setProgramme(null);
+    }
 
     const coachIds = Array.from(new Set((s || []).map((x: any) => x.coach_id).filter(Boolean)));
     if (coachIds.length) {
