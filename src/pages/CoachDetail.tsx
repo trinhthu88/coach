@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, Check, Loader2, MapPin, Star } from "lucide-react";
 import { HeroPanel } from "@/components/ui/page-header";
 
