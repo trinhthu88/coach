@@ -1,7 +1,12 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
+import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
+import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
+import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
+import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
+import type { Goal, Milestone, RawActionItem } from "@/hooks/journey/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +42,6 @@ import {
   format,
   isAfter,
   isBefore,
-  startOfWeek,
   endOfWeek,
   differenceInCalendarWeeks,
 } from "date-fns";
@@ -50,26 +54,14 @@ import {
   type SessionRatingSeries,
 } from "./journey/GoalWheel";
 
-interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; created_at: string; }
-interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
-interface GoalRating { id: string; goal_id: string; coachee_id: string; start_rating: number; current_rating: number; target_rating: number; current_updated_at: string; }
-interface ProgrammeInfo {
-  enrollmentId: string;
-  programmeName: string;
-  startDate: string | null;
-  endDate: string | null;
-  sessionsAllowed: number;
-  durationMonths: number;
-}
-
-interface RawActionItem { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null; }
-interface FlatAction extends RawActionItem {
+interface RawActionItemWithSource extends RawActionItem {
   sessionId: string;
   sessionTopic: string;
   sessionDate: string;
   idx: number;
   source: "coaching" | "peer";
 }
+type FlatAction = RawActionItemWithSource;
 
 const ACCENTS = [
   { bg: "bg-success/15", text: "text-success", fill: "bg-success" },
@@ -92,87 +84,33 @@ type AnySession = any;
 
 export default function CoachMyJourney() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [coachingSessions, setCoachingSessions] = useState<AnySession[]>([]);
-  const [peerSessions, setPeerSessions] = useState<AnySession[]>([]);
-  const [reflections, setReflections] = useState<any[]>([]);
-  const [coachNames, setCoachNames] = useState<Record<string, string>>({});
-  const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
-  const [ratings, setRatings] = useState<Record<string, GoalRating>>({});
-  const [sessionRatings, setSessionRatings] = useState<any[]>([]);
-  const [programme, setProgramme] = useState<ProgrammeInfo | null>(null);
+  const goalsApi = useJourneyGoals(user?.id);
+  const ratingsApi = useJourneyRatings(user?.id);
+  const sessionsApi = useJourneySessions(user?.id, { includePeer: true });
+  const reflectionsApi = useJourneyReflections(user?.id);
+  const programmeApi = useJourneyProgramme(user?.id);
+
+  const { goals, milestones, toggleMilestone } = goalsApi;
+  const { ratings, sessionRatings, saveRating } = ratingsApi;
+  const { coachingSessions, peerSessions, coachNames, toggleAction: toggleActionRaw } = sessionsApi;
+  const { reflections, deleteReflection } = reflectionsApi;
+  const { programme, usage } = programmeApi;
+
+  const loading =
+    goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading || programmeApi.loading;
+
+  const refresh = useCallback(() => {
+    goalsApi.refresh();
+    ratingsApi.refresh();
+    sessionsApi.refresh();
+    reflectionsApi.refresh();
+    programmeApi.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
-
-  const refresh = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const [
-      { data: g }, { data: m }, { data: s }, { data: ps }, { data: r }, { data: u },
-      { data: gr }, { data: sgr }, { data: enr },
-    ] = await Promise.all([
-      supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
-      supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
-      supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
-      supabase.from("peer_sessions").select("*").eq("peer_coachee_id", user.id).order("start_time", { ascending: false }),
-      supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
-      supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
-      supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", user.id),
-      supabase.from("session_goal_ratings").select("*").eq("coachee_id", user.id),
-      supabase
-        .from("programme_enrollments")
-        .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")
-        .eq("coachee_id", user.id)
-        .eq("status", "active")
-        .order("start_date", { ascending: false })
-        .limit(1),
-    ]);
-    setGoals(g || []);
-    setMilestones(m || []);
-    setCoachingSessions(s || []);
-    setPeerSessions(ps || []);
-    setReflections(r || []);
-    setSessionRatings(sgr || []);
-    const usageRow = Array.isArray(u) ? u[0] : u;
-    if (usageRow) setUsage(usageRow as any);
-
-    const rmap: Record<string, GoalRating> = {};
-    for (const row of (gr || []) as any[]) rmap[row.goal_id] = row;
-    setRatings(rmap);
-
-    const e = (enr || [])[0] as any;
-    if (e && e.programmes) {
-      setProgramme({
-        enrollmentId: e.id,
-        programmeName: e.programmes.name,
-        startDate: e.start_date,
-        endDate: e.end_date,
-        sessionsAllowed: e.programmes.coachee_session_limit ?? 0,
-        durationMonths: e.programmes.duration_months ?? 0,
-      });
-    } else {
-      setProgramme(null);
-    }
-
-    const ids = new Set<string>();
-    (s || []).forEach((x: any) => x.coach_id && ids.add(x.coach_id));
-    (ps || []).forEach((x: any) => x.peer_coach_id && ids.add(x.peer_coach_id));
-    if (ids.size) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", Array.from(ids));
-      const map: Record<string, string> = {};
-      for (const p of profs || []) map[p.id] = p.full_name;
-      setCoachNames(map);
-    }
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   // Unified sessions list (each carries _source / _otherCoachId)
   const sessions = useMemo<AnySession[]>(() => [
@@ -201,37 +139,6 @@ export default function CoachMyJourney() {
     }
     return out;
   }, [sessions]);
-
-  // Auto-complete milestones when all linked actions are done
-  useEffect(() => {
-    if (loading || !milestones.length) return;
-    milestones.forEach((m) => {
-      const linked = allActionItems.filter((a) => a.milestone_id === m.id);
-      if (!linked.length) return;
-      const allDone = linked.every((a) => a.done);
-      if (allDone && !m.is_done) {
-        supabase
-          .from("coachee_milestones")
-          .update({ is_done: true, done_at: new Date().toISOString() })
-          .eq("id", m.id)
-          .then(({ error }) => {
-            if (!error) {
-              setMilestones((prev) => prev.map((x) => x.id === m.id ? { ...x, is_done: true, done_at: new Date().toISOString() } : x));
-            }
-          });
-      } else if (!allDone && m.is_done) {
-        supabase
-          .from("coachee_milestones")
-          .update({ is_done: false, done_at: null })
-          .eq("id", m.id)
-          .then(({ error }) => {
-            if (!error) {
-              setMilestones((prev) => prev.map((x) => x.id === m.id ? { ...x, is_done: false, done_at: null } : x));
-            }
-          });
-      }
-    });
-  }, [allActionItems, milestones, loading]);
 
   const goalProgress = (goalId: string) => {
     const ms = milestones.filter((m) => m.goal_id === goalId);
@@ -360,7 +267,7 @@ export default function CoachMyJourney() {
   const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
     const sessionById = new Map(sessions.map((s) => [s.id, s]));
     const grouped = new Map<string, { date: string; rows: { goalId: string; rating: number }[] }>();
-    for (const row of sessionRatings as any[]) {
+    for (const row of sessionRatings) {
       const sess = sessionById.get(row.session_id);
       if (!sess) continue;
       const cur = grouped.get(row.session_id) || { date: sess.start_time, rows: [] };
@@ -376,99 +283,23 @@ export default function CoachMyJourney() {
     const completed = sessions
       .filter((s) => s.status === "completed" && s._source === "coaching")
       .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
-    const ratedSessionIds = new Set((sessionRatings as any[]).map((r) => r.session_id));
+    const ratedSessionIds = new Set(sessionRatings.map((r) => r.session_id));
     return completed.find((s) => !ratedSessionIds.has(s.id)) || null;
   }, [sessions, sessionRatings]);
 
   const needsRatingUpdate = goals.length > 0 && !!pendingReflectionSession;
 
-  const saveRating = async (
-    goalId: string,
-    patch: Partial<{ start_rating: number; current_rating: number; target_rating: number }>
-  ) => {
-    if (!user) return;
-    const existing = ratings[goalId];
-    const merged: any = {
-      goal_id: goalId,
-      coachee_id: user.id,
-      start_rating: existing?.start_rating ?? 30,
-      current_rating: existing?.current_rating ?? 30,
-      target_rating: existing?.target_rating ?? 80,
-      current_updated_at: existing?.current_updated_at ?? new Date().toISOString(),
-      ...patch,
-    };
-    if (patch.current_rating !== undefined) {
-      merged.current_updated_at = new Date().toISOString();
-    }
-    setRatings((prev) => ({
-      ...prev,
-      [goalId]: { ...(existing as any), ...merged, id: existing?.id ?? "" },
-    }));
-    const { data, error } = await supabase
-      .from("coachee_goal_ratings")
-      .upsert(merged, { onConflict: "goal_id" })
-      .select()
-      .single();
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    if (data) setRatings((prev) => ({ ...prev, [goalId]: data as any }));
-  };
-
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
     setSavingRef(true);
-    const { error } = await supabase.from("coachee_reflections").insert({
-      coachee_id: user.id,
-      body: newReflection.trim(),
-      mood: reflectionMood.trim() || null,
-    });
+    const ok = await reflectionsApi.addReflection(newReflection, reflectionMood);
     setSavingRef(false);
-    if (error) return toast.error(error.message);
+    if (!ok) return;
     setNewReflection("");
     setReflectionMood("");
-    refresh();
   };
 
-  const deleteReflection = async (id: string) => {
-    const { error } = await supabase.from("coachee_reflections").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
-  const toggleMilestone = async (m: Milestone) => {
-    const { error } = await supabase
-      .from("coachee_milestones")
-      .update({ is_done: !m.is_done, done_at: !m.is_done ? new Date().toISOString() : null })
-      .eq("id", m.id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
-  const toggleAction = async (a: FlatAction) => {
-    const table = a.source === "coaching" ? "sessions" : "peer_sessions";
-    const list = a.source === "coaching" ? coachingSessions : peerSessions;
-    const sess = list.find((s) => s.id === a.sessionId);
-    if (!sess) return;
-    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
-    const cur = items[a.idx];
-    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
-    norm.done = !norm.done;
-    items[a.idx] = norm;
-
-    if (a.source === "coaching") {
-      setCoachingSessions((prev) => prev.map((s) => s.id === a.sessionId ? { ...s, action_items: items } : s));
-    } else {
-      setPeerSessions((prev) => prev.map((s) => s.id === a.sessionId ? { ...s, action_items: items } : s));
-    }
-
-    const { error } = await supabase.from(table).update({ action_items: items }).eq("id", a.sessionId);
-    if (error) {
-      toast.error(error.message);
-      refresh();
-    }
-  };
+  const toggleAction = (a: FlatAction) => toggleActionRaw(a.sessionId, a.idx, a.source);
 
   if (loading) {
     return (
@@ -687,10 +518,10 @@ export default function CoachMyJourney() {
 
           <SectionHeader
             title="Goals & milestones"
-            action={goals.length > 0 ? <GoalDialog onSaved={refresh} userId={user!.id} /> : undefined}
+            action={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} /> : undefined}
           />
           {goals.length === 0 ? (
-            <EmptyGoals userId={user!.id} onSaved={refresh} />
+            <EmptyGoals onAdd={goalsApi.addGoal} />
           ) : (
             <div className="space-y-2">
               {goals.map((g, i) => (
@@ -703,8 +534,9 @@ export default function CoachMyJourney() {
                   accent={ACCENTS[i % ACCENTS.length]}
                   onToggle={toggleMilestone}
                   onToggleAction={toggleAction}
-                  onChanged={refresh}
-                  userId={user!.id}
+                  onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
+                  onDeleteGoal={goalsApi.deleteGoal}
+                  onDeleteMilestone={goalsApi.deleteMilestone}
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
@@ -720,10 +552,10 @@ export default function CoachMyJourney() {
 
         <TabsContent value="goals" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <GoalDialog onSaved={refresh} userId={user!.id} />
+            <GoalDialog onAdd={goalsApi.addGoal} />
           </div>
           {goals.length === 0 ? (
-            <EmptyGoals userId={user!.id} onSaved={refresh} />
+            <EmptyGoals onAdd={goalsApi.addGoal} />
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-3">
@@ -759,10 +591,14 @@ export default function CoachMyJourney() {
                     accent={ACCENTS[i % ACCENTS.length]}
                     onToggle={toggleMilestone}
                     onToggleAction={toggleAction}
-                    onChanged={refresh}
-                    userId={user!.id}
+                    onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
+                    onDeleteGoal={goalsApi.deleteGoal}
+                    onDeleteMilestone={goalsApi.deleteMilestone}
                     showLinkedActions
                     defaultOpen={i === 0}
+                    rating={ratingRows.find((r) => r.goalId === g.id)}
+                    onRatingChange={(patch) => saveRating(g.id, patch)}
+                    startTargetLocked={isGoalLocked(g.created_at)}
                   />
                 ))}
               </div>
@@ -838,13 +674,58 @@ export default function CoachMyJourney() {
 
 /* ---------- sub components ---------- */
 
-function Metric({ label, value, sub, subClass }: { label: string; value: string; sub?: string; subClass?: string }) {
+function Metric({
+  label,
+  value,
+  sub,
+  subClass,
+}: { label: string; value: string; sub?: string; subClass?: string }) {
   return (
     <Card className="p-4">
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
       {sub && <p className={cn("mt-0.5 text-[11px] text-muted-foreground", subClass)}>{sub}</p>}
     </Card>
+  );
+}
+
+function RatingSlider({
+  label,
+  hint,
+  value,
+  trackColor,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  trackColor: string;
+  disabled?: boolean;
+  onChange: (v: number) => void;
+}) {
+  const [local, setLocal] = useState(value);
+  useEffect(() => setLocal(value), [value]);
+  return (
+    <div className={cn(disabled && "opacity-60")}>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <div>
+          <span className="text-[11px] font-semibold">{label}</span>
+          {hint && <span className="ml-2 text-[10px] text-muted-foreground">{hint}</span>}
+        </div>
+        <span className="text-xs font-semibold tabular-nums text-foreground">{local}</span>
+      </div>
+      <Slider
+        value={[local]}
+        min={0}
+        max={100}
+        step={1}
+        disabled={disabled}
+        onValueChange={(v) => setLocal(v[0])}
+        onValueCommit={(v) => onChange(v[0])}
+        className={cn("[&_[data-orientation=horizontal]>span]:h-1.5", trackColor && "")}
+      />
+    </div>
   );
 }
 
@@ -857,7 +738,7 @@ function SectionHeader({ title, action }: { title: string; action?: React.ReactN
   );
 }
 
-function EmptyGoals({ userId, onSaved }: { userId: string; onSaved: () => void }) {
+function EmptyGoals({ onAdd }: { onAdd: (payload: { title: string; description: string | null; target_date: string | null }) => Promise<boolean | undefined> | void }) {
   return (
     <Card className="p-12 text-center">
       <Target className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
@@ -866,7 +747,7 @@ function EmptyGoals({ userId, onSaved }: { userId: string; onSaved: () => void }
         Define what you want to achieve in your own coaching journey.
       </p>
       <div className="flex justify-center">
-        <GoalDialog onSaved={onSaved} userId={userId} />
+        <GoalDialog onAdd={onAdd} />
       </div>
     </Card>
   );
@@ -880,8 +761,9 @@ function GoalAccordion({
   accent,
   onToggle,
   onToggleAction,
-  onChanged,
-  userId,
+  onAddMilestone,
+  onDeleteGoal,
+  onDeleteMilestone,
   defaultOpen,
   showLinkedActions = true,
   rating,
@@ -895,8 +777,9 @@ function GoalAccordion({
   accent: typeof ACCENTS[number];
   onToggle: (m: Milestone) => void;
   onToggleAction: (a: FlatAction) => void;
-  onChanged: () => void;
-  userId: string;
+  onAddMilestone: (goalId: string, title: string, target_date: string | null) => Promise<boolean | undefined> | void;
+  onDeleteGoal: (goalId: string) => Promise<void> | void;
+  onDeleteMilestone: (id: string) => Promise<void> | void;
   defaultOpen?: boolean;
   showLinkedActions?: boolean;
   rating?: GoalRatingRow;
@@ -912,30 +795,20 @@ function GoalAccordion({
 
   const addMs = async () => {
     if (!newMs.trim()) return;
-    const { error } = await supabase.from("coachee_milestones").insert({
-      goal_id: goal.id,
-      coachee_id: userId,
-      title: newMs.trim(),
-      target_date: newDate || null,
-    });
-    if (error) return toast.error(error.message);
+    const ok = await onAddMilestone(goal.id, newMs.trim(), newDate || null);
+    if (ok === false) return;
     setNewMs("");
     setNewDate("");
     setAdding(false);
-    onChanged();
   };
 
   const deleteGoal = async () => {
     if (!confirm("Delete this goal and all its milestones?")) return;
-    const { error } = await supabase.from("coachee_goals").delete().eq("id", goal.id);
-    if (error) return toast.error(error.message);
-    onChanged();
+    await onDeleteGoal(goal.id);
   };
 
   const deleteMs = async (id: string) => {
-    const { error } = await supabase.from("coachee_milestones").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    onChanged();
+    await onDeleteMilestone(id);
   };
 
   return (
@@ -1357,7 +1230,7 @@ function SessionRow({
   );
 }
 
-function GoalDialog({ onSaved, userId }: { onSaved: () => void; userId: string }) {
+function GoalDialog({ onAdd }: { onAdd: (payload: { title: string; description: string | null; target_date: string | null }) => Promise<boolean | undefined> | void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
@@ -1367,17 +1240,15 @@ function GoalDialog({ onSaved, userId }: { onSaved: () => void; userId: string }
   const save = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("coachee_goals").insert({
-      coachee_id: userId,
+    const ok = await onAdd({
       title: title.trim(),
       description: desc.trim() || null,
       target_date: date || null,
     });
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (ok === false) return;
     setTitle(""); setDesc(""); setDate("");
     setOpen(false);
-    onSaved();
   };
 
   return (
@@ -1401,45 +1272,5 @@ function GoalDialog({ onSaved, userId }: { onSaved: () => void; userId: string }
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function RatingSlider({
-  label,
-  hint,
-  value,
-  trackColor,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  value: number;
-  trackColor: string;
-  disabled?: boolean;
-  onChange: (v: number) => void;
-}) {
-  const [local, setLocal] = useState(value);
-  useEffect(() => setLocal(value), [value]);
-  return (
-    <div className={cn(disabled && "opacity-60")}>
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <div>
-          <span className="text-[11px] font-semibold">{label}</span>
-          {hint && <span className="ml-2 text-[10px] text-muted-foreground">{hint}</span>}
-        </div>
-        <span className="text-xs font-semibold tabular-nums text-foreground">{local}</span>
-      </div>
-      <Slider
-        value={[local]}
-        min={0}
-        max={100}
-        step={1}
-        disabled={disabled}
-        onValueChange={(v) => setLocal(v[0])}
-        onValueCommit={(v) => onChange(v[0])}
-        className={cn("[&_[data-orientation=horizontal]>span]:h-1.5", trackColor && "")}
-      />
-    </div>
   );
 }
