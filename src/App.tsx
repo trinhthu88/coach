@@ -43,6 +43,7 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 import PendingApproval from "./pages/PendingApproval";
 import OAuthConsent from "./pages/OAuthConsent";
+import ToolboxPreview from "./pages/__ToolboxPreview";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -206,6 +207,7 @@ const App = () => (
               <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
             </Route>
 
+            <Route path="/__toolbox" element={<ToolboxPreview />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
