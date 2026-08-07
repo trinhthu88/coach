@@ -89,18 +89,13 @@ export default function CoacheeProfileEditor() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <User className="h-5 w-5" />
-        </div>
-        <PageHeader
+      <PageHeader
           className="mb-0"
           eyebrow="Account"
           title="My"
           emphasis="profile"
           subtitle="Coaches you book with see this information."
         />
-      </div>
 
       <Card className="space-y-5 p-6">
         <div className="grid gap-4 sm:grid-cols-2">

@@ -307,18 +307,13 @@ export default function CoacheeJourney() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <Compass className="h-5 w-5" />
-        </div>
-        <PageHeader
+      <PageHeader
           className="mb-0"
           eyebrow="Progress"
           title="My"
           emphasis="journey"
           subtitle="Track your goals, action items, sessions and personal reflections."
         />
-      </div>
 
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

@@ -271,18 +271,13 @@ export default function CoachClients() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <Users className="h-5 w-5" />
-        </div>
-        <PageHeader
+      <PageHeader
           className="mb-0"
           eyebrow="Practice"
           title="My"
           emphasis="clients"
           subtitle="All active coachees at a glance — progress, engagement, and private notes."
         />
-      </div>
 
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
