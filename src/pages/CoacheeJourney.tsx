@@ -1,7 +1,14 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
+import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
+import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
+import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
+import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
+import type { Goal, Milestone, RawActionItem } from "@/hooks/journey/types";
+import type { Tables } from "@/integrations/supabase/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,18 +49,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GoalWheel, GoalScoreCards, type GoalRatingRow, type SessionRatingSeries } from "./journey/GoalWheel";
 
-interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; created_at: string; }
-interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
-interface GoalRating { id: string; goal_id: string; coachee_id: string; start_rating: number; current_rating: number; target_rating: number; current_updated_at: string; }
-interface ProgrammeInfo {
-  enrollmentId: string;
-  programmeName: string;
-  startDate: string | null;
-  endDate: string | null;
-  sessionsAllowed: number;
-  durationMonths: number;
-}
-interface RawActionItem { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null; }
 interface FlatAction extends RawActionItem {
   sessionId: string;
   sessionTopic: string;
