@@ -1,7 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
+import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
+import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
+import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
+import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
+import type { Goal, Milestone, RawActionItem, PeerSessionRow, SessionRow } from "@/hooks/journey/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +46,6 @@ import {
   endOfWeek,
   differenceInCalendarWeeks,
 } from "date-fns";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   GoalWheel,
@@ -50,26 +54,20 @@ import {
   type SessionRatingSeries,
 } from "./journey/GoalWheel";
 
-interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; created_at: string; }
-interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
-interface GoalRating { id: string; goal_id: string; coachee_id: string; start_rating: number; current_rating: number; target_rating: number; current_updated_at: string; }
-interface ProgrammeInfo {
-  enrollmentId: string;
-  programmeName: string;
-  startDate: string | null;
-  endDate: string | null;
-  sessionsAllowed: number;
-  durationMonths: number;
-}
+type SessionSourceTag = "coaching" | "peer";
 
-interface RawActionItem { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null; }
 interface FlatAction extends RawActionItem {
   sessionId: string;
   sessionTopic: string;
   sessionDate: string;
   idx: number;
-  source: "coaching" | "peer";
+  source: SessionSourceTag;
 }
+
+type AnySession = (SessionRow | PeerSessionRow) & {
+  _source: SessionSourceTag;
+  _otherCoachId?: string | null;
+};
 
 const ACCENTS = [
   { bg: "bg-success/15", text: "text-success", fill: "bg-success" },
@@ -88,91 +86,40 @@ function initials(s: string) {
     .toUpperCase();
 }
 
-type AnySession = any;
-
 export default function CoachMyJourney() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [coachingSessions, setCoachingSessions] = useState<AnySession[]>([]);
-  const [peerSessions, setPeerSessions] = useState<AnySession[]>([]);
-  const [reflections, setReflections] = useState<any[]>([]);
-  const [coachNames, setCoachNames] = useState<Record<string, string>>({});
-  const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
-  const [ratings, setRatings] = useState<Record<string, GoalRating>>({});
-  const [sessionRatings, setSessionRatings] = useState<any[]>([]);
-  const [programme, setProgramme] = useState<ProgrammeInfo | null>(null);
+  const goalsApi = useJourneyGoals(user?.id);
+  const ratingsApi = useJourneyRatings(user?.id);
+  const sessionsApi = useJourneySessions(user?.id, { includePeer: true });
+  const reflectionsApi = useJourneyReflections(user?.id);
+  const programmeApi = useJourneyProgramme(user?.id);
+
+  const { goals, milestones, toggleMilestone, syncMilestoneDone } = goalsApi;
+  const { ratings, sessionRatings, saveRating } = ratingsApi;
+  const {
+    coachingSessions,
+    peerSessions,
+    coachNames,
+    toggleAction: toggleActionRaw,
+  } = sessionsApi;
+  const { reflections, deleteReflection } = reflectionsApi;
+  const { programme, usage } = programmeApi;
+
+  const loading =
+    goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading || programmeApi.loading;
+
+  const refresh = useCallback(() => {
+    goalsApi.refresh();
+    ratingsApi.refresh();
+    sessionsApi.refresh();
+    reflectionsApi.refresh();
+    programmeApi.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
-
-  const refresh = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const [
-      { data: g }, { data: m }, { data: s }, { data: ps }, { data: r }, { data: u },
-      { data: gr }, { data: sgr }, { data: enr },
-    ] = await Promise.all([
-      supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
-      supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
-      supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
-      supabase.from("peer_sessions").select("*").eq("peer_coachee_id", user.id).order("start_time", { ascending: false }),
-      supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
-      supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
-      supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", user.id),
-      supabase.from("session_goal_ratings").select("*").eq("coachee_id", user.id),
-      supabase
-        .from("programme_enrollments")
-        .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")
-        .eq("coachee_id", user.id)
-        .eq("status", "active")
-        .order("start_date", { ascending: false })
-        .limit(1),
-    ]);
-    setGoals(g || []);
-    setMilestones(m || []);
-    setCoachingSessions(s || []);
-    setPeerSessions(ps || []);
-    setReflections(r || []);
-    setSessionRatings(sgr || []);
-    const usageRow = Array.isArray(u) ? u[0] : u;
-    if (usageRow) setUsage(usageRow as any);
-
-    const rmap: Record<string, GoalRating> = {};
-    for (const row of (gr || []) as any[]) rmap[row.goal_id] = row;
-    setRatings(rmap);
-
-    const e = (enr || [])[0] as any;
-    if (e && e.programmes) {
-      setProgramme({
-        enrollmentId: e.id,
-        programmeName: e.programmes.name,
-        startDate: e.start_date,
-        endDate: e.end_date,
-        sessionsAllowed: e.programmes.coachee_session_limit ?? 0,
-        durationMonths: e.programmes.duration_months ?? 0,
-      });
-    } else {
-      setProgramme(null);
-    }
-
-    const ids = new Set<string>();
-    (s || []).forEach((x: any) => x.coach_id && ids.add(x.coach_id));
-    (ps || []).forEach((x: any) => x.peer_coach_id && ids.add(x.peer_coach_id));
-    if (ids.size) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", Array.from(ids));
-      const map: Record<string, string> = {};
-      for (const p of profs || []) map[p.id] = p.full_name;
-      setCoachNames(map);
-    }
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   // Unified sessions list (each carries _source / _otherCoachId)
   const sessions = useMemo<AnySession[]>(() => [
@@ -210,28 +157,12 @@ export default function CoachMyJourney() {
       if (!linked.length) return;
       const allDone = linked.every((a) => a.done);
       if (allDone && !m.is_done) {
-        supabase
-          .from("coachee_milestones")
-          .update({ is_done: true, done_at: new Date().toISOString() })
-          .eq("id", m.id)
-          .then(({ error }) => {
-            if (!error) {
-              setMilestones((prev) => prev.map((x) => x.id === m.id ? { ...x, is_done: true, done_at: new Date().toISOString() } : x));
-            }
-          });
+        syncMilestoneDone(m.id, true);
       } else if (!allDone && m.is_done) {
-        supabase
-          .from("coachee_milestones")
-          .update({ is_done: false, done_at: null })
-          .eq("id", m.id)
-          .then(({ error }) => {
-            if (!error) {
-              setMilestones((prev) => prev.map((x) => x.id === m.id ? { ...x, is_done: false, done_at: null } : x));
-            }
-          });
+        syncMilestoneDone(m.id, false);
       }
     });
-  }, [allActionItems, milestones, loading]);
+  }, [allActionItems, milestones, loading, syncMilestoneDone]);
 
   const goalProgress = (goalId: string) => {
     const ms = milestones.filter((m) => m.goal_id === goalId);
@@ -274,7 +205,7 @@ export default function CoachMyJourney() {
   const coachSummaries = useMemo(() => {
     const map = new Map<string, { id: string; name: string; total: number; completed: number; upcoming: number; firstDate: Date | null; lastDate: Date | null; nextDate: Date | null; sources: Set<"coaching" | "peer">; }>();
     for (const s of sessions) {
-      const otherId: string | undefined = s._otherCoachId;
+      const otherId: string | undefined | null = s._otherCoachId;
       if (!otherId) continue;
       const cur = map.get(otherId) || {
         id: otherId,
@@ -360,7 +291,7 @@ export default function CoachMyJourney() {
   const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
     const sessionById = new Map(sessions.map((s) => [s.id, s]));
     const grouped = new Map<string, { date: string; rows: { goalId: string; rating: number }[] }>();
-    for (const row of sessionRatings as any[]) {
+    for (const row of sessionRatings) {
       const sess = sessionById.get(row.session_id);
       if (!sess) continue;
       const cur = grouped.get(row.session_id) || { date: sess.start_time, rows: [] };
@@ -376,99 +307,23 @@ export default function CoachMyJourney() {
     const completed = sessions
       .filter((s) => s.status === "completed" && s._source === "coaching")
       .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
-    const ratedSessionIds = new Set((sessionRatings as any[]).map((r) => r.session_id));
+    const ratedSessionIds = new Set(sessionRatings.map((r) => r.session_id));
     return completed.find((s) => !ratedSessionIds.has(s.id)) || null;
   }, [sessions, sessionRatings]);
 
   const needsRatingUpdate = goals.length > 0 && !!pendingReflectionSession;
 
-  const saveRating = async (
-    goalId: string,
-    patch: Partial<{ start_rating: number; current_rating: number; target_rating: number }>
-  ) => {
-    if (!user) return;
-    const existing = ratings[goalId];
-    const merged: any = {
-      goal_id: goalId,
-      coachee_id: user.id,
-      start_rating: existing?.start_rating ?? 30,
-      current_rating: existing?.current_rating ?? 30,
-      target_rating: existing?.target_rating ?? 80,
-      current_updated_at: existing?.current_updated_at ?? new Date().toISOString(),
-      ...patch,
-    };
-    if (patch.current_rating !== undefined) {
-      merged.current_updated_at = new Date().toISOString();
-    }
-    setRatings((prev) => ({
-      ...prev,
-      [goalId]: { ...(existing as any), ...merged, id: existing?.id ?? "" },
-    }));
-    const { data, error } = await supabase
-      .from("coachee_goal_ratings")
-      .upsert(merged, { onConflict: "goal_id" })
-      .select()
-      .single();
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    if (data) setRatings((prev) => ({ ...prev, [goalId]: data as any }));
-  };
-
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
     setSavingRef(true);
-    const { error } = await supabase.from("coachee_reflections").insert({
-      coachee_id: user.id,
-      body: newReflection.trim(),
-      mood: reflectionMood.trim() || null,
-    });
+    const ok = await reflectionsApi.addReflection(newReflection, reflectionMood);
     setSavingRef(false);
-    if (error) return toast.error(error.message);
+    if (!ok) return;
     setNewReflection("");
     setReflectionMood("");
-    refresh();
   };
 
-  const deleteReflection = async (id: string) => {
-    const { error } = await supabase.from("coachee_reflections").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
-  const toggleMilestone = async (m: Milestone) => {
-    const { error } = await supabase
-      .from("coachee_milestones")
-      .update({ is_done: !m.is_done, done_at: !m.is_done ? new Date().toISOString() : null })
-      .eq("id", m.id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
-  const toggleAction = async (a: FlatAction) => {
-    const table = a.source === "coaching" ? "sessions" : "peer_sessions";
-    const list = a.source === "coaching" ? coachingSessions : peerSessions;
-    const sess = list.find((s) => s.id === a.sessionId);
-    if (!sess) return;
-    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
-    const cur = items[a.idx];
-    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
-    norm.done = !norm.done;
-    items[a.idx] = norm;
-
-    if (a.source === "coaching") {
-      setCoachingSessions((prev) => prev.map((s) => s.id === a.sessionId ? { ...s, action_items: items } : s));
-    } else {
-      setPeerSessions((prev) => prev.map((s) => s.id === a.sessionId ? { ...s, action_items: items } : s));
-    }
-
-    const { error } = await supabase.from(table).update({ action_items: items }).eq("id", a.sessionId);
-    if (error) {
-      toast.error(error.message);
-      refresh();
-    }
-  };
+  const toggleAction = (a: FlatAction) => toggleActionRaw(a.sessionId, a.idx, a.source);
 
   if (loading) {
     return (
@@ -479,362 +334,6 @@ export default function CoachMyJourney() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <Compass className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">My journey</h1>
-          <p className="text-sm text-muted-foreground">
-            Your growth as a coachee — across coaching and peer sessions you receive.
-          </p>
-        </div>
-      </div>
-
-      {/* METRICS */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label="Overall progress" value={`${overallPct}%`} sub={`across ${goals.length} goal${goals.length === 1 ? "" : "s"}`} />
-        <Metric label="Actions done" value={String(aiDone)} sub={aiOverdue ? `${aiOverdue} overdue` : `of ${aiTotal} total`} subClass={aiOverdue ? "text-destructive" : ""} />
-        <Metric
-          label="Sessions received"
-          value={
-            usage
-              ? `${sessions.filter((s) => s.status === "completed").length} / ${usage.monthly_limit}`
-              : `${sessions.filter((s) => s.status === "completed").length}`
-          }
-          sub={`${upcoming.length} upcoming`}
-        />
-        <Metric
-          label="Next session"
-          value={nextSession ? format(new Date(nextSession.start_time), "MMM d") : "—"}
-          sub={nextSession ? format(new Date(nextSession.start_time), "p") : "Nothing scheduled"}
-        />
-      </div>
-
-      {/* PROGRAMME BLOCK */}
-      {programme && (
-        <Card className="overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-                <GraduationCap className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Programme</p>
-                <p className="text-base font-semibold leading-tight">{programme.programmeName}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {programme.startDate ? format(new Date(programme.startDate), "MMM d, yyyy") : "—"}
-                  {" → "}
-                  {programme.endDate
-                    ? format(new Date(programme.endDate), "MMM d, yyyy")
-                    : programmeWeeks
-                    ? format(programmeWeeks.end, "MMM d, yyyy")
-                    : "—"}
-                </p>
-              </div>
-            </div>
-            {programmeWeeks && (
-              <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-secondary">
-                Week {Math.min(programmeWeeks.elapsedWeeks + 1, programmeWeeks.totalWeeks)} / {programmeWeeks.totalWeeks}
-              </span>
-            )}
-          </div>
-
-          <div className="grid gap-3 p-4 md:grid-cols-3">
-            <div className="rounded-lg border bg-muted/20 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sessions received</p>
-              <p className="mt-1 text-xl font-semibold">
-                {sessionsCompletedCount}
-                <span className="text-sm font-normal text-muted-foreground"> / {programme.sessionsAllowed || "—"}</span>
-              </p>
-              <Progress
-                value={programme.sessionsAllowed ? Math.min(100, (sessionsCompletedCount / programme.sessionsAllowed) * 100) : 0}
-                className="mt-2 h-1.5"
-              />
-            </div>
-            <div className="rounded-lg border bg-muted/20 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Programme duration</p>
-              <p className="mt-1 text-xl font-semibold">
-                {programmeWeeks ? `${programmeWeeks.elapsedWeeks}w` : "—"}
-                <span className="text-sm font-normal text-muted-foreground"> / {programmeWeeks?.totalWeeks ?? "—"}w</span>
-              </p>
-              <Progress
-                value={programmeWeeks ? Math.min(100, (programmeWeeks.elapsedWeeks / programmeWeeks.totalWeeks) * 100) : 0}
-                className="mt-2 h-1.5"
-              />
-            </div>
-            <div className="rounded-lg border bg-muted/20 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Goal progress</p>
-              <p className="mt-1 text-xl font-semibold text-primary">{avgGoalProgress}%</p>
-              <Progress value={avgGoalProgress} className="mt-2 h-1.5" />
-            </div>
-          </div>
-
-          {coachSummaries.length > 0 && (
-            <div className="border-t">
-              <div className="border-b bg-muted/20 px-4 py-2">
-                <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  <Users className="h-3.5 w-3.5" /> Coaches in this programme
-                </p>
-              </div>
-              <ul className="divide-y">
-                {coachSummaries.map((c, i) => {
-                  const accent = ACCENTS[i % ACCENTS.length];
-                  const dateRange = c.firstDate && c.lastDate
-                    ? `${format(c.firstDate, "MMM d")} → ${format(c.lastDate, "MMM d")}` : "—";
-                  const isCoach = c.sources.has("coaching");
-                  const isPeer = c.sources.has("peer");
-                  const tag = isCoach && isPeer ? "Coach + Peer" : isCoach ? "Coach" : "Peer";
-                  return (
-                    <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", accent.bg, accent.text)}>
-                        {initials(c.name)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold">{c.name}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">
-                          {c.completed}/{c.total} sessions completed
-                          {c.nextDate ? ` · Next ${format(c.nextDate, "MMM d, p")}` : ""}
-                        </p>
-                      </div>
-                      <span className={cn(
-                        "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
-                        isCoach && isPeer ? "bg-warning/15 text-warning" : isCoach ? "bg-primary/15 text-primary" : "bg-success/15 text-success"
-                      )}>{tag}</span>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* Fallback coaches list when no active programme */}
-      {!programme && coachSummaries.length > 0 && (
-        <Card className="overflow-hidden">
-          <div className="border-b bg-muted/30 px-4 py-2.5">
-            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              <Users className="h-3.5 w-3.5" /> Coaches in this programme
-            </p>
-          </div>
-          <ul className="divide-y">
-            {coachSummaries.map((c, i) => {
-              const accent = ACCENTS[i % ACCENTS.length];
-              const dateRange = c.firstDate && c.lastDate
-                ? `${format(c.firstDate, "MMM d")} → ${format(c.lastDate, "MMM d")}` : "—";
-              const isCoach = c.sources.has("coaching");
-              const isPeer = c.sources.has("peer");
-              const tag = isCoach && isPeer ? "Coach + Peer" : isCoach ? "Coach" : "Peer";
-              return (
-                <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                  <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", accent.bg, accent.text)}>
-                    {initials(c.name)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{c.name}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {c.completed}/{c.total} sessions completed
-                      {c.nextDate ? ` · Next ${format(c.nextDate, "MMM d, p")}` : ""}
-                    </p>
-                  </div>
-                  <span className={cn(
-                    "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
-                    isCoach && isPeer ? "bg-warning/15 text-warning" : isCoach ? "bg-primary/15 text-primary" : "bg-success/15 text-success"
-                  )}>{tag}</span>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
-      )}
-
-      <Tabs defaultValue="home">
-        <TabsList>
-          <TabsTrigger value="home">Overview</TabsTrigger>
-          <TabsTrigger value="goals">Goals & milestones</TabsTrigger>
-          <TabsTrigger value="actions">Action items ({aiTotal})</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
-          <TabsTrigger value="reflections">Reflections ({reflections.length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="home" className="mt-4 space-y-6">
-          {/* Update prompt banner after a completed session */}
-          {needsRatingUpdate && pendingReflectionSession && (
-            <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
-              <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <div className="flex-1">
-                <p className="font-semibold text-primary">
-                  Reflection time — rate your goals after this session
-                </p>
-                <p className="text-xs text-primary/80">
-                  Open <Link to={`/sessions/${pendingReflectionSession.id}`} className="font-semibold underline">{pendingReflectionSession.topic}</Link> ({format(new Date(pendingReflectionSession.start_time), "MMM d")}) to log a 0–100 self-rating per goal. Each reflection becomes a new layer on the wheel.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Goal wheel + score cards */}
-          {goals.length > 0 && (
-            <div className="grid gap-3 lg:grid-cols-2">
-              <GoalWheel rows={ratingRows} sessionSeries={sessionRatingSeries} />
-              <GoalScoreCards rows={ratingRows} />
-            </div>
-          )}
-
-          <SectionHeader
-            title="Goals & milestones"
-            action={goals.length > 0 ? <GoalDialog onSaved={refresh} userId={user!.id} /> : undefined}
-          />
-          {goals.length === 0 ? (
-            <EmptyGoals userId={user!.id} onSaved={refresh} />
-          ) : (
-            <div className="space-y-2">
-              {goals.map((g, i) => (
-                <GoalAccordion
-                  key={g.id}
-                  goal={g}
-                  milestones={milestones.filter((m) => m.goal_id === g.id)}
-                  actions={allActionItems}
-                  pct={goalProgress(g.id)}
-                  accent={ACCENTS[i % ACCENTS.length]}
-                  onToggle={toggleMilestone}
-                  onToggleAction={toggleAction}
-                  onChanged={refresh}
-                  userId={user!.id}
-                  defaultOpen={i === 0}
-                  rating={ratingRows.find((r) => r.goalId === g.id)}
-                  onRatingChange={(patch) => saveRating(g.id, patch)}
-                  startTargetLocked={isGoalLocked(g.created_at)}
-                />
-              ))}
-            </div>
-          )}
-
-          <SectionHeader title="Action items" />
-          <ActionGroups grouped={grouped} compact onToggleAction={toggleAction} />
-        </TabsContent>
-
-        <TabsContent value="goals" className="mt-4 space-y-3">
-          <div className="flex justify-end">
-            <GoalDialog onSaved={refresh} userId={user!.id} />
-          </div>
-          {goals.length === 0 ? (
-            <EmptyGoals userId={user!.id} onSaved={refresh} />
-          ) : (
-            <>
-              <div className="grid gap-3 md:grid-cols-3">
-                {goals.map((g, i) => {
-                  const ac = ACCENTS[i % ACCENTS.length];
-                  const pct = goalProgress(g.id);
-                  const goalDone = pct === 100 && milestones.filter((m) => m.goal_id === g.id).length > 0;
-                  return (
-                    <Card key={g.id} className="p-4">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1">
-                        {goalDone && <Check className="h-3 w-3 text-success" strokeWidth={3} />}
-                        {g.title}
-                      </p>
-                      <p className="mt-1 text-2xl font-semibold">{pct}%</p>
-                      {g.target_date && (
-                        <p className="text-[10px] text-muted-foreground">Target {format(new Date(g.target_date), "MMM d, yyyy")}</p>
-                      )}
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className={cn("h-full", ac.fill)} style={{ width: `${pct}%` }} />
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-              <div className="space-y-2">
-                {goals.map((g, i) => (
-                  <GoalAccordion
-                    key={g.id}
-                    goal={g}
-                    milestones={milestones.filter((m) => m.goal_id === g.id)}
-                    actions={allActionItems}
-                    pct={goalProgress(g.id)}
-                    accent={ACCENTS[i % ACCENTS.length]}
-                    onToggle={toggleMilestone}
-                    onToggleAction={toggleAction}
-                    onChanged={refresh}
-                    userId={user!.id}
-                    showLinkedActions
-                    defaultOpen={i === 0}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </TabsContent>
-
-        <TabsContent value="actions" className="mt-4">
-          <p className="mb-3 text-xs text-muted-foreground">
-            {aiTotal} total · {aiDone} done · {aiOverdue} overdue
-          </p>
-          <ActionGroups grouped={grouped} milestones={milestones} goals={goals} onToggleAction={toggleAction} />
-        </TabsContent>
-
-        <TabsContent value="sessions" className="mt-4 space-y-4">
-          <SessionsBlock title="Upcoming" items={upcoming} coachNames={coachNames} />
-          <SessionsBlock title="Past & completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} coachNames={coachNames} />
-        </TabsContent>
-
-        <TabsContent value="reflections" className="mt-4 space-y-4">
-          <Card className="p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-              <BookOpen className="h-4 w-4 text-primary" /> New reflection
-            </div>
-            <Input
-              placeholder="Mood (optional, e.g. focused, stuck, proud)…"
-              value={reflectionMood}
-              onChange={(e) => setReflectionMood(e.target.value)}
-              className="mb-2"
-            />
-            <Textarea
-              placeholder="What's on your mind? Wins, blockers, insights…"
-              value={newReflection}
-              onChange={(e) => setNewReflection(e.target.value)}
-              rows={4}
-            />
-            <div className="mt-2 flex justify-end">
-              <Button size="sm" onClick={addReflection} disabled={savingRef || !newReflection.trim()}>
-                <Sparkles className="mr-1 h-4 w-4" /> Save reflection
-              </Button>
-            </div>
-          </Card>
-
-          {reflections.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground">Your private reflections will appear here.</p>
-          ) : (
-            reflections.map((r) => (
-              <Card key={r.id} className="p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    {r.mood && (
-                      <span className="mb-1 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-                        {r.mood}
-                      </span>
-                    )}
-                    <p className="whitespace-pre-wrap text-sm">{r.body}</p>
-                    <p className="mt-2 text-[10px] text-muted-foreground">
-                      {format(new Date(r.created_at), "EEE, MMM d, yyyy · p")}
-                    </p>
-                  </div>
-                  <button onClick={() => deleteReflection(r.id)} className="text-muted-foreground hover:text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </Card>
-            ))
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
 
 /* ---------- sub components ---------- */
 

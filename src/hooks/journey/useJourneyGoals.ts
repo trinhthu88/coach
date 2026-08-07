@@ -32,7 +32,7 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
 
   const addGoal = useCallback(
     async (payload: { title: string; description: string | null; target_date: string | null }) => {
-      if (!coacheeId) return;
+      if (!coacheeId) return false;
       const { error } = await supabase.from("coachee_goals").insert({
         coachee_id: coacheeId,
         title: payload.title,
@@ -41,9 +41,10 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
       });
       if (error) {
         toast.error(error.message);
-        return;
+        return false;
       }
       onChanged ? onChanged() : refresh();
+      return true;
     },
     [coacheeId, onChanged, refresh]
   );
@@ -62,7 +63,7 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
 
   const addMilestone = useCallback(
     async (payload: { goal_id: string; title: string; target_date: string | null }) => {
-      if (!coacheeId) return;
+      if (!coacheeId) return false;
       const { error } = await supabase.from("coachee_milestones").insert({
         goal_id: payload.goal_id,
         coachee_id: coacheeId,
@@ -71,9 +72,10 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
       });
       if (error) {
         toast.error(error.message);
-        return;
+        return false;
       }
       onChanged ? onChanged() : refresh();
+      return true;
     },
     [coacheeId, onChanged, refresh]
   );

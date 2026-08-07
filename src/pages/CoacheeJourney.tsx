@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
@@ -541,10 +540,10 @@ export default function CoacheeJourney() {
 
           <SectionHeader
             title="Goals & milestones"
-            action={goals.length > 0 ? <GoalDialog onSaved={refresh} userId={user!.id} /> : undefined}
+            action={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} /> : undefined}
           />
           {goals.length === 0 ? (
-            <EmptyGoals userId={user!.id} onSaved={refresh} />
+            <EmptyGoals onAdd={goalsApi.addGoal} />
           ) : (
             <div className="space-y-2">
               {goals.map((g, i) => (
@@ -557,8 +556,9 @@ export default function CoacheeJourney() {
                   accent={ACCENTS[i % ACCENTS.length]}
                   onToggle={toggleMilestone}
                   onToggleAction={toggleAction}
-                  onChanged={refresh}
-                  userId={user!.id}
+                  onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
+                  onDeleteGoal={goalsApi.deleteGoal}
+                  onDeleteMilestone={goalsApi.deleteMilestone}
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
@@ -575,10 +575,10 @@ export default function CoacheeJourney() {
         {/* GOALS FULL */}
         <TabsContent value="goals" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <GoalDialog onSaved={refresh} userId={user!.id} />
+            <GoalDialog onAdd={goalsApi.addGoal} />
           </div>
           {goals.length === 0 ? (
-            <EmptyGoals userId={user!.id} onSaved={refresh} />
+            <EmptyGoals onAdd={goalsApi.addGoal} />
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-3">
@@ -609,8 +609,9 @@ export default function CoacheeJourney() {
                     accent={ACCENTS[i % ACCENTS.length]}
                     onToggle={toggleMilestone}
                     onToggleAction={toggleAction}
-                    onChanged={refresh}
-                    userId={user!.id}
+                    onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
+                    onDeleteGoal={goalsApi.deleteGoal}
+                    onDeleteMilestone={goalsApi.deleteMilestone}
                     showLinkedActions
                     defaultOpen={i === 0}
                     rating={ratingRows.find((r) => r.goalId === g.id)}
@@ -758,7 +759,7 @@ function SectionHeader({ title, action }: { title: string; action?: React.ReactN
   );
 }
 
-function EmptyGoals({ userId, onSaved }: { userId: string; onSaved: () => void }) {
+function EmptyGoals({ onAdd }: { onAdd: (payload: { title: string; description: string | null; target_date: string | null }) => Promise<boolean | undefined> | void }) {
   return (
     <Card className="p-12 text-center">
       <Target className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
@@ -767,7 +768,7 @@ function EmptyGoals({ userId, onSaved }: { userId: string; onSaved: () => void }
         Define what you want to achieve and your coach can attach action items to milestones.
       </p>
       <div className="flex justify-center">
-        <GoalDialog onSaved={onSaved} userId={userId} />
+        <GoalDialog onAdd={onAdd} />
       </div>
     </Card>
   );
@@ -781,8 +782,9 @@ function GoalAccordion({
   accent,
   onToggle,
   onToggleAction,
-  onChanged,
-  userId,
+  onAddMilestone,
+  onDeleteGoal,
+  onDeleteMilestone,
   defaultOpen,
   showLinkedActions = true,
   rating,
@@ -796,8 +798,9 @@ function GoalAccordion({
   accent: typeof ACCENTS[number];
   onToggle: (m: Milestone) => void;
   onToggleAction: (a: FlatAction) => void;
-  onChanged: () => void;
-  userId: string;
+  onAddMilestone: (goalId: string, title: string, target_date: string | null) => Promise<boolean | undefined> | void;
+  onDeleteGoal: (goalId: string) => Promise<void> | void;
+  onDeleteMilestone: (id: string) => Promise<void> | void;
   defaultOpen?: boolean;
   showLinkedActions?: boolean;
   rating?: GoalRatingRow;
@@ -811,30 +814,20 @@ function GoalAccordion({
 
   const addMs = async () => {
     if (!newMs.trim()) return;
-    const { error } = await supabase.from("coachee_milestones").insert({
-      goal_id: goal.id,
-      coachee_id: userId,
-      title: newMs.trim(),
-      target_date: newDate || null,
-    });
-    if (error) return toast.error(error.message);
+    const ok = await onAddMilestone(goal.id, newMs.trim(), newDate || null);
+    if (ok === false) return;
     setNewMs("");
     setNewDate("");
     setAdding(false);
-    onChanged();
   };
 
   const deleteGoal = async () => {
     if (!confirm("Delete this goal and all its milestones?")) return;
-    const { error } = await supabase.from("coachee_goals").delete().eq("id", goal.id);
-    if (error) return toast.error(error.message);
-    onChanged();
+    await onDeleteGoal(goal.id);
   };
 
   const deleteMs = async (id: string) => {
-    const { error } = await supabase.from("coachee_milestones").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    onChanged();
+    await onDeleteMilestone(id);
   };
 
   return (
@@ -1228,7 +1221,7 @@ function SessionRow({
   );
 }
 
-function GoalDialog({ onSaved, userId }: { onSaved: () => void; userId: string }) {
+function GoalDialog({ onAdd }: { onAdd: (payload: { title: string; description: string | null; target_date: string | null }) => Promise<boolean | undefined> | void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
@@ -1238,17 +1231,15 @@ function GoalDialog({ onSaved, userId }: { onSaved: () => void; userId: string }
   const save = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("coachee_goals").insert({
-      coachee_id: userId,
+    const ok = await onAdd({
       title: title.trim(),
       description: desc.trim() || null,
       target_date: date || null,
     });
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (ok === false) return;
     setTitle(""); setDesc(""); setDate("");
     setOpen(false);
-    onSaved();
   };
 
   return (
