@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
 
 interface ImportRow {
@@ -56,7 +57,8 @@ export function useBulkImportCoachees(onDone: () => void) {
         }
         ok++;
         // If we have a user id back and a custom limit, save it
-        const newUserId: string | null = otpData?.user?.id ?? null;
+        const user = otpData?.user as User | null | undefined;
+        const newUserId: string | null = user ? user.id : null;
         if (newUserId && sessionLimit !== null) {
           await supabase
             .from("session_limits")
