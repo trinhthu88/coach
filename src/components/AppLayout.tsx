@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, AppRole } from "@/context/AuthContext";
 import {
   LayoutDashboard,
@@ -27,7 +27,7 @@ import {
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import clarivaLogo from "@/assets/clariva-logo.png";
+import clarivaLogoDark from "@/assets/clariva-logo-dark.png";
 
 interface NavItem {
   to: string;
@@ -83,6 +83,7 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const items = NAV.filter((n) => role && n.roles.includes(role));
   const displayName = profile?.full_name || user?.email || "User";
