@@ -193,16 +193,9 @@ function CoachCard({ coach }: { coach: CoachRow }) {
           <span className="text-xs text-muted-foreground">
             {coach.years_experience ?? 0} yrs{coach.country_based ? ` · ${coach.country_based}` : ""}
           </span>
-          {coach.hourly_rate != null ? (
-            <span className="text-sm font-semibold text-foreground">
-              ${coach.hourly_rate}
-              <span className="text-xs font-normal text-muted-foreground">/hr</span>
-            </span>
-          ) : (
-            <Button variant="link" size="sm" className="h-auto p-0 text-primary">
-              View profile
-            </Button>
-          )}
+          <Button variant="link" size="sm" className="h-auto p-0 text-primary">
+            View profile
+          </Button>
         </div>
       </Link>
     </Card>
