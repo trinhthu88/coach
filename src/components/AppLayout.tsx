@@ -138,32 +138,47 @@ export default function AppLayout() {
     navigate("/auth", { replace: true });
   };
 
+  const activeItem = items.find((i) => location.pathname === i.to) ||
+    [...items].sort((a, b) => b.to.length - a.to.length).find((i) => location.pathname.startsWith(i.to));
+
   return (
-    <div className="flex h-screen bg-gradient-subtle text-foreground">
+    <div className="flex h-screen bg-background text-foreground">
+      {/* ══ RAIL ══ */}
       <aside
         className={cn(
-          "flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-300",
-          collapsed ? "w-[72px]" : "w-[260px]"
+          "relative flex h-full shrink-0 flex-col overflow-hidden bg-secondary text-secondary-foreground transition-[width] duration-300",
+          collapsed ? "w-[76px]" : "w-[264px]"
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-          <div className="flex items-center gap-2.5 overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-32 -top-28 h-80 w-80 rounded-full"
+          style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.28), transparent 70%)" }}
+        />
+
+        <div className="relative flex items-start justify-between gap-2 px-5 pb-5 pt-6">
+          <div className="min-w-0">
             <img
-              src={clarivaLogo}
+              src={clarivaLogoDark}
               alt="Clariva"
-              className={cn("h-8 w-auto object-contain", collapsed && "h-9")}
+              className={cn("w-auto object-contain object-left", collapsed ? "h-7" : "h-[30px]")}
             />
+            {!collapsed && (
+              <p className="mt-2 pl-0.5 text-[8.5px] font-bold uppercase tracking-[0.26em] text-primary">
+                Coaching OS
+              </p>
+            )}
           </div>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="shrink-0 rounded-lg p-1.5 text-secondary-foreground/50 transition-colors hover:bg-white/10 hover:text-secondary-foreground"
             aria-label="Toggle sidebar"
           >
             {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        <nav className="relative flex flex-1 flex-col gap-[3px] overflow-y-auto px-3 pb-3">
           {(() => {
             let lastGroup: string | undefined = undefined;
             return items.map((item) => {
@@ -173,34 +188,46 @@ export default function AppLayout() {
               return (
                 <div key={item.to}>
                   {showHeader && (
-                    <p className="mt-3 px-3 pb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">
+                    <p className="px-3 pb-1.5 pt-4 text-[8.5px] font-bold uppercase tracking-[0.2em] text-secondary-foreground/40">
                       {item.group}
                     </p>
                   )}
                   <NavLink
                     to={item.to}
+                    end={item.to === "/admin"}
+                    title={collapsed ? item.label : undefined}
                     className={({ isActive }) =>
                       cn(
-                        "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                        "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200",
                         isActive
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                          ? "bg-white/[0.09] text-white"
+                          : "text-secondary-foreground/75 hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white"
                       )
                     }
                   >
-                    <span className="relative shrink-0">
-                      <item.icon className="h-5 w-5" />
-                      {showBadge && collapsed && (
-                        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-                          {unreadCount > 9 ? "9+" : unreadCount}
+                    {({ isActive }) => (
+                      <>
+                        <span
+                          className={cn(
+                            "absolute left-0 top-1/2 w-[3px] rounded-r-[3px] bg-primary transition-all duration-300",
+                            isActive ? "-mt-3 h-6" : "mt-0 h-0"
+                          )}
+                        />
+                        <span className="relative shrink-0 opacity-90">
+                          <item.icon className="h-5 w-5" />
+                          {showBadge && collapsed && (
+                            <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-accent-foreground">
+                              {unreadCount > 9 ? "9+" : unreadCount}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                    {showBadge && !collapsed && (
-                      <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </span>
+                        {!collapsed && <span className="truncate tracking-[-0.005em]">{item.label}</span>}
+                        {showBadge && !collapsed && (
+                          <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-accent-foreground">
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </span>
+                        )}
+                      </>
                     )}
                   </NavLink>
                 </div>
@@ -209,11 +236,22 @@ export default function AppLayout() {
           })()}
         </nav>
 
-        <div className="border-t border-sidebar-border p-3">
+        <div className="relative border-t border-white/10 p-3.5">
+          {!collapsed && (
+            <p className="px-2 pb-2 text-[8.5px] font-bold uppercase tracking-[0.2em] text-secondary-foreground/40">
+              Signed in as
+            </p>
+          )}
+          {!collapsed && (
+            <p className="truncate px-2 pb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+              {role}
+            </p>
+          )}
           <button
             onClick={handleSignOut}
             className={cn(
-              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-secondary-foreground/70 transition-colors hover:bg-white/[0.07] hover:text-white",
+              collapsed && "justify-center px-0"
             )}
           >
             <LogOut className="h-5 w-5 shrink-0" />
@@ -222,14 +260,53 @@ export default function AppLayout() {
         </div>
       </aside>
 
+      {/* ══ MAIN ══ */}
       <main className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center justify-end border-b border-border bg-card/60 px-8 backdrop-blur">
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-semibold leading-tight">{displayName}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">{role}</p>
+        <header className="sticky top-0 z-20 flex h-[68px] shrink-0 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur-xl sm:px-8">
+          <div className="flex min-w-0 items-center gap-2 text-[11px] tracking-[0.04em]">
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">{role}</span>
+            <span className="text-muted-foreground/40">/</span>
+            <span className="truncate font-semibold text-foreground">{activeItem?.label ?? "Overview"}</span>
+          </div>
+
+          <div className="flex-1" />
+
+          <NavLink
+            to={role === "coach" ? "/coach/find-coach" : "/coaches"}
+            className={cn(
+              "hidden h-[34px] items-center gap-2 rounded-[11px] border border-border bg-card px-3.5 text-[11.5px] font-semibold text-muted-foreground transition-all hover:-translate-y-px hover:border-primary/60 hover:text-primary sm:flex",
+              role === "admin" && "invisible"
+            )}
+          >
+            <Search className="h-[15px] w-[15px]" />
+            Find coaches
+          </NavLink>
+
+          <div className="relative">
+            <NavLink
+              to="/messages"
+              className="grid h-[34px] w-[34px] place-items-center rounded-[11px] border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+              aria-label="Messages"
+            >
+              <Bell className="h-[17px] w-[17px]" />
+            </NavLink>
+            {unreadCount > 0 && (
+              <>
+                <span className="pointer-events-none absolute right-1.5 top-1.5 h-[7px] w-[7px] rounded-full bg-accent" />
+                <span
+                  className="pointer-events-none absolute right-1.5 top-1.5 h-[7px] w-[7px] rounded-full bg-accent"
+                  style={{ animation: "pulsering 2.2s ease-out infinite" }}
+                />
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5 border-l border-border pl-3.5">
+            <div className="hidden text-right leading-tight sm:block">
+              <p className="text-[12.5px] font-semibold">{displayName}</p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{role}</p>
             </div>
-            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary-soft text-xs font-bold text-primary ring-2 ring-primary/10">
+            <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary-soft text-xs font-bold text-primary ring-[3px] ring-primary/[0.13]">
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover" />
               ) : (
@@ -240,7 +317,7 @@ export default function AppLayout() {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">
+          <div className="mx-auto w-full max-w-[1320px] px-6 pb-20 pt-9 sm:px-8">
             <Outlet />
           </div>
         </div>
@@ -248,3 +325,4 @@ export default function AppLayout() {
     </div>
   );
 }
+
