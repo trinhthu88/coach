@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
 
   // caller must be an admin
   const token = req.headers.get("Authorization")?.replace("Bearer ", "") ?? "";
-  const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || true; // TEMP-SEED
+  const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const { data: userData } = isServiceRole ? { data: null } : await admin.auth.getUser(token);
   if (!isServiceRole && !userData?.user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
