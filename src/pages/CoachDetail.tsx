@@ -5,7 +5,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Award, Calendar, Loader2, MapPin, Star } from "lucide-react";
+import { ArrowLeft, Calendar, Check, Loader2, MapPin, Star } from "lucide-react";
+import { HeroPanel } from "@/components/ui/page-header";
 
 interface CoachDetail {
   id: string;
@@ -105,7 +106,7 @@ export default function CoachDetail() {
             </div>
           </div>
           {role === "coachee" && (
-            <Button asChild size="lg" variant="accent" className="shadow-glow">
+            <Button asChild size="lg" className="bg-accent text-accent-foreground shadow-glow hover:bg-accent/90">
               <Link to={`/coaches/${coach.id}/book`}>
                 <Calendar className="mr-1 h-4 w-4" /> Book a session
               </Link>
