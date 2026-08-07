@@ -72,7 +72,7 @@ export default function Dashboard() {
   )[0];
   const nextCoach = nextSession ? coachesById[nextSession.coach_id] : null;
 
-  const now = new Date();
+  const hour = now.getHours();
   const hour = now.getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
