@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Search, ExternalLink, Pencil, Save, AlertCircle, Star } from "lucide-react";
 import { format } from "date-fns";
+import type { Tables } from "@/integrations/supabase/types";
 
 const STATUSES = [
   "pending_coach_approval",
@@ -74,17 +75,22 @@ export default function AdminSessions() {
       supabase.from("peer_sessions").select("*").order("start_time", { ascending: false }),
     ]);
 
-    const coaching: any[] = (sessions || []).map((s: any) => ({ ...s, kind: "coaching" }));
-    const peer: any[] = (peerSessions || []).map((s: any) => ({
+    type RawRow = (Tables<"sessions"> | Tables<"peer_sessions">) & {
+      kind: "coaching" | "peer";
+      coach_id: string;
+      coachee_id: string;
+    };
+    const coaching: RawRow[] = (sessions || []).map((s) => ({ ...s, kind: "coaching" as const, coach_id: s.coach_id, coachee_id: s.coachee_id }));
+    const peer: RawRow[] = (peerSessions || []).map((s) => ({
       ...s,
-      kind: "peer",
+      kind: "peer" as const,
       coach_id: s.peer_coach_id,
       coachee_id: s.peer_coachee_id,
     }));
     const all = [...coaching, ...peer].sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
 
     const userIds = Array.from(new Set(all.flatMap((s) => [s.coach_id, s.coachee_id])));
-    let profilesById: Record<string, any> = {};
+    let profilesById: Record<string, Pick<Tables<"profiles">, "full_name" | "email">> = {};
     if (userIds.length) {
       const { data: profs } = await supabase
         .from("profiles")
@@ -92,11 +98,11 @@ export default function AdminSessions() {
         .in("id", userIds);
       profilesById = Object.fromEntries((profs ?? []).map((p) => [p.id, p]));
     }
-    setRows(all.map((s: any) => ({
+    setRows(all.map((s) => ({
       ...s,
       coach: profilesById[s.coach_id],
       coachee: profilesById[s.coachee_id],
-    })));
+    })) as SessionRow[]);
     setLoading(false);
   }, []);
 
@@ -126,7 +132,7 @@ export default function AdminSessions() {
           topic: editing.topic,
           start_time: editing.start_time,
           duration_minutes: editing.duration_minutes,
-          status: editing.status as any,
+          status: editing.status as Tables<"sessions">["status"],
           meeting_url: editing.meeting_url,
           coach_notes: editing.coach_notes,
           coachee_notes: editing.coachee_notes,
@@ -136,10 +142,10 @@ export default function AdminSessions() {
       toast({ title: "Session updated" });
       setEditing(null);
       await load();
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Save failed",
-        description: err.message,
+        description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       });
     } finally {

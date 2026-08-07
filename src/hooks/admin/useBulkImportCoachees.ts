@@ -57,7 +57,9 @@ export function useBulkImportCoachees(onDone: () => void) {
         }
         ok++;
         // If we have a user id back and a custom limit, save it
-        const user = otpData?.user as User | null | undefined;
+        // signInWithOtp is typed as always returning `user: null`, but an id can
+        // come back at runtime, so read it through a narrow cast.
+        const user = (otpData as unknown as { user?: User | null } | null)?.user ?? null;
         const newUserId: string | null = user ? user.id : null;
         if (newUserId && sessionLimit !== null) {
           await supabase
