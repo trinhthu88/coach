@@ -31,7 +31,7 @@ import { format, isBefore, startOfWeek, endOfWeek, startOfMonth, isAfter } from 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader, StatCard } from "@/components/ui/page-header";
 
 type Status = "on_track" | "needs_attention" | "at_risk";
 
@@ -281,31 +281,31 @@ export default function CoachClients() {
 
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MetricTile
-          icon={<Users className="h-4 w-4" />}
-          label="Active coachees"
-          value={String(metrics.active)}
-          sub={`${clients.filter((c) => c.upcomingCount === 0 && c.completed > 0).length} no upcoming`}
+        <StatCard
+          icon={Users}
+          label="Active clients"
+          value={metrics.active}
+          hint={`${clients.filter((c) => c.upcomingCount === 0 && c.completed > 0).length} no upcoming`}
         />
-        <MetricTile
-          icon={<Calendar className="h-4 w-4" />}
+        <StatCard
+          icon={Calendar}
           label="Sessions this week"
-          value={String(metrics.sessionsThisWeek)}
-          sub={metrics.nextOverall ? `next: ${format(new Date(metrics.nextOverall), "MMM d, p")}` : "none scheduled"}
+          value={metrics.sessionsThisWeek}
+          hint={metrics.nextOverall ? `next: ${format(new Date(metrics.nextOverall), "MMM d, p")}` : "none scheduled"}
         />
-        <MetricTile
-          icon={<AlertCircle className="h-4 w-4" />}
+        <StatCard
+          icon={AlertCircle}
           label="Overdue actions"
-          value={String(metrics.overdue)}
-          sub={metrics.overdue ? `across ${metrics.overdueClients} coachee${metrics.overdueClients === 1 ? "" : "s"}` : "all on time"}
-          tone={metrics.overdue ? "danger" : "ok"}
+          value={metrics.overdue}
+          hint={metrics.overdue ? `across ${metrics.overdueClients} coachee${metrics.overdueClients === 1 ? "" : "s"}` : "all on time"}
+          tone={metrics.overdue ? "warning" : "success"}
         />
-        <MetricTile
-          icon={<TrendingUp className="h-4 w-4" />}
+        <StatCard
+          icon={TrendingUp}
           label="Milestones hit"
-          value={String(metrics.milestonesHit)}
-          sub="completed total"
-          tone="ok"
+          value={metrics.milestonesHit}
+          hint="completed total"
+          tone="success"
         />
       </div>
 
@@ -334,14 +334,18 @@ export default function CoachClients() {
           </p>
         </Card>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {filtered.map((c) => (
-            <ClientCard
-              key={c.id}
-              client={c}
-              onOpen={() => setOpenId(c.id)}
-            />
-          ))}
+        <div className="surface-card overflow-hidden p-0">
+          <div className="grid grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] gap-4 border-b border-border px-5 py-3 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            <span>Client</span>
+            <span>Programme</span>
+            <span>Progress</span>
+            <span>Next session</span>
+          </div>
+          <div className="divide-y divide-border">
+            {filtered.map((c) => (
+              <ClientRow key={c.id} client={c} onOpen={() => setOpenId(c.id)} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -408,17 +412,23 @@ function StatusPill({ status }: { status: Status }) {
 
 const FILLS = ["bg-success", "bg-primary", "bg-warning", "bg-accent"];
 
-function ClientCard({ client, onOpen }: { client: Client; onOpen: () => void }) {
+function programmeLabel(client: Client): string {
+  return client.goalsAll[0]?.title?.split(" ")[0] || "Programme";
+}
+
+function ClientRow({ client, onOpen }: { client: Client; onOpen: () => void }) {
   const av = paletteFor(client.id);
+  const pct = client.milestonesTotal
+    ? Math.round((client.milestonesDone / client.milestonesTotal) * 100)
+    : 0;
+
   return (
-    <Card
+    <button
+      type="button"
       onClick={onOpen}
-      className={cn(
-        "cursor-pointer p-4 transition-colors hover:border-primary/40",
-        client.status !== "on_track" && "border-l-[3px] border-l-destructive"
-      )}
+      className="grid w-full grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/30"
     >
-      <div className="mb-3 flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", av)}>
           {client.avatar_url ? (
             <img src={client.avatar_url} alt={client.full_name} className="h-full w-full rounded-full object-cover" />
@@ -426,54 +436,33 @@ function ClientCard({ client, onOpen }: { client: Client; onOpen: () => void }) 
             initialsOf(client.full_name)
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{client.full_name}</p>
-          <p className="truncate text-[11px] text-muted-foreground">
-            Session {client.completed}/{client.totalSessions}
-            {client.weekStart && ` · since ${format(new Date(client.weekStart), "MMM yyyy")}`}
-          </p>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground">{client.full_name}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{client.email}</p>
         </div>
-        <StatusPill status={client.status} />
       </div>
 
-      {client.goalsAll.length > 0 ? (
-        <div className="mb-3 space-y-1.5">
-          {client.goalsAll.slice(0, 3).map((g, i) => {
-            // We don't have per-goal milestones in the summary; show flat milestone% as proxy on first row,
-            // and a placeholder for subsequent rows. Detail dialog has the precise per-goal split.
-            const pct =
-              i === 0 && client.milestonesTotal
-                ? Math.round((client.milestonesDone / client.milestonesTotal) * 100)
-                : 0;
-            return (
-              <div key={g.id} className="flex items-center gap-2">
-                <span className="w-28 shrink-0 truncate text-[11px] text-muted-foreground">{g.title}</span>
-                <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div className={cn("h-full rounded-full", FILLS[i % FILLS.length])} style={{ width: `${pct}%` }} />
-                </div>
-                <span className="w-7 shrink-0 text-right text-[10px] text-muted-foreground">{pct}%</span>
-              </div>
-            );
-          })}
+      <span className="w-fit rounded-full bg-primary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+        {programmeLabel(client)}
+      </span>
+
+      <div className="min-w-0">
+        <p className="mb-1.5 text-[11px] text-muted-foreground">
+          {client.totalSessions} session{client.totalSessions === 1 ? "" : "s"} · {pct}%
+        </p>
+        <div className="h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
         </div>
+      </div>
+
+      {client.nextSession ? (
+        <span className="text-sm font-semibold text-foreground">
+          {format(new Date(client.nextSession), "EEE HH:mm")}
+        </span>
       ) : (
-        <p className="mb-3 text-[11px] italic text-muted-foreground">No goals set yet</p>
+        <span className="text-sm font-semibold text-accent">Not scheduled</span>
       )}
-
-      <div className="flex flex-wrap gap-1.5">
-        {client.nextSession ? (
-          <Tag tone="info">Next: {format(new Date(client.nextSession), "MMM d")}</Tag>
-        ) : (
-          <Tag tone="muted">No upcoming session</Tag>
-        )}
-        {client.overdueActions > 0 ? (
-          <Tag tone="danger">{client.overdueActions} overdue action{client.overdueActions === 1 ? "" : "s"}</Tag>
-        ) : client.actionItemsTotal > 0 ? (
-          <Tag tone="ok">All actions on time</Tag>
-        ) : null}
-        {client.cancelled > 0 && <Tag tone="warning">{client.cancelled} cancelled</Tag>}
-      </div>
-    </Card>
+    </button>
   );
 }
 

@@ -24,11 +24,13 @@ import {
   XCircle,
   ListChecks,
   History,
+  MapPin,
 } from "lucide-react";
-import { format, isAfter } from "date-fns";
+import { format, isAfter, differenceInCalendarDays, isToday } from "date-fns";
 import { useFavorites } from "@/hooks/useFavorites";
 import { cn } from "@/lib/utils";
 import { useCoacheeDashboardData, SessionLite, CoachLite } from "@/hooks/dashboard/useCoacheeDashboardData";
+import { ProgressRing } from "@/components/ui/proto";
 import { Json } from "@/integrations/supabase/types";
 import { useCoachDashboardData, CoachSession } from "@/hooks/dashboard/useCoachDashboardData";
 import { useAdminDashboardStats } from "@/hooks/dashboard/useAdminDashboardStats";
@@ -70,121 +72,123 @@ export default function Dashboard() {
   )[0];
   const nextCoach = nextSession ? coachesById[nextSession.coach_id] : null;
 
-  return (
-    <div className="space-y-8">
-      {/* Hero */}
-      <HeroPanel>
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.2em] backdrop-blur-sm">
-            <Sparkles className="h-3 w-3" /> {role} workspace
-          </div>
-          <h1 className="font-display mt-5 text-[clamp(2.2rem,4.6vw,3.4rem)] leading-[1.05]">
-            Welcome back,{" "}
-            <em className="italic text-primary-glow">{firstName}</em>.
-          </h1>
-          <p className="mt-3 text-base text-white/70">{greetingByRole[role || "coachee"]}</p>
-          <div className="flex flex-wrap gap-3 pt-6">
-            {role === "coachee" && (
-              <>
-                <Button asChild size="lg" className="rounded-xl font-semibold">
-                  <Link to="/coaches">
-                    <Calendar className="mr-1 h-4 w-4" /> Book a session
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                >
-                  <Link to="/coaches">
-                    <Search className="mr-1 h-4 w-4" /> Browse coaches
-                  </Link>
-                </Button>
-              </>
-            )}
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            >
-              <Link to="/sessions">
-                <Calendar className="mr-1 h-4 w-4" /> View sessions
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </HeroPanel>
+  const now = new Date();
+  const hour = now.getHours();
+  const timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-
-      {role === "coachee" ? (
-        <>
-          {/* Stats */}
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Session recap"
-              value={sessionLimit > 0 ? `${stats.completed} / ${sessionLimit}` : String(stats.completed)}
-              hint={sessionLimit > 0 ? `Used of ${sessionLimit} session limit` : "Completed sessions"}
-              icon={Calendar}
-            />
-            <StatCard label="Completed" value={String(stats.completed)} hint="Finished" icon={CheckCircle2} />
-            <StatCard label="Upcoming" value={String(stats.upcoming.length)} hint="Booked" icon={CalendarCheck} />
-            <StatCard
-              label="Hours coached"
-              value={stats.hours.toFixed(1)}
-              hint="Time invested"
-              icon={TrendingUp}
-            />
-          </section>
-
-          {/* Next session + favorites grid */}
-          <section className="grid gap-5 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <NextSessionCard session={nextSession} coach={nextCoach} />
+  if (role !== "coachee") {
+    return (
+      <div className="space-y-8">
+        <HeroPanel>
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.2em] backdrop-blur-sm">
+              <Sparkles className="h-3 w-3" /> {role} workspace
             </div>
-            <FavoritesPanel coaches={favCoaches} />
-          </section>
-
-          {/* Recent sessions log + Action items */}
-          <section className="grid gap-5 lg:grid-cols-2">
-            <RecentSessionsLog sessions={sessions} coachesById={coachesById} />
-            <ActionItemsPanel sessions={sessions} coachesById={coachesById} />
-          </section>
-
-          {/* Recommended coaches */}
-          <section>
-            <div className="mb-4 flex items-end justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                  For you
-                </p>
-                <h2 className="text-xl font-semibold tracking-tight">Recommended coaches</h2>
-              </div>
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/coaches">
-                  See all <ArrowUpRight className="ml-1 h-4 w-4" />
+            <h1 className="font-display mt-5 text-[clamp(2.2rem,4.6vw,3.4rem)] leading-[1.05]">
+              Welcome back,{" "}
+              <em className="italic text-primary-glow">{firstName}</em>.
+            </h1>
+            <p className="mt-3 text-base text-white/70">{greetingByRole[role || "coachee"]}</p>
+            <div className="flex flex-wrap gap-3 pt-6">
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+              >
+                <Link to="/sessions">
+                  <Calendar className="mr-1 h-4 w-4" /> View sessions
                 </Link>
               </Button>
             </div>
-            {recCoaches.length === 0 ? (
-              <Card className="p-8 text-center text-sm text-muted-foreground">
-                No coaches available yet.
-              </Card>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {recCoaches.map((c) => (
-                  <RecommendedCoachCard key={c.id} coach={c} />
-                ))}
-              </div>
-            )}
-          </section>
-        </>
-      ) : role === "coach" ? (
-        <CoachDashboard userId={user!.id} />
-      ) : (
-        <AdminDashboard />
-      )}
+          </div>
+        </HeroPanel>
+        {role === "coach" ? <CoachDashboard userId={user!.id} /> : <AdminDashboard />}
+      </div>
+    );
+  }
+
+  const programmePct = sessionLimit > 0 ? Math.round((stats.completed / sessionLimit) * 100) : 0;
+
+  return (
+    <div className="space-y-8">
+      {/* Greeting */}
+      <div className="animate-rise">
+        <p className="eyebrow mb-2.5">{format(now, "EEEE, d MMMM").toUpperCase()}</p>
+        <h1 className="font-display text-[clamp(2.1rem,4.4vw,3.1rem)] leading-[1.05] text-foreground">
+          {timeGreeting}, <em className="italic text-primary">{firstName}</em>.
+        </h1>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+          {nextSession
+            ? `You have ${stats.upcoming.length} upcoming session${stats.upcoming.length === 1 ? "" : "s"}. Keep the momentum going.`
+            : "Browse our curated coaches and book your next session to keep momentum going."}
+        </p>
+      </div>
+
+      {/* Next session hero */}
+      <NextSessionHero session={nextSession} coach={nextCoach} programmePct={programmePct} />
+
+      {/* Stats */}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Sessions done"
+          value={sessionLimit > 0 ? `${stats.completed} / ${sessionLimit}` : String(stats.completed)}
+          hint={sessionLimit > 0 ? `of ${sessionLimit} in programme` : "Completed sessions"}
+          icon={Calendar}
+        />
+        <StatCard
+          label="Hours coached"
+          value={stats.hours.toFixed(1)}
+          hint="Time invested"
+          icon={TrendingUp}
+        />
+        <StatCard
+          label="Actions open"
+          value={String(
+            sessions.reduce((acc, s) => {
+              const arr = Array.isArray(s.action_items) ? s.action_items : [];
+              return acc + arr.filter((it: Json) => (typeof it === "string" ? true : !(it as { done?: boolean })?.done)).length;
+            }, 0)
+          )}
+          hint="Across sessions"
+          icon={ListChecks}
+        />
+        <StatCard label="Upcoming" value={String(stats.upcoming.length)} hint="Booked" icon={CalendarCheck} />
+      </section>
+
+      {/* Recent sessions log + Action items */}
+      <section className="grid gap-5 lg:grid-cols-2">
+        <RecentSessionsLog sessions={sessions} coachesById={coachesById} />
+        <ActionItemsPanel sessions={sessions} coachesById={coachesById} />
+      </section>
+
+      {/* Curated for you */}
+      <section>
+        <div className="mb-4 flex items-end justify-between">
+          <div>
+            <p className="eyebrow mb-1">Curated for you</p>
+            <h2 className="font-display text-xl tracking-tight text-foreground">
+              Coaches matched to your goals
+            </h2>
+          </div>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/coaches">
+              Browse all <ArrowUpRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+        {recCoaches.length === 0 ? (
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            No coaches available yet.
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recCoaches.map((c) => (
+              <RecommendedCoachCard key={c.id} coach={c} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

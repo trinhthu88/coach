@@ -12,7 +12,9 @@ export type CoachLite = {
   title: string | null;
   specialties: string[] | null;
   rating_avg: number;
-  profiles: { full_name: string; avatar_url: string | null } | null;
+  years_experience: number | null;
+  country_based: string | null;
+  profiles: { full_name: string; avatar_url: string | null; bio: string | null } | null;
 };
 
 type ProfileLite = { full_name: string; avatar_url: string | null };
@@ -67,7 +69,7 @@ export function useCoacheeDashboardData(
       // Recommended (top-rated active coaches, max 3)
       const { data: recs } = await supabase
         .from("coach_profiles")
-        .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
+        .select("id, title, specialties, rating_avg, years_experience, country_based, profiles!inner(full_name, avatar_url, bio)")
         .eq("approval_status", "active")
         .order("is_featured", { ascending: false })
         .order("rating_avg", { ascending: false })
