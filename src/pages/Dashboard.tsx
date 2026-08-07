@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,25 +27,9 @@ import { format, isAfter } from "date-fns";
 import { toast } from "sonner";
 import { useFavorites } from "@/hooks/useFavorites";
 import { cn } from "@/lib/utils";
-
-interface SessionLite {
-  id: string;
-  topic: string;
-  start_time: string;
-  duration_minutes: number;
-  status: string;
-  meeting_url: string | null;
-  coach_id: string;
-  coachee_id: string;
-  action_items?: any;
-}
-interface CoachLite {
-  id: string;
-  title: string | null;
-  specialties: string[] | null;
-  rating_avg: number;
-  profiles: { full_name: string; avatar_url: string | null } | null;
-}
+import { useCoacheeDashboardData, SessionLite, CoachLite } from "@/hooks/dashboard/useCoacheeDashboardData";
+import { useCoachDashboardData, CoachSession } from "@/hooks/dashboard/useCoachDashboardData";
+import { useAdminDashboardStats } from "@/hooks/dashboard/useAdminDashboardStats";
 
 export default function Dashboard() {
   const { user, profile, role } = useAuth();
@@ -59,63 +42,13 @@ export default function Dashboard() {
   };
 
   // Coachee data
-  const [sessions, setSessions] = useState<SessionLite[]>([]);
-  const [coachesById, setCoachesById] = useState<Record<string, { full_name: string; avatar_url: string | null }>>({});
-  const [favCoaches, setFavCoaches] = useState<CoachLite[]>([]);
-  const [recCoaches, setRecCoaches] = useState<CoachLite[]>([]);
-  const [sessionLimit, setSessionLimit] = useState<number>(0);
   const { favorites } = useFavorites();
-
-  useEffect(() => {
-    if (!user || role !== "coachee") return;
-    (async () => {
-      const { data: ses } = await supabase
-        .from("sessions")
-        .select("id, topic, start_time, duration_minutes, status, meeting_url, coach_id, coachee_id, action_items")
-        .eq("coachee_id", user.id)
-        .order("start_time", { ascending: false });
-      const list = (ses as SessionLite[]) || [];
-      setSessions(list);
-
-      const coachIds = Array.from(new Set(list.map((s) => s.coach_id)));
-      if (coachIds.length) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url")
-          .in("id", coachIds);
-        const map: Record<string, any> = {};
-        (profs || []).forEach((p: any) => (map[p.id] = p));
-        setCoachesById(map);
-      }
-
-      // Session limit (monthly limit acts as the cap shown in the recap)
-      const { data: usage } = await supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id });
-      if (usage && usage.length > 0) {
-        setSessionLimit(usage[0].monthly_limit || 0);
-      }
-
-      // Recommended (top-rated active coaches, max 3)
-      const { data: recs } = await supabase
-        .from("coach_profiles")
-        .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
-        .eq("approval_status", "active")
-        .order("is_featured", { ascending: false })
-        .order("rating_avg", { ascending: false })
-        .limit(3);
-      setRecCoaches((recs as unknown as CoachLite[]) || []);
-
-      // Favorites
-      if (favorites.length > 0) {
-        const { data: favs } = await supabase
-          .from("coach_profiles")
-          .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
-          .in("id", favorites);
-        setFavCoaches((favs as unknown as CoachLite[]) || []);
-      } else {
-        setFavCoaches([]);
-      }
-    })();
-  }, [user, role, favorites]);
+  const isCoachee = role === "coachee";
+  const { sessions, coachesById, favCoaches, recCoaches, sessionLimit } = useCoacheeDashboardData(
+    user?.id,
+    isCoachee,
+    favorites
+  );
 
   const now = new Date();
   const stats = useMemo(() => {
