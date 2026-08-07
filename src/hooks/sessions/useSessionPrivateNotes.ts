@@ -33,7 +33,7 @@ export function useSessionPrivateNotes({
       .select("body")
       .eq(idCol, sessionId)
       .maybeSingle();
-    setCoachPrivate((pn as { body: string | null } | null)?.body || "");
+    setCoachPrivate((pn as unknown as { body: string | null } | null)?.body || "");
   }, [sessionId, privateTable, idCol]);
 
   useEffect(() => {
