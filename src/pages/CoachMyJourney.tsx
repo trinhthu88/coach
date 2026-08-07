@@ -678,11 +678,11 @@ function Metric({
   subClass,
 }: { label: string; value: string; sub?: string; subClass?: string }) {
   return (
-    <Card className="p-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
-      {sub && <p className={cn("mt-0.5 text-[11px] text-muted-foreground", subClass)}>{sub}</p>}
-    </Card>
+    <div className="surface-card hover-lift p-4">
+      <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
+      <p className="font-display mt-2 text-[2rem] font-normal leading-none tracking-tight">{value}</p>
+      {sub && <p className={cn("mt-2 text-[11px] text-muted-foreground", subClass)}>{sub}</p>}
+    </div>
   );
 }
 

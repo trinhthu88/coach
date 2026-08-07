@@ -373,22 +373,22 @@ function MetricTile({
   tone?: "danger" | "ok";
 }) {
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+    <div className="surface-card hover-lift p-4">
+      <div className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
         {icon}
         <span>{label}</span>
       </div>
       <p
         className={cn(
-          "mt-1 text-2xl font-semibold",
+          "font-display mt-2 text-[2rem] font-normal leading-none tracking-tight",
           tone === "danger" && "text-destructive",
           tone === "ok" && "text-success"
         )}
       >
         {value}
       </p>
-      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
-    </Card>
+      {sub && <p className="mt-2 text-[11px] text-muted-foreground">{sub}</p>}
+    </div>
   );
 }
 
