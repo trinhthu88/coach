@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Award, Calendar, Loader2, MapPin, Star } from "lucide-react";
+import { ArrowLeft, Calendar, Check, Loader2, MapPin, Star } from "lucide-react";
+import { HeroPanel } from "@/components/ui/page-header";
 
 interface CoachDetail {
   id: string;
@@ -79,88 +79,98 @@ export default function CoachDetail() {
     <div className="space-y-6">
       <Link
         to="/coaches"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" /> Back to coaches
       </Link>
 
-      <Card className="overflow-hidden">
-        <div className="px-8 pt-8 pb-8">
-          {coach.is_featured && (
-            <div className="mb-4 inline-flex rounded-full bg-primary-soft px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
-              Featured coach
+      <HeroPanel>
+        <div className="flex flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-6">
+            <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-[22px] bg-primary/20 font-display text-[1.9rem] text-primary-foreground/95">
+              {coach.profiles?.avatar_url ? (
+                <img src={coach.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initials
+              )}
             </div>
+            <div className="min-w-0">
+              <p className="eyebrow mb-2 text-primary">
+                {coach.is_featured ? "Featured coach" : coach.country_based || "Coach"}
+              </p>
+              <h1 className="font-display text-[clamp(2.1rem,4.2vw,3rem)] leading-[1.05]">
+                {coach.profiles?.full_name}
+              </h1>
+              <p className="mt-1.5 text-sm text-secondary-foreground/70">{coach.title}</p>
+            </div>
+          </div>
+          {role === "coachee" && (
+            <Button asChild size="lg" className="bg-accent text-accent-foreground shadow-glow hover:bg-accent/90">
+              <Link to={`/coaches/${coach.id}/book`}>
+                <Calendar className="mr-1 h-4 w-4" /> Book a session
+              </Link>
+            </Button>
           )}
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex items-end gap-5">
-              <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-primary-soft text-2xl font-bold text-primary shadow-md">
-                {coach.profiles?.avatar_url ? (
-                  <img src={coach.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  initials
-                )}
-              </div>
-              <div className="pb-1">
-                <h1 className="font-display text-[2.1rem] leading-[1.1] tracking-tight">{coach.profiles?.full_name}</h1>
-                <p className="text-muted-foreground">{coach.title}</p>
-              </div>
-            </div>
-            {role === "coachee" && (
-              <Button asChild size="lg" className="shadow-glow">
-                <Link to={`/coaches/${coach.id}/book`}>
-                  <Calendar className="mr-1 h-4 w-4" /> Book a session
-                </Link>
-              </Button>
-            )}
-          </div>
-
-          <div className="mt-6 grid gap-4 border-t border-border pt-6 sm:grid-cols-4">
-            <Stat
-              label="Rating"
-              value={
-                <span className="inline-flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-warning text-warning" />
-                  {Number(coach.rating_avg).toFixed(1)}
-                </span>
-              }
-            />
-            <Stat label="Sessions" value={coach.sessions_completed.toString()} />
-            <Stat label="Experience" value={`${coach.years_experience ?? 0}+ yrs`} />
-            <Stat
-              label="Rate"
-              value={coach.hourly_rate != null ? `$${coach.hourly_rate}/hr` : "—"}
-            />
-          </div>
         </div>
-      </Card>
+
+        <div className="mt-9 grid gap-6 border-t border-primary-foreground/15 pt-7 sm:grid-cols-4">
+          <Stat
+            label="Rating"
+            value={
+              <span className="inline-flex items-center gap-2">
+                <Star className="h-5 w-5 fill-warning text-warning" />
+                {Number(coach.rating_avg).toFixed(1)}
+              </span>
+            }
+          />
+          <Stat label="Sessions" value={coach.sessions_completed.toString()} />
+          <Stat label="Experience" value={`${coach.years_experience ?? 0} yrs`} />
+          <Stat label="Rate" value={coach.hourly_rate != null ? `$${coach.hourly_rate}` : "—"} />
+        </div>
+      </HeroPanel>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="space-y-3 p-6 lg:col-span-2">
-          <h2 className="text-lg font-semibold">About</h2>
-          <p className="leading-relaxed text-muted-foreground">
+        <div className="surface-card p-8 lg:col-span-2">
+          <h2 className="font-display text-[1.6rem] leading-tight">Approach</h2>
+          <p className="mt-4 leading-relaxed text-muted-foreground">
             {coach.profiles?.bio || "This coach hasn't written a bio yet."}
           </p>
           {coach.specialties && coach.specialties.length > 0 && (
-            <div className="pt-2">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Specialties
-              </p>
-              <div className="flex flex-wrap gap-1.5">
+            <div className="mt-7">
+              <p className="eyebrow mb-3">Specialties</p>
+              <div className="flex flex-wrap gap-2">
                 {coach.specialties.map((s) => (
-                  <Badge key={s} variant="secondary" className="rounded-full">
+                  <span
+                    key={s}
+                    className="rounded-full bg-primary-soft px-4 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.16em] text-primary"
+                  >
                     {s}
-                  </Badge>
+                  </span>
                 ))}
               </div>
             </div>
           )}
-        </Card>
+        </div>
 
-        <Card className="space-y-4 p-6">
-          <div>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Location
-            </p>
+        <div className="surface-card space-y-6 p-7">
+          {coach.diplomas_certifications && coach.diplomas_certifications.length > 0 && (
+            <div>
+              <p className="eyebrow mb-4">Credentials</p>
+              <ul className="space-y-3.5">
+                {coach.diplomas_certifications.map((d) => (
+                  <li key={d} className="flex items-start gap-3 text-sm">
+                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="leading-snug">{d}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="border-t border-border pt-6">
+            <p className="eyebrow mb-2.5">Based in</p>
             <p className="inline-flex items-center gap-1.5 text-sm">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               {coach.country_based || "—"}
@@ -170,24 +180,13 @@ export default function CoachDetail() {
             </p>
           </div>
 
-          {coach.diplomas_certifications && coach.diplomas_certifications.length > 0 && (
-            <div>
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Certifications
-              </p>
-              <ul className="space-y-2">
-                {coach.diplomas_certifications.map((d) => (
-                  <li key={d} className="flex items-start gap-2 text-sm">
-                    <Award className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <span>{d}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {role === "coachee" && (
+            <Button asChild size="lg" variant="secondary" className="w-full">
+              <Link to={`/coaches/${coach.id}/book`}>Choose a time</Link>
+            </Button>
           )}
-        </Card>
+        </div>
       </div>
-
     </div>
   );
 }
@@ -195,10 +194,8 @@ export default function CoachDetail() {
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
+      <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">{label}</p>
+      <p className="font-display mt-2 text-[2.2rem] leading-none tracking-tight">{value}</p>
     </div>
   );
 }
