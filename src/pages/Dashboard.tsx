@@ -583,6 +583,109 @@ function StatCard({
   );
 }
 
+function NextSessionHero({
+  session,
+  coach,
+  programmePct,
+}: {
+  session: SessionLite | undefined;
+  coach: { full_name: string; avatar_url: string | null } | null;
+  programmePct: number;
+}) {
+  if (!session) {
+    return (
+      <HeroPanel>
+        <div className="flex flex-col items-start gap-4">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-white/70">
+            Next session
+          </p>
+          <h3 className="font-display text-2xl leading-tight sm:text-3xl">No upcoming sessions</h3>
+          <p className="max-w-md text-sm text-white/70">
+            Browse our curated coaches and book your first 30, 45, or 60-minute session.
+          </p>
+          <Button asChild variant="secondary" className="font-semibold">
+            <Link to="/coaches">
+              <Search className="mr-1 h-4 w-4" /> Find a coach
+            </Link>
+          </Button>
+        </div>
+      </HeroPanel>
+    );
+  }
+
+  const start = new Date(session.start_time);
+  const days = differenceInCalendarDays(start, new Date());
+  const inLabel = isToday(start) ? "Today" : days === 1 ? "In 1 day" : days > 1 ? `In ${days} days` : "Soon";
+  const initials = (coach?.full_name || "?")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <HeroPanel>
+      <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 max-w-xl">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.2em] backdrop-blur-sm">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
+            Next session · {inLabel}
+          </span>
+          <h3 className="font-display mt-5 text-[clamp(1.6rem,3.4vw,2.4rem)] leading-[1.1]">
+            {session.topic}
+          </h3>
+          <div className="mt-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white/15 text-sm font-bold">
+              {coach?.avatar_url ? (
+                <img src={coach.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{coach?.full_name || "Your coach"}</p>
+              <p className="text-xs text-white/70">
+                {format(start, "EEE d MMM")} · {format(start, "HH:mm")} · {session.duration_minutes} min
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {session.meeting_url && session.status === "confirmed" ? (
+              <Button asChild variant="secondary" className="font-semibold">
+                <a href={session.meeting_url} target="_blank" rel="noreferrer">
+                  <Video className="mr-1 h-4 w-4" /> Join & prepare
+                </a>
+              </Button>
+            ) : (
+              <Button asChild variant="secondary" className="font-semibold">
+                <Link to={`/sessions/${session.id}`}>
+                  <Video className="mr-1 h-4 w-4" /> Join & prepare
+                </Link>
+              </Button>
+            )}
+            <Button
+              asChild
+              variant="outline"
+              className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            >
+              <Link to="/sessions">All sessions</Link>
+            </Button>
+          </div>
+        </div>
+        <div className="shrink-0 self-center">
+          <ProgressRing
+            value={programmePct}
+            tone="primary"
+            invert
+            label={<span className="text-[9.5px] tracking-[0.2em]">PROGRAMME</span>}
+            size={140}
+          />
+        </div>
+      </div>
+    </HeroPanel>
+  );
+}
+
 function NextSessionCard({
   session,
   coach,

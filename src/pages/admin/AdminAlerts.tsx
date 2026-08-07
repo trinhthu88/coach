@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, AlertTriangle, Bell, RefreshCw } from "lucide-react";
-import { format, formatDistanceToNow, subDays } from "date-fns";
+import { Loader2, Check, RefreshCw, Flag, Users, MessagesSquare, BarChart3, Calendar as CalendarIcon, PanelsTopLeft } from "lucide-react";
+import { formatDistanceToNow, subDays } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
+import { StatCard } from "@/components/ui/page-header";
+import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -17,13 +18,31 @@ interface Alert {
   related_coachee_id: string | null;
   related_coach_id: string | null;
   resolved: boolean;
+  resolved_at: string | null;
   created_at: string;
+}
+
+const TYPE_ICON: Record<string, any> = {
+  overdue_actions: Users,
+  programme_at_risk: Flag,
+  cohort_underbooked: Flag,
+  coach_applications: Users,
+  feedback_response: BarChart3,
+  coach_capacity: CalendarIcon,
+  renewal: PanelsTopLeft,
+};
+
+function scopeFor(a: Alert) {
+  if (a.related_coach_id) return "Coach roster";
+  if (a.related_coachee_id) return "Coachee";
+  return "All programmes";
 }
 
 export default function AdminAlerts() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [filter, setFilter] = useState<"all" | "critical" | "warning" | "info">("all");
 
   const load = async () => {
     setLoading(true);
@@ -34,10 +53,6 @@ export default function AdminAlerts() {
 
   useEffect(() => { load(); }, []);
 
-  /**
-   * Run a lightweight scan to derive alerts from session/action-item data
-   * and upsert them. Fully client-side using existing tables.
-   */
   const runScan = async () => {
     setScanning(true);
     try {
@@ -87,7 +102,6 @@ export default function AdminAlerts() {
         }
       });
 
-      // Clear unresolved auto-generated alerts of these types, then re-insert
       await supabase.from("admin_alerts").delete().in("alert_type", ["overdue_actions", "programme_at_risk"]).eq("resolved", false);
       if (newAlerts.length) await supabase.from("admin_alerts").insert(newAlerts);
 
@@ -106,6 +120,19 @@ export default function AdminAlerts() {
     load();
   };
 
+  const open = alerts.filter((a) => !a.resolved);
+  const resolved = alerts.filter((a) => a.resolved);
+  const critical = open.filter((a) => a.severity === "critical");
+  const warning = open.filter((a) => a.severity === "warning");
+  const resolvedToday = resolved.filter((a) => a.resolved_at && new Date(a.resolved_at).toDateString() === new Date().toDateString());
+
+  const visible = useMemo(() => {
+    // Sort by severity first (critical > warning > info), then newest
+    const order: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+    const list = filter === "all" ? open : open.filter((a) => a.severity === filter);
+    return [...list].sort((a, b) => order[a.severity] - order[b.severity] || +new Date(b.created_at) - +new Date(a.created_at));
+  }, [open, filter]);
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -114,75 +141,105 @@ export default function AdminAlerts() {
     );
   }
 
-  const open = alerts.filter((a) => !a.resolved);
-  const resolved = alerts.filter((a) => a.resolved);
-
   return (
     <div>
       <AdminPageHeader
+        eyebrow="Organisation"
         title="Alerts"
-        subtitle="System-flagged issues across coachees, coaches, and programmes."
+        trailing=""
+        subtitle={`${open.length} open. Sorted by what will cost you a cohort first.`}
         right={
-          <Button onClick={runScan} disabled={scanning}>
-            {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Run scan
-          </Button>
+          <div className="flex items-center gap-2">
+            <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>All</FilterChip>
+            <FilterChip active={filter === "critical"} onClick={() => setFilter("critical")}>Critical</FilterChip>
+            <FilterChip active={filter === "warning"} onClick={() => setFilter("warning")}>Warning</FilterChip>
+            <FilterChip active={filter === "info"} onClick={() => setFilter("info")}>Info</FilterChip>
+          </div>
         }
       />
 
-      <Card className="mb-4 p-4">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Open ({open.length})
-        </p>
-        {open.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">All clear. Run a scan to refresh.</p>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="grid flex-1 gap-3 sm:grid-cols-4">
+          <div className="surface-card border-l-4 border-l-accent p-4">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Open</p>
+            <p className="font-display mt-2 text-[2rem] leading-none">{open.length}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">of {alerts.length} raised</p>
+          </div>
+          <div className="surface-card border-l-4 border-l-destructive p-4">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Critical</p>
+            <p className="font-display mt-2 text-[2rem] leading-none text-destructive">{critical.length}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">cohort revenue at risk</p>
+          </div>
+          <div className="surface-card border-l-4 border-l-warning p-4">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Warning</p>
+            <p className="font-display mt-2 text-[2rem] leading-none text-warning">{warning.length}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">service standards slipping</p>
+          </div>
+          <div className="surface-card border-l-4 border-l-success p-4">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Resolved today</p>
+            <p className="font-display mt-2 text-[2rem] leading-none text-success">{resolvedToday.length}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">by you</p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={runScan} disabled={scanning}>
+          {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Run scan
+        </Button>
+      </div>
+
+      <div className="space-y-3">
+        {visible.length === 0 ? (
+          <div className="surface-card p-10 text-center text-sm text-muted-foreground">
+            {filter === "all" ? "All clear. Run a scan to refresh." : "Nothing here right now."}
+          </div>
         ) : (
-          <ul className="divide-y">
-            {open.map((a) => (
-              <li key={a.id} className="flex items-start gap-3 py-3">
+          visible.map((a) => {
+            const Icon = TYPE_ICON[a.alert_type] || Flag;
+            return (
+              <div key={a.id} className="surface-card flex items-start gap-4 p-5">
                 <span
                   className={cn(
-                    "mt-1 h-2.5 w-2.5 shrink-0 rounded-full",
-                    a.severity === "critical" ? "bg-destructive" : a.severity === "warning" ? "bg-warning" : "bg-primary"
+                    "grid h-9 w-9 shrink-0 place-items-center rounded-[10px]",
+                    a.severity === "critical" ? "bg-destructive/10 text-destructive" : a.severity === "warning" ? "bg-warning/15 text-warning" : "bg-primary-soft text-primary"
                   )}
-                />
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium">{a.title}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                     <Pill tone={a.severity === "critical" ? "destructive" : a.severity === "warning" ? "warning" : "primary"}>
                       {a.severity}
                     </Pill>
+                    <span>{formatDistanceToNow(new Date(a.created_at))} · {scopeFor(a)}</span>
                   </div>
-                  {a.message && <p className="mt-1 text-[12px] text-muted-foreground">{a.message}</p>}
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    {formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
-                  </p>
+                  <p className="mt-2 text-[15px] font-semibold text-foreground">{a.title}</p>
+                  {a.message && <p className="mt-1 text-[12.5px] text-muted-foreground">{a.message}</p>}
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => resolve(a.id)}>
-                  <Check className="h-4 w-4" /> Resolve
-                </Button>
-              </li>
-            ))}
-          </ul>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button size="sm" onClick={() => resolve(a.id)}>
+                    <Check className="h-3.5 w-3.5" /> Resolve
+                  </Button>
+                </div>
+              </div>
+            );
+          })
         )}
-      </Card>
+      </div>
 
       {resolved.length > 0 && (
-        <Card className="p-4">
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        <div className="surface-card mt-4 p-5">
+          <p className="mb-3 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
             Resolved ({resolved.length})
           </p>
           <ul className="divide-y">
             {resolved.slice(0, 10).map((a) => (
               <li key={a.id} className="flex items-start gap-3 py-2">
                 <Check className="mt-0.5 h-4 w-4 text-success" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-medium text-muted-foreground line-through">{a.title}</p>
-                </div>
+                <p className="min-w-0 flex-1 text-[12px] font-medium text-muted-foreground line-through">{a.title}</p>
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       )}
     </div>
   );
