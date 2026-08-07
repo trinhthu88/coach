@@ -101,7 +101,7 @@ export function useCoachDashboardData(userId: string): UseCoachDashboardDataResu
       .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
       .eq("id", s.id);
     setActingId(null);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Session confirmed");
     reload();
   };
@@ -112,7 +112,7 @@ export function useCoachDashboardData(userId: string): UseCoachDashboardDataResu
       .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
       .eq("id", s.id);
     setActingId(null);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Request declined");
     reload();
   };
