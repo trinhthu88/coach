@@ -141,7 +141,7 @@ export default function BookSession() {
             .gte("start_time", horizonStart.toISOString())
             .lte("start_time", horizonEnd.toISOString()),
         ]);
-        const toBusy = (rows: any[] | null) =>
+        const toBusy = (rows: { start_time: string; duration_minutes: number }[] | null) =>
           (rows || []).map((r) => {
             const s = new Date(r.start_time).getTime();
             return { start: s, end: s + r.duration_minutes * 60_000 };

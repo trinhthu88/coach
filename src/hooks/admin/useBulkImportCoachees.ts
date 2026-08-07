@@ -56,7 +56,7 @@ export function useBulkImportCoachees(onDone: () => void) {
         }
         ok++;
         // If we have a user id back and a custom limit, save it
-        const newUserId = otpData && otpData.user ? otpData.user.id : null;
+        const newUserId: string | null = otpData?.user?.id ?? null;
         if (newUserId && sessionLimit !== null) {
           await supabase
             .from("session_limits")
