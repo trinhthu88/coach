@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
+import { HeroPanel, PageHeader } from "@/components/ui/page-header";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
@@ -71,20 +73,20 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-hero p-8 text-primary-foreground shadow-lg sm:p-12">
-        <div className="absolute right-0 top-0 h-64 w-64 translate-x-1/4 -translate-y-1/4 rounded-full bg-primary-glow/30 blur-3xl" />
-        <div className="relative max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest backdrop-blur-sm">
+      <HeroPanel>
+        <div className="max-w-2xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.2em] backdrop-blur-sm">
             <Sparkles className="h-3 w-3" /> {role} workspace
           </div>
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-            Welcome back, {firstName}.
+          <h1 className="font-display mt-5 text-[clamp(2.2rem,4.6vw,3.4rem)] leading-[1.05]">
+            Welcome back,{" "}
+            <em className="italic text-primary-glow">{firstName}</em>.
           </h1>
-          <p className="text-lg text-white/75">{greetingByRole[role || "coachee"]}</p>
-          <div className="flex flex-wrap gap-3 pt-2">
+          <p className="mt-3 text-base text-white/70">{greetingByRole[role || "coachee"]}</p>
+          <div className="flex flex-wrap gap-3 pt-6">
             {role === "coachee" && (
               <>
-                <Button asChild size="lg" variant="secondary" className="font-semibold">
+                <Button asChild size="lg" className="rounded-xl font-semibold">
                   <Link to="/coaches">
                     <Calendar className="mr-1 h-4 w-4" /> Book a session
                   </Link>
@@ -93,7 +95,7 @@ export default function Dashboard() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="border-white/20 bg-white/10 text-white hover:bg-white/20"
+                  className="rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
                 >
                   <Link to="/coaches">
                     <Search className="mr-1 h-4 w-4" /> Browse coaches
@@ -105,7 +107,7 @@ export default function Dashboard() {
               asChild
               size="lg"
               variant="outline"
-              className="border-white/20 bg-white/10 text-white hover:bg-white/20"
+              className="rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
             >
               <Link to="/sessions">
                 <Calendar className="mr-1 h-4 w-4" /> View sessions
@@ -113,7 +115,8 @@ export default function Dashboard() {
             </Button>
           </div>
         </div>
-      </section>
+      </HeroPanel>
+
 
       {role === "coachee" ? (
         <>
@@ -560,20 +563,19 @@ function StatCard({
   icon: React.ElementType;
 }) {
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-            {label}
-          </p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
+    <div className="surface-card hover-lift p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          {label}
+        </p>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] bg-primary-soft text-primary">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
       </div>
-    </Card>
+      <p className="font-display mt-3 text-[2.6rem] font-normal leading-none tracking-tight">{value}</p>
+      <p className="mt-2.5 text-xs text-muted-foreground">{hint}</p>
+    </div>
+
   );
 }
 

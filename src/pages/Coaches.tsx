@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
+import { PageHeader, FilterChip } from "@/components/ui/page-header";
+
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,44 +74,31 @@ export default function Coaches() {
 
   return (
     <div className="space-y-8">
-      <header className="space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
-          <Sparkles className="h-3 w-3" /> Curated network
-        </div>
-        <h1 className="text-4xl font-semibold tracking-tight">Discover coaches</h1>
-        <p className="text-muted-foreground">
-          Find your perfect guide to accelerate your professional growth.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Curated network"
+        title="Find your"
+        emphasis="guide"
+        subtitle={`${coaches.length} accredited coach${coaches.length === 1 ? "" : "es"}, filtered to what you're working on right now.`}
+      />
 
-      <div className="space-y-4">
-        <div className="relative">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative min-w-[260px] flex-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name, specialty, or language…"
+            placeholder="Search by name, specialty, or focus…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-12 pl-11"
+            className="h-11 rounded-full pl-11"
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {SPECIALTY_FILTERS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setActiveSpec(s)}
-              className={cn(
-                "rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-colors",
-                activeSpec === s
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-card text-muted-foreground border border-border hover:border-primary/40 hover:text-foreground"
-              )}
-            >
-              {s === "All" ? "All Specialties" : s}
-            </button>
-          ))}
-        </div>
+        {SPECIALTY_FILTERS.map((s) => (
+          <FilterChip key={s} active={activeSpec === s} onClick={() => setActiveSpec(s)}>
+            {s === "All" ? "All Specialties" : s}
+          </FilterChip>
+        ))}
       </div>
+
 
       {loading ? (
         <div className="flex items-center justify-center py-24 text-muted-foreground">
