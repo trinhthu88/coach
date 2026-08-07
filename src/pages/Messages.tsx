@@ -38,6 +38,12 @@ interface Message {
   read_at: string | null;
 }
 
+interface ProfileLite {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 const formatStamp = (iso: string) => {
   const d = new Date(iso);
   if (isToday(d)) return format(d, "p");
@@ -72,17 +78,17 @@ export default function Messages() {
       const [{ data: profs }, { data: msgs }] = await Promise.all([
         otherIds.length
           ? supabase.from("profiles").select("id, full_name, avatar_url").in("id", otherIds)
-          : Promise.resolve({ data: [] as any }),
+          : Promise.resolve({ data: [] as ProfileLite[] }),
         sessionIds.length
           ? supabase
               .from("session_messages")
               .select("id, session_id, sender_id, body, created_at, read_at")
               .in("session_id", sessionIds)
               .order("created_at", { ascending: false })
-          : Promise.resolve({ data: [] as any }),
+          : Promise.resolve({ data: [] as Message[] }),
       ]);
 
-      const profById = new Map((profs || []).map((p: any) => [p.id, p]));
+      const profById = new Map((profs || []).map((p) => [p.id, p]));
       const sessionToOther = new Map(
         sess.map((s) => [s.id, role === "coach" ? s.coachee_id : s.coach_id])
       );
@@ -101,7 +107,7 @@ export default function Messages() {
       const unreadByOther = new Map<string, number>();
       const lastSessionByOther = new Map<string, string>();
 
-      (msgs || []).forEach((m: any) => {
+      (msgs || []).forEach((m) => {
         const other = sessionToOther.get(m.session_id);
         if (!other) return;
         if (!latestByOther.has(other)) {
@@ -115,7 +121,7 @@ export default function Messages() {
 
       const list: Thread[] = Array.from(byCounterpart.entries()).map(
         ([otherId, ses]) => {
-          const p: any = profById.get(otherId);
+          const p = profById.get(otherId);
           const latest = latestByOther.get(otherId);
           const sortedSessions = [...ses].sort(
             (a, b) => +new Date(b.start_time) - +new Date(a.start_time)
@@ -177,8 +183,8 @@ export default function Messages() {
       // Mark unread from counterpart as read
       if (user) {
         const unreadIds = (data || [])
-          .filter((m: any) => m.sender_id !== user.id && !m.read_at)
-          .map((m: any) => m.id);
+          .filter((m) => m.sender_id !== user.id && !m.read_at)
+          .map((m) => m.id);
         if (unreadIds.length) {
           await supabase
             .from("session_messages")

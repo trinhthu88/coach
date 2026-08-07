@@ -30,6 +30,7 @@ import {
 import { format, isBefore, startOfWeek, endOfWeek, startOfMonth, isAfter } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Tables } from "@/integrations/supabase/types";
 
 type Status = "on_track" | "needs_attention" | "at_risk";
 
@@ -124,7 +125,7 @@ export default function CoachClients() {
     const linkedMsByCoachee = new Map<string, Set<string>>();
     for (const s of ses || []) {
       const items: RawAction[] = Array.isArray(s.action_items)
-        ? (s.action_items as any[]).map((it) => (typeof it === "string" ? { text: it } : it))
+        ? (s.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
         : [];
       for (const it of items) {
         if (it?.milestone_id) {
@@ -192,7 +193,7 @@ export default function CoachClients() {
       if (!c.weekStart || t < new Date(c.weekStart)) c.weekStart = s.start_time;
 
       const items: RawAction[] = Array.isArray(s.action_items)
-        ? (s.action_items as any[]).map((it) => (typeof it === "string" ? { text: it } : it))
+        ? (s.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
         : [];
       for (const it of items) {
         if (!it?.text) continue;
@@ -513,12 +514,12 @@ function ClientDetailDialog({
   onClose: () => void;
   onChanged: () => void;
 }) {
-  const [profile, setProfile] = useState<any>(null);
-  const [coacheeProfile, setCoacheeProfile] = useState<any>(null);
-  const [goals, setGoals] = useState<any[]>([]);
-  const [milestones, setMilestones] = useState<any[]>([]);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [notes, setNotes] = useState<any[]>([]);
+  const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
+  const [coacheeProfile, setCoacheeProfile] = useState<Tables<"coachee_profiles"> | null>(null);
+  const [goals, setGoals] = useState<Tables<"coachee_goals">[]>([]);
+  const [milestones, setMilestones] = useState<Tables<"coachee_milestones">[]>([]);
+  const [sessions, setSessions] = useState<Tables<"sessions">[]>([]);
+  const [notes, setNotes] = useState<Tables<"coach_client_notes">[]>([]);
   const [newNote, setNewNote] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -545,15 +546,15 @@ function ClientDetailDialog({
     const linkedMs = new Set<string>();
     for (const sess of s || []) {
       const items: RawAction[] = Array.isArray(sess.action_items)
-        ? (sess.action_items as any[]).map((it: any) => (typeof it === "string" ? { text: it } : it))
+        ? (sess.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
         : [];
       for (const it of items) {
         if (it?.milestone_id) linkedMs.add(it.milestone_id);
       }
     }
-    const visibleMilestones = (m || []).filter((mi: any) => linkedMs.has(mi.id));
-    const visibleGoalIds = new Set(visibleMilestones.map((mi: any) => mi.goal_id));
-    const visibleGoals = (g || []).filter((go: any) => visibleGoalIds.has(go.id));
+    const visibleMilestones = (m || []).filter((mi) => linkedMs.has(mi.id));
+    const visibleGoalIds = new Set(visibleMilestones.map((mi) => mi.goal_id));
+    const visibleGoals = (g || []).filter((go) => visibleGoalIds.has(go.id));
 
     setGoals(visibleGoals);
     setMilestones(visibleMilestones);
@@ -589,7 +590,7 @@ function ClientDetailDialog({
     const out: { sessionId: string; idx: number; topic: string; date: string; item: RawAction }[] = [];
     for (const s of sessions) {
       const items: RawAction[] = Array.isArray(s.action_items)
-        ? (s.action_items as any[]).map((it: any) => (typeof it === "string" ? { text: it } : it))
+        ? (s.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
         : [];
       items.forEach((it, idx) => {
         if (it?.text) out.push({ sessionId: s.id, idx, topic: s.topic, date: s.start_time, item: it });
@@ -881,7 +882,7 @@ function ActionGroup({
   );
 }
 
-function SessionRow({ s, showRating }: { s: any; showRating?: boolean }) {
+function SessionRow({ s, showRating }: { s: Tables<"sessions">; showRating?: boolean }) {
   const d = new Date(s.start_time);
   return (
     <Link to={`/sessions/${s.id}`} className="block rounded-lg border p-3 text-sm transition hover:border-primary/40">

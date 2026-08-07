@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
 import PendingAccessRequests from "@/components/PendingAccessRequests";
+import type { Tables } from "@/integrations/supabase/types";
 
 type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 const STATUS_LABEL: Record<Status, string> = {
@@ -116,45 +117,45 @@ export default function AdminCoachees() {
 
     const coacheeIds = (roles || []).filter(r => r.role === "coachee").map(r => r.user_id);
     const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
-    const profById = new Map((profiles || []).map((p: any) => [p.id, p]));
+    const profById = new Map((profiles || []).map((p) => [p.id, p]));
     const coachNameById = new Map<string, string>();
     coachIds.forEach(id => {
-      const p: any = profById.get(id);
+      const p = profById.get(id);
       if (p) coachNameById.set(id, p.full_name);
     });
-    const enrByUser = new Map<string, any>();
-    (enrolls || []).forEach((e: any) => enrByUser.set(e.coachee_id, e));
-    const progById = new Map((progs || []).map((p: any) => [p.id, p]));
-    const cohortById = new Map((cohortsData || []).map((c: any) => [c.id, c.name]));
+    const enrByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "coachee_id" | "programme_id" | "cohort_id" | "start_date">>();
+    (enrolls || []).forEach((e) => enrByUser.set(e.coachee_id, e));
+    const progById = new Map((progs || []).map((p) => [p.id, p]));
+    const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const allowByCoachee = new Map<string, { id: string; name: string }[]>();
-    (allow || []).forEach((a: any) => {
+    (allow || []).forEach((a) => {
       const arr = allowByCoachee.get(a.coachee_id) || [];
       arr.push({ id: a.coach_id, name: coachNameById.get(a.coach_id) || "—" });
       allowByCoachee.set(a.coachee_id, arr);
     });
     const done = new Map<string, number>();
     const booked = new Map<string, number>();
-    (sess || []).forEach((s: any) => {
+    (sess || []).forEach((s) => {
       if (s.status === "completed") done.set(s.coachee_id, (done.get(s.coachee_id) || 0) + 1);
       if (["pending_coach_approval", "confirmed"].includes(s.status)) booked.set(s.coachee_id, (booked.get(s.coachee_id) || 0) + 1);
     });
-    const defLimit = (limits || []).find((l: any) => l.coachee_id === null)?.monthly_limit ?? 4;
+    const defLimit = (limits || []).find((l) => l.coachee_id === null)?.monthly_limit ?? 4;
     setDefaultLimit(defLimit);
-    const limByCoachee = new Map<string, any>();
-    (limits || []).filter((l: any) => l.coachee_id).forEach((l: any) => limByCoachee.set(l.coachee_id, l));
+    const limByCoachee = new Map<string, Pick<Tables<"session_limits">, "id" | "coachee_id" | "monthly_limit">>();
+    (limits || []).filter((l) => l.coachee_id).forEach((l) => limByCoachee.set(l.coachee_id as string, l));
     const requestIdByEmail = new Map<string, string>();
-    (requests || []).forEach((r: any) => {
+    (requests || []).forEach((r) => {
       if (!requestIdByEmail.has(String(r.email).toLowerCase())) {
         requestIdByEmail.set(String(r.email).toLowerCase(), r.id);
       }
     });
 
     const out: Row[] = coacheeIds.map(id => {
-      const p: any = profById.get(id);
+      const p = profById.get(id);
       if (!p) return null;
       const enr = enrByUser.get(id);
       const lim = limByCoachee.get(id);
-      const prog: any = enr?.programme_id ? progById.get(enr.programme_id) : null;
+      const prog = enr?.programme_id ? progById.get(enr.programme_id) : null;
       return {
         id,
         full_name: p.full_name,
@@ -180,8 +181,8 @@ export default function AdminCoachees() {
 
     setRows(out.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)));
     setCoachOpts(coachIds.map(id => ({ id, name: coachNameById.get(id) || "—" })).filter(c => c.name !== "—").sort((a, b) => a.name.localeCompare(b.name)));
-    setProgrammes((progs || []) as any);
-    setCohorts((cohortsData || []) as any);
+    setProgrammes((progs || []) as { id: string; name: string; coachee_session_limit: number; duration_months: number }[]);
+    setCohorts((cohortsData || []) as { id: string; name: string }[]);
     setLoading(false);
   }, []);
 
@@ -232,15 +233,15 @@ export default function AdminCoachees() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf);
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const data: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      const data: Record<string, string>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
       const progByName = new Map(programmes.map(p => [p.name.toLowerCase(), p]));
       const existingEmails = new Set(rows.map(r => r.email.toLowerCase()));
 
       let enrolledExisting = 0;
       let stagedNew = 0;
       let skipped = 0;
-      const stagedPayload: any[] = [];
-      const enrollPayload: any[] = [];
+      const stagedPayload: { email: string; full_name: string; programme_id: string }[] = [];
+      const enrollPayload: { coachee_id: string; programme_id: string }[] = [];
 
       for (const r of data) {
         const email = String(r.Email || r.email || "").trim().toLowerCase();
@@ -273,8 +274,8 @@ export default function AdminCoachees() {
       setImportOpen(false);
       if (fileRef.current) fileRef.current.value = "";
       load();
-    } catch (err: any) {
-      toast.error(err.message || "Import failed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Import failed");
     } finally {
       setImporting(false);
     }
@@ -331,8 +332,8 @@ export default function AdminCoachees() {
       toast.success("Coachee updated");
       setEditing(null);
       await load();
-    } catch (e: any) {
-      toast.error(e.message || "Save failed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -346,7 +347,7 @@ export default function AdminCoachees() {
         body: { request_id: editing.access_request_id, force_reset_password: true },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as { error?: string } | null)?.error) throw new Error((data as { error?: string }).error);
 
       const payload = data as { temp_password: string; email: string };
       setResetCredential({
@@ -356,8 +357,8 @@ export default function AdminCoachees() {
       });
       toast.success("Temporary password generated");
       await load();
-    } catch (err: any) {
-      toast.error(err.message || "Could not reset password");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not reset password");
     } finally {
       setResettingPassword(false);
     }
@@ -396,7 +397,7 @@ export default function AdminCoachees() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className="pl-9" />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | Status)}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
@@ -704,9 +705,9 @@ function CoacheeProfileSheet({ row, onClose }: ProfileSheetProps) {
         supabase.from("profiles").select("bio").eq("id", row.id).maybeSingle(),
         supabase.from("coachee_profiles").select("job_title, industry, location, phone, timezone, goals").eq("id", row.id).maybeSingle(),
       ]);
-      const ratingByGoal = new Map((rs || []).map((r: any) => [r.goal_id, r]));
-      setGoals((gs || []).map((g: any) => {
-        const r: any = ratingByGoal.get(g.id) || {};
+      const ratingByGoal = new Map((rs || []).map((r) => [r.goal_id, r]));
+      setGoals((gs || []).map((g) => {
+        const r = ratingByGoal.get(g.id) || {} as Partial<Tables<"coachee_goal_ratings">>;
         return {
           id: g.id,
           title: g.title,
@@ -715,15 +716,15 @@ function CoacheeProfileSheet({ row, onClose }: ProfileSheetProps) {
           target_rating: r.target_rating ?? 80,
         };
       }));
-      setSessions((ss || []) as any);
+      setSessions((ss || []) as ProfileSession[]);
       setProfileData({
-        bio: (prof as any)?.bio ?? null,
-        job_title: (cprof as any)?.job_title ?? null,
-        industry: (cprof as any)?.industry ?? null,
-        location: (cprof as any)?.location ?? null,
-        phone: (cprof as any)?.phone ?? null,
-        timezone: (cprof as any)?.timezone ?? null,
-        goals: (cprof as any)?.goals ?? null,
+        bio: prof?.bio ?? null,
+        job_title: cprof?.job_title ?? null,
+        industry: cprof?.industry ?? null,
+        location: cprof?.location ?? null,
+        phone: cprof?.phone ?? null,
+        timezone: cprof?.timezone ?? null,
+        goals: cprof?.goals ?? null,
       });
       setLoading(false);
     })();

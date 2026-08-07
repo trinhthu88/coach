@@ -18,6 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import type { Tables } from "@/integrations/supabase/types";
+import type { LucideIcon } from "lucide-react";
 
 type SessionStatus =
   | "pending_coach_approval"
@@ -36,7 +38,7 @@ interface SessionRow {
   start_time: string;
   duration_minutes: number;
   status: SessionStatus;
-  action_items: any;
+  action_items: Tables<"sessions">["action_items"];
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
   kind: SessionKind;
@@ -44,7 +46,7 @@ interface SessionRow {
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
 }
 
-const STATUS_META: Record<SessionStatus, { label: string; icon: any; className: string }> = {
+const STATUS_META: Record<SessionStatus, { label: string; icon: LucideIcon; className: string }> = {
   pending_coach_approval: {
     label: "Awaiting confirmation",
     icon: AlertCircle,
@@ -82,8 +84,8 @@ export default function Sessions() {
   const load = useCallback(async () => {
     if (!user) return;
 
-    let sess: any[] = [];
-    let peer: any[] = [];
+    let sess: Tables<"sessions">[] = [];
+    let peer: Tables<"peer_sessions">[] = [];
 
     if (role === "coach" || role === "coachee") {
       const col = role === "coach" ? "coach_id" : "coachee_id";
@@ -115,9 +117,9 @@ export default function Sessions() {
     ].sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
     const ids = Array.from(
-      new Set(allRows.flatMap((s: any) => [s.coach_id, s.coachee_id]))
+      new Set(allRows.flatMap((s) => [s.coach_id, s.coachee_id]))
     );
-    let byId = new Map<string, any>();
+    let byId = new Map<string, Pick<Tables<"profiles">, "id" | "full_name" | "email" | "avatar_url">>();
     if (ids.length) {
       const { data: profs } = await supabase
         .from("profiles")
@@ -127,7 +129,7 @@ export default function Sessions() {
     }
 
     setSessions(
-      allRows.map((s: any) => ({
+      allRows.map((s) => ({
         ...s,
         coach: byId.get(s.coach_id) || null,
         coachee: byId.get(s.coachee_id) || null,
@@ -421,11 +423,16 @@ function RateSession({ session, onChanged }: { session: SessionRow; onChanged: (
   );
 }
 
-function ActionItemsList({ items, date }: { items: any; date: string }) {
-  const list = Array.isArray(items)
+interface ActionItem {
+  text: string;
+  done?: boolean;
+}
+
+function ActionItemsList({ items, date }: { items: Tables<"sessions">["action_items"]; date: string }) {
+  const list: ActionItem[] = Array.isArray(items)
     ? items
-        .map((it: any) => (typeof it === "string" ? { text: it, done: false } : it))
-        .filter((it: any) => it?.text)
+        .map((it) => (typeof it === "string" ? { text: it, done: false } : (it as unknown as ActionItem)))
+        .filter((it): it is ActionItem => !!it?.text)
     : [];
   if (list.length === 0) return null;
   return (
@@ -434,7 +441,7 @@ function ActionItemsList({ items, date }: { items: any; date: string }) {
         Action items
       </p>
       <ul className="space-y-1.5">
-        {list.slice(0, 4).map((it: any, idx: number) => (
+        {list.slice(0, 4).map((it, idx: number) => (
           <li key={idx} className="flex items-start justify-between gap-3 text-xs">
             <span className={cn("flex flex-1 items-start gap-1.5", it.done && "text-muted-foreground")}>
               <span className={cn("mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[10px]", it.done && "text-success font-bold")}>

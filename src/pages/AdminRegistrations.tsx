@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,47 +34,12 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
-
-type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
-
-interface CoacheeRow {
-  id: string;
-  full_name: string;
-  email: string;
-  status: Status;
-  created_at: string;
-  booked: number;
-  done: number;
-  monthly_limit: number;
-  selected_coaches: { id: string; name: string }[];
-}
-
-interface CoachOpt {
-  id: string;
-  name: string;
-}
-
-interface CoachListRow {
-  id: string;
-  full_name: string;
-  email: string;
-  title: string | null;
-  status: Status;
-  created_at: string;
-  approval_status: string;
-  sessions_completed: number;
-  coachees_count: number;
-  rating_avg: number;
-  country_based: string | null;
-  years_experience: number | null;
-  // Coach-as-coachee
-  coach_limit: number;
-  coach_used: number;
-  peer_limit: number;
-  peer_used: number;
-  assigned_coaches: { id: string; name: string }[];
-  limit_row_id: string | null;
-}
+import { useAdminRegistrations } from "@/hooks/admin/useAdminRegistrations";
+import { useAdminRegistrationApprovals } from "@/hooks/admin/useAdminRegistrationApprovals";
+import { useUpdateCoacheeAssignment } from "@/hooks/admin/useUpdateCoacheeAssignment";
+import { useUpdateCoachAssignment } from "@/hooks/admin/useUpdateCoachAssignment";
+import { useBulkImportCoachees } from "@/hooks/admin/useBulkImportCoachees";
+import { CoachListRow, CoachOpt, CoacheeRow, Status } from "@/hooks/admin/types";
 
 const STATUS_LABEL: Record<Status, string> = {
   pending_approval: "Awaiting approval",
@@ -94,14 +58,17 @@ const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "out
 };
 
 export default function AdminRegistrations() {
-  const [loading, setLoading] = useState(true);
-  const [coachees, setCoachees] = useState<CoacheeRow[]>([]);
-  const [coaches, setCoaches] = useState<CoachListRow[]>([]);
-  const [coachOpts, setCoachOpts] = useState<CoachOpt[]>([]);
-  const [defaultLimit, setDefaultLimit] = useState(4);
-  const [defaultCoachLimit, setDefaultCoachLimit] = useState(4);
-  const [defaultPeerLimit, setDefaultPeerLimit] = useState(4);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const {
+    loading,
+    coachees,
+    coaches,
+    coachOpts,
+    defaultLimit,
+    defaultCoachLimit,
+    defaultPeerLimit,
+    reload: load,
+  } = useAdminRegistrations();
+  const { busyId, setCoacheeStatusValue, setCoachStatusValue } = useAdminRegistrationApprovals(load);
   const [coacheeQuery, setCoacheeQuery] = useState("");
   const [coachQuery, setCoachQuery] = useState("");
   const [coacheeStatus, setCoacheeStatus] = useState<"all" | Status>("all");
@@ -110,211 +77,11 @@ export default function AdminRegistrations() {
   const [editingCoach, setEditingCoach] = useState<CoachListRow | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-
-    // Fetch all roles
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("user_id, role");
-    const coacheeIds = (roles || []).filter((r) => r.role === "coachee").map((r) => r.user_id);
-    const coachIds = (roles || []).filter((r) => r.role === "coach").map((r) => r.user_id);
-
-    const [
-      { data: profiles },
-      { data: limits },
-      { data: allowlist },
-      { data: sess },
-      { data: cps },
-      { data: coachLimits },
-      { data: peerSess },
-      { data: coachAllow },
-    ] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, status, created_at"),
-      supabase.from("session_limits").select("coachee_id, monthly_limit"),
-      supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
-      supabase.from("sessions").select("id, coach_id, coachee_id, status"),
-      supabase.from("coach_profiles").select("*"),
-      supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit"),
-      supabase.from("peer_sessions").select("id, peer_coach_id, peer_coachee_id, status"),
-      supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
-    ]);
-
-    const profilesById = new Map((profiles || []).map((p: any) => [p.id, p]));
-    const cpById = new Map((cps || []).map((c: any) => [c.id, c]));
-
-    const globalLimit =
-      (limits || []).find((l: any) => l.coachee_id === null)?.monthly_limit ?? 4;
-    setDefaultLimit(globalLimit);
-    const limitByCoachee = new Map(
-      (limits || [])
-        .filter((l: any) => l.coachee_id)
-        .map((l: any) => [l.coachee_id, l.monthly_limit])
-    );
-
-    const bookedByCoachee = new Map<string, number>();
-    const doneByCoachee = new Map<string, number>();
-    (sess || []).forEach((s: any) => {
-      if (["pending_coach_approval", "confirmed"].includes(s.status)) {
-        bookedByCoachee.set(s.coachee_id, (bookedByCoachee.get(s.coachee_id) || 0) + 1);
-      }
-      if (s.status === "completed") {
-        doneByCoachee.set(s.coachee_id, (doneByCoachee.get(s.coachee_id) || 0) + 1);
-      }
-    });
-
-    // Per-coach completed sessions and unique coachees (confirmed/completed)
-    const coachCompletedById = new Map<string, number>();
-    const coachCoacheesById = new Map<string, Set<string>>();
-    (sess || []).forEach((s: any) => {
-      if (s.status === "completed") {
-        coachCompletedById.set(s.coach_id, (coachCompletedById.get(s.coach_id) || 0) + 1);
-      }
-      if (["confirmed", "completed"].includes(s.status)) {
-        const set = coachCoacheesById.get(s.coach_id) || new Set<string>();
-        set.add(s.coachee_id);
-        coachCoacheesById.set(s.coach_id, set);
-      }
-    });
-
-    const coachNameById = new Map<string, string>();
-    coachIds.forEach((cid) => {
-      const p: any = profilesById.get(cid);
-      if (p) coachNameById.set(cid, p.full_name);
-    });
-
-    const allowByCoachee = new Map<string, { id: string; name: string }[]>();
-    (allowlist || []).forEach((a: any) => {
-      const arr = allowByCoachee.get(a.coachee_id) || [];
-      arr.push({ id: a.coach_id, name: coachNameById.get(a.coach_id) || "—" });
-      allowByCoachee.set(a.coachee_id, arr);
-    });
-
-    const coacheeRows: CoacheeRow[] = coacheeIds
-      .map((id) => {
-        const p: any = profilesById.get(id);
-        if (!p) return null;
-        return {
-          id,
-          full_name: p.full_name,
-          email: p.email,
-          status: p.status as Status,
-          created_at: p.created_at,
-          booked: bookedByCoachee.get(id) || 0,
-          done: doneByCoachee.get(id) || 0,
-          monthly_limit: limitByCoachee.get(id) ?? globalLimit,
-          selected_coaches: allowByCoachee.get(id) || [],
-        } as CoacheeRow;
-      })
-      .filter(Boolean) as CoacheeRow[];
-
-    // Defaults & per-coach limit overrides
-    const defCoachLimitRow = (coachLimits || []).find((l: any) => l.coach_user_id === null);
-    const defCoach = defCoachLimitRow?.monthly_limit ?? 4;
-    const defPeer = defCoachLimitRow?.peer_monthly_limit ?? 4;
-    setDefaultCoachLimit(defCoach);
-    setDefaultPeerLimit(defPeer);
-    const coachLimitByCoach = new Map<string, any>();
-    (coachLimits || [])
-      .filter((l: any) => l.coach_user_id)
-      .forEach((l: any) => coachLimitByCoach.set(l.coach_user_id, l));
-
-    // Coach-as-coachee usage (completed coaching sessions where coach is the coachee)
-    const coachAsCoacheeDone = new Map<string, number>();
-    (sess || []).forEach((s: any) => {
-      if (s.status === "completed" && coachIds.includes(s.coachee_id)) {
-        coachAsCoacheeDone.set(s.coachee_id, (coachAsCoacheeDone.get(s.coachee_id) || 0) + 1);
-      }
-    });
-
-    // Peer-as-receiver usage (completed peer sessions)
-    const peerReceivedDone = new Map<string, number>();
-    (peerSess || []).forEach((s: any) => {
-      if (s.status === "completed") {
-        peerReceivedDone.set(s.peer_coachee_id, (peerReceivedDone.get(s.peer_coachee_id) || 0) + 1);
-      }
-    });
-
-    // Assigned coaches (for coach-as-coachee)
-    const assignedByCoach = new Map<string, { id: string; name: string }[]>();
-    (coachAllow || []).forEach((a: any) => {
-      const arr = assignedByCoach.get(a.coach_user_id) || [];
-      arr.push({ id: a.selectable_coach_id, name: coachNameById.get(a.selectable_coach_id) || "—" });
-      assignedByCoach.set(a.coach_user_id, arr);
-    });
-
-    const coachRows: CoachListRow[] = coachIds
-      .map((id) => {
-        const p: any = profilesById.get(id);
-        const cp: any = cpById.get(id);
-        if (!p) return null;
-        const lim = coachLimitByCoach.get(id);
-        return {
-          id,
-          full_name: p.full_name,
-          email: p.email,
-          status: p.status as Status,
-          created_at: p.created_at,
-          approval_status: cp?.approval_status || "pending_approval",
-          sessions_completed: coachCompletedById.get(id) || 0,
-          coachees_count: (coachCoacheesById.get(id) || new Set()).size,
-          rating_avg: Number(cp?.rating_avg || 0),
-          country_based: cp?.country_based || null,
-          years_experience: cp?.years_experience || null,
-          coach_limit: lim?.monthly_limit ?? defCoach,
-          coach_used: coachAsCoacheeDone.get(id) || 0,
-          peer_limit: lim?.peer_monthly_limit ?? defPeer,
-          peer_used: peerReceivedDone.get(id) || 0,
-          assigned_coaches: assignedByCoach.get(id) || [],
-          limit_row_id: lim?.id ?? null,
-        } as CoachListRow;
-      })
-      .filter(Boolean) as CoachListRow[];
-
-    setCoachees(coacheeRows.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)));
-    setCoaches(coachRows.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)));
-    setCoachOpts(
-      coachIds
-        .map((id) => ({ id, name: coachNameById.get(id) || "—" }))
-        .filter((c) => c.name !== "—")
-        .sort((a, b) => a.name.localeCompare(b.name))
-    );
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
+  const { importRows } = useBulkImportCoachees(() => {
+    setImportOpen(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     load();
-  }, [load]);
-
-  const setCoacheeStatusValue = async (id: string, status: Status) => {
-    setBusyId(id);
-    const { error } = await supabase.from("profiles").update({ status }).eq("id", id);
-    if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
-    else {
-      toast({ title: `Coachee ${STATUS_LABEL[status].toLowerCase()}` });
-      await load();
-    }
-    setBusyId(null);
-  };
-
-  const setCoachStatusValue = async (id: string, status: Status) => {
-    setBusyId(id);
-    const patch: any = { approval_status: status };
-    if (status === "active") patch.last_approved_at = new Date().toISOString();
-    const { error: cErr } = await supabase
-      .from("coach_profiles")
-      .update(patch)
-      .eq("id", id);
-    if (!cErr) {
-      await supabase.from("profiles").update({ status }).eq("id", id);
-      toast({ title: `Coach ${STATUS_LABEL[status].toLowerCase()}` });
-      await load();
-    } else {
-      toast({ title: "Failed", description: cErr.message, variant: "destructive" });
-    }
-    setBusyId(null);
-  };
+  });
 
   const filteredCoachees = useMemo(() => {
     return coachees.filter((c) => {
@@ -363,63 +130,11 @@ export default function AdminRegistrations() {
   const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      if (!rows.length) {
-        toast({ title: "Empty file", variant: "destructive" });
-        return;
-      }
-      const redirectTo = `${window.location.origin}/auth`;
-      let ok = 0;
-      let fail = 0;
-      for (const row of rows) {
-        const email =
-          (row.Email || row.email || row.EMAIL || "").toString().trim().toLowerCase();
-        const name = (row.Name || row.name || row["Full name"] || "").toString().trim();
-        const limitRaw =
-          row["Session limit"] ?? row.SessionLimit ?? row.session_limit ?? row.Limit ?? "";
-        const limitNum = Number(limitRaw);
-        const sessionLimit = Number.isFinite(limitNum) && limitNum > 0 ? Math.floor(limitNum) : null;
-        if (!email) {
-          fail++;
-          continue;
-        }
-        const { data: otpData, error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            data: { full_name: name || email.split("@")[0], role: "coachee" },
-            emailRedirectTo: redirectTo,
-          },
-        });
-        if (error) {
-          fail++;
-          continue;
-        }
-        ok++;
-        // If we have a user id back and a custom limit, save it
-        const newUserId = (otpData as any)?.user?.id;
-        if (newUserId && sessionLimit !== null) {
-          await supabase
-            .from("session_limits")
-            .upsert(
-              { coachee_id: newUserId, monthly_limit: sessionLimit },
-              { onConflict: "coachee_id" }
-            );
-        }
-      }
-      toast({
-        title: "Import finished",
-        description: `${ok} invited, ${fail} failed. Coachees confirm via email link.`,
-      });
-      setImportOpen(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setTimeout(load, 1500);
-    } catch (err: any) {
-      toast({ title: "Import failed", description: err.message, variant: "destructive" });
-    }
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+    await importRows(rows);
   };
 
   const downloadTemplate = () => {
@@ -472,7 +187,7 @@ export default function AdminRegistrations() {
                 className="pl-9"
               />
             </div>
-            <Select value={coacheeStatus} onValueChange={(v) => setCoacheeStatus(v as any)}>
+            <Select value={coacheeStatus} onValueChange={(v) => setCoacheeStatus(v as "all" | Status)}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
               </SelectTrigger>
@@ -598,7 +313,7 @@ export default function AdminRegistrations() {
                 className="pl-9"
               />
             </div>
-            <Select value={coachStatus} onValueChange={(v) => setCoachStatus(v as any)}>
+            <Select value={coachStatus} onValueChange={(v) => setCoachStatus(v as "all" | Status)}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
               </SelectTrigger>
@@ -810,7 +525,7 @@ function EditCoacheeDialog({
   const [limit, setLimit] = useState<number>(defaultLimit);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [saving, setSaving] = useState(false);
+  const { saving, save: saveAssignment } = useUpdateCoacheeAssignment();
 
   useEffect(() => {
     if (coachee) {
@@ -836,39 +551,8 @@ function EditCoacheeDialog({
   };
 
   const save = async () => {
-    setSaving(true);
-    try {
-      // Save monthly limit
-      await supabase
-        .from("session_limits")
-        .upsert(
-          { coachee_id: coachee.id, monthly_limit: limit },
-          { onConflict: "coachee_id" }
-        );
-
-      // Reset allowlist
-      await supabase
-        .from("coachee_coach_allowlist")
-        .delete()
-        .eq("coachee_id", coachee.id);
-
-      const inserts = Array.from(picked).map((coach_id) => ({
-        coachee_id: coachee.id,
-        coach_id,
-      }));
-      if (inserts.length) {
-        const { error } = await supabase
-          .from("coachee_coach_allowlist")
-          .insert(inserts);
-        if (error) throw error;
-      }
-      toast({ title: "Saved" });
-      onSaved();
-    } catch (err: any) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+    const ok = await saveAssignment(coachee.id, limit, picked);
+    if (ok) onSaved();
   };
 
   return (
@@ -957,7 +641,7 @@ function EditCoachDialog({
   const [peerLimit, setPeerLimit] = useState<number>(defaultPeerLimit);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [saving, setSaving] = useState(false);
+  const { saving, save: saveAssignment } = useUpdateCoachAssignment();
 
   useEffect(() => {
     if (coach) {
@@ -984,45 +668,13 @@ function EditCoachDialog({
   };
 
   const save = async () => {
-    setSaving(true);
-    try {
-      // Upsert coach session limits (treated as totals)
-      if (coach.limit_row_id) {
-        await supabase
-          .from("coach_session_limits")
-          .update({ monthly_limit: coachLimit, peer_monthly_limit: peerLimit })
-          .eq("id", coach.limit_row_id);
-      } else {
-        await supabase.from("coach_session_limits").insert({
-          coach_user_id: coach.id,
-          monthly_limit: coachLimit,
-          peer_monthly_limit: peerLimit,
-        });
-      }
-
-      // Reset coach-as-coachee allowlist
-      await supabase
-        .from("coach_as_coachee_allowlist")
-        .delete()
-        .eq("coach_user_id", coach.id);
-
-      const inserts = Array.from(picked).map((selectable_coach_id) => ({
-        coach_user_id: coach.id,
-        selectable_coach_id,
-      }));
-      if (inserts.length) {
-        const { error } = await supabase
-          .from("coach_as_coachee_allowlist")
-          .insert(inserts);
-        if (error) throw error;
-      }
-      toast({ title: "Saved" });
-      onSaved();
-    } catch (err: any) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+    const ok = await saveAssignment(
+      { id: coach.id, limit_row_id: coach.limit_row_id },
+      coachLimit,
+      peerLimit,
+      picked
+    );
+    if (ok) onSaved();
   };
 
   return (

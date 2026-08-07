@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
 import PendingAccessRequests from "@/components/PendingAccessRequests";
+import type { Tables } from "@/integrations/supabase/types";
 
 type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 const STATUS_LABEL: Record<Status, string> = {
@@ -123,23 +124,23 @@ export default function AdminCoaches() {
     ]);
 
     const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
-    const profileById = new Map((profiles || []).map((p: any) => [p.id, p]));
-    const cpById = new Map((cps || []).map((c: any) => [c.id, c]));
+    const profileById = new Map((profiles || []).map((p) => [p.id, p]));
+    const cpById = new Map((cps || []).map((c) => [c.id, c]));
     const coachNameById = new Map<string, string>();
     coachIds.forEach(id => {
-      const p: any = profileById.get(id);
+      const p = profileById.get(id);
       if (p) coachNameById.set(id, p.full_name);
     });
 
-    const def = (limits || []).find((l: any) => l.coach_user_id === null);
+    const def = (limits || []).find((l) => l.coach_user_id === null);
     const defCoach = def?.monthly_limit ?? 4;
     const defPeer = def?.peer_monthly_limit ?? 4;
     const defPeerGiven = def?.peer_given_monthly_limit ?? 4;
     setDefaultCoachLimit(defCoach);
     setDefaultPeerLimit(defPeer);
     setDefaultPeerGivenLimit(defPeerGiven);
-    const limitByCoach = new Map<string, any>();
-    (limits || []).filter((l: any) => l.coach_user_id).forEach((l: any) => limitByCoach.set(l.coach_user_id, l));
+    const limitByCoach = new Map<string, Pick<Tables<"coach_session_limits">, "id" | "coach_user_id" | "monthly_limit" | "peer_monthly_limit" | "peer_given_monthly_limit">>();
+    (limits || []).filter((l) => l.coach_user_id).forEach((l) => limitByCoach.set(l.coach_user_id!, l));
 
     // sessions delivered
     const completedDelivered = new Map<string, number>();
@@ -147,7 +148,7 @@ export default function AdminCoaches() {
     const uniqueCoachees = new Map<string, Set<string>>();
     // sessions received as coachee
     const receivedDone = new Map<string, number>();
-    (sess || []).forEach((s: any) => {
+    (sess || []).forEach((s) => {
       if (s.status === "completed") {
         completedDelivered.set(s.coach_id, (completedDelivered.get(s.coach_id) || 0) + 1);
         if (coachIds.includes(s.coachee_id)) {
@@ -165,7 +166,7 @@ export default function AdminCoaches() {
     });
     const peerReceived = new Map<string, number>();
     const peerGiven = new Map<string, number>();
-    (peerSess || []).forEach((s: any) => {
+    (peerSess || []).forEach((s) => {
       if (s.status === "completed") {
         peerReceived.set(s.peer_coachee_id, (peerReceived.get(s.peer_coachee_id) || 0) + 1);
         peerGiven.set(s.peer_coach_id, (peerGiven.get(s.peer_coach_id) || 0) + 1);
@@ -173,24 +174,24 @@ export default function AdminCoaches() {
     });
 
     const assignedByCoach = new Map<string, { id: string; name: string }[]>();
-    (assigned || []).forEach((a: any) => {
+    (assigned || []).forEach((a) => {
       const arr = assignedByCoach.get(a.coach_user_id) || [];
       arr.push({ id: a.selectable_coach_id, name: coachNameById.get(a.selectable_coach_id) || "—" });
       assignedByCoach.set(a.coach_user_id, arr);
     });
 
-    const enrollByUser = new Map<string, any>();
-    (enrolls || []).forEach((e: any) => enrollByUser.set(e.coachee_id, e));
-    const cohortById = new Map((cohortsData || []).map((c: any) => [c.id, c.name]));
-    const progById = new Map((progsData || []).map((p: any) => [p.id, p]));
+    const enrollByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "coachee_id" | "programme_id" | "cohort_id" | "start_date">>();
+    (enrolls || []).forEach((e) => enrollByUser.set(e.coachee_id, e));
+    const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
+    const progById = new Map((progsData || []).map((p) => [p.id, p]));
 
     const out: CoachRow[] = coachIds.map(id => {
-      const p: any = profileById.get(id);
-      const cp: any = cpById.get(id);
+      const p = profileById.get(id);
+      const cp = cpById.get(id);
       if (!p) return null;
       const lim = limitByCoach.get(id);
       const enr = enrollByUser.get(id);
-      const prog: any = enr?.programme_id ? progById.get(enr.programme_id) : null;
+      const prog = enr?.programme_id ? progById.get(enr.programme_id) : null;
       return {
         id,
         full_name: p.full_name,
@@ -225,8 +226,8 @@ export default function AdminCoaches() {
 
     setRows(out.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)));
     setCoachOpts(coachIds.map(id => ({ id, name: coachNameById.get(id) || "—" })).filter(c => c.name !== "—").sort((a, b) => a.name.localeCompare(b.name)));
-    setCohorts((cohortsData || []) as any);
-    setProgrammes((progsData || []) as any);
+    setCohorts(cohortsData || []);
+    setProgrammes(progsData || []);
     setLoading(false);
   }, []);
 
@@ -280,7 +281,7 @@ export default function AdminCoaches() {
         status: editing.status,
       }).eq("id", editing.id);
       await supabase.from("coach_profiles").update({
-        approval_status: editing.status as any,
+        approval_status: editing.status as Tables<"coach_profiles">["approval_status"],
         ...(editing.status === "active" ? { last_approved_at: new Date().toISOString() } : {}),
       }).eq("id", editing.id);
 
@@ -333,8 +334,8 @@ export default function AdminCoaches() {
       toast.success("Coach updated");
       setEditing(null);
       await load();
-    } catch (e: any) {
-      toast.error(e.message || "Save failed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -374,7 +375,7 @@ export default function AdminCoaches() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className="pl-9" />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | Status)}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
