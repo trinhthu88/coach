@@ -12,7 +12,7 @@ export default defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ coach_id }, ctx) => {
     const userId = ctx.getUserId();
-    if (!userId) throw new ToolError({ message: "Not authenticated" });
+    if (!userId) throw new ToolError("Not authenticated" );
 
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase
@@ -24,8 +24,8 @@ export default defineTool({
       .eq("id", coach_id)
       .maybeSingle();
 
-    if (error) throw new ToolError({ message: error.message });
-    if (!data) throw new ToolError({ message: "Coach not found or access denied" });
+    if (error) throw new ToolError(error.message );
+    if (!data) throw new ToolError("Coach not found or access denied" );
     return { content: [{ type: "text", text: JSON.stringify(data) }] };
   },
 });

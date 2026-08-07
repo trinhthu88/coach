@@ -13,9 +13,9 @@ export default defineTool({
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async ({ request_id }, ctx) => {
     const callerId = ctx.getUserId();
-    if (!callerId) throw new ToolError({ message: "Not authenticated" });
+    if (!callerId) throw new ToolError("Not authenticated" );
     const role = await getUserRole(callerId);
-    if (role !== "admin") throw new ToolError({ message: "Admin access required" });
+    if (role !== "admin") throw new ToolError("Admin access required" );
 
     const admin = supabaseAdmin();
     const { data: reqRow, error: reqErr } = await admin
@@ -23,8 +23,8 @@ export default defineTool({
       .select("*")
       .eq("id", request_id)
       .maybeSingle();
-    if (reqErr || !reqRow) throw new ToolError({ message: reqErr?.message ?? "Request not found" });
-    if (reqRow.status === "approved") throw new ToolError({ message: "Request already approved" });
+    if (reqErr || !reqRow) throw new ToolError(reqErr?.message ?? "Request not found" );
+    if (reqRow.status === "approved") throw new ToolError("Request already approved" );
 
     const userRole = reqRow.role === "coach" ? "coach" : "coachee";
     const tempPassword = generatePassword();
@@ -43,7 +43,7 @@ export default defineTool({
         email_confirm: true,
         user_metadata: { full_name: reqRow.full_name, role: userRole },
       });
-      if (updateUserErr) throw new ToolError({ message: updateUserErr.message ?? "Failed to update existing user" });
+      if (updateUserErr) throw new ToolError(updateUserErr.message ?? "Failed to update existing user" );
     } else {
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email: reqRow.email,
@@ -51,11 +51,11 @@ export default defineTool({
         email_confirm: true,
         user_metadata: { full_name: reqRow.full_name, role: userRole },
       });
-      if (createErr || !created.user) throw new ToolError({ message: createErr?.message ?? "Failed to create user" });
+      if (createErr || !created.user) throw new ToolError(createErr?.message ?? "Failed to create user" );
       userId = created.user.id;
     }
 
-    if (!userId) throw new ToolError({ message: "Could not resolve user account" });
+    if (!userId) throw new ToolError("Could not resolve user account" );
 
     await admin.from("profiles").update({ status: "active", must_change_password: true }).eq("id", userId);
     if (userRole === "coach") {

@@ -13,10 +13,10 @@ export default defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ coachee_id }, ctx) => {
     const userId = ctx.getUserId();
-    if (!userId) throw new ToolError({ message: "Not authenticated" });
+    if (!userId) throw new ToolError("Not authenticated" );
     const role = await getUserRole(userId);
-    if (!role) throw new ToolError({ message: "Role not found" });
-    if (role === "coachee" && userId !== coachee_id) throw new ToolError({ message: "You can only view your own progress" });
+    if (!role) throw new ToolError("Role not found" );
+    if (role === "coachee" && userId !== coachee_id) throw new ToolError("You can only view your own progress" );
 
     const supabase = supabaseForUser(ctx);
     const [{ data: enrollment }, { data: sessions }, { data: ratings }] = await Promise.all([

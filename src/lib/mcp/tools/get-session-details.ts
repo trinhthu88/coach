@@ -13,9 +13,9 @@ export default defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ session_id }, ctx) => {
     const userId = ctx.getUserId();
-    if (!userId) throw new ToolError({ message: "Not authenticated" });
+    if (!userId) throw new ToolError("Not authenticated" );
     const role = await getUserRole(userId);
-    if (!role) throw new ToolError({ message: "Role not found" });
+    if (!role) throw new ToolError("Role not found" );
 
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase
@@ -30,8 +30,8 @@ export default defineTool({
       .eq("id", session_id)
       .maybeSingle();
 
-    if (error) throw new ToolError({ message: error.message });
-    if (!data) throw new ToolError({ message: "Session not found or access denied" });
+    if (error) throw new ToolError(error.message );
+    if (!data) throw new ToolError("Session not found or access denied" );
     return { content: [{ type: "text", text: JSON.stringify(data) }] };
   },
 });

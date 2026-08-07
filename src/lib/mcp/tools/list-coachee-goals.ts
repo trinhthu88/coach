@@ -13,10 +13,10 @@ export default defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ coachee_id }, ctx) => {
     const userId = ctx.getUserId();
-    if (!userId) throw new ToolError({ message: "Not authenticated" });
+    if (!userId) throw new ToolError("Not authenticated" );
     const role = await getUserRole(userId);
-    if (!role) throw new ToolError({ message: "Role not found" });
-    if (role === "coachee" && userId !== coachee_id) throw new ToolError({ message: "You can only view your own goals" });
+    if (!role) throw new ToolError("Role not found" );
+    if (role === "coachee" && userId !== coachee_id) throw new ToolError("You can only view your own goals" );
 
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase
@@ -28,7 +28,7 @@ export default defineTool({
       .eq("coachee_id", coachee_id)
       .order("sort_order");
 
-    if (error) throw new ToolError({ message: error.message });
+    if (error) throw new ToolError(error.message );
     return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
   },
 });

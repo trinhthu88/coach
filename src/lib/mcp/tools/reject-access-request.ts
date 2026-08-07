@@ -13,9 +13,9 @@ export default defineTool({
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
   handler: async ({ request_id }, ctx) => {
     const callerId = ctx.getUserId();
-    if (!callerId) throw new ToolError({ message: "Not authenticated" });
+    if (!callerId) throw new ToolError("Not authenticated" );
     const role = await getUserRole(callerId);
-    if (role !== "admin") throw new ToolError({ message: "Admin access required" });
+    if (role !== "admin") throw new ToolError("Admin access required" );
 
     const admin = supabaseAdmin();
     const { data: reqRow, error: reqErr } = await admin
@@ -23,14 +23,14 @@ export default defineTool({
       .select("status")
       .eq("id", request_id)
       .maybeSingle();
-    if (reqErr || !reqRow) throw new ToolError({ message: reqErr?.message ?? "Request not found" });
-    if (reqRow.status !== "pending") throw new ToolError({ message: "Request is not pending" });
+    if (reqErr || !reqRow) throw new ToolError(reqErr?.message ?? "Request not found" );
+    if (reqRow.status !== "pending") throw new ToolError("Request is not pending" );
 
     const { error } = await admin
       .from("access_requests")
       .update({ status: "rejected", reviewed_at: new Date().toISOString(), reviewed_by: callerId })
       .eq("id", request_id);
-    if (error) throw new ToolError({ message: error.message });
+    if (error) throw new ToolError(error.message );
     return { content: [{ type: "text", text: "Access request rejected." }] };
   },
 });

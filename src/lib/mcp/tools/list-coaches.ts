@@ -12,7 +12,7 @@ export default defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ limit }, ctx) => {
     const userId = ctx.getUserId();
-    if (!userId) throw new ToolError({ message: "Not authenticated" });
+    if (!userId) throw new ToolError("Not authenticated" );
 
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase
@@ -25,7 +25,7 @@ export default defineTool({
       .order("full_name")
       .limit(limit);
 
-    if (error) throw new ToolError({ message: error.message });
+    if (error) throw new ToolError(error.message );
     return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
   },
 });

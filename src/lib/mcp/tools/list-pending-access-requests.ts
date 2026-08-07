@@ -11,9 +11,9 @@ export default defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
     const userId = ctx.getUserId();
-    if (!userId) throw new ToolError({ message: "Not authenticated" });
+    if (!userId) throw new ToolError("Not authenticated" );
     const role = await getUserRole(userId);
-    if (role !== "admin") throw new ToolError({ message: "Admin access required" });
+    if (role !== "admin") throw new ToolError("Admin access required" );
 
     const { data, error } = await supabaseAdmin()
       .from("access_requests")
@@ -21,7 +21,7 @@ export default defineTool({
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
-    if (error) throw new ToolError({ message: error.message });
+    if (error) throw new ToolError(error.message );
     return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
   },
 });
