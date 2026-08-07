@@ -13,8 +13,19 @@ import { cn } from "@/lib/utils";
 
 type SignupRole = "coachee" | "coach";
 
+function isSameOriginRelativePath(path: string): boolean {
+  try {
+    const url = new URL(path, window.location.origin);
+    return url.origin === window.location.origin && url.pathname !== "/auth";
+  } catch {
+    return false;
+  }
+}
+
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const next = searchParams.get("next") ?? "/dashboard";
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", fullName: "" });
@@ -32,13 +43,14 @@ export default function Auth() {
         });
         if (error) throw error;
         toast({ title: "Welcome back", description: "You're signed in." });
-        navigate("/dashboard", { replace: true });
+        navigate(isSameOriginRelativePath(next) ? next : "/dashboard", { replace: true });
       } else {
+        const returnTo = isSameOriginRelativePath(next) ? `${window.location.origin}${next}` : `${window.location.origin}/dashboard`;
         const { error } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: returnTo,
             data: { full_name: form.fullName, role: signupRole },
           },
         });
@@ -50,7 +62,7 @@ export default function Auth() {
               ? "Your coach account is pending admin approval. You can fill in your profile now."
               : "Your account is pending admin approval. We'll let you know as soon as you're in.",
         });
-        navigate("/dashboard", { replace: true });
+        navigate(isSameOriginRelativePath(next) ? next : "/dashboard", { replace: true });
       }
     } catch (err: any) {
       toast({
