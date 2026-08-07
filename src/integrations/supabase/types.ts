@@ -1271,6 +1271,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_active_coach_profile: { Args: { _id: string }; Returns: boolean }
       is_allowlisted_pair: {
         Args: { _target: string; _viewer: string }
         Returns: boolean
