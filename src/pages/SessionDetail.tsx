@@ -26,6 +26,8 @@ import {
   LucideIcon,
 } from "lucide-react";
 import { SessionGoalRatings } from "./session/SessionGoalRatings";
+import { SessionToolbox } from "@/components/tools/SessionToolbox";
+
 import { cn } from "@/lib/utils";
 import { format, isAfter, addHours } from "date-fns";
 import {
