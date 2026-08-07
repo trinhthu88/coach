@@ -152,28 +152,26 @@ export default function Sessions() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-            <Calendar className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
-            <p className="text-sm text-muted-foreground">
-              {role === "coach"
-                ? "Confirm requests, manage notes and meeting links."
-                : "Track upcoming bookings, notes and action items."}
-            </p>
-          </div>
-        </div>
-        {role === "coachee" && (
-          <Button asChild className="shadow-glow">
-            <Link to="/coaches">
-              <Calendar className="mr-1 h-4 w-4" /> Book a session
-            </Link>
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        eyebrow="Schedule"
+        title="Sessions"
+        trailing=""
+        subtitle={
+          role === "coach"
+            ? "Confirm requests, manage notes and meeting links."
+            : "Track upcoming bookings, notes and action items."
+        }
+        actions={
+          role === "coachee" && (
+            <Button asChild className="shadow-glow">
+              <Link to="/coaches">
+                <Calendar className="mr-1 h-4 w-4" /> Book a session
+              </Link>
+            </Button>
+          )
+        }
+      />
+
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
