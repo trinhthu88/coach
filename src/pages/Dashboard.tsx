@@ -574,8 +574,8 @@ function StatCard({
       </div>
       <p className="font-display mt-3 text-[2.6rem] font-normal leading-none tracking-tight">{value}</p>
       <p className="mt-2.5 text-xs text-muted-foreground">{hint}</p>
+    </div>
 
-    </Card>
   );
 }
 
