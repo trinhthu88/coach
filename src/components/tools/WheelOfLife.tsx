@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,7 +99,7 @@ export function WheelOfLife({ sessionId }: { sessionId: string }) {
       session_id: sessionId,
       tool_type: "wheel_of_life",
       filled_by: user.id,
-      responses: { domains },
+      responses: { domains } as unknown as Json,
     };
     const { data, error } = rowId
       ? await supabase
