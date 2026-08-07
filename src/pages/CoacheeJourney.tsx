@@ -345,6 +345,30 @@ export default function CoacheeJourney() {
         </Card>
       </div>
 
+      {/* MILESTONE TIMELINE */}
+      {milestones.length > 0 && (
+        <Card className="p-6">
+          <p className="eyebrow mb-5">Milestones</p>
+          <TimelineList
+            items={milestones
+              .slice()
+              .sort((a, b) => {
+                const da = a.target_date ? new Date(a.target_date).getTime() : Infinity;
+                const db = b.target_date ? new Date(b.target_date).getTime() : Infinity;
+                return da - db;
+              })
+              .slice(0, 6)
+              .map((m) => ({
+                id: m.id,
+                date: m.target_date ? format(new Date(m.target_date), "d MMM") : undefined,
+                title: m.title,
+                note: goals.find((g) => g.id === m.goal_id)?.title,
+                done: m.is_done,
+              }))}
+          />
+        </Card>
+      )}
+
       {/* PROGRAMME BLOCK */}
       {programme && (
         <Card className="overflow-hidden">
