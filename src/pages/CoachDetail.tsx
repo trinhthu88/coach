@@ -11,7 +11,6 @@ interface CoachDetail {
   id: string;
   title: string | null;
   specialties: string[] | null;
-  hourly_rate: number | null;
   years_experience: number | null;
   nationality: string | null;
   country_based: string | null;
@@ -104,7 +103,7 @@ export default function CoachDetail() {
               <p className="mt-1.5 text-sm text-secondary-foreground/70">{coach.title}</p>
             </div>
           </div>
-          {role === "coachee" && (
+          {(role === "coachee" || role === "coach") && (
             <Button asChild size="lg" className="bg-accent text-accent-foreground shadow-glow hover:bg-accent/90">
               <Link to={`/coaches/${coach.id}/book`}>
                 <Calendar className="mr-1 h-4 w-4" /> Book a session
@@ -113,7 +112,7 @@ export default function CoachDetail() {
           )}
         </div>
 
-        <div className="mt-9 grid gap-6 border-t border-primary-foreground/15 pt-7 sm:grid-cols-4">
+        <div className="mt-9 grid gap-6 border-t border-primary-foreground/15 pt-7 sm:grid-cols-3">
           <Stat
             label="Rating"
             value={
@@ -125,7 +124,6 @@ export default function CoachDetail() {
           />
           <Stat label="Sessions" value={coach.sessions_completed.toString()} />
           <Stat label="Experience" value={`${coach.years_experience ?? 0} yrs`} />
-          <Stat label="Rate" value={coach.hourly_rate != null ? `$${coach.hourly_rate}` : "—"} />
         </div>
       </HeroPanel>
 
@@ -180,7 +178,7 @@ export default function CoachDetail() {
             </p>
           </div>
 
-          {role === "coachee" && (
+          {(role === "coachee" || role === "coach") && (
             <Button asChild size="lg" variant="secondary" className="w-full">
               <Link to={`/coaches/${coach.id}/book`}>Choose a time</Link>
             </Button>

@@ -19,7 +19,6 @@ interface CoachRow {
   country_based: string | null;
   is_featured: boolean;
   rating_avg: number;
-  hourly_rate: number | null;
   sessions_completed: number;
   profiles: {
     full_name: string;
@@ -48,7 +47,7 @@ export default function Coaches() {
       const { data, error } = await supabase
         .from("coach_profiles")
         .select(
-          "id, title, specialties, years_experience, country_based, is_featured, rating_avg, sessions_completed, hourly_rate, profiles!inner(full_name, avatar_url, bio)"
+          "id, title, specialties, years_experience, country_based, is_featured, rating_avg, sessions_completed, profiles!inner(full_name, avatar_url, bio)"
         )
         .eq("approval_status", "active")
         .order("is_featured", { ascending: false })
