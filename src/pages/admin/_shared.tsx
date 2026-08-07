@@ -17,18 +17,17 @@ export function AdminPageHeader({
   right?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-primary">{eyebrow}</p>
-        <h1 className="font-display text-3xl tracking-tight text-secondary">
-          {title} {emphasize && <em className="not-italic text-primary">{emphasize}</em>}
-        </h1>
-        {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
-      </div>
-      {right}
-    </div>
+    <PageHeader
+      eyebrow={eyebrow}
+      title={title}
+      emphasis={emphasize}
+      trailing=""
+      subtitle={subtitle}
+      actions={right}
+    />
   );
 }
+
 
 export function Kpi({
   label,
