@@ -7,7 +7,6 @@ import { Layers, Loader2, MessageSquareQuote, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
-import { PageHeader } from "@/components/ui/page-header";
   Radar,
   RadarChart,
   PolarGrid,
@@ -22,6 +21,7 @@ import { PageHeader } from "@/components/ui/page-header";
   Legend,
   CartesianGrid,
 } from "recharts";
+import { PageHeader } from "@/components/ui/page-header";
 
 const COMPETENCIES = [
   { key: "ethical_practice", label: "Ethical practice" },

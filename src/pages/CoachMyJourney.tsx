@@ -48,12 +48,12 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-import { PageHeader } from "@/components/ui/page-header";
   GoalWheel,
   GoalScoreCards,
   type GoalRatingRow,
   type SessionRatingSeries,
 } from "./journey/GoalWheel";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface RawActionItemWithSource extends RawActionItem {
   sessionId: string;
