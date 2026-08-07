@@ -60,20 +60,21 @@ export function Kpi({
       ? "text-destructive"
       : "text-muted-foreground";
   return (
-    <Card className="flex items-start justify-between p-4">
+    <div className="surface-card hover-lift flex items-start justify-between p-4">
       <div className="min-w-0">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-        <p className="mt-1.5 text-2xl font-semibold leading-none">{value}</p>
-        {hint && <p className={cn("mt-1.5 text-[11px]", hintCls)}>{hint}</p>}
+        <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
+        <p className="font-display mt-2 text-[2rem] font-normal leading-none tracking-tight">{value}</p>
+        {hint && <p className={cn("mt-2 text-[11px]", hintCls)}>{hint}</p>}
       </div>
       {Icon && (
-        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", toneBg[tone])}>
-          <Icon className="h-4 w-4" />
+        <div className={cn("grid h-7 w-7 shrink-0 place-items-center rounded-[9px]", toneBg[tone])}>
+          <Icon className="h-3.5 w-3.5" />
         </div>
       )}
-    </Card>
+    </div>
   );
 }
+
 
 export function SectionCard({
   label,
