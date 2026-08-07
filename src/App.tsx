@@ -42,6 +42,7 @@ import AdminCohorts from "./pages/admin/AdminCohorts";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 import PendingApproval from "./pages/PendingApproval";
+import OAuthConsent from "./pages/OAuthConsent";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/request-access" element={<RequestAccess />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
