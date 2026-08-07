@@ -188,6 +188,7 @@ export function useAdminRegistrations() {
           id,
           full_name: p.full_name,
           email: p.email,
+          title: null,
           status: p.status as Status,
           created_at: p.created_at,
           approval_status: cp?.approval_status || "pending_approval",
