@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export function AdminPageHeader({
   eyebrow = "Admin",
