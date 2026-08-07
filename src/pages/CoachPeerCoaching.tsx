@@ -46,20 +46,13 @@ export default function CoachPeerCoaching() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
-          <MessagesSquare className="h-5 w-5" />
-        </div>
-        <div>
-          <PageHeader
+      <PageHeader
             className="mb-0"
             eyebrow="Community"
             title="Peer"
             emphasis="coaching"
             subtitle="Coaches who have opted in to peer coaching. Book a session to be coached by a peer."
           />
-        </div>
-      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

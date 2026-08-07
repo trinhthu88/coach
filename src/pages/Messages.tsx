@@ -267,16 +267,7 @@ export default function Messages() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <MessageSquare className="h-5 w-5" />
-          {totalUnread > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-              {totalUnread}
-            </span>
-          )}
-        </div>
-        <PageHeader
+      <PageHeader
           className="mb-0"
           eyebrow="Conversations"
           title="Your"
@@ -287,7 +278,6 @@ export default function Messages() {
               : "Chat unlocks once a session is confirmed."
           }
         />
-      </div>
 
       {threads.length === 0 ? (
         <Card className="p-12 text-center">

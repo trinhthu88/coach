@@ -52,20 +52,13 @@ export default function CoachFindCoach() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <Search className="h-5 w-5" />
-        </div>
-        <div>
-          <PageHeader
+      <PageHeader
             className="mb-0"
             eyebrow="Curated network"
             title="Find a"
             emphasis="coach"
             subtitle="Coaches curated by admin for your continued growth."
           />
-        </div>
-      </div>
 
       <Card className="flex items-start gap-2 border-warning/30 bg-warning/5 p-4 text-sm">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
