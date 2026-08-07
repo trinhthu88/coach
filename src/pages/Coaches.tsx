@@ -19,6 +19,7 @@ interface CoachRow {
   country_based: string | null;
   is_featured: boolean;
   rating_avg: number;
+  hourly_rate: number | null;
   sessions_completed: number;
   profiles: {
     full_name: string;
@@ -47,7 +48,7 @@ export default function Coaches() {
       const { data, error } = await supabase
         .from("coach_profiles")
         .select(
-          "id, title, specialties, years_experience, country_based, is_featured, rating_avg, sessions_completed, profiles!inner(full_name, avatar_url, bio)"
+          "id, title, specialties, years_experience, country_based, is_featured, rating_avg, sessions_completed, hourly_rate, profiles!inner(full_name, avatar_url, bio)"
         )
         .eq("approval_status", "active")
         .order("is_featured", { ascending: false })
@@ -189,13 +190,19 @@ function CoachCard({ coach }: { coach: CoachRow }) {
         )}
 
         <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm">
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
-            {coach.years_experience ?? 0}+ years
+          <span className="text-xs text-muted-foreground">
+            {coach.years_experience ?? 0} yrs{coach.country_based ? ` · ${coach.country_based}` : ""}
           </span>
-          <Button variant="link" size="sm" className="h-auto p-0 text-primary">
-            View profile
-          </Button>
+          {coach.hourly_rate != null ? (
+            <span className="text-sm font-semibold text-foreground">
+              ${coach.hourly_rate}
+              <span className="text-xs font-normal text-muted-foreground">/hr</span>
+            </span>
+          ) : (
+            <Button variant="link" size="sm" className="h-auto p-0 text-primary">
+              View profile
+            </Button>
+          )}
         </div>
       </Link>
     </Card>

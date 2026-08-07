@@ -838,10 +838,10 @@ function RecommendedCoachCard({ coach }: { coach: CoachLite }) {
     .slice(0, 2)
     .toUpperCase();
   return (
-    <Link to={`/coaches/${coach.id}`} className="group block">
-      <Card className="h-full p-5 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+    <Link to={`/coaches/${coach.id}`} className="group block h-full">
+      <Card className="flex h-full flex-col p-6 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
         <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-primary-soft text-sm font-bold text-primary">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary-soft text-sm font-bold text-primary">
             {coach.profiles?.avatar_url ? (
               <img src={coach.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -849,23 +849,38 @@ function RecommendedCoachCard({ coach }: { coach: CoachLite }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold">{coach.profiles?.full_name}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate font-semibold">{coach.profiles?.full_name}</p>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-warning">
+                <Star className="h-3 w-3 fill-warning" />
+                {Number(coach.rating_avg).toFixed(1)}
+              </span>
+            </div>
             <p className="truncate text-xs text-muted-foreground">{coach.title || "Coach"}</p>
           </div>
-          <span className="inline-flex items-center gap-1 text-xs font-semibold">
-            <Star className="h-3 w-3 fill-warning text-warning" />
-            {Number(coach.rating_avg).toFixed(1)}
-          </span>
         </div>
+
+        <p className="mt-3 line-clamp-2 flex-1 text-sm italic text-muted-foreground">
+          {coach.profiles?.bio ? `"${coach.profiles.bio}"` : "Profile available — open to learn more."}
+        </p>
+
         {coach.specialties && coach.specialties.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
-            {coach.specialties.slice(0, 3).map((s) => (
-              <Badge key={s} variant="secondary" className="rounded-full text-[10px]">
+            {coach.specialties.slice(0, 2).map((s) => (
+              <Badge key={s} variant="secondary" className="rounded-full text-[10px] uppercase tracking-wider">
                 {s}
               </Badge>
             ))}
           </div>
         )}
+
+        <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm">
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5" />
+            {coach.years_experience ?? 0} yrs{coach.country_based ? ` · ${coach.country_based}` : ""}
+          </span>
+          <span className="text-sm font-semibold text-primary">View profile</span>
+        </div>
       </Card>
     </Link>
   );

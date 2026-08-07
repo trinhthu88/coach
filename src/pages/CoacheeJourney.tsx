@@ -49,6 +49,7 @@ import { cn } from "@/lib/utils";
 import { WheelHistory } from "@/components/tools/WheelHistory";
 import { GoalWheel, GoalScoreCards, type GoalRatingRow, type SessionRatingSeries } from "./journey/GoalWheel";
 import { PageHeader } from "@/components/ui/page-header";
+import { ProgressRing, TimelineList } from "@/components/ui/proto";
 
 interface FlatAction extends RawActionItem {
   sessionId: string;
@@ -316,24 +317,32 @@ export default function CoacheeJourney() {
           subtitle="Track your goals, action items, sessions and personal reflections."
         />
 
-      {/* METRICS */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label="Overall progress" value={`${overallPct}%`} sub={`across ${goals.length} goal${goals.length === 1 ? "" : "s"}`} />
-        <Metric label="Actions done" value={String(aiDone)} sub={aiOverdue ? `${aiOverdue} overdue` : `of ${aiTotal} total`} subClass={aiOverdue ? "text-destructive" : ""} />
-        <Metric
-          label="Session recap"
-          value={
-            usage
-              ? `${sessions.filter((s) => s.status === "completed").length} / ${usage.monthly_limit}`
-              : `${sessions.filter((s) => s.status === "completed").length} / —`
-          }
-          sub={`${upcoming.length} upcoming`}
-        />
-        <Metric
-          label="Next session"
-          value={nextSession ? format(new Date(nextSession.start_time), "MMM d") : "—"}
-          sub={nextSession ? format(new Date(nextSession.start_time), "p") : "Nothing scheduled"}
-        />
+      {/* PROGRESS RINGS */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card className="flex flex-col items-center gap-2 p-6">
+          <ProgressRing
+            value={usage?.monthly_limit ? (sessionsCompletedCount / usage.monthly_limit) * 100 : overallPct}
+            tone="primary"
+          />
+          <p className="text-sm font-semibold">Programme</p>
+          <p className="text-xs text-muted-foreground">
+            {sessionsCompletedCount} of {usage?.monthly_limit ?? programme?.sessionsAllowed ?? "—"} sessions
+          </p>
+        </Card>
+        <Card className="flex flex-col items-center gap-2 p-6">
+          <ProgressRing value={avgGoalProgress} tone="warning" />
+          <p className="text-sm font-semibold">Goals on track</p>
+          <p className="text-xs text-muted-foreground">
+            {goals.filter((g) => goalProgress(g.id) >= 50).length} of {goals.length} advancing
+          </p>
+        </Card>
+        <Card className="flex flex-col items-center gap-2 p-6">
+          <ProgressRing value={aiTotal ? Math.round((aiDone / aiTotal) * 100) : 0} tone="success" />
+          <p className="text-sm font-semibold">Actions closed</p>
+          <p className="text-xs text-muted-foreground">
+            {aiDone} of {aiTotal} completed
+          </p>
+        </Card>
       </div>
 
       {/* PROGRAMME BLOCK */}

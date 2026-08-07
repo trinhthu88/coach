@@ -159,7 +159,7 @@ export default function AdminAnalytics() {
 
   return (
     <div>
-      <AdminPageHeader title="Platform" emphasize="analytics" subtitle="Performance, satisfaction and competency insights." />
+      <AdminPageHeader eyebrow="Organisation" title="Platform" emphasize="analytics" subtitle="Performance, satisfaction and competency insights." />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
         <Kpi label="Coaching sessions" value={data.platform.sessTotal} icon={Award} tone="primary" />
