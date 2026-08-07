@@ -26,6 +26,8 @@ import {
   LucideIcon,
 } from "lucide-react";
 import { SessionGoalRatings } from "./session/SessionGoalRatings";
+import { SessionToolbox } from "@/components/tools/SessionToolbox";
+
 import { cn } from "@/lib/utils";
 import { format, isAfter, addHours } from "date-fns";
 import {
@@ -533,6 +535,13 @@ export default function SessionDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Coaching toolbox (non-peer, active sessions) */}
+      {!isPeer && (session.status === "confirmed" || session.status === "completed") && (
+        <SessionToolbox sessionId={session.id} onActionItemsChanged={reload} />
+      )}
+
+
 
       {/* Per-goal rating snapshot (non-peer sessions only) */}
       {!isPeer && (

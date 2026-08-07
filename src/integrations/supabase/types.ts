@@ -1160,6 +1160,44 @@ export type Database = {
           },
         ]
       }
+      tool_sessions: {
+        Row: {
+          created_at: string
+          filled_by: string
+          id: string
+          responses: Json
+          session_id: string
+          tool_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          filled_by: string
+          id?: string
+          responses?: Json
+          session_id: string
+          tool_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          filled_by?: string
+          id?: string
+          responses?: Json
+          session_id?: string
+          tool_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_sessions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
