@@ -217,7 +217,7 @@ export default function SessionDetail() {
                 Session ID: {sessionShortId}
               </span>
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight">{session.topic}</h1>
+            <h1 className="font-display text-[2.1rem] leading-[1.1] tracking-tight">{session.topic}</h1>
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <CalIcon className="h-4 w-4 text-primary" />

@@ -101,7 +101,7 @@ export default function CoachDetail() {
                 )}
               </div>
               <div className="pb-1">
-                <h1 className="text-3xl font-semibold tracking-tight">{coach.profiles?.full_name}</h1>
+                <h1 className="font-display text-[2.1rem] leading-[1.1] tracking-tight">{coach.profiles?.full_name}</h1>
                 <p className="text-muted-foreground">{coach.title}</p>
               </div>
             </div>
