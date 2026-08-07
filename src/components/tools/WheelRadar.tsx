@@ -22,9 +22,42 @@ export interface WheelSeries {
   latest?: boolean;
 }
 
-const SHORT = (s: string, n = 14) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-
 const SERIES_HUES = [200, 30, 150, 285, 50];
+
+/** Wrap a label onto at most two short lines so long domain names stay readable. */
+function wrap(label: string): string[] {
+  const words = label.split(" ");
+  if (words.length === 1) return [label.length > 16 ? `${label.slice(0, 15)}…` : label];
+  const mid = Math.ceil(words.length / 2);
+  return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+}
+
+interface AngleTickProps {
+  payload?: { value?: string };
+  x?: number;
+  y?: number;
+  textAnchor?: string;
+}
+
+function AngleTick({ payload, x = 0, y = 0, textAnchor }: AngleTickProps) {
+  const lines = wrap(String(payload?.value ?? ""));
+  return (
+    <text
+      x={x}
+      y={y}
+      textAnchor={textAnchor}
+      fill="hsl(var(--foreground))"
+      fontSize={11}
+      fontWeight={600}
+    >
+      {lines.map((line, i) => (
+        <tspan key={line + i} x={x} dy={i === 0 ? 0 : 12}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
+}
 
 /**
  * Shared radar rendering for wheel-style tools.
@@ -33,14 +66,14 @@ const SERIES_HUES = [200, 30, 150, 285, 50];
 export function WheelRadar({
   axes,
   series,
-  height = 320,
+  height = 360,
 }: {
   axes: string[];
   series: WheelSeries[];
   height?: number;
 }) {
   const data = axes.map((label) => {
-    const point: Record<string, string | number> = { axis: SHORT(label) };
+    const point: Record<string, string | number> = { axis: label };
     series.forEach((s) => {
       point[s.key] = s.values[label.trim().toLowerCase()] ?? 0;
     });
@@ -50,18 +83,15 @@ export function WheelRadar({
   return (
     <div style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <RadarChart data={data} outerRadius="78%">
+        <RadarChart data={data} outerRadius="70%" margin={{ top: 16, right: 32, bottom: 16, left: 32 }}>
           <PolarGrid stroke="hsl(var(--border))" />
-          <PolarAngleAxis
-            dataKey="axis"
-            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-          />
+          <PolarAngleAxis dataKey="axis" tick={<AngleTick />} />
           <PolarRadiusAxis
             angle={90}
             domain={[0, 10]}
             tickCount={6}
             tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }}
-            stroke="hsl(var(--border))"
+            stroke="transparent"
           />
           {series.map((s, idx) => {
             const hue = SERIES_HUES[idx % SERIES_HUES.length];
@@ -71,9 +101,10 @@ export function WheelRadar({
                 key={s.key}
                 name={s.name}
                 dataKey={s.key}
-                stroke={`hsl(${hue} 70% ${emphasise ? "45%" : "60%"})`}
-                fill={`hsl(${hue} 70% 50% / ${emphasise ? 0.32 : 0.1})`}
+                stroke={`hsl(${hue} 70% ${emphasise ? "42%" : "60%"})`}
+                fill={`hsl(${hue} 70% 50% / ${emphasise ? 0.28 : 0.08})`}
                 strokeWidth={emphasise ? 2.5 : 1.5}
+                dot={emphasise ? { r: 3, strokeWidth: 0, fill: `hsl(${hue} 70% 42%)` } : false}
                 isAnimationActive={false}
               />
             );
