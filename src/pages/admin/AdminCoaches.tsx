@@ -139,7 +139,7 @@ export default function AdminCoaches() {
     setDefaultCoachLimit(defCoach);
     setDefaultPeerLimit(defPeer);
     setDefaultPeerGivenLimit(defPeerGiven);
-    const limitByCoach = new Map<string, Tables<"coach_session_limits">>();
+    const limitByCoach = new Map<string, Pick<Tables<"coach_session_limits">, "id" | "coach_user_id" | "monthly_limit" | "peer_monthly_limit" | "peer_given_monthly_limit">>();
     (limits || []).filter((l) => l.coach_user_id).forEach((l) => limitByCoach.set(l.coach_user_id!, l));
 
     // sessions delivered
@@ -180,7 +180,7 @@ export default function AdminCoaches() {
       assignedByCoach.set(a.coach_user_id, arr);
     });
 
-    const enrollByUser = new Map<string, Tables<"programme_enrollments">>();
+    const enrollByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "coachee_id" | "programme_id" | "cohort_id" | "start_date">>();
     (enrolls || []).forEach((e) => enrollByUser.set(e.coachee_id, e));
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const progById = new Map((progsData || []).map((p) => [p.id, p]));

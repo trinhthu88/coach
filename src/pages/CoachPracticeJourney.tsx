@@ -163,7 +163,7 @@ export default function CoachPracticeJourney() {
   // Trend data: per feedback entry, plot all 8 scores over time
   const trendData = useMemo(() => {
     return feedback.map((f, i) => {
-      const row: { idx: number; date: string } & Partial<Record<string, number | null>> = {
+      const row: Record<string, number | string | null> = {
         idx: i + 1,
         date: format(new Date(f.created_at), "MMM d"),
       };

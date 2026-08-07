@@ -119,7 +119,7 @@ export default function Sessions() {
     const ids = Array.from(
       new Set(allRows.flatMap((s) => [s.coach_id, s.coachee_id]))
     );
-    let byId = new Map<string, Tables<"profiles">>();
+    let byId = new Map<string, Pick<Tables<"profiles">, "id" | "full_name" | "email" | "avatar_url">>();
     if (ids.length) {
       const { data: profs } = await supabase
         .from("profiles")
@@ -431,7 +431,7 @@ interface ActionItem {
 function ActionItemsList({ items, date }: { items: Tables<"sessions">["action_items"]; date: string }) {
   const list: ActionItem[] = Array.isArray(items)
     ? items
-        .map((it) => (typeof it === "string" ? { text: it, done: false } : (it as ActionItem)))
+        .map((it) => (typeof it === "string" ? { text: it, done: false } : (it as unknown as ActionItem)))
         .filter((it): it is ActionItem => !!it?.text)
     : [];
   if (list.length === 0) return null;
