@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
+import { HeroPanel, PageHeader } from "@/components/ui/page-header";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
