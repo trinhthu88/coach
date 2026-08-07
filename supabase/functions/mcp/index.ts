@@ -173,7 +173,7 @@ var get_coach_profile_default = defineTool2({
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase.from("profiles").select(`
         id, full_name, email, bio, avatar_url, status, created_at,
-        coach_profiles(title, specialties, diplomas_certifications, years_experience, hourly_rate, rating_avg, sessions_completed, country_based, nationality, calendly_url, peer_coaching_opt_in)
+        coach_profiles(title, specialties, diplomas_certifications, years_experience, rating_avg, sessions_completed, country_based, nationality, calendly_url, peer_coaching_opt_in)
       `).eq("id", coach_id).maybeSingle();
     if (error) throw new ToolError2(error.message);
     if (!data) throw new ToolError2("Coach not found or access denied");
@@ -296,7 +296,7 @@ var list_coaches_default = defineTool6({
     const supabase = supabaseForUser(ctx);
     const { data, error } = await supabase.from("profiles").select(`
         id, full_name, email, avatar_url, status,
-        coach_profiles(title, specialties, years_experience, hourly_rate, rating_avg, sessions_completed, country_based, approval_status)
+        coach_profiles(title, specialties, years_experience, rating_avg, sessions_completed, country_based, approval_status)
       `).eq("coach_profiles.approval_status", "active").order("full_name").limit(limit);
     if (error) throw new ToolError6(error.message);
     return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };

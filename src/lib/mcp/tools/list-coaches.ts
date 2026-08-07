@@ -19,7 +19,7 @@ export default defineTool({
       .from("profiles")
       .select(`
         id, full_name, email, avatar_url, status,
-        coach_profiles(title, specialties, years_experience, hourly_rate, rating_avg, sessions_completed, country_based, approval_status)
+        coach_profiles(title, specialties, years_experience, rating_avg, sessions_completed, country_based, approval_status)
       `)
       .eq("coach_profiles.approval_status", "active")
       .order("full_name")

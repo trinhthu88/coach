@@ -19,7 +19,7 @@ export default defineTool({
       .from("profiles")
       .select(`
         id, full_name, email, bio, avatar_url, status, created_at,
-        coach_profiles(title, specialties, diplomas_certifications, years_experience, hourly_rate, rating_avg, sessions_completed, country_based, nationality, calendly_url, peer_coaching_opt_in)
+        coach_profiles(title, specialties, diplomas_certifications, years_experience, rating_avg, sessions_completed, country_based, nationality, calendly_url, peer_coaching_opt_in)
       `)
       .eq("id", coach_id)
       .maybeSingle();
