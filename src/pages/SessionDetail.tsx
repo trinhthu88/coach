@@ -536,6 +536,13 @@ export default function SessionDetail() {
         </div>
       </div>
 
+      {/* Coaching toolbox (non-peer, active sessions) */}
+      {!isPeer && (session.status === "confirmed" || session.status === "completed") && (
+        <SessionToolbox sessionId={session.id} onActionItemsChanged={reload} />
+      )}
+
+
+
       {/* Per-goal rating snapshot (non-peer sessions only) */}
       {!isPeer && (
         <SessionGoalRatings
