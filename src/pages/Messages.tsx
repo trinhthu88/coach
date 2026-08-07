@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, MessageSquare, Send, Mail } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface SessionLite {
   id: string;
@@ -266,24 +267,17 @@ export default function Messages() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <MessageSquare className="h-5 w-5" />
-          {totalUnread > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-              {totalUnread}
-            </span>
-          )}
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
-          <p className="text-sm text-muted-foreground">
-            {totalUnread > 0
+      <PageHeader
+          className="mb-0"
+          eyebrow="Conversations"
+          title="Your"
+          emphasis="messages"
+          subtitle={
+            totalUnread > 0
               ? `${totalUnread} unread message${totalUnread > 1 ? "s" : ""}`
-              : "Chat unlocks once a session is confirmed."}
-          </p>
-        </div>
-      </div>
+              : "Chat unlocks once a session is confirmed."
+          }
+        />
 
       {threads.length === 0 ? (
         <Card className="p-12 text-center">
@@ -405,7 +399,7 @@ export default function Messages() {
                             className={cn(
                               "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm",
                               mine
-                                ? "bg-primary text-primary-foreground"
+                                ? "bg-secondary text-secondary-foreground"
                                 : "bg-muted text-foreground"
                             )}
                           >

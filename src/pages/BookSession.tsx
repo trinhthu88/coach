@@ -358,7 +358,7 @@ export default function BookSession() {
         <Card className="space-y-6 p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">
+              <h1 className="font-display text-[1.9rem] leading-[1.1] tracking-tight">
                 {mode === "peer" ? "Book a peer coaching session" : "Book your session"}
               </h1>
               <p className="text-sm text-muted-foreground">

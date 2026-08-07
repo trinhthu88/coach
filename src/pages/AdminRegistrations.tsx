@@ -40,6 +40,7 @@ import { useUpdateCoacheeAssignment } from "@/hooks/admin/useUpdateCoacheeAssign
 import { useUpdateCoachAssignment } from "@/hooks/admin/useUpdateCoachAssignment";
 import { useBulkImportCoachees } from "@/hooks/admin/useBulkImportCoachees";
 import { CoachListRow, CoachOpt, CoacheeRow, Status } from "@/hooks/admin/types";
+import { PageHeader } from "@/components/ui/page-header";
 
 const STATUS_LABEL: Record<Status, string> = {
   pending_approval: "Awaiting approval",
@@ -157,13 +158,12 @@ export default function AdminRegistrations() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Admin</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Registrations</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage all coaches and coachees.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Admin"
+        title="All"
+        emphasis="registrations"
+        subtitle="Manage all coaches and coachees."
+      />
 
       <Tabs defaultValue="coachees">
         <TabsList>

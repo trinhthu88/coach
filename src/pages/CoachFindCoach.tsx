@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, Star, Loader2, Info } from "lucide-react";
 import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface CoachRow {
   id: string;
@@ -51,19 +52,13 @@ export default function CoachFindCoach() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <Search className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="font-display text-3xl tracking-tight text-secondary">
-            Find a <em className="not-italic text-primary">coach</em>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Coaches curated by admin for your continued growth.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+            className="mb-0"
+            eyebrow="Curated network"
+            title="Find a"
+            emphasis="coach"
+            subtitle="Coaches curated by admin for your continued growth."
+          />
 
       <Card className="flex items-start gap-2 border-warning/30 bg-warning/5 p-4 text-sm">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />

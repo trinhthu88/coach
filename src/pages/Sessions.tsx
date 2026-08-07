@@ -156,8 +156,9 @@ export default function Sessions() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Schedule"
-        title="Sessions"
-        trailing=""
+        title="Your"
+        emphasis="sessions"
+
         subtitle={
           role === "coach"
             ? "Confirm requests, manage notes and meeting links."

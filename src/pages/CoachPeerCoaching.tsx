@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MessagesSquare, Loader2, Star } from "lucide-react";
 import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface PeerCoach {
   id: string;
@@ -45,19 +46,13 @@ export default function CoachPeerCoaching() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
-          <MessagesSquare className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="font-display text-3xl tracking-tight text-secondary">
-            Peer <em className="not-italic text-primary">coaching</em>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Coaches who have opted in to peer coaching. Book a session to be coached by a peer.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+            className="mb-0"
+            eyebrow="Community"
+            title="Peer"
+            emphasis="coaching"
+            subtitle="Coaches who have opted in to peer coaching. Book a session to be coached by a peer."
+          />
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

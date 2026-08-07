@@ -31,6 +31,7 @@ import { format, isBefore, startOfWeek, endOfWeek, startOfMonth, isAfter } from 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Status = "on_track" | "needs_attention" | "at_risk";
 
@@ -270,17 +271,13 @@ export default function CoachClients() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <Users className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">My clients</h1>
-          <p className="text-sm text-muted-foreground">
-            All active coachees at a glance — progress, engagement, and private notes.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+          className="mb-0"
+          eyebrow="Practice"
+          title="My"
+          emphasis="clients"
+          subtitle="All active coachees at a glance — progress, engagement, and private notes."
+        />
 
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -376,22 +373,22 @@ function MetricTile({
   tone?: "danger" | "ok";
 }) {
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+    <div className="surface-card hover-lift p-4">
+      <div className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
         {icon}
         <span>{label}</span>
       </div>
       <p
         className={cn(
-          "mt-1 text-2xl font-semibold",
+          "font-display mt-2 text-[2rem] font-normal leading-none tracking-tight",
           tone === "danger" && "text-destructive",
           tone === "ok" && "text-success"
         )}
       >
         {value}
       </p>
-      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
-    </Card>
+      {sub && <p className="mt-2 text-[11px] text-muted-foreground">{sub}</p>}
+    </div>
   );
 }
 

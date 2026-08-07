@@ -21,6 +21,7 @@ import {
   Legend,
   CartesianGrid,
 } from "recharts";
+import { PageHeader } from "@/components/ui/page-header";
 
 const COMPETENCIES = [
   { key: "ethical_practice", label: "Ethical practice" },
@@ -194,19 +195,13 @@ export default function CoachPracticeJourney() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning/15 text-warning">
-          <Layers className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="font-display text-3xl tracking-tight text-secondary">
-            Practice <em className="not-italic text-primary">analytics</em>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Your sessions, peer-coaching activity, and ICF competency feedback at a glance.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+            className="mb-0"
+            eyebrow="Practice"
+            title="Practice"
+            emphasis="analytics"
+            subtitle="Your sessions, peer-coaching activity, and ICF competency feedback at a glance."
+          />
 
       {/* COUNTERS */}
       <div className="grid gap-3 md:grid-cols-3">

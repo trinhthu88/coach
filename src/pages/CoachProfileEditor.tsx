@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Save } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface CoachForm {
   title: string;
@@ -123,18 +124,17 @@ export default function CoachProfileEditor() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Coach</p>
-          <h1 className="text-3xl font-semibold tracking-tight">My coach profile</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            This is what coachees see when browsing the directory.
-          </p>
-        </div>
-        <Badge variant={statusVariant as any} className="capitalize">
-          {status.replace("_", " ")}
-        </Badge>
-      </div>
+      <PageHeader
+        eyebrow="Coach"
+        title="My coach"
+        emphasis="profile"
+        subtitle="This is what coachees see when browsing the directory."
+        actions={
+          <Badge variant={statusVariant as any} className="capitalize">
+            {status.replace("_", " ")}
+          </Badge>
+        }
+      />
 
       {status === "pending_approval" && (
         <Card className="border-warning/30 bg-warning/5 p-4 text-sm">
