@@ -88,7 +88,7 @@ export default function CoachPracticeJourney() {
       ]);
 
       const list: Entry[] = [];
-      (coached || []).forEach((s: any) =>
+      (coached || []).forEach((s) =>
         list.push({
           id: s.id,
           topic: s.topic,
@@ -99,7 +99,7 @@ export default function CoachPracticeJourney() {
           counterpart_id: s.coach_id,
         })
       );
-      (peer || []).forEach((s: any) =>
+      (peer || []).forEach((s) =>
         list.push({
           id: s.id,
           topic: s.topic,
@@ -117,7 +117,7 @@ export default function CoachPracticeJourney() {
       const ids = Array.from(
         new Set([
           ...list.map((e) => e.counterpart_id),
-          ...(fb || []).map((f: any) => f.peer_coachee_id),
+          ...(fb || []).map((f) => f.peer_coachee_id),
         ])
       );
       if (ids.length) {
@@ -125,8 +125,8 @@ export default function CoachPracticeJourney() {
           .from("profiles")
           .select("id, full_name")
           .in("id", ids);
-        const map: Record<string, any> = {};
-        (profs || []).forEach((p: any) => (map[p.id] = p));
+        const map: Record<string, { full_name: string }> = {};
+        (profs || []).forEach((p) => (map[p.id] = p));
         setProfilesById(map);
       }
       setLoading(false);
@@ -163,7 +163,7 @@ export default function CoachPracticeJourney() {
   // Trend data: per feedback entry, plot all 8 scores over time
   const trendData = useMemo(() => {
     return feedback.map((f, i) => {
-      const row: any = {
+      const row: { idx: number; date: string } & Partial<Record<string, number | null>> = {
         idx: i + 1,
         date: format(new Date(f.created_at), "MMM d"),
       };
