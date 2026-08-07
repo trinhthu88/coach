@@ -1,18 +1,11 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
-export type AppRole = "admin" | "coach" | "coachee";
+export type AppRole = Database["public"]["Enums"]["app_role"];
 
-interface Profile {
-  id: string;
-  full_name: string;
-  email: string;
-  avatar_url: string | null;
-  bio: string | null;
-  status: string;
-  must_change_password?: boolean;
-}
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface AuthContextValue {
   user: User | null;
@@ -38,13 +31,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
-    setProfile(profileData as Profile | null);
+    setProfile(profileData);
     if (roleData && roleData.length > 0) {
       const priority: Record<AppRole, number> = { admin: 1, coach: 2, coachee: 3 };
       const top = [...roleData].sort(
-        (a, b) => priority[a.role as AppRole] - priority[b.role as AppRole]
+        (a, b) => priority[a.role] - priority[b.role]
       )[0];
-      setRole(top.role as AppRole);
+      setRole(top.role);
     } else {
       setRole(null);
     }

@@ -1,7 +1,13 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
+import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
+import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
+import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
+import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
+import type { Goal, Milestone, RawActionItem } from "@/hooks/journey/types";
+import type { Tables } from "@/integrations/supabase/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,18 +48,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GoalWheel, GoalScoreCards, type GoalRatingRow, type SessionRatingSeries } from "./journey/GoalWheel";
 
-interface Goal { id: string; title: string; description: string | null; target_date: string | null; status: string; created_at: string; }
-interface Milestone { id: string; goal_id: string; title: string; target_date: string | null; is_done: boolean; done_at: string | null; }
-interface GoalRating { id: string; goal_id: string; coachee_id: string; start_rating: number; current_rating: number; target_rating: number; current_updated_at: string; }
-interface ProgrammeInfo {
-  enrollmentId: string;
-  programmeName: string;
-  startDate: string | null;
-  endDate: string | null;
-  sessionsAllowed: number;
-  durationMonths: number;
-}
-interface RawActionItem { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null; }
 interface FlatAction extends RawActionItem {
   sessionId: string;
   sessionTopic: string;
@@ -80,79 +74,33 @@ function initials(s: string) {
 
 export default function CoacheeJourney() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [reflections, setReflections] = useState<any[]>([]);
-  const [coachNames, setCoachNames] = useState<Record<string, string>>({});
-  const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(null);
-  const [ratings, setRatings] = useState<Record<string, GoalRating>>({});
-  const [sessionRatings, setSessionRatings] = useState<any[]>([]);
-  const [programme, setProgramme] = useState<ProgrammeInfo | null>(null);
+  const goalsApi = useJourneyGoals(user?.id);
+  const ratingsApi = useJourneyRatings(user?.id);
+  const sessionsApi = useJourneySessions(user?.id, { includePeer: false });
+  const reflectionsApi = useJourneyReflections(user?.id);
+  const programmeApi = useJourneyProgramme(user?.id);
+
+  const { goals, milestones, toggleMilestone } = goalsApi;
+  const { ratings, sessionRatings, saveRating } = ratingsApi;
+  const { coachingSessions: sessions, coachNames, toggleAction: toggleActionRaw } = sessionsApi;
+  const { reflections, deleteReflection } = reflectionsApi;
+  const { programme, usage } = programmeApi;
+
+  const loading =
+    goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading || programmeApi.loading;
+
+  const refresh = useCallback(() => {
+    goalsApi.refresh();
+    ratingsApi.refresh();
+    sessionsApi.refresh();
+    reflectionsApi.refresh();
+    programmeApi.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
-
-  const refresh = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const [{ data: g }, { data: m }, { data: s }, { data: r }, { data: u }, { data: gr }, { data: sgr }, { data: enr }] = await Promise.all([
-      supabase.from("coachee_goals").select("*").eq("coachee_id", user.id).order("created_at"),
-      supabase.from("coachee_milestones").select("*").eq("coachee_id", user.id).order("created_at"),
-      supabase.from("sessions").select("*").eq("coachee_id", user.id).order("start_time", { ascending: false }),
-      supabase.from("coachee_reflections").select("*").eq("coachee_id", user.id).order("created_at", { ascending: false }),
-      supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
-      supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", user.id),
-      supabase.from("session_goal_ratings").select("*").eq("coachee_id", user.id),
-      supabase
-        .from("programme_enrollments")
-        .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")
-        .eq("coachee_id", user.id)
-        .eq("status", "active")
-        .order("start_date", { ascending: false })
-        .limit(1),
-    ]);
-    setGoals(g || []);
-    setMilestones(m || []);
-    setSessions(s || []);
-    setReflections(r || []);
-    setSessionRatings(sgr || []);
-    const usageRow = Array.isArray(u) ? u[0] : u;
-    if (usageRow) setUsage(usageRow as any);
-
-    const rmap: Record<string, GoalRating> = {};
-    for (const row of (gr || []) as any[]) rmap[row.goal_id] = row;
-    setRatings(rmap);
-
-    const e = (enr || [])[0] as any;
-    if (e && e.programmes) {
-      setProgramme({
-        enrollmentId: e.id,
-        programmeName: e.programmes.name,
-        startDate: e.start_date,
-        endDate: e.end_date,
-        sessionsAllowed: e.programmes.coachee_session_limit ?? 0,
-        durationMonths: e.programmes.duration_months ?? 0,
-      });
-    } else {
-      setProgramme(null);
-    }
-
-    const coachIds = Array.from(new Set((s || []).map((x: any) => x.coach_id).filter(Boolean)));
-    if (coachIds.length) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", coachIds);
-      const map: Record<string, string> = {};
-      for (const p of profs || []) map[p.id] = p.full_name;
-      setCoachNames(map);
-    }
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   // Derived
   const goalProgress = (goalId: string) => {
@@ -288,13 +236,6 @@ export default function CoacheeJourney() {
     return { start, end, totalWeeks, elapsedWeeks };
   }, [programme, now]);
 
-  const lastCompletedAt = useMemo(() => {
-    const dates = sessions
-      .filter((s) => s.status === "completed")
-      .map((s) => new Date(s.start_time).getTime());
-    return dates.length ? Math.max(...dates) : null;
-  }, [sessions]);
-
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
   // Per-goal lock: a goal's Start/Target lock once the user completes
   // any session that took place AFTER the goal was created. This lets
@@ -318,7 +259,7 @@ export default function CoacheeJourney() {
   const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
     const sessionById = new Map(sessions.map((s) => [s.id, s]));
     const grouped = new Map<string, { date: string; rows: { goalId: string; rating: number }[] }>();
-    for (const row of sessionRatings as any[]) {
+    for (const row of sessionRatings) {
       const sess = sessionById.get(row.session_id);
       if (!sess) continue;
       const key = row.session_id;
@@ -337,98 +278,23 @@ export default function CoacheeJourney() {
     const completed = sessions
       .filter((s) => s.status === "completed")
       .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
-    const ratedSessionIds = new Set((sessionRatings as any[]).map((r) => r.session_id));
+    const ratedSessionIds = new Set(sessionRatings.map((r) => r.session_id));
     return completed.find((s) => !ratedSessionIds.has(s.id)) || null;
   }, [sessions, sessionRatings]);
 
   const needsRatingUpdate = goals.length > 0 && !!pendingReflectionSession;
 
-  const saveRating = async (
-    goalId: string,
-    patch: Partial<{ start_rating: number; current_rating: number; target_rating: number }>
-  ) => {
-    if (!user) return;
-    const existing = ratings[goalId];
-    const merged: any = {
-      goal_id: goalId,
-      coachee_id: user.id,
-      start_rating: existing?.start_rating ?? 30,
-      current_rating: existing?.current_rating ?? 30,
-      target_rating: existing?.target_rating ?? 80,
-      current_updated_at: existing?.current_updated_at ?? new Date().toISOString(),
-      ...patch,
-    };
-    if (patch.current_rating !== undefined) {
-      merged.current_updated_at = new Date().toISOString();
-    }
-    setRatings((prev) => ({
-      ...prev,
-      [goalId]: { ...(existing as any), ...merged, id: existing?.id ?? "" },
-    }));
-    const { data, error } = await supabase
-      .from("coachee_goal_ratings")
-      .upsert(merged, { onConflict: "goal_id" })
-      .select()
-      .single();
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    if (data) setRatings((prev) => ({ ...prev, [goalId]: data as any }));
-  };
-
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
     setSavingRef(true);
-    const { error } = await supabase.from("coachee_reflections").insert({
-      coachee_id: user.id,
-      body: newReflection.trim(),
-      mood: reflectionMood.trim() || null,
-    });
+    const ok = await reflectionsApi.addReflection(newReflection, reflectionMood);
     setSavingRef(false);
-    if (error) return toast.error(error.message);
+    if (!ok) return;
     setNewReflection("");
     setReflectionMood("");
-    refresh();
   };
 
-  const deleteReflection = async (id: string) => {
-    const { error } = await supabase.from("coachee_reflections").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
-  const toggleMilestone = async (m: Milestone) => {
-    const { error } = await supabase
-      .from("coachee_milestones")
-      .update({ is_done: !m.is_done, done_at: !m.is_done ? new Date().toISOString() : null })
-      .eq("id", m.id);
-    if (error) return toast.error(error.message);
-    refresh();
-  };
-
-  const toggleAction = async (a: FlatAction) => {
-    const sess = sessions.find((s) => s.id === a.sessionId);
-    if (!sess) return;
-    const items = Array.isArray(sess.action_items) ? [...sess.action_items] : [];
-    const cur = items[a.idx];
-    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...cur };
-    norm.done = !norm.done;
-    items[a.idx] = norm;
-    // Optimistic
-    setSessions((prev) =>
-      prev.map((s) => (s.id === a.sessionId ? { ...s, action_items: items } : s))
-    );
-    const { error } = await supabase
-      .from("sessions")
-      .update({ action_items: items })
-      .eq("id", a.sessionId);
-    if (error) {
-      toast.error(error.message);
-      refresh();
-    }
-  };
-
+  const toggleAction = (a: FlatAction) => toggleActionRaw(a.sessionId, a.idx, "coaching");
 
   if (loading) {
     return (
@@ -674,10 +540,10 @@ export default function CoacheeJourney() {
 
           <SectionHeader
             title="Goals & milestones"
-            action={goals.length > 0 ? <GoalDialog onSaved={refresh} userId={user!.id} /> : undefined}
+            action={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} /> : undefined}
           />
           {goals.length === 0 ? (
-            <EmptyGoals userId={user!.id} onSaved={refresh} />
+            <EmptyGoals onAdd={goalsApi.addGoal} />
           ) : (
             <div className="space-y-2">
               {goals.map((g, i) => (
@@ -690,8 +556,9 @@ export default function CoacheeJourney() {
                   accent={ACCENTS[i % ACCENTS.length]}
                   onToggle={toggleMilestone}
                   onToggleAction={toggleAction}
-                  onChanged={refresh}
-                  userId={user!.id}
+                  onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
+                  onDeleteGoal={goalsApi.deleteGoal}
+                  onDeleteMilestone={goalsApi.deleteMilestone}
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
@@ -708,10 +575,10 @@ export default function CoacheeJourney() {
         {/* GOALS FULL */}
         <TabsContent value="goals" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <GoalDialog onSaved={refresh} userId={user!.id} />
+            <GoalDialog onAdd={goalsApi.addGoal} />
           </div>
           {goals.length === 0 ? (
-            <EmptyGoals userId={user!.id} onSaved={refresh} />
+            <EmptyGoals onAdd={goalsApi.addGoal} />
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-3">
@@ -742,8 +609,9 @@ export default function CoacheeJourney() {
                     accent={ACCENTS[i % ACCENTS.length]}
                     onToggle={toggleMilestone}
                     onToggleAction={toggleAction}
-                    onChanged={refresh}
-                    userId={user!.id}
+                    onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
+                    onDeleteGoal={goalsApi.deleteGoal}
+                    onDeleteMilestone={goalsApi.deleteMilestone}
                     showLinkedActions
                     defaultOpen={i === 0}
                     rating={ratingRows.find((r) => r.goalId === g.id)}
@@ -891,7 +759,7 @@ function SectionHeader({ title, action }: { title: string; action?: React.ReactN
   );
 }
 
-function EmptyGoals({ userId, onSaved }: { userId: string; onSaved: () => void }) {
+function EmptyGoals({ onAdd }: { onAdd: (payload: { title: string; description: string | null; target_date: string | null }) => Promise<boolean | undefined> | void }) {
   return (
     <Card className="p-12 text-center">
       <Target className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
@@ -900,7 +768,7 @@ function EmptyGoals({ userId, onSaved }: { userId: string; onSaved: () => void }
         Define what you want to achieve and your coach can attach action items to milestones.
       </p>
       <div className="flex justify-center">
-        <GoalDialog onSaved={onSaved} userId={userId} />
+        <GoalDialog onAdd={onAdd} />
       </div>
     </Card>
   );
@@ -914,8 +782,9 @@ function GoalAccordion({
   accent,
   onToggle,
   onToggleAction,
-  onChanged,
-  userId,
+  onAddMilestone,
+  onDeleteGoal,
+  onDeleteMilestone,
   defaultOpen,
   showLinkedActions = true,
   rating,
@@ -929,8 +798,9 @@ function GoalAccordion({
   accent: typeof ACCENTS[number];
   onToggle: (m: Milestone) => void;
   onToggleAction: (a: FlatAction) => void;
-  onChanged: () => void;
-  userId: string;
+  onAddMilestone: (goalId: string, title: string, target_date: string | null) => Promise<boolean | undefined> | void;
+  onDeleteGoal: (goalId: string) => Promise<void> | void;
+  onDeleteMilestone: (id: string) => Promise<void> | void;
   defaultOpen?: boolean;
   showLinkedActions?: boolean;
   rating?: GoalRatingRow;
@@ -944,30 +814,20 @@ function GoalAccordion({
 
   const addMs = async () => {
     if (!newMs.trim()) return;
-    const { error } = await supabase.from("coachee_milestones").insert({
-      goal_id: goal.id,
-      coachee_id: userId,
-      title: newMs.trim(),
-      target_date: newDate || null,
-    });
-    if (error) return toast.error(error.message);
+    const ok = await onAddMilestone(goal.id, newMs.trim(), newDate || null);
+    if (ok === false) return;
     setNewMs("");
     setNewDate("");
     setAdding(false);
-    onChanged();
   };
 
   const deleteGoal = async () => {
     if (!confirm("Delete this goal and all its milestones?")) return;
-    const { error } = await supabase.from("coachee_goals").delete().eq("id", goal.id);
-    if (error) return toast.error(error.message);
-    onChanged();
+    await onDeleteGoal(goal.id);
   };
 
   const deleteMs = async (id: string) => {
-    const { error } = await supabase.from("coachee_milestones").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    onChanged();
+    await onDeleteMilestone(id);
   };
 
   return (
@@ -1361,7 +1221,7 @@ function SessionRow({
   );
 }
 
-function GoalDialog({ onSaved, userId }: { onSaved: () => void; userId: string }) {
+function GoalDialog({ onAdd }: { onAdd: (payload: { title: string; description: string | null; target_date: string | null }) => Promise<boolean | undefined> | void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
@@ -1371,17 +1231,15 @@ function GoalDialog({ onSaved, userId }: { onSaved: () => void; userId: string }
   const save = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("coachee_goals").insert({
-      coachee_id: userId,
+    const ok = await onAdd({
       title: title.trim(),
       description: desc.trim() || null,
       target_date: date || null,
     });
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (ok === false) return;
     setTitle(""); setDesc(""); setDate("");
     setOpen(false);
-    onSaved();
   };
 
   return (

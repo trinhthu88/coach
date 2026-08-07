@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,28 +24,12 @@ import {
   History,
 } from "lucide-react";
 import { format, isAfter } from "date-fns";
-import { toast } from "sonner";
 import { useFavorites } from "@/hooks/useFavorites";
 import { cn } from "@/lib/utils";
-
-interface SessionLite {
-  id: string;
-  topic: string;
-  start_time: string;
-  duration_minutes: number;
-  status: string;
-  meeting_url: string | null;
-  coach_id: string;
-  coachee_id: string;
-  action_items?: any;
-}
-interface CoachLite {
-  id: string;
-  title: string | null;
-  specialties: string[] | null;
-  rating_avg: number;
-  profiles: { full_name: string; avatar_url: string | null } | null;
-}
+import { useCoacheeDashboardData, SessionLite, CoachLite } from "@/hooks/dashboard/useCoacheeDashboardData";
+import { Json } from "@/integrations/supabase/types";
+import { useCoachDashboardData, CoachSession } from "@/hooks/dashboard/useCoachDashboardData";
+import { useAdminDashboardStats } from "@/hooks/dashboard/useAdminDashboardStats";
 
 export default function Dashboard() {
   const { user, profile, role } = useAuth();
@@ -59,63 +42,13 @@ export default function Dashboard() {
   };
 
   // Coachee data
-  const [sessions, setSessions] = useState<SessionLite[]>([]);
-  const [coachesById, setCoachesById] = useState<Record<string, { full_name: string; avatar_url: string | null }>>({});
-  const [favCoaches, setFavCoaches] = useState<CoachLite[]>([]);
-  const [recCoaches, setRecCoaches] = useState<CoachLite[]>([]);
-  const [sessionLimit, setSessionLimit] = useState<number>(0);
   const { favorites } = useFavorites();
-
-  useEffect(() => {
-    if (!user || role !== "coachee") return;
-    (async () => {
-      const { data: ses } = await supabase
-        .from("sessions")
-        .select("id, topic, start_time, duration_minutes, status, meeting_url, coach_id, coachee_id, action_items")
-        .eq("coachee_id", user.id)
-        .order("start_time", { ascending: false });
-      const list = (ses as SessionLite[]) || [];
-      setSessions(list);
-
-      const coachIds = Array.from(new Set(list.map((s) => s.coach_id)));
-      if (coachIds.length) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url")
-          .in("id", coachIds);
-        const map: Record<string, any> = {};
-        (profs || []).forEach((p: any) => (map[p.id] = p));
-        setCoachesById(map);
-      }
-
-      // Session limit (monthly limit acts as the cap shown in the recap)
-      const { data: usage } = await supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id });
-      if (usage && usage.length > 0) {
-        setSessionLimit(usage[0].monthly_limit || 0);
-      }
-
-      // Recommended (top-rated active coaches, max 3)
-      const { data: recs } = await supabase
-        .from("coach_profiles")
-        .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
-        .eq("approval_status", "active")
-        .order("is_featured", { ascending: false })
-        .order("rating_avg", { ascending: false })
-        .limit(3);
-      setRecCoaches((recs as unknown as CoachLite[]) || []);
-
-      // Favorites
-      if (favorites.length > 0) {
-        const { data: favs } = await supabase
-          .from("coach_profiles")
-          .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
-          .in("id", favorites);
-        setFavCoaches((favs as unknown as CoachLite[]) || []);
-      } else {
-        setFavCoaches([]);
-      }
-    })();
-  }, [user, role, favorites]);
+  const isCoachee = role === "coachee";
+  const { sessions, coachesById, favCoaches, recCoaches, sessionLimit } = useCoacheeDashboardData(
+    user?.id,
+    isCoachee,
+    favorites
+  );
 
   const now = new Date();
   const stats = useMemo(() => {
@@ -255,96 +188,18 @@ export default function Dashboard() {
 
 // ============= Coach dashboard =============
 
-interface CoachSession {
-  id: string;
-  topic: string;
-  start_time: string;
-  duration_minutes: number;
-  status: string;
-  coach_notes: string | null;
-  meeting_url: string | null;
-  coachee_id: string;
-}
-
-interface PeerSession {
-  id: string;
-  topic: string;
-  start_time: string;
-  duration_minutes: number;
-  status: string;
-  peer_coach_id: string;
-  peer_coachee_id: string;
-}
-
 function CoachDashboard({ userId }: { userId: string }) {
-  const [sessions, setSessions] = useState<CoachSession[]>([]);
-  const [peerSessions, setPeerSessions] = useState<PeerSession[]>([]);
-  const [profilesById, setProfilesById] = useState<
-    Record<string, { full_name: string; avatar_url: string | null; email: string }>
-  >({});
-  const [loading, setLoading] = useState(true);
-  const [actingId, setActingId] = useState<string | null>(null);
-  const [peerOptIn, setPeerOptIn] = useState(false);
-  const [coachProfile, setCoachProfile] = useState<{
-    rating_avg: number;
-    sessions_completed: number;
-  } | null>(null);
-
-  const reload = async () => {
-    const [{ data: sess }, { data: peer }, { data: cp }] = await Promise.all([
-      supabase
-        .from("sessions")
-        .select(
-          "id, topic, start_time, duration_minutes, status, coach_notes, meeting_url, coachee_id"
-        )
-        .eq("coach_id", userId)
-        .order("start_time", { ascending: false }),
-      supabase
-        .from("peer_sessions")
-        .select(
-          "id, topic, start_time, duration_minutes, status, peer_coach_id, peer_coachee_id"
-        )
-        .or(`peer_coach_id.eq.${userId},peer_coachee_id.eq.${userId}`)
-        .order("start_time", { ascending: false }),
-      supabase
-        .from("coach_profiles")
-        .select("rating_avg, sessions_completed, peer_coaching_opt_in")
-        .eq("id", userId)
-        .maybeSingle(),
-    ]);
-
-    const list = (sess as CoachSession[]) || [];
-    const peerList = (peer as PeerSession[]) || [];
-    setSessions(list);
-    setPeerSessions(peerList);
-    if (cp) {
-      setCoachProfile({ rating_avg: cp.rating_avg, sessions_completed: cp.sessions_completed });
-      setPeerOptIn(!!cp.peer_coaching_opt_in);
-    }
-
-    const ids = Array.from(
-      new Set([
-        ...list.map((s) => s.coachee_id),
-        ...peerList.map((s) => s.peer_coach_id),
-        ...peerList.map((s) => s.peer_coachee_id),
-      ])
-    );
-    if (ids.length) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url, email")
-        .in("id", ids);
-      const map: Record<string, any> = {};
-      (profs || []).forEach((p: any) => (map[p.id] = p));
-      setProfilesById(map);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  const {
+    sessions,
+    peerSessions,
+    profilesById,
+    loading,
+    actingId,
+    peerOptIn,
+    coachProfile,
+    approve,
+    decline,
+  } = useCoachDashboardData(userId);
 
   const now = new Date();
   const upcoming = sessions.filter(
@@ -362,29 +217,6 @@ function CoachDashboard({ userId }: { userId: string }) {
   const activeClients = new Set(
     sessions.filter((s) => ["confirmed", "completed"].includes(s.status)).map((s) => s.coachee_id)
   ).size;
-
-  const approve = async (s: CoachSession) => {
-    setActingId(s.id);
-    const { error } = await supabase
-      .from("sessions")
-      .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
-      .eq("id", s.id);
-    setActingId(null);
-    if (error) return toast.error(error.message);
-    toast.success("Session confirmed");
-    reload();
-  };
-  const decline = async (s: CoachSession) => {
-    setActingId(s.id);
-    const { error } = await supabase
-      .from("sessions")
-      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
-      .eq("id", s.id);
-    setActingId(null);
-    if (error) return toast.error(error.message);
-    toast.success("Request declined");
-    reload();
-  };
 
   if (loading) {
     return (
@@ -502,11 +334,12 @@ function CoachDashboard({ userId }: { userId: string }) {
           <NextSessionCard
             session={
               nextSession
-                ? {
+                ? ({
                     ...nextSession,
                     meeting_url: nextSession.meeting_url,
                     coach_id: userId,
-                  } as any
+                    action_items: null,
+                  } as SessionLite)
                 : undefined
             }
             coach={nextCoachee || null}
@@ -989,9 +822,9 @@ function ActionItemsPanel({
   const items: { text: string; done: boolean; sessionId: string; topic: string; date: string; coach: string }[] = [];
   sessions.forEach((s) => {
     const arr = Array.isArray(s.action_items) ? s.action_items : [];
-    arr.forEach((it: any) => {
-      const text = typeof it === "string" ? it : it?.text || "";
-      const done = typeof it === "string" ? false : !!it?.done;
+    arr.forEach((it: Json) => {
+      const text = typeof it === "string" ? it : (it as { text?: string })?.text || "";
+      const done = typeof it === "string" ? false : !!(it as { done?: boolean })?.done;
       if (text) {
         items.push({
           text,
@@ -1040,61 +873,7 @@ function ActionItemsPanel({
 
 // ============= Admin dashboard =============
 function AdminDashboard() {
-  const [stats, setStats] = useState({
-    totalCoachees: 0,
-    bookedSessions: 0,
-    completedSessions: 0,
-    cancelledSessions: 0,
-    totalSessions: 0,
-    pendingLinkSessions: 0,
-    pendingCoaches: 0,
-    pendingCoachees: 0,
-  });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const [coacheeRolesRes, sessionsRes, pendingLinkRes, pendingCoachesRes, pendingCoacheesRes] = await Promise.all([
-        supabase
-          .from("user_roles")
-          .select("user_id", { count: "exact", head: true })
-          .eq("role", "coachee"),
-        supabase.from("sessions").select("id, status, meeting_url"),
-        supabase
-          .from("sessions")
-          .select("id", { count: "exact", head: true })
-          .in("status", ["confirmed", "pending_coach_approval"])
-          .or("meeting_url.is.null,meeting_url.eq."),
-        supabase
-          .from("coach_profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("approval_status", "pending_approval"),
-        supabase
-          .from("coachee_profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("approval_status", "pending_approval"),
-      ]);
-
-      const all = sessionsRes.data || [];
-      const booked = all.filter((s) =>
-        ["pending_coach_approval", "confirmed", "completed"].includes(s.status)
-      ).length;
-      const completed = all.filter((s) => s.status === "completed").length;
-      const cancelled = all.filter((s) => s.status === "cancelled").length;
-
-      setStats({
-        totalCoachees: coacheeRolesRes.count || 0,
-        bookedSessions: booked,
-        completedSessions: completed,
-        cancelledSessions: cancelled,
-        totalSessions: all.length,
-        pendingLinkSessions: pendingLinkRes.count || 0,
-        pendingCoaches: pendingCoachesRes.count || 0,
-        pendingCoachees: pendingCoacheesRes.count || 0,
-      });
-      setLoading(false);
-    })();
-  }, []);
+  const { stats, loading } = useAdminDashboardStats();
 
   if (loading) {
     return (
