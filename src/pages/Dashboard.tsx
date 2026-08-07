@@ -563,19 +563,18 @@ function StatCard({
   icon: React.ElementType;
 }) {
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-            {label}
-          </p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
+    <div className="surface-card hover-lift p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          {label}
+        </p>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] bg-primary-soft text-primary">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
       </div>
+      <p className="font-display mt-3 text-[2.6rem] font-normal leading-none tracking-tight">{value}</p>
+      <p className="mt-2.5 text-xs text-muted-foreground">{hint}</p>
+
     </Card>
   );
 }
