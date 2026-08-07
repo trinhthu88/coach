@@ -77,41 +77,47 @@ export default function CoachFindCoach() {
           No coaches have been assigned to you yet. Reach out to your admin.
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {coaches.map((c) => (
-            <Card key={c.id} className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">
-                {(c.profiles?.full_name || "?")
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase()}
+            <div key={c.id} className="surface-card hover-lift flex flex-col gap-3 p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">
+                  {(c.profiles?.full_name || "?")
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-semibold">{c.profiles?.full_name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{c.title || "Coach"}</p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-foreground">
+                  <Star className="h-3 w-3 fill-warning text-warning" />
+                  {Number(c.rating_avg).toFixed(1)}
+                </span>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{c.profiles?.full_name}</p>
-                <p className="truncate text-xs text-muted-foreground">{c.title || "Coach"}</p>
-                {c.specialties && c.specialties.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {c.specialties.slice(0, 3).map((s) => (
-                      <Badge key={s} variant="secondary" className="rounded-full text-[10px]">
-                        {s}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+
+              {c.specialties && c.specialties.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {c.specialties.slice(0, 3).map((s) => (
+                    <Badge key={s} variant="secondary" className="rounded-full text-[10px] uppercase tracking-wider">
+                      {s}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-auto flex items-center gap-2 pt-1">
+                <Button asChild size="sm" variant="outline" className="flex-1">
+                  <Link to={`/coaches/${c.id}`}>View</Link>
+                </Button>
+                <Button asChild size="sm" className="flex-1">
+                  <Link to={`/coaches/${c.id}/book`}>Book</Link>
+                </Button>
               </div>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold">
-                <Star className="h-3 w-3 fill-warning text-warning" />
-                {Number(c.rating_avg).toFixed(1)}
-              </span>
-              <Button asChild size="sm" variant="outline">
-                <Link to={`/coaches/${c.id}`}>View</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link to={`/coaches/${c.id}/book`}>Book</Link>
-              </Button>
-            </Card>
+            </div>
           ))}
         </div>
       )}

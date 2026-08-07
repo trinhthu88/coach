@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { SessionRow } from "@/components/ui/proto";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -293,43 +294,15 @@ function SessionCard({
     onChanged();
   };
 
+  const kindLabel = isPeer ? (userIsPeerCoach ? "Peer · give" : "Peer · receive") : role === "coach" ? "with" : "Coach";
   return (
-    <Card
-      className="group cursor-pointer p-5 transition-colors hover:border-primary/40"
-      onClick={onOpen}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary font-bold">
-            {(counterpart?.full_name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="truncate font-semibold">{session.topic}</p>
-              {isPeer && (
-                <span className="inline-flex shrink-0 items-center rounded-full bg-success/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-success">
-                  {userIsPeerCoach ? "Peer · give" : "Peer · receive"}
-                </span>
-              )}
-            </div>
-            <p className="truncate text-sm text-muted-foreground">
-              {(isPeer ? userIsPeerCoach : role === "coach") ? "with " : "Coach: "}
-              <span className="font-medium text-foreground">
-                {counterpart?.full_name || counterpart?.email || "—"}
-              </span>
-            </p>
-            <p className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {format(start, "EEE, MMM d · p")}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Clock className="h-3 w-3" /> {session.duration_minutes} min
-              </span>
-            </p>
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
+    <Card className="overflow-hidden p-0">
+      <SessionRow
+        month={format(start, "MMM").toUpperCase()}
+        day={format(start, "d")}
+        title={session.topic}
+        meta={`${kindLabel === "with" || kindLabel === "Coach" ? kindLabel : kindLabel} ${counterpart?.full_name || counterpart?.email || "—"} · ${format(start, "HH:mm")} · ${session.duration_minutes} min`}
+        status={
           <span
             className={cn(
               "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
@@ -338,29 +311,24 @@ function SessionCard({
           >
             <Icon className="h-3 w-3" /> {meta.label}
           </span>
-          {canMarkComplete && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={markComplete}
-              disabled={completing}
-            >
-              {completing ? (
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              ) : (
-                <Check className="mr-1 h-3 w-3" />
-              )}
-              Mark complete
-            </Button>
-          )}
-        </div>
+        }
+        onClick={onOpen}
+        className="rounded-none border-0 shadow-none hover:border-0"
+      />
+      <div className="px-5 pb-5" onClick={(e) => e.stopPropagation()}>
+        {canMarkComplete && (
+          <Button size="sm" variant="secondary" onClick={markComplete} disabled={completing} className="mb-2">
+            {completing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
+            Mark complete
+          </Button>
+        )}
+        <ActionItemsList items={session.action_items} date={session.start_time} />
+        {showRating && (
+          <div className="mt-4 border-t pt-3">
+            <RateSession session={session} onChanged={onChanged} />
+          </div>
+        )}
       </div>
-      <ActionItemsList items={session.action_items} date={session.start_time} />
-      {showRating && (
-        <div className="mt-4 border-t pt-3" onClick={(e) => e.stopPropagation()}>
-          <RateSession session={session} onChanged={onChanged} />
-        </div>
-      )}
     </Card>
   );
 }

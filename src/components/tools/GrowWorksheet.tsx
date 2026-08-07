@@ -25,11 +25,11 @@ interface ActionItem {
 
 const EMPTY: GrowResponses = { goal: "", reality: "", options: "", will_notes: "" };
 
-const FIELDS: { key: keyof GrowResponses; title: string; prompt: string }[] = [
-  { key: "goal", title: "Goal", prompt: "What do you want to achieve?" },
-  { key: "reality", title: "Reality", prompt: "What's the current situation?" },
-  { key: "options", title: "Options", prompt: "What options are available?" },
-  { key: "will_notes", title: "Will", prompt: "What will you commit to?" },
+const FIELDS: { key: keyof GrowResponses; step: number; title: string; prompt: string }[] = [
+  { key: "goal", step: 1, title: "Goal", prompt: "What do you want to achieve?" },
+  { key: "reality", step: 2, title: "Reality", prompt: "What's the current situation?" },
+  { key: "options", step: 3, title: "Options", prompt: "What options are available?" },
+  { key: "will_notes", step: 4, title: "Will", prompt: "What will you commit to?" },
 ];
 
 export function GrowWorksheet({
@@ -152,9 +152,14 @@ export function GrowWorksheet({
       <div className="grid gap-4 md:grid-cols-2">
         {FIELDS.map((f) => (
           <Card key={f.key} className="space-y-2 p-5">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {f.title}
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary">
+                {f.step}
+              </span>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                {f.title}
+              </p>
+            </div>
             <p className="text-xs text-muted-foreground">{f.prompt}</p>
             <Textarea
               value={values[f.key]}
@@ -167,6 +172,7 @@ export function GrowWorksheet({
                 <p className="text-[11px] font-semibold">
                   Turn a commitment into an action item
                 </p>
+                <p className="text-[10px] text-muted-foreground">Becomes action items</p>
                 <Input
                   value={commitment}
                   onChange={(e) => setCommitment(e.target.value)}

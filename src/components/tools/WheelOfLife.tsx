@@ -147,10 +147,10 @@ export function WheelOfLife({ sessionId }: { sessionId: string }) {
       <Card className="space-y-4 p-5">
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Domains &amp; ratings
+            Domains · {domains.length} of {MAX_DOMAINS}
           </p>
-          <span className="text-[11px] text-muted-foreground">
-            {domains.length}/{MAX_DOMAINS}
+          <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+            Avg {domains.length ? (domains.reduce((a, d) => a + d.rating, 0) / domains.length).toFixed(1) : "0.0"}
           </span>
         </div>
 

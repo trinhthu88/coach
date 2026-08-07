@@ -373,7 +373,9 @@ export default function AdminCoachees() {
   return (
     <div>
       <AdminPageHeader
+        eyebrow="Organisation"
         title="Coachees"
+        trailing=""
         subtitle={`${rows.length} total · click any row to edit`}
         right={
           <div className="flex gap-2">

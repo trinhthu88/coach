@@ -220,6 +220,20 @@ export default function SessionDetail() {
               </span>
             </div>
             <h1 className="font-display text-[2.1rem] leading-[1.1] tracking-tight">{session.topic}</h1>
+            {(() => {
+              const counterpart = isCoach ? coachee : coach;
+              return counterpart ? (
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
+                    {initials(counterpart.full_name)}
+                  </div>
+                  <div className="leading-tight">
+                    <p className="text-sm font-semibold text-foreground">{counterpart.full_name}</p>
+                    <p className="text-[11px] text-muted-foreground">{isCoach ? "Coachee" : "Coach"}</p>
+                  </div>
+                </div>
+              ) : null;
+            })()}
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <CalIcon className="h-4 w-4 text-primary" />
@@ -235,7 +249,7 @@ export default function SessionDetail() {
             {session.meeting_url && session.status === "confirmed" && (
               <Button asChild>
                 <a href={session.meeting_url} target="_blank" rel="noreferrer">
-                  <Video className="mr-1 h-4 w-4" /> Join meeting
+                  <Video className="mr-1 h-4 w-4" /> Join video room
                 </a>
               </Button>
             )}
@@ -476,7 +490,7 @@ export default function SessionDetail() {
                 {session.meeting_url ? (
                   <Button asChild className="w-full">
                     <a href={session.meeting_url} target="_blank" rel="noreferrer">
-                      <Video className="mr-1 h-4 w-4" /> Join meeting
+                      <Video className="mr-1 h-4 w-4" /> Join video room
                     </a>
                   </Button>
                 ) : (
@@ -538,7 +552,15 @@ export default function SessionDetail() {
 
       {/* Coaching toolbox (non-peer, active sessions) */}
       {!isPeer && (session.status === "confirmed" || session.status === "completed") && (
-        <SessionToolbox sessionId={session.id} onActionItemsChanged={reload} />
+        <div className="space-y-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Coaching tools</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Open a tool to work through it together. Whatever you fill in stays attached to this session.
+            </p>
+          </div>
+          <SessionToolbox sessionId={session.id} onActionItemsChanged={reload} />
+        </div>
       )}
 
 

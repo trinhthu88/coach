@@ -352,7 +352,10 @@ export default function AdminCoaches() {
   return (
     <div>
       <AdminPageHeader
-        title="Coaches"
+        eyebrow="Organisation"
+        title="Coach"
+        emphasize="roster"
+        trailing=""
         subtitle={`${rows.length} total coaches · click any row to edit`}
         right={
           <Button variant="outline" size="sm" onClick={exportXlsx}>

@@ -8,12 +8,14 @@ export function AdminPageHeader({
   eyebrow = "Admin",
   title,
   emphasize,
+  trailing = "",
   subtitle,
   right,
 }: {
   eyebrow?: string;
   title: string;
   emphasize?: string;
+  trailing?: string;
   subtitle?: string;
   right?: ReactNode;
 }) {
@@ -22,7 +24,7 @@ export function AdminPageHeader({
       eyebrow={eyebrow}
       title={title}
       emphasis={emphasize}
-      trailing=""
+      trailing={trailing}
       subtitle={subtitle}
       actions={right}
     />
