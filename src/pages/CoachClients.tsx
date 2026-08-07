@@ -31,6 +31,7 @@ import { format, isBefore, startOfWeek, endOfWeek, startOfMonth, isAfter } from 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Status = "on_track" | "needs_attention" | "at_risk";
 
@@ -274,12 +275,13 @@ export default function CoachClients() {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
           <Users className="h-5 w-5" />
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">My clients</h1>
-          <p className="text-sm text-muted-foreground">
-            All active coachees at a glance — progress, engagement, and private notes.
-          </p>
-        </div>
+        <PageHeader
+          className="mb-0"
+          eyebrow="Practice"
+          title="My"
+          emphasis="clients"
+          subtitle="All active coachees at a glance — progress, engagement, and private notes."
+        />
       </div>
 
       {/* METRICS */}

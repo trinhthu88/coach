@@ -47,6 +47,7 @@ import { format, isAfter, isBefore, startOfWeek, endOfWeek, differenceInCalendar
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GoalWheel, GoalScoreCards, type GoalRatingRow, type SessionRatingSeries } from "./journey/GoalWheel";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface FlatAction extends RawActionItem {
   sessionId: string;
@@ -310,12 +311,13 @@ export default function CoacheeJourney() {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
           <Compass className="h-5 w-5" />
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">My journey</h1>
-          <p className="text-sm text-muted-foreground">
-            Track your goals, action items, sessions and personal reflections.
-          </p>
-        </div>
+        <PageHeader
+          className="mb-0"
+          eyebrow="Progress"
+          title="My"
+          emphasis="journey"
+          subtitle="Track your goals, action items, sessions and personal reflections."
+        />
       </div>
 
       {/* METRICS */}

@@ -32,6 +32,7 @@ import {
   isSameDay,
 } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
 
 type SlotType = "coaching" | "peer";
 
@@ -171,18 +172,17 @@ export default function CoachAvailability() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Coach</p>
-          <h1 className="text-3xl font-semibold tracking-tight">My availability</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Set the time slots when coachees can book sessions with you.
-          </p>
-        </div>
-        <Button onClick={() => setBulkOpen(true)} className="shadow-glow">
-          <CalendarRange className="mr-1 h-4 w-4" /> Set weekly template
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Coach"
+        title="My"
+        emphasis="availability"
+        subtitle="Set the time slots when coachees can book sessions with you."
+        actions={
+          <Button onClick={() => setBulkOpen(true)} className="rounded-xl shadow-glow">
+            <CalendarRange className="mr-1 h-4 w-4" /> Set weekly template
+          </Button>
+        }
+      />
 
       <BulkAvailabilityDialog open={bulkOpen} onOpenChange={setBulkOpen} onCreated={load} />
 

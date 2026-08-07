@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, User } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function CoacheeProfileEditor() {
   const { user, profile, refreshProfile } = useAuth();
@@ -92,12 +93,13 @@ export default function CoacheeProfileEditor() {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
           <User className="h-5 w-5" />
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">My profile</h1>
-          <p className="text-sm text-muted-foreground">
-            Coaches you book with see this information.
-          </p>
-        </div>
+        <PageHeader
+          className="mb-0"
+          eyebrow="Account"
+          title="My"
+          emphasis="profile"
+          subtitle="Coaches you book with see this information."
+        />
       </div>
 
       <Card className="space-y-5 p-6">

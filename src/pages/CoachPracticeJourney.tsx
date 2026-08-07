@@ -7,6 +7,7 @@ import { Layers, Loader2, MessageSquareQuote, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
+import { PageHeader } from "@/components/ui/page-header";
   Radar,
   RadarChart,
   PolarGrid,
@@ -199,12 +200,13 @@ export default function CoachPracticeJourney() {
           <Layers className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="font-display text-3xl tracking-tight text-secondary">
-            Practice <em className="not-italic text-primary">analytics</em>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Your sessions, peer-coaching activity, and ICF competency feedback at a glance.
-          </p>
+          <PageHeader
+            className="mb-0"
+            eyebrow="Practice"
+            title="Practice"
+            emphasis="analytics"
+            subtitle="Your sessions, peer-coaching activity, and ICF competency feedback at a glance."
+          />
         </div>
       </div>
 

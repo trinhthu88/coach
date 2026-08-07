@@ -32,6 +32,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Search, ExternalLink, Pencil, Save, AlertCircle, Star } from "lucide-react";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
+import { PageHeader } from "@/components/ui/page-header";
 
 const STATUSES = [
   "pending_coach_approval",
@@ -163,13 +164,12 @@ export default function AdminSessions() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Admin</p>
-        <h1 className="text-3xl font-semibold tracking-tight">All sessions</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {rows.length} session{rows.length === 1 ? "" : "s"} across the platform.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Admin"
+        title="All"
+        emphasis="sessions"
+        subtitle={`${rows.length} session${rows.length === 1 ? "" : "s"} across the platform.`}
+      />
 
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-64">

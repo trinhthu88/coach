@@ -48,6 +48,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
+import { PageHeader } from "@/components/ui/page-header";
   GoalWheel,
   GoalScoreCards,
   type GoalRatingRow,
@@ -315,12 +316,13 @@ export default function CoachMyJourney() {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
           <Compass className="h-5 w-5" />
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">My journey</h1>
-          <p className="text-sm text-muted-foreground">
-            Your growth as a coachee — across coaching and peer sessions you receive.
-          </p>
-        </div>
+        <PageHeader
+          className="mb-0"
+          eyebrow="Progress"
+          title="My"
+          emphasis="journey"
+          subtitle="Your growth as a coachee — across coaching and peer sessions you receive."
+        />
       </div>
 
       {/* METRICS */}

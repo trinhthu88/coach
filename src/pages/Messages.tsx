@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, MessageSquare, Send, Mail } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface SessionLite {
   id: string;
@@ -275,14 +276,17 @@ export default function Messages() {
             </span>
           )}
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
-          <p className="text-sm text-muted-foreground">
-            {totalUnread > 0
+        <PageHeader
+          className="mb-0"
+          eyebrow="Conversations"
+          title="Your"
+          emphasis="messages"
+          subtitle={
+            totalUnread > 0
               ? `${totalUnread} unread message${totalUnread > 1 ? "s" : ""}`
-              : "Chat unlocks once a session is confirmed."}
-          </p>
-        </div>
+              : "Chat unlocks once a session is confirmed."
+          }
+        />
       </div>
 
       {threads.length === 0 ? (
