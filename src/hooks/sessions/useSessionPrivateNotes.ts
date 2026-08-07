@@ -28,7 +28,8 @@ export function useSessionPrivateNotes({
   const load = useCallback(async () => {
     if (!sessionId) return;
     const { data: pn } = await supabase
-      .from(privateTable)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from(privateTable as any)
       .select("body")
       .eq(idCol, sessionId)
       .maybeSingle();
@@ -47,8 +48,8 @@ export function useSessionPrivateNotes({
       body: coachPrivate,
     };
     const { error } = await supabase
-      .from(privateTable)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from(privateTable as any)
       .upsert(payload as any, { onConflict: idCol });
     if (error) toast.error(error.message);
     return { error };

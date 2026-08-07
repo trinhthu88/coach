@@ -1,6 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,76 +17,28 @@ import {
   Upload,
   X,
   CheckSquare,
-  Square,
   FileText,
   MessageSquare,
   CheckCircle2,
   XCircle,
   AlertCircle,
   HelpCircle,
+  LucideIcon,
 } from "lucide-react";
 import { SessionGoalRatings } from "./session/SessionGoalRatings";
 import { cn } from "@/lib/utils";
 import { format, isAfter, addHours } from "date-fns";
-
-type SessionStatus =
-  | "pending_coach_approval"
-  | "confirmed"
-  | "completed"
-  | "cancelled"
-  | "rescheduled";
-
-interface ProfileLite {
-  id: string;
-  full_name: string;
-  email: string;
-  avatar_url: string | null;
-}
-
-interface SessionRow {
-  id: string;
-  coach_id: string;
-  coachee_id: string;
-  topic: string;
-  start_time: string;
-  duration_minutes: number;
-  status: SessionStatus;
-  meeting_url: string | null;
-  coach_notes: string | null;
-  coachee_notes: string | null;
-  action_items: any;
-  cancelled_at: string | null;
-  slot_id: string | null;
-}
-
-interface ActionItem {
-  text: string;
-  done?: boolean;
-  due_date?: string | null;
-  milestone_id?: string | null;
-}
-
-interface MilestoneLite {
-  id: string;
-  title: string;
-  goal_id: string;
-  goal_title?: string;
-}
-
-interface Attachment {
-  id: string;
-  session_id: string;
-  uploaded_by: string;
-  file_name: string;
-  storage_path: string;
-  mime_type: string | null;
-  file_size_bytes: number | null;
-  created_at: string;
-}
+import {
+  useSessionCore,
+  useSessionPrivateNotes,
+  useSessionAttachments,
+  useSessionPeerFeedback,
+} from "@/hooks/sessions/useSessionDetail";
+import { PeerFeedbackState, SessionStatus } from "@/hooks/sessions/types";
 
 const STATUS_META: Record<
   SessionStatus,
-  { label: string; className: string; icon: any }
+  { label: string; className: string; icon: LucideIcon }
 > = {
   pending_coach_approval: {
     label: "Awaiting confirmation",
@@ -116,143 +67,62 @@ const STATUS_META: Record<
   },
 };
 
-function normalizeItems(raw: any): ActionItem[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((it) =>
-    typeof it === "string"
-      ? { text: it, done: false, due_date: null, milestone_id: null }
-      : {
-          text: it.text || "",
-          done: !!it.done,
-          due_date: it.due_date || null,
-          milestone_id: it.milestone_id || null,
-        }
-  );
-}
-
 export default function SessionDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [searchParams] = useSearchParams();
   const isPeer = searchParams.get("type") === "peer";
-  const tableName = isPeer ? "peer_sessions" : "sessions";
-  const coachField = isPeer ? "peer_coach_id" : "coach_id";
-  const coacheeField = isPeer ? "peer_coachee_id" : "coachee_id";
   const navigate = useNavigate();
   const { user, role } = useAuth();
-  const [session, setSession] = useState<SessionRow | null>(null);
-  const [coach, setCoach] = useState<ProfileLite | null>(null);
-  const [coachee, setCoachee] = useState<ProfileLite | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
-  const [coachNotes, setCoachNotes] = useState("");
-  const [coachPrivate, setCoachPrivate] = useState("");
-  const [coacheeNotes, setCoacheeNotes] = useState("");
-  const [meetingUrl, setMeetingUrl] = useState("");
-  const [items, setItems] = useState<ActionItem[]>([]);
-  const [newItem, setNewItem] = useState("");
-  const [milestones, setMilestones] = useState<MilestoneLite[]>([]);
+  const {
+    session,
+    coach,
+    coachee,
+    milestones,
+    loading,
+    saving,
+    coachNotes,
+    setCoachNotes,
+    coacheeNotes,
+    setCoacheeNotes,
+    meetingUrl,
+    setMeetingUrl,
+    items,
+    setItems,
+    updateItem,
+    removeItem,
+    addItem,
+    reload,
+    saveProgress,
+    saveActionItems,
+    saveMeetingUrl,
+    confirmSession,
+    cancelSession,
+    completeSession,
+  } = useSessionCore({ sessionId, isPeer });
 
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const {
+    coachPrivate,
+    setCoachPrivate,
+    save: savePrivateNotes,
+  } = useSessionPrivateNotes({ sessionId, isPeer, coachId: session?.coach_id });
 
-  // Peer-only: 8 ICF competency feedback
-  const [feedback, setFeedback] = useState<{
-    ethical_practice: number; coaching_mindset: number; maintains_agreements: number;
-    trust_safety: number; maintains_presence: number; listens_actively: number;
-    evokes_awareness: number; facilitates_growth: number; feedback_note: string;
-    existed: boolean;
-  }>({
-    ethical_practice: 70, coaching_mindset: 70, maintains_agreements: 70,
-    trust_safety: 70, maintains_presence: 70, listens_actively: 70,
-    evokes_awareness: 70, facilitates_growth: 70, feedback_note: "", existed: false,
+  const {
+    attachments,
+    uploading,
+    upload: handleUpload,
+    download: downloadAttachment,
+    remove: removeAttachment,
+  } = useSessionAttachments({ sessionId, isPeer, userId: user?.id });
+
+  const { feedback, save: savePeerFeedback } = useSessionPeerFeedback({
+    sessionId,
+    isPeer,
+    peerCoachId: session?.coach_id,
+    peerCoacheeId: session?.coachee_id,
   });
 
-  const load = useCallback(async () => {
-    if (!sessionId) return;
-    const { data } = await supabase.from(tableName as any).select("*").eq("id", sessionId).maybeSingle();
-    if (!data) {
-      setLoading(false);
-      return;
-    }
-    // Normalize peer rows to look like SessionRow
-    const norm: any = isPeer
-      ? { ...(data as any), coach_id: (data as any)[coachField], coachee_id: (data as any)[coacheeField] }
-      : data;
-    setSession(norm as SessionRow);
-    setCoachNotes(norm.coach_notes || "");
-    setCoacheeNotes(norm.coachee_notes || "");
-    setMeetingUrl(norm.meeting_url || "");
-    setItems(normalizeItems(norm.action_items));
-
-    // Load coach private notes from dedicated coach-only table (RLS will return nothing for coachees)
-    {
-      const privateTable = isPeer ? "peer_coach_session_private_notes" : "coach_session_private_notes";
-      const idCol = isPeer ? "peer_session_id" : "session_id";
-      const { data: pn } = await supabase
-        .from(privateTable as any)
-        .select("body")
-        .eq(idCol, sessionId)
-        .maybeSingle();
-      setCoachPrivate((pn as any)?.body || "");
-    }
-
-    const { data: profs } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, avatar_url")
-      .in("id", [norm.coach_id, norm.coachee_id]);
-    const byId = new Map((profs || []).map((p) => [p.id, p]));
-    setCoach((byId.get(norm.coach_id) as ProfileLite) || null);
-    setCoachee((byId.get(norm.coachee_id) as ProfileLite) || null);
-
-    // Load milestones of the coachee (or peer-coachee) so action items can be linked
-    const coacheeId = norm.coachee_id;
-    const [{ data: gs }, { data: ms }] = await Promise.all([
-      supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
-      supabase.from("coachee_milestones").select("id, title, goal_id").eq("coachee_id", coacheeId).order("created_at"),
-    ]);
-    const goalById = new Map((gs || []).map((g: any) => [g.id, g.title]));
-    setMilestones(
-      (ms || []).map((m: any) => ({ id: m.id, title: m.title, goal_id: m.goal_id, goal_title: goalById.get(m.goal_id) }))
-    );
-
-    if (!isPeer) {
-      const { data: atts } = await supabase
-        .from("session_attachments")
-        .select("*")
-        .eq("session_id", sessionId)
-        .order("created_at", { ascending: false });
-      setAttachments((atts as Attachment[]) || []);
-    } else {
-      setAttachments([]);
-      // Load existing competency feedback for this peer session (if any)
-      const { data: fb } = await supabase
-        .from("peer_session_competency_feedback")
-        .select("*")
-        .eq("peer_session_id", sessionId)
-        .maybeSingle();
-      if (fb) {
-        setFeedback({
-          ethical_practice: fb.ethical_practice ?? 70,
-          coaching_mindset: fb.coaching_mindset ?? 70,
-          maintains_agreements: fb.maintains_agreements ?? 70,
-          trust_safety: fb.trust_safety ?? 70,
-          maintains_presence: fb.maintains_presence ?? 70,
-          listens_actively: fb.listens_actively ?? 70,
-          evokes_awareness: fb.evokes_awareness ?? 70,
-          facilitates_growth: fb.facilitates_growth ?? 70,
-          feedback_note: fb.feedback_note ?? "",
-          existed: true,
-        });
-      }
-    }
-
-    setLoading(false);
-  }, [sessionId, tableName, isPeer, coachField, coacheeField]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const [newItem, setNewItem] = useState("");
 
   if (loading) {
     return (
@@ -290,156 +160,30 @@ export default function SessionDetail() {
     session.status !== "completed" &&
     isAfter(start, addHours(new Date(), 24));
 
-  const saveProgress = async () => {
-    setSaving(true);
-    const update: any = { action_items: items };
-    if (isCoach || isAdmin) {
-      update.coach_notes = coachNotes;
-    }
-    if (isAdmin) {
-      update.meeting_url = meetingUrl || null;
-    }
-    if (isCoachee || isAdmin) {
-      update.coachee_notes = coacheeNotes;
-    }
-    const { error } = await supabase.from(tableName as any).update(update).eq("id", session.id);
+  const handleSaveProgress = async () => {
+    const { error } = await saveProgress({
+      includeCoachNotes: isCoach || isAdmin,
+      includeCoacheeNotes: isCoachee || isAdmin,
+      includeMeetingUrl: isAdmin,
+    });
     if (error) {
-      setSaving(false);
       toast.error(error.message);
       return;
     }
 
-    // Save coach private notes to dedicated table (only coach/admin attempts this).
     if (isCoach || isAdmin) {
-      const privateTable = isPeer ? "peer_coach_session_private_notes" : "coach_session_private_notes";
-      const idCol = isPeer ? "peer_session_id" : "session_id";
-      const coachIdCol = isPeer ? "peer_coach_id" : "coach_id";
-      const payload: any = { body: coachPrivate };
-      payload[idCol] = session.id;
-      payload[coachIdCol] = session.coach_id;
-      const { error: pErr } = await supabase
-        .from(privateTable as any)
-        .upsert(payload, { onConflict: idCol });
-      if (pErr) {
-        setSaving(false);
-        toast.error(pErr.message);
-        return;
-      }
+      const { error: pErr } = await savePrivateNotes();
+      if (pErr) return;
     }
 
-    setSaving(false);
     toast.success("Progress saved");
-    load();
+    reload();
   };
 
-  const confirmSession = async () => {
-    setSaving(true);
-    const { error } = await supabase
-      .from(tableName as any)
-      .update({
-        status: "confirmed",
-        confirmed_at: new Date().toISOString(),
-      })
-      .eq("id", session.id);
-    if (!error && session.slot_id) {
-      await supabase
-        .from("coach_availability")
-        .update({ is_booked: true, session_id: session.id })
-        .eq("id", session.slot_id);
-    }
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Session confirmed. An admin will add the meeting link shortly.");
-    load();
-  };
+  const handleCancelSession = () => cancelSession(user?.id, () => navigate("/sessions"));
 
-  const cancelSession = async () => {
-    setSaving(true);
-    const { error } = await supabase
-      .from(tableName as any)
-      .update({
-        status: "cancelled",
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: user?.id,
-      })
-      .eq("id", session.id);
-    if (!error && session.slot_id) {
-      await supabase
-        .from("coach_availability")
-        .update({ is_booked: false, session_id: null })
-        .eq("id", session.slot_id);
-    }
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Session cancelled");
-    navigate("/sessions");
-  };
-
-  const completeSession = async () => {
-    setSaving(true);
-    const { error } = await supabase.from(tableName as any).update({ status: "completed" }).eq("id", session.id);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Marked complete");
-    load();
-  };
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    const allowedExt = ["pdf", "jpg", "jpeg", "mp3", "mp4"];
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!allowedExt.includes(ext)) {
-      e.target.value = "";
-      return toast.error("Only PDF, JPG, MP3 or MP4 files are allowed");
-    }
-    setUploading(true);
-    const path = `${session.id}/${crypto.randomUUID()}-${file.name}`;
-    const { error: upErr } = await supabase.storage.from("session-attachments").upload(path, file);
-    if (upErr) {
-      setUploading(false);
-      return toast.error(upErr.message);
-    }
-    const { data, error: insErr } = await supabase
-      .from("session_attachments")
-      .insert({
-        session_id: session.id,
-        uploaded_by: user.id,
-        file_name: file.name,
-        storage_path: path,
-        mime_type: file.type,
-        file_size_bytes: file.size,
-      })
-      .select()
-      .single();
-    setUploading(false);
-    e.target.value = "";
-    if (insErr) return toast.error(insErr.message);
-    setAttachments((prev) => [data as Attachment, ...prev]);
-    toast.success("File uploaded");
-  };
-
-  const downloadAttachment = async (a: Attachment) => {
-    const { data, error } = await supabase.storage
-      .from("session-attachments")
-      .createSignedUrl(a.storage_path, 60);
-    if (error || !data) return toast.error("Could not generate link");
-    window.open(data.signedUrl, "_blank");
-  };
-
-  const removeAttachment = async (a: Attachment) => {
-    await supabase.storage.from("session-attachments").remove([a.storage_path]);
-    await supabase.from("session_attachments").delete().eq("id", a.id);
-    setAttachments((prev) => prev.filter((x) => x.id !== a.id));
-  };
-
-  const updateItem = (idx: number, patch: Partial<ActionItem>) => {
-    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
-  };
-
-  const addItem = () => {
-    if (!newItem.trim()) return;
-    setItems((prev) => [...prev, { text: newItem.trim(), done: false, due_date: null, milestone_id: null }]);
+  const handleAddItem = () => {
+    addItem(newItem);
     setNewItem("");
   };
 
@@ -494,7 +238,7 @@ export default function SessionDetail() {
               </Button>
             )}
             {(isCoach || isCoachee || isAdmin) && (
-              <Button variant="outline" onClick={saveProgress} disabled={saving}>
+              <Button variant="outline" onClick={handleSaveProgress} disabled={saving}>
                 {saving ? (
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                 ) : (
@@ -577,17 +321,7 @@ export default function SessionDetail() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={async () => {
-                    setSaving(true);
-                    const { error } = await supabase
-                      .from(tableName as any)
-                      .update({ action_items: items })
-                      .eq("id", session.id);
-                    setSaving(false);
-                    if (error) return toast.error(error.message);
-                    toast.success("Action items saved");
-                    load();
-                  }}
+                  onClick={saveActionItems}
                   disabled={saving}
                 >
                   {saving ? (
@@ -631,7 +365,7 @@ export default function SessionDetail() {
                       />
                       <button
                         type="button"
-                        onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}
+                        onClick={() => removeItem(idx)}
                         className="mt-1 text-muted-foreground hover:text-destructive"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -674,11 +408,11 @@ export default function SessionDetail() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    addItem();
+                    handleAddItem();
                   }
                 }}
               />
-              <Button type="button" variant="outline" onClick={addItem}>
+              <Button type="button" variant="outline" onClick={handleAddItem}>
                 Add
               </Button>
             </div>
@@ -718,21 +452,13 @@ export default function SessionDetail() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={async () => {
+                  onClick={() => {
                     const trimmed = meetingUrl.trim();
                     if (trimmed && !/^https?:\/\//i.test(trimmed)) {
                       toast.error("Meeting link must start with http:// or https://");
                       return;
                     }
-                    setSaving(true);
-                    const { error } = await supabase
-                      .from(tableName as any)
-                      .update({ meeting_url: trimmed || null })
-                      .eq("id", session.id);
-                    setSaving(false);
-                    if (error) return toast.error(error.message);
-                    toast.success("Meeting link saved");
-                    load();
+                    saveMeetingUrl(trimmed);
                   }}
                   disabled={saving}
                 >
@@ -821,22 +547,14 @@ export default function SessionDetail() {
       {/* Peer-coachee competency feedback (only on completed peer sessions, only for the peer-coachee) */}
       {isPeer && session.status === "completed" && session.coachee_id === user?.id && (
         <PeerCompetencyFeedback
-          sessionId={session.id}
-          peerCoachId={session.coach_id}
-          peerCoacheeId={session.coachee_id}
           existing={feedback}
-          onSaved={load}
+          onSave={savePeerFeedback}
+          onSaved={reload}
         />
       )}
       {/* Read-only view of received feedback for peer-coach */}
       {isPeer && session.status === "completed" && session.coach_id === user?.id && feedback.existed && (
-        <PeerCompetencyFeedback
-          sessionId={session.id}
-          peerCoachId={session.coach_id}
-          peerCoacheeId={session.coachee_id}
-          existing={feedback}
-          readOnly
-        />
+        <PeerCompetencyFeedback existing={feedback} onSave={savePeerFeedback} readOnly />
       )}
 
       {/* Participants */}
@@ -896,7 +614,7 @@ export default function SessionDetail() {
             </Button>
           )}
           {canCancel && (
-            <Button variant="destructive" onClick={cancelSession} disabled={saving}>
+            <Button variant="destructive" onClick={handleCancelSession} disabled={saving}>
               Cancel session
             </Button>
           )}
@@ -906,7 +624,7 @@ export default function SessionDetail() {
   );
 }
 
-function SectionTitle({ icon: Icon, children }: { icon: any; children: React.ReactNode }) {
+function SectionTitle({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
       <Icon className="h-3.5 w-3.5 text-primary" />
@@ -915,7 +633,7 @@ function SectionTitle({ icon: Icon, children }: { icon: any; children: React.Rea
   );
 }
 
-const COMPETENCIES: { key: keyof PeerFeedbackState; label: string }[] = [
+const COMPETENCIES: { key: keyof Omit<PeerFeedbackState, "feedback_note" | "existed">; label: string }[] = [
   { key: "ethical_practice", label: "Demonstrates Ethical Practice" },
   { key: "coaching_mindset", label: "Embodies a Coaching Mindset" },
   { key: "maintains_agreements", label: "Establishes & Maintains Agreements" },
@@ -926,20 +644,14 @@ const COMPETENCIES: { key: keyof PeerFeedbackState; label: string }[] = [
   { key: "facilitates_growth", label: "Facilitates Client Growth" },
 ];
 
-type PeerFeedbackState = {
-  ethical_practice: number; coaching_mindset: number; maintains_agreements: number;
-  trust_safety: number; maintains_presence: number; listens_actively: number;
-  evokes_awareness: number; facilitates_growth: number; feedback_note: string;
-  existed: boolean;
-};
-
 function PeerCompetencyFeedback({
-  sessionId, peerCoachId, peerCoacheeId, existing, onSaved, readOnly,
+  existing,
+  onSave,
+  onSaved,
+  readOnly,
 }: {
-  sessionId: string;
-  peerCoachId: string;
-  peerCoacheeId: string;
   existing: PeerFeedbackState;
+  onSave: (state: PeerFeedbackState) => Promise<{ error: unknown }>;
   onSaved?: () => void;
   readOnly?: boolean;
 }) {
@@ -951,29 +663,9 @@ function PeerCompetencyFeedback({
 
   const save = async () => {
     setSaving(true);
-    const payload = {
-      peer_session_id: sessionId,
-      peer_coach_id: peerCoachId,
-      peer_coachee_id: peerCoacheeId,
-      ethical_practice: state.ethical_practice,
-      coaching_mindset: state.coaching_mindset,
-      maintains_agreements: state.maintains_agreements,
-      trust_safety: state.trust_safety,
-      maintains_presence: state.maintains_presence,
-      listens_actively: state.listens_actively,
-      evokes_awareness: state.evokes_awareness,
-      facilitates_growth: state.facilitates_growth,
-      feedback_note: state.feedback_note || null,
-    };
-    const { error } = state.existed
-      ? await supabase
-          .from("peer_session_competency_feedback")
-          .update(payload)
-          .eq("peer_session_id", sessionId)
-      : await supabase.from("peer_session_competency_feedback").insert(payload);
+    const { error } = await onSave(state);
     setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Feedback saved");
+    if (error) return;
     setState((p) => ({ ...p, existed: true }));
     onSaved?.();
   };
@@ -995,7 +687,7 @@ function PeerCompetencyFeedback({
           <div key={c.key} className="space-y-1.5">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{c.label}</span>
-              <span className="font-bold text-primary">{state[c.key] as number}</span>
+              <span className="font-bold text-primary">{state[c.key]}</span>
             </div>
             <input
               type="range"
@@ -1003,7 +695,7 @@ function PeerCompetencyFeedback({
               max={100}
               step={5}
               disabled={readOnly}
-              value={state[c.key] as number}
+              value={state[c.key]}
               onChange={(e) => setScore(c.key, Number(e.target.value))}
               className="w-full accent-primary"
             />

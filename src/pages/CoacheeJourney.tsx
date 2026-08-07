@@ -103,6 +103,200 @@ export default function CoacheeJourney() {
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
 
+  // Derived
+  const goalProgress = (goalId: string) => {
+    const ms = milestones.filter((m) => m.goal_id === goalId);
+    if (!ms.length) return 0;
+    return Math.round((ms.filter((m) => m.is_done).length / ms.length) * 100);
+  };
+  const totalMs = milestones.length;
+  const doneMs = milestones.filter((m) => m.is_done).length;
+  const overallPct = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
+
+  const allActionItems: FlatAction[] = useMemo(() => {
+    const out: FlatAction[] = [];
+    for (const s of sessions) {
+      const items = Array.isArray(s.action_items) ? s.action_items : [];
+      items.forEach((it: any, idx: number) => {
+        const obj: RawActionItem =
+          typeof it === "string" ? { text: it, done: false } : it;
+        if (obj?.text) {
+          out.push({
+            ...obj,
+            sessionId: s.id,
+            sessionTopic: s.topic,
+            sessionDate: s.start_time,
+            idx,
+          });
+        }
+      });
+    }
+    return out;
+  }, [sessions]);
+
+  const aiTotal = allActionItems.length;
+  const aiDone = allActionItems.filter((a) => a.done).length;
+  const aiOverdue = allActionItems.filter(
+    (a) => !a.done && a.due_date && isBefore(new Date(a.due_date), new Date())
+  ).length;
+
+  // Group action items
+  const now = new Date();
+  const wkStart = startOfWeek(now, { weekStartsOn: 1 });
+  const wkEnd = endOfWeek(now, { weekStartsOn: 1 });
+  const grouped = {
+    overdue: allActionItems.filter((a) => !a.done && a.due_date && isBefore(new Date(a.due_date), now)),
+    thisWeek: allActionItems.filter(
+      (a) =>
+        !a.done &&
+        a.due_date &&
+        !isBefore(new Date(a.due_date), now) &&
+        !isAfter(new Date(a.due_date), wkEnd)
+    ),
+    upcoming: allActionItems.filter(
+      (a) =>
+        !a.done &&
+        (!a.due_date || isAfter(new Date(a.due_date), wkEnd))
+    ),
+    completed: allActionItems.filter((a) => a.done),
+  };
+
+  // Sessions split
+  const upcoming = sessions
+    .filter((s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status))
+    .sort((a, b) => +new Date(a.start_time) - +new Date(b.start_time));
+  const past = sessions
+    .filter((s) => new Date(s.start_time) < now || ["cancelled", "completed"].includes(s.status));
+
+  const nextSession = upcoming[0];
+
+  // Coaches in this programme (derived from sessions)
+  const coachSummaries = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; total: number; completed: number; upcoming: number; firstDate: Date | null; lastDate: Date | null; nextDate: Date | null; }>();
+    for (const s of sessions) {
+      if (!s.coach_id) continue;
+      const cur = map.get(s.coach_id) || {
+        id: s.coach_id,
+        name: coachNames[s.coach_id] || "Coach",
+        total: 0,
+        completed: 0,
+        upcoming: 0,
+        firstDate: null,
+        lastDate: null,
+        nextDate: null,
+      };
+      const d = new Date(s.start_time);
+      cur.total += 1;
+      if (s.status === "completed") cur.completed += 1;
+      if (["confirmed", "pending_coach_approval"].includes(s.status) && d >= now) {
+        cur.upcoming += 1;
+        if (!cur.nextDate || d < cur.nextDate) cur.nextDate = d;
+      }
+      if (!cur.firstDate || d < cur.firstDate) cur.firstDate = d;
+      if (!cur.lastDate || d > cur.lastDate) cur.lastDate = d;
+      cur.name = coachNames[s.coach_id] || cur.name;
+      map.set(s.coach_id, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [sessions, coachNames, now]);
+
+  // Goal rating rows for radar chart
+  const ratingRows: GoalRatingRow[] = useMemo(
+    () =>
+      goals.map((g) => {
+        const r = ratings[g.id];
+        return {
+          goalId: g.id,
+          title: g.title,
+          start: r?.start_rating ?? 30,
+          current: r?.current_rating ?? 30,
+          target: r?.target_rating ?? 80,
+        };
+      }),
+    [goals, ratings]
+  );
+
+  const avgGoalProgress = useMemo(() => {
+    if (!ratingRows.length) return 0;
+    const vals = ratingRows.map((r) => {
+      const span = Math.max(1, r.target - r.start);
+      const got = Math.max(0, r.current - r.start);
+      return Math.min(100, Math.round((got / span) * 100));
+    });
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  }, [ratingRows]);
+
+  const programmeWeeks = useMemo(() => {
+    if (!programme?.startDate) return null;
+    const start = new Date(programme.startDate);
+    const end = programme.endDate
+      ? new Date(programme.endDate)
+      : new Date(start.getTime() + (programme.durationMonths || 3) * 30 * 86400000);
+    const totalWeeks = Math.max(1, differenceInCalendarWeeks(end, start, { weekStartsOn: 1 }));
+    const elapsedWeeks = Math.max(0, Math.min(totalWeeks, differenceInCalendarWeeks(now, start, { weekStartsOn: 1 })));
+    return { start, end, totalWeeks, elapsedWeeks };
+  }, [programme, now]);
+
+  const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
+  // Per-goal lock: a goal's Start/Target lock once the user completes
+  // any session that took place AFTER the goal was created. This lets
+  // users add new goals later in the programme without instantly locking them.
+  const completedSessionTimes = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.status === "completed")
+        .map((s) => new Date(s.start_time).getTime()),
+    [sessions]
+  );
+  const isGoalLocked = useCallback(
+    (goalCreatedAt: string) => {
+      const created = new Date(goalCreatedAt).getTime();
+      return completedSessionTimes.some((t) => t > created);
+    },
+    [completedSessionTimes]
+  );
+
+  // Per-session rating snapshots, ordered oldest → newest, joined to session date.
+  const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
+    const sessionById = new Map(sessions.map((s) => [s.id, s]));
+    const grouped = new Map<string, { date: string; rows: { goalId: string; rating: number }[] }>();
+    for (const row of sessionRatings) {
+      const sess = sessionById.get(row.session_id);
+      if (!sess) continue;
+      const key = row.session_id;
+      const cur = grouped.get(key) || { date: sess.start_time, rows: [] };
+      cur.rows.push({ goalId: row.goal_id, rating: row.rating });
+      grouped.set(key, cur);
+    }
+    return Array.from(grouped.entries())
+      .map(([sessionId, v]) => ({ sessionId, date: v.date, rows: v.rows }))
+      .sort((a, b) => +new Date(a.date) - +new Date(b.date));
+  }, [sessionRatings, sessions]);
+
+  // After any completed session, prompt to add the latest reflection rating
+  // if no snapshot exists for it yet.
+  const pendingReflectionSession = useMemo(() => {
+    const completed = sessions
+      .filter((s) => s.status === "completed")
+      .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
+    const ratedSessionIds = new Set(sessionRatings.map((r) => r.session_id));
+    return completed.find((s) => !ratedSessionIds.has(s.id)) || null;
+  }, [sessions, sessionRatings]);
+
+  const needsRatingUpdate = goals.length > 0 && !!pendingReflectionSession;
+
+  const addReflection = async () => {
+    if (!newReflection.trim() || !user) return;
+    setSavingRef(true);
+    const ok = await reflectionsApi.addReflection(newReflection, reflectionMood);
+    setSavingRef(false);
+    if (!ok) return;
+    setNewReflection("");
+    setReflectionMood("");
+  };
+
+  const toggleAction = (a: FlatAction) => toggleActionRaw(a.sessionId, a.idx, "coaching");
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">

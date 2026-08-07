@@ -56,7 +56,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
       isPeer
         ? { ...raw, coach_id: raw[coachField], coachee_id: raw[coacheeField] }
         : raw
-    ) as SessionRow;
+    ) as unknown as SessionRow;
     setSession(norm);
     setCoachNotes(norm.coach_notes || "");
     setCoacheeNotes(norm.coachee_notes || "");
@@ -106,14 +106,15 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
     }) => {
       if (!session) return { error: null };
       setSaving(true);
-      const update: Database["public"]["Tables"]["sessions"]["Update"] = {
-        action_items: items,
+      const update: Partial<Database["public"]["Tables"]["sessions"]["Update"]> = {
+        action_items: items as unknown as Database["public"]["Tables"]["sessions"]["Update"]["action_items"],
       };
       if (opts.includeCoachNotes) update.coach_notes = coachNotes;
       if (opts.includeMeetingUrl) update.meeting_url = meetingUrl || null;
       if (opts.includeCoacheeNotes) update.coachee_notes = coacheeNotes;
       const { error } = await supabase
-        .from(tableName)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from(tableName as any)
         .update(update)
         .eq("id", session.id);
       setSaving(false);
@@ -126,8 +127,9 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
     if (!session) return;
     setSaving(true);
     const { error } = await supabase
-      .from(tableName)
-      .update({ action_items: items })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from(tableName as any)
+      .update({ action_items: items as unknown as Database["public"]["Tables"]["sessions"]["Update"]["action_items"] })
       .eq("id", session.id);
     setSaving(false);
     if (error) {
@@ -143,7 +145,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
       if (!session) return;
       setSaving(true);
       const { error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .update({ meeting_url: trimmed || null })
         .eq("id", session.id);
       setSaving(false);
@@ -161,7 +163,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
     if (!session) return;
     setSaving(true);
     const { error } = await supabase
-      .from(tableName)
+      .from(tableName as any)
       .update({
         status: "confirmed",
         confirmed_at: new Date().toISOString(),
@@ -184,7 +186,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
       if (!session) return;
       setSaving(true);
       const { error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .update({
           status: "cancelled",
           cancelled_at: new Date().toISOString(),
@@ -209,7 +211,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
     if (!session) return;
     setSaving(true);
     const { error } = await supabase
-      .from(tableName)
+      .from(tableName as any)
       .update({ status: "completed" })
       .eq("id", session.id);
     setSaving(false);
