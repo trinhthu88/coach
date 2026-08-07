@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Save } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, Plus, Save } from "lucide-react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 
 interface GrowResponses {
@@ -47,6 +47,20 @@ export function GrowWorksheet({
   const [commitment, setCommitment] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [adding, setAdding] = useState(false);
+  const [items, setItems] = useState<ActionItem[]>([]);
+
+  const loadItems = useCallback(async () => {
+    const { data } = await supabase
+      .from("sessions")
+      .select("action_items")
+      .eq("id", sessionId)
+      .maybeSingle();
+    setItems(
+      Array.isArray(data?.action_items)
+        ? (data!.action_items as unknown as ActionItem[])
+        : []
+    );
+  }, [sessionId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,13 +80,14 @@ export function GrowWorksheet({
         const r = (data.responses ?? {}) as Partial<GrowResponses>;
         setValues({ ...EMPTY, ...r });
       }
-      setLoading(false);
+      await loadItems();
+      if (!cancelled) setLoading(false);
     };
     load();
     return () => {
       cancelled = true;
     };
-  }, [sessionId, user]);
+  }, [sessionId, user, loadItems]);
 
   const save = async () => {
     if (!user) return;
@@ -133,6 +148,7 @@ export function GrowWorksheet({
       toast.error(error.message);
       return;
     }
+    setItems(next);
     setCommitment("");
     setDueDate("");
     toast.success("Commitment added to action items");
@@ -148,65 +164,54 @@ export function GrowWorksheet({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        {FIELDS.map((f) => (
-          <Card key={f.key} className="space-y-2 p-5">
-            <div className="flex items-center gap-2">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary-soft text-[11px] font-bold text-primary">
-                {f.step}
-              </span>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                {f.title}
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">{f.prompt}</p>
-            <Textarea
-              value={values[f.key]}
-              onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-              rows={5}
-              placeholder={f.prompt}
-            />
-            {f.key === "will_notes" && (
-              <div className="space-y-2 rounded-md border bg-muted/20 p-3">
-                <p className="text-[11px] font-semibold">
-                  Turn a commitment into an action item
-                </p>
-                <p className="text-[10px] text-muted-foreground">Becomes action items</p>
-                <Input
-                  value={commitment}
-                  onChange={(e) => setCommitment(e.target.value)}
-                  placeholder="I will..."
-                  className="h-8 text-sm"
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className="h-8 w-auto text-xs"
+    <div className="space-y-5">
+      {/* Steps */}
+      <ol className="space-y-3">
+        {FIELDS.map((f) => {
+          const filled = values[f.key].trim().length > 0;
+          return (
+            <li
+              key={f.key}
+              className="rounded-[20px] border border-border bg-card p-4 sm:p-5"
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  className={
+                    filled
+                      ? "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
+                      : "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-soft text-sm font-bold text-primary"
+                  }
+                >
+                  {f.step}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-xl font-light leading-tight text-foreground">
+                    {f.title}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{f.prompt}</p>
+                  <Textarea
+                    value={values[f.key]}
+                    onChange={(e) =>
+                      setValues((v) => ({ ...v, [f.key]: e.target.value }))
+                    }
+                    rows={4}
+                    placeholder={f.prompt}
+                    className="mt-3 rounded-[14px] bg-muted/30"
                   />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={addCommitment}
-                    disabled={adding || !commitment.trim()}
-                  >
-                    {adding ? (
-                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Plus className="mr-1 h-3.5 w-3.5" />
-                    )}
-                    Add commitment
-                  </Button>
                 </div>
               </div>
-            )}
-          </Card>
-        ))}
-      </div>
-      <Button type="button" size="sm" onClick={save} disabled={saving}>
+            </li>
+          );
+        })}
+      </ol>
+
+      <Button
+        type="button"
+        size="sm"
+        className="rounded-full"
+        onClick={save}
+        disabled={saving}
+      >
         {saving ? (
           <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
         ) : (
@@ -214,6 +219,81 @@ export function GrowWorksheet({
         )}
         Save worksheet
       </Button>
+
+      {/* Commitments → action items */}
+      <div className="rounded-[20px] border border-border bg-card p-4 sm:p-6">
+        <p className="eyebrow text-primary">Commitments</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Anything you add here becomes an agreed action on this session.
+        </p>
+
+        {items.length > 0 && (
+          <ul className="mt-4 space-y-2">
+            {items.map((it, i) => (
+              <li
+                key={`${it.text}-${i}`}
+                className="flex items-start gap-3 rounded-[14px] bg-muted/40 px-4 py-3 text-sm"
+              >
+                {it.done ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                ) : (
+                  <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                )}
+                <span
+                  className={
+                    it.done ? "flex-1 text-muted-foreground line-through" : "flex-1"
+                  }
+                >
+                  {it.text}
+                </span>
+                {it.due_date && (
+                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-accent">
+                    {format(new Date(it.due_date), "d MMM")}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="mt-4 space-y-2 rounded-[16px] border border-dashed border-border p-4">
+          <Input
+            value={commitment}
+            onChange={(e) => setCommitment(e.target.value)}
+            placeholder="I will…"
+            className="rounded-full"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCommitment();
+              }
+            }}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="h-9 w-auto rounded-full text-xs"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={addCommitment}
+              disabled={adding || !commitment.trim()}
+            >
+              {adding ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plus className="mr-1 h-3.5 w-3.5" />
+              )}
+              Add commitment
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

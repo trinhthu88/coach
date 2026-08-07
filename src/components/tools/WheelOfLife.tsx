@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -126,58 +125,96 @@ export function WheelOfLife({ sessionId }: { sessionId: string }) {
     );
   }
 
+  const avg = domains.length
+    ? domains.reduce((a, d) => a + d.rating, 0) / domains.length
+    : 0;
+  const lowest = domains.length
+    ? domains.reduce((a, d) => (d.rating < a.rating ? d : a))
+    : null;
+
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      <Card className="p-4">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Wheel of Life
-        </p>
+    <div className="space-y-5">
+      {/* Chart panel */}
+      <div className="rounded-[20px] border border-border bg-card p-4 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow text-primary">Life balance snapshot</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Rate each domain 0–10 · the shape shows where energy is missing.
+            </p>
+          </div>
+          <div className="flex gap-6">
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                Average
+              </p>
+              <p className="font-display text-3xl font-light leading-none text-foreground">
+                {avg.toFixed(1)}
+              </p>
+            </div>
+            {lowest && (
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                  Lowest
+                </p>
+                <p className="max-w-[9rem] truncate text-sm font-semibold text-accent">
+                  {lowest.label} · {lowest.rating}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {domains.length >= MIN_DOMAINS ? (
           <WheelRadar
             axes={domains.map((d) => d.label)}
             series={[domainsToSeries(domains, "now", "Current", true)]}
+            height={380}
           />
         ) : (
           <p className="py-16 text-center text-sm text-muted-foreground">
             Add at least {MIN_DOMAINS} domains to see the wheel.
           </p>
         )}
-      </Card>
+      </div>
 
-      <Card className="space-y-4 p-5">
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Domains · {domains.length} of {MAX_DOMAINS}
-          </p>
-          <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-            Avg {domains.length ? (domains.reduce((a, d) => a + d.rating, 0) / domains.length).toFixed(1) : "0.0"}
+      {/* Domain editor */}
+      <div className="rounded-[20px] border border-border bg-card p-4 sm:p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="eyebrow text-primary">Domains</p>
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            {domains.length} of {MAX_DOMAINS}
           </span>
         </div>
 
-        <ul className="space-y-4">
+        <ul className="grid gap-3 sm:grid-cols-2">
           {domains.map((d) => (
-            <li key={d.id} className="space-y-2 rounded-md border bg-muted/20 p-3">
+            <li
+              key={d.id}
+              className="group rounded-[16px] bg-muted/40 px-4 py-3 transition-colors hover:bg-muted/70"
+            >
               <div className="flex items-center gap-2">
                 <Input
                   value={d.label}
                   onChange={(e) => update(d.id, { label: e.target.value })}
-                  className="h-8 flex-1 text-sm"
+                  className="h-7 flex-1 border-0 bg-transparent px-0 text-sm font-semibold shadow-none focus-visible:ring-0"
                   placeholder="Domain name"
                 />
-                <span className="w-7 shrink-0 text-right text-sm font-semibold tabular-nums text-primary">
+                <span className="grid h-7 w-9 shrink-0 place-items-center rounded-full bg-primary-soft text-xs font-bold tabular-nums text-primary">
                   {d.rating}
                 </span>
                 <button
                   type="button"
                   onClick={() => remove(d.id)}
                   disabled={domains.length <= MIN_DOMAINS}
-                  className="text-muted-foreground hover:text-destructive disabled:opacity-30"
+                  className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive disabled:opacity-0 group-hover:opacity-100"
                   aria-label={`Remove ${d.label}`}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
               <Slider
+                className="mt-2.5"
                 value={[d.rating]}
                 min={0}
                 max={10}
@@ -189,17 +226,24 @@ export function WheelOfLife({ sessionId }: { sessionId: string }) {
           ))}
         </ul>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
           <Button
             type="button"
             variant="outline"
             size="sm"
+            className="rounded-full"
             onClick={add}
             disabled={domains.length >= MAX_DOMAINS}
           >
             <Plus className="mr-1 h-3.5 w-3.5" /> Add domain
           </Button>
-          <Button type="button" size="sm" onClick={save} disabled={saving}>
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-full"
+            onClick={save}
+            disabled={saving}
+          >
             {saving ? (
               <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
             ) : (
@@ -208,7 +252,7 @@ export function WheelOfLife({ sessionId }: { sessionId: string }) {
             Save wheel
           </Button>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
