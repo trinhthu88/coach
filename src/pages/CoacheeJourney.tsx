@@ -46,6 +46,7 @@ import {
 import { format, isAfter, isBefore, startOfWeek, endOfWeek, differenceInCalendarWeeks, differenceInCalendarDays } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { WheelHistory } from "@/components/tools/WheelHistory";
 import { GoalWheel, GoalScoreCards, type GoalRatingRow, type SessionRatingSeries } from "./journey/GoalWheel";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -534,6 +535,8 @@ export default function CoacheeJourney() {
               <GoalScoreCards rows={ratingRows} />
             </div>
           )}
+
+          <WheelHistory coacheeId={user?.id} />
 
           <SectionHeader
             title="Goals & milestones"
