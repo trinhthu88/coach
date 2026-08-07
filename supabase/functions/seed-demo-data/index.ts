@@ -124,17 +124,22 @@ Deno.serve(async (req) => {
 
   // caller must be an admin
   const token = req.headers.get("Authorization")?.replace("Bearer ", "") ?? "";
-  const { data: userData } = await admin.auth.getUser(token);
-  if (!userData?.user) {
+  const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const { data: userData } = isServiceRole ? { data: null } : await admin.auth.getUser(token);
+  if (!isServiceRole && !userData?.user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  const { data: isAdmin } = await admin.rpc("has_role", {
-    _user_id: userData.user.id,
-    _role: "admin",
-  });
+  let isAdmin = isServiceRole;
+  if (!isAdmin) {
+    const { data } = await admin.rpc("has_role", {
+      _user_id: userData!.user!.id,
+      _role: "admin",
+    });
+    isAdmin = !!data;
+  }
   if (!isAdmin) {
     return new Response(JSON.stringify({ error: "Admins only" }), {
       status: 403,
