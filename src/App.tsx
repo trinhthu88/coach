@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,44 +7,43 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import RequestAccess from "./pages/RequestAccess";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import SetNewPassword from "./pages/SetNewPassword";
-import Dashboard from "./pages/Dashboard";
-import Coaches from "./pages/Coaches";
-import CoachDetail from "./pages/CoachDetail";
 
-import CoachProfileEditor from "./pages/CoachProfileEditor";
-import CoachAvailability from "./pages/CoachAvailability";
-import CoacheeProfileEditor from "./pages/CoacheeProfileEditor";
-import Sessions from "./pages/Sessions";
-import SessionDetail from "./pages/SessionDetail";
-import BookSession from "./pages/BookSession";
-import Messages from "./pages/Messages";
-import AdminRegistrations from "./pages/AdminRegistrations";
-import AdminCoaches from "./pages/admin/AdminCoaches";
-import AdminSessions from "./pages/AdminSessions";
-import CoachClients from "./pages/CoachClients";
-import CoacheeJourney from "./pages/CoacheeJourney";
-import CoachFindCoach from "./pages/CoachFindCoach";
-import CoachPeerCoaching from "./pages/CoachPeerCoaching";
-import CoachPracticeJourney from "./pages/CoachPracticeJourney";
-import CoachMyJourney from "./pages/CoachMyJourney";
-
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminCoachees from "./pages/admin/AdminCoachees";
-import AdminAlerts from "./pages/admin/AdminAlerts";
-import AdminActivity from "./pages/admin/AdminActivity";
-import AdminProgrammes from "./pages/admin/AdminProgrammes";
-import AdminCohorts from "./pages/admin/AdminCohorts";
-import AdminAnalytics from "./pages/admin/AdminAnalytics";
-
-import PendingApproval from "./pages/PendingApproval";
-import OAuthConsent from "./pages/OAuthConsent";
-import NotFound from "./pages/NotFound";
+// Page-level lazy imports — each becomes a separate chunk
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const RequestAccess = lazy(() => import("./pages/RequestAccess"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const SetNewPassword = lazy(() => import("./pages/SetNewPassword"));
+const PendingApproval = lazy(() => import("./pages/PendingApproval"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Coaches = lazy(() => import("./pages/Coaches"));
+const CoachDetail = lazy(() => import("./pages/CoachDetail"));
+const CoachProfileEditor = lazy(() => import("./pages/CoachProfileEditor"));
+const CoachAvailability = lazy(() => import("./pages/CoachAvailability"));
+const CoacheeProfileEditor = lazy(() => import("./pages/CoacheeProfileEditor"));
+const Sessions = lazy(() => import("./pages/Sessions"));
+const SessionDetail = lazy(() => import("./pages/SessionDetail"));
+const BookSession = lazy(() => import("./pages/BookSession"));
+const Messages = lazy(() => import("./pages/Messages"));
+const AdminRegistrations = lazy(() => import("./pages/AdminRegistrations"));
+const AdminSessions = lazy(() => import("./pages/AdminSessions"));
+const CoachClients = lazy(() => import("./pages/CoachClients"));
+const CoacheeJourney = lazy(() => import("./pages/CoacheeJourney"));
+const CoachFindCoach = lazy(() => import("./pages/CoachFindCoach"));
+const CoachPeerCoaching = lazy(() => import("./pages/CoachPeerCoaching"));
+const CoachPracticeJourney = lazy(() => import("./pages/CoachPracticeJourney"));
+const CoachMyJourney = lazy(() => import("./pages/CoachMyJourney"));
+const AdminCoaches = lazy(() => import("./pages/admin/AdminCoaches"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminCoachees = lazy(() => import("./pages/admin/AdminCoachees"));
+const AdminAlerts = lazy(() => import("./pages/admin/AdminAlerts"));
+const AdminActivity = lazy(() => import("./pages/admin/AdminActivity"));
+const AdminProgrammes = lazy(() => import("./pages/admin/AdminProgrammes"));
+const AdminCohorts = lazy(() => import("./pages/admin/AdminCohorts"));
+const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -54,160 +54,162 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
-            <Route path="/request-access" element={<RequestAccess />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              path="/set-new-password"
-              element={
-                <ProtectedRoute>
-                  <SetNewPassword />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/pending"
-              element={
-                <ProtectedRoute>
-                  <PendingApproval />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/coaches" element={<Coaches />} />
-              <Route path="/coaches/:coachId" element={<CoachDetail />} />
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+              <Route path="/request-access" element={<RequestAccess />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route
-                path="/coaches/:coachId/book"
+                path="/set-new-password"
                 element={
                   <ProtectedRoute>
-                    <BookSession />
+                    <SetNewPassword />
                   </ProtectedRoute>
                 }
               />
-              <Route path="/sessions" element={<Sessions />} />
-              <Route path="/sessions/:sessionId" element={<SessionDetail />} />
-              <Route path="/messages" element={<Messages />} />
-              
-              <Route
-                path="/coachee/profile"
-                element={
-                  <ProtectedRoute role="coachee">
-                    <CoacheeProfileEditor />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/coach/profile"
-                element={
-                  <ProtectedRoute role="coach">
-                    <CoachProfileEditor />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/coach/availability"
-                element={
-                  <ProtectedRoute role="coach">
-                    <CoachAvailability />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/coach/clients"
-                element={
-                  <ProtectedRoute role="coach">
-                    <CoachClients />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/coach/find-coach"
-                element={
-                  <ProtectedRoute role="coach">
-                    <CoachFindCoach />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/coach/peer-coaching"
-                element={
-                  <ProtectedRoute role="coach">
-                    <CoachPeerCoaching />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/coach/practice-journey"
-                element={
-                  <ProtectedRoute role="coach">
-                    <CoachPracticeJourney />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/coach/my-journey"
-                element={
-                  <ProtectedRoute role="coach">
-                    <CoachMyJourney />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/coachee/journey"
-                element={
-                  <ProtectedRoute role="coachee">
-                    <CoacheeJourney />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/coaches"
-                element={
-                  <ProtectedRoute role="admin">
-                    <AdminCoaches />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/registrations"
-                element={
-                  <ProtectedRoute role="admin">
-                    <AdminRegistrations />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/sessions"
-                element={
-                  <ProtectedRoute role="admin">
-                    <AdminSessions />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/admin/coachees" element={<ProtectedRoute role="admin"><AdminCoachees /></ProtectedRoute>} />
-              <Route path="/admin/alerts" element={<ProtectedRoute role="admin"><AdminAlerts /></ProtectedRoute>} />
-              <Route path="/admin/activity" element={<ProtectedRoute role="admin"><AdminActivity /></ProtectedRoute>} />
-              <Route path="/admin/programmes" element={<ProtectedRoute role="admin"><AdminProgrammes /></ProtectedRoute>} />
-              <Route path="/admin/cohorts" element={<ProtectedRoute role="admin"><AdminCohorts /></ProtectedRoute>} />
-              <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
-            </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route
+                path="/pending"
+                element={
+                  <ProtectedRoute>
+                    <PendingApproval />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/coaches" element={<Coaches />} />
+                <Route path="/coaches/:coachId" element={<CoachDetail />} />
+                <Route
+                  path="/coaches/:coachId/book"
+                  element={
+                    <ProtectedRoute>
+                      <BookSession />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/sessions" element={<Sessions />} />
+                <Route path="/sessions/:sessionId" element={<SessionDetail />} />
+                <Route path="/messages" element={<Messages />} />
+
+                <Route
+                  path="/coachee/profile"
+                  element={
+                    <ProtectedRoute role="coachee">
+                      <CoacheeProfileEditor />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/coach/profile"
+                  element={
+                    <ProtectedRoute role="coach">
+                      <CoachProfileEditor />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/coach/availability"
+                  element={
+                    <ProtectedRoute role="coach">
+                      <CoachAvailability />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/coach/clients"
+                  element={
+                    <ProtectedRoute role="coach">
+                      <CoachClients />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/coach/find-coach"
+                  element={
+                    <ProtectedRoute role="coach">
+                      <CoachFindCoach />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/coach/peer-coaching"
+                  element={
+                    <ProtectedRoute role="coach">
+                      <CoachPeerCoaching />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/coach/practice-journey"
+                  element={
+                    <ProtectedRoute role="coach">
+                      <CoachPracticeJourney />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/coach/my-journey"
+                  element={
+                    <ProtectedRoute role="coach">
+                      <CoachMyJourney />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/coachee/journey"
+                  element={
+                    <ProtectedRoute role="coachee">
+                      <CoacheeJourney />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/coaches"
+                  element={
+                    <ProtectedRoute role="admin">
+                      <AdminCoaches />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/registrations"
+                  element={
+                    <ProtectedRoute role="admin">
+                      <AdminRegistrations />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/sessions"
+                  element={
+                    <ProtectedRoute role="admin">
+                      <AdminSessions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin/coachees" element={<ProtectedRoute role="admin"><AdminCoachees /></ProtectedRoute>} />
+                <Route path="/admin/alerts" element={<ProtectedRoute role="admin"><AdminAlerts /></ProtectedRoute>} />
+                <Route path="/admin/activity" element={<ProtectedRoute role="admin"><AdminActivity /></ProtectedRoute>} />
+                <Route path="/admin/programmes" element={<ProtectedRoute role="admin"><AdminProgrammes /></ProtectedRoute>} />
+                <Route path="/admin/cohorts" element={<ProtectedRoute role="admin"><AdminCohorts /></ProtectedRoute>} />
+                <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
+              </Route>
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -28,7 +28,6 @@ function programmeCompletionPct(startDate: string | null, durationMonths: number
   return Math.round(((now - start) / (end - start)) * 100);
 }
 import { format } from "date-fns";
-import * as XLSX from "xlsx";
 import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
 import PendingAccessRequests from "@/components/PendingAccessRequests";
 import type { Tables } from "@/integrations/supabase/types";
@@ -240,7 +239,8 @@ export default function AdminCoaches() {
     return okQ && okS;
   }), [rows, q, statusFilter]);
 
-  const exportXlsx = () => {
+  const exportXlsx = async () => {
+    const XLSX = await import("xlsx");
     const data = filtered.map(c => ({
       Name: c.full_name,
       Email: c.email,

@@ -20,7 +20,6 @@ import {
   Loader2, Search, FileDown, FileUp, Eye, Users, Pencil, Save, Download, Target, Calendar, Layers,
 } from "lucide-react";
 import { format } from "date-fns";
-import * as XLSX from "xlsx";
 import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
 import PendingAccessRequests from "@/components/PendingAccessRequests";
 import type { Tables } from "@/integrations/supabase/types";
@@ -195,7 +194,8 @@ export default function AdminCoachees() {
     return okQ && okS;
   }), [rows, q, statusFilter]);
 
-  const exportXlsx = () => {
+  const exportXlsx = async () => {
+    const XLSX = await import("xlsx");
     const data = filtered.map(c => ({
       Name: c.full_name,
       Email: c.email,
@@ -215,7 +215,8 @@ export default function AdminCoachees() {
     toast.success("Exported");
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet([
       { Name: "Jane Doe", Email: "jane@example.com", Programme: programmes[0]?.name || "Foundations" },
       { Name: "John Smith", Email: "john@example.com", Programme: programmes[0]?.name || "Foundations" },
@@ -230,6 +231,7 @@ export default function AdminCoachees() {
     if (!file) return;
     setImporting(true);
     try {
+      const XLSX = await import("xlsx");
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf);
       const ws = wb.Sheets[wb.SheetNames[0]];

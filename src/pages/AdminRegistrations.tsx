@@ -33,7 +33,6 @@ import {
   Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
-import * as XLSX from "xlsx";
 import { useAdminRegistrations } from "@/hooks/admin/useAdminRegistrations";
 import { useAdminRegistrationApprovals } from "@/hooks/admin/useAdminRegistrationApprovals";
 import { useUpdateCoacheeAssignment } from "@/hooks/admin/useUpdateCoacheeAssignment";
@@ -109,7 +108,8 @@ export default function AdminRegistrations() {
   }, [coaches, coachQuery, coachStatus]);
 
   // Export coachees to Excel
-  const exportCoachees = () => {
+  const exportCoachees = async () => {
+    const XLSX = await import("xlsx");
     const data = filteredCoachees.map((c) => ({
       Name: c.full_name,
       Email: c.email,
@@ -131,6 +131,7 @@ export default function AdminRegistrations() {
   const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const XLSX = await import("xlsx");
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf);
     const ws = wb.Sheets[wb.SheetNames[0]];
@@ -138,7 +139,8 @@ export default function AdminRegistrations() {
     await importRows(rows);
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet([
       { Name: "Jane Doe", Email: "jane@example.com", "Session limit": 6 },
       { Name: "John Smith", Email: "john@example.com", "Session limit": 4 },
