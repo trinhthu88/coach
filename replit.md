@@ -20,7 +20,32 @@ The app runs on **port 5000** via the "Start application" workflow. Vite serves 
 
 ## Supabase connection
 
-Credentials are hardcoded in `src/lib/supabase-target.ts`. Vite aliases `@/integrations/supabase/client` → this file so the auto-generated Lovable client is bypassed. Do not edit `src/integrations/supabase/client.ts` — it is overridden by the alias.
+`src/lib/supabase-target.ts` is the active Supabase client. Vite aliases `@/integrations/supabase/client` → this file, bypassing the auto-generated Lovable client. Do **not** edit `src/integrations/supabase/client.ts` — it is shadowed by the alias.
+
+### Env vars (Replit Secrets panel)
+
+| Secret | Purpose |
+|--------|---------|
+| `VITE_SUPABASE_URL` | Supabase project URL (e.g. `https://xxxx.supabase.co`) |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon / publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service-role key (server-side / Edge Functions only) |
+
+When `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are set as Replit Secrets, they take precedence over the hardcoded fallback values in `supabase-target.ts`.
+
+### Supabase Auth → Redirect URLs (one-time manual step)
+
+For magic links and password-reset emails to land correctly on Replit, add these entries in **Supabase Dashboard → Authentication → URL Configuration → Redirect URLs**:
+
+```
+https://<your-replit-dev-domain>/**
+```
+
+The current Replit dev domain is:
+```
+39ba6c1a-1d41-441a-a349-c581b0b75b96-00-3vq8iskxjk5bj-u6y6ijfh.pike.replit.dev
+```
+
+All auth redirect calls in the app already use `window.location.origin` dynamically, so no code changes are needed when the domain changes — only the Supabase allowlist needs updating.
 
 ## Design system
 
