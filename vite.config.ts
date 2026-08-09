@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(() => ({
   server: {
     host: "0.0.0.0",
     port: 5000,
@@ -15,14 +15,19 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   resolve: {
     alias: [
-      // Point the app at the project's own Supabase backend instead of the
-      // auto-generated Lovable Cloud client. See src/lib/supabase-target.ts.
       {
         find: /^@\/integrations\/supabase\/client$/,
         replacement: path.resolve(__dirname, "./src/lib/supabase-target.ts"),
       },
       { find: "@", replacement: path.resolve(__dirname, "./src") },
     ],
-    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
+    dedupe: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@tanstack/react-query",
+      "@tanstack/query-core",
+    ],
   },
 }));

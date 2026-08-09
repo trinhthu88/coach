@@ -1,0 +1,2 @@
+- [Vite supabase alias](vite-supabase-alias.md) — supabase-target.ts uses hardcoded anon key; define block breaks it; clear node_modules/.vite if stale cache causes errors.
+- [Replit vite setup](replit-vite-setup.md) — host must be 0.0.0.0 (not ::), port 5000, allowedHosts: true; lovable-tagger/mcp-js plugins removed.
