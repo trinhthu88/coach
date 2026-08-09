@@ -15,9 +15,16 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [react(), mcpPlugin(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+    alias: [
+      // Point the app at the project's own Supabase backend instead of the
+      // auto-generated Lovable Cloud client. See src/lib/supabase-target.ts.
+      {
+        find: /^@\/integrations\/supabase\/client$/,
+        replacement: path.resolve(__dirname, "./src/lib/supabase-target.ts"),
+      },
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+    ],
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
+
 }));
