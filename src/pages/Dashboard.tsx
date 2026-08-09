@@ -75,7 +75,7 @@ export default function Dashboard() {
   const hour = now.getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-  if (role !== "coachee") {
+  if (role === "admin" || role === "coach") {
     return (
       <div className="space-y-8">
         <HeroPanel>
@@ -87,7 +87,7 @@ export default function Dashboard() {
               Welcome back,{" "}
               <em className="italic text-primary-glow">{firstName}</em>.
             </h1>
-            <p className="mt-3 text-base text-white/70">{greetingByRole[role || "coachee"]}</p>
+            <p className="mt-3 text-base text-white/70">{greetingByRole[role]}</p>
             <div className="flex flex-wrap gap-3 pt-6">
               <Button
                 asChild
@@ -95,14 +95,23 @@ export default function Dashboard() {
                 variant="outline"
                 className="rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
               >
-                <Link to="/sessions">
-                  <Calendar className="mr-1 h-4 w-4" /> View sessions
+                <Link to={role === "admin" ? "/admin" : "/sessions"}>
+                  <Calendar className="mr-1 h-4 w-4" /> {role === "admin" ? "Admin dashboard" : "View sessions"}
                 </Link>
               </Button>
             </div>
           </div>
         </HeroPanel>
         {role === "coach" ? <CoachDashboard userId={user!.id} /> : <AdminDashboard />}
+      </div>
+    );
+  }
+
+  // Authenticated but no role assigned yet — shouldn't linger here normally
+  if (!role) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }

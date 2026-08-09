@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -26,11 +26,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  /**
+   * Monotonically-increasing request generation counter.
+   * Incremented whenever a new load is started (including on auth transitions).
+   * Each fetch captures `seq` at call time; it only applies its result when
+   * `seq === loadSeqRef.current`, ensuring stale in-flight loads from a prior
+   * user or session can never overwrite the current user's profile/role.
+   */
+  const loadSeqRef = useRef(0);
+
   const loadProfileAndRole = async (userId: string) => {
+    const seq = ++loadSeqRef.current;
+
     const [{ data: profileData }, { data: roleData }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
+
+    // Discard if a newer request has superseded this one
+    if (seq !== loadSeqRef.current) return;
+
     setProfile(profileData);
     if (roleData && roleData.length > 0) {
       const priority: Record<AppRole, number> = { admin: 1, coach: 2, coachee: 3 };
@@ -44,34 +59,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let mounted = true;
+    let deferTimer: ReturnType<typeof setTimeout> | null = null;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted) return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
+
+      // Synchronously invalidate any in-flight request and wipe stale data so
+      // the prior user's profile/role cannot leak into the new session's render.
+      ++loadSeqRef.current;
+      setProfile(null);
+      setRole(null);
+
       if (newSession?.user) {
-        // Defer Supabase calls
-        setTimeout(() => {
-          loadProfileAndRole(newSession.user.id);
+        // Defer Supabase calls to avoid deadlock inside the auth callback
+        if (deferTimer) clearTimeout(deferTimer);
+        deferTimer = setTimeout(() => {
+          if (mounted) loadProfileAndRole(newSession.user.id);
         }, 0);
-      } else {
-        setProfile(null);
-        setRole(null);
       }
     });
 
     // THEN check existing session
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
+      if (!mounted) return;
       setSession(existing);
       setUser(existing?.user ?? null);
       if (existing?.user) {
-        loadProfileAndRole(existing.user.id).finally(() => setIsLoading(false));
+        loadProfileAndRole(existing.user.id).finally(() => {
+          if (mounted) setIsLoading(false);
+        });
       } else {
         setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      mounted = false;
+      if (deferTimer) clearTimeout(deferTimer);
+      subscription.unsubscribe();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = async () => {
     await supabase.auth.signOut();

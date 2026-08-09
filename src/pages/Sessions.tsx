@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -144,6 +144,11 @@ export default function Sessions() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Admins have a dedicated sessions view — redirect after hooks are called
+  if (role === "admin") {
+    return <Navigate to="/admin/sessions" replace />;
+  }
 
   const now = new Date();
   const upcoming = sessions.filter(
