@@ -34,18 +34,21 @@ When `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are set as Replit Secrets, t
 
 ### Supabase Auth → Redirect URLs (one-time manual step)
 
-For magic links and password-reset emails to land correctly on Replit, add these entries in **Supabase Dashboard → Authentication → URL Configuration → Redirect URLs**:
+For magic links and password-reset emails to land correctly on Replit, add **both** of these entries in **Supabase Dashboard → Authentication → URL Configuration → Redirect URLs**:
 
 ```
-https://<your-replit-dev-domain>/**
+https://39ba6c1a-1d41-441a-a349-c581b0b75b96-00-3vq8iskxjk5bj-*.pike.replit.dev/**
+https://*.pike.replit.dev/**
 ```
+
+The first (narrower) entry matches only this repl's domain across session-suffix rotations (the last segment after `3vq8iskxjk5bj-` changes each session). The second is a broader fallback. Add whichever your Supabase plan allows.
 
 The current Replit dev domain is:
 ```
-39ba6c1a-1d41-441a-a349-c581b0b75b96-00-3vq8iskxjk5bj-u6y6ijfh.pike.replit.dev
+39ba6c1a-1d41-441a-a349-c581b0b75b96-00-3vq8iskxjk5bj-clnwz5t9.pike.replit.dev
 ```
 
-All auth redirect calls in the app already use `window.location.origin` dynamically, so no code changes are needed when the domain changes — only the Supabase allowlist needs updating.
+All auth redirect calls in the app already use `window.location.origin` dynamically, so no code changes are needed when the domain changes — only the Supabase allowlist entry needs to cover the new suffix (the wildcard above does this automatically).
 
 ## Design system
 
