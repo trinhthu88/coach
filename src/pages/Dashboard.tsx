@@ -649,19 +649,11 @@ function NextSessionHero({
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            {session.meeting_url && session.status === "confirmed" ? (
-              <Button asChild variant="secondary" className="font-semibold">
-                <a href={session.meeting_url} target="_blank" rel="noreferrer">
-                  <Video className="mr-1 h-4 w-4" /> Join & prepare
-                </a>
-              </Button>
-            ) : (
-              <Button asChild variant="secondary" className="font-semibold">
-                <Link to={`/sessions/${session.id}`}>
-                  <Video className="mr-1 h-4 w-4" /> Join & prepare
-                </Link>
-              </Button>
-            )}
+            <Button asChild variant="secondary" className="font-semibold">
+              <Link to={`/sessions/${session.id}`}>
+                <Video className="mr-1 h-4 w-4" /> Join & prepare
+              </Link>
+            </Button>
             <Button
               asChild
               variant="outline"
@@ -750,9 +742,9 @@ function NextSessionCard({
         <div className="mt-auto flex flex-wrap gap-2">
           {session.meeting_url && session.status === "confirmed" ? (
             <Button asChild variant="secondary" className="font-semibold">
-              <a href={session.meeting_url} target="_blank" rel="noreferrer">
+              <Link to={`/sessions/${session.id}`}>
                 <Video className="mr-1 h-4 w-4" /> Enter meeting
-              </a>
+              </Link>
             </Button>
           ) : (
             <Badge className="bg-white/15 text-white hover:bg-white/15">

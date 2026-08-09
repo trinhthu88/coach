@@ -257,7 +257,7 @@ export default function SessionDetail() {
                     className="rounded-full bg-primary px-7 text-primary-foreground shadow-glow hover:bg-primary/90"
                   >
                     <a href={session.meeting_url} target="_blank" rel="noreferrer">
-                      <Video className="mr-1.5 h-4 w-4" /> Join video room
+                      <Video className="mr-1.5 h-4 w-4" /> Join Zoom meeting
                     </a>
                   </Button>
                 )}
@@ -626,8 +626,8 @@ export default function SessionDetail() {
                 maxLength={500}
               />
               <p className="text-xs text-muted-foreground">
-                Only admins manage the meeting link. Both coach and coachee will see a "Join video room" button
-                once it is saved and the session is confirmed.
+                A video room is created automatically when the session is confirmed. Paste a Zoom/Meet link here
+                only if you want to override it.
               </p>
               <div className="flex items-center justify-between gap-2">
                 {meetingUrl && /^https?:\/\//i.test(meetingUrl) ? (
@@ -671,7 +671,7 @@ export default function SessionDetail() {
               <Card className="space-y-2 p-7">
                 <p className="eyebrow text-primary">Meeting link</p>
                 <p className="text-sm text-muted-foreground">
-                  The platform admin will share the meeting link here shortly.
+                  Your video room is being set up. Refresh in a moment.
                 </p>
               </Card>
             )

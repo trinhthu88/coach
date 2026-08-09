@@ -3,5 +3,7 @@ project_id = "fgzhdyeneycdzitbimhk"
 [functions]
   [functions.approve-access-request]
     verify_jwt = true
+  [functions.confirm-session]
+    verify_jwt = true
   [functions.auth-email-hook]
     verify_jwt = false

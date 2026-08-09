@@ -96,13 +96,12 @@ export function useCoachDashboardData(userId: string): UseCoachDashboardDataResu
 
   const approve = async (s: CoachSession) => {
     setActingId(s.id);
-    const { error } = await supabase
-      .from("sessions")
-      .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
-      .eq("id", s.id);
+    const { error } = await supabase.functions.invoke("confirm-session", {
+      body: { session_id: s.id, is_peer: false },
+    });
     setActingId(null);
     if (error) { toast.error(error.message); return; }
-    toast.success("Session confirmed");
+    toast.success("Session confirmed. Zoom meeting is ready.");
     reload();
   };
   const decline = async (s: CoachSession) => {

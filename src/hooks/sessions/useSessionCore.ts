@@ -162,24 +162,14 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
   const confirmSession = useCallback(async () => {
     if (!session) return;
     setSaving(true);
-    const { error } = await supabase
-      .from(tableName as any)
-      .update({
-        status: "confirmed",
-        confirmed_at: new Date().toISOString(),
-      })
-      .eq("id", session.id);
-    if (!error && session.slot_id) {
-      await supabase
-        .from("coach_availability")
-        .update({ is_booked: true, session_id: session.id })
-        .eq("id", session.slot_id);
-    }
+    const { error } = await supabase.functions.invoke("confirm-session", {
+      body: { session_id: session.id, is_peer: isPeer },
+    });
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Session confirmed. An admin will add the meeting link shortly.");
+    toast.success("Session confirmed. Zoom meeting is ready.");
     load();
-  }, [session, tableName, load]);
+  }, [session, isPeer, load]);
 
   const cancelSession = useCallback(
     async (userId: string | undefined, onDone: () => void) => {
