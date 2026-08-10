@@ -193,7 +193,7 @@ export default function SessionDetail() {
     (n || "?").split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
 
   const counterpart = isCoach ? coachee : coach;
-  const showToolbox = !isPeer && (session.status === "confirmed" || session.status === "completed");
+  const showToolbox = session.status === "confirmed" || session.status === "completed";
   const openItems = items.filter((i) => !i.done);
 
   const TABS: { key: TabKey; label: string }[] = [
@@ -545,7 +545,11 @@ export default function SessionDetail() {
                       session.
                     </p>
                   </div>
-                  <SessionToolbox sessionId={session.id} onActionItemsChanged={reload} />
+                  <SessionToolbox
+                    sessionId={isPeer ? undefined : session.id}
+                    peerSessionId={isPeer ? session.id : undefined}
+                    onActionItemsChanged={reload}
+                  />
                 </div>
               )}
             </div>

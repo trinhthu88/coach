@@ -7,7 +7,5 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.auth-email-hook]
     verify_jwt = false
-  [functions.mcp]
-    verify_jwt = false
   [functions.seed-demo-data]
     verify_jwt = true

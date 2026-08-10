@@ -11,7 +11,6 @@ import AppLayout from "@/components/AppLayout";
 // Page-level lazy imports — each becomes a separate chunk
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
-const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const RequestAccess = lazy(() => import("./pages/RequestAccess"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -58,7 +57,6 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/request-access" element={<RequestAccess />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />

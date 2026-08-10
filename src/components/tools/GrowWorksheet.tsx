@@ -34,12 +34,16 @@ const FIELDS: { key: keyof GrowResponses; step: number; title: string; prompt: s
 
 export function GrowWorksheet({
   sessionId,
+  peerSessionId,
   onActionItemsChanged,
 }: {
-  sessionId: string;
+  sessionId?: string;
+  peerSessionId?: string;
   onActionItemsChanged?: () => void;
 }) {
   const { user } = useAuth();
+  const parentTable = sessionId ? "sessions" : "peer_sessions";
+  const parentId = (sessionId ?? peerSessionId)!;
   const [values, setValues] = useState<GrowResponses>(EMPTY);
   const [rowId, setRowId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,30 +54,33 @@ export function GrowWorksheet({
   const [items, setItems] = useState<ActionItem[]>([]);
 
   const loadItems = useCallback(async () => {
-    const { data } = await supabase
-      .from("sessions")
+    const { data } = (await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from(parentTable as any)
       .select("action_items")
-      .eq("id", sessionId)
-      .maybeSingle();
+      .eq("id", parentId)
+      .maybeSingle()) as { data: { action_items: unknown } | null };
     setItems(
       Array.isArray(data?.action_items)
         ? (data!.action_items as unknown as ActionItem[])
         : []
     );
-  }, [sessionId]);
+  }, [parentTable, parentId]);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       if (!user) return;
       setLoading(true);
-      const { data } = await supabase
+      let query = supabase
         .from("tool_sessions")
         .select("id, responses")
-        .eq("session_id", sessionId)
         .eq("tool_type", "grow_worksheet")
-        .eq("filled_by", user.id)
-        .maybeSingle();
+        .eq("filled_by", user.id);
+      query = sessionId
+        ? query.eq("session_id", sessionId)
+        : query.eq("peer_session_id", peerSessionId!);
+      const { data } = await query.maybeSingle();
       if (cancelled) return;
       if (data) {
         setRowId(data.id);
@@ -87,11 +94,12 @@ export function GrowWorksheet({
     return () => {
       cancelled = true;
     };
-  }, [sessionId, user, loadItems]);
+  }, [sessionId, peerSessionId, user, loadItems]);
 
   const save = async () => {
     if (!user) return;
     setSaving(true);
+    const parentFields = sessionId ? { session_id: sessionId } : { peer_session_id: peerSessionId };
     const { data, error } = rowId
       ? await supabase
           .from("tool_sessions")
@@ -102,7 +110,7 @@ export function GrowWorksheet({
       : await supabase
           .from("tool_sessions")
           .insert({
-            session_id: sessionId,
+            ...parentFields,
             tool_type: "grow_worksheet",
             filled_by: user.id,
             responses: values as unknown as Json,
@@ -122,11 +130,12 @@ export function GrowWorksheet({
     const text = commitment.trim();
     if (!text) return;
     setAdding(true);
-    const { data: current, error: readErr } = await supabase
-      .from("sessions")
+    const { data: current, error: readErr } = (await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from(parentTable as any)
       .select("action_items")
-      .eq("id", sessionId)
-      .maybeSingle();
+      .eq("id", parentId)
+      .maybeSingle()) as { data: { action_items: unknown } | null; error: { message: string } | null };
     if (readErr || !current) {
       setAdding(false);
       toast.error(readErr?.message || "Could not load action items");
@@ -140,9 +149,10 @@ export function GrowWorksheet({
       { text, done: false, due_date: dueDate || null, milestone_id: null },
     ];
     const { error } = await supabase
-      .from("sessions")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from(parentTable as any)
       .update({ action_items: next as unknown as Json })
-      .eq("id", sessionId);
+      .eq("id", parentId);
     setAdding(false);
     if (error) {
       toast.error(error.message);

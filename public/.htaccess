@@ -1,0 +1,10 @@
+# Serve index.html for any path that isn't a real file/directory, so client-side
+# routing (React Router) handles it instead of Apache 404ing on refresh/deep-link.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

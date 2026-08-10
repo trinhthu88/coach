@@ -28,9 +28,11 @@ const TOOLS: {
 
 export function SessionToolbox({
   sessionId,
+  peerSessionId,
   onActionItemsChanged,
 }: {
-  sessionId: string;
+  sessionId?: string;
+  peerSessionId?: string;
   onActionItemsChanged?: () => void;
 }) {
   const [active, setActive] = useState<ToolKey>("wheel_of_life");
@@ -72,9 +74,13 @@ export function SessionToolbox({
       </div>
 
       {active === "wheel_of_life" ? (
-        <WheelOfLife sessionId={sessionId} />
+        <WheelOfLife sessionId={sessionId} peerSessionId={peerSessionId} />
       ) : (
-        <GrowWorksheet sessionId={sessionId} onActionItemsChanged={onActionItemsChanged} />
+        <GrowWorksheet
+          sessionId={sessionId}
+          peerSessionId={peerSessionId}
+          onActionItemsChanged={onActionItemsChanged}
+        />
       )}
     </div>
   );

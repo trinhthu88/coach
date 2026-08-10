@@ -48,6 +48,7 @@ interface Slot {
 }
 
 const DURATIONS = [30, 45, 60] as const;
+const CONTACT_EMAIL = "contact@erickson.vn";
 
 function timeToMinutes(t: string) {
   const [h, m] = t.split(":").map(Number);
@@ -372,11 +373,26 @@ export default function BookSession() {
             )}
           </div>
 
-          {overLimit && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              Session limit reached ({usage?.used_this_month}/{usage?.monthly_limit} completed). You can't book another session.
+          {overLimit && (mode === "peer" || role === "coach") ? (
+            <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                You've used all {usage?.monthly_limit} of your free{" "}
+                {mode === "peer" ? "peer coaching" : "coaching"} sessions. Paid plans with more
+                sessions are coming soon — reach out to{" "}
+                <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold underline">
+                  {CONTACT_EMAIL}
+                </a>{" "}
+                if you'd like to discuss options.
+              </span>
             </div>
+          ) : (
+            overLimit && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                Session limit reached ({usage?.used_this_month}/{usage?.monthly_limit} completed). You can't book another session.
+              </div>
+            )
           )}
 
           <Step number={1} label="Select duration">

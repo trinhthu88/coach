@@ -10,7 +10,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -1165,8 +1190,9 @@ export type Database = {
           created_at: string
           filled_by: string
           id: string
+          peer_session_id: string | null
           responses: Json
-          session_id: string
+          session_id: string | null
           tool_type: string
           updated_at: string
         }
@@ -1174,8 +1200,9 @@ export type Database = {
           created_at?: string
           filled_by: string
           id?: string
+          peer_session_id?: string | null
           responses?: Json
-          session_id: string
+          session_id?: string | null
           tool_type: string
           updated_at?: string
         }
@@ -1183,12 +1210,20 @@ export type Database = {
           created_at?: string
           filled_by?: string
           id?: string
+          peer_session_id?: string | null
           responses?: Json
-          session_id?: string
+          session_id?: string | null
           tool_type?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tool_sessions_peer_session_id_fkey"
+            columns: ["peer_session_id"]
+            isOneToOne: false
+            referencedRelation: "peer_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tool_sessions_session_id_fkey"
             columns: ["session_id"]
@@ -1232,6 +1267,10 @@ export type Database = {
           _weeks: number
         }
         Returns: number
+      }
+      can_message_peer_session: {
+        Args: { _peer_session_id: string; _user_id: string }
+        Returns: boolean
       }
       can_message_session: {
         Args: { _session_id: string; _user_id: string }
@@ -1424,6 +1463,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       alert_severity: ["info", "warning", "critical"],

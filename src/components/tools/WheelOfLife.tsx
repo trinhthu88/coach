@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,13 @@ const newId = () =>
 const defaultDomains = (): WheelDomain[] =>
   DEFAULT_LABELS.map((label) => ({ id: newId(), label, rating: 5 }));
 
-export function WheelOfLife({ sessionId }: { sessionId: string }) {
+export function WheelOfLife({
+  sessionId,
+  peerSessionId,
+}: {
+  sessionId?: string;
+  peerSessionId?: string;
+}) {
   const { user } = useAuth();
   const [domains, setDomains] = useState<WheelDomain[]>(defaultDomains);
   const [loading, setLoading] = useState(true);
@@ -43,13 +49,15 @@ export function WheelOfLife({ sessionId }: { sessionId: string }) {
     const load = async () => {
       if (!user) return;
       setLoading(true);
-      const { data } = await supabase
+      let query = supabase
         .from("tool_sessions")
         .select("id, responses")
-        .eq("session_id", sessionId)
         .eq("tool_type", "wheel_of_life")
-        .eq("filled_by", user.id)
-        .maybeSingle();
+        .eq("filled_by", user.id);
+      query = sessionId
+        ? query.eq("session_id", sessionId)
+        : query.eq("peer_session_id", peerSessionId!);
+      const { data } = await query.maybeSingle();
       if (cancelled) return;
       if (data) {
         setRowId(data.id);
@@ -70,7 +78,7 @@ export function WheelOfLife({ sessionId }: { sessionId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId, user]);
+  }, [sessionId, peerSessionId, user]);
 
   const update = (id: string, patch: Partial<WheelDomain>) =>
     setDomains((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
@@ -94,8 +102,9 @@ export function WheelOfLife({ sessionId }: { sessionId: string }) {
       return;
     }
     setSaving(true);
-    const payload = {
-      session_id: sessionId,
+    const parentFields = sessionId ? { session_id: sessionId } : { peer_session_id: peerSessionId };
+    const payload: Database["public"]["Tables"]["tool_sessions"]["Insert"] = {
+      ...parentFields,
       tool_type: "wheel_of_life",
       filled_by: user.id,
       responses: { domains } as unknown as Json,

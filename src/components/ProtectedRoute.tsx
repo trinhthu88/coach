@@ -33,8 +33,16 @@ export function ProtectedRoute({ children, role: requiredRole }: Props) {
   }
 
   // Pending / suspended / rejected users (admin always passes)
+  // 'reach_limit' only blocks new bookings (enforced in BookSession.tsx) — it should
+  // not lock the user out of existing clients, messages, or session history.
   const status = profile?.status;
-  if (role !== "admin" && status && status !== "active" && location.pathname !== "/pending") {
+  if (
+    role !== "admin" &&
+    status &&
+    status !== "active" &&
+    status !== "reach_limit" &&
+    location.pathname !== "/pending"
+  ) {
     return <Navigate to="/pending" replace />;
   }
 

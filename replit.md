@@ -10,6 +10,21 @@ npm run dev
 
 The app runs on **port 5000** via the "Start application" workflow. Vite serves the React SPA directly (no separate Express server needed for dev).
 
+## Deployment
+
+**As of 2026-08-10, `clariva.club` is still live on Lovable's hosting** — confirmed by DNS + response headers (see below). GoDaddy only holds domain registration and DNS (nameservers `ns17`/`ns18.domaincontrol.com`); it never hosted the app itself. Migration target: **Replit Deployments** (Static), replacing Lovable as the host, with GoDaddy DNS repointed at it.
+
+`.replit` now has a `[deployment]` block (`deploymentTarget = "static"`, `build = ["npm","run","build"]`, `publicDir = "dist"`) pre-filled for this. The following steps only exist in Replit's / GoDaddy's web UI — they can't be done from inside this workspace:
+
+1. In the Replit workspace, click **Deploy** → choose **Static** → confirm build command `npm run build` and public directory `dist` (pre-filled from `.replit`, but verify in the UI since this hasn't been tested end-to-end yet) → Deploy.
+2. In the Deployment's **Settings → Domains**, link `clariva.club` (and `www.clariva.club` if wanted). Replit will show the exact A/CNAME + TXT verification records to add.
+3. In GoDaddy DNS (**godaddy.com → My Products → DNS** for `clariva.club`), replace the current A record (`185.158.133.1`, pointing at Lovable) with the records Replit gave you in step 2. Leave the MX/TXT records for Microsoft 365 email untouched — only the web (A/CNAME) records change.
+4. Wait for DNS propagation and Replit's automatic TLS cert issuance, then verify `https://clariva.club` serves this repo's build (check for the removed `@Lovable` twitter meta tag being gone, and/or the `x-deployment-id` header changing).
+
+Until step 3 is done, the live site keeps serving from Lovable — pushing to GitHub or deploying on Replit does not affect it.
+
+Once this is confirmed working, decide whether to also disconnect this GitHub repo from Lovable's own sync (a setting in Lovable's project dashboard, not something available here) so Lovable can no longer push commits to `origin`.
+
 ## Stack
 
 - **Frontend**: React 18, Vite 5, TypeScript, Tailwind CSS v3, shadcn/ui components
@@ -20,7 +35,7 @@ The app runs on **port 5000** via the "Start application" workflow. Vite serves 
 
 ## Supabase connection
 
-`src/lib/supabase-target.ts` is the active Supabase client. Vite aliases `@/integrations/supabase/client` → this file, bypassing the auto-generated Lovable client. Do **not** edit `src/integrations/supabase/client.ts` — it is shadowed by the alias.
+`src/lib/supabase-target.ts` is the active Supabase client. Vite aliases `@/integrations/supabase/client` → this file (see `vite.config.ts`). The Lovable-generated `src/integrations/supabase/client.ts` has been removed — this project no longer has any Lovable Cloud dependency (the MCP tool-server integration and its Supabase edge function were removed too).
 
 ### Env vars (Replit Secrets panel)
 
