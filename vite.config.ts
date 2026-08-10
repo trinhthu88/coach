@@ -13,57 +13,13 @@ export default defineConfig(() => ({
     },
   },
   plugins: [react()],
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: (id) => {
-          // React core
-          if (id.includes("node_modules/react/") ||
-              id.includes("node_modules/react-dom/") ||
-              id.includes("node_modules/scheduler/")) {
-            return "vendor-react";
-          }
-          // Radix UI primitives
-          if (id.includes("node_modules/@radix-ui/")) {
-            return "vendor-radix";
-          }
-          // Recharts + dependencies
-          if (id.includes("node_modules/recharts") ||
-              id.includes("node_modules/victory-vendor") ||
-              id.includes("node_modules/d3-")) {
-            return "vendor-charts";
-          }
-          // Supabase
-          if (id.includes("node_modules/@supabase/")) {
-            return "vendor-supabase";
-          }
-          // TanStack Query
-          if (id.includes("node_modules/@tanstack/")) {
-            return "vendor-query";
-          }
-          // Router
-          if (id.includes("node_modules/react-router") ||
-              id.includes("node_modules/@remix-run/")) {
-            return "vendor-router";
-          }
-          // Forms & validation
-          if (id.includes("node_modules/react-hook-form") ||
-              id.includes("node_modules/@hookform/") ||
-              id.includes("node_modules/zod/")) {
-            return "vendor-forms";
-          }
-          // xlsx (large library)
-          if (id.includes("node_modules/xlsx/")) {
-            return "vendor-xlsx";
-          }
-          // UI utilities & misc vendors
-          if (id.includes("node_modules/")) {
-            return "vendor-misc";
-          }
-        },
-      },
-    },
-  },
+  // No manual vendor chunking: forcing React into its own chunk while its
+  // consumers (Radix, react-router, TanStack Query, etc.) sit in separate
+  // manually-named chunks breaks Rollup's execution-order guarantees —
+  // producing "Cannot read properties of undefined (reading 'createContext')"
+  // at runtime because a consumer chunk can evaluate before vendor-react has.
+  // Route-level splitting (React.lazy in App.tsx) and dynamic xlsx imports
+  // already create their own chunks automatically and don't depend on this.
   resolve: {
     alias: [
       {
