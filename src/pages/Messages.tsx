@@ -45,6 +45,8 @@ interface ProfileLite {
   avatar_url: string | null;
 }
 
+const MESSAGE_PAGE_SIZE = 50;
+
 const formatStamp = (iso: string) => {
   const d = new Date(iso);
   if (isToday(d)) return format(d, "p");
@@ -167,25 +169,33 @@ export default function Messages() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, role]);
 
-  // Load messages for the active thread (across all sessions with that counterpart)
+  // Load the most recent page of messages for the active thread. Older history
+  // loads on demand via loadOlderMessages — opening a long-running conversation
+  // no longer pulls its entire history every time.
+  const isLoadingOlderRef = useRef(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+
   const loadMessages = useCallback(
     async (sessionIds: string[]) => {
       if (sessionIds.length === 0) {
         setMessages([]);
+        setHasMoreOlder(false);
         return;
       }
       const { data } = await supabase
         .from("session_messages")
         .select("*")
         .in("session_id", sessionIds)
-        .order("created_at", { ascending: true });
-      setMessages((data as Message[]) || []);
+        .order("created_at", { ascending: false })
+        .limit(MESSAGE_PAGE_SIZE);
+      const page = ((data as Message[]) || []).slice().reverse();
+      setMessages(page);
+      setHasMoreOlder(page.length === MESSAGE_PAGE_SIZE);
 
-      // Mark unread from counterpart as read
+      // Mark unread messages in the loaded page as read
       if (user) {
-        const unreadIds = (data || [])
-          .filter((m) => m.sender_id !== user.id && !m.read_at)
-          .map((m) => m.id);
+        const unreadIds = page.filter((m) => m.sender_id !== user.id && !m.read_at).map((m) => m.id);
         if (unreadIds.length) {
           await supabase
             .from("session_messages")
@@ -198,6 +208,24 @@ export default function Messages() {
     },
     [user, sessions, buildThreads]
   );
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!active || messages.length === 0 || loadingOlder) return;
+    setLoadingOlder(true);
+    const oldest = messages[0].created_at;
+    const { data } = await supabase
+      .from("session_messages")
+      .select("*")
+      .in("session_id", active.session_ids)
+      .lt("created_at", oldest)
+      .order("created_at", { ascending: false })
+      .limit(MESSAGE_PAGE_SIZE);
+    const older = ((data as Message[]) || []).slice().reverse();
+    isLoadingOlderRef.current = true;
+    setMessages((prev) => [...older, ...prev]);
+    setHasMoreOlder(older.length === MESSAGE_PAGE_SIZE);
+    setLoadingOlder(false);
+  }, [active, messages, loadingOlder]);
 
   useEffect(() => {
     if (!active) return;
@@ -214,8 +242,8 @@ export default function Messages() {
         { event: "INSERT", schema: "public", table: "session_messages" },
         (payload) => {
           const m = payload.new as Message;
-          // If it's part of a session we care about
-          if (!sessions.some((s) => s.id === m.session_id)) return;
+          const session = sessions.find((s) => s.id === m.session_id);
+          if (!session) return;
           if (active && active.session_ids.includes(m.session_id)) {
             setMessages((prev) => [...prev, m]);
             // auto mark as read if from counterpart
@@ -226,8 +254,28 @@ export default function Messages() {
                 .eq("id", m.id);
             }
           } else {
-            // Refresh threads to bump unread
-            buildThreads(sessions);
+            // Patch just the affected thread in place instead of re-fetching
+            // every session's full message history on every incoming message.
+            const otherId = role === "coach" ? session.coachee_id : session.coach_id;
+            setThreads((prev) => {
+              const idx = prev.findIndex((t) => t.counterpart_id === otherId);
+              if (idx === -1) {
+                // Brand-new counterpart not yet in the thread list — fall back
+                // to a full rebuild for this rare case only.
+                buildThreads(sessions);
+                return prev;
+              }
+              const next = [...prev];
+              next[idx] = {
+                ...next[idx],
+                latest_topic: session.topic,
+                latest_at: m.created_at,
+                last_preview: m.body,
+                unread: next[idx].unread + (m.sender_id !== user.id ? 1 : 0),
+              };
+              next.sort((a, b) => +new Date(b.latest_at) - +new Date(a.latest_at));
+              return next;
+            });
           }
         }
       )
@@ -235,9 +283,13 @@ export default function Messages() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessions, active, user, buildThreads]);
+  }, [sessions, active, user, role, buildThreads]);
 
   useEffect(() => {
+    if (isLoadingOlderRef.current) {
+      isLoadingOlderRef.current = false;
+      return;
+    }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
@@ -383,6 +435,22 @@ export default function Messages() {
                   </p>
                 </div>
                 <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-5">
+                  {hasMoreOlder && (
+                    <div className="flex justify-center pb-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={loadOlderMessages}
+                        disabled={loadingOlder}
+                      >
+                        {loadingOlder ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          "Load earlier messages"
+                        )}
+                      </Button>
+                    </div>
+                  )}
                   {messages.length === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
                       Say hello — this is the start of your conversation.

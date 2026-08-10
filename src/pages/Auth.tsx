@@ -153,6 +153,7 @@ export default function Auth() {
                         <button
                           type="button"
                           key={opt.value}
+                          aria-pressed={active}
                           onClick={() => setSignupRole(opt.value)}
                           className={cn(
                             "flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all",

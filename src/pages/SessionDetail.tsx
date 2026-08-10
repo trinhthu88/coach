@@ -162,6 +162,15 @@ export default function SessionDetail() {
     session.status !== "completed" &&
     isAfter(start, addHours(new Date(), 24));
 
+  const sessionStarted = start < new Date();
+  // Coach can't mark a session complete until the coachee's side of the
+  // record exists: their written reflection (regular sessions) or their
+  // ICF competency feedback (peer sessions).
+  const canMarkComplete = isPeer ? feedback.existed : coacheeNotes.trim().length > 0;
+  const missingRequirementHint = isPeer
+    ? "Waiting on the peer-coachee's competency feedback before this session can be marked complete."
+    : "Waiting on the coachee's reflection before this session can be marked complete.";
+
   const handleSaveProgress = async () => {
     const { error } = await saveProgress({
       includeCoachNotes: isCoach || isAdmin,
@@ -565,11 +574,15 @@ export default function SessionDetail() {
             />
           )}
 
-          {/* Peer competency feedback */}
-          {isPeer && session.status === "completed" && session.coachee_id === user?.id && (
-            <PeerCompetencyFeedback existing={feedback} onSave={savePeerFeedback} onSaved={reload} />
-          )}
-          {isPeer && session.status === "completed" && session.coach_id === user?.id && feedback.existed && (
+          {/* Peer competency feedback — visible to the peer-coachee as soon as the
+              session has been confirmed and has started, not only once it's been
+              marked complete, so it can actually gate "Mark complete" below. */}
+          {isPeer &&
+            isCoachee &&
+            (session.status === "completed" || (session.status === "confirmed" && sessionStarted)) && (
+              <PeerCompetencyFeedback existing={feedback} onSave={savePeerFeedback} onSaved={reload} />
+            )}
+          {isPeer && session.status === "completed" && isCoach && feedback.existed && (
             <PeerCompetencyFeedback existing={feedback} onSave={savePeerFeedback} readOnly />
           )}
         </div>
@@ -694,10 +707,20 @@ export default function SessionDetail() {
                   <CheckCircle2 className="mr-1 h-4 w-4" /> Confirm session
                 </Button>
               )}
-              {isCoach && session.status === "confirmed" && new Date(session.start_time) < new Date() && (
-                <Button variant="secondary" className="rounded-full" onClick={completeSession} disabled={saving}>
-                  Mark complete
-                </Button>
+              {isCoach && session.status === "confirmed" && sessionStarted && (
+                <div className="w-full space-y-2">
+                  <Button
+                    variant="secondary"
+                    className="rounded-full"
+                    onClick={completeSession}
+                    disabled={saving || !canMarkComplete}
+                  >
+                    Mark complete
+                  </Button>
+                  {!canMarkComplete && (
+                    <p className="text-xs text-muted-foreground">{missingRequirementHint}</p>
+                  )}
+                </div>
               )}
               {canCancel && (
                 <Button
@@ -719,7 +742,7 @@ export default function SessionDetail() {
             <div className="text-sm">
               <p className="font-semibold">Need help with this session?</p>
               <a
-                href="mailto:support@example.com"
+                href="mailto:contact@clariva.club"
                 className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary"
               >
                 Contact platform support

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, RefreshCw, Flag, Users, MessagesSquare, BarChart3, Calendar as CalendarIcon, PanelsTopLeft } from "lucide-react";
-import { formatDistanceToNow, subDays } from "date-fns";
+import { formatDistanceToNow, subDays, format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { StatCard } from "@/components/ui/page-header";
 import { FilterChip } from "@/components/ui/page-header";
@@ -57,14 +57,29 @@ export default function AdminAlerts() {
     setScanning(true);
     try {
       const sevenDaysAgo = subDays(new Date(), 7);
+      const now = new Date();
 
-      const [{ data: sessions }, { data: profiles }, { data: enrollments }] = await Promise.all([
-        supabase.from("sessions").select("id, coach_id, coachee_id, status, action_items, start_time"),
-        supabase.from("profiles").select("id, full_name"),
+      const [
+        { data: sessions },
+        { data: peerSessions },
+        { data: peerFeedback },
+        { data: profiles },
+        { data: enrollments },
+      ] = await Promise.all([
+        supabase
+          .from("sessions")
+          .select("id, coach_id, coachee_id, status, action_items, start_time, coachee_notes"),
+        supabase
+          .from("peer_sessions")
+          .select("id, peer_coach_id, peer_coachee_id, status, start_time"),
+        supabase.from("peer_session_competency_feedback").select("peer_session_id"),
+        supabase.from("profiles").select("id, full_name, email"),
         supabase.from("programme_enrollments").select("id, coachee_id, status, progress_pct"),
       ]);
 
       const profById = new Map((profiles || []).map((p: any) => [p.id, p.full_name]));
+      const emailById = new Map((profiles || []).map((p: any) => [p.id, p.email]));
+      const peerFeedbackSessionIds = new Set((peerFeedback || []).map((f: any) => f.peer_session_id));
       const overdueByCoachee = new Map<string, number>();
       (sessions || []).forEach((s: any) => {
         const items = Array.isArray(s.action_items) ? s.action_items : [];
@@ -102,7 +117,73 @@ export default function AdminAlerts() {
         }
       });
 
-      await supabase.from("admin_alerts").delete().in("alert_type", ["overdue_actions", "programme_at_risk"]).eq("resolved", false);
+      // Missing reflection / competency feedback — regular sessions
+      (sessions || []).forEach((s: any) => {
+        const hasReflection = !!(s.coachee_notes && String(s.coachee_notes).trim());
+        if (hasReflection) return;
+        const name = profById.get(s.coachee_id) || "Coachee";
+        const email = emailById.get(s.coachee_id);
+        const dateStr = format(new Date(s.start_time), "d MMM yyyy");
+        const contact = email ? ` (${email})` : "";
+
+        if (s.status === "confirmed" && new Date(s.start_time) < now) {
+          // Blocked: the coach literally cannot mark this complete until the
+          // coachee submits their reflection (see SessionDetail.tsx gate).
+          newAlerts.push({
+            severity: "warning",
+            alert_type: "feedback_response",
+            title: `${name} — reflection still missing`,
+            message: `${name} hasn't submitted their reflection for a session on ${dateStr}${contact}. The coach can't mark this session complete until it's submitted.`,
+            related_coachee_id: s.coachee_id,
+            resolved: false,
+          });
+        } else if (s.status === "completed") {
+          // Retroactive: completed before the reflection gate existed.
+          newAlerts.push({
+            severity: "info",
+            alert_type: "feedback_response",
+            title: `${name} — reflection missing (completed session)`,
+            message: `${name} hasn't submitted their reflection for a session on ${dateStr}${contact}.`,
+            related_coachee_id: s.coachee_id,
+            resolved: false,
+          });
+        }
+      });
+
+      // Missing competency feedback — peer sessions (the peer-coachee owes feedback)
+      (peerSessions || []).forEach((s: any) => {
+        if (peerFeedbackSessionIds.has(s.id)) return;
+        const name = profById.get(s.peer_coachee_id) || "Coachee";
+        const email = emailById.get(s.peer_coachee_id);
+        const dateStr = format(new Date(s.start_time), "d MMM yyyy");
+        const contact = email ? ` (${email})` : "";
+
+        if (s.status === "confirmed" && new Date(s.start_time) < now) {
+          newAlerts.push({
+            severity: "warning",
+            alert_type: "feedback_response",
+            title: `${name} — competency feedback still missing`,
+            message: `${name} hasn't submitted their competency feedback for a peer session on ${dateStr}${contact}. The coach can't mark this session complete until it's submitted.`,
+            related_coachee_id: s.peer_coachee_id,
+            resolved: false,
+          });
+        } else if (s.status === "completed") {
+          newAlerts.push({
+            severity: "info",
+            alert_type: "feedback_response",
+            title: `${name} — competency feedback missing (completed session)`,
+            message: `${name} hasn't submitted their competency feedback for a peer session on ${dateStr}${contact}.`,
+            related_coachee_id: s.peer_coachee_id,
+            resolved: false,
+          });
+        }
+      });
+
+      await supabase
+        .from("admin_alerts")
+        .delete()
+        .in("alert_type", ["overdue_actions", "programme_at_risk", "feedback_response"])
+        .eq("resolved", false);
       if (newAlerts.length) await supabase.from("admin_alerts").insert(newAlerts);
 
       toast.success(`Scan complete · ${newAlerts.length} active alerts`);

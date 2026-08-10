@@ -127,6 +127,7 @@ export function FilterChip({
   return (
     <button
       type="button"
+      aria-pressed={active}
       {...props}
       className={cn(
         "rounded-full px-4 py-2 text-[10.5px] font-bold uppercase tracking-[0.16em] transition-all",

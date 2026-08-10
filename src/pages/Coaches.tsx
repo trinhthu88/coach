@@ -7,7 +7,7 @@ import { PageHeader, FilterChip } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Star, MapPin, Loader2, Sparkles, Heart, Clock } from "lucide-react";
+import { Search, Star, MapPin, Loader2, Sparkles, Heart, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "@/hooks/useFavorites";
 
@@ -39,10 +39,14 @@ const SPECIALTY_FILTERS = [
 export default function Coaches() {
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState("");
   const [activeSpec, setActiveSpec] = useState<string>("All");
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
+    setLoading(true);
+    setLoadError(false);
     (async () => {
       const { data, error } = await supabase
         .from("coach_profiles")
@@ -52,10 +56,14 @@ export default function Coaches() {
         .eq("approval_status", "active")
         .order("is_featured", { ascending: false })
         .order("rating_avg", { ascending: false });
-      if (!error && data) setCoaches(data as unknown as CoachRow[]);
+      if (error) {
+        setLoadError(true);
+      } else {
+        setCoaches((data as unknown as CoachRow[]) || []);
+      }
       setLoading(false);
     })();
-  }, []);
+  }, [retryKey]);
 
   const filtered = useMemo(() => {
     return coaches.filter((c) => {
@@ -104,6 +112,8 @@ export default function Coaches() {
         <div className="flex items-center justify-center py-24 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
+      ) : loadError ? (
+        <ErrorState onRetry={() => setRetryKey((k) => k + 1)} />
       ) : filtered.length === 0 ? (
         <EmptyState query={query} />
       ) : (
@@ -197,6 +207,23 @@ function CoachCard({ coach }: { coach: CoachRow }) {
           </Button>
         </div>
       </Link>
+    </Card>
+  );
+}
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Card className="flex flex-col items-center gap-3 p-12 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+        <AlertTriangle className="h-6 w-6" />
+      </div>
+      <h3 className="text-lg font-semibold">Couldn't load coaches</h3>
+      <p className="max-w-md text-sm text-muted-foreground">
+        Something went wrong while fetching the coach directory. Check your connection and try again.
+      </p>
+      <Button variant="outline" onClick={onRetry} className="mt-2">
+        Try again
+      </Button>
     </Card>
   );
 }

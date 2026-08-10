@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Page-level lazy imports — each becomes a separate chunk
 const Index = lazy(() => import("./pages/Index"));
@@ -47,171 +48,173 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Suspense fallback={null}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/request-access" element={<RequestAccess />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route
-                path="/set-new-password"
-                element={
-                  <ProtectedRoute>
-                    <SetNewPassword />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/pending"
-                element={
-                  <ProtectedRoute>
-                    <PendingApproval />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/coaches" element={<Coaches />} />
-                <Route path="/coaches/:coachId" element={<CoachDetail />} />
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Suspense fallback={null}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/request-access" element={<RequestAccess />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route
-                  path="/coaches/:coachId/book"
+                  path="/set-new-password"
                   element={
                     <ProtectedRoute>
-                      <BookSession />
+                      <SetNewPassword />
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/sessions" element={<Sessions />} />
-                <Route path="/sessions/:sessionId" element={<SessionDetail />} />
-                <Route path="/messages" element={<Messages />} />
 
                 <Route
-                  path="/coachee/profile"
+                  path="/pending"
                   element={
-                    <ProtectedRoute role="coachee">
-                      <CoacheeProfileEditor />
+                    <ProtectedRoute>
+                      <PendingApproval />
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/coach/profile"
-                  element={
-                    <ProtectedRoute role="coach">
-                      <CoachProfileEditor />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/coach/availability"
-                  element={
-                    <ProtectedRoute role="coach">
-                      <CoachAvailability />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/coach/clients"
-                  element={
-                    <ProtectedRoute role="coach">
-                      <CoachClients />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/coach/find-coach"
-                  element={
-                    <ProtectedRoute role="coach">
-                      <CoachFindCoach />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/coach/peer-coaching"
-                  element={
-                    <ProtectedRoute role="coach">
-                      <CoachPeerCoaching />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/coach/practice-journey"
-                  element={
-                    <ProtectedRoute role="coach">
-                      <CoachPracticeJourney />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/coach/my-journey"
-                  element={
-                    <ProtectedRoute role="coach">
-                      <CoachMyJourney />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/coachee/journey"
-                  element={
-                    <ProtectedRoute role="coachee">
-                      <CoacheeJourney />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/coaches"
-                  element={
-                    <ProtectedRoute role="admin">
-                      <AdminCoaches />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/registrations"
-                  element={
-                    <ProtectedRoute role="admin">
-                      <AdminRegistrations />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/sessions"
-                  element={
-                    <ProtectedRoute role="admin">
-                      <AdminSessions />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-                <Route path="/admin/coachees" element={<ProtectedRoute role="admin"><AdminCoachees /></ProtectedRoute>} />
-                <Route path="/admin/alerts" element={<ProtectedRoute role="admin"><AdminAlerts /></ProtectedRoute>} />
-                <Route path="/admin/activity" element={<ProtectedRoute role="admin"><AdminActivity /></ProtectedRoute>} />
-                <Route path="/admin/programmes" element={<ProtectedRoute role="admin"><AdminProgrammes /></ProtectedRoute>} />
-                <Route path="/admin/cohorts" element={<ProtectedRoute role="admin"><AdminCohorts /></ProtectedRoute>} />
-                <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
-              </Route>
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/coaches" element={<Coaches />} />
+                  <Route path="/coaches/:coachId" element={<CoachDetail />} />
+                  <Route
+                    path="/coaches/:coachId/book"
+                    element={
+                      <ProtectedRoute>
+                        <BookSession />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/sessions" element={<Sessions />} />
+                  <Route path="/sessions/:sessionId" element={<SessionDetail />} />
+                  <Route path="/messages" element={<Messages />} />
+
+                  <Route
+                    path="/coachee/profile"
+                    element={
+                      <ProtectedRoute role="coachee">
+                        <CoacheeProfileEditor />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coach/profile"
+                    element={
+                      <ProtectedRoute role="coach">
+                        <CoachProfileEditor />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coach/availability"
+                    element={
+                      <ProtectedRoute role="coach">
+                        <CoachAvailability />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coach/clients"
+                    element={
+                      <ProtectedRoute role="coach">
+                        <CoachClients />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coach/find-coach"
+                    element={
+                      <ProtectedRoute role="coach">
+                        <CoachFindCoach />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coach/peer-coaching"
+                    element={
+                      <ProtectedRoute role="coach">
+                        <CoachPeerCoaching />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coach/practice-journey"
+                    element={
+                      <ProtectedRoute role="coach">
+                        <CoachPracticeJourney />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coach/my-journey"
+                    element={
+                      <ProtectedRoute role="coach">
+                        <CoachMyJourney />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coachee/journey"
+                    element={
+                      <ProtectedRoute role="coachee">
+                        <CoacheeJourney />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/coaches"
+                    element={
+                      <ProtectedRoute role="admin">
+                        <AdminCoaches />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/registrations"
+                    element={
+                      <ProtectedRoute role="admin">
+                        <AdminRegistrations />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/sessions"
+                    element={
+                      <ProtectedRoute role="admin">
+                        <AdminSessions />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/coachees" element={<ProtectedRoute role="admin"><AdminCoachees /></ProtectedRoute>} />
+                  <Route path="/admin/alerts" element={<ProtectedRoute role="admin"><AdminAlerts /></ProtectedRoute>} />
+                  <Route path="/admin/activity" element={<ProtectedRoute role="admin"><AdminActivity /></ProtectedRoute>} />
+                  <Route path="/admin/programmes" element={<ProtectedRoute role="admin"><AdminProgrammes /></ProtectedRoute>} />
+                  <Route path="/admin/cohorts" element={<ProtectedRoute role="admin"><AdminCohorts /></ProtectedRoute>} />
+                  <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
+                </Route>
+
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

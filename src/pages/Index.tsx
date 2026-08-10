@@ -106,6 +106,8 @@ export default function Index() {
                 {(["executive", "coach"] as const).map((v) => (
                   <button
                     key={v}
+                    type="button"
+                    aria-pressed={mockView === v}
                     onClick={() => setMockView(v)}
                     className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider transition-colors ${
                       mockView === v ? "bg-white/15 text-white/90" : "text-white/40"
@@ -450,8 +452,16 @@ function FooterCol({ title, items }: { title: string; items: { label: string; to
   );
 }
 
+/** Always a few days out from today, so the marketing mockup never looks stale. */
+function mockNextSessionDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 4);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 function MockBody({ view }: { view: "executive" | "coach" }) {
   const isCoach = view === "coach";
+  const nextSessionDate = mockNextSessionDate();
   return (
     <div className="flex">
       <aside className="w-[140px] shrink-0 border-r border-white/[0.06] bg-white/[0.03] py-4">
@@ -534,7 +544,9 @@ function MockBody({ view }: { view: "executive" | "coach" }) {
             {isCoach ? "Executive clarity" : "Leadership focus"}
           </div>
           <div className="mb-2.5 text-[8px] text-white/40">
-            {isCoach ? "with Marcus Webb · May 15 · 11:15 AM" : "with Coach Elena R. · May 15 · 11:15 AM"}
+            {isCoach
+              ? `with Marcus Webb · ${nextSessionDate} · 11:15 AM`
+              : `with Coach Elena R. · ${nextSessionDate} · 11:15 AM`}
           </div>
           <div className="flex gap-1.5">
             <span className="rounded-full bg-primary px-2.5 py-1 text-[8px] font-bold text-primary-foreground">▶ Enter meeting</span>

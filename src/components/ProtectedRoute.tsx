@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth, AppRole } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
+import clarivaLogo from "@/assets/clariva-logo.png";
 
 interface Props {
   children: ReactNode;
@@ -15,8 +16,9 @@ export function ProtectedRoute({ children, role: requiredRole }: Props) {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-4 text-muted-foreground">
+          <img src={clarivaLogo} alt="" className="h-7 w-auto object-contain opacity-90" />
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
           <p className="text-xs font-semibold uppercase tracking-widest">Loading platform…</p>
         </div>
       </div>

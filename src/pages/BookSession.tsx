@@ -48,7 +48,7 @@ interface Slot {
 }
 
 const DURATIONS = [30, 45, 60] as const;
-const CONTACT_EMAIL = "contact@erickson.vn";
+const CONTACT_EMAIL = "contact@clariva.club";
 
 function timeToMinutes(t: string) {
   const [h, m] = t.split(":").map(Number);
@@ -80,6 +80,8 @@ export default function BookSession() {
   const [coach, setCoach] = useState<CoachDetail | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   const [duration, setDuration] = useState<number>(45);
   const [weekStart, setWeekStart] = useState<Date>(() => startOfDay(new Date()));
@@ -94,109 +96,117 @@ export default function BookSession() {
 
   useEffect(() => {
     if (!coachId) return;
+    setLoading(true);
+    setLoadError(false);
     (async () => {
-      const today = new Date().toISOString().slice(0, 10);
-      const slotQuery = supabase
-        .from("coach_availability")
-        .select("id, slot_date, start_time, end_time, slot_type")
-        .eq("coach_id", coachId)
-        .eq("is_booked", false)
-        .eq("slot_type", mode === "peer" ? "peer" : "coaching")
-        .gte("slot_date", today)
-        .order("slot_date")
-        .order("start_time");
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const slotQuery = supabase
+          .from("coach_availability")
+          .select("id, slot_date, start_time, end_time, slot_type")
+          .eq("coach_id", coachId)
+          .eq("is_booked", false)
+          .eq("slot_type", mode === "peer" ? "peer" : "coaching")
+          .gte("slot_date", today)
+          .order("slot_date")
+          .order("start_time");
 
-      const [{ data: coachData }, { data: slotData }] = await Promise.all([
-        supabase
-          .from("coach_profiles")
-          .select(
-            "id, title, specialties, years_experience, country_based, nationality, rating_avg, sessions_completed, diplomas_certifications, peer_coaching_opt_in, profiles!inner(full_name, avatar_url, bio)"
-          )
-          .eq("id", coachId)
-          .maybeSingle(),
-        slotQuery,
-      ]);
-      setCoach(coachData as unknown as CoachDetail | null);
-
-      // --- Conflict filtering: hide booker's own existing sessions overlap ---
-      let bookerBusy: { start: number; end: number }[] = [];
-      if (user) {
-        const horizonStart = new Date();
-        horizonStart.setHours(0, 0, 0, 0);
-        const horizonEnd = new Date();
-        horizonEnd.setDate(horizonEnd.getDate() + 90);
-
-        const [{ data: mySess }, { data: myPeer }] = await Promise.all([
+        const [{ data: coachData }, { data: slotData }] = await Promise.all([
           supabase
-            .from("sessions")
-            .select("start_time, duration_minutes, status, coach_id, coachee_id")
-            .or(`coach_id.eq.${user.id},coachee_id.eq.${user.id}`)
-            .in("status", ["pending_coach_approval", "confirmed"])
-            .gte("start_time", horizonStart.toISOString())
-            .lte("start_time", horizonEnd.toISOString()),
-          supabase
-            .from("peer_sessions")
-            .select("start_time, duration_minutes, status, peer_coach_id, peer_coachee_id")
-            .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
-            .in("status", ["pending_coach_approval", "confirmed"])
-            .gte("start_time", horizonStart.toISOString())
-            .lte("start_time", horizonEnd.toISOString()),
+            .from("coach_profiles")
+            .select(
+              "id, title, specialties, years_experience, country_based, nationality, rating_avg, sessions_completed, diplomas_certifications, peer_coaching_opt_in, profiles!inner(full_name, avatar_url, bio)"
+            )
+            .eq("id", coachId)
+            .maybeSingle(),
+          slotQuery,
         ]);
-        const toBusy = (rows: { start_time: string; duration_minutes: number }[] | null) =>
-          (rows || []).map((r) => {
-            const s = new Date(r.start_time).getTime();
-            return { start: s, end: s + r.duration_minutes * 60_000 };
-          });
-        bookerBusy = [...toBusy(mySess), ...toBusy(myPeer)];
-      }
-      setBookerBusy(bookerBusy);
-      setSlots(((slotData as Slot[]) || []).map((s) => ({ ...s })));
+        setCoach(coachData as unknown as CoachDetail | null);
 
-      if (user) {
-        if (mode === "peer") {
-          // Peer mode: use new RPC for peer-only monthly limit
-          const { data: u } = await supabase.rpc("get_coach_peer_session_usage", {
-            _coach_id: user.id,
-          });
-          const row = Array.isArray(u) ? u[0] : u;
-          setUsage({
-            monthly_limit: row?.peer_monthly_limit ?? 4,
-            used_this_month: row?.used_this_month ?? 0,
-          });
-        } else if (role === "coach") {
-          // Coach booking a regular coaching session (coach-as-coachee allowlist path)
-          const [{ data: lim }, coachCount] = await Promise.all([
-            supabase
-              .from("coach_session_limits")
-              .select("monthly_limit")
-              .eq("coach_user_id", user.id)
-              .maybeSingle(),
+        // --- Conflict filtering: hide booker's own existing sessions overlap ---
+        let bookerBusy: { start: number; end: number }[] = [];
+        if (user) {
+          const horizonStart = new Date();
+          horizonStart.setHours(0, 0, 0, 0);
+          const horizonEnd = new Date();
+          horizonEnd.setDate(horizonEnd.getDate() + 90);
+
+          const [{ data: mySess }, { data: myPeer }] = await Promise.all([
             supabase
               .from("sessions")
-              .select("id", { count: "exact", head: true })
-              .eq("coachee_id", user.id)
-              .eq("status", "completed"),
-          ]);
-          setUsage({
-            monthly_limit: lim?.monthly_limit ?? 4,
-            used_this_month: coachCount.count || 0,
-          });
-        } else {
-          const [{ data: u }, { count }] = await Promise.all([
-            supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
+              .select("start_time, duration_minutes, status, coach_id, coachee_id")
+              .or(`coach_id.eq.${user.id},coachee_id.eq.${user.id}`)
+              .in("status", ["pending_coach_approval", "confirmed"])
+              .gte("start_time", horizonStart.toISOString())
+              .lte("start_time", horizonEnd.toISOString()),
             supabase
-              .from("sessions")
-              .select("id", { count: "exact", head: true })
-              .eq("coachee_id", user.id)
-              .eq("status", "completed"),
+              .from("peer_sessions")
+              .select("start_time, duration_minutes, status, peer_coach_id, peer_coachee_id")
+              .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
+              .in("status", ["pending_coach_approval", "confirmed"])
+              .gte("start_time", horizonStart.toISOString())
+              .lte("start_time", horizonEnd.toISOString()),
           ]);
-          const limit = u && u.length ? u[0].monthly_limit : 4;
-          setUsage({ monthly_limit: limit, used_this_month: count || 0 });
+          const toBusy = (rows: { start_time: string; duration_minutes: number }[] | null) =>
+            (rows || []).map((r) => {
+              const s = new Date(r.start_time).getTime();
+              return { start: s, end: s + r.duration_minutes * 60_000 };
+            });
+          bookerBusy = [...toBusy(mySess), ...toBusy(myPeer)];
         }
+        setBookerBusy(bookerBusy);
+        setSlots(((slotData as Slot[]) || []).map((s) => ({ ...s })));
+
+        if (user) {
+          if (mode === "peer") {
+            // Peer mode: use new RPC for peer-only monthly limit
+            const { data: u } = await supabase.rpc("get_coach_peer_session_usage", {
+              _coach_id: user.id,
+            });
+            const row = Array.isArray(u) ? u[0] : u;
+            setUsage({
+              monthly_limit: row?.peer_monthly_limit ?? 4,
+              used_this_month: row?.used_this_month ?? 0,
+            });
+          } else if (role === "coach") {
+            // Coach booking a regular coaching session (coach-as-coachee allowlist path)
+            const [{ data: lim }, coachCount] = await Promise.all([
+              supabase
+                .from("coach_session_limits")
+                .select("monthly_limit")
+                .eq("coach_user_id", user.id)
+                .maybeSingle(),
+              supabase
+                .from("sessions")
+                .select("id", { count: "exact", head: true })
+                .eq("coachee_id", user.id)
+                .eq("status", "completed"),
+            ]);
+            setUsage({
+              monthly_limit: lim?.monthly_limit ?? 4,
+              used_this_month: coachCount.count || 0,
+            });
+          } else {
+            const [{ data: u }, { count }] = await Promise.all([
+              supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
+              supabase
+                .from("sessions")
+                .select("id", { count: "exact", head: true })
+                .eq("coachee_id", user.id)
+                .eq("status", "completed"),
+            ]);
+            const limit = u && u.length ? u[0].monthly_limit : 4;
+            setUsage({ monthly_limit: limit, used_this_month: count || 0 });
+          }
+        }
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to load booking data:", err);
+        setLoadError(true);
+        setLoading(false);
       }
-      setLoading(false);
     })();
-  }, [coachId, user, mode, role]);
+  }, [coachId, user, mode, role, retryKey]);
 
   const datesWithSlots = useMemo(() => new Set(slots.map((s) => s.slot_date)), [slots]);
   const week = useMemo(
@@ -260,7 +270,16 @@ export default function BookSession() {
       }));
     }
     setSubmitting(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      // Unique-violation: someone else booked this exact slot a moment earlier.
+      if ((error as { code?: string }).code === "23505") {
+        setSlots((prev) => prev.filter((s) => s.id !== opt.slotId));
+        setSelectedStart(null);
+        toast.error("That time was just booked by someone else. Please pick another slot.");
+        return;
+      }
+      return toast.error(error.message);
+    }
     toast.success(
       mode === "peer"
         ? "Peer session requested. Awaiting peer coach confirmation."
@@ -274,6 +293,19 @@ export default function BookSession() {
       <div className="flex items-center justify-center py-24 text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
+    );
+  }
+  if (loadError) {
+    return (
+      <Card className="p-12 text-center">
+        <h2 className="text-xl font-semibold">Couldn't load this page</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Something went wrong while loading the coach's availability. Please try again.
+        </p>
+        <Button variant="outline" className="mt-6" onClick={() => setRetryKey((k) => k + 1)}>
+          Try again
+        </Button>
+      </Card>
     );
   }
   if (!coach) {
@@ -401,6 +433,7 @@ export default function BookSession() {
                 <button
                   key={d}
                   type="button"
+                  aria-pressed={duration === d}
                   onClick={() => setDuration(d)}
                   className={cn(
                     "rounded-2xl border px-4 py-3.5 text-sm font-semibold transition-colors",
@@ -437,6 +470,7 @@ export default function BookSession() {
                     <button
                       key={ds}
                       type="button"
+                      aria-pressed={!!isSelected}
                       disabled={disabled}
                       onClick={() => setSelectedDate(d)}
                       className={cn(
@@ -483,6 +517,7 @@ export default function BookSession() {
                   <button
                     key={`${o.slotId}-${o.start}`}
                     type="button"
+                    aria-pressed={selectedStart === o.start}
                     onClick={() => setSelectedStart(o.start)}
                     className={cn(
                       "rounded-2xl border py-3 text-sm font-semibold transition-colors",
