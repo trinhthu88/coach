@@ -34,6 +34,7 @@ import {
   useSessionPeerFeedback,
 } from "@/hooks/sessions/useSessionDetail";
 import { PeerFeedbackState, SessionStatus } from "@/hooks/sessions/types";
+import { canMarkSessionComplete } from "@/hooks/sessions/completionGate";
 
 const STATUS_META: Record<
   SessionStatus,
@@ -166,7 +167,11 @@ export default function SessionDetail() {
   // Coach can't mark a session complete until the coachee's side of the
   // record exists: their written reflection (regular sessions) or their
   // ICF competency feedback (peer sessions).
-  const canMarkComplete = isPeer ? feedback.existed : coacheeNotes.trim().length > 0;
+  const canMarkComplete = canMarkSessionComplete({
+    isPeer,
+    coacheeNotes,
+    peerFeedbackExisted: feedback.existed,
+  });
   const missingRequirementHint = isPeer
     ? "Waiting on the peer-coachee's competency feedback before this session can be marked complete."
     : "Waiting on the coachee's reflection before this session can be marked complete.";

@@ -2,8 +2,9 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, RefreshCw, Flag, Users, MessagesSquare, BarChart3, Calendar as CalendarIcon, PanelsTopLeft } from "lucide-react";
-import { formatDistanceToNow, subDays, format } from "date-fns";
+import { formatDistanceToNow, subDays } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
+import { buildFeedbackAlerts } from "./alertScan";
 import { StatCard } from "@/components/ui/page-header";
 import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
@@ -117,67 +118,17 @@ export default function AdminAlerts() {
         }
       });
 
-      // Missing reflection / competency feedback — regular sessions
-      (sessions || []).forEach((s: any) => {
-        const hasReflection = !!(s.coachee_notes && String(s.coachee_notes).trim());
-        if (hasReflection) return;
-        const name = profById.get(s.coachee_id) || "Coachee";
-        const email = emailById.get(s.coachee_id);
-        const dateStr = format(new Date(s.start_time), "d MMM yyyy");
-        const contact = email ? ` (${email})` : "";
-
-        if (s.status === "confirmed" && new Date(s.start_time) < now) {
-          // Blocked: the coach literally cannot mark this complete until the
-          // coachee submits their reflection (see SessionDetail.tsx gate).
-          newAlerts.push({
-            severity: "warning",
-            alert_type: "feedback_response",
-            title: `${name} — reflection still missing`,
-            message: `${name} hasn't submitted their reflection for a session on ${dateStr}${contact}. The coach can't mark this session complete until it's submitted.`,
-            related_coachee_id: s.coachee_id,
-            resolved: false,
-          });
-        } else if (s.status === "completed") {
-          // Retroactive: completed before the reflection gate existed.
-          newAlerts.push({
-            severity: "info",
-            alert_type: "feedback_response",
-            title: `${name} — reflection missing (completed session)`,
-            message: `${name} hasn't submitted their reflection for a session on ${dateStr}${contact}.`,
-            related_coachee_id: s.coachee_id,
-            resolved: false,
-          });
-        }
-      });
-
-      // Missing competency feedback — peer sessions (the peer-coachee owes feedback)
-      (peerSessions || []).forEach((s: any) => {
-        if (peerFeedbackSessionIds.has(s.id)) return;
-        const name = profById.get(s.peer_coachee_id) || "Coachee";
-        const email = emailById.get(s.peer_coachee_id);
-        const dateStr = format(new Date(s.start_time), "d MMM yyyy");
-        const contact = email ? ` (${email})` : "";
-
-        if (s.status === "confirmed" && new Date(s.start_time) < now) {
-          newAlerts.push({
-            severity: "warning",
-            alert_type: "feedback_response",
-            title: `${name} — competency feedback still missing`,
-            message: `${name} hasn't submitted their competency feedback for a peer session on ${dateStr}${contact}. The coach can't mark this session complete until it's submitted.`,
-            related_coachee_id: s.peer_coachee_id,
-            resolved: false,
-          });
-        } else if (s.status === "completed") {
-          newAlerts.push({
-            severity: "info",
-            alert_type: "feedback_response",
-            title: `${name} — competency feedback missing (completed session)`,
-            message: `${name} hasn't submitted their competency feedback for a peer session on ${dateStr}${contact}.`,
-            related_coachee_id: s.peer_coachee_id,
-            resolved: false,
-          });
-        }
-      });
+      // Missing reflection / competency feedback — regular + peer sessions
+      newAlerts.push(
+        ...buildFeedbackAlerts({
+          sessions: (sessions || []) as any,
+          peerSessions: (peerSessions || []) as any,
+          peerFeedbackSessionIds,
+          nameById: profById,
+          emailById,
+          now,
+        })
+      );
 
       await supabase
         .from("admin_alerts")
