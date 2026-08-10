@@ -17,6 +17,10 @@ deploymentTarget = "static"
 publicDir = "dist"
 build = ["npm", "run", "build"]
 
+[[deployment.rewrites]]
+from = "/*"
+to = "/index.html"
+
 [workflows]
 runButton = "Project"
 

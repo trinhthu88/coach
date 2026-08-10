@@ -28,3 +28,6 @@ dist-ssr
 .env.local
 .env.*.local
 !.env.example
+
+# Supabase CLI local/ephemeral state
+supabase/.temp
