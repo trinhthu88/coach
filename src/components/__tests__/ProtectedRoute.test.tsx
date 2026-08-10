@@ -97,6 +97,36 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText("pending page")).toBeInTheDocument();
   });
 
+  // Every value of the DB `user_status` enum (see supabase/migrations
+  // 20260430130143_*), so a new/renamed status value breaks this test
+  // instead of silently falling through to the wrong branch.
+  describe.each([
+    { status: "inactive", expectPending: true },
+    { status: "pending_approval", expectPending: true },
+    { status: "active", expectPending: false },
+    { status: "suspended", expectPending: true },
+    { status: "rejected", expectPending: true },
+    // 'reach_limit' must NOT redirect to /pending — it only blocks new
+    // bookings (enforced separately in BookSession.tsx), per the comment
+    // in ProtectedRoute.tsx above the status check.
+    { status: "reach_limit", expectPending: false },
+  ])("profile.status = $status", ({ status, expectPending }) => {
+    it(expectPending ? "redirects to /pending" : "renders children", () => {
+      mockAuth.mockReturnValue({
+        user: { id: "u1" },
+        role: "coachee",
+        profile: { ...baseProfile, status },
+        isLoading: false,
+      });
+      renderAt("/private");
+      if (expectPending) {
+        expect(screen.getByText("pending page")).toBeInTheDocument();
+      } else {
+        expect(screen.getByText("protected content")).toBeInTheDocument();
+      }
+    });
+  });
+
   it("lets admins through even when their status is not active", () => {
     mockAuth.mockReturnValue({
       user: { id: "u1" },

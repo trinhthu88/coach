@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { addDays, format, startOfDay } from "date-fns";
 import { toast } from "sonner";
+import { canSubmitBooking, isOverSessionLimit } from "./bookingEligibility";
 
 interface CoachDetail {
   id: string;
@@ -93,6 +94,11 @@ export default function BookSession() {
     null
   );
   const [bookerBusy, setBookerBusy] = useState<{ start: number; end: number }[]>([]);
+  // Authoritative "can I book this coach" answer from public.can_book_session(), the same
+  // function the `sessions` INSERT RLS policies call — see RULES.md and
+  // supabase/migrations/20260810150000_can_book_session_rpc.sql. null = not checked yet
+  // (peer mode isn't gated by this function; loading state before the RPC resolves).
+  const [eligible, setEligible] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!coachId) return;
@@ -159,44 +165,66 @@ export default function BookSession() {
 
         if (user) {
           if (mode === "peer") {
-            // Peer mode: use new RPC for peer-only monthly limit
+            // Peer mode: use new RPC for peer-only monthly limit. This is relationship 3
+            // (open opt-in pool, see RULES.md) — not covered by can_book_session(), which
+            // only governs the two curated-allowlist relationships on `sessions`.
             const { data: u } = await supabase.rpc("get_coach_peer_session_usage", {
               _coach_id: user.id,
             });
             const row = Array.isArray(u) ? u[0] : u;
-            setUsage({
-              monthly_limit: row?.peer_monthly_limit ?? 4,
-              used_this_month: row?.used_this_month ?? 0,
-            });
-          } else if (role === "coach") {
-            // Coach booking a regular coaching session (coach-as-coachee allowlist path)
-            const [{ data: lim }, coachCount] = await Promise.all([
-              supabase
-                .from("coach_session_limits")
-                .select("monthly_limit")
-                .eq("coach_user_id", user.id)
-                .maybeSingle(),
-              supabase
-                .from("sessions")
-                .select("id", { count: "exact", head: true })
-                .eq("coachee_id", user.id)
-                .eq("status", "completed"),
-            ]);
-            setUsage({
-              monthly_limit: lim?.monthly_limit ?? 4,
-              used_this_month: coachCount.count || 0,
-            });
+            const peerLimit = row?.peer_monthly_limit ?? 4;
+            const peerUsed = row?.used_this_month ?? 0;
+            setUsage({ monthly_limit: peerLimit, used_this_month: peerUsed });
+            // Not covered by can_book_session() (see comment above) — gate on the
+            // usage numbers directly instead of leaving `eligible` unset.
+            setEligible(peerUsed < peerLimit);
           } else {
-            const [{ data: u }, { count }] = await Promise.all([
-              supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
-              supabase
-                .from("sessions")
-                .select("id", { count: "exact", head: true })
-                .eq("coachee_id", user.id)
-                .eq("status", "completed"),
-            ]);
-            const limit = u && u.length ? u[0].monthly_limit : 4;
-            setUsage({ monthly_limit: limit, used_this_month: count || 0 });
+            if (role === "coach") {
+              // Coach booking a regular coaching session (coach-as-coachee allowlist path).
+              // These numbers are display-only now — resolve personal override -> global
+              // default row -> 4, same COALESCE chain can_book_session() uses, so the
+              // banner can't show a different limit than what's actually enforced.
+              const [{ data: personalLim }, { data: defaultLim }, coachCount] = await Promise.all([
+                supabase
+                  .from("coach_session_limits")
+                  .select("monthly_limit")
+                  .eq("coach_user_id", user.id)
+                  .maybeSingle(),
+                supabase
+                  .from("coach_session_limits")
+                  .select("monthly_limit")
+                  .is("coach_user_id", null)
+                  .maybeSingle(),
+                supabase
+                  .from("sessions")
+                  .select("id", { count: "exact", head: true })
+                  .eq("coachee_id", user.id)
+                  .eq("status", "completed"),
+              ]);
+              setUsage({
+                monthly_limit: personalLim?.monthly_limit ?? defaultLim?.monthly_limit ?? 4,
+                used_this_month: coachCount.count || 0,
+              });
+            } else {
+              const [{ data: u }, { count }] = await Promise.all([
+                supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
+                supabase
+                  .from("sessions")
+                  .select("id", { count: "exact", head: true })
+                  .eq("coachee_id", user.id)
+                  .eq("status", "completed"),
+              ]);
+              const limit = u && u.length ? u[0].monthly_limit : 4;
+              setUsage({ monthly_limit: limit, used_this_month: count || 0 });
+            }
+
+            // Authoritative eligibility gate (allowlist + limit + status), regardless of
+            // mode above — see can_book_session() in
+            // supabase/migrations/20260810150000_can_book_session_rpc.sql.
+            const { data: canBook } = await supabase.rpc("check_can_book_session", {
+              p_coach_id: coachId,
+            });
+            setEligible(canBook ?? false);
           }
         }
         setLoading(false);
@@ -236,8 +264,12 @@ export default function BookSession() {
 
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
 
-  const overLimit = usage ? usage.used_this_month >= usage.monthly_limit : false;
-  const canSubmit = !!selectedDate && !!selectedStart && topic.trim().length > 0 && !overLimit;
+  const overLimit = isOverSessionLimit(usage);
+  const canSubmit = canSubmitBooking({ selectedDate, selectedStart, topic, eligible });
+  // eligible === false but the numbers don't show overLimit: something other than the
+  // session cap is blocking (allowlist changed, status changed) — the usage-based banner
+  // below wouldn't explain it, so show a distinct message instead of nothing.
+  const ineligibleForOtherReason = eligible === false && !overLimit;
 
   const handleBook = async () => {
     if (!user || !coach || !selectedDate || !selectedStart || !topic.trim()) return;
@@ -276,6 +308,15 @@ export default function BookSession() {
         setSlots((prev) => prev.filter((s) => s.id !== opt.slotId));
         setSelectedStart(null);
         toast.error("That time was just booked by someone else. Please pick another slot.");
+        return;
+      }
+      // Belt-and-suspenders: the pre-submit eligible check above should already have
+      // caught this, but eligibility can change between that check and submit (e.g. an
+      // admin edits the allowlist mid-session). 42501 = RLS policy rejection.
+      if ((error as { code?: string }).code === "42501") {
+        toast.error(
+          "You're not able to book this session right now — your access to this coach or your session limit may have changed. Please refresh and try again."
+        );
         return;
       }
       return toast.error(error.message);
@@ -425,6 +466,14 @@ export default function BookSession() {
                 Session limit reached ({usage?.used_this_month}/{usage?.monthly_limit} completed). You can't book another session.
               </div>
             )
+          )}
+
+          {ineligibleForOtherReason && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              You're not currently eligible to book this coach. Your access may have changed —
+              please contact your admin if this seems wrong.
+            </div>
           )}
 
           <Step number={1} label="Select duration">

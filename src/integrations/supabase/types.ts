@@ -1268,6 +1268,10 @@ export type Database = {
         }
         Returns: number
       }
+      can_book_session: {
+        Args: { p_coach_id: string; p_coachee_id: string }
+        Returns: boolean
+      }
       can_message_peer_session: {
         Args: { _peer_session_id: string; _user_id: string }
         Returns: boolean
@@ -1276,6 +1280,7 @@ export type Database = {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
       }
+      check_can_book_session: { Args: { p_coach_id: string }; Returns: boolean }
       coach_has_client: {
         Args: { _coach_id: string; _coachee_id: string }
         Returns: boolean
