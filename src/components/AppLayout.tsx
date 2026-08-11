@@ -24,6 +24,7 @@ import {
   BarChart3,
   Menu,
   Building2,
+  FileDown,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -41,7 +42,9 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["coach", "coachee"] },
-  { to: "/sponsor", label: "Dashboard", icon: LayoutDashboard, roles: ["sponsor"] },
+  { to: "/sponsor", label: "Dashboard", icon: LayoutDashboard, roles: ["sponsor"], group: "Sponsor" },
+  { to: "/sponsor/cohorts", label: "Cohorts", icon: Layers, roles: ["sponsor"], group: "Sponsor" },
+  { to: "/sponsor/report", label: "Export report", icon: FileDown, roles: ["sponsor"], group: "Sponsor" },
 
   // Coachee
   { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee"] },

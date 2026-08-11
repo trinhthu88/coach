@@ -1,9 +1,19 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { format, differenceInCalendarDays } from "date-fns";
-import { Users, CheckCircle2, AlertTriangle, CalendarCheck, Star, CalendarRange, ShieldCheck, Loader2 } from "lucide-react";
+import {
+  Users, CheckCircle2, AlertTriangle, CalendarCheck, Star,
+  CalendarRange, ShieldCheck, Loader2, ArrowRight, Building2,
+  Clock, Filter,
+} from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Kpi, SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
+import { SponsorLeaderDrawer } from "./SponsorLeaderDrawer";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
   active: "success",
@@ -18,8 +28,23 @@ const STATUS_LABEL: Record<SponsorRosterRow["enrollment_status"], string> = {
   at_risk: "At risk",
 };
 
+function initials(name: string) {
+  return name.split(" ").map(p => p[0]).join("").toUpperCase().slice(0, 2);
+}
+
 export default function SponsorDashboard() {
+  const { user } = useAuth();
   const { kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution, loading } = useSponsorDashboardData();
+  const [orgName, setOrgName] = useState<string | null>(null);
+  const [selectedLeader, setSelectedLeader] = useState<SponsorRosterRow | null>(null);
+  const [cohortFilter, setCohortFilter] = useState<string>("all");
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.rpc("get_sponsor_org", { _user_id: user.id }).then(({ data }) => {
+      if (data) setOrgName(data as string);
+    });
+  }, [user]);
 
   if (loading) {
     return (
@@ -29,7 +54,9 @@ export default function SponsorDashboard() {
     );
   }
 
-  const distributionShown = goalGrowth?.hit_target_count != null;
+  const isFirstLogin = !kpis || kpis.leaders_enrolled === 0;
+
+  const distributionShown = goalGrowth?.hit_target_count != null && !isFirstLogin;
   const distributionTotal = distributionShown
     ? (goalGrowth!.hit_target_count + goalGrowth!.meaningful_progress_count + goalGrowth!.just_started_count + goalGrowth!.flat_declined_count) || 1
     : 1;
@@ -38,144 +65,262 @@ export default function SponsorDashboard() {
     ? Math.max(0, differenceInCalendarDays(new Date(timeline.latest_end), new Date()))
     : null;
 
+  const daysUntilStart = timeline?.earliest_start
+    ? Math.max(0, differenceInCalendarDays(new Date(timeline.earliest_start), new Date()))
+    : null;
+
+  // Cohort filter
+  const cohortNames = Array.from(new Set(roster.map(r => r.cohort_name).filter(Boolean)));
+  const filteredRoster = cohortFilter === "all"
+    ? roster
+    : roster.filter(r => r.cohort_name === cohortFilter);
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Programme"
-        title="Sponsor"
-        emphasis="dashboard"
-        subtitle="Participation, progress, and outcomes for your organization's leaders."
-      />
-
-      {/* KPI ROW */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
-        <Kpi label="Leaders enrolled" value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
-        <Kpi label="On track" value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
-        <Kpi label="At risk" value={kpis?.at_risk_count ?? 0} icon={AlertTriangle} tone="warning" />
-        <Kpi
-          label="Sessions used"
-          value={`${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`}
-          icon={CalendarCheck}
-          tone="secondary"
-        />
-      </div>
-
-      {/* GOAL GROWTH */}
-      <SectionCard label="Goal growth">
-        <div className="grid gap-4 sm:grid-cols-2">
+    <>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Average growth</p>
-            <p className="font-display mt-1 text-[1.8rem] font-normal leading-none">
-              {goalGrowth?.avg_growth != null ? `+${Math.round(goalGrowth.avg_growth)}` : "—"}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">rating pts</span>
-            </p>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              {goalGrowth?.pct_progressing != null
-                ? `${Math.round(goalGrowth.pct_progressing)}% of leaders have closed at least half the gap to their target`
-                : "No goal ratings yet"}
-            </p>
-          </div>
-          <div>
-            {distributionShown ? (
-              <div className="space-y-2">
-                <Row label="Hit target" count={goalGrowth!.hit_target_count} total={distributionTotal} tone="success" />
-                <Row label="Meaningful progress" count={goalGrowth!.meaningful_progress_count} total={distributionTotal} tone="primary" />
-                <Row label="Just started" count={goalGrowth!.just_started_count} total={distributionTotal} tone="warning" />
-                <Row label="Flat / declined" count={goalGrowth!.flat_declined_count} total={distributionTotal} tone="destructive" />
+            {orgName && (
+              <div className="mb-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Building2 className="h-3.5 w-3.5" />
+                <span>{orgName}</span>
               </div>
-            ) : (
-              <p className="rounded-lg bg-muted/40 p-3 text-[11px] text-muted-foreground">
-                Distribution hidden — shown once your organization has at least {minLeadersForDistribution} enrolled leaders, so no individual's progress can be singled out.
-              </p>
             )}
+            <PageHeader
+              eyebrow="Programme"
+              title="Your leaders,"
+              emphasis="in aggregate."
+              subtitle="Participation, progress, and outcomes — private by design."
+            />
           </div>
+          {cohortNames.length > 1 && (
+            <Link
+              to="/sponsor/cohorts"
+              className="flex items-center gap-1.5 rounded-full bg-primary-soft px-3 py-1.5 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/20"
+            >
+              Compare all cohorts <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
         </div>
-        <p className="mt-4 text-[10px] italic text-muted-foreground">
-          Goal titles and descriptions are never shared — only overall growth in self-rated progress.
-        </p>
-      </SectionCard>
 
-      {/* ROSTER */}
-      <SectionCard label={`Roster (${roster.length})`}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[12px]">
-            <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-2 py-2 text-left font-semibold">Leader</th>
-                <th className="px-2 py-2 text-left font-semibold">Cohort</th>
-                <th className="px-2 py-2 text-left font-semibold">Status</th>
-                <th className="px-2 py-2 text-left font-semibold">Progress</th>
-                <th className="px-2 py-2 text-left font-semibold">Sessions</th>
-                <th className="px-2 py-2 text-left font-semibold">Goal growth</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {roster.map((r) => (
-                <tr key={r.enrollment_id}>
-                  <td className="px-2 py-2.5 font-medium">{r.full_name}</td>
-                  <td className="px-2 py-2.5 text-muted-foreground">{r.cohort_name || "—"}</td>
-                  <td className="px-2 py-2.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{STATUS_LABEL[r.enrollment_status]}</Pill></td>
-                  <td className="px-2 py-2.5">
-                    <div className="w-24"><MiniBar pct={r.progress_pct} tone="primary" /></div>
-                  </td>
-                  <td className="px-2 py-2.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
-                  <td className="px-2 py-2.5">
-                    {r.goal_growth != null ? `+${Math.round(r.goal_growth)} pts` : <span className="italic text-muted-foreground">—</span>}
-                  </td>
+        {/* First-login empty state */}
+        {isFirstLogin && (
+          <div className="rounded-2xl border border-border bg-gradient-to-br from-primary-soft to-card p-6">
+            <div className="flex items-start gap-4">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-soft">
+                <Clock className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                {daysUntilStart !== null && daysUntilStart > 0 ? (
+                  <>
+                    <p className="font-semibold">Programme starts in {daysUntilStart} day{daysUntilStart === 1 ? "" : "s"}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Everything is set. Your first metrics — participation, self-rated progress, and satisfaction — populate after each leader's first session.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">Data appears as sessions happen</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Your dashboard updates automatically after each leader completes their first session. Check back soon.
+                    </p>
+                  </>
+                )}
+                {roster.length > 0 && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {roster.length} leader{roster.length === 1 ? "" : "s"} enrolled and awaiting first session.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* KPI ROW */}
+        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+          <Kpi label="Leaders enrolled" value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
+          <Kpi label="On track" value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
+          <Kpi label="At risk" value={kpis?.at_risk_count ?? 0} icon={AlertTriangle} tone="warning" />
+          <Kpi
+            label="Sessions used"
+            value={`${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`}
+            icon={CalendarCheck}
+            tone="secondary"
+          />
+        </div>
+
+        {!isFirstLogin && (
+          <>
+            {/* GOAL GROWTH */}
+            <SectionCard label="Goal growth" action={
+              <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                Self-rated · 0–10 scale
+              </span>
+            }>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Average growth</p>
+                  <p className="font-display mt-1 text-[2rem] font-normal leading-none">
+                    {goalGrowth?.avg_growth != null ? `+${Math.round(goalGrowth.avg_growth)}` : "—"}
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">pts</span>
+                  </p>
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {goalGrowth?.pct_progressing != null
+                      ? `${Math.round(goalGrowth.pct_progressing)}% of leaders have closed at least half the gap to their target`
+                      : "No goal ratings yet"}
+                  </p>
+                </div>
+                <div>
+                  {distributionShown ? (
+                    <div className="space-y-2">
+                      <DistRow label="Hit target" count={goalGrowth!.hit_target_count} total={distributionTotal} tone="success" />
+                      <DistRow label="Meaningful progress" count={goalGrowth!.meaningful_progress_count} total={distributionTotal} tone="primary" />
+                      <DistRow label="Just started" count={goalGrowth!.just_started_count} total={distributionTotal} tone="warning" />
+                      <DistRow label="Flat / declined" count={goalGrowth!.flat_declined_count} total={distributionTotal} tone="destructive" />
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-muted/40 p-3">
+                      <p className="text-[11px] text-muted-foreground">
+                        Distribution hidden — shown once your organization has at least {minLeadersForDistribution} enrolled leaders, so no individual can be singled out.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className="mt-4 text-[10px] italic text-muted-foreground">
+                Goal titles and descriptions are never shared — only overall growth in self-rated progress.
+              </p>
+            </SectionCard>
+
+            {/* TIMELINE + SATISFACTION */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SectionCard label="Programme timeline">
+                <div className="flex items-center gap-3">
+                  <CalendarRange className="h-8 w-8 text-primary" />
+                  <div>
+                    <p className="text-[13px] font-medium">
+                      {timeline?.earliest_start ? format(new Date(timeline.earliest_start), "MMM d, yyyy") : "—"}
+                      {" → "}
+                      {timeline?.latest_end ? format(new Date(timeline.latest_end), "MMM d, yyyy") : "—"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {daysRemaining != null ? `${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining` : "No end date set"}
+                      {timeline?.programme_names?.length ? ` · ${timeline.programme_names.join(", ")}` : ""}
+                    </p>
+                  </div>
+                </div>
+              </SectionCard>
+
+              <SectionCard label="Satisfaction">
+                <div className="flex items-center gap-3">
+                  <Star className="h-8 w-8 text-warning" />
+                  <div>
+                    <p className="text-[13px] font-medium">
+                      {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : "No ratings yet"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      across {satisfaction?.rated_session_count ?? 0} rated session{satisfaction?.rated_session_count === 1 ? "" : "s"}
+                    </p>
+                    <p className="mt-1 text-[10px] italic text-muted-foreground">Written feedback stays with the coach</p>
+                  </div>
+                </div>
+              </SectionCard>
+            </div>
+          </>
+        )}
+
+        {/* ROSTER */}
+        <SectionCard
+          label={`Roster · ${filteredRoster.length} leader${filteredRoster.length === 1 ? "" : "s"}`}
+          action={
+            cohortNames.length > 1 ? (
+              <div className="flex items-center gap-1.5">
+                <Filter className="h-3 w-3 text-muted-foreground" />
+                <Select value={cohortFilter} onValueChange={setCohortFilter}>
+                  <SelectTrigger className="h-6 w-32 border-0 bg-transparent p-0 text-[10px] text-muted-foreground shadow-none focus:ring-0">
+                    <SelectValue placeholder="All cohorts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">All cohorts</SelectItem>
+                    {cohortNames.map(c => (
+                      <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : undefined
+          }
+        >
+          <p className="mb-3 text-[10px] text-muted-foreground">
+            Status and participation only. Click a leader for their aggregate detail.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-2 text-left font-semibold">Leader</th>
+                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">Cohort</th>
+                  <th className="px-2 py-2 text-left font-semibold">Status</th>
+                  <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">Progress</th>
+                  <th className="px-2 py-2 text-left font-semibold">Sessions</th>
+                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">Growth</th>
                 </tr>
-              ))}
-              {roster.length === 0 && (
-                <tr><td colSpan={6} className="px-2 py-8 text-center text-muted-foreground">No leaders enrolled yet.</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y">
+                {filteredRoster.map((r) => (
+                  <tr
+                    key={r.enrollment_id}
+                    onClick={() => setSelectedLeader(r)}
+                    className="cursor-pointer transition-colors hover:bg-muted/40"
+                  >
+                    <td className="px-2 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[10px] font-semibold text-primary">
+                          {initials(r.full_name)}
+                        </div>
+                        <span className="font-medium">{r.full_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2.5 text-muted-foreground hidden sm:table-cell">{r.cohort_name || "—"}</td>
+                    <td className="px-2 py-2.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{STATUS_LABEL[r.enrollment_status]}</Pill></td>
+                    <td className="px-2 py-2.5 hidden md:table-cell">
+                      <div className="w-24"><MiniBar pct={r.progress_pct} tone="primary" /></div>
+                    </td>
+                    <td className="px-2 py-2.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
+                    <td className="px-2 py-2.5 hidden sm:table-cell">
+                      {r.goal_growth != null ? `+${Math.round(r.goal_growth)} pts` : <span className="italic text-muted-foreground">—</span>}
+                    </td>
+                  </tr>
+                ))}
+                {filteredRoster.length === 0 && (
+                  <tr><td colSpan={6} className="px-2 py-8 text-center text-[12px] text-muted-foreground">No leaders enrolled yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-[10px] italic text-muted-foreground">
+            Goal titles, session notes and messages are not part of this table — by design, not by permission level.
+          </p>
+        </SectionCard>
+
+        {/* PRIVACY NOTICE */}
+        <div className="flex items-start gap-2 rounded-xl bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div>
+            <span className="font-semibold text-foreground">Content-private. </span>
+            Your access covers participation and ratings only. Session notes, chat messages, reflections, and the wording of goals never leave the coaching pair.
+          </div>
         </div>
-      </SectionCard>
-
-      {/* TIMELINE + SATISFACTION */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SectionCard label="Programme timeline">
-          <div className="flex items-center gap-3">
-            <CalendarRange className="h-8 w-8 text-primary" />
-            <div>
-              <p className="text-[13px] font-medium">
-                {timeline?.earliest_start ? format(new Date(timeline.earliest_start), "MMM d, yyyy") : "—"}
-                {" → "}
-                {timeline?.latest_end ? format(new Date(timeline.latest_end), "MMM d, yyyy") : "—"}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {daysRemaining != null ? `${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining` : "No end date set"}
-                {timeline?.programme_names?.length ? ` · ${timeline.programme_names.join(", ")}` : ""}
-              </p>
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard label="Satisfaction">
-          <div className="flex items-center gap-3">
-            <Star className="h-8 w-8 text-warning" />
-            <div>
-              <p className="text-[13px] font-medium">
-                {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5` : "No ratings yet"}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {satisfaction?.rated_session_count ?? 0} rated session{satisfaction?.rated_session_count === 1 ? "" : "s"}
-              </p>
-            </div>
-          </div>
-        </SectionCard>
       </div>
 
-      {/* PRIVACY NOTICE */}
-      <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground">
-        <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
-        Session notes, chat messages, and personal reflections stay private between the leader and their coach. Goal titles and descriptions are never shared — only overall growth in self-rated progress.
-      </div>
-    </div>
+      {/* Leader detail drawer */}
+      <SponsorLeaderDrawer leader={selectedLeader} onClose={() => setSelectedLeader(null)} />
+    </>
   );
 }
 
-function Row({ label, count, total, tone }: { label: string; count: number; total: number; tone: "success" | "primary" | "warning" | "destructive" }) {
+function DistRow({ label, count, total, tone }: { label: string; count: number; total: number; tone: "success" | "primary" | "warning" | "destructive" }) {
   const pct = total > 0 ? (count / total) * 100 : 0;
   return (
     <div>

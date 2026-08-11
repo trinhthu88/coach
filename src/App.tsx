@@ -45,6 +45,8 @@ const AdminCohorts = lazy(() => import("./pages/admin/AdminCohorts"));
 const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
 const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations"));
 const SponsorDashboard = lazy(() => import("./pages/sponsor/SponsorDashboard"));
+const SponsorCohorts = lazy(() => import("./pages/sponsor/SponsorCohorts"));
+const SponsorReport = lazy(() => import("./pages/sponsor/SponsorReport"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -209,6 +211,8 @@ const App = () => (
                   <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
                   <Route path="/admin/organizations" element={<ProtectedRoute role="admin"><AdminOrganizations /></ProtectedRoute>} />
                   <Route path="/sponsor" element={<ProtectedRoute role="sponsor"><SponsorDashboard /></ProtectedRoute>} />
+                  <Route path="/sponsor/cohorts" element={<ProtectedRoute role="sponsor"><SponsorCohorts /></ProtectedRoute>} />
+                  <Route path="/sponsor/report" element={<ProtectedRoute role="sponsor"><SponsorReport /></ProtectedRoute>} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
