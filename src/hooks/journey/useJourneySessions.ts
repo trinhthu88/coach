@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { PeerSessionRow, SessionRow } from "./types";
+import type { PeerSessionRow, SessionRow, SessionSource } from "./types";
 
-export type SessionSource = "coaching" | "peer";
+export type { SessionSource };
 
 interface Options {
   /** Also fetch peer_sessions where the user is the peer coachee. */
