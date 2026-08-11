@@ -1408,6 +1408,58 @@ export type Database = {
         Args: { _coachee_id: string }
         Returns: boolean
       }
+      sponsor_goal_growth_summary: {
+        Args: never
+        Returns: {
+          avg_growth: number
+          enrolled_leaders_count: number
+          flat_declined_count: number
+          hit_target_count: number
+          just_started_count: number
+          meaningful_progress_count: number
+          pct_progressing: number
+        }[]
+      }
+      sponsor_kpis: {
+        Args: never
+        Returns: {
+          at_risk_count: number
+          leaders_enrolled: number
+          on_track_count: number
+          sessions_entitled: number
+          sessions_used: number
+        }[]
+      }
+      sponsor_min_leaders_for_distribution: { Args: never; Returns: number }
+      sponsor_roster: {
+        Args: never
+        Returns: {
+          coachee_id: string
+          cohort_name: string
+          enrollment_id: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_name: string
+          goal_growth: number
+          progress_pct: number
+          sessions_completed: number
+          sessions_entitled: number
+        }[]
+      }
+      sponsor_satisfaction_summary: {
+        Args: never
+        Returns: {
+          avg_rating: number
+          rated_session_count: number
+        }[]
+      }
+      sponsor_timeline: {
+        Args: never
+        Returns: {
+          earliest_start: string
+          latest_end: string
+          programme_names: string[]
+        }[]
+      }
     }
     Enums: {
       alert_severity: "info" | "warning" | "critical"
