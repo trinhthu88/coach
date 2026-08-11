@@ -179,15 +179,10 @@ Deno.serve(async (req) => {
 
   try {
     // programme for coachees
-    let { data: programme } = await admin
+    const { data: programme } = await admin
       .from("programmes")
-      .select("id")
-      .eq("name", "Growth")
-      .maybeSingle();
-    if (!programme) {
-      const { data } = await admin
-        .from("programmes")
-        .insert({
+      .upsert(
+        {
           name: "Growth",
           description: "Six-month leadership acceleration programme.",
           duration_months: 6,
@@ -197,11 +192,11 @@ Deno.serve(async (req) => {
           coach_session_limit: 8,
           peer_session_limit: 4,
           peer_given_limit: 4,
-        })
-        .select("id")
-        .single();
-      programme = data;
-    }
+        },
+        { onConflict: "name", ignoreDuplicates: false },
+      )
+      .select("id")
+      .single();
 
     for (const c of COACHES) {
       const id = await ensureUser(c.email, c.full_name);
