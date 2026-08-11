@@ -34,6 +34,9 @@ export function ProtectedRoute({ children, role: requiredRole }: Props) {
     return <Navigate to="/set-new-password" replace />;
   }
 
+  // This is UX only — every table must have a matching RLS policy. Adding a
+  // route here does not protect data; it only hides UI.
+  //
   // Pending / suspended / rejected users (admin always passes)
   // 'reach_limit' only blocks new bookings (enforced in BookSession.tsx) — it should
   // not lock the user out of existing clients, messages, or session history.
