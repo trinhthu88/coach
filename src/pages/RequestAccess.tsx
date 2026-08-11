@@ -374,6 +374,13 @@ export default function RequestAccess() {
                     By submitting you agree to our Privacy Policy and Terms of Service. We will
                     never share your information.
                   </p>
+                  {role === "executive" && (
+                    <p className="mt-2 text-center text-[11px] leading-relaxed text-white/20">
+                      If your organization sponsors your programme, your sponsor can see your
+                      participation, progress, and completion status. They cannot see session
+                      notes, chat messages, or personal reflections.
+                    </p>
+                  )}
                 </div>
               </form>
             </div>

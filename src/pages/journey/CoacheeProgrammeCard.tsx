@@ -1,4 +1,4 @@
-import { Users, GraduationCap } from "lucide-react";
+import { Users, GraduationCap, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -152,6 +152,13 @@ export function CoacheeProgrammeCard({
           <CoachList coachSummaries={coachSummaries} showDateRange />
         </div>
       )}
+
+      <div className="flex items-start gap-2 border-t bg-muted/10 px-4 py-2.5 text-[10.5px] text-muted-foreground">
+        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+        <span>
+          If your organization sponsors this programme, they can see your participation, progress, and completion status — never your session notes, chat messages, or personal reflections.
+        </span>
+      </div>
     </Card>
   );
 }
