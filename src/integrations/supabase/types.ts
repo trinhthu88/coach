@@ -422,6 +422,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          shared_with_sponsor: boolean
           sort_order: number
           status: string
           target_date: string | null
@@ -433,6 +434,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          shared_with_sponsor?: boolean
           sort_order?: number
           status?: string
           target_date?: string | null
@@ -444,6 +446,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          shared_with_sponsor?: boolean
           sort_order?: number
           status?: string
           target_date?: string | null
@@ -622,6 +625,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          industry: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          industry?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          industry?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       peer_coach_session_private_notes: {
         Row: {
@@ -820,6 +847,7 @@ export type Database = {
           end_date: string | null
           id: string
           notes: string | null
+          organization_id: string | null
           programme_id: string
           progress_pct: number
           start_date: string
@@ -833,6 +861,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           notes?: string | null
+          organization_id?: string | null
           programme_id: string
           progress_pct?: number
           start_date?: string
@@ -846,6 +875,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           notes?: string | null
+          organization_id?: string | null
           programme_id?: string
           progress_pct?: number
           start_date?: string
@@ -858,6 +888,13 @@ export type Database = {
             columns: ["cohort_id"]
             isOneToOne: false
             referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programme_enrollments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -1137,6 +1174,48 @@ export type Database = {
           },
         ]
       }
+      sponsor_profiles: {
+        Row: {
+          created_at: string
+          department: string | null
+          organization_id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          organization_id: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          organization_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsor_profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsor_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staged_enrollments: {
         Row: {
           applied_at: string | null
@@ -1308,6 +1387,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_sponsor_org: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1324,10 +1404,14 @@ export type Database = {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
+      sponsor_can_view_coachee: {
+        Args: { _coachee_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       alert_severity: "info" | "warning" | "critical"
-      app_role: "admin" | "coach" | "coachee"
+      app_role: "admin" | "coach" | "coachee" | "sponsor"
       availability_slot_type: "coaching" | "peer"
       enrollment_status: "active" | "completed" | "paused" | "at_risk"
       session_status:
@@ -1474,7 +1558,7 @@ export const Constants = {
   public: {
     Enums: {
       alert_severity: ["info", "warning", "critical"],
-      app_role: ["admin", "coach", "coachee"],
+      app_role: ["admin", "coach", "coachee", "sponsor"],
       availability_slot_type: ["coaching", "peer"],
       enrollment_status: ["active", "completed", "paused", "at_risk"],
       session_status: [

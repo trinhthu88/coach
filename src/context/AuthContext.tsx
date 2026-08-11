@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setProfile(profileData);
     if (roleData && roleData.length > 0) {
-      const priority: Record<AppRole, number> = { admin: 1, coach: 2, coachee: 3 };
+      const priority: Record<AppRole, number> = { admin: 1, coach: 2, coachee: 3, sponsor: 4 };
       const top = [...roleData].sort(
         (a, b) => priority[a.role] - priority[b.role]
       )[0];

@@ -150,6 +150,11 @@ export default function Sessions() {
     return <Navigate to="/admin/sessions" replace />;
   }
 
+  // Sponsors don't have personal coaching sessions of their own
+  if (role === "sponsor") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const now = new Date();
   const upcoming = sessions.filter(
     (s) => s.status !== "cancelled" && s.status !== "completed" && new Date(s.start_time) >= now
