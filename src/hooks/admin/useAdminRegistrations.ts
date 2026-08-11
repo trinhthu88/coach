@@ -8,7 +8,6 @@ type CoachProfileRow = Database["public"]["Tables"]["coach_profiles"]["Row"];
 type SessionLimitRow = Database["public"]["Tables"]["session_limits"]["Row"];
 type AllowlistRow = Database["public"]["Tables"]["coachee_coach_allowlist"]["Row"];
 type SessionRow = Database["public"]["Tables"]["sessions"]["Row"];
-type CoachSessionLimitRow = Database["public"]["Tables"]["coach_session_limits"]["Row"];
 type PeerSessionRow = Database["public"]["Tables"]["peer_sessions"]["Row"];
 type CoachAsCoacheeAllowlistRow = Database["public"]["Tables"]["coach_as_coachee_allowlist"]["Row"];
 type UserRoleRow = Database["public"]["Tables"]["user_roles"]["Row"];
@@ -23,8 +22,6 @@ export function useAdminRegistrations() {
   const [coaches, setCoaches] = useState<CoachListRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<CoachOpt[]>([]);
   const [defaultLimit, setDefaultLimit] = useState(4);
-  const [defaultCoachLimit, setDefaultCoachLimit] = useState(4);
-  const [defaultPeerLimit, setDefaultPeerLimit] = useState(4);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,7 +40,7 @@ export function useAdminRegistrations() {
       { data: allowlist },
       { data: sess },
       { data: cps },
-      { data: coachLimits },
+      { data: coachEnrollments },
       { data: peerSess },
       { data: coachAllow },
     ] = await Promise.all([
@@ -52,7 +49,7 @@ export function useAdminRegistrations() {
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
       supabase.from("sessions").select("id, coach_id, coachee_id, status"),
       supabase.from("coach_profiles").select("*"),
-      supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit"),
+      supabase.from("coach_programme_enrollments").select("coach_id, coach_programme:coach_programmes(name, mentee_sessions_limit, peer_received_limit)"),
       supabase.from("peer_sessions").select("id, peer_coach_id, peer_coachee_id, status"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
     ]);
@@ -65,10 +62,6 @@ export function useAdminRegistrations() {
     const allowlistData = (allowlist || []) as Pick<AllowlistRow, "coachee_id" | "coach_id">[];
     const sessData = (sess || []) as Pick<SessionRow, "id" | "coach_id" | "coachee_id" | "status">[];
     const cpsData = (cps || []) as CoachProfileRow[];
-    const coachLimitsData = (coachLimits || []) as Pick<
-      CoachSessionLimitRow,
-      "id" | "coach_user_id" | "monthly_limit" | "peer_monthly_limit"
-    >[];
     const peerSessData = (peerSess || []) as Pick<
       PeerSessionRow,
       "id" | "peer_coach_id" | "peer_coachee_id" | "status"
@@ -143,16 +136,7 @@ export function useAdminRegistrations() {
       })
       .filter((row): row is CoacheeRow => row !== null);
 
-    // Defaults & per-coach limit overrides
-    const defCoachLimitRow = coachLimitsData.find((l) => l.coach_user_id === null);
-    const defCoach = defCoachLimitRow?.monthly_limit ?? 4;
-    const defPeer = defCoachLimitRow?.peer_monthly_limit ?? 4;
-    setDefaultCoachLimit(defCoach);
-    setDefaultPeerLimit(defPeer);
-    const coachLimitByCoach = new Map<string, (typeof coachLimitsData)[number]>();
-    coachLimitsData
-      .filter((l) => l.coach_user_id)
-      .forEach((l) => coachLimitByCoach.set(l.coach_user_id as string, l));
+    const enrollmentByCoach = new Map((coachEnrollments || []).map((e) => [e.coach_id, e]));
 
     // Coach-as-coachee usage (completed coaching sessions where coach is the coachee)
     const coachAsCoacheeDone = new Map<string, number>();
@@ -183,7 +167,8 @@ export function useAdminRegistrations() {
         const p = profilesById.get(id);
         const cp = cpById.get(id);
         if (!p) return null;
-        const lim = coachLimitByCoach.get(id);
+        const enr = enrollmentByCoach.get(id);
+        const prog = enr?.coach_programme;
         return {
           id,
           full_name: p.full_name,
@@ -197,12 +182,12 @@ export function useAdminRegistrations() {
           rating_avg: Number(cp?.rating_avg || 0),
           country_based: cp?.country_based || null,
           years_experience: cp?.years_experience || null,
-          coach_limit: lim?.monthly_limit ?? defCoach,
+          coach_limit: enr ? prog?.mentee_sessions_limit ?? null : 4,
           coach_used: coachAsCoacheeDone.get(id) || 0,
-          peer_limit: lim?.peer_monthly_limit ?? defPeer,
+          peer_limit: enr ? prog?.peer_received_limit ?? null : 4,
           peer_used: peerReceivedDone.get(id) || 0,
+          coach_programme_name: prog?.name ?? null,
           assigned_coaches: assignedByCoach.get(id) || [],
-          limit_row_id: lim?.id ?? null,
         };
       })
       .filter((row): row is CoachListRow => row !== null);
@@ -228,8 +213,6 @@ export function useAdminRegistrations() {
     coaches,
     coachOpts,
     defaultLimit,
-    defaultCoachLimit,
-    defaultPeerLimit,
     reload: load,
   };
 }

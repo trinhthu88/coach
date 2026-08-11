@@ -299,6 +299,86 @@ export type Database = {
           },
         ]
       }
+      coach_programme_enrollments: {
+        Row: {
+          coach_id: string
+          coach_programme_id: string
+          created_at: string
+          id: string
+          start_date: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          coach_programme_id: string
+          created_at?: string
+          id?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          coach_programme_id?: string
+          created_at?: string
+          id?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_programme_enrollments_coach_programme_id_fkey"
+            columns: ["coach_programme_id"]
+            isOneToOne: false
+            referencedRelation: "coach_programmes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_programmes: {
+        Row: {
+          client_coaching_limit: number | null
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          mentee_sessions_limit: number | null
+          name: string
+          peer_given_limit: number | null
+          peer_received_limit: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_coaching_limit?: number | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          mentee_sessions_limit?: number | null
+          name: string
+          peer_given_limit?: number | null
+          peer_received_limit?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_coaching_limit?: number | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          mentee_sessions_limit?: number | null
+          name?: string
+          peer_given_limit?: number | null
+          peer_received_limit?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coach_session_limits: {
         Row: {
           coach_user_id: string | null
@@ -1372,7 +1452,7 @@ export type Database = {
       get_coach_peer_session_usage: {
         Args: { _coach_id: string }
         Returns: {
-          peer_monthly_limit: number
+          peer_monthly_limit: number | null
           used_this_month: number
         }[]
       }

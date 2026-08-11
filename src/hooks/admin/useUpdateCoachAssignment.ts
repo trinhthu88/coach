@@ -3,34 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 /**
- * Saves a coach's coach-as-coachee session limits and its allowlist of
- * assignable coaches.
+ * Saves a coach's coach-as-coachee allowlist of assignable coaches. Session limits
+ * are managed separately via coach_programme_enrollments (see the Coach Programmes
+ * admin page), not here.
  */
 export function useUpdateCoachAssignment() {
   const [saving, setSaving] = useState(false);
 
-  const save = async (
-    coach: { id: string; limit_row_id: string | null },
-    coachLimit: number,
-    peerLimit: number,
-    pickedCoachIds: Set<string>
-  ) => {
+  const save = async (coach: { id: string }, pickedCoachIds: Set<string>) => {
     setSaving(true);
     try {
-      // Upsert coach session limits (treated as totals)
-      if (coach.limit_row_id) {
-        await supabase
-          .from("coach_session_limits")
-          .update({ monthly_limit: coachLimit, peer_monthly_limit: peerLimit })
-          .eq("id", coach.limit_row_id);
-      } else {
-        await supabase.from("coach_session_limits").insert({
-          coach_user_id: coach.id,
-          monthly_limit: coachLimit,
-          peer_monthly_limit: peerLimit,
-        });
-      }
-
       // Reset coach-as-coachee allowlist
       await supabase
         .from("coach_as_coachee_allowlist")

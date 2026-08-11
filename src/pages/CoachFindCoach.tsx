@@ -19,7 +19,9 @@ interface CoachRow {
 export default function CoachFindCoach() {
   const { user } = useAuth();
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
-  const [limit, setLimit] = useState<number>(0);
+  // null = unlimited, 0 = "not loaded yet" (matches the previous coach_session_limits
+  // fallback sentinel so the hint line below only renders once a real value is known).
+  const [limit, setLimit] = useState<number | null>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,12 +42,12 @@ export default function CoachFindCoach() {
       } else {
         setCoaches([]);
       }
-      const { data: lim } = await supabase
-        .from("coach_session_limits")
-        .select("monthly_limit")
-        .eq("coach_user_id", user.id)
+      const { data: enrollment } = await supabase
+        .from("coach_programme_enrollments")
+        .select("coach_programme:coach_programmes(mentee_sessions_limit)")
+        .eq("coach_id", user.id)
         .maybeSingle();
-      setLimit(lim?.monthly_limit ?? 0);
+      setLimit(enrollment ? enrollment.coach_programme?.mentee_sessions_limit ?? null : 0);
       setLoading(false);
     })();
   }, [user]);
@@ -64,7 +66,10 @@ export default function CoachFindCoach() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         <div>
           The coach list and your session allowance are set by the platform admin.
-          {limit > 0 && <> Current allowance: <strong>{limit}</strong> sessions.</>}
+          {limit === null && <> Current allowance: <strong>unlimited</strong> sessions.</>}
+          {typeof limit === "number" && limit > 0 && (
+            <> Current allowance: <strong>{limit}</strong> sessions.</>
+          )}
         </div>
       </Card>
 

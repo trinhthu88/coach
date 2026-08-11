@@ -9,8 +9,9 @@
  * frontend no longer keeps its own copy of the allowlist/limit rule — it just
  * asks the DB whether booking is allowed and reflects the answer.
  */
-export function isOverSessionLimit(usage: { monthly_limit: number; used_this_month: number } | null): boolean {
-  return usage ? usage.used_this_month >= usage.monthly_limit : false;
+export function isOverSessionLimit(usage: { monthly_limit: number | null; used_this_month: number } | null): boolean {
+  if (!usage || usage.monthly_limit === null) return false; // null = unlimited
+  return usage.used_this_month >= usage.monthly_limit;
 }
 
 export function canSubmitBooking(opts: {

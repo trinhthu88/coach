@@ -89,7 +89,7 @@ export default function BookSession() {
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [usage, setUsage] = useState<{ monthly_limit: number; used_this_month: number } | null>(
+  const [usage, setUsage] = useState<{ monthly_limit: number | null; used_this_month: number } | null>(
     null
   );
   const [bookerBusy, setBookerBusy] = useState<{ start: number; end: number }[]>([]);
@@ -171,28 +171,28 @@ export default function BookSession() {
               _coach_id: user.id,
             });
             const row = Array.isArray(u) ? u[0] : u;
-            const peerLimit = row?.peer_monthly_limit ?? 4;
+            // null = unlimited (coach's programme has no peer_received_limit set) —
+            // only fall back to 4 when the RPC returned no row at all.
+            const peerLimit: number | null = row ? row.peer_monthly_limit : 4;
             const peerUsed = row?.used_this_month ?? 0;
             setUsage({ monthly_limit: peerLimit, used_this_month: peerUsed });
             // Not covered by can_book_session() (see comment above) — gate on the
             // usage numbers directly instead of leaving `eligible` unset.
-            setEligible(peerUsed < peerLimit);
+            setEligible(peerLimit === null || peerUsed < peerLimit);
           } else {
             if (role === "coach") {
               // Coach booking a regular coaching session (coach-as-coachee allowlist path).
-              // These numbers are display-only now — resolve personal override -> global
-              // default row -> 4, same COALESCE chain can_book_session() uses, so the
+              // These numbers are display-only now — resolve via the coach's
+              // coach_programme_enrollments -> coach_programmes join, the same source
+              // can_book_session() and enforce_coach_as_coachee_limit() use, so the
               // banner can't show a different limit than what's actually enforced.
-              const [{ data: personalLim }, { data: defaultLim }, coachCount] = await Promise.all([
+              // null mentee_sessions_limit = unlimited; no enrollment row at all falls
+              // back to 4, matching the old default.
+              const [{ data: enrollment }, coachCount] = await Promise.all([
                 supabase
-                  .from("coach_session_limits")
-                  .select("monthly_limit")
-                  .eq("coach_user_id", user.id)
-                  .maybeSingle(),
-                supabase
-                  .from("coach_session_limits")
-                  .select("monthly_limit")
-                  .is("coach_user_id", null)
+                  .from("coach_programme_enrollments")
+                  .select("coach_programme:coach_programmes(mentee_sessions_limit)")
+                  .eq("coach_id", user.id)
                   .maybeSingle(),
                 supabase
                   .from("sessions")
@@ -200,8 +200,11 @@ export default function BookSession() {
                   .eq("coachee_id", user.id)
                   .eq("status", "completed"),
               ]);
+              const monthlyLimit: number | null = enrollment
+                ? enrollment.coach_programme?.mentee_sessions_limit ?? null
+                : 4;
               setUsage({
-                monthly_limit: personalLim?.monthly_limit ?? defaultLim?.monthly_limit ?? 4,
+                monthly_limit: monthlyLimit,
                 used_this_month: coachCount.count || 0,
               });
             } else {
@@ -420,7 +423,7 @@ export default function BookSession() {
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 You've used <strong>{usage.used_this_month}</strong> of your{" "}
-                <strong>{usage.monthly_limit}</strong>{" "}
+                <strong>{usage.monthly_limit === null ? "unlimited" : usage.monthly_limit}</strong>{" "}
                 {mode === "peer" ? "peer coaching" : "coaching"} sessions this month.
               </span>
             </div>

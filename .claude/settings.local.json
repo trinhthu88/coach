@@ -10,7 +10,8 @@
       "Bash(node *)",
       "Bash(npx supabase *)",
       "Bash(env)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(psql *)"
     ]
   }
 }

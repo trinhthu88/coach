@@ -32,6 +32,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
 import { useAdminRegistrations } from "@/hooks/admin/useAdminRegistrations";
 import { useAdminRegistrationApprovals } from "@/hooks/admin/useAdminRegistrationApprovals";
 import { useUpdateCoacheeAssignment } from "@/hooks/admin/useUpdateCoacheeAssignment";
@@ -56,6 +57,11 @@ const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "out
   reach_limit: "outline",
 };
 
+// null = unlimited (coach_programmes limit column)
+function fmtLimit(n: number | null): string {
+  return n === null ? "∞" : String(n);
+}
+
 export default function AdminRegistrations() {
   const {
     loading,
@@ -63,8 +69,6 @@ export default function AdminRegistrations() {
     coaches,
     coachOpts,
     defaultLimit,
-    defaultCoachLimit,
-    defaultPeerLimit,
     reload: load,
   } = useAdminRegistrations();
   const { busyId, setCoacheeStatusValue, setCoachStatusValue } = useAdminRegistrationApprovals(load);
@@ -363,8 +367,8 @@ export default function AdminRegistrations() {
                         <Badge variant={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className={c.coach_used >= c.coach_limit ? "font-semibold text-destructive" : ""}>
-                          {c.coach_used} / {c.coach_limit}
+                        <span className={c.coach_limit !== null && c.coach_used >= c.coach_limit ? "font-semibold text-destructive" : ""}>
+                          {c.coach_used} / {fmtLimit(c.coach_limit)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -386,8 +390,8 @@ export default function AdminRegistrations() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className={c.peer_used >= c.peer_limit ? "font-semibold text-destructive" : ""}>
-                          {c.peer_used} / {c.peer_limit}
+                        <span className={c.peer_limit !== null && c.peer_used >= c.peer_limit ? "font-semibold text-destructive" : ""}>
+                          {c.peer_used} / {fmtLimit(c.peer_limit)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right text-xs text-muted-foreground">
@@ -465,8 +469,6 @@ export default function AdminRegistrations() {
       <EditCoachDialog
         coach={editingCoach}
         coachOpts={coachOpts}
-        defaultCoachLimit={defaultCoachLimit}
-        defaultPeerLimit={defaultPeerLimit}
         onClose={() => setEditingCoach(null)}
         onSaved={() => {
           setEditingCoach(null);
@@ -626,28 +628,20 @@ function EditCoacheeDialog({
 function EditCoachDialog({
   coach,
   coachOpts,
-  defaultCoachLimit,
-  defaultPeerLimit,
   onClose,
   onSaved,
 }: {
   coach: CoachListRow | null;
   coachOpts: CoachOpt[];
-  defaultCoachLimit: number;
-  defaultPeerLimit: number;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [coachLimit, setCoachLimit] = useState<number>(defaultCoachLimit);
-  const [peerLimit, setPeerLimit] = useState<number>(defaultPeerLimit);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const { saving, save: saveAssignment } = useUpdateCoachAssignment();
 
   useEffect(() => {
     if (coach) {
-      setCoachLimit(coach.coach_limit);
-      setPeerLimit(coach.peer_limit);
       setPicked(new Set(coach.assigned_coaches.map((c) => c.id)));
       setSearch("");
     }
@@ -669,12 +663,7 @@ function EditCoachDialog({
   };
 
   const save = async () => {
-    const ok = await saveAssignment(
-      { id: coach.id, limit_row_id: coach.limit_row_id },
-      coachLimit,
-      peerLimit,
-      picked
-    );
+    const ok = await saveAssignment({ id: coach.id }, picked);
     if (ok) onSaved();
   };
 
@@ -685,36 +674,25 @@ function EditCoachDialog({
           <DialogTitle>Edit {coach.full_name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Coach session limit (total)
-              </label>
-              <Input
-                type="number"
-                min={0}
-                max={500}
-                value={coachLimit}
-                onChange={(e) => setCoachLimit(Number(e.target.value))}
-              />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Used: {coach.coach_used}
-              </p>
+          <div className="rounded-lg border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session limits</p>
+              <Button asChild variant="link" size="sm" className="h-auto p-0 text-[11px]">
+                <Link to="/admin/coach-programmes">Change coach programme →</Link>
+              </Button>
             </div>
-            <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Peer session limit (total)
-              </label>
-              <Input
-                type="number"
-                min={0}
-                max={500}
-                value={peerLimit}
-                onChange={(e) => setPeerLimit(Number(e.target.value))}
-              />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Used: {coach.peer_used}
-              </p>
+            <p className="mb-2 text-sm font-medium">
+              {coach.coach_programme_name || <span className="italic text-muted-foreground">Not enrolled</span>}
+            </p>
+            <div className="grid grid-cols-2 gap-3 text-[11px]">
+              <div>
+                <p className="text-muted-foreground">Coaching received</p>
+                <p className="font-mono">{coach.coach_used} / {fmtLimit(coach.coach_limit)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Peer received</p>
+                <p className="font-mono">{coach.peer_used} / {fmtLimit(coach.peer_limit)}</p>
+              </div>
             </div>
           </div>
 

@@ -30,11 +30,12 @@ export interface CoachListRow {
   rating_avg: number;
   country_based: string | null;
   years_experience: number | null;
-  // Coach-as-coachee
-  coach_limit: number;
+  // Coach-as-coachee — sourced from coach_programme_enrollments -> coach_programmes;
+  // null = unlimited.
+  coach_limit: number | null;
   coach_used: number;
-  peer_limit: number;
+  peer_limit: number | null;
   peer_used: number;
+  coach_programme_name: string | null;
   assigned_coaches: { id: string; name: string }[];
-  limit_row_id: string | null;
 }

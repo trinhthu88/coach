@@ -47,6 +47,12 @@ const STATUS_TONE: Record<Status, "muted"|"success"|"warning"|"destructive"> = {
   reach_limit: "warning",
 };
 
+// null = unlimited (coach_programmes limit column); a coach with no coach programme
+// enrollment falls back to 4, matching the DB-side fallback in enforce_coach_as_coachee_limit().
+function fmtLimit(n: number | null): string {
+  return n === null ? "∞" : String(n);
+}
+
 interface CoachRow {
   id: string;
   full_name: string;
@@ -55,29 +61,27 @@ interface CoachRow {
   created_at: string;
   approval_status: string;
   rating_avg: number;
-  // Coach as receiver
-  coach_session_limit: number;
+  // Coach as receiver — sourced from coach_programme_enrollments -> coach_programmes
+  coach_session_limit: number | null;
   coach_used: number;
-  peer_session_limit: number;
+  peer_session_limit: number | null;
   peer_used: number;
-  peer_given_limit: number;
+  peer_given_limit: number | null;
   peer_given_used: number;
+  coach_programme_name: string | null;
   assigned_coaches: { id: string; name: string }[];
   // Coach as deliverer
   coachees_count: number;
   booked_sessions: number;
   completed_sessions: number;
-  // Cohort/programme
+  // Cohort/programme (coachee-side programme this coach is enrolled in for their own
+  // coaching journey — unrelated to their coach-programme session limits above)
   cohort_id: string | null;
   cohort_name: string | null;
   programme_id: string | null;
   programme_name: string | null;
-  programme_default_coach_limit: number | null;
-  programme_default_peer_limit: number | null;
-  programme_default_peer_given_limit: number | null;
   programme_duration_months: number | null;
   enrollment_start_date: string | null;
-  limit_row_id: string | null;
   enrollment_id: string | null;
 }
 
@@ -87,9 +91,6 @@ export default function AdminCoaches() {
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
   const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
   const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; peer_session_limit: number; peer_given_limit: number; duration_months: number }[]>([]);
-  const [defaultCoachLimit, setDefaultCoachLimit] = useState(4);
-  const [defaultPeerLimit, setDefaultPeerLimit] = useState(4);
-  const [defaultPeerGivenLimit, setDefaultPeerGivenLimit] = useState(4);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<CoachRow | null>(null);
@@ -103,7 +104,7 @@ export default function AdminCoaches() {
       { data: cps },
       { data: sess },
       { data: peerSess },
-      { data: limits },
+      { data: coachEnrollments },
       { data: assigned },
       { data: cohortsData },
       { data: progsData },
@@ -114,7 +115,7 @@ export default function AdminCoaches() {
       supabase.from("coach_profiles").select("id, approval_status, rating_avg"),
       supabase.from("sessions").select("coach_id, coachee_id, status"),
       supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, status"),
-      supabase.from("coach_session_limits").select("id, coach_user_id, monthly_limit, peer_monthly_limit, peer_given_monthly_limit"),
+      supabase.from("coach_programme_enrollments").select("coach_id, coach_programme:coach_programmes(name, mentee_sessions_limit, peer_received_limit, peer_given_limit)"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
       supabase.from("cohorts").select("id, name"),
       supabase.from("programmes").select("id, name, coachee_session_limit, peer_session_limit, peer_given_limit, duration_months"),
@@ -130,15 +131,7 @@ export default function AdminCoaches() {
       if (p) coachNameById.set(id, p.full_name);
     });
 
-    const def = (limits || []).find((l) => l.coach_user_id === null);
-    const defCoach = def?.monthly_limit ?? 4;
-    const defPeer = def?.peer_monthly_limit ?? 4;
-    const defPeerGiven = def?.peer_given_monthly_limit ?? 4;
-    setDefaultCoachLimit(defCoach);
-    setDefaultPeerLimit(defPeer);
-    setDefaultPeerGivenLimit(defPeerGiven);
-    const limitByCoach = new Map<string, Pick<Tables<"coach_session_limits">, "id" | "coach_user_id" | "monthly_limit" | "peer_monthly_limit" | "peer_given_monthly_limit">>();
-    (limits || []).filter((l) => l.coach_user_id).forEach((l) => limitByCoach.set(l.coach_user_id!, l));
+    const enrollmentByCoach = new Map((coachEnrollments || []).map((e) => [e.coach_id, e]));
 
     // sessions delivered
     const completedDelivered = new Map<string, number>();
@@ -187,7 +180,8 @@ export default function AdminCoaches() {
       const p = profileById.get(id);
       const cp = cpById.get(id);
       if (!p) return null;
-      const lim = limitByCoach.get(id);
+      const coachEnr = enrollmentByCoach.get(id);
+      const coachProg = coachEnr?.coach_programme;
       const enr = enrollByUser.get(id);
       const prog = enr?.programme_id ? progById.get(enr.programme_id) : null;
       return {
@@ -198,12 +192,13 @@ export default function AdminCoaches() {
         created_at: p.created_at,
         approval_status: cp?.approval_status || "pending_approval",
         rating_avg: Number(cp?.rating_avg || 0),
-        coach_session_limit: lim?.monthly_limit ?? defCoach,
+        coach_session_limit: coachEnr ? coachProg?.mentee_sessions_limit ?? null : 4,
         coach_used: receivedDone.get(id) || 0,
-        peer_session_limit: lim?.peer_monthly_limit ?? defPeer,
+        peer_session_limit: coachEnr ? coachProg?.peer_received_limit ?? null : 4,
         peer_used: peerReceived.get(id) || 0,
-        peer_given_limit: lim?.peer_given_monthly_limit ?? defPeerGiven,
+        peer_given_limit: coachEnr ? coachProg?.peer_given_limit ?? null : 4,
         peer_given_used: peerGiven.get(id) || 0,
+        coach_programme_name: coachProg?.name ?? null,
         assigned_coaches: assignedByCoach.get(id) || [],
         coachees_count: (uniqueCoachees.get(id) || new Set()).size,
         booked_sessions: bookedDelivered.get(id) || 0,
@@ -212,12 +207,8 @@ export default function AdminCoaches() {
         cohort_name: enr?.cohort_id ? (cohortById.get(enr.cohort_id) as string) || null : null,
         programme_id: enr?.programme_id || null,
         programme_name: prog?.name || null,
-        programme_default_coach_limit: prog?.coachee_session_limit ?? null,
-        programme_default_peer_limit: prog?.peer_session_limit ?? null,
-        programme_default_peer_given_limit: prog?.peer_given_limit ?? null,
         programme_duration_months: prog?.duration_months ?? null,
         enrollment_start_date: enr?.start_date || null,
-        limit_row_id: lim?.id ?? null,
         enrollment_id: enr?.id ?? null,
       } as CoachRow;
     }).filter(Boolean) as CoachRow[];
@@ -245,12 +236,13 @@ export default function AdminCoaches() {
       Email: c.email,
       Registered: format(new Date(c.created_at), "yyyy-MM-dd"),
       Status: STATUS_LABEL[c.status],
-      "Coach session limit": c.coach_session_limit,
+      "Coach programme": c.coach_programme_name || "",
+      "Coach session limit": fmtLimit(c.coach_session_limit),
       "Coach sessions used": c.coach_used,
       "Assigned coaches": c.assigned_coaches.map(x => x.name).join("; "),
-      "Peer received limit": c.peer_session_limit,
+      "Peer received limit": fmtLimit(c.peer_session_limit),
       "Peer received used": c.peer_used,
-      "Peer given limit": c.peer_given_limit,
+      "Peer given limit": fmtLimit(c.peer_given_limit),
       "Peer given used": c.peer_given_used,
       "# Coachees": c.coachees_count,
       "Avg rating": c.rating_avg.toFixed(2),
@@ -284,23 +276,10 @@ export default function AdminCoaches() {
         ...(editing.status === "active" ? { last_approved_at: new Date().toISOString() } : {}),
       }).eq("id", editing.id);
 
-      // 2. Limits
-      if (editing.limit_row_id) {
-        await supabase.from("coach_session_limits").update({
-          monthly_limit: editing.coach_session_limit,
-          peer_monthly_limit: editing.peer_session_limit,
-          peer_given_monthly_limit: editing.peer_given_limit,
-        }).eq("id", editing.limit_row_id);
-      } else {
-        await supabase.from("coach_session_limits").insert({
-          coach_user_id: editing.id,
-          monthly_limit: editing.coach_session_limit,
-          peer_monthly_limit: editing.peer_session_limit,
-          peer_given_monthly_limit: editing.peer_given_limit,
-        });
-      }
+      // Session limits are managed on the Coach Programmes admin page now (coach's
+      // coach_programme_enrollments row), not here.
 
-      // 3. Assigned coaches diff
+      // 2. Assigned coaches diff
       const original = rows.find(r => r.id === editing.id);
       const oldIds = new Set((original?.assigned_coaches || []).map(c => c.id));
       const newIds = new Set(editing.assigned_coaches.map(c => c.id));
@@ -316,7 +295,7 @@ export default function AdminCoaches() {
           .eq("coach_user_id", editing.id).eq("selectable_coach_id", sid);
       }
 
-      // 4. Programme enrollment (mandatory). Coach is treated as coachee here.
+      // 3. Programme enrollment (mandatory). Coach is treated as coachee here.
       if (editing.enrollment_id) {
         await supabase.from("programme_enrollments").update({
           cohort_id: editing.cohort_id,
@@ -423,9 +402,9 @@ export default function AdminCoaches() {
                   </td>
                   <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Pill></td>
                   <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{format(new Date(r.created_at), "MMM d, yyyy")}</td>
-                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.coach_used}/{r.coach_session_limit}</span></td>
-                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_used}/{r.peer_session_limit}</span></td>
-                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_given_used}/{r.peer_given_limit}</span></td>
+                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.coach_used}/{fmtLimit(r.coach_session_limit)}</span></td>
+                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_used}/{fmtLimit(r.peer_session_limit)}</span></td>
+                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_given_used}/{fmtLimit(r.peer_given_limit)}</span></td>
                   <td className="px-3 py-2.5 text-[11px]">{r.programme_name || <span className="italic text-muted-foreground">—</span>}{r.cohort_name && <p className="text-[10px] text-muted-foreground">{r.cohort_name}</p>}</td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {(() => {
@@ -497,13 +476,7 @@ export default function AdminCoaches() {
                         ...editing,
                         programme_id: v,
                         programme_name: prog?.name || null,
-                        programme_default_coach_limit: prog?.coachee_session_limit ?? null,
-                        programme_default_peer_limit: prog?.peer_session_limit ?? null,
-                        programme_default_peer_given_limit: prog?.peer_given_limit ?? null,
                         programme_duration_months: prog?.duration_months ?? null,
-                        coach_session_limit: prog?.coachee_session_limit ?? editing.coach_session_limit,
-                        peer_session_limit: prog?.peer_session_limit ?? editing.peer_session_limit,
-                        peer_given_limit: prog?.peer_given_limit ?? editing.peer_given_limit,
                       });
                     }}
                   >
@@ -512,7 +485,7 @@ export default function AdminCoaches() {
                       {programmes.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <p className="mt-1 text-[10px] text-muted-foreground">Required. Defaults the limits below.</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Required. This coach's own coaching journey (progress tracking), separate from their session limits below.</p>
                 </div>
                 <div>
                   <Label>Cohort</Label>
@@ -527,22 +500,25 @@ export default function AdminCoaches() {
               </div>
 
               <div className="rounded-lg border p-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session limits (override programme defaults)</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session limits</p>
+                  <Button asChild variant="link" size="sm" className="h-auto p-0 text-[11px]">
+                    <Link to="/admin/coach-programmes">Change coach programme →</Link>
+                  </Button>
+                </div>
+                <p className="mb-2 text-[12px] font-medium">{editing.coach_programme_name || <span className="italic text-muted-foreground">Not enrolled</span>}</p>
+                <div className="grid grid-cols-3 gap-3 text-[11px]">
                   <div>
-                    <Label>Coaching received</Label>
-                    <Input type="number" min={0} value={editing.coach_session_limit} onChange={(e) => setEditing({ ...editing, coach_session_limit: Number(e.target.value) })} />
-                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.coach_used} · default {editing.programme_default_coach_limit ?? defaultCoachLimit}</p>
+                    <p className="text-muted-foreground">Coaching received</p>
+                    <p className="font-mono">{editing.coach_used}/{fmtLimit(editing.coach_session_limit)}</p>
                   </div>
                   <div>
-                    <Label>Peer received</Label>
-                    <Input type="number" min={0} value={editing.peer_session_limit} onChange={(e) => setEditing({ ...editing, peer_session_limit: Number(e.target.value) })} />
-                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.peer_used} · default {editing.programme_default_peer_limit ?? defaultPeerLimit}</p>
+                    <p className="text-muted-foreground">Peer received</p>
+                    <p className="font-mono">{editing.peer_used}/{fmtLimit(editing.peer_session_limit)}</p>
                   </div>
                   <div>
-                    <Label>Peer given</Label>
-                    <Input type="number" min={0} value={editing.peer_given_limit} onChange={(e) => setEditing({ ...editing, peer_given_limit: Number(e.target.value) })} />
-                    <p className="mt-1 text-[10px] text-muted-foreground">Used {editing.peer_given_used} · default {editing.programme_default_peer_given_limit ?? defaultPeerGivenLimit}</p>
+                    <p className="text-muted-foreground">Peer given</p>
+                    <p className="font-mono">{editing.peer_given_used}/{fmtLimit(editing.peer_given_limit)}</p>
                   </div>
                 </div>
               </div>

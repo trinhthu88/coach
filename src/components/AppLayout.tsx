@@ -25,6 +25,7 @@ import {
   Menu,
   Building2,
   FileDown,
+  UserCog,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -79,6 +80,7 @@ const NAV: NavItem[] = [
   // Admin — Programmes
   { to: "/admin/programmes", label: "Programmes", icon: BookOpen, roles: ["admin"], group: "Programmes" },
   { to: "/admin/cohorts", label: "Cohorts", icon: Network, roles: ["admin"], group: "Programmes" },
+  { to: "/admin/coach-programmes", label: "Coach programmes", icon: UserCog, roles: ["admin"], group: "Programmes" },
 
   // Admin — Operations
   { to: "/admin/sessions", label: "Sessions", icon: ClipboardList, roles: ["admin"], group: "Operations" },
