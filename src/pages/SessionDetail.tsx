@@ -90,7 +90,6 @@ export default function SessionDetail() {
     meetingUrl,
     setMeetingUrl,
     items,
-    setItems,
     updateItem,
     removeItem,
     addItem,

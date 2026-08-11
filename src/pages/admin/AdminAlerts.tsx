@@ -1,14 +1,46 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, RefreshCw, Flag, Users, MessagesSquare, BarChart3, Calendar as CalendarIcon, PanelsTopLeft } from "lucide-react";
-import { formatDistanceToNow, subDays } from "date-fns";
+import { Loader2, Check, RefreshCw, Flag, Users, BarChart3, Calendar as CalendarIcon, PanelsTopLeft, type LucideIcon } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { buildFeedbackAlerts } from "./alertScan";
-import { StatCard } from "@/components/ui/page-header";
 import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Json } from "@/integrations/supabase/types";
+
+interface AlertsScanSessionRow {
+  id: string;
+  coach_id: string;
+  coachee_id: string;
+  status: string;
+  action_items: Json;
+  start_time: string;
+  coachee_notes: string | null;
+}
+
+interface AlertsScanProfileRow {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
+interface AlertsScanEnrollmentRow {
+  id: string;
+  coachee_id: string;
+  status: string;
+  progress_pct: number | null;
+}
+
+type NewAlert = {
+  severity: "info" | "warning" | "critical";
+  alert_type: string;
+  title: string;
+  message: string;
+  related_coachee_id: string;
+  resolved: false;
+};
 
 interface Alert {
   id: string;
@@ -23,7 +55,7 @@ interface Alert {
   created_at: string;
 }
 
-const TYPE_ICON: Record<string, any> = {
+const TYPE_ICON: Record<string, LucideIcon> = {
   overdue_actions: Users,
   programme_at_risk: Flag,
   cohort_underbooked: Flag,
@@ -57,7 +89,6 @@ export default function AdminAlerts() {
   const runScan = async () => {
     setScanning(true);
     try {
-      const sevenDaysAgo = subDays(new Date(), 7);
       const now = new Date();
 
       const [
@@ -78,20 +109,23 @@ export default function AdminAlerts() {
         supabase.from("programme_enrollments").select("id, coachee_id, status, progress_pct"),
       ]);
 
-      const profById = new Map((profiles || []).map((p: any) => [p.id, p.full_name]));
-      const emailById = new Map((profiles || []).map((p: any) => [p.id, p.email]));
-      const peerFeedbackSessionIds = new Set((peerFeedback || []).map((f: any) => f.peer_session_id));
+      const profById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.full_name]));
+      const emailById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.email]));
+      const peerFeedbackSessionIds = new Set(
+        (peerFeedback || []).map((f: { peer_session_id: string }) => f.peer_session_id)
+      );
       const overdueByCoachee = new Map<string, number>();
-      (sessions || []).forEach((s: any) => {
+      (sessions || []).forEach((s: AlertsScanSessionRow) => {
         const items = Array.isArray(s.action_items) ? s.action_items : [];
-        items.forEach((it: any) => {
-          if (!it.done && it.due_date && new Date(it.due_date) < new Date()) {
+        items.forEach((it: Json) => {
+          const action = it as { done?: boolean; due_date?: string | null } | null;
+          if (action && !action.done && action.due_date && new Date(action.due_date) < new Date()) {
             overdueByCoachee.set(s.coachee_id, (overdueByCoachee.get(s.coachee_id) || 0) + 1);
           }
         });
       });
 
-      const newAlerts: any[] = [];
+      const newAlerts: NewAlert[] = [];
       overdueByCoachee.forEach((count, coacheeId) => {
         if (count >= 3) {
           newAlerts.push({
@@ -105,7 +139,7 @@ export default function AdminAlerts() {
         }
       });
 
-      (enrollments || []).forEach((e: any) => {
+      (enrollments || []).forEach((e: AlertsScanEnrollmentRow) => {
         if (e.status === "at_risk") {
           newAlerts.push({
             severity: "critical",
@@ -121,8 +155,8 @@ export default function AdminAlerts() {
       // Missing reflection / competency feedback — regular + peer sessions
       newAlerts.push(
         ...buildFeedbackAlerts({
-          sessions: (sessions || []) as any,
-          peerSessions: (peerSessions || []) as any,
+          sessions: sessions || [],
+          peerSessions: peerSessions || [],
           peerFeedbackSessionIds,
           nameById: profById,
           emailById,
@@ -139,8 +173,8 @@ export default function AdminAlerts() {
 
       toast.success(`Scan complete · ${newAlerts.length} active alerts`);
       load();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setScanning(false);
     }

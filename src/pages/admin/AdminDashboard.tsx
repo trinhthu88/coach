@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { format, startOfMonth, subMonths } from "date-fns";
@@ -7,8 +6,32 @@ import { AdminPageHeader } from "./_shared";
 import { StatCard } from "@/components/ui/page-header";
 import { MiniBarChart, AttentionPanel } from "@/components/ui/proto";
 import { Users, UserCheck, Calendar, CheckCircle2 } from "lucide-react";
+import type { Tables } from "@/integrations/supabase/types";
 
 interface Bucket { label: string; value: number; }
+
+interface DashboardProfileRow {
+  id: string;
+  full_name: string | null;
+  status: string;
+  created_at: string;
+}
+
+interface DashboardSessionRow {
+  id: string;
+  start_time: string;
+}
+
+interface DashboardCoachProfileRow {
+  id: string;
+  approval_status: string;
+}
+
+interface DashboardEnrollmentRow {
+  id: string;
+  status: string;
+  progress_pct: number | null;
+}
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -47,16 +70,15 @@ export default function AdminDashboard() {
 
       const coacheeIds = new Set((roles || []).filter((r) => r.role === "coachee").map((r) => r.user_id));
       const coachIds = new Set((roles || []).filter((r) => r.role === "coach").map((r) => r.user_id));
-      const profById = new Map((profiles || []).map((p: any) => [p.id, p]));
+      const profById = new Map((profiles || []).map((p: DashboardProfileRow) => [p.id, p]));
 
-      const sessionsThisMonth = (sessions || []).filter((s: any) => new Date(s.start_time) >= new Date(monthStart)).length
-        + (peerSessions || []).filter((s: any) => new Date(s.start_time) >= new Date(monthStart)).length;
+      const sessionsThisMonth = (sessions || []).filter((s: DashboardSessionRow) => new Date(s.start_time) >= new Date(monthStart)).length
+        + (peerSessions || []).filter((s: DashboardSessionRow) => new Date(s.start_time) >= new Date(monthStart)).length;
 
-      const pending = Array.from(coachIds).filter((id) => (cps || []).find((c: any) => c.id === id)?.approval_status === "pending_approval").length;
+      const pending = Array.from(coachIds).filter((id) => (cps || []).find((c: DashboardCoachProfileRow) => c.id === id)?.approval_status === "pending_approval").length;
 
-      const completed = (enrollments || []).filter((e: any) => e.status === "active" || e.status === "completed").length;
       const avgProgress = (enrollments || []).length
-        ? (enrollments || []).reduce((acc: number, e: any) => acc + (e.progress_pct || 0), 0) / (enrollments || []).length
+        ? (enrollments || []).reduce((acc: number, e: DashboardEnrollmentRow) => acc + (e.progress_pct || 0), 0) / (enrollments || []).length
         : 0;
 
       setStats({
@@ -73,11 +95,11 @@ export default function AdminDashboard() {
         const from = startOfMonth(subMonths(new Date(), i));
         const to = startOfMonth(subMonths(new Date(), i - 1));
         const cnt =
-          (sessions || []).filter((s: any) => {
+          (sessions || []).filter((s: DashboardSessionRow) => {
             const d = new Date(s.start_time);
             return d >= from && d < to;
           }).length +
-          (peerSessions || []).filter((s: any) => {
+          (peerSessions || []).filter((s: DashboardSessionRow) => {
             const d = new Date(s.start_time);
             return d >= from && d < to;
           }).length;
@@ -85,7 +107,7 @@ export default function AdminDashboard() {
       }
       setMonthly(months);
 
-      const items = (alertRows || []).map((a: any) => ({
+      const items = (alertRows || []).map((a: Tables<"admin_alerts">) => ({
         id: a.id,
         title: a.title,
         note: a.message ?? undefined,

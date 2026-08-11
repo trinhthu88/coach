@@ -60,7 +60,7 @@ export default function CoachProfileEditor() {
           country_based: data.country_based ?? "",
           specialties: (data.specialties ?? []).join(", "),
           diplomas_certifications: (data.diplomas_certifications ?? []).join(", "),
-          calendly_url: (data as any).calendly_url ?? "",
+          calendly_url: data.calendly_url ?? "",
         });
       }
       setLoading(false);
@@ -94,16 +94,16 @@ export default function CoachProfileEditor() {
             .map((s) => s.trim())
             .filter(Boolean),
           calendly_url: form.calendly_url || null,
-        } as any)
+        })
         .eq("id", user.id);
       if (cErr) throw cErr;
 
       await refreshProfile();
       toast({ title: "Profile saved", description: "Your coach profile has been updated." });
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Save failed",
-        description: err.message ?? "Please try again.",
+        description: err instanceof Error ? err.message : "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -120,7 +120,7 @@ export default function CoachProfileEditor() {
   }
 
   const statusVariant =
-    status === "active" ? "default" : status === "rejected" ? "destructive" : "secondary";
+    status === "active" ? "default" : status === "rejected" ? "destructive" : "secondary" as const;
 
   return (
     <div className="space-y-6">
@@ -130,7 +130,7 @@ export default function CoachProfileEditor() {
         emphasis="profile"
         subtitle="This is what coachees see when browsing the directory."
         actions={
-          <Badge variant={statusVariant as any} className="capitalize">
+          <Badge variant={statusVariant} className="capitalize">
             {status.replace("_", " ")}
           </Badge>
         }

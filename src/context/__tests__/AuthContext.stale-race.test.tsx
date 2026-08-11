@@ -10,7 +10,7 @@
 
 import { render, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { ReactNode, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 // ─── Supabase mock ───────────────────────────────────────────────────────────

@@ -3,8 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Star, TrendingUp, Award, Users, MessagesSquare } from "lucide-react";
 import { AdminPageHeader, Kpi, SectionCard, MiniBar, Pill } from "./_shared";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Tables } from "@/integrations/supabase/types";
 
-const COMPETENCY_LABELS: { key: string; label: string }[] = [
+type CompetencyKey =
+  | "ethical_practice"
+  | "coaching_mindset"
+  | "maintains_agreements"
+  | "trust_safety"
+  | "maintains_presence"
+  | "listens_actively"
+  | "evokes_awareness"
+  | "facilitates_growth";
+
+const COMPETENCY_LABELS: { key: CompetencyKey; label: string }[] = [
   { key: "ethical_practice", label: "Demonstrates ethical practice" },
   { key: "coaching_mindset", label: "Embodies coaching mindset" },
   { key: "maintains_agreements", label: "Establishes & maintains agreements" },
@@ -15,9 +26,63 @@ const COMPETENCY_LABELS: { key: string; label: string }[] = [
   { key: "facilitates_growth", label: "Facilitates client growth" },
 ];
 
+interface AnalyticsProfileRow {
+  id: string;
+  full_name: string | null;
+  status: string;
+}
+
+interface AnalyticsCoachProfileRow {
+  id: string;
+  rating_avg: number | null;
+  peer_coaching_opt_in: boolean | null;
+}
+
+interface AnalyticsSessionRow {
+  coach_id: string;
+  coachee_id: string;
+  status: string;
+  duration_minutes: number | null;
+  coachee_rating: number | null;
+}
+
+interface AnalyticsPeerSessionRow {
+  peer_coach_id: string;
+  peer_coachee_id: string;
+  status: string;
+  duration_minutes: number | null;
+}
+
+interface AnalyticsEnrollmentRow {
+  coachee_id: string;
+  status: string;
+  progress_pct: number | null;
+}
+
+interface AnalyticsData {
+  platform: {
+    sessTotal: number;
+    peerTotal: number;
+    totalHours: number;
+    avgRating: number;
+    dist: number[];
+    totalCoachees: number;
+    totalCoaches: number;
+    peerOptIns: number;
+  };
+  coachee: { active: number; enrolled: number; progressAvg: number; atRisk: number; totalSessions: number };
+  coach: { topCoaches: { id: string; name: string; delivered: number; coachees: number; rating: number }[] };
+  peer: {
+    rows: { id: string; name: string; given: number; received: number; avgComp: number }[];
+    totalSessions: number;
+    totalFeedback: number;
+  };
+  compAvg: Record<string, number>;
+}
+
 export default function AdminAnalytics() {
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AnalyticsData | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -40,43 +105,43 @@ export default function AdminAnalytics() {
         supabase.from("programme_enrollments").select("coachee_id, status, progress_pct"),
       ]);
 
-      const profById = new Map((profiles || []).map((p: any) => [p.id, p]));
-      const cpById = new Map((cps || []).map((c: any) => [c.id, c]));
+      const profById = new Map((profiles || []).map((p: AnalyticsProfileRow) => [p.id, p]));
+      const cpById = new Map((cps || []).map((c: AnalyticsCoachProfileRow) => [c.id, c]));
       const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
       const coacheeIds = (roles || []).filter(r => r.role === "coachee").map(r => r.user_id);
 
       // Platform KPIs
-      const sessTotal = (sess || []).filter((s: any) => s.status === "completed").length;
-      const peerTotal = (peer || []).filter((s: any) => s.status === "completed").length;
-      const ratings = (sess || []).map((s: any) => s.coachee_rating).filter(Boolean);
-      const avgRating = ratings.length ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length : 0;
+      const sessTotal = (sess || []).filter((s: AnalyticsSessionRow) => s.status === "completed").length;
+      const peerTotal = (peer || []).filter((s: AnalyticsPeerSessionRow) => s.status === "completed").length;
+      const ratings = (sess || []).map((s: AnalyticsSessionRow) => s.coachee_rating).filter((r): r is number => r != null);
+      const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
       const dist = [0, 0, 0, 0, 0];
-      ratings.forEach((r: number) => { if (r >= 1 && r <= 5) dist[r - 1]++; });
+      ratings.forEach((r) => { if (r >= 1 && r <= 5) dist[r - 1]++; });
       const totalHours = [...(sess || []), ...(peer || [])]
-        .filter((s: any) => s.status === "completed")
-        .reduce((a: number, s: any) => a + (s.duration_minutes || 0) / 60, 0);
+        .filter((s: AnalyticsSessionRow | AnalyticsPeerSessionRow) => s.status === "completed")
+        .reduce((a: number, s: AnalyticsSessionRow | AnalyticsPeerSessionRow) => a + (s.duration_minutes || 0) / 60, 0);
 
       // Coachee analytics
       const coacheeSessDone = new Map<string, number>();
       const coacheeSessBooked = new Map<string, number>();
-      (sess || []).forEach((s: any) => {
+      (sess || []).forEach((s: AnalyticsSessionRow) => {
         if (s.status === "completed") coacheeSessDone.set(s.coachee_id, (coacheeSessDone.get(s.coachee_id) || 0) + 1);
         if (["pending_coach_approval", "confirmed"].includes(s.status)) coacheeSessBooked.set(s.coachee_id, (coacheeSessBooked.get(s.coachee_id) || 0) + 1);
       });
-      const enrByCoachee = new Map<string, any>();
-      (enr || []).forEach((e: any) => enrByCoachee.set(e.coachee_id, e));
-      const activeCoachees = coacheeIds.filter(id => (profById.get(id) as any)?.status === "active").length;
+      const enrByCoachee = new Map<string, AnalyticsEnrollmentRow>();
+      (enr || []).forEach((e: AnalyticsEnrollmentRow) => enrByCoachee.set(e.coachee_id, e));
+      const activeCoachees = coacheeIds.filter(id => profById.get(id)?.status === "active").length;
       const enrolled = coacheeIds.filter(id => enrByCoachee.has(id)).length;
       const progressAvg = (() => {
         const vals = coacheeIds.map(id => (enrByCoachee.get(id)?.progress_pct ?? 0));
         return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
       })();
-      const atRisk = (enr || []).filter((e: any) => e.status === "at_risk").length;
+      const atRisk = (enr || []).filter((e: AnalyticsEnrollmentRow) => e.status === "at_risk").length;
 
       // Coach analytics (delivered)
       const coachDelivered = new Map<string, number>();
       const coachUnique = new Map<string, Set<string>>();
-      (sess || []).forEach((s: any) => {
+      (sess || []).forEach((s: AnalyticsSessionRow) => {
         if (s.status === "completed") coachDelivered.set(s.coach_id, (coachDelivered.get(s.coach_id) || 0) + 1);
         if (["confirmed", "completed"].includes(s.status)) {
           const set = coachUnique.get(s.coach_id) || new Set();
@@ -85,8 +150,8 @@ export default function AdminAnalytics() {
         }
       });
       const topCoaches = coachIds.map(id => {
-        const p: any = profById.get(id);
-        const cp: any = cpById.get(id);
+        const p = profById.get(id);
+        const cp = cpById.get(id);
         return {
           id, name: p?.full_name || "—",
           delivered: coachDelivered.get(id) || 0,
@@ -96,10 +161,10 @@ export default function AdminAnalytics() {
       }).sort((a, b) => b.delivered - a.delivered).slice(0, 10);
 
       // Peer analytics — only opt-ins
-      const peerCoaches = coachIds.filter(id => (cpById.get(id) as any)?.peer_coaching_opt_in);
+      const peerCoaches = coachIds.filter(id => cpById.get(id)?.peer_coaching_opt_in);
       const peerGiven = new Map<string, number>();
       const peerReceived = new Map<string, number>();
-      (peer || []).forEach((s: any) => {
+      (peer || []).forEach((s: AnalyticsPeerSessionRow) => {
         if (s.status === "completed") {
           peerGiven.set(s.peer_coach_id, (peerGiven.get(s.peer_coach_id) || 0) + 1);
           peerReceived.set(s.peer_coachee_id, (peerReceived.get(s.peer_coachee_id) || 0) + 1);
@@ -107,11 +172,12 @@ export default function AdminAnalytics() {
       });
       // Per-peer-coach competency averages (received as peer-coach)
       const peerCompByCoach = new Map<string, { sums: Record<string, number>; counts: Record<string, number> }>();
-      (comp || []).forEach((r: any) => {
+      (comp || []).forEach((r: Tables<"peer_session_competency_feedback">) => {
         const acc = peerCompByCoach.get(r.peer_coach_id) || { sums: {}, counts: {} };
         COMPETENCY_LABELS.forEach(c => {
-          if (r[c.key] != null) {
-            acc.sums[c.key] = (acc.sums[c.key] || 0) + r[c.key];
+          const value = r[c.key];
+          if (value != null) {
+            acc.sums[c.key] = (acc.sums[c.key] || 0) + value;
             acc.counts[c.key] = (acc.counts[c.key] || 0) + 1;
           }
         });
@@ -121,7 +187,7 @@ export default function AdminAnalytics() {
         const acc = peerCompByCoach.get(id);
         const avg = acc ? COMPETENCY_LABELS.reduce((a, c) => a + ((acc.sums[c.key] || 0) / (acc.counts[c.key] || 1)), 0) / COMPETENCY_LABELS.length : 0;
         return {
-          id, name: (profById.get(id) as any)?.full_name || "—",
+          id, name: profById.get(id)?.full_name || "—",
           given: peerGiven.get(id) || 0,
           received: peerReceived.get(id) || 0,
           avgComp: avg,
@@ -131,10 +197,11 @@ export default function AdminAnalytics() {
       // Aggregate competency averages (platform)
       const aggSums: Record<string, number> = {};
       const aggCounts: Record<string, number> = {};
-      (comp || []).forEach((r: any) => {
+      (comp || []).forEach((r: Tables<"peer_session_competency_feedback">) => {
         COMPETENCY_LABELS.forEach(c => {
-          if (r[c.key] != null) {
-            aggSums[c.key] = (aggSums[c.key] || 0) + r[c.key];
+          const value = r[c.key];
+          if (value != null) {
+            aggSums[c.key] = (aggSums[c.key] || 0) + value;
             aggCounts[c.key] = (aggCounts[c.key] || 0) + 1;
           }
         });
@@ -239,7 +306,7 @@ export default function AdminAnalytics() {
           <SectionCard label="Top coaches by sessions delivered">
             {data.coach.topCoaches.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No data yet.</p> : (
               <div className="divide-y">
-                {data.coach.topCoaches.map((c: any) => (
+                {data.coach.topCoaches.map((c) => (
                   <div key={c.id} className="grid grid-cols-12 items-center gap-2 py-2 text-[12px]">
                     <span className="col-span-5 font-medium">{c.name}</span>
                     <span className="col-span-3 text-muted-foreground">{c.coachees} coachees</span>
@@ -261,7 +328,7 @@ export default function AdminAnalytics() {
           <SectionCard label="Peer-coaching trainees — competencies & activity">
             {data.peer.rows.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No peer-coaching coaches yet.</p> : (
               <div className="divide-y">
-                {data.peer.rows.map((r: any) => (
+                {data.peer.rows.map((r) => (
                   <div key={r.id} className="grid grid-cols-12 items-center gap-2 py-2 text-[12px]">
                     <span className="col-span-4 font-medium">{r.name}</span>
                     <span className="col-span-2 text-muted-foreground">Given: {r.given}</span>

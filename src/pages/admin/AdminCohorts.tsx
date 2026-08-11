@@ -37,11 +37,11 @@ export default function AdminCohorts() {
       supabase.from("programme_enrollments").select("cohort_id"),
     ]);
     const cnt: Record<string, number> = {};
-    (enr || []).forEach((e: any) => {
+    (enr || []).forEach((e: { cohort_id: string | null }) => {
       if (e.cohort_id) cnt[e.cohort_id] = (cnt[e.cohort_id] || 0) + 1;
     });
     setRows((c || []) as Cohort[]);
-    setProgs((p || []) as any);
+    setProgs((p || []) as { id: string; name: string }[]);
     setCounts(cnt);
     setLoading(false);
   };
@@ -51,7 +51,7 @@ export default function AdminCohorts() {
     if (!editing?.name?.trim()) { toast.error("Name is required"); return; }
     setSaving(true);
     try {
-      const payload: any = {
+      const payload: Omit<Cohort, "id"> = {
         name: editing.name,
         description: editing.description || null,
         programme_id: editing.programme_id || null,
@@ -68,7 +68,7 @@ export default function AdminCohorts() {
       toast.success("Cohort saved");
       setEditing(null);
       load();
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
     finally { setSaving(false); }
   };
 

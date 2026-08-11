@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", callerId);
-    const isAdmin = (roleRows ?? []).some((r: any) => r.role === "admin");
+    const isAdmin = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
@@ -212,8 +212,8 @@ Deno.serve(async (req) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message ?? String(err) }), {
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

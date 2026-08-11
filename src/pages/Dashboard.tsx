@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
-import { HeroPanel, PageHeader } from "@/components/ui/page-header";
+import { HeroPanel } from "@/components/ui/page-header";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +15,10 @@ import {
   CheckCircle2,
   Video,
   ArrowUpRight,
-  Heart,
   Star,
   CalendarCheck,
   Loader2,
   Users,
-  UserCheck,
   XCircle,
   ListChecks,
   History,
@@ -32,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { useCoacheeDashboardData, SessionLite, CoachLite } from "@/hooks/dashboard/useCoacheeDashboardData";
 import { ProgressRing } from "@/components/ui/proto";
 import { Json } from "@/integrations/supabase/types";
-import { useCoachDashboardData, CoachSession } from "@/hooks/dashboard/useCoachDashboardData";
+import { useCoachDashboardData } from "@/hooks/dashboard/useCoachDashboardData";
 import { useAdminDashboardStats } from "@/hooks/dashboard/useAdminDashboardStats";
 
 export default function Dashboard() {
@@ -48,7 +46,7 @@ export default function Dashboard() {
   // Coachee data
   const { favorites } = useFavorites();
   const isCoachee = role === "coachee";
-  const { sessions, coachesById, favCoaches, recCoaches, sessionLimit } = useCoacheeDashboardData(
+  const { sessions, coachesById, recCoaches, sessionLimit } = useCoacheeDashboardData(
     user?.id,
     isCoachee,
     favorites
@@ -770,62 +768,6 @@ function NextSessionCard({
           </Button>
         </div>
       </div>
-    </Card>
-  );
-}
-
-function FavoritesPanel({ coaches }: { coaches: CoachLite[] }) {
-  return (
-    <Card className="flex h-full flex-col p-5">
-      <div className="mb-3 flex items-center gap-2">
-        <Heart className="h-4 w-4 text-primary" />
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-          Favorite coaches
-        </p>
-      </div>
-      {coaches.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
-          <p>Tap the heart on any coach to save them here.</p>
-          <Button asChild variant="link" size="sm" className="h-auto p-0">
-            <Link to="/coaches">Browse coaches</Link>
-          </Button>
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {coaches.slice(0, 4).map((c) => {
-            const initials = (c.profiles?.full_name || "?")
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase();
-            return (
-              <li key={c.id}>
-                <Link
-                  to={`/coaches/${c.id}`}
-                  className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-secondary"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-primary-soft text-xs font-bold text-primary">
-                    {c.profiles?.avatar_url ? (
-                      <img src={c.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      initials
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{c.profiles?.full_name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{c.title || "Coach"}</p>
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold">
-                    <Star className="h-3 w-3 fill-warning text-warning" />
-                    {Number(c.rating_avg).toFixed(1)}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
     </Card>
   );
 }

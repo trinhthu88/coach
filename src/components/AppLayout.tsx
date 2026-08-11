@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Search,
   Users,
-  UserCheck,
   Calendar,
   MessageSquare,
   LogOut,
@@ -218,7 +217,7 @@ export default function AppLayout() {
         .select("id")
         .eq(filterCol, user.id)
         .in("status", ["confirmed", "completed"]);
-      const sessionIds = (ses || []).map((s: any) => s.id);
+      const sessionIds = (ses || []).map((s: { id: string }) => s.id);
       if (!sessionIds.length) {
         setUnreadCount(0);
         return;

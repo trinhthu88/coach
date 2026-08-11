@@ -64,7 +64,8 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
         body: { request_id: req.id },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      const result = data as { error?: string; temp_password?: string; email?: string };
+      if (result?.error) throw new Error(result.error);
       const payload = data as { temp_password: string; email: string };
       setCredential({
         email: payload.email,
@@ -75,8 +76,8 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       toast.success("Account created");
       await load();
       onApproved?.();
-    } catch (err: any) {
-      toast.error(err.message ?? "Approval failed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Approval failed");
     } finally {
       setBusyId(null);
     }
@@ -98,8 +99,8 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       if (error) throw error;
       toast.success("Request rejected");
       await load();
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
     } finally {
       setBusyId(null);
     }
@@ -114,7 +115,8 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
         body: { request_id: credential.request_id, force_reset_password: true },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      const result = data as { error?: string; temp_password?: string; email?: string };
+      if (result?.error) throw new Error(result.error);
       const payload = data as { temp_password: string; email: string };
       setCredential((current) => current ? {
         ...current,
@@ -123,8 +125,8 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       } : current);
       toast.success("Temporary password reset");
       onApproved?.();
-    } catch (err: any) {
-      toast.error(err.message ?? "Password reset failed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Password reset failed");
     } finally {
       setBusyId(null);
     }

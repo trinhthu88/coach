@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 import {
-  Search, Calendar, Activity, Shield, Lock, Clock, Users, Zap,
+  Search, Calendar, Activity, Shield, Lock, Clock, Users,
   ArrowRight, Play, ChevronRight,
 } from "lucide-react";
 

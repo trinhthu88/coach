@@ -48,10 +48,10 @@ export default function ResetPassword() {
       }
       toast({ title: "Password updated", description: "You're all set." });
       navigate("/dashboard", { replace: true });
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Could not update password",
-        description: err.message ?? "Try again.",
+        description: err instanceof Error ? err.message : "Try again.",
         variant: "destructive",
       });
     } finally {

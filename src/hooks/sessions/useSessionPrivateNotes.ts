@@ -50,6 +50,7 @@ export function useSessionPrivateNotes({
     const { error } = await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(privateTable as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .upsert(payload as any, { onConflict: idCol });
     if (error) toast.error(error.message);
     return { error };

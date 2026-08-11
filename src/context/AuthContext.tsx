@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (deferTimer) clearTimeout(deferTimer);
       subscription.unsubscribe();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();

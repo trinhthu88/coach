@@ -24,7 +24,6 @@ import {
   Check,
   Loader2,
   X,
-  Eye,
   Search,
   FileDown,
   FileUp,
@@ -37,7 +36,7 @@ import { useAdminRegistrations } from "@/hooks/admin/useAdminRegistrations";
 import { useAdminRegistrationApprovals } from "@/hooks/admin/useAdminRegistrationApprovals";
 import { useUpdateCoacheeAssignment } from "@/hooks/admin/useUpdateCoacheeAssignment";
 import { useUpdateCoachAssignment } from "@/hooks/admin/useUpdateCoachAssignment";
-import { useBulkImportCoachees } from "@/hooks/admin/useBulkImportCoachees";
+import { useBulkImportCoachees, type ImportRow } from "@/hooks/admin/useBulkImportCoachees";
 import { CoachListRow, CoachOpt, CoacheeRow, Status } from "@/hooks/admin/types";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -135,7 +134,7 @@ export default function AdminRegistrations() {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf);
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+    const rows = XLSX.utils.sheet_to_json<ImportRow>(ws, { defval: "" });
     await importRows(rows);
   };
 

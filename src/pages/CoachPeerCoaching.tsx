@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MessagesSquare, Loader2, Star } from "lucide-react";
+import { Loader2, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -31,7 +31,7 @@ export default function CoachPeerCoaching() {
         .eq("peer_coaching_opt_in", true)
         .neq("id", user.id);
       setCoaches(
-        ((data as any[]) || []).map((c) => ({
+        (data || []).map((c) => ({
           id: c.id,
           title: c.title,
           specialties: c.specialties,

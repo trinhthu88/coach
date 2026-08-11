@@ -36,8 +36,8 @@ export default function SetNewPassword() {
       await refreshProfile();
       toast({ title: "Welcome aboard", description: "Your password has been set." });
       navigate("/dashboard", { replace: true });
-    } catch (err: any) {
-      toast({ title: "Could not set password", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Could not set password", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setLoading(false);
     }

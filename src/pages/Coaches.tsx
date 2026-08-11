@@ -7,7 +7,7 @@ import { PageHeader, FilterChip } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Star, MapPin, Loader2, Sparkles, Heart, Clock, AlertTriangle } from "lucide-react";
+import { Search, Star, Loader2, Heart, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "@/hooks/useFavorites";
 

@@ -26,10 +26,10 @@ export default function ForgotPassword() {
         title: "Check your inbox",
         description: "We sent you a link to reset your password.",
       });
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Could not send reset email",
-        description: err.message ?? "Please try again.",
+        description: err instanceof Error ? err.message : "Please try again.",
         variant: "destructive",
       });
     } finally {

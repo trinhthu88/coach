@@ -62,7 +62,7 @@ export default function AdminProgrammes() {
       supabase.from("programme_enrollments").select("cohort_id"),
     ]);
     const cnt: Record<string, number> = {};
-    (enr || []).forEach((e: any) => {
+    (enr || []).forEach((e: { cohort_id: string | null }) => {
       if (e.cohort_id) cnt[e.cohort_id] = (cnt[e.cohort_id] || 0) + 1;
     });
     setRows((data || []) as unknown as Programme[]);
@@ -97,8 +97,8 @@ export default function AdminProgrammes() {
       toast.success("Programme saved");
       setEditing(null);
       load();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
 
-interface ImportRow {
+export interface ImportRow {
   Email?: string;
   email?: string;
   EMAIL?: string;

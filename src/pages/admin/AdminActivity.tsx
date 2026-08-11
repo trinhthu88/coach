@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Loader2, Calendar, MessagesSquare, UserPlus, Star } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { AdminPageHeader } from "./_shared";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,42 @@ interface Item {
   title: string;
   sub: string;
   at: Date;
+}
+
+interface SessionActivityRow {
+  id: string;
+  topic: string;
+  status: string;
+  start_time: string;
+  coachee_id: string;
+  coach_id: string;
+  coachee_rating: number | null;
+  updated_at: string;
+}
+
+interface PeerSessionActivityRow {
+  id: string;
+  topic: string;
+  status: string;
+  start_time: string;
+  peer_coach_id: string;
+  peer_coachee_id: string;
+  updated_at: string;
+}
+
+interface ProfileActivityRow {
+  id: string;
+  full_name: string;
+  status: string;
+  created_at: string;
+}
+
+interface MilestoneActivityRow {
+  id: string;
+  title: string;
+  is_done: boolean;
+  done_at: string | null;
+  coachee_id: string;
 }
 
 export default function AdminActivity() {
@@ -33,10 +69,10 @@ export default function AdminActivity() {
         supabase.from("coachee_milestones").select("id, title, is_done, done_at, coachee_id").eq("is_done", true).order("done_at", { ascending: false }).limit(20),
       ]);
 
-      const profById = new Map((profs || []).map((p: any) => [p.id, p.full_name]));
+      const profById = new Map((profs || []).map((p: ProfileActivityRow) => [p.id, p.full_name]));
 
       const list: Item[] = [];
-      (sess || []).forEach((s: any) => {
+      (sess || []).forEach((s: SessionActivityRow) => {
         if (s.status === "completed") {
           list.push({
             id: `s-${s.id}`,
@@ -47,7 +83,7 @@ export default function AdminActivity() {
           });
         }
       });
-      (peer || []).forEach((s: any) => {
+      (peer || []).forEach((s: PeerSessionActivityRow) => {
         if (s.status === "completed") {
           list.push({
             id: `p-${s.id}`,
@@ -58,7 +94,7 @@ export default function AdminActivity() {
           });
         }
       });
-      (profs || []).forEach((p: any) => {
+      (profs || []).forEach((p: ProfileActivityRow) => {
         if (p.status === "active") {
           list.push({
             id: `u-${p.id}`,
@@ -69,13 +105,13 @@ export default function AdminActivity() {
           });
         }
       });
-      (milestones || []).forEach((m: any) => {
+      (milestones || []).forEach((m: MilestoneActivityRow) => {
         list.push({
           id: `m-${m.id}`,
           kind: "milestone",
           title: `Milestone "${m.title}" completed`,
           sub: profById.get(m.coachee_id) || "Coachee",
-          at: new Date(m.done_at),
+          at: new Date(m.done_at || Date.now()),
         });
       });
 

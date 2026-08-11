@@ -17,17 +17,15 @@ import {
   Users,
   Loader2,
   Calendar,
-  Target,
   CheckCircle2,
   AlertCircle,
   StickyNote,
   Trash2,
   Search,
   TrendingUp,
-  Clock,
   ArrowLeft,
 } from "lucide-react";
-import { format, isBefore, startOfWeek, endOfWeek, startOfMonth, isAfter } from "date-fns";
+import { format, isBefore, startOfWeek, endOfWeek, isAfter } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
@@ -245,7 +243,6 @@ export default function CoachClients() {
     const now = new Date();
     const wkStart = startOfWeek(now, { weekStartsOn: 1 });
     const wkEnd = endOfWeek(now, { weekStartsOn: 1 });
-    const monthStart = startOfMonth(now);
 
     const sessionsThisWeek = clients.reduce((acc, c) => {
       if (c.nextSession) {
@@ -363,53 +360,6 @@ export default function CoachClients() {
 
 /* -------- Components -------- */
 
-function MetricTile({
-  icon,
-  label,
-  value,
-  sub,
-  tone,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "danger" | "ok";
-}) {
-  return (
-    <div className="surface-card hover-lift p-4">
-      <div className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <p
-        className={cn(
-          "font-display mt-2 text-[2rem] font-normal leading-none tracking-tight",
-          tone === "danger" && "text-destructive",
-          tone === "ok" && "text-success"
-        )}
-      >
-        {value}
-      </p>
-      {sub && <p className="mt-2 text-[11px] text-muted-foreground">{sub}</p>}
-    </div>
-  );
-}
-
-function StatusPill({ status }: { status: Status }) {
-  const map: Record<Status, { label: string; cls: string }> = {
-    on_track: { label: "On track", cls: "bg-success/15 text-success border-success/20" },
-    needs_attention: { label: "Needs attention", cls: "bg-destructive/10 text-destructive border-destructive/20" },
-    at_risk: { label: "At risk", cls: "bg-warning/15 text-warning border-warning/20" },
-  };
-  const m = map[status];
-  return (
-    <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest", m.cls)}>
-      {m.label}
-    </span>
-  );
-}
-
 const FILLS = ["bg-success", "bg-primary", "bg-warning", "bg-accent"];
 
 function programmeLabel(client: Client): string {
@@ -463,27 +413,6 @@ function ClientRow({ client, onOpen }: { client: Client; onOpen: () => void }) {
         <span className="text-sm font-semibold text-accent">Not scheduled</span>
       )}
     </button>
-  );
-}
-
-function Tag({
-  children,
-  tone,
-}: {
-  children: React.ReactNode;
-  tone: "info" | "ok" | "danger" | "warning" | "muted";
-}) {
-  const map = {
-    info: "bg-primary-soft text-primary",
-    ok: "bg-success/15 text-success",
-    danger: "bg-destructive/10 text-destructive",
-    warning: "bg-warning/15 text-warning",
-    muted: "bg-muted text-muted-foreground",
-  } as const;
-  return (
-    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium", map[tone])}>
-      {children}
-    </span>
   );
 }
 

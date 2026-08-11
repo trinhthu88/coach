@@ -145,6 +145,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
       if (!session) return;
       setSaving(true);
       const { error } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
         .update({ meeting_url: trimmed || null })
         .eq("id", session.id);
@@ -176,6 +177,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
       if (!session) return;
       setSaving(true);
       const { error } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
         .update({
           status: "cancelled",
@@ -201,6 +203,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
     if (!session) return;
     setSaving(true);
     const { error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(tableName as any)
       .update({ status: "completed" })
       .eq("id", session.id);

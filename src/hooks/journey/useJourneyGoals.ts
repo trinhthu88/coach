@@ -43,7 +43,8 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
         toast.error(error.message);
         return false;
       }
-      onChanged ? onChanged() : refresh();
+      if (onChanged) onChanged();
+      else refresh();
       return true;
     },
     [coacheeId, onChanged, refresh]
@@ -56,7 +57,8 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
         toast.error(error.message);
         return;
       }
-      onChanged ? onChanged() : refresh();
+      if (onChanged) onChanged();
+      else refresh();
     },
     [onChanged, refresh]
   );
@@ -74,7 +76,8 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
         toast.error(error.message);
         return false;
       }
-      onChanged ? onChanged() : refresh();
+      if (onChanged) onChanged();
+      else refresh();
       return true;
     },
     [coacheeId, onChanged, refresh]
@@ -87,7 +90,8 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
         toast.error(error.message);
         return;
       }
-      onChanged ? onChanged() : refresh();
+      if (onChanged) onChanged();
+      else refresh();
     },
     [onChanged, refresh]
   );
@@ -102,7 +106,8 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
         toast.error(error.message);
         return;
       }
-      onChanged ? onChanged() : refresh();
+      if (onChanged) onChanged();
+      else refresh();
     },
     [onChanged, refresh]
   );

@@ -40,7 +40,7 @@ export function GoalWheel({
 }) {
   const data = useMemo(() => {
     return rows.map((r) => {
-      const point: any = {
+      const point: { axis: string; Start: number; Target: number; [key: string]: string | number } = {
         axis: SHORT(r.title),
         Start: r.start,
         Target: r.target,

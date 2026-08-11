@@ -24,7 +24,7 @@ const EMAIL_SUBJECTS: Record<string, string> = {
 }
 
 // Template mapping
-const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
+const EMAIL_TEMPLATES: Record<string, React.ComponentType<Record<string, unknown>>> = {
   signup: SignupEmail,
   invite: InviteEmail,
   magiclink: MagicLinkEmail,
@@ -102,7 +102,7 @@ async function handlePreview(req: Request): Promise<Response> {
   try {
     const body = await req.json()
     type = body.type
-  } catch (error) {
+  } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
       status: 400,
       headers: { ...previewCorsHeaders, 'Content-Type': 'application/json' },
@@ -140,7 +140,18 @@ async function handleWebhook(req: Request, corsHeaders: Record<string, string>):
   }
 
   // Verify signature + timestamp, then parse payload.
-  let payload: any
+  let payload: {
+    run_id: string
+    version: string
+    data: {
+      action_type: string
+      email: string
+      url: string
+      token: string
+      old_email?: string
+      new_email?: string
+    }
+  }
   let run_id = ''
   try {
     const verified = await verifyWebhookRequest({

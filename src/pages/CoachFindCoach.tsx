@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Star, Loader2, Info } from "lucide-react";
+import { Star, Loader2, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -29,7 +29,7 @@ export default function CoachFindCoach() {
         .from("coach_as_coachee_allowlist")
         .select("selectable_coach_id")
         .eq("coach_user_id", user.id);
-      const ids = (allowlist || []).map((r: any) => r.selectable_coach_id);
+      const ids = (allowlist || []).map((r: { selectable_coach_id: string }) => r.selectable_coach_id);
       if (ids.length) {
         const { data } = await supabase
           .from("coach_profiles")

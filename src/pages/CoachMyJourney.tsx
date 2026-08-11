@@ -6,7 +6,14 @@ import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
 import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
 import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
 import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
-import type { Goal, Milestone, RawActionItem } from "@/hooks/journey/types";
+import type {
+  Goal,
+  Milestone,
+  RawActionItem,
+  SessionRow as SessionRowData,
+  PeerSessionRow,
+} from "@/hooks/journey/types";
+import type { Json } from "@/integrations/supabase/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +30,6 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Compass,
   Loader2,
   Target,
   Plus,
@@ -45,7 +51,6 @@ import {
   endOfWeek,
   differenceInCalendarWeeks,
 } from "date-fns";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   GoalWheel,
@@ -81,7 +86,9 @@ function initials(s: string) {
     .toUpperCase();
 }
 
-type AnySession = any;
+type AnySession =
+  | (SessionRowData & { _source: "coaching"; _otherCoachId: string | null })
+  | (PeerSessionRow & { _source: "peer"; _otherCoachId: string | null });
 
 export default function CoachMyJourney() {
   const { user } = useAuth();
@@ -100,15 +107,6 @@ export default function CoachMyJourney() {
   const loading =
     goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading || programmeApi.loading;
 
-  const refresh = useCallback(() => {
-    goalsApi.refresh();
-    ratingsApi.refresh();
-    sessionsApi.refresh();
-    reflectionsApi.refresh();
-    programmeApi.refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
@@ -124,8 +122,9 @@ export default function CoachMyJourney() {
     const out: FlatAction[] = [];
     for (const s of sessions) {
       const items = Array.isArray(s.action_items) ? s.action_items : [];
-      items.forEach((it: any, idx: number) => {
-        const obj: RawActionItem = typeof it === "string" ? { text: it, done: false } : it;
+      items.forEach((it: Json, idx: number) => {
+        const obj: RawActionItem =
+          typeof it === "string" ? { text: it, done: false } : (it as unknown as RawActionItem);
         if (obj?.text) {
           out.push({
             ...obj,
@@ -182,7 +181,7 @@ export default function CoachMyJourney() {
   const coachSummaries = useMemo(() => {
     const map = new Map<string, { id: string; name: string; total: number; completed: number; upcoming: number; firstDate: Date | null; lastDate: Date | null; nextDate: Date | null; sources: Set<"coaching" | "peer">; }>();
     for (const s of sessions) {
-      const otherId: string | undefined = s._otherCoachId;
+      const otherId = s._otherCoachId;
       if (!otherId) continue;
       const cur = map.get(otherId) || {
         id: otherId,
@@ -266,12 +265,13 @@ export default function CoachMyJourney() {
   );
 
   const sessionRatingSeries: SessionRatingSeries[] = useMemo(() => {
+    type RatingRow = { goalId: string; rating: number };
     const sessionById = new Map(sessions.map((s) => [s.id, s]));
-    const grouped = new Map<string, { date: string; rows: { goalId: string; rating: number }[] }>();
+    const grouped = new Map<string, { date: string; rows: RatingRow[] }>();
     for (const row of sessionRatings) {
       const sess = sessionById.get(row.session_id);
       if (!sess) continue;
-      const cur = grouped.get(row.session_id) || { date: sess.start_time, rows: [] };
+      const cur = grouped.get(row.session_id) || { date: sess.start_time, rows: [] as RatingRow[] };
       cur.rows.push({ goalId: row.goal_id, rating: row.rating });
       grouped.set(row.session_id, cur);
     }
@@ -1112,7 +1112,7 @@ function SessionsBlock({
               milestones={milestones}
               goals={goals}
               onToggleAction={onToggleAction}
-              coachName={coachNames?.[s._otherCoachId]}
+              coachName={s._otherCoachId ? coachNames?.[s._otherCoachId] : undefined}
             />
           ))}
         </div>
@@ -1139,7 +1139,7 @@ function SessionRow({
   const [open, setOpen] = useState(false);
   const d = new Date(s.start_time);
   const items: RawActionItem[] = Array.isArray(s.action_items)
-    ? s.action_items.map((it: any) => (typeof it === "string" ? { text: it } : it))
+    ? s.action_items.map((it: Json) => (typeof it === "string" ? { text: it } : (it as unknown as RawActionItem)))
     : [];
 
   const labelFor = (mid?: string | null) => {

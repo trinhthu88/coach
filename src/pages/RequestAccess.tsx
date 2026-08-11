@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,13 +76,16 @@ export default function RequestAccess() {
       });
       if (error) throw error;
       setDone(true);
-    } catch (err: any) {
-      const duplicate = err?.code === "23505" || String(err?.message ?? "").toLowerCase().includes("access_requests_email_unique");
+    } catch (err) {
+      const pgError = err as Partial<PostgrestError> | undefined;
+      const duplicate =
+        pgError?.code === "23505" ||
+        String(pgError?.message ?? "").toLowerCase().includes("access_requests_email_unique");
       toast({
         title: "Submission failed",
         description: duplicate
           ? "This email already has an application on file. Please contact the administrator if you need help."
-          : err.message ?? "Please try again.",
+          : pgError?.message ?? "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -400,6 +404,7 @@ function Field({
         className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/30"
       >
         {label}
+        {required && <span className="ml-1 text-destructive">*</span>}
         {optional && (
           <span className="ml-1 normal-case tracking-normal text-white/20">(optional)</span>
         )}

@@ -26,7 +26,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", fullName: "" });
   const [signupRole, setSignupRole] = useState<SignupRole>("coachee");
@@ -64,10 +64,10 @@ export default function Auth() {
         });
         navigate(isSameOriginRelativePath(next) ? next : "/dashboard", { replace: true });
       }
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Authentication failed",
-        description: err.message ?? "Please try again.",
+        description: err instanceof Error ? err.message : "Please try again.",
         variant: "destructive",
       });
     } finally {

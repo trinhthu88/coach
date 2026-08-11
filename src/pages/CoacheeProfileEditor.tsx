@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, User } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 
 export default function CoacheeProfileEditor() {

@@ -6,14 +6,13 @@ import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
 import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
 import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
 import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
-import type { Goal, Milestone, RawActionItem } from "@/hooks/journey/types";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Goal, Milestone, RawActionItem, SessionRow as SessionRowData } from "@/hooks/journey/types";
+import type { Json } from "@/integrations/supabase/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -25,17 +24,13 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import {
-  Compass,
   Loader2,
   Target,
   Plus,
   Trash2,
-  Calendar,
-  CheckCircle2,
   Check,
   Sparkles,
   BookOpen,
-  ListTodo,
   ChevronDown,
   ChevronRight,
   Users,
@@ -43,8 +38,7 @@ import {
   GraduationCap,
   Lock,
 } from "lucide-react";
-import { format, isAfter, isBefore, startOfWeek, endOfWeek, differenceInCalendarWeeks, differenceInCalendarDays } from "date-fns";
-import { toast } from "sonner";
+import { format, isAfter, isBefore, endOfWeek, differenceInCalendarWeeks } from "date-fns";
 import { cn } from "@/lib/utils";
 import { WheelHistory } from "@/components/tools/WheelHistory";
 import { GoalWheel, GoalScoreCards, type GoalRatingRow, type SessionRatingSeries } from "./journey/GoalWheel";
@@ -92,15 +86,6 @@ export default function CoacheeJourney() {
   const loading =
     goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading || programmeApi.loading;
 
-  const refresh = useCallback(() => {
-    goalsApi.refresh();
-    ratingsApi.refresh();
-    sessionsApi.refresh();
-    reflectionsApi.refresh();
-    programmeApi.refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
   const [savingRef, setSavingRef] = useState(false);
@@ -119,9 +104,9 @@ export default function CoacheeJourney() {
     const out: FlatAction[] = [];
     for (const s of sessions) {
       const items = Array.isArray(s.action_items) ? s.action_items : [];
-      items.forEach((it: any, idx: number) => {
+      items.forEach((it: Json, idx: number) => {
         const obj: RawActionItem =
-          typeof it === "string" ? { text: it, done: false } : it;
+          typeof it === "string" ? { text: it, done: false } : (it as unknown as RawActionItem);
         if (obj?.text) {
           out.push({
             ...obj,
@@ -144,7 +129,6 @@ export default function CoacheeJourney() {
 
   // Group action items
   const now = new Date();
-  const wkStart = startOfWeek(now, { weekStartsOn: 1 });
   const wkEnd = endOfWeek(now, { weekStartsOn: 1 });
   const grouped = {
     overdue: allActionItems.filter((a) => !a.done && a.due_date && isBefore(new Date(a.due_date), now)),
@@ -169,8 +153,6 @@ export default function CoacheeJourney() {
     .sort((a, b) => +new Date(a.start_time) - +new Date(b.start_time));
   const past = sessions
     .filter((s) => new Date(s.start_time) < now || ["cancelled", "completed"].includes(s.status));
-
-  const nextSession = upcoming[0];
 
   // Coaches in this programme (derived from sessions)
   const coachSummaries = useMemo(() => {
@@ -728,21 +710,6 @@ export default function CoacheeJourney() {
 
 /* ---------- sub components ---------- */
 
-function Metric({
-  label,
-  value,
-  sub,
-  subClass,
-}: { label: string; value: string; sub?: string; subClass?: string }) {
-  return (
-    <div className="surface-card hover-lift p-4">
-      <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
-      <p className="font-display mt-2 text-[2rem] font-normal leading-none tracking-tight">{value}</p>
-      {sub && <p className={cn("mt-2 text-[11px] text-muted-foreground", subClass)}>{sub}</p>}
-    </div>
-  );
-}
-
 function RatingSlider({
   label,
   hint,
@@ -1127,7 +1094,7 @@ function SessionsBlock({
   coachNames,
 }: {
   title: string;
-  items: any[];
+  items: SessionRowData[];
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
@@ -1160,7 +1127,7 @@ function SessionRow({
   onToggleAction,
   coachName,
 }: {
-  s: any;
+  s: SessionRowData;
   expandable?: boolean;
   milestones?: Milestone[];
   goals?: Goal[];
@@ -1170,7 +1137,7 @@ function SessionRow({
   const [open, setOpen] = useState(false);
   const d = new Date(s.start_time);
   const items: RawActionItem[] = Array.isArray(s.action_items)
-    ? s.action_items.map((it: any) => (typeof it === "string" ? { text: it } : it))
+    ? s.action_items.map((it: Json) => (typeof it === "string" ? { text: it } : (it as unknown as RawActionItem)))
     : [];
 
   const labelFor = (mid?: string | null) => {
