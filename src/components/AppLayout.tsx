@@ -41,6 +41,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["coach", "coachee"] },
+  { to: "/sponsor", label: "Dashboard", icon: LayoutDashboard, roles: ["sponsor"] },
 
   // Coachee
   { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee"] },
@@ -348,7 +349,7 @@ export default function AppLayout() {
             to={role === "coach" ? "/coach/find-coach" : "/coaches"}
             className={cn(
               "hidden h-[34px] items-center gap-2 rounded-[11px] border border-border bg-card px-3.5 text-[11.5px] font-semibold text-muted-foreground transition-all hover:-translate-y-px hover:border-primary/60 hover:text-primary sm:flex",
-              role === "admin" && "invisible"
+              (role === "admin" || role === "sponsor") && "invisible"
             )}
           >
             <Search className="h-[15px] w-[15px]" />

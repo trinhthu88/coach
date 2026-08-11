@@ -152,7 +152,7 @@ export default function Sessions() {
 
   // Sponsors don't have personal coaching sessions of their own
   if (role === "sponsor") {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/sponsor" replace />;
   }
 
   const now = new Date();

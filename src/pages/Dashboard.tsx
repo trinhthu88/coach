@@ -1,7 +1,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { HeroPanel } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Calendar, Sparkles, Loader2 } from "lucide-react";
 import { CoacheeDashboardView } from "./dashboard/CoacheeDashboardView";
 import { CoachDashboardView } from "./dashboard/CoachDashboardView";
@@ -47,6 +47,11 @@ export default function Dashboard() {
         {role === "coach" ? <CoachDashboardView userId={user!.id} /> : <AdminDashboardView />}
       </div>
     );
+  }
+
+  // Sponsors have a dedicated dashboard — redirect after hooks are called
+  if (role === "sponsor") {
+    return <Navigate to="/sponsor" replace />;
   }
 
   // Authenticated but no role assigned yet — shouldn't linger here normally
