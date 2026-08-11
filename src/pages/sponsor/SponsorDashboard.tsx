@@ -41,8 +41,10 @@ export default function SponsorDashboard() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.rpc("get_sponsor_org", { _user_id: user.id }).then(({ data }) => {
-      if (data) setOrgName(data as string);
+    // RLS ("Organizations: sponsor view own") already scopes this to exactly
+    // the caller's own org, so no id lookup is needed first.
+    supabase.from("organizations").select("name").single().then(({ data }) => {
+      if (data) setOrgName(data.name);
     });
   }, [user]);
 

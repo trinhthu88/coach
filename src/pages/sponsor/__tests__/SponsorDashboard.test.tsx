@@ -3,12 +3,22 @@ import { render, screen, waitFor } from "@testing-library/react";
 
 // Mock the supabase client's rpc() so the dashboard renders from
 // controlled fixture data instead of hitting the network. Each sponsor_*
-// function is looked up by name.
+// function is looked up by name. Also mock the .from("organizations")
+// lookup used for the header's org name.
 const rpcResponses: Record<string, unknown> = {};
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: (fn: string) => Promise.resolve({ data: rpcResponses[fn], error: null }),
+    from: () => ({
+      select: () => ({
+        single: async () => ({ data: { name: "Acme Corp" } }),
+      }),
+    }),
   },
+}));
+
+vi.mock("@/context/AuthContext", () => ({
+  useAuth: () => ({ user: { id: "sponsor-1" } }),
 }));
 
 import SponsorDashboard from "../SponsorDashboard";
@@ -85,7 +95,7 @@ describe("SponsorDashboard", () => {
 
     // Persistent privacy notice
     expect(
-      screen.getByText(/session notes, chat messages, and personal reflections stay private/i)
+      screen.getByText(/session notes, chat messages, reflections, and the wording of goals never leave the coaching pair/i)
     ).toBeInTheDocument();
 
     // Distribution shown (org has 8 >= 5 leaders)

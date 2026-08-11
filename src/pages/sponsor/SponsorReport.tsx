@@ -2,14 +2,13 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { FileDown, ShieldCheck, Loader2, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionCard, Kpi, Pill, MiniBar } from "@/pages/admin/_shared";
+import { SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Users, CalendarCheck, Star } from "lucide-react";
 
 const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
   active: "success",
@@ -43,12 +42,16 @@ export default function SponsorReport() {
 
   const filteredRoster = scope === "all" ? roster : roster.filter(r => r.cohort_name === scope);
 
-  const distributionTotal =
-    (goalGrowth?.hit_target_count ?? 0) +
-    (goalGrowth?.meaningful_progress_count ?? 0) +
-    (goalGrowth?.just_started_count ?? 0) +
-    (goalGrowth?.flat_declined_count ?? 0) || 1;
-  const distributionShown = distributionTotal > minLeadersForDistribution && goalGrowth != null;
+  // hit_target_count etc. come back null from sponsor_goal_growth_summary()
+  // when the server suppresses the distribution (org has fewer than
+  // minLeadersForDistribution enrolled leaders) — that's the authoritative
+  // signal, not the size of the bucket counts themselves. A cohort with
+  // e.g. 6 enrolled leaders but only 2 goal ratings set is legitimately
+  // unsuppressed and should still render its (small) real distribution.
+  const distributionShown = goalGrowth?.hit_target_count != null;
+  const distributionTotal = distributionShown
+    ? (goalGrowth!.hit_target_count + goalGrowth!.meaningful_progress_count + goalGrowth!.just_started_count + goalGrowth!.flat_declined_count) || 1
+    : 1;
 
   function handleGenerate() {
     setGenerating(true);

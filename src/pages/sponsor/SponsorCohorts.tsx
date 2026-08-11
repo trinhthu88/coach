@@ -38,11 +38,9 @@ function statusCounts(rows: SponsorRosterRow[]): StatusCounts {
   }, {} as StatusCounts);
 }
 
-const MIN_DISTRIBUTION = 5;
-
 export default function SponsorCohorts() {
   const navigate = useNavigate();
-  const { kpis, roster, loading } = useSponsorDashboardData();
+  const { kpis, roster, minLeadersForDistribution, loading } = useSponsorDashboardData();
 
   if (loading) {
     return (
@@ -94,7 +92,7 @@ export default function SponsorCohorts() {
       <div className="grid gap-4 sm:grid-cols-2">
         {cohortList.map(([cohortName, rows]) => {
           const counts = statusCounts(rows);
-          const suppressed = rows.length < MIN_DISTRIBUTION;
+          const suppressed = rows.length < minLeadersForDistribution;
           const avgGrowth = (() => {
             const wg = rows.filter(r => r.goal_growth != null);
             if (!wg.length) return null;
@@ -138,7 +136,7 @@ export default function SponsorCohorts() {
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Avg growth</p>
                   {suppressed ? (
-                    <p className="text-[11px] italic text-muted-foreground">Suppressed &lt;{MIN_DISTRIBUTION}</p>
+                    <p className="text-[11px] italic text-muted-foreground">Suppressed &lt;{minLeadersForDistribution}</p>
                   ) : avgGrowth != null ? (
                     <p className="text-sm font-medium">+{Math.round(avgGrowth)} pts</p>
                   ) : (
@@ -149,7 +147,7 @@ export default function SponsorCohorts() {
 
               {suppressed && (
                 <p className="mt-2 text-[10px] italic text-muted-foreground">
-                  Breakdowns suppressed — under {MIN_DISTRIBUTION} leaders. View rolled up across all cohorts above.
+                  Breakdowns suppressed — under {minLeadersForDistribution} leaders. View rolled up across all cohorts above.
                 </p>
               )}
             </Card>
