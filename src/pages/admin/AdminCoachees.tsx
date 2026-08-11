@@ -64,6 +64,8 @@ interface Row {
   programme_duration_months: number | null;
   cohort_id: string | null;
   cohort_name: string | null;
+  organization_id: string | null;
+  organization_name: string | null;
   enrollment_id: string | null;
   enrollment_start_date: string | null;
   selected_coaches: { id: string; name: string }[];
@@ -78,6 +80,7 @@ export default function AdminCoachees() {
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
   const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; duration_months: number }[]>([]);
   const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
+  const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
   const [defaultLimit, setDefaultLimit] = useState(4);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
@@ -99,6 +102,7 @@ export default function AdminCoachees() {
       { data: enrolls },
       { data: progs },
       { data: cohortsData },
+      { data: orgsData },
       { data: allow },
       { data: limits },
       { data: requests },
@@ -106,9 +110,10 @@ export default function AdminCoachees() {
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
       supabase.from("sessions").select("coachee_id, status"),
-      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id, start_date"),
+      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id, organization_id, start_date"),
       supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
       supabase.from("cohorts").select("id, name"),
+      supabase.from("organizations").select("id, name").order("name"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
       supabase.from("session_limits").select("id, coachee_id, monthly_limit"),
       supabase.from("access_requests").select("id, email, status").eq("status", "approved"),
@@ -122,10 +127,11 @@ export default function AdminCoachees() {
       const p = profById.get(id);
       if (p) coachNameById.set(id, p.full_name);
     });
-    const enrByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "coachee_id" | "programme_id" | "cohort_id" | "start_date">>();
+    const enrByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "coachee_id" | "programme_id" | "cohort_id" | "organization_id" | "start_date">>();
     (enrolls || []).forEach((e) => enrByUser.set(e.coachee_id, e));
     const progById = new Map((progs || []).map((p) => [p.id, p]));
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
+    const orgById = new Map((orgsData || []).map((o) => [o.id, o.name]));
     const allowByCoachee = new Map<string, { id: string; name: string }[]>();
     (allow || []).forEach((a) => {
       const arr = allowByCoachee.get(a.coachee_id) || [];
@@ -169,6 +175,8 @@ export default function AdminCoachees() {
         programme_duration_months: prog?.duration_months ?? null,
         cohort_id: enr?.cohort_id || null,
         cohort_name: enr?.cohort_id ? (cohortById.get(enr.cohort_id) as string) || null : null,
+        organization_id: enr?.organization_id || null,
+        organization_name: enr?.organization_id ? orgById.get(enr.organization_id) || null : null,
         enrollment_id: enr?.id || null,
         enrollment_start_date: enr?.start_date || null,
         selected_coaches: allowByCoachee.get(id) || [],
@@ -182,6 +190,7 @@ export default function AdminCoachees() {
     setCoachOpts(coachIds.map(id => ({ id, name: coachNameById.get(id) || "—" })).filter(c => c.name !== "—").sort((a, b) => a.name.localeCompare(b.name)));
     setProgrammes((progs || []) as { id: string; name: string; coachee_session_limit: number; duration_months: number }[]);
     setCohorts((cohortsData || []) as { id: string; name: string }[]);
+    setOrganizations((orgsData || []) as { id: string; name: string }[]);
     setLoading(false);
   }, []);
 
@@ -315,16 +324,18 @@ export default function AdminCoachees() {
         await supabase.from("coachee_coach_allowlist").delete().eq("coachee_id", editing.id).eq("coach_id", cid);
       }
 
-      // Programme/cohort
+      // Programme/cohort/organization
       if (editing.programme_id) {
         if (editing.enrollment_id) {
           await supabase.from("programme_enrollments").update({
             programme_id: editing.programme_id,
             cohort_id: editing.cohort_id,
+            organization_id: editing.organization_id,
           }).eq("id", editing.enrollment_id);
         } else {
           await supabase.from("programme_enrollments").insert({
             coachee_id: editing.id, programme_id: editing.programme_id, cohort_id: editing.cohort_id,
+            organization_id: editing.organization_id,
           });
         }
       } else if (editing.enrollment_id) {
@@ -444,7 +455,11 @@ export default function AdminCoachees() {
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.done}/{r.session_limit}</span></td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.done}</td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.programme_name || <span className="italic text-muted-foreground">—</span>}{r.cohort_name && <p className="text-[10px] text-muted-foreground">{r.cohort_name}</p>}</td>
+                  <td className="px-3 py-2.5 text-[11px]">
+                    {r.programme_name || <span className="italic text-muted-foreground">—</span>}
+                    {r.cohort_name && <p className="text-[10px] text-muted-foreground">{r.cohort_name}</p>}
+                    {r.organization_name && <p className="text-[10px] text-primary">{r.organization_name}</p>}
+                  </td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {(() => {
                       const pct = programmeCompletionPct(r.enrollment_start_date, r.programme_duration_months);
@@ -544,6 +559,20 @@ export default function AdminCoachees() {
                     {cohorts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label>Sponsor organization</Label>
+                <Select value={editing.organization_id || "none"} onValueChange={(v) => setEditing({ ...editing, organization_id: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— None —</SelectItem>
+                    {organizations.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Links this enrollment to a sponsor company. Their sponsor can see participation and progress — never session notes, goal text, or reflections.
+                </p>
               </div>
 
               <div className="rounded-lg border p-3">

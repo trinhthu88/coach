@@ -23,6 +23,7 @@ import {
   Network,
   BarChart3,
   Menu,
+  Building2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,7 @@ const NAV: NavItem[] = [
   // Admin — People
   { to: "/admin/coaches", label: "Coaches", icon: Users, roles: ["admin"], group: "People" },
   { to: "/admin/coachees", label: "Coachees", icon: GraduationCap, roles: ["admin"], group: "People" },
+  { to: "/admin/organizations", label: "Organizations", icon: Building2, roles: ["admin"], group: "People" },
 
   // Admin — Programmes
   { to: "/admin/programmes", label: "Programmes", icon: BookOpen, roles: ["admin"], group: "Programmes" },
