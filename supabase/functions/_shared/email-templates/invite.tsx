@@ -9,11 +9,12 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import { main, container, h1, text, link, button, footer, brand, brandAccent } from './_styles.ts'
+import { main, container, h1, text, link, button, footer, logo, LOGO_URL } from './_styles.ts'
 
 interface InviteEmailProps {
   siteName: string
@@ -31,7 +32,7 @@ export const InviteEmail = ({
     <Preview>You've been invited to join {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>Clariva<span style={brandAccent}> · club</span></Text>
+        <Img src={LOGO_URL} width="132" height="44" alt="Clariva" style={logo} />
         <Heading style={h1}>You're invited</Heading>
         <Text style={text}>
           You've been invited to join{' '}

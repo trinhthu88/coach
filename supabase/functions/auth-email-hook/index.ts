@@ -1,7 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { Webhook, WebhookVerificationError } from 'npm:standardwebhooks@1.0.0'
-import { createClient } from 'npm:@supabase/supabase-js@2'
 import { SignupEmail } from '../_shared/email-templates/signup.tsx'
 import { InviteEmail } from '../_shared/email-templates/invite.tsx'
 import { MagicLinkEmail } from '../_shared/email-templates/magic-link.tsx'
@@ -9,6 +8,7 @@ import { RecoveryEmail } from '../_shared/email-templates/recovery.tsx'
 import { EmailChangeEmail } from '../_shared/email-templates/email-change.tsx'
 import { ReauthenticationEmail } from '../_shared/email-templates/reauthentication.tsx'
 import { buildCorsHeaders } from '../_shared/cors.ts'
+import { sendEmail } from '../_shared/send-email.ts'
 
 const CORS_ALLOW_HEADERS =
   'authorization, x-client-info, apikey, content-type, webhook-id, webhook-timestamp, webhook-signature, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version'
@@ -34,16 +34,15 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<Record<string, unknown
 
 // Configuration
 const SITE_NAME = "clariva-club"
-const SENDER_DOMAIN = "notify.clariva.club"
 const ROOT_DOMAIN = "clariva.club"
-const FROM_DOMAIN = "notify.clariva.club" // Domain shown in From address (may be root or sender subdomain)
+const FROM_DOMAIN = "clariva.club" // Domain shown in From address — must match the domain verified in Resend
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
 // The sample email uses a fixed placeholder (RFC 6761 .test TLD) so the Go backend
 // can always find-and-replace it with the actual recipient when sending test emails,
 // even if the project's domain has changed since the template was scaffolded.
-const SAMPLE_PROJECT_URL = "https://clariva-club.lovable.app"
+const SAMPLE_PROJECT_URL = "https://clariva.club"
 const SAMPLE_EMAIL = "user@example.test"
 const SAMPLE_DATA: Record<string, object> = {
   signup: {
@@ -80,14 +79,10 @@ const SAMPLE_DATA: Record<string, object> = {
 // ============================================================
 // Auth Hook payload — native Supabase shape (Standard Webhooks).
 //
-// This is NOT the shape Lovable's webhook wrapper previously delivered.
-// Lovable's `parseEmailWebhookPayload` normalized Supabase's native hook
-// payload into a simplified { run_id, version, data: { action_type, email,
-// url, token, ... } } envelope. Supabase's own Send Email Hook sends
-// { user, email_data } directly, with no such envelope — no run_id, no
-// version, and confirmationUrl is not provided pre-built; it has to be
-// constructed from email_data.site_url + token_hash + email_action_type +
-// redirect_to. See https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook
+// Supabase's Send Email Hook sends { user, email_data } directly — no
+// pre-built confirmationUrl; it has to be constructed from
+// email_data.site_url + token_hash + email_action_type + redirect_to.
+// See https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook
 // ============================================================
 
 interface AuthHookUser {
@@ -179,12 +174,12 @@ async function handlePreview(req: Request): Promise<Response> {
     return new Response(null, { headers: previewCorsHeaders })
   }
 
-  // TODO(Phase 4): still gated on LOVABLE_API_KEY — deliberately untouched
-  // until Phase 4, per the task's phase boundaries.
-  const apiKey = Deno.env.get('LOVABLE_API_KEY')
+  // Reuses AUTH_HOOK_SECRET (already private, server-side only) to gate this
+  // debug endpoint — no separate secret needed just for previewing templates.
+  const previewSecret = Deno.env.get('AUTH_HOOK_SECRET')
   const authHeader = req.headers.get('Authorization')
 
-  if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
+  if (!previewSecret || authHeader !== `Bearer ${previewSecret}`) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { ...previewCorsHeaders, 'Content-Type': 'application/json' },
@@ -258,10 +253,9 @@ async function handleWebhook(req: Request, corsHeaders: Record<string, string>):
     if (error instanceof WebhookVerificationError) {
       // Covers missing headers, unparseable/stale/future timestamp, and
       // signature mismatch — standardwebhooks reports all of these as one
-      // error class distinguished only by .message, not a .code. All of
-      // them mean the same thing from the caller's perspective: reject
-      // with the same response the old @lovable.dev/webhooks-js path used
-      // for invalid_signature/missing_timestamp/invalid_timestamp/stale_timestamp.
+      // error class distinguished only by .message, not a .code. All mean
+      // the same thing from the caller's perspective: reject as an invalid
+      // signature.
       console.error('Invalid webhook signature', { error: error.message })
       return new Response(JSON.stringify({ error: 'Invalid signature' }), {
         status: 401,
@@ -326,57 +320,26 @@ async function handleWebhook(req: Request, corsHeaders: Record<string, string>):
     plainText: true,
   })
 
-  // Enqueue email for async processing by the dispatcher (process-email-queue).
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  )
-
-  const messageId = crypto.randomUUID()
-
-  // Log pending BEFORE enqueue so we have a record even if enqueue crashes
-  await supabase.from('email_send_log').insert({
-    message_id: messageId,
-    template_name: emailType,
-    recipient_email: recipientEmail,
-    status: 'pending',
+  const result = await sendEmail({
+    to: recipientEmail,
+    from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+    subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+    html,
+    text,
   })
 
-  const { error: enqueueError } = await supabase.rpc('enqueue_email', {
-    queue_name: 'auth_emails',
-    payload: {
-      message_id: messageId,
-      to: recipientEmail,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-      sender_domain: SENDER_DOMAIN,
-      subject: EMAIL_SUBJECTS[emailType] || 'Notification',
-      html,
-      text,
-      purpose: 'transactional',
-      label: emailType,
-      queued_at: new Date().toISOString(),
-    },
-  })
-
-  if (enqueueError) {
-    console.error('Failed to enqueue auth email', { error: enqueueError, emailType })
-    await supabase.from('email_send_log').insert({
-      message_id: messageId,
-      template_name: emailType,
-      recipient_email: recipientEmail,
-      status: 'failed',
-      error_message: 'Failed to enqueue email',
-    })
-    return new Response(JSON.stringify({ error: 'Failed to enqueue email' }), {
+  if (!result.ok) {
+    console.error('Failed to send auth email', { error: result.error, emailType })
+    return new Response(JSON.stringify({ error: 'Failed to send email' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
-  console.log('Auth email enqueued', { emailType, email: recipientEmail })
+  console.log('Auth email sent', { emailType, email: recipientEmail, id: result.id })
 
   return new Response(
-    JSON.stringify({ success: true, queued: true }),
+    JSON.stringify({ success: true }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   )
 }

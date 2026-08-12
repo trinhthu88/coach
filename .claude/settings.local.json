@@ -11,7 +11,8 @@
       "Bash(npx supabase *)",
       "Bash(env)",
       "Bash(npx vitest *)",
-      "Bash(psql *)"
+      "Bash(psql *)",
+      "Bash(git rm *)"
     ]
   }
 }

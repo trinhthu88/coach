@@ -195,7 +195,7 @@ export default function SessionDetail() {
     reload();
   };
 
-  const handleCancelSession = () => cancelSession(user?.id, () => navigate("/sessions"));
+  const handleCancelSession = () => cancelSession(() => navigate("/sessions"));
 
   const handleAddItem = () => {
     addItem(newItem);

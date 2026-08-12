@@ -1,31 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import * as React from "npm:react@18.3.1";
+import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { sendEmail } from "../_shared/send-email.ts";
+import { AccessApprovedEmail } from "../_shared/email-templates/access-approved.tsx";
 
-function generatePassword(): string {
-  // 14-char password: lowercase + uppercase + digits + symbols
-  const lowers = "abcdefghijkmnpqrstuvwxyz";
-  const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const digits = "23456789";
-  const symbols = "!@#$%&*";
-  const all = lowers + uppers + digits + symbols;
-  const buf = new Uint8Array(14);
-  crypto.getRandomValues(buf);
-  const pick = (set: string, byte: number) => set[byte % set.length];
-  // Force one of each class for the first 4 chars, then random for rest
-  const chars = [
-    pick(lowers, buf[0]),
-    pick(uppers, buf[1]),
-    pick(digits, buf[2]),
-    pick(symbols, buf[3]),
-    ...Array.from(buf.slice(4)).map((b) => pick(all, b)),
-  ];
-  // Shuffle
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [chars[i], chars[j]] = [chars[j], chars[i]];
-  }
-  return chars.join("");
-}
+const SITE_URL = "https://clariva.club";
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
@@ -87,7 +67,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { request_id, force_reset_password } = body as { request_id?: string; force_reset_password?: boolean };
+    const { request_id, resend_magic_link } = body as { request_id?: string; resend_magic_link?: boolean };
     if (!request_id) {
       return new Response(JSON.stringify({ error: "request_id required" }), {
         status: 400,
@@ -106,7 +86,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (reqRow.status === "approved" && !force_reset_password) {
+    if (reqRow.status === "approved" && !resend_magic_link) {
       return new Response(JSON.stringify({ error: "Already approved" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -114,7 +94,6 @@ Deno.serve(async (req) => {
     }
 
     const role = reqRow.role === "coach" ? "coach" : "coachee";
-    const tempPassword = generatePassword();
 
     let userId: string | null = null;
 
@@ -128,7 +107,6 @@ Deno.serve(async (req) => {
     if (existingProfile?.id) {
       userId = existingProfile.id;
       const { error: updateUserErr } = await admin.auth.admin.updateUserById(userId, {
-        password: tempPassword,
         email_confirm: true,
         user_metadata: {
           full_name: reqRow.full_name,
@@ -143,9 +121,11 @@ Deno.serve(async (req) => {
         );
       }
     } else {
+      // No password is set here — access is passwordless via the magic link
+      // emailed below. The user can set a real password afterwards (enforced
+      // by must_change_password below, which routes them to /set-new-password).
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email: reqRow.email,
-        password: tempPassword,
         email_confirm: true,
         user_metadata: {
           full_name: reqRow.full_name,
@@ -198,17 +178,48 @@ Deno.serve(async (req) => {
       })
       .eq("id", request_id);
 
-    // Note: temporary passwords are intentionally NOT persisted to the
-    // database. The plaintext is returned only in this response so the
-    // admin can share it once. To re-issue, the admin generates a new one.
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email: reqRow.email,
+      options: { redirectTo: `${SITE_URL}/dashboard` },
+    });
+
+    let emailSent = false;
+    if (linkErr || !linkData?.properties?.action_link) {
+      console.error("Failed to generate magic link", { error: linkErr, email: reqRow.email });
+    } else {
+      const html = await renderAsync(
+        React.createElement(AccessApprovedEmail, {
+          fullName: reqRow.full_name,
+          confirmationUrl: linkData.properties.action_link,
+        })
+      );
+      const text = await renderAsync(
+        React.createElement(AccessApprovedEmail, {
+          fullName: reqRow.full_name,
+          confirmationUrl: linkData.properties.action_link,
+        }),
+        { plainText: true }
+      );
+      const result = await sendEmail({
+        to: reqRow.email,
+        subject: "You're approved — log in to Clariva",
+        html,
+        text,
+      });
+      if (!result.ok) {
+        console.error("Failed to send access-approved email", { error: result.error, email: reqRow.email });
+      }
+      emailSent = result.ok;
+    }
 
     return new Response(
       JSON.stringify({
         ok: true,
         user_id: userId,
         email: reqRow.email,
-        temp_password: tempPassword,
         role,
+        email_sent: emailSent,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

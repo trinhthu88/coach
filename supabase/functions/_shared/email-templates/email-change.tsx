@@ -9,11 +9,12 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import { main, container, h1, text, link, button, footer, brand, brandAccent } from './_styles.ts'
+import { main, container, h1, text, link, button, footer, logo, LOGO_URL } from './_styles.ts'
 
 interface EmailChangeEmailProps {
   siteName: string
@@ -34,7 +35,7 @@ export const EmailChangeEmail = ({
     <Preview>Confirm your email change for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>Clariva<span style={brandAccent}> · club</span></Text>
+        <Img src={LOGO_URL} width="132" height="44" alt="Clariva" style={logo} />
         <Heading style={h1}>Confirm your email change</Heading>
         <Text style={text}>
           You requested to change the email for {siteName} from{' '}

@@ -15,34 +15,36 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import { main, container, h1, text, button, footer, logo, LOGO_URL } from './_styles.ts'
 
-interface MagicLinkEmailProps {
-  siteName: string
+interface AccessApprovedEmailProps {
+  fullName: string
   confirmationUrl: string
 }
 
-export const MagicLinkEmail = ({
-  siteName,
+export const AccessApprovedEmail = ({
+  fullName,
   confirmationUrl,
-}: MagicLinkEmailProps) => (
+}: AccessApprovedEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your login link for {siteName}</Preview>
+    <Preview>Your Clariva access has been approved</Preview>
     <Body style={main}>
       <Container style={container}>
         <Img src={LOGO_URL} width="132" height="44" alt="Clariva" style={logo} />
-        <Heading style={h1}>Your login link</Heading>
+        <Heading style={h1}>You're approved</Heading>
         <Text style={text}>
-          Click below to log in to {siteName}. This link expires shortly.
+          Hi {fullName}, your Clariva access request has been approved. Click below to log in —
+          no password needed for this first visit.
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Log in
+          Log in to Clariva
         </Button>
         <Text style={footer}>
-          If you didn't request this link, you can safely ignore this email.
+          This link expires shortly and can only be used once. If you weren't expecting this, you
+          can safely ignore the email.
         </Text>
       </Container>
     </Body>
   </Html>
 )
 
-export default MagicLinkEmail
+export default AccessApprovedEmail

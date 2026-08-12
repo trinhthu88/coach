@@ -36,8 +36,8 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [viewing, setViewing] = useState<AccessRequest | null>(null);
-  const [credential, setCredential] = useState<{
-    email: string; password: string; full_name: string; request_id: string;
+  const [approved, setApproved] = useState<{
+    email: string; full_name: string; request_id: string; email_sent: boolean;
   } | null>(null);
 
   const targetRole = variant === "coach" ? "coach" : "executive";
@@ -64,16 +64,15 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
         body: { request_id: req.id },
       });
       if (error) throw error;
-      const result = data as { error?: string; temp_password?: string; email?: string };
+      const result = data as { error?: string; email?: string; email_sent?: boolean };
       if (result?.error) throw new Error(result.error);
-      const payload = data as { temp_password: string; email: string };
-      setCredential({
-        email: payload.email,
-        password: payload.temp_password,
+      setApproved({
+        email: result.email ?? req.email,
         full_name: req.full_name,
         request_id: req.id,
+        email_sent: !!result.email_sent,
       });
-      toast.success("Account created");
+      toast.success(result.email_sent ? "Account created — login link emailed" : "Account created");
       await load();
       onApproved?.();
     } catch (err) {
@@ -106,27 +105,22 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
     }
   };
 
-  const resetTemporaryPassword = async () => {
-    if (!credential) return;
-    const resetKey = `reset-${credential.request_id}`;
-    setBusyId(resetKey);
+  const resendMagicLink = async () => {
+    if (!approved) return;
+    const resendKey = `resend-${approved.request_id}`;
+    setBusyId(resendKey);
     try {
       const { data, error } = await supabase.functions.invoke("approve-access-request", {
-        body: { request_id: credential.request_id, force_reset_password: true },
+        body: { request_id: approved.request_id, resend_magic_link: true },
       });
       if (error) throw error;
-      const result = data as { error?: string; temp_password?: string; email?: string };
+      const result = data as { error?: string; email?: string; email_sent?: boolean };
       if (result?.error) throw new Error(result.error);
-      const payload = data as { temp_password: string; email: string };
-      setCredential((current) => current ? {
-        ...current,
-        email: payload.email,
-        password: payload.temp_password,
-      } : current);
-      toast.success("Temporary password reset");
+      setApproved((current) => current ? { ...current, email_sent: !!result.email_sent } : current);
+      toast.success(result.email_sent ? "Login link re-sent" : "Approved, but the email failed to send");
       onApproved?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Password reset failed");
+      toast.error(err instanceof Error ? err.message : "Resend failed");
     } finally {
       setBusyId(null);
     }
@@ -248,30 +242,33 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Generated credential dialog */}
-      <Dialog open={!!credential} onOpenChange={(o) => !o && setCredential(null)}>
+      {/* Approval confirmation dialog */}
+      <Dialog open={!!approved} onOpenChange={(o) => !o && setApproved(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Account created for {credential?.full_name}</DialogTitle>
+            <DialogTitle>Account created for {approved?.full_name}</DialogTitle>
             <DialogDescription>
-              Share these credentials with the user privately. The user will be required to set a new password on first sign-in.
+              {approved?.email_sent
+                ? "A one-click login link was emailed to them — no password needed."
+                : "The account was created, but the login-link email failed to send. Use resend below or ask them to use Forgot Password."}
             </DialogDescription>
           </DialogHeader>
-          {credential && (
+          {approved && (
             <div className="space-y-3 text-sm">
-              <CopyRow label="Email" value={credential.email} />
-              <CopyRow label="Temporary password" value={credential.password} mono />
-              <p className="rounded-lg bg-warning/10 p-3 text-[11px] text-warning">
-                The latest temporary password is also stored in the admin record and can be reset if needed.
-              </p>
+              <CopyRow label="Email" value={approved.email} />
+              {!approved.email_sent && (
+                <p className="rounded-lg bg-warning/10 p-3 text-[11px] text-warning">
+                  Email delivery failed. Try resending, or check the Resend dashboard for details.
+                </p>
+              )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={resetTemporaryPassword} disabled={busyId === `reset-${credential?.request_id}`}>
-              {busyId === `reset-${credential?.request_id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-              Reset temp password
+            <Button variant="outline" onClick={resendMagicLink} disabled={busyId === `resend-${approved?.request_id}`}>
+              {busyId === `resend-${approved?.request_id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              Resend login link
             </Button>
-            <Button onClick={() => setCredential(null)}>Done</Button>
+            <Button onClick={() => setApproved(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -3,16 +3,7 @@ import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/send-email.ts";
-import { SessionConfirmedEmail } from "../_shared/email-templates/session-confirmed.tsx";
-
-function formatWhen(startTimeISO: string, durationMinutes: number): string {
-  const start = new Date(startTimeISO);
-  const dateFmt = new Intl.DateTimeFormat("en-US", {
-    weekday: "short", month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
-  });
-  return `${dateFmt.format(start)} · ${durationMinutes} min`;
-}
+import { SessionCancelledEmail } from "../_shared/email-templates/session-cancelled.tsx";
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
@@ -26,55 +17,13 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
-async function getZoomAccessToken(): Promise<string> {
-  const accountId = Deno.env.get("ZOOM_ACCOUNT_ID")!;
-  const clientId = Deno.env.get("ZOOM_CLIENT_ID")!;
-  const clientSecret = Deno.env.get("ZOOM_CLIENT_SECRET")!;
-  const basic = btoa(`${clientId}:${clientSecret}`);
-
-  const res = await fetch(
-    `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${accountId}`,
-    { method: "POST", headers: { Authorization: `Basic ${basic}` } }
-  );
-  if (!res.ok) {
-    throw new Error(`Zoom auth failed: ${res.status} ${await res.text()}`);
-  }
-  const data = await res.json();
-  return data.access_token as string;
-}
-
-async function createZoomMeeting(opts: {
-  accessToken: string;
-  topic: string;
-  startTimeISO: string;
-  durationMinutes: number;
-}): Promise<{ join_url: string; id: number }> {
-  const res = await fetch("https://api.zoom.us/v2/users/me/meetings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${opts.accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      topic: opts.topic,
-      type: 2, // scheduled meeting
-      start_time: opts.startTimeISO,
-      duration: opts.durationMinutes,
-      timezone: "UTC",
-      settings: {
-        join_before_host: true,
-        waiting_room: false,
-        approval_type: 2,
-        mute_upon_entry: true,
-        host_video: true,
-        participant_video: true,
-      },
-    }),
+function formatWhen(startTimeISO: string, durationMinutes: number): string {
+  const start = new Date(startTimeISO);
+  const dateFmt = new Intl.DateTimeFormat("en-US", {
+    weekday: "short", month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
   });
-  if (!res.ok) {
-    throw new Error(`Zoom meeting creation failed: ${res.status} ${await res.text()}`);
-  }
-  return res.json();
+  return `${dateFmt.format(start)} · ${durationMinutes} min`;
 }
 
 Deno.serve(async (req) => {
@@ -107,7 +56,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { session_id, is_peer } = body as { session_id?: string; is_peer?: boolean };
+    const { session_id, is_peer, reason } = body as { session_id?: string; is_peer?: boolean; reason?: string };
     if (!session_id) {
       return new Response(JSON.stringify({ error: "session_id required" }), {
         status: 400,
@@ -138,38 +87,28 @@ Deno.serve(async (req) => {
       .eq("user_id", callerId);
     const isAdmin = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
     const isOwningCoach = row[coachField] === callerId;
-    if (!isAdmin && !isOwningCoach) {
+    const isOwningCoachee = row[coacheeField] === callerId;
+    if (!isAdmin && !isOwningCoach && !isOwningCoachee) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (row.status === "confirmed" && row.meeting_url) {
+    if (row.status === "cancelled") {
       return new Response(
-        JSON.stringify({ ok: true, meeting_url: row.meeting_url, already_confirmed: true }),
+        JSON.stringify({ ok: true, already_cancelled: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-    }
-
-    let meetingUrl = row.meeting_url as string | null;
-    if (!meetingUrl) {
-      const accessToken = await getZoomAccessToken();
-      const meeting = await createZoomMeeting({
-        accessToken,
-        topic: row.topic || "Coaching session",
-        startTimeISO: row.start_time,
-        durationMinutes: row.duration_minutes || 45,
-      });
-      meetingUrl = meeting.join_url;
     }
 
     const { error: updateErr } = await admin
       .from(tableName)
       .update({
-        status: "confirmed",
-        confirmed_at: new Date().toISOString(),
-        meeting_url: meetingUrl,
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: callerId,
+        cancel_reason: reason || null,
       })
       .eq("id", session_id);
     if (updateErr) throw updateErr;
@@ -177,7 +116,7 @@ Deno.serve(async (req) => {
     if (!is_peer && row.slot_id) {
       await admin
         .from("coach_availability")
-        .update({ is_booked: true, session_id })
+        .update({ is_booked: false, session_id: null })
         .eq("id", row.slot_id);
     }
 
@@ -196,36 +135,36 @@ Deno.serve(async (req) => {
     ] as const) {
       if (!recipient?.email) continue;
       const html = await renderAsync(
-        React.createElement(SessionConfirmedEmail, {
+        React.createElement(SessionCancelledEmail, {
           recipientName: recipient.full_name || "there",
           counterpartName: counterpart?.full_name || "your session partner",
           topic: row.topic,
           whenFormatted,
-          meetingUrl,
+          reason: reason || undefined,
         })
       );
       const text = await renderAsync(
-        React.createElement(SessionConfirmedEmail, {
+        React.createElement(SessionCancelledEmail, {
           recipientName: recipient.full_name || "there",
           counterpartName: counterpart?.full_name || "your session partner",
           topic: row.topic,
           whenFormatted,
-          meetingUrl,
+          reason: reason || undefined,
         }),
         { plainText: true }
       );
       const result = await sendEmail({
         to: recipient.email,
-        subject: "Your session is confirmed",
+        subject: "Your session was cancelled",
         html,
         text,
       });
       if (!result.ok) {
-        console.error("Failed to send session-confirmed email", { error: result.error, email: recipient.email });
+        console.error("Failed to send session-cancelled email", { error: result.error, email: recipient.email });
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, meeting_url: meetingUrl }), {
+    return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

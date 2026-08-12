@@ -1,7 +1,8 @@
 // Backend target override.
-// Uses the project's own Supabase backend. Aliased in place of the
-// auto-generated Lovable Cloud client via vite.config.ts so it
-// survives regeneration of that file.
+// Uses the project's own Supabase backend. Aliased via vite.config.ts in
+// place of src/integrations/supabase/client.ts (kept as a generated-types
+// import target only) so this file is the single source of truth for
+// client credentials.
 //
 // NOTE: Do NOT add import.meta.env.VITE_SUPABASE_URL here.
 // Vite only exposes VITE_* vars from .env files — not from process.env /

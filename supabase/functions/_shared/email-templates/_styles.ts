@@ -1,5 +1,15 @@
 // Shared Clariva brand styles for email templates.
 // Email body background must always be white (#ffffff).
+
+// Hosted on Supabase Storage (public-assets bucket) so it resolves regardless
+// of where the marketing site itself is deployed/mid-migration.
+export const LOGO_URL =
+  'https://ygufjhhpguauwwmfvczy.supabase.co/storage/v1/object/public/public-assets/email/clariva-logo.png'
+
+export const logo = {
+  margin: '0 0 28px',
+}
+
 export const main = {
   backgroundColor: '#ffffff',
   fontFamily: "Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif",

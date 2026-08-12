@@ -8,10 +8,11 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import { main, container, h1, text, footer, codeStyle, brand, brandAccent } from './_styles.ts'
+import { main, container, h1, text, footer, codeStyle, logo, LOGO_URL } from './_styles.ts'
 
 interface ReauthenticationEmailProps {
   token: string
@@ -23,7 +24,7 @@ export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => 
     <Preview>Your verification code</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>Clariva<span style={brandAccent}> · club</span></Text>
+        <Img src={LOGO_URL} width="132" height="44" alt="Clariva" style={logo} />
         <Heading style={h1}>Confirm reauthentication</Heading>
         <Text style={text}>Use the code below to confirm your identity:</Text>
         <Text style={codeStyle}>{token}</Text>

@@ -87,8 +87,8 @@ export default function AdminCoachees() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [viewing, setViewing] = useState<Row | null>(null);
   const [saving, setSaving] = useState(false);
-  const [resettingPassword, setResettingPassword] = useState(false);
-  const [resetCredential, setResetCredential] = useState<{ email: string; password: string; full_name: string } | null>(null);
+  const [resendingLink, setResendingLink] = useState(false);
+  const [resentLink, setResentLink] = useState<{ email: string; full_name: string; email_sent: boolean } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -352,28 +352,28 @@ export default function AdminCoachees() {
     }
   };
 
-  const resetTempPassword = async () => {
+  const resendLoginLink = async () => {
     if (!editing?.access_request_id) return;
-    setResettingPassword(true);
+    setResendingLink(true);
     try {
       const { data, error } = await supabase.functions.invoke("approve-access-request", {
-        body: { request_id: editing.access_request_id, force_reset_password: true },
+        body: { request_id: editing.access_request_id, resend_magic_link: true },
       });
       if (error) throw error;
-      if ((data as { error?: string } | null)?.error) throw new Error((data as { error?: string }).error);
+      const result = data as { error?: string; email?: string; email_sent?: boolean };
+      if (result?.error) throw new Error(result.error);
 
-      const payload = data as { temp_password: string; email: string };
-      setResetCredential({
-        email: payload.email ?? editing.email,
-        password: payload.temp_password,
+      setResentLink({
+        email: result.email ?? editing.email,
         full_name: editing.full_name,
+        email_sent: !!result.email_sent,
       });
-      toast.success("Temporary password generated");
+      toast.success(result.email_sent ? "Login link emailed" : "Email failed to send");
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not reset password");
+      toast.error(err instanceof Error ? err.message : "Could not resend login link");
     } finally {
-      setResettingPassword(false);
+      setResendingLink(false);
     }
   };
 
@@ -602,19 +602,19 @@ export default function AdminCoachees() {
               <div className="rounded-lg border p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Temporary password</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Login link</p>
                     <p className="mt-2 text-[12px] text-muted-foreground">
-                      For security, temporary passwords are never stored. Click <strong>Reset password</strong> to generate a new one — it will be shown once so you can share it with the user.
+                      Access is passwordless. Click <strong>Resend login link</strong> to email them a fresh one-click sign-in link.
                     </p>
                   </div>
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={resetTempPassword}
-                    disabled={!editing.access_request_id || resettingPassword}
+                    onClick={resendLoginLink}
+                    disabled={!editing.access_request_id || resendingLink}
                   >
-                    {resettingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Reset password
+                    {resendingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Resend login link
                   </Button>
                 </div>
               </div>
@@ -629,35 +629,30 @@ export default function AdminCoachees() {
         </SheetContent>
       </Sheet>
 
-      {/* One-time temporary password dialog */}
-      <Dialog open={!!resetCredential} onOpenChange={(o) => !o && setResetCredential(null)}>
+      {/* Login link resent confirmation dialog */}
+      <Dialog open={!!resentLink} onOpenChange={(o) => !o && setResentLink(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>New temporary password for {resetCredential?.full_name}</DialogTitle>
+            <DialogTitle>Login link for {resentLink?.full_name}</DialogTitle>
             <DialogDescription>
-              Copy and share this password privately. It is shown only once and is not stored anywhere — generate a new one if you lose it.
+              {resentLink?.email_sent
+                ? "A one-click login link was emailed to them."
+                : "Delivery failed — try again or check the Resend dashboard."}
             </DialogDescription>
           </DialogHeader>
-          {resetCredential && (
+          {resentLink && (
             <div className="space-y-3 text-sm">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Email</p>
                 <div className="mt-1 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-                  <code className="flex-1 text-[13px]">{resetCredential.email}</code>
-                  <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(resetCredential.email); toast.success("Copied"); }}>Copy</Button>
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Temporary password</p>
-                <div className="mt-1 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-                  <code className="flex-1 font-mono text-[13px]">{resetCredential.password}</code>
-                  <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(resetCredential.password); toast.success("Copied"); }}>Copy</Button>
+                  <code className="flex-1 text-[13px]">{resentLink.email}</code>
+                  <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(resentLink.email); toast.success("Copied"); }}>Copy</Button>
                 </div>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button onClick={() => setResetCredential(null)}>Done</Button>
+            <Button onClick={() => setResentLink(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

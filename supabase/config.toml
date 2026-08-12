@@ -5,6 +5,8 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.confirm-session]
     verify_jwt = true
+  [functions.cancel-session]
+    verify_jwt = true
   [functions.auth-email-hook]
     verify_jwt = false
   [functions.seed-demo-data]

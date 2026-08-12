@@ -173,30 +173,18 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
   }, [session, isPeer, load]);
 
   const cancelSession = useCallback(
-    async (userId: string | undefined, onDone: () => void) => {
+    async (onDone: () => void, reason?: string) => {
       if (!session) return;
       setSaving(true);
-      const { error } = await supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from(tableName as any)
-        .update({
-          status: "cancelled",
-          cancelled_at: new Date().toISOString(),
-          cancelled_by: userId,
-        })
-        .eq("id", session.id);
-      if (!error && session.slot_id) {
-        await supabase
-          .from("coach_availability")
-          .update({ is_booked: false, session_id: null })
-          .eq("id", session.slot_id);
-      }
+      const { error } = await supabase.functions.invoke("cancel-session", {
+        body: { session_id: session.id, is_peer: isPeer, reason },
+      });
       setSaving(false);
       if (error) return toast.error(error.message);
       toast.success("Session cancelled");
       onDone();
     },
-    [session, tableName]
+    [session, isPeer]
   );
 
   const completeSession = useCallback(async () => {
