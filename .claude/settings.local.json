@@ -12,7 +12,8 @@
       "Bash(env)",
       "Bash(npx vitest *)",
       "Bash(psql *)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "mcp__claude_ai_Replit__publish_app"
     ]
   }
 }
