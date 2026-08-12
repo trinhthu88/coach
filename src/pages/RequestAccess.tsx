@@ -38,6 +38,7 @@ const CREDENTIALS = [
   "ACC — Associate Certified Coach",
   "PCC — Professional Certified Coach",
   "MCC — Master Certified Coach",
+  "Other",
 ];
 
 export default function RequestAccess() {
@@ -53,6 +54,7 @@ export default function RequestAccess() {
     industry: "",
     linkedin: "",
     credential: "",
+    credentialOther: "",
     motivation: "",
   });
 
@@ -63,6 +65,10 @@ export default function RequestAccess() {
     setSubmitting(true);
     try {
       const email = form.email.trim().toLowerCase();
+      const credential =
+        form.credential === "Other"
+          ? `Other — ${form.credentialOther.trim()}`
+          : form.credential || null;
       const { error } = await supabase.from("access_requests").insert({
         role,
         full_name: form.fullName,
@@ -71,7 +77,7 @@ export default function RequestAccess() {
         company: form.company || null,
         industry: form.industry || null,
         linkedin_url: form.linkedin || null,
-        credential: role === "coach" ? form.credential || null : null,
+        credential: role === "coach" ? credential : null,
         motivation: form.motivation || null,
       });
       if (error) throw error;
@@ -298,11 +304,10 @@ export default function RequestAccess() {
                   </Select>
                 </Field>
 
-                <Field id="linkedin" label="LinkedIn profile URL" required>
+                <Field id="linkedin" label="LinkedIn profile URL" optional>
                   <DarkInput
                     id="linkedin"
                     type="url"
-                    required
                     value={form.linkedin}
                     onChange={(e) => update("linkedin", e.target.value)}
                     placeholder="https://linkedin.com/in/yourname"
@@ -310,23 +315,36 @@ export default function RequestAccess() {
                 </Field>
 
                 {role === "coach" && (
-                  <Field id="credential" label="ICF credential level" required>
-                    <Select
-                      value={form.credential}
-                      onValueChange={(v) => update("credential", v)}
-                    >
-                      <SelectTrigger className="h-12 rounded-[10px] border-white/10 bg-white/[0.05] text-sm font-medium text-white hover:bg-white/[0.07] focus:border-primary/50 focus:ring-0">
-                        <SelectValue placeholder="Select your credential" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CREDENTIALS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
+                  <>
+                    <Field id="credential" label="Professional credential" required>
+                      <Select
+                        value={form.credential}
+                        onValueChange={(v) => update("credential", v)}
+                      >
+                        <SelectTrigger className="h-12 rounded-[10px] border-white/10 bg-white/[0.05] text-sm font-medium text-white hover:bg-white/[0.07] focus:border-primary/50 focus:ring-0">
+                          <SelectValue placeholder="Select your credential" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CREDENTIALS.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    {form.credential === "Other" && (
+                      <Field id="credentialOther" label="Please specify your credential" required>
+                        <DarkInput
+                          id="credentialOther"
+                          required
+                          value={form.credentialOther}
+                          onChange={(e) => update("credentialOther", e.target.value)}
+                          placeholder="e.g. Erickson Solution-Focused Coach"
+                        />
+                      </Field>
+                    )}
+                  </>
                 )}
 
                 <Field

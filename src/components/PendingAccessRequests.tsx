@@ -215,7 +215,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
               {viewing.job_title && <Field label="Job title">{viewing.job_title}</Field>}
               {viewing.company && <Field label="Company">{viewing.company}</Field>}
               {viewing.industry && <Field label="Industry">{viewing.industry}</Field>}
-              {viewing.credential && <Field label="ICF credential">{viewing.credential}</Field>}
+              {viewing.credential && <Field label="Professional credential">{viewing.credential}</Field>}
               {viewing.linkedin_url && (
                 <Field label="LinkedIn">
                   <a href={viewing.linkedin_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
