@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { format, startOfMonth, subMonths } from "date-fns";
@@ -34,11 +35,14 @@ interface DashboardEnrollmentRow {
 }
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     coachees: 0,
     coaches: 0,
     pendingApproval: 0,
+    newCoachApplications: 0,
+    newCoacheeApplications: 0,
     sessionsThisMonth: 0,
     completionRate: 0,
   });
@@ -58,6 +62,8 @@ export default function AdminDashboard() {
         { data: peerSessions },
         { data: enrollments },
         { data: alertRows },
+        { count: newCoachApplications },
+        { count: newCoacheeApplications },
       ] = await Promise.all([
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("profiles").select("id, full_name, status, created_at"),
@@ -66,6 +72,8 @@ export default function AdminDashboard() {
         supabase.from("peer_sessions").select("id, start_time, status"),
         supabase.from("programme_enrollments").select("id, status, progress_pct"),
         supabase.from("admin_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(6),
+        supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "coach"),
+        supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "executive"),
       ]);
 
       const coacheeIds = new Set((roles || []).filter((r) => r.role === "coachee").map((r) => r.user_id));
@@ -85,6 +93,8 @@ export default function AdminDashboard() {
         coachees: Array.from(coacheeIds).filter((id) => profById.get(id)?.status === "active").length,
         coaches: Array.from(coachIds).filter((id) => profById.get(id)?.status === "active").length,
         pendingApproval: pending,
+        newCoachApplications: newCoachApplications || 0,
+        newCoacheeApplications: newCoacheeApplications || 0,
         sessionsThisMonth,
         completionRate: avgProgress,
       });
@@ -107,13 +117,31 @@ export default function AdminDashboard() {
       }
       setMonthly(months);
 
+      const applicationItems: typeof attention = [];
+      if (newCoachApplications) {
+        applicationItems.push({
+          id: "new-coach-applications",
+          title: `${newCoachApplications} new coach application${newCoachApplications === 1 ? "" : "s"}`,
+          note: "Awaiting your first review",
+          severity: "info",
+        });
+      }
+      if (newCoacheeApplications) {
+        applicationItems.push({
+          id: "new-coachee-applications",
+          title: `${newCoacheeApplications} new coachee application${newCoacheeApplications === 1 ? "" : "s"}`,
+          note: "Awaiting your first review",
+          severity: "info",
+        });
+      }
+
       const items = (alertRows || []).map((a: Tables<"admin_alerts">) => ({
         id: a.id,
         title: a.title,
         note: a.message ?? undefined,
         severity: (a.severity === "critical" ? "critical" : a.severity === "warning" ? "warning" : "info") as "critical" | "warning" | "info",
       }));
-      setAttention(items);
+      setAttention([...applicationItems, ...items]);
 
       setLoading(false);
     })();
@@ -137,14 +165,26 @@ export default function AdminDashboard() {
           value={stats.coachees}
           icon={Users}
           tone="primary"
-          hint={<span className="text-success">+{Math.max(0, stats.coachees - Math.round(stats.coachees * 0.93))} this month</span>}
+          hint={
+            stats.newCoacheeApplications > 0 ? (
+              <span className="text-warning">{stats.newCoacheeApplications} new application{stats.newCoacheeApplications === 1 ? "" : "s"}</span>
+            ) : (
+              <span className="text-success">+{Math.max(0, stats.coachees - Math.round(stats.coachees * 0.93))} this month</span>
+            )
+          }
         />
         <StatCard
           label="Accredited coaches"
           value={stats.coaches}
           icon={UserCheck}
           tone="secondary"
-          hint={stats.pendingApproval > 0 ? <span className="text-warning">{stats.pendingApproval} pending approval</span> : "All approved"}
+          hint={
+            stats.pendingApproval + stats.newCoachApplications > 0 ? (
+              <span className="text-warning">{stats.pendingApproval + stats.newCoachApplications} pending review</span>
+            ) : (
+              "All approved"
+            )
+          }
         />
         <StatCard
           label="Sessions delivered"
@@ -172,7 +212,18 @@ export default function AdminDashboard() {
 
         <AttentionPanel
           title="Needs attention"
-          items={attention.map((a) => ({ id: a.id, title: a.title, note: a.note, severity: a.severity }))}
+          items={attention.map((a) => ({
+            id: a.id,
+            title: a.title,
+            note: a.note,
+            severity: a.severity,
+            onClick:
+              a.id === "new-coach-applications"
+                ? () => navigate("/admin/coaches")
+                : a.id === "new-coachee-applications"
+                ? () => navigate("/admin/coachees")
+                : undefined,
+          }))}
           empty="No active alerts. All clear."
         />
       </div>

@@ -36,10 +36,10 @@ import { PageHeader } from "@/components/ui/page-header";
 
 const STATUSES = [
   "pending_coach_approval",
-  "scheduled",
+  "confirmed",
   "completed",
   "cancelled",
-  "rejected",
+  "rescheduled",
 ] as const;
 
 interface SessionRow {
@@ -68,6 +68,7 @@ export default function AdminSessions() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<SessionRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,18 +123,36 @@ export default function AdminSessions() {
     );
   });
 
+  const editingOriginal = editing ? rows.find((r) => r.id === editing.id) : undefined;
+  const isCancelling = !!editing && editing.status === "cancelled" && editingOriginal?.status !== "cancelled";
+
   const handleSave = async () => {
     if (!editing) return;
     setSaving(true);
     try {
       const table = editing.kind === "peer" ? "peer_sessions" : "sessions";
+
+      if (isCancelling) {
+        // Routes through cancel-session so the coach's availability slot is
+        // freed and both parties get a cancellation email — a plain status
+        // update here would silently skip both, same bug the dashboard
+        // "Decline" button had.
+        const { error: cancelError } = await supabase.functions.invoke("cancel-session", {
+          body: { session_id: editing.id, is_peer: editing.kind === "peer", reason: cancelReason || undefined },
+        });
+        if (cancelError) throw cancelError;
+      }
+
       const { error } = await supabase
         .from(table)
         .update({
           topic: editing.topic,
           start_time: editing.start_time,
           duration_minutes: editing.duration_minutes,
-          status: editing.status as Tables<"sessions">["status"],
+          // Already set by cancel-session above when isCancelling; for every
+          // other transition (including staying cancelled) a plain status
+          // write is fine — there's no side effect to replicate.
+          ...(isCancelling ? {} : { status: editing.status as Tables<"sessions">["status"] }),
           meeting_url: editing.meeting_url,
           coach_notes: editing.coach_notes,
           coachee_notes: editing.coachee_notes,
@@ -142,6 +161,7 @@ export default function AdminSessions() {
       if (error) throw error;
       toast({ title: "Session updated" });
       setEditing(null);
+      setCancelReason("");
       await load();
     } catch (err) {
       toast({
@@ -297,7 +317,7 @@ export default function AdminSessions() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => setEditing(s)}>
+                      <Button variant="outline" size="sm" onClick={() => { setEditing(s); setCancelReason(""); }}>
                         <Pencil className="h-4 w-4" /> Edit
                       </Button>
                     </TableCell>
@@ -370,6 +390,17 @@ export default function AdminSessions() {
                   </SelectContent>
                 </Select>
               </div>
+              {isCancelling && (
+                <div className="space-y-2">
+                  <Label>Cancellation reason (optional)</Label>
+                  <Textarea
+                    rows={2}
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Included in the cancellation email to both parties…"
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Meeting URL</Label>
                 <Input

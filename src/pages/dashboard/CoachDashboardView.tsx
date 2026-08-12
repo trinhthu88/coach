@@ -179,23 +179,34 @@ export function CoachDashboardView({ userId }: { userId: string }) {
                 : "Opt in to peer coaching from My availability."}
             </p>
           ) : (
-            <ul className="space-y-2">
-              {peerPending.slice(0, 4).map((s) => {
-                const p = profilesById[s.peer_coachee_id];
-                return (
-                  <li
-                    key={s.id}
-                    className="rounded-lg border border-success/30 bg-success/5 p-3"
-                  >
-                    <p className="text-sm font-semibold">{p?.full_name || "Peer"}</p>
-                    <p className="text-xs text-muted-foreground">{s.topic}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {format(new Date(s.start_time), "MMM d · p")}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
+            <>
+              <ul className="space-y-2">
+                {peerPending.slice(0, 4).map((s) => {
+                  const p = profilesById[s.peer_coachee_id];
+                  return (
+                    <li key={s.id}>
+                      <Link
+                        to={`/sessions/${s.id}`}
+                        className="block rounded-lg border border-success/30 bg-success/5 p-3 transition-colors hover:bg-success/10"
+                      >
+                        <p className="text-sm font-semibold">{p?.full_name || "Peer"}</p>
+                        <p className="text-xs text-muted-foreground">{s.topic}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {format(new Date(s.start_time), "MMM d · p")}
+                        </p>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="mt-3">
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/sessions">
+                    Review in sessions <ArrowUpRight className="ml-1 h-3 w-3" />
+                  </Link>
+                </Button>
+              </div>
+            </>
           )}
         </Card>
       </section>

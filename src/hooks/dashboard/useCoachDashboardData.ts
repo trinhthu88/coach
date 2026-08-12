@@ -106,10 +106,9 @@ export function useCoachDashboardData(userId: string): UseCoachDashboardDataResu
   };
   const decline = async (s: CoachSession) => {
     setActingId(s.id);
-    const { error } = await supabase
-      .from("sessions")
-      .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
-      .eq("id", s.id);
+    const { error } = await supabase.functions.invoke("cancel-session", {
+      body: { session_id: s.id, is_peer: false },
+    });
     setActingId(null);
     if (error) { toast.error(error.message); return; }
     toast.success("Request declined");

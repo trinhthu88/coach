@@ -68,37 +68,57 @@ export function AdminDashboardView() {
         </Card>
 
         <Card className="p-5">
-          <div className="flex items-start justify-between gap-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Coaches
+          </p>
+          <div className="mt-2 flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                Pending coaches
-              </p>
-              <p className="mt-2 text-2xl font-semibold">{stats.pendingCoaches}</p>
+              <p className="text-2xl font-semibold">{stats.newCoachApplications}</p>
               <p className="text-sm text-muted-foreground">
-                {stats.pendingCoaches === 0 ? "No coaches awaiting approval." : "Awaiting your review."}
+                {stats.newCoachApplications === 0 ? "No new applications." : "New application" + (stats.newCoachApplications === 1 ? "" : "s") + " to review."}
               </p>
             </div>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/admin/registrations">Review</Link>
+            <Button asChild size="sm">
+              <Link to="/admin/coaches">Review</Link>
             </Button>
           </div>
+          {stats.pendingCoaches > 0 && (
+            <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
+              <p className="text-xs text-muted-foreground">
+                {stats.pendingCoaches} existing profile{stats.pendingCoaches === 1 ? "" : "s"} awaiting approval
+              </p>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/admin/registrations">Review</Link>
+              </Button>
+            </div>
+          )}
         </Card>
 
         <Card className="p-5">
-          <div className="flex items-start justify-between gap-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Coachees
+          </p>
+          <div className="mt-2 flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                Pending coachees
-              </p>
-              <p className="mt-2 text-2xl font-semibold">{stats.pendingCoachees}</p>
+              <p className="text-2xl font-semibold">{stats.newCoacheeApplications}</p>
               <p className="text-sm text-muted-foreground">
-                {stats.pendingCoachees === 0 ? "No coachees awaiting approval." : "Awaiting your review."}
+                {stats.newCoacheeApplications === 0 ? "No new applications." : "New application" + (stats.newCoacheeApplications === 1 ? "" : "s") + " to review."}
               </p>
             </div>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/admin/registrations">Review</Link>
+            <Button asChild size="sm">
+              <Link to="/admin/coachees">Review</Link>
             </Button>
           </div>
+          {stats.pendingCoachees > 0 && (
+            <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
+              <p className="text-xs text-muted-foreground">
+                {stats.pendingCoachees} existing profile{stats.pendingCoachees === 1 ? "" : "s"} awaiting approval
+              </p>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/admin/registrations">Review</Link>
+              </Button>
+            </div>
+          )}
         </Card>
       </section>
     </>

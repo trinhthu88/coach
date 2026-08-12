@@ -8,8 +8,12 @@ export interface AdminDashboardStats {
   cancelledSessions: number;
   totalSessions: number;
   pendingLinkSessions: number;
+  /** Existing accounts sitting in coach_profiles/coachee_profiles with approval_status = pending_approval (e.g. from bulk import). */
   pendingCoaches: number;
   pendingCoachees: number;
+  /** New access_requests rows (status = pending) — no account exists yet, awaiting the admin's first look. */
+  newCoachApplications: number;
+  newCoacheeApplications: number;
 }
 
 const initialStats: AdminDashboardStats = {
@@ -21,6 +25,8 @@ const initialStats: AdminDashboardStats = {
   pendingLinkSessions: 0,
   pendingCoaches: 0,
   pendingCoachees: 0,
+  newCoachApplications: 0,
+  newCoacheeApplications: 0,
 };
 
 export function useAdminDashboardStats() {
@@ -29,7 +35,15 @@ export function useAdminDashboardStats() {
 
   useEffect(() => {
     (async () => {
-      const [coacheeRolesRes, sessionsRes, pendingLinkRes, pendingCoachesRes, pendingCoacheesRes] = await Promise.all([
+      const [
+        coacheeRolesRes,
+        sessionsRes,
+        pendingLinkRes,
+        pendingCoachesRes,
+        pendingCoacheesRes,
+        newCoachApplicationsRes,
+        newCoacheeApplicationsRes,
+      ] = await Promise.all([
         supabase
           .from("user_roles")
           .select("user_id", { count: "exact", head: true })
@@ -48,6 +62,16 @@ export function useAdminDashboardStats() {
           .from("coachee_profiles")
           .select("id", { count: "exact", head: true })
           .eq("approval_status", "pending_approval"),
+        supabase
+          .from("access_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending")
+          .eq("role", "coach"),
+        supabase
+          .from("access_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending")
+          .eq("role", "executive"),
       ]);
 
       const all = sessionsRes.data || [];
@@ -66,6 +90,8 @@ export function useAdminDashboardStats() {
         pendingLinkSessions: pendingLinkRes.count || 0,
         pendingCoaches: pendingCoachesRes.count || 0,
         pendingCoachees: pendingCoacheesRes.count || 0,
+        newCoachApplications: newCoachApplicationsRes.count || 0,
+        newCoacheeApplications: newCoacheeApplicationsRes.count || 0,
       });
       setLoading(false);
     })();
