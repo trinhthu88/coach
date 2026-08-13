@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -17,6 +18,67 @@ interface UseSessionCoreOptions {
   isPeer: boolean;
 }
 
+interface SessionCoreData {
+  session: SessionRow;
+  coach: ProfileLite | null;
+  coachee: ProfileLite | null;
+  milestones: MilestoneLite[];
+}
+
+async function fetchSessionCore(
+  sessionId: string,
+  tableName: SessionsTable,
+  isPeer: boolean,
+  coachField: string,
+  coacheeField: string
+): Promise<SessionCoreData | null> {
+  const { data } = await supabase
+    .from(tableName)
+    .select("*")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (!data) return null;
+
+  // Normalize peer rows to look like SessionRow
+  const raw = data as Record<string, unknown>;
+  const norm = (
+    isPeer
+      ? { ...raw, coach_id: raw[coachField], coachee_id: raw[coacheeField] }
+      : raw
+  ) as unknown as SessionRow;
+
+  const { data: profs } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, avatar_url")
+    .in("id", [norm.coach_id, norm.coachee_id]);
+  const byId = new Map((profs || []).map((p) => [p.id, p]));
+
+  // Load milestones of the coachee (or peer-coachee) so action items can be linked
+  const coacheeId = norm.coachee_id;
+  const [{ data: gs }, { data: ms }] = await Promise.all([
+    supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
+    supabase
+      .from("coachee_milestones")
+      .select("id, title, goal_id")
+      .eq("coachee_id", coacheeId)
+      .order("created_at"),
+  ]);
+  const goalById = new Map((gs || []).map((g) => [g.id, g.title]));
+  const milestones = (ms || []).map((m) => ({
+    id: m.id,
+    title: m.title,
+    goal_id: m.goal_id,
+    goal_title: goalById.get(m.goal_id),
+  }));
+
+  return {
+    session: norm,
+    coach: (byId.get(norm.coach_id) as ProfileLite) || null,
+    coachee: (byId.get(norm.coachee_id) as ProfileLite) || null,
+    milestones,
+  };
+}
+
 /**
  * Loads and manages the core session record (sessions/peer_sessions), its
  * participants and related milestones, plus the mutations that operate on
@@ -27,76 +89,42 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
   const coachField = isPeer ? "peer_coach_id" : "coach_id";
   const coacheeField = isPeer ? "peer_coachee_id" : "coachee_id";
 
-  const [session, setSession] = useState<SessionRow | null>(null);
-  const [coach, setCoach] = useState<ProfileLite | null>(null);
-  const [coachee, setCoachee] = useState<ProfileLite | null>(null);
-  const [milestones, setMilestones] = useState<MilestoneLite[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(() => ["session-core", tableName, sessionId], [tableName, sessionId]);
 
+  const { data, isLoading } = useQuery({
+    queryKey,
+    queryFn: () => fetchSessionCore(sessionId as string, tableName, isPeer, coachField, coacheeField),
+    enabled: !!sessionId,
+    staleTime: 30_000,
+    // Local state below mirrors `session` and is only meant to resync on an
+    // explicit reload (mutations invalidate this key themselves). Without
+    // this, a window-focus background refetch would silently overwrite
+    // unsaved edits in the notes/action-item fields.
+    refetchOnWindowFocus: false,
+  });
+  const session = data?.session ?? null;
+  const coach = data?.coach ?? null;
+  const coachee = data?.coachee ?? null;
+  const milestones = data?.milestones ?? [];
+
+  const [saving, setSaving] = useState(false);
   const [coachNotes, setCoachNotes] = useState("");
   const [coacheeNotes, setCoacheeNotes] = useState("");
   const [meetingUrl, setMeetingUrl] = useState("");
   const [items, setItems] = useState<ActionItem[]>([]);
 
-  const load = useCallback(async () => {
-    if (!sessionId) return;
-    const { data } = await supabase
-      .from(tableName)
-      .select("*")
-      .eq("id", sessionId)
-      .maybeSingle();
-    if (!data) {
-      setLoading(false);
-      return;
-    }
-    // Normalize peer rows to look like SessionRow
-    const raw = data as Record<string, unknown>;
-    const norm = (
-      isPeer
-        ? { ...raw, coach_id: raw[coachField], coachee_id: raw[coacheeField] }
-        : raw
-    ) as unknown as SessionRow;
-    setSession(norm);
-    setCoachNotes(norm.coach_notes || "");
-    setCoacheeNotes(norm.coachee_notes || "");
-    setMeetingUrl(norm.meeting_url || "");
-    setItems(normalizeItems(norm.action_items));
-
-    const { data: profs } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, avatar_url")
-      .in("id", [norm.coach_id, norm.coachee_id]);
-    const byId = new Map((profs || []).map((p) => [p.id, p]));
-    setCoach((byId.get(norm.coach_id) as ProfileLite) || null);
-    setCoachee((byId.get(norm.coachee_id) as ProfileLite) || null);
-
-    // Load milestones of the coachee (or peer-coachee) so action items can be linked
-    const coacheeId = norm.coachee_id;
-    const [{ data: gs }, { data: ms }] = await Promise.all([
-      supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
-      supabase
-        .from("coachee_milestones")
-        .select("id, title, goal_id")
-        .eq("coachee_id", coacheeId)
-        .order("created_at"),
-    ]);
-    const goalById = new Map((gs || []).map((g) => [g.id, g.title]));
-    setMilestones(
-      (ms || []).map((m) => ({
-        id: m.id,
-        title: m.title,
-        goal_id: m.goal_id,
-        goal_title: goalById.get(m.goal_id),
-      }))
-    );
-
-    setLoading(false);
-  }, [sessionId, tableName, isPeer, coachField, coacheeField]);
-
+  // Re-seeds the editable form fields whenever the query result changes
+  // (initial load, or an explicit reload/invalidation after a save below).
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!session) return;
+    setCoachNotes(session.coach_notes || "");
+    setCoacheeNotes(session.coachee_notes || "");
+    setMeetingUrl(session.meeting_url || "");
+    setItems(normalizeItems(session.action_items));
+  }, [session]);
+
+  const load = useCallback(() => queryClient.invalidateQueries({ queryKey }), [queryClient, queryKey]);
 
   const saveProgress = useCallback(
     async (opts: {
@@ -225,7 +253,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
     coach,
     coachee,
     milestones,
-    loading,
+    loading: isLoading,
     saving,
     coachNotes,
     setCoachNotes,
