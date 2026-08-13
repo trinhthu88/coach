@@ -20,7 +20,13 @@
       "Read(//tmp/**)",
       "Bash(git push *)",
       "Bash(git fetch *)",
-      "Bash(git rev-list *)"
+      "Bash(git rev-list *)",
+      "Bash(git config *)",
+      "Read(//home/runner/**)",
+      "Bash(find / -maxdepth 4 -iname \"*git-credential*\")",
+      "Bash(command -v replit-git-askpass 2>&1)",
+      "Bash(git *)",
+      "Bash(bash -c 'echo \"GH_PUSH_TOKEN is set: $\\([ -n \"$GH_PUSH_TOKEN\" ] && echo yes || echo no\\), length: ${#GH_PUSH_TOKEN}\"')"
     ]
   }
 }
