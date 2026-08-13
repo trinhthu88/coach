@@ -44,8 +44,10 @@ Once this is confirmed working, decide whether to also disconnect this GitHub re
 | Secret | Purpose |
 |--------|---------|
 | `SUPABASE_SERVICE_ROLE_KEY` | Service-role key (server-side / Edge Functions only) |
+| `RESEND_API_KEY` | Resend API key used by `supabase/functions/_shared/send-email.ts` to send auth/transactional emails |
+| `AUTH_HOOK_SECRET` | Verifies the signed webhook payload Supabase's Send Email auth hook delivers to `supabase/functions/auth-email-hook` |
 
-(The anon key is public-safe by design and is fine hardcoded in a frontend bundle; only the service-role key needs to stay a real secret.)
+(The anon key is public-safe by design and is fine hardcoded in a frontend bundle; only the service-role key needs to stay a real secret. All three secrets above are Supabase Edge Function secrets — set via `npx supabase secrets set` or Dashboard → Edge Functions → Secrets, not the Replit Secrets panel.)
 
 ### Supabase Auth → Redirect URLs (one-time manual step)
 
