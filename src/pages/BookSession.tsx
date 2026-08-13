@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { addDays, format, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { canSubmitBooking, isOverSessionLimit } from "./bookingEligibility";
+import { computeStartOptions } from "./bookingSlots";
 
 interface CoachDetail {
   id: string;
@@ -50,15 +51,6 @@ interface Slot {
 const DURATIONS = [30, 45, 60] as const;
 const CONTACT_EMAIL = "contact@clariva.club";
 
-function timeToMinutes(t: string) {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
-}
-function minutesToTime(mins: number) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
 function fmtTime(t: string) {
   const [h, m] = t.split(":");
   const hh = Number(h);
@@ -246,22 +238,12 @@ export default function BookSession() {
 
   const startOptions = useMemo(() => {
     if (!selectedDate) return [] as { start: string; slotId: string }[];
-    const ds = dateKey(selectedDate);
-    const daySlots = slots.filter((s) => s.slot_date === ds);
-    const opts: { start: string; slotId: string }[] = [];
-    for (const s of daySlots) {
-      const startMin = timeToMinutes(s.start_time);
-      const endMin = timeToMinutes(s.end_time);
-      for (let m = startMin; m + duration <= endMin; m += 15) {
-        const startISO = new Date(`${ds}T${minutesToTime(m)}:00`).getTime();
-        const endISO = startISO + duration * 60_000;
-        const conflicts = bookerBusy.some(
-          (b) => startISO < b.end && endISO > b.start
-        );
-        if (!conflicts) opts.push({ start: minutesToTime(m), slotId: s.id });
-      }
-    }
-    return opts;
+    return computeStartOptions({
+      dateKey: dateKey(selectedDate),
+      slots,
+      durationMinutes: duration,
+      busy: bookerBusy,
+    });
   }, [selectedDate, slots, duration, bookerBusy]);
 
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
