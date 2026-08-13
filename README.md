@@ -27,12 +27,10 @@ npm install
 
 ### 2. Configure environment variables
 
-Set these as Replit Secrets (see `replit.md`):
+The Supabase URL and anon key are hardcoded in `src/lib/supabase-target.ts` (the anon key is public-safe by design) — no env var setup is needed for those. Set this as a Replit Secret (see `replit.md`):
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_SUPABASE_URL` | Your Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Public anon key (RLS-protected) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service-role key (server-side / Edge Functions only) |
 
 ### 3. Run the dev server

@@ -37,15 +37,15 @@ Once this is confirmed working, decide whether to also disconnect this GitHub re
 
 `src/lib/supabase-target.ts` is the active Supabase client. Vite aliases `@/integrations/supabase/client` → this file (see `vite.config.ts`). The Lovable-generated `src/integrations/supabase/client.ts` has been removed — this project no longer has any Lovable Cloud dependency (the MCP tool-server integration and its Supabase edge function were removed too).
 
-### Env vars (Replit Secrets panel)
+### Env vars
+
+`supabase-target.ts` hardcodes the project's Supabase URL and anon key directly — it does **not** read `import.meta.env.VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`. An earlier version tried reading those from Replit Secrets with a hardcoded fallback, but Vite only exposes `VITE_*` vars that resolve through its `.env`-based env loading, not arbitrary Replit Secrets — with those secrets unset, `import.meta.env.VITE_SUPABASE_URL` resolved to `""` and crashed the client. See the comment at the top of `supabase-target.ts` before changing this; do not reintroduce an `import.meta.env.VITE_SUPABASE_URL` read there.
 
 | Secret | Purpose |
 |--------|---------|
-| `VITE_SUPABASE_URL` | Supabase project URL (e.g. `https://xxxx.supabase.co`) |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anon / publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service-role key (server-side / Edge Functions only) |
 
-When `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are set as Replit Secrets, they take precedence over the hardcoded fallback values in `supabase-target.ts`.
+(The anon key is public-safe by design and is fine hardcoded in a frontend bundle; only the service-role key needs to stay a real secret.)
 
 ### Supabase Auth → Redirect URLs (one-time manual step)
 
