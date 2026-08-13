@@ -13,7 +13,9 @@
       "Bash(npx vitest *)",
       "Bash(psql *)",
       "Bash(git rm *)",
-      "mcp__claude_ai_Replit__publish_app"
+      "mcp__claude_ai_Replit__publish_app",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(git commit *)"
     ]
   }
 }
