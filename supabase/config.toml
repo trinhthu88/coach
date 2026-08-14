@@ -13,3 +13,5 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.invite-sponsor]
     verify_jwt = true
+  [functions.coach-invite-coachee]
+    verify_jwt = true

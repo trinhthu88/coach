@@ -5,8 +5,19 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CheckCircle2, StickyNote, Trash2, ArrowLeft } from "lucide-react";
+import { CheckCircle2, StickyNote, Trash2, ArrowLeft, UserMinus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 import { useClientDetail, type FlatClientAction } from "@/hooks/coach/useClientDetail";
@@ -17,11 +28,15 @@ export function ClientDetailDialog({
   coachId,
   onClose,
   onChanged,
+  onRemoved,
+  removeClient,
 }: {
   coacheeId: string;
   coachId: string;
   onClose: () => void;
   onChanged: () => void;
+  onRemoved: () => void;
+  removeClient: (coacheeId: string) => Promise<boolean>;
 }) {
   const {
     profile,
@@ -44,11 +59,19 @@ export function ClientDetailDialog({
   } = useClientDetail(coacheeId, coachId, onChanged);
 
   const [newNote, setNewNote] = useState("");
+  const [removing, setRemoving] = useState(false);
 
   const submitNote = async () => {
     if (!newNote.trim()) return;
     await addNote(newNote);
     setNewNote("");
+  };
+
+  const confirmRemove = async () => {
+    setRemoving(true);
+    const ok = await removeClient(coacheeId);
+    setRemoving(false);
+    if (ok) onRemoved();
   };
 
   const avPalette = paletteFor(coacheeId);
@@ -60,9 +83,38 @@ export function ClientDetailDialog({
           <DialogTitle className="sr-only">{profile?.full_name || "Client"}</DialogTitle>
         </DialogHeader>
 
-        <button onClick={onClose} className="mb-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-          <ArrowLeft className="h-3 w-3" /> Back to overview
-        </button>
+        <div className="mb-2 flex items-center justify-between">
+          <button onClick={onClose} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+            <ArrowLeft className="h-3 w-3" /> Back to overview
+          </button>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
+                <UserMinus className="h-3.5 w-3.5" /> Remove client
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remove {profile?.full_name || "this client"}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  They'll lose access to book new sessions or message you. Past sessions, notes, and history
+                  are kept — this isn't a delete, and you can be re-assigned to them again later if needed.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={removing}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmRemove}
+                  disabled={removing}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {removing ? "Removing…" : "Remove client"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
 
         <div className="mb-4 flex items-start gap-3">
           <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-semibold", avPalette)}>

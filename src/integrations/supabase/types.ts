@@ -240,6 +240,7 @@ export type Database = {
           is_featured: boolean
           last_approved_at: string | null
           last_profile_update_at: string
+          max_coachee_invites: number | null
           nationality: string | null
           peer_coaching_opt_in: boolean
           rating_avg: number
@@ -260,6 +261,7 @@ export type Database = {
           is_featured?: boolean
           last_approved_at?: string | null
           last_profile_update_at?: string
+          max_coachee_invites?: number | null
           nationality?: string | null
           peer_coaching_opt_in?: boolean
           rating_avg?: number
@@ -280,6 +282,7 @@ export type Database = {
           is_featured?: boolean
           last_approved_at?: string | null
           last_profile_update_at?: string
+          max_coachee_invites?: number | null
           nationality?: string | null
           peer_coaching_opt_in?: boolean
           rating_avg?: number
@@ -443,6 +446,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          removed_at: string | null
         }
         Insert: {
           coach_id: string
@@ -450,6 +454,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          removed_at?: string | null
         }
         Update: {
           coach_id?: string
@@ -457,6 +462,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          removed_at?: string | null
         }
         Relationships: []
       }
@@ -1452,7 +1458,7 @@ export type Database = {
       get_coach_peer_session_usage: {
         Args: { _coach_id: string }
         Returns: {
-          peer_monthly_limit: number | null
+          peer_monthly_limit: number
           used_this_month: number
         }[]
       }
@@ -1461,6 +1467,13 @@ export type Database = {
         Returns: {
           monthly_limit: number
           used_this_month: number
+        }[]
+      }
+      get_own_coach_invite_slots: {
+        Args: never
+        Returns: {
+          invite_limit: number
+          used_slots: number
         }[]
       }
       get_primary_role: {
@@ -1480,6 +1493,7 @@ export type Database = {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
+      remove_own_coachee: { Args: { _coachee_id: string }; Returns: boolean }
       shares_session_with: {
         Args: { _target: string; _viewer: string }
         Returns: boolean

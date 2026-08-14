@@ -2,18 +2,31 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Users, Loader2, Calendar, AlertCircle, Search, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, Loader2, Calendar, AlertCircle, Search, TrendingUp, UserPlus, Info } from "lucide-react";
 import { format } from "date-fns";
 import { PageHeader, StatCard } from "@/components/ui/page-header";
 import { useCoachClients } from "@/hooks/coach/useCoachClients";
+import { useCoachInviteSlots } from "@/hooks/coach/useCoachInviteSlots";
 import { ClientRow } from "./coach/ClientRow";
 import { ClientDetailDialog } from "./coach/ClientDetailDialog";
+import { InviteClientDialog } from "./coach/InviteClientDialog";
+
+const CONTACT_EMAIL = "contact@clariva.club";
 
 export default function CoachClients() {
   const { user } = useAuth();
   const { clients, loading, reload, metrics } = useCoachClients(user?.id);
+  const inviteSlots = useCoachInviteSlots(user?.id);
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+
+  const refreshAll = () => {
+    reload();
+    inviteSlots.reload();
+  };
+  const atCap = !inviteSlots.loading && inviteSlots.used >= inviteSlots.limit;
 
   const filtered = clients.filter((c) => {
     const q = search.toLowerCase();
@@ -28,6 +41,31 @@ export default function CoachClients() {
           title="My"
           emphasis="clients"
           subtitle="All active coachees at a glance — progress, engagement, and private notes."
+          actions={
+            atCap ? (
+              <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {inviteSlots.used} of {inviteSlots.limit} clients invited.{" "}
+                  <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold underline">
+                    Contact us
+                  </a>{" "}
+                  for more.
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                {!inviteSlots.loading && (
+                  <span className="text-xs text-muted-foreground">
+                    {inviteSlots.used} of {inviteSlots.limit} clients invited
+                  </span>
+                )}
+                <Button onClick={() => setInviteOpen(true)}>
+                  <UserPlus className="h-4 w-4" /> Invite a client
+                </Button>
+              </div>
+            )
+          }
         />
 
       {/* METRICS */}
@@ -105,9 +143,21 @@ export default function CoachClients() {
           coacheeId={openId}
           coachId={user!.id}
           onClose={() => setOpenId(null)}
-          onChanged={reload}
+          onChanged={refreshAll}
+          onRemoved={() => {
+            setOpenId(null);
+            refreshAll();
+          }}
+          removeClient={inviteSlots.removeClient}
         />
       )}
+
+      <InviteClientDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        invite={inviteSlots.invite}
+        onInvited={refreshAll}
+      />
     </div>
   );
 }
