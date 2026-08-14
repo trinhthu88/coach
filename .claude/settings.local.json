@@ -26,7 +26,11 @@
       "Bash(find / -maxdepth 4 -iname \"*git-credential*\")",
       "Bash(command -v replit-git-askpass 2>&1)",
       "Bash(git *)",
-      "Bash(bash -c 'echo \"GH_PUSH_TOKEN is set: $\\([ -n \"$GH_PUSH_TOKEN\" ] && echo yes || echo no\\), length: ${#GH_PUSH_TOKEN}\"')"
+      "Bash(bash -c 'echo \"GH_PUSH_TOKEN is set: $\\([ -n \"$GH_PUSH_TOKEN\" ] && echo yes || echo no\\), length: ${#GH_PUSH_TOKEN}\"')",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -sI https://esm.sh/@supabase/supabase-js@2.45.0 --max-time 5)",
+      "Bash(getent hosts *)",
+      "Bash(chromium-cli *)"
     ]
   }
 }
