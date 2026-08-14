@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { inviteUser } from "../_shared/inviteUser.ts";
 
 const SITE_URL = "https://clariva.club";
 const DEFAULT_INVITE_LIMIT = 3;
@@ -140,45 +141,28 @@ Deno.serve(async (req) => {
 
     // Existing-email handling: never silently attach an existing account to a new
     // coach's allowlist — that's a future decision, not this one.
-    const { data: existingProfile } = await admin
-      .from("profiles")
-      .select("id")
-      .ilike("email", email)
-      .maybeSingle();
-    if (existingProfile?.id) {
+    const result = await inviteUser(admin, {
+      email,
+      full_name: fullName,
+      role: "coachee",
+      assignCoachId: callerId,
+      callerId,
+      siteUrl: SITE_URL,
+    });
+
+    if (result.status === "already_exists") {
       return new Response(JSON.stringify({ error: "email_already_registered" }), {
         status: 409,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName, role: "coachee" },
-      redirectTo: `${SITE_URL}/set-new-password`,
-    });
-    if (inviteErr || !invited.user) {
-      return new Response(
-        JSON.stringify({ error: inviteErr?.message || "Failed to invite user" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    const coacheeId = invited.user.id;
-
-    // handle_new_user() already created profiles/user_roles/coachee_profiles rows
-    // (status = pending_approval) via the auth.users insert trigger.
-    await admin.from("profiles").update({ must_change_password: true }).eq("id", coacheeId);
-
-    const { error: allowErr } = await admin.from("coachee_coach_allowlist").insert({
-      coachee_id: coacheeId,
-      coach_id: callerId,
-      created_by: callerId,
-    });
-    if (allowErr) {
-      return new Response(JSON.stringify({ error: allowErr.message }), {
+    if (result.status === "failed") {
+      return new Response(JSON.stringify({ error: result.error_message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const coacheeId = result.created_user_id;
 
     if (typeof session_limit === "number" && Number.isFinite(session_limit) && session_limit > 0) {
       await admin

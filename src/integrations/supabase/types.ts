@@ -138,6 +138,95 @@ export type Database = {
         }
         Relationships: []
       }
+      bulk_invite_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          total_rows: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          total_rows?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          total_rows?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_invite_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bulk_invite_rows: {
+        Row: {
+          assign_coach_id: string | null
+          batch_id: string | null
+          created_at: string
+          created_user_id: string | null
+          email: string | null
+          error_message: string | null
+          full_name: string | null
+          id: string
+          role: string | null
+          row_index: number | null
+          session_limit: number | null
+          status: string | null
+        }
+        Insert: {
+          assign_coach_id?: string | null
+          batch_id?: string | null
+          created_at?: string
+          created_user_id?: string | null
+          email?: string | null
+          error_message?: string | null
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          row_index?: number | null
+          session_limit?: number | null
+          status?: string | null
+        }
+        Update: {
+          assign_coach_id?: string | null
+          batch_id?: string | null
+          created_at?: string
+          created_user_id?: string | null
+          email?: string | null
+          error_message?: string | null
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          row_index?: number | null
+          session_limit?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_invite_rows_assign_coach_id_fkey"
+            columns: ["assign_coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bulk_invite_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "bulk_invite_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_as_coachee_allowlist: {
         Row: {
           coach_user_id: string

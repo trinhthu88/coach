@@ -15,3 +15,5 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.coach-invite-coachee]
     verify_jwt = true
+  [functions.admin-bulk-invite-users]
+    verify_jwt = true
