@@ -35,6 +35,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const loadSeqRef = useRef(0);
 
+  /**
+   * Tracks the user id we last established a real transition for. Supabase's
+   * onAuthStateChange fires redundantly on top of getSession() — an INITIAL_SESSION
+   * event on mount when a session already exists in storage, and again on token
+   * refresh — for the SAME user, not a real account change. Comparing against this
+   * ref lets the listener below tell "the account actually changed" (wipe + reload)
+   * apart from "a duplicate event for the user we already have" (no-op), so a
+   * same-user event arriving after isLoading has already resolved can't flash
+   * role/profile to null and bounce a role-gated route (ProtectedRoute) for a user
+   * who was never actually signed out.
+   */
+  const currentUserIdRef = useRef<string | null>(null);
+
   const loadProfileAndRole = async (userId: string) => {
     const seq = ++loadSeqRef.current;
 
@@ -65,6 +78,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!mounted) return;
+      const newUserId = newSession?.user?.id ?? null;
+
+      // Same user as last established — not a real transition (INITIAL_SESSION on
+      // mount, TOKEN_REFRESHED, etc). Update session/user only; skip the wipe+reload.
+      if (newUserId === currentUserIdRef.current) {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        return;
+      }
+      currentUserIdRef.current = newUserId;
+
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
@@ -86,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // THEN check existing session
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
       if (!mounted) return;
+      currentUserIdRef.current = existing?.user?.id ?? null;
       setSession(existing);
       setUser(existing?.user ?? null);
       if (existing?.user) {
