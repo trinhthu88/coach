@@ -11,6 +11,12 @@ export interface InviteUserParams {
   role: "coach" | "coachee";
   /** Only applied when role === 'coachee'. Inserts one coachee_coach_allowlist row. */
   assignCoachId?: string;
+  /**
+   * Origin of the coachee_coach_allowlist row, required whenever assignCoachId is set.
+   * 'coach_invite' rows count against the coach's own invite cap; 'admin_added' rows
+   * never do — see 20260816090000_coachee_allowlist_source.sql.
+   */
+  allowlistSource?: "coach_invite" | "admin_added";
   /** Whoever is performing this invite — recorded as coachee_coach_allowlist.created_by. */
   callerId: string;
   /** Origin used to build the invite email's redirectTo (…/set-new-password). */
@@ -55,6 +61,7 @@ export async function inviteUser(admin: SupabaseClient, params: InviteUserParams
       coachee_id: userId,
       coach_id: params.assignCoachId,
       created_by: params.callerId,
+      source: params.allowlistSource ?? "admin_added",
     });
     if (allowErr) {
       return { status: "failed", error_message: `Invited but failed to assign coach: ${allowErr.message}` };

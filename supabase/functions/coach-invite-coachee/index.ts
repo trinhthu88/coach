@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
       .from("coachee_coach_allowlist")
       .select("coachee_id")
       .eq("coach_id", callerId)
+      .eq("source", "coach_invite")
       .is("removed_at", null);
     if (allowRowsErr) {
       return new Response(JSON.stringify({ error: allowRowsErr.message }), {
@@ -146,6 +147,7 @@ Deno.serve(async (req) => {
       full_name: fullName,
       role: "coachee",
       assignCoachId: callerId,
+      allowlistSource: "coach_invite",
       callerId,
       siteUrl: SITE_URL,
     });

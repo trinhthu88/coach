@@ -37,7 +37,9 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
       const toAdd = [...newIds].filter((i) => !oldIds.has(i));
       const toRemove = [...oldIds].filter((i) => !newIds.has(i));
       if (toAdd.length) {
-        await supabase.from("coachee_coach_allowlist").insert(toAdd.map((cid) => ({ coachee_id: editing.id, coach_id: cid })));
+        await supabase.from("coachee_coach_allowlist").insert(
+          toAdd.map((cid) => ({ coachee_id: editing.id, coach_id: cid, source: "admin_added" }))
+        );
       }
       for (const cid of toRemove) {
         await supabase.from("coachee_coach_allowlist").delete().eq("coachee_id", editing.id).eq("coach_id", cid);

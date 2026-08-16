@@ -536,6 +536,7 @@ export type Database = {
           created_by: string | null
           id: string
           removed_at: string | null
+          source: string
         }
         Insert: {
           coach_id: string
@@ -544,6 +545,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           removed_at?: string | null
+          source?: string
         }
         Update: {
           coach_id?: string
@@ -552,6 +554,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           removed_at?: string | null
+          source?: string
         }
         Relationships: []
       }

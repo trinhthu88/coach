@@ -235,6 +235,7 @@ Deno.serve(async (req) => {
         full_name: v.full_name,
         role: v.role,
         assignCoachId: v.resolvedCoachId ?? undefined,
+        allowlistSource: "admin_added",
         callerId,
         siteUrl: SITE_URL,
       });

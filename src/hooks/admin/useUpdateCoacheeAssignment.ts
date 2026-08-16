@@ -28,6 +28,7 @@ export function useUpdateCoacheeAssignment() {
       const inserts = Array.from(pickedCoachIds).map((coach_id) => ({
         coachee_id: coacheeId,
         coach_id,
+        source: "admin_added",
       }));
       if (inserts.length) {
         const { error } = await supabase
