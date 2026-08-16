@@ -160,61 +160,54 @@ function JourneySVG() {
 }
 
 // ─── Goals SVG ────────────────────────────────────────────────────────────────
-// Exact goal rows from prototype data.
-// Labels use textAnchor="end" at x=118 so they don't run off the left edge.
-// Bar track runs from x=128 to x=328 (200px) inside viewBox 340×175.
+// Matches the prototype exactly:
+//   • Label LEFT-ALIGNED bold white on same row as rating "4 → 5" RIGHT-ALIGNED
+//   • Full-width bar below (track + sky fill up to "to" rating)
+//   • Scale "1 · 5 · 10" below each individual bar
 function GoalsSVG() {
   const rows = [
     { label: "Hard conversations", from: 4, to: 5 },
     { label: "Delegate the report", from: 3, to: 5 },
     { label: "Protect deep work",   from: 5, to: 5 },
   ];
-  const barX = 128, barW = 200, maxRating = 10;
+  const W = 280, barH = 8, maxR = 10;
+  const blockH = 56; // label row (18) + bar (barH=8) + scale row (14) + gap
   return (
-    <svg viewBox="0 0 340 175" className="w-full max-w-[320px]" aria-hidden="true">
-      {/* Grid verticals */}
-      {[1,5,10].map(n => (
-        <line key={n}
-          x1={barX + n / maxRating * barW} y1="4"
-          x2={barX + n / maxRating * barW} y2="150"
-          stroke="rgba(207,230,238,.07)" strokeWidth="1" />
-      ))}
-      {/* Scale labels at bottom */}
-      {[1,5,10].map(n => (
-        <text key={n}
-          x={barX + n / maxRating * barW} y="165"
-          fontSize="9" fill={`${PANEL}.35)`}
-          textAnchor="middle" fontFamily="Montserrat, sans-serif">{n}</text>
-      ))}
+    <svg viewBox={`0 0 ${W} ${rows.length * blockH}`}
+      className="w-full max-w-[280px]" aria-hidden="true">
       {rows.map((row, i) => {
-        const rowY  = i * 50 + 14;
-        const barY  = rowY + 18;
-        const fromX = barX + row.from / maxRating * barW;
-        const toX   = barX + row.to   / maxRating * barW;
+        const baseY = i * blockH;
+        const toW   = row.to   / maxR * W;
+        const fromW = row.from / maxR * W;
         return (
           <g key={i}>
-            {/* Goal label — right-aligned, ending just before bar starts */}
-            <text x={barX - 10} y={rowY + 12} fontSize="9.5"
-              fill={`${PANEL}.7)`} textAnchor="end"
-              fontFamily="Montserrat, sans-serif">{row.label}</text>
-            {/* Rating label (small, muted) */}
-            <text x={barX - 10} y={rowY + 26} fontSize="8"
-              fill={`${PANEL}.35)`} textAnchor="end"
-              fontFamily="Montserrat, sans-serif">{row.from} → {row.to}</text>
-            {/* Track */}
-            <rect x={barX} y={barY} width={barW} height="7" rx="3.5"
+            {/* Label — left-aligned, bold */}
+            <text x="0" y={baseY + 13} fontSize="11" fontWeight="600"
+              fill="rgba(255,255,255,.9)" fontFamily="Montserrat, sans-serif">{row.label}</text>
+            {/* Rating — right-aligned */}
+            <text x={W} y={baseY + 13} fontSize="10" fontWeight="500"
+              fill={`${PANEL}.6)`} textAnchor="end" fontFamily="Montserrat, sans-serif">
+              {row.from} → {row.to}
+            </text>
+            {/* Bar track */}
+            <rect x="0" y={baseY + 20} width={W} height={barH} rx={barH / 2}
               fill="rgba(207,230,238,.1)" />
-            {/* Previous rating fill */}
-            <rect x={barX} y={barY} width={row.from / maxRating * barW} height="7" rx="3.5"
-              fill={SKY} fillOpacity="0.4" />
-            {/* Current rating fill */}
-            <rect x={barX} y={barY} width={row.to / maxRating * barW} height="7" rx="3.5"
+            {/* "from" fill (dimmer sky) */}
+            <rect x="0" y={baseY + 20} width={fromW} height={barH} rx={barH / 2}
+              fill={SKY} fillOpacity="0.45" />
+            {/* "to" fill (bright sky, overlays from) */}
+            <rect x="0" y={baseY + 20} width={toW} height={barH} rx={barH / 2}
               fill={SKY} />
-            {/* Current dot */}
-            <circle cx={toX} cy={barY + 3.5} r="6"
-              fill={AMBER} stroke={NAVY} strokeWidth="1.5" />
-            <text x={toX + 10} y={barY + 8} fontSize="10" fontWeight="700"
-              fill={AMBER} fontFamily="Montserrat, sans-serif">{row.to}</text>
+            {/* Scale labels under bar */}
+            {([1, 5, 10] as const).map((n, si) => {
+              const sx = n / maxR * W;
+              const anchor = si === 0 ? "start" : si === 2 ? "end" : "middle";
+              return (
+                <text key={n} x={sx} y={baseY + barH + 26} fontSize="9"
+                  fill={`${PANEL}.3)`} textAnchor={anchor}
+                  fontFamily="Montserrat, sans-serif">{n}</text>
+              );
+            })}
           </g>
         );
       })}
@@ -807,7 +800,8 @@ export function IntroCarousel({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between px-8 py-5">
+            <div className="flex items-center gap-3 px-8 py-5">
+              {/* Continue */}
               <button
                 type="button"
                 onClick={() => isLast ? onFinish() : setIndex((i) => i + 1)}
@@ -815,10 +809,21 @@ export function IntroCarousel({
               >
                 {isLast ? "Take me in →" : "Continue"}
               </button>
+              {/* Back — only shown from step 2 onwards */}
+              {index > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIndex((i) => i - 1)}
+                  className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+                >
+                  Back
+                </button>
+              )}
+              {/* Skip intro — pushed to far right */}
               <button
                 type="button"
                 onClick={onSkip}
-                className="text-sm text-gray-400 transition-colors hover:text-gray-600"
+                className="ml-auto text-sm text-gray-400 transition-colors hover:text-gray-600"
               >
                 Skip intro
               </button>
