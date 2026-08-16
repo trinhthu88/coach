@@ -692,7 +692,7 @@ export function IntroCarousel({
       >
         <DialogTitle className="sr-only">{step.title}</DialogTitle>
 
-        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] md:min-h-[480px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 md:min-h-[480px]">
 
           {/* ── Left panel ── */}
           <div className="relative flex flex-col overflow-hidden bg-secondary">
