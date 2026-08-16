@@ -687,12 +687,12 @@ export function IntroCarousel({
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onSkip(); }}>
       <DialogContent
-        className="max-w-3xl gap-0 overflow-hidden p-0"
+        className="max-w-3xl gap-0 overflow-x-hidden overflow-y-auto p-0 max-h-[90vh]"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogTitle className="sr-only">{step.title}</DialogTitle>
 
-        <div className="grid grid-cols-[300px_1fr]" style={{ minHeight: 480 }}>
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] md:min-h-[480px]">
 
           {/* ── Left panel ── */}
           <div className="relative flex flex-col overflow-hidden bg-secondary">
@@ -709,7 +709,7 @@ export function IntroCarousel({
             </div>
 
             {/* Graphic */}
-            <div className="flex flex-1 items-center justify-center px-5 py-3">
+            <div className="flex flex-1 items-center justify-center px-5 py-6 md:py-3">
               <StepGraphic type={graphic} role={role} />
             </div>
 
