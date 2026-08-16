@@ -1,10 +1,6 @@
-// Onboarding tour content — coachee and coach are wired to the live app
-// (see src/components/onboarding/OnboardingTour.tsx and AppLayout.tsx's "How it
-// works" nav entry). `sponsor` content is transcribed and ready, but there is no
-// sponsor route/nav in the current app, so it is intentionally never passed to
-// <OnboardingTour>. When the sponsor portal is built, wiring it up should be a
-// one-line addition (mount <OnboardingTour role="sponsor" .../> in that layout,
-// add a "How it works" nav entry for the sponsor role) — not new component work.
+// Onboarding tour content — coachee, coach, and sponsor are all wired to the
+// live app (see src/components/onboarding/OnboardingTour.tsx and AppLayout.tsx's
+// "How it works" nav entry / auto-trigger).
 
 export type BulletKind = "in" | "ok" | "no"; // "in" = informational/neutral, "ok" = allowed/visible, "no" = withheld/not allowed
 export type OnboardingBullet = { kind: BulletKind; label: string; text: string };
@@ -160,8 +156,6 @@ const coach: OnboardingContent = {
   ],
 };
 
-// Sponsor: content only — no sponsor role in app_role, no sponsor dashboard/nav yet.
-// All three targetSelectors are null since there is nothing in the DOM to point at.
 const sponsor: OnboardingContent = {
   steps: [
     {
@@ -205,19 +199,19 @@ const sponsor: OnboardingContent = {
       where: "Left navigation",
       title: "Three screens, no fourth.",
       body: "There is no route from here into session content. The absence is deliberate — nothing sits behind a permission you could request later.",
-      targetSelector: null,
+      targetSelector: '[data-onboarding="nav-sponsor-dashboard"]',
     },
     {
       where: "Top of the dashboard",
       title: "One cohort at a time.",
       body: "Switch cohort here and every figure below follows, including the roster and the export.",
-      targetSelector: null,
+      targetSelector: '[data-onboarding="sponsor-cohort-filter"]',
     },
     {
       where: "Roster",
       title: "Status, not stories.",
       body: "Enrolment, sessions used, and self-rated growth per person. Rows don't open into content — they open into the same aggregates plus what's withheld.",
-      targetSelector: null,
+      targetSelector: '[data-onboarding="sponsor-roster"]',
     },
   ],
 };

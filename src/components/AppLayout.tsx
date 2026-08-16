@@ -47,7 +47,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["coach", "coachee"] },
-  { to: "/sponsor", label: "Dashboard", icon: LayoutDashboard, roles: ["sponsor"], group: "Sponsor" },
+  { to: "/sponsor", label: "Dashboard", icon: LayoutDashboard, roles: ["sponsor"], group: "Sponsor", onboardingId: "nav-sponsor-dashboard" },
   { to: "/sponsor/cohorts", label: "Cohorts", icon: Layers, roles: ["sponsor"], group: "Sponsor" },
   { to: "/sponsor/report", label: "Export report", icon: FileDown, roles: ["sponsor"], group: "Sponsor" },
 
@@ -229,7 +229,7 @@ export default function AppLayout() {
   const location = useLocation();
 
   const items = NAV.filter((n) => role && n.roles.includes(role));
-  const showsOnboarding = role === "coach" || role === "coachee";
+  const showsOnboarding = role === "coach" || role === "coachee" || role === "sponsor";
 
   const [manualTourOpen, setManualTourOpen] = useState(false);
   // Bumped on every "How it works" click so a re-open always starts a fresh
@@ -461,11 +461,11 @@ export default function AppLayout() {
         </div>
       </main>
 
-      {showsOnboarding && autoTourEligible && <OnboardingTour role={role as "coach" | "coachee"} />}
+      {showsOnboarding && autoTourEligible && <OnboardingTour role={role as "coach" | "coachee" | "sponsor"} />}
       {showsOnboarding && manualTourOpen && (
         <OnboardingTour
           key={manualTourKey}
-          role={role as "coach" | "coachee"}
+          role={role as "coach" | "coachee" | "sponsor"}
           onClose={() => setManualTourOpen(false)}
         />
       )}

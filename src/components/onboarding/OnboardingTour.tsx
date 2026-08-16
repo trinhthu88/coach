@@ -10,8 +10,7 @@ type Stage = "intro" | "pointer" | "done" | "closed";
 
 /**
  * Orchestrates the three onboarding stages (intro carousel -> pointer tour -> done
- * toast) for coach/coachee. Sponsor content exists in the config but this component
- * is never mounted with role="sponsor" — no sponsor route exists yet.
+ * toast) for coach/coachee/sponsor.
  *
  * Two mount modes, both handled by the caller (AppLayout.tsx):
  *  - Auto: mounted once per session when profile.onboarding_completed_at is null.
@@ -23,7 +22,7 @@ export function OnboardingTour({
   role,
   onClose,
 }: {
-  role: "coach" | "coachee";
+  role: "coach" | "coachee" | "sponsor";
   onClose?: () => void;
 }) {
   const { user, refreshProfile } = useAuth();

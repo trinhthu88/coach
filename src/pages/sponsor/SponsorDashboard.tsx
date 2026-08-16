@@ -233,11 +233,12 @@ export default function SponsorDashboard() {
         )}
 
         {/* ROSTER */}
+        <div data-onboarding="sponsor-roster">
         <SectionCard
           label={`Roster · ${filteredRoster.length} leader${filteredRoster.length === 1 ? "" : "s"}`}
           action={
             cohortNames.length > 1 ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5" data-onboarding="sponsor-cohort-filter">
                 <Filter className="h-3 w-3 text-muted-foreground" />
                 <Select value={cohortFilter} onValueChange={setCohortFilter}>
                   <SelectTrigger className="h-6 w-32 border-0 bg-transparent p-0 text-[10px] text-muted-foreground shadow-none focus:ring-0">
@@ -305,6 +306,7 @@ export default function SponsorDashboard() {
             Goal titles, session notes and messages are not part of this table — by design, not by permission level.
           </p>
         </SectionCard>
+        </div>
 
         {/* PRIVACY NOTICE */}
         <div className="flex items-start gap-2 rounded-xl bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground">
