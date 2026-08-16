@@ -54,7 +54,7 @@ export function OnboardingTour({
   const restart = useCallback(() => setStage("intro"), []);
 
   if (stage === "intro") {
-    return <IntroCarousel steps={content.steps} onFinish={goToPointerTour} onSkip={goToPointerTour} />;
+    return <IntroCarousel steps={content.steps} role={role} onFinish={goToPointerTour} onSkip={goToPointerTour} />;
   }
 
   if (stage === "pointer") {
