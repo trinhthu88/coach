@@ -26,15 +26,18 @@ export function ActionRow({
         onClick={() => onToggle?.(a)}
         disabled={!onToggle}
         aria-label={a.done ? "Mark as not done" : "Mark as done"}
-        className={cn(
-          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
-          a.done && "border-success bg-success text-success-foreground",
-          !a.done && overdue && "border-destructive bg-destructive/10 hover:bg-destructive/20",
-          !a.done && !overdue && "border-border bg-muted hover:bg-muted/70",
-          onToggle ? "cursor-pointer" : "cursor-default"
-        )}
+        className={cn("group -m-2 shrink-0 rounded-md p-2", onToggle ? "cursor-pointer" : "cursor-default")}
       >
-        {a.done && <Check className="h-3 w-3" strokeWidth={3} />}
+        <span
+          className={cn(
+            "mt-0.5 flex h-4 w-4 items-center justify-center rounded-sm border transition-colors",
+            a.done && "border-success bg-success text-success-foreground",
+            !a.done && overdue && "border-destructive bg-destructive/10 group-hover:bg-destructive/20",
+            !a.done && !overdue && "border-border bg-muted group-hover:bg-muted/70",
+          )}
+        >
+          {a.done && <Check className="h-3 w-3" strokeWidth={3} />}
+        </span>
       </button>
       <div className="min-w-0 flex-1">
         {showSourceBadge ? (

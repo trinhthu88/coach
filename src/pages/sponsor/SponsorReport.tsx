@@ -206,7 +206,7 @@ export default function SponsorReport() {
                 </div>
 
                 {/* Programme & satisfaction */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-border p-3">
                     <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Programme & satisfaction</p>
                     <div className="space-y-1 text-[11px]">
@@ -230,28 +230,30 @@ export default function SponsorReport() {
                 {includeRoster && filteredRoster.length > 0 && (
                   <div>
                     <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Roster</p>
-                    <table className="w-full text-[11px]">
-                      <thead>
-                        <tr className="border-b text-[9px] uppercase tracking-widest text-muted-foreground">
-                          <th className="py-1.5 text-left font-semibold">Leader</th>
-                          <th className="py-1.5 text-left font-semibold">Cohort</th>
-                          <th className="py-1.5 text-left font-semibold">Status</th>
-                          <th className="py-1.5 text-left font-semibold">Prog.</th>
-                          <th className="py-1.5 text-left font-semibold">Growth</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {filteredRoster.map(r => (
-                          <tr key={r.enrollment_id}>
-                            <td className="py-1.5 font-medium">{r.full_name}</td>
-                            <td className="py-1.5 text-muted-foreground">{r.cohort_name || "—"}</td>
-                            <td className="py-1.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{STATUS_LABEL[r.enrollment_status]}</Pill></td>
-                            <td className="py-1.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
-                            <td className="py-1.5">{r.goal_growth != null ? `+${Math.round(r.goal_growth)} pts` : "—"}</td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[11px]">
+                        <thead>
+                          <tr className="border-b text-[9px] uppercase tracking-widest text-muted-foreground">
+                            <th className="py-1.5 text-left font-semibold">Leader</th>
+                            <th className="py-1.5 text-left font-semibold">Cohort</th>
+                            <th className="py-1.5 text-left font-semibold">Status</th>
+                            <th className="py-1.5 text-left font-semibold">Prog.</th>
+                            <th className="py-1.5 text-left font-semibold">Growth</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y">
+                          {filteredRoster.map(r => (
+                            <tr key={r.enrollment_id}>
+                              <td className="py-1.5 font-medium">{r.full_name}</td>
+                              <td className="py-1.5 text-muted-foreground">{r.cohort_name || "—"}</td>
+                              <td className="py-1.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{STATUS_LABEL[r.enrollment_status]}</Pill></td>
+                              <td className="py-1.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
+                              <td className="py-1.5">{r.goal_growth != null ? `+${Math.round(r.goal_growth)} pts` : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 

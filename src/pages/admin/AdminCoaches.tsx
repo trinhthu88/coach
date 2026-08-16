@@ -429,8 +429,8 @@ export default function AdminCoaches() {
                   <td className="px-3 py-2.5 text-[11px]">{r.completed_sessions}</td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
-                      <Button asChild variant="ghost" size="sm" title="View profile"><Link to={`/coaches/${r.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                      <Button variant="ghost" size="sm" onClick={() => setEditing({ ...r, assigned_coaches: [...r.assigned_coaches] })}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button asChild variant="ghost" size="icon" title="View profile"><Link to={`/coaches/${r.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setEditing({ ...r, assigned_coaches: [...r.assigned_coaches] })}><Pencil className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -452,7 +452,7 @@ export default function AdminCoaches() {
           </SheetHeader>
           {editing && (
             <div className="mt-4 space-y-5">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div><Label>Full name</Label><Input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} /></div>
                 <div>
                   <Label>Status</Label>
@@ -465,7 +465,7 @@ export default function AdminCoaches() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <Label>Programme <span className="text-destructive">*</span></Label>
                   <Select
@@ -507,7 +507,7 @@ export default function AdminCoaches() {
                   </Button>
                 </div>
                 <p className="mb-2 text-[12px] font-medium">{editing.coach_programme_name || <span className="italic text-muted-foreground">Not enrolled</span>}</p>
-                <div className="grid grid-cols-3 gap-3 text-[11px]">
+                <div className="grid grid-cols-1 gap-3 text-[11px] sm:grid-cols-3">
                   <div>
                     <p className="text-muted-foreground">Coaching received</p>
                     <p className="font-mono">{editing.coach_used}/{fmtLimit(editing.coach_session_limit)}</p>

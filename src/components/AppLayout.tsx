@@ -461,12 +461,15 @@ export default function AppLayout() {
         </div>
       </main>
 
-      {showsOnboarding && autoTourEligible && <OnboardingTour role={role as "coach" | "coachee" | "sponsor"} />}
+      {showsOnboarding && autoTourEligible && (
+        <OnboardingTour role={role as "coach" | "coachee" | "sponsor"} onSetMobileNavOpen={setMobileNavOpen} />
+      )}
       {showsOnboarding && manualTourOpen && (
         <OnboardingTour
           key={manualTourKey}
           role={role as "coach" | "coachee" | "sponsor"}
           onClose={() => setManualTourOpen(false)}
+          onSetMobileNavOpen={setMobileNavOpen}
         />
       )}
     </div>

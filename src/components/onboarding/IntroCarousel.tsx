@@ -202,50 +202,64 @@ function GoalsSVG() {
 }
 
 // ─── Match SVG ────────────────────────────────────────────────────────────────
-// matchCards from prototype: ["MT","HL","QD"] shown (first 3 of 6).
-// First 2 highlighted (sky border, tagged with amber chips).
+// Prototype: 4 filter chips at top, then 3×2 grid of coach cards.
+// First 2 cards (MT, HL) are highlighted with sky avatar + "MATCH" label.
 function MatchSVG({ role }: { role: OnboardingRole }) {
-  const initials = ["MT", "HL", "QD"];
-  const names    = ["Minh Tran", "Hai Le", "Quyen Do"];
-  const chips    = role === "coach"
-    ? [["Leadership","Transition"],["EN / VN","ICF PCC"],[]]
-    : [["Hard conv.","Delegation"],["Vietnamese",""],[]]  ;
+  const filterChips = role === "coach"
+    ? ["LEADERSHIP", "TRANSITION", "EN / VN", "ICF PCC"]
+    : ["HARD CONV.", "DELEGATION", "VIETNAMESE", "THIS MONTH"];
+  const cards = ["MT","HL","QD","PV","TN","BK"];
+  const cardW = 89, cardH = 84, gap = 8, startX = 4, startY = 38;
   return (
-    <svg viewBox="0 0 300 178" className="w-full max-w-[300px]" aria-hidden="true">
-      {initials.map((ini, i) => {
-        const y = i * 56;
+    <svg viewBox="0 0 300 230" className="w-full max-w-[300px]" aria-hidden="true">
+      {/* Filter chips row */}
+      {filterChips.map((label, i) => {
         const active = i < 2;
+        const chipFg = active ? "#f0a875" : `${PANEL}.55)`;
+        const chipBg = active ? `${AMBER_SOFT}.18)` : "rgba(255,255,255,.06)";
+        const chipBd = active ? `${AMBER_SOFT}.5)`  : "rgba(255,255,255,.15)";
+        const chipW  = label.length * 7.2 + 16;
+        const chipX  = i === 0 ? 0 : i === 1 ? filterChips[0].length * 7.2 + 24
+                     : i === 2 ? (filterChips[0].length + filterChips[1].length) * 7.2 + 48
+                     : (filterChips[0].length + filterChips[1].length + filterChips[2].length) * 7.2 + 72;
         return (
-          <g key={i} opacity={i < 3 ? (i === 2 ? 0.55 : 1) : 0.3}>
-            <rect x="0" y={y} width="300" height="48" rx="10"
-              fill={active ? `${SKY_SOFT}.1)` : "rgba(255,255,255,.04)"}
-              stroke={active ? `${SKY_SOFT}.38)` : "rgba(255,255,255,.1)"} strokeWidth="1" />
-            <circle cx="24" cy={y + 24} r="16"
-              fill={active ? SKY : "rgba(255,255,255,.12)"} />
-            <text x="24" y={y + 28} fontSize="10" fontWeight="700"
-              fill={active ? NAVY : "#cfe6ee"} textAnchor="middle" fontFamily="Montserrat, sans-serif">{ini}</text>
-            <text x="48" y={y + 20} fontSize="11" fontWeight="600"
-              fill="rgba(255,255,255,.85)" fontFamily="Montserrat, sans-serif">{names[i]}</text>
-            {chips[i]?.filter(Boolean).map((chip, ci) => {
-              const chipX = 48 + ci * 82;
-              const chipFg = ci === 0 ? "#f0a875" : `${PANEL}.6)`;
-              const chipBg = ci === 0 ? `${AMBER_SOFT}.16)` : "rgba(255,255,255,.07)";
-              const chipBr = ci === 0 ? `${AMBER_SOFT}.4)` : "rgba(255,255,255,.12)";
-              return (
-                <g key={ci}>
-                  <rect x={chipX} y={y + 27} width={chip.length * 6.8 + 8} height="14" rx="7"
-                    fill={chipBg} stroke={chipBr} strokeWidth="1" />
-                  <text x={chipX + chip.length * 3.4 + 4} y={y + 38} fontSize="8"
-                    fill={chipFg} textAnchor="middle" fontFamily="Montserrat, sans-serif">{chip}</text>
-                </g>
-              );
-            })}
-            {active && i === 0 && (
-              <>
-                <rect x="244" y={y + 13} width="48" height="20" rx="10" fill={AMBER} />
-                <text x="268" y={y + 27} fontSize="9.5" fontWeight="700"
-                  fill="white" textAnchor="middle" fontFamily="Montserrat, sans-serif">Match</text>
-              </>
+          <g key={i}>
+            <rect x={chipX} y="0" width={chipW} height="22" rx="11"
+              fill={chipBg} stroke={chipBd} strokeWidth="1" />
+            <text x={chipX + chipW / 2} y="14.5" fontSize="8.5" fontWeight="700"
+              fill={chipFg} textAnchor="middle"
+              fontFamily="Montserrat, sans-serif" letterSpacing=".3">{label}</text>
+          </g>
+        );
+      })}
+      {/* 3×2 card grid */}
+      {cards.map((ini, i) => {
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        const x   = startX + col * (cardW + gap);
+        const y   = startY + row * (cardH + gap);
+        const active = i < 2;
+        const avBg = active ? SKY : "rgba(255,255,255,.14)";
+        const avFg = active ? NAVY : "#cfe6ee";
+        const cardBg = active ? `${SKY_SOFT}.1)`  : "rgba(255,255,255,.04)";
+        const cardBd = active ? `${SKY_SOFT}.38)` : "rgba(255,255,255,.1)";
+        return (
+          <g key={i} opacity={i > 2 ? 0.45 : 1}>
+            <rect x={x} y={y} width={cardW} height={cardH} rx="10"
+              fill={cardBg} stroke={cardBd} strokeWidth="1" />
+            {/* Avatar */}
+            <circle cx={x + 18} cy={y + 20} r="12" fill={avBg} />
+            <text x={x + 18} y={y + 24} fontSize="9" fontWeight="700"
+              fill={avFg} textAnchor="middle" fontFamily="Montserrat, sans-serif">{ini}</text>
+            {/* Grey line placeholders (name + bio) */}
+            <rect x={x + 8} y={y + 38} width={cardW - 20} height="7" rx="3.5"
+              fill="rgba(207,230,238,.12)" />
+            <rect x={x + 8} y={y + 50} width={cardW - 34} height="5" rx="2.5"
+              fill="rgba(207,230,238,.07)" />
+            {/* MATCH label for top 2 */}
+            {active && (
+              <text x={x + 8} y={y + 76} fontSize="9" fontWeight="700"
+                fill={AMBER} fontFamily="Montserrat, sans-serif" letterSpacing=".5">MATCH</text>
             )}
           </g>
         );
@@ -255,131 +269,167 @@ function MatchSVG({ role }: { role: OnboardingRole }) {
 }
 
 // ─── Calendar SVG ─────────────────────────────────────────────────────────────
-// Exact slot data from prototype calSlots.
+// Row-major indexing: idx = row*5 + col  →  col = idx%5, row = floor(idx/5)
+// Prototype: open=[1,2,6,7,8,11,12,16,17,18,21,22]; coach booked=[7,17], coachee booked=[12]
+// idx 7 = Wed row1 (amber 14:00), idx 17 = Wed row3 (amber 14:00)
 function CalendarSVG({ role }: { role: OnboardingRole }) {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const days   = ["MON", "TUE", "WED", "THU", "FRI"];
   const open   = [1,2,6,7,8,11,12,16,17,18,21,22];
   const booked = role === "coach" ? [7,17] : [12];
   const slots  = Array.from({ length: 25 }, (_, idx) => ({
     isBooked: booked.includes(idx),
     isOpen:   open.includes(idx),
   }));
-  const cellW = 46, cellH = 26, startX = 14, startY = 24, gap = 6;
+  // Cell dimensions matching prototype: wide tall cells
+  const cellW = 50, cellH = 34, gapX = 5, gapY = 6, startY = 28;
+  const totalW = 5 * cellW + 4 * gapX;   // 270
   return (
-    <svg viewBox="0 0 260 180" className="w-full max-w-[260px]" aria-hidden="true">
+    <svg viewBox={`0 0 ${totalW} 230`} className="w-full max-w-[280px]" aria-hidden="true">
+      {/* Day headers */}
       {days.map((d, ci) => (
-        <text key={ci} x={startX + ci * (cellW + gap) + cellW / 2} y="16"
-          fontSize="9.5" fill={`${PANEL}.45)`} textAnchor="middle"
-          fontFamily="Montserrat, sans-serif" fontWeight="600">{d}</text>
+        <text key={ci} x={ci * (cellW + gapX) + cellW / 2} y="18"
+          fontSize="9.5" fill={`${PANEL}.5)`} textAnchor="middle"
+          fontFamily="Montserrat, sans-serif" fontWeight="700" letterSpacing=".5">{d}</text>
       ))}
+      {/* Slots — row-major: col = idx%5, row = floor(idx/5) */}
       {slots.map((slot, idx) => {
-        const ci = Math.floor(idx / 5);
-        const ri = idx % 5;
-        const x  = startX + ci * (cellW + gap);
-        const y  = startY + ri * (cellH + 4);
-        const bg = slot.isBooked
-          ? AMBER
-          : slot.isOpen ? `${SKY_SOFT}.25)` : "rgba(255,255,255,.04)";
-        const bd = slot.isBooked
-          ? AMBER
-          : slot.isOpen ? `${SKY_SOFT}.5)` : "rgba(255,255,255,.07)";
+        const col = idx % 5;
+        const row = Math.floor(idx / 5);
+        const x   = col * (cellW + gapX);
+        const y   = startY + row * (cellH + gapY);
+        const bg  = slot.isBooked ? AMBER
+                  : slot.isOpen   ? `${SKY_SOFT}.28)` : "rgba(255,255,255,.04)";
+        const bd  = slot.isBooked ? AMBER
+                  : slot.isOpen   ? `${SKY_SOFT}.55)` : "rgba(255,255,255,.07)";
         return (
           <g key={idx}>
-            <rect x={x} y={y} width={cellW} height={cellH} rx="5"
+            <rect x={x} y={y} width={cellW} height={cellH} rx="7"
               fill={bg} stroke={bd} strokeWidth="1" />
             {slot.isBooked && (
-              <text x={x + cellW / 2} y={y + cellH / 2 + 4} fontSize="8.5"
+              <text x={x + cellW / 2} y={y + cellH / 2 + 4} fontSize="9"
                 fill="white" textAnchor="middle"
-                fontFamily="Montserrat, sans-serif" fontWeight="600">14:00</text>
-            )}
-            {slot.isOpen && !slot.isBooked && (
-              <circle cx={x + cellW / 2} cy={y + cellH / 2} r="2.5" fill={SKY} fillOpacity="0.6" />
+                fontFamily="Montserrat, sans-serif" fontWeight="700">14:00</text>
             )}
           </g>
         );
       })}
       {/* Legend */}
-      <circle cx="18" cy="172" r="3.5" fill={SKY} fillOpacity="0.5" />
-      <text x="26" y="176" fontSize="8.5" fill={`${PANEL}.4)`} fontFamily="Montserrat, sans-serif">Available</text>
-      <rect x="98" y="168.5" width="7" height="7" rx="1.5" fill={AMBER} />
-      <text x="109" y="176" fontSize="8.5" fill={`${PANEL}.4)`} fontFamily="Montserrat, sans-serif">Selected</text>
+      <circle cx="8" cy="222" r="5" fill={`${SKY_SOFT}.3)`} stroke={`${SKY_SOFT}.6)`} strokeWidth="1" />
+      <text x="18" y="226" fontSize="9" fill={`${PANEL}.45)`} fontFamily="Montserrat, sans-serif">Open</text>
+      <rect x="60" y="216" width="10" height="10" rx="3" fill={AMBER} />
+      <text x="74" y="226" fontSize="9" fill={`${PANEL}.45)`} fontFamily="Montserrat, sans-serif">Booked</text>
     </svg>
   );
 }
 
 // ─── Privacy SVG ──────────────────────────────────────────────────────────────
-// insideWho, insideItems, outsideLabel, outsideItems from prototype.
+// Prototype layout: "INSIDE THE SESSION" box (sky border) with pill chips,
+// centred lock icon divider, "WHAT THE ORG RECEIVES" dashed box with pill chips.
 function PrivacySVG({ role }: { role: OnboardingRole }) {
   const insideWho = role === "sponsor"
     ? [{ i: "LN", label: "Each leader" }, { i: "CO", label: "Their coach" }]
     : [{ i: "LN", label: "You" },         { i: "MT", label: "Your coach" }];
   const insideItems = ["Session notes", "Recordings", "Goal wording", "Everything said"];
   const outsideLabel = role === "coachee"
-    ? "What leaves the room — only if you send it"
+    ? "WHAT LEAVES THE ROOM"
     : role === "sponsor"
-    ? "What your sponsor account receives"
-    : "What the organisation receives";
+    ? "WHAT YOUR ACCOUNT RECEIVES"
+    : "WHAT THE ORGANISATION RECEIVES";
   const outsideItems = role === "coachee"
     ? ["A summary you choose to share", "Nothing else"]
     : ["Attendance", "Sessions used", "Average goal growth"];
+
+  // Pill chip helper: returns { x, y, w, h }
+  // We'll lay them out in rows inside a box.
+  const chipH  = 22;
+  const chipPX = 10;   // horizontal padding
+  const font   = 9.5;
+  const charW  = 6.2;  // approx px per character at font 9.5
+
+  function chipW(label: string) { return label.length * charW + chipPX * 2; }
+
+  // Place chips in rows within maxW, returning [{x,y,label}]
+  function placeChips(labels: string[], startX: number, startY: number, maxW: number) {
+    const rows: { x: number; y: number; label: string }[] = [];
+    let cx = startX, cy = startY;
+    for (const label of labels) {
+      const w = chipW(label);
+      if (cx + w > startX + maxW && cx > startX) { cx = startX; cy += chipH + 5; }
+      rows.push({ x: cx, y: cy, label });
+      cx += w + 8;
+    }
+    return rows;
+  }
+
+  const insideChips  = placeChips(insideItems,  10, 76, 280);
+  const outsideChips = placeChips(outsideItems, 10, 192, 280);
+  const insideRows   = insideChips.length  > 0 ? insideChips[insideChips.length - 1].y  - 76  + chipH : 0;
+  const insideBoxH   = 70 + insideRows + chipH + 10;
+  const lockY        = insideBoxH + 16;
+  const outsideBoxY  = lockY + 22;
+  const outsideLastY = outsideChips.length > 0 ? outsideChips[outsideChips.length - 1].y : 192;
+  const outsideBoxH  = outsideLastY - outsideBoxY + chipH + 14;
+  const totalH       = outsideBoxY + outsideBoxH + 4;
+
   return (
-    <svg viewBox="0 0 300 195" className="w-full max-w-[300px]" aria-hidden="true">
-      {/* Room box */}
-      <rect x="0" y="0" width="210" height="116" rx="10"
-        fill="rgba(255,255,255,.05)" stroke={`${SKY_SOFT}.3)`} strokeWidth="1" />
-      {/* Lock icon */}
-      <circle cx="20" cy="16" r="7" fill={`${SKY_SOFT}.15)`} stroke={`${SKY_SOFT}.5)`} strokeWidth="1" />
-      <Icon d={ICONS.lock} x={20} y={16} size={9} color={SKY} />
-      <text x="34" y="20" fontSize="9" fontWeight="700" fill={SKY}
-        fontFamily="Montserrat, sans-serif" letterSpacing=".5">CLOSED ROOM</text>
+    <svg viewBox={`0 0 300 ${Math.max(totalH, 260)}`} className="w-full max-w-[300px]" aria-hidden="true">
+      {/* ── INSIDE THE SESSION box ── */}
+      <rect x="0" y="0" width="300" height={insideBoxH} rx="12"
+        fill="rgba(61,180,208,.06)" stroke={`${SKY_SOFT}.35)`} strokeWidth="1.5" />
+
+      {/* Header */}
+      <Icon d={ICONS.lock} x={16} y={17} size={14} color={SKY} />
+      <text x="30" y="21" fontSize="9.5" fontWeight="700" fill={SKY}
+        fontFamily="Montserrat, sans-serif" letterSpacing="1">INSIDE THE SESSION</text>
+
       {/* Who's inside */}
       {insideWho.map((w, i) => (
         <g key={i}>
-          <circle cx={10 + i * 30} cy="42" r="10" fill={`${SKY_SOFT}.2)`} stroke={`${SKY_SOFT}.5)`} strokeWidth="1" />
-          <text x={10 + i * 30} y="46" fontSize="8" fontWeight="700" fill={SKY}
+          <circle cx={16 + i * 48} cy="48" r="13"
+            fill={`${SKY_SOFT}.22)`} stroke={`${SKY_SOFT}.55)`} strokeWidth="1.5" />
+          <text x={16 + i * 48} y="52" fontSize="9" fontWeight="700" fill={SKY}
             textAnchor="middle" fontFamily="Montserrat, sans-serif">{w.i}</text>
-          <text x={10 + i * 30} y="60" fontSize="8" fill={`${PANEL}.5)`}
-            textAnchor="middle" fontFamily="Montserrat, sans-serif">{w.label}</text>
+          <text x={28 + i * 48} y="52" fontSize="10" fill={`${PANEL}.65)`}
+            fontFamily="Montserrat, sans-serif">{w.label}</text>
         </g>
       ))}
-      {/* Inside items */}
-      {insideItems.map((item, i) => {
-        const y = 70 + i * 11;
+
+      {/* Inside item pill chips */}
+      {insideChips.map(({ x, y, label }) => (
+        <g key={label}>
+          <rect x={x} y={y} width={chipW(label)} height={chipH} rx={chipH / 2}
+            fill="rgba(255,255,255,.07)" stroke="rgba(207,230,238,.22)" strokeWidth="1" />
+          <text x={x + chipW(label) / 2} y={y + chipH / 2 + 4} fontSize={font}
+            fill={`${PANEL}.7)`} textAnchor="middle" fontFamily="Montserrat, sans-serif">{label}</text>
+        </g>
+      ))}
+
+      {/* ── Lock divider ── */}
+      <line x1="0" y1={lockY - 4} x2="135" y2={lockY - 4}
+        stroke="rgba(207,230,238,.1)" strokeWidth="1" />
+      <Icon d={ICONS.lock} x={150} y={lockY} size={16} color={`${PANEL}.3)`} />
+      <line x1="165" y1={lockY - 4} x2="300" y2={lockY - 4}
+        stroke="rgba(207,230,238,.1)" strokeWidth="1" />
+
+      {/* ── OUTSIDE box ── */}
+      <rect x="0" y={outsideBoxY} width="300" height={outsideBoxH} rx="12"
+        fill="rgba(255,255,255,.03)"
+        stroke="rgba(207,230,238,.18)" strokeWidth="1" strokeDasharray="5 4" />
+
+      <text x="10" y={outsideBoxY + 17} fontSize="9" fontWeight="700"
+        fill={`${PANEL}.5)`} fontFamily="Montserrat, sans-serif" letterSpacing="1">
+        {outsideLabel}
+      </text>
+
+      {/* Outside item pill chips */}
+      {outsideChips.map(({ x, y, label }) => {
+        const adjustedY = y - 192 + outsideBoxY + 24;
         return (
-          <g key={i}>
-            <circle cx="12" cy={y} r="2.5" fill={`${PANEL}.25)`} />
-            <text x="20" y={y + 4} fontSize="9" fill={`${PANEL}.6)`}
-              fontFamily="Montserrat, sans-serif">{item}</text>
-          </g>
-        );
-      })}
-      {/* Arrow out */}
-      <path d="M 210 58 L 230 58 M 226 54 L 230 58 L 226 62"
-        fill="none" stroke={`${PANEL}.2)`} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Outside box */}
-      <rect x="232" y="30" width="68" height="56" rx="8"
-        fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.1)" strokeWidth="1" />
-      <text x="266" y="50" fontSize="8" fill={`${PANEL}.4)`}
-        textAnchor="middle" fontFamily="Montserrat, sans-serif">What they</text>
-      <text x="266" y="61" fontSize="8" fill={`${PANEL}.4)`}
-        textAnchor="middle" fontFamily="Montserrat, sans-serif">receive</text>
-      {/* Outside items */}
-      <line x1="0" y1="126" x2="300" y2="126" stroke="rgba(207,230,238,.08)" strokeWidth="1" />
-      <text x="0" y="140" fontSize="8.5" fontWeight="600"
-        fill={`${PANEL}.45)`} fontFamily="Montserrat, sans-serif">{outsideLabel}</text>
-      {outsideItems.map((item, i) => {
-        const y = 153 + i * 14;
-        const ok = item !== "Nothing else";
-        return (
-          <g key={i}>
-            <circle cx="8" cy={y - 3} r="5"
-              fill={ok ? "rgba(47,122,82,.25)" : "rgba(255,255,255,.05)"}
-              stroke={ok ? "#2f7a52" : "rgba(255,255,255,.15)"} strokeWidth="1" />
-            <text x="8" y={y + 1} fontSize="8" fontWeight="700"
-              fill={ok ? "#2f7a52" : `${PANEL}.35)`}
-              textAnchor="middle" fontFamily="Montserrat, sans-serif">{ok ? "✓" : "—"}</text>
-            <text x="20" y={y + 1} fontSize="9" fill={`${PANEL}.65)`}
-              fontFamily="Montserrat, sans-serif">{item}</text>
+          <g key={label}>
+            <rect x={x} y={adjustedY} width={chipW(label)} height={chipH} rx={chipH / 2}
+              fill="rgba(255,255,255,.07)" stroke="rgba(207,230,238,.2)" strokeWidth="1" />
+            <text x={x + chipW(label) / 2} y={adjustedY + chipH / 2 + 4} fontSize={font}
+              fill={`${PANEL}.65)`} textAnchor="middle" fontFamily="Montserrat, sans-serif">{label}</text>
           </g>
         );
       })}

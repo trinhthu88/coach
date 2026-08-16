@@ -124,7 +124,7 @@ export default function CoachClients() {
         </Card>
       ) : (
         <div className="surface-card overflow-hidden p-0">
-          <div className="grid grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] gap-4 border-b border-border px-5 py-3 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="hidden grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] gap-4 border-b border-border px-5 py-3 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground md:grid">
             <span>Client</span>
             <span>Programme</span>
             <span>Progress</span>

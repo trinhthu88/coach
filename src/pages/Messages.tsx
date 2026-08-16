@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Mail } from "lucide-react";
+import { Loader2, Send, Mail, ChevronLeft } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -59,6 +59,9 @@ export default function Messages() {
   const [sessions, setSessions] = useState<SessionLite[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Below `lg` the thread list and the open conversation can't both fit on
+  // screen — this toggles which one is showing (both always show at `lg:` up).
+  const [mobileShowThread, setMobileShowThread] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -340,7 +343,7 @@ export default function Messages() {
         </Card>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-          <Card className="overflow-hidden p-0">
+          <Card className={cn("overflow-hidden p-0", mobileShowThread ? "hidden lg:block" : "block")}>
             <div className="border-b px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Threads
             </div>
@@ -356,7 +359,10 @@ export default function Messages() {
                 return (
                   <li key={t.counterpart_id}>
                     <button
-                      onClick={() => setActiveId(t.counterpart_id)}
+                      onClick={() => {
+                        setActiveId(t.counterpart_id);
+                        setMobileShowThread(true);
+                      }}
                       className={cn(
                         "flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/40",
                         isActive && "bg-primary-soft/60"
@@ -424,10 +430,18 @@ export default function Messages() {
             </ul>
           </Card>
 
-          <Card className="flex h-[60vh] flex-col p-0">
+          <Card className={cn("h-[60vh] flex-col p-0", mobileShowThread ? "flex" : "hidden lg:flex")}>
             {active ? (
               <>
                 <div className="border-b px-5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setMobileShowThread(false)}
+                    className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground lg:hidden"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    Threads
+                  </button>
                   <p className="text-sm font-semibold">{active.counterpart_name}</p>
                   <p className="text-xs text-muted-foreground">
                     {active.session_ids.length} session

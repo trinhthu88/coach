@@ -275,7 +275,11 @@ export function ClientDetailDialog({
                   <Card key={n.id} className="p-3">
                     <div className="flex items-start justify-between gap-2">
                       <p className="whitespace-pre-wrap text-sm">{n.body}</p>
-                      <button onClick={() => deleteNote(n.id)} className="text-muted-foreground hover:text-destructive">
+                      <button
+                        onClick={() => deleteNote(n.id)}
+                        className="-m-2 shrink-0 rounded-md p-2 text-muted-foreground hover:text-destructive"
+                        aria-label="Delete note"
+                      >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>

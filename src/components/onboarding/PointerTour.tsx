@@ -11,11 +11,16 @@ export function PointerTour({
   onFinish,
   onDismiss,
   onRestart,
+  onSetMobileNavOpen,
 }: {
   pointers: OnboardingPointer[];
   onFinish: () => void;
   onDismiss: () => void;
   onRestart: () => void;
+  /** Sidebar targets (data-onboarding="nav-…") live inside a Radix Sheet that's
+   * unmounted while closed on mobile — this opens/closes it so the target is
+   * actually in the DOM and visible to highlight. */
+  onSetMobileNavOpen?: (open: boolean) => void;
 }) {
   const [index, setIndex] = useState(0);
   const pointer = pointers[index];
@@ -23,12 +28,44 @@ export function PointerTour({
 
   useEffect(() => {
     if (!pointer.targetSelector) return;
-    const el = document.querySelector<HTMLElement>(pointer.targetSelector);
-    if (!el) return;
-    el.classList.add(HIGHLIGHT_CLASS);
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-    return () => el.classList.remove(HIGHLIGHT_CLASS);
-  }, [pointer.targetSelector]);
+    const selector = pointer.targetSelector;
+    const isNavTarget = selector.includes('[data-onboarding="nav-');
+    let autoOpened = false;
+    let retryId: number | undefined;
+
+    const visibleTarget = () =>
+      Array.from(document.querySelectorAll<HTMLElement>(selector)).find(
+        (el) => el.offsetParent !== null
+      ) ?? null;
+
+    const highlight = () => {
+      const el = visibleTarget();
+      if (!el) {
+        // The desktop rail keeps a hidden (display:none) copy of the same
+        // data-onboarding node on mobile, so querySelector alone would "find"
+        // it without it ever being visible — only the mobile drawer's copy is
+        // both mounted and visible there. Open the drawer and retry once.
+        if (isNavTarget && onSetMobileNavOpen && !autoOpened) {
+          autoOpened = true;
+          onSetMobileNavOpen(true);
+          retryId = window.setTimeout(highlight, 250);
+        }
+        return;
+      }
+      el.classList.add(HIGHLIGHT_CLASS);
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    highlight();
+
+    return () => {
+      if (retryId) window.clearTimeout(retryId);
+      document
+        .querySelectorAll<HTMLElement>(selector)
+        .forEach((el) => el.classList.remove(HIGHLIGHT_CLASS));
+      if (autoOpened && onSetMobileNavOpen) onSetMobileNavOpen(false);
+    };
+  }, [pointer.targetSelector, onSetMobileNavOpen]);
 
   return (
     <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">

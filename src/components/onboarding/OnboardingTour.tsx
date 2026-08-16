@@ -21,9 +21,11 @@ type Stage = "intro" | "pointer" | "done" | "closed";
 export function OnboardingTour({
   role,
   onClose,
+  onSetMobileNavOpen,
 }: {
   role: "coach" | "coachee" | "sponsor";
   onClose?: () => void;
+  onSetMobileNavOpen?: (open: boolean) => void;
 }) {
   const { user, refreshProfile } = useAuth();
   const [stage, setStage] = useState<Stage>("intro");
@@ -64,6 +66,7 @@ export function OnboardingTour({
         onFinish={finishPointerTour}
         onDismiss={dismissPointerTour}
         onRestart={restart}
+        onSetMobileNavOpen={onSetMobileNavOpen}
       />
     );
   }

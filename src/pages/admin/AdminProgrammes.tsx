@@ -231,7 +231,7 @@ export default function AdminProgrammes() {
               </div>
               <div className="rounded-lg border p-3">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session limits (default applied at enrollment)</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label className="text-[11px]">Coaching received — coachee</Label>
                     <Input type="number" min={0} value={editing.coachee_session_limit ?? 8} onChange={(e) => setEditing({ ...editing, coachee_session_limit: Number(e.target.value) })} />

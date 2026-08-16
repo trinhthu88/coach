@@ -136,8 +136,8 @@ export default function AdminCoachees() {
                   <td className="px-3 py-2.5 text-[11px]">{r.selected_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : `${r.selected_coaches.length} coach${r.selected_coaches.length === 1 ? "" : "es"}`}</td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
-                      <Button variant="ghost" size="sm" title="View profile" onClick={() => setViewing(r)}><Eye className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="sm" title="Edit" onClick={() => setEditing(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" title="View profile" onClick={() => setViewing(r)}><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" title="Edit" onClick={() => setEditing(r)}><Pencil className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>

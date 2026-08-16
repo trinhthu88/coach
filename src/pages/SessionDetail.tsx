@@ -431,7 +431,8 @@ export default function SessionDetail() {
                             <button
                               type="button"
                               onClick={() => removeItem(idx)}
-                              className="mt-2 text-muted-foreground transition-colors hover:text-destructive"
+                              className="-m-2 mt-0 shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:text-destructive"
+                              aria-label="Remove action item"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -521,7 +522,8 @@ export default function SessionDetail() {
                         <button
                           type="button"
                           onClick={() => removeAttachment(a)}
-                          className="text-muted-foreground transition-colors hover:text-destructive"
+                          className="-m-2 shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:text-destructive"
+                          aria-label="Remove attachment"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>

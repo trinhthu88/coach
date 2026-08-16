@@ -242,7 +242,7 @@ export default function AdminOrganizations() {
           <div className="space-y-3">
             <div><Label>Full name</Label><Input value={inviteForm.full_name} onChange={(e) => setInviteForm({ ...inviteForm, full_name: e.target.value })} /></div>
             <div><Label>Email</Label><Input type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div><Label>Title (optional)</Label><Input value={inviteForm.title} onChange={(e) => setInviteForm({ ...inviteForm, title: e.target.value })} /></div>
               <div><Label>Department (optional)</Label><Input value={inviteForm.department} onChange={(e) => setInviteForm({ ...inviteForm, department: e.target.value })} /></div>
             </div>

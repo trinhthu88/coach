@@ -87,7 +87,7 @@ export function StatCard({
           </span>
         )}
       </div>
-      <p className="font-display mt-3 text-[2.6rem] font-normal leading-none tracking-tight">{value}</p>
+      <p className="font-display mt-3 text-[clamp(1.9rem,7vw,2.6rem)] font-normal leading-none tracking-tight">{value}</p>
       {hint && <p className="mt-2.5 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );

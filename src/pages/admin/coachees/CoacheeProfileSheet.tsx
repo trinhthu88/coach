@@ -36,7 +36,7 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
             <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Profile information
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <ProfileField label="Job title" value={profileData?.job_title} />
               <ProfileField label="Industry" value={profileData?.industry} />
               <ProfileField label="Location" value={profileData?.location} />
@@ -59,7 +59,7 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
           </div>
 
           {/* Status + programme */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-lg border bg-muted/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</p>
               <p className="mt-1"><Pill tone={STATUS_TONE[row.status]}>{STATUS_LABEL[row.status]}</Pill></p>
@@ -68,7 +68,7 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
               <p className="mt-1 font-mono text-[13px]">{row.done}/{row.session_limit} <span className="text-muted-foreground">· booked {row.booked}</span></p>
             </div>
-            <div className="col-span-2 rounded-lg border bg-muted/20 p-3">
+            <div className="sm:col-span-2 rounded-lg border bg-muted/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Layers className="h-3 w-3" /> Programme</p>
               <p className="mt-1 text-[13px] font-semibold">{row.programme_name || "—"}</p>
               {row.cohort_name && <p className="text-[11px] text-muted-foreground">Cohort · {row.cohort_name}</p>}

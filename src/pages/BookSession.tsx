@@ -492,36 +492,38 @@ export default function BookSession() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <div className="grid flex-1 grid-cols-7 gap-2">
-                {week.map((d) => {
-                  const ds = dateKey(d);
-                  const has = datesWithSlots.has(ds);
-                  const isPast = d < startOfDay(new Date());
-                  const disabled = !has || isPast;
-                  const isSelected = selectedDate && dateKey(selectedDate) === ds;
-                  return (
-                    <button
-                      key={ds}
-                      type="button"
-                      aria-pressed={!!isSelected}
-                      disabled={disabled}
-                      onClick={() => setSelectedDate(d)}
-                      className={cn(
-                        "rounded-2xl border py-3 text-center transition-colors",
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground shadow-glow"
-                          : disabled
-                          ? "border-border bg-muted/30 text-muted-foreground/50"
-                          : "border-border bg-card hover:border-primary/40"
-                      )}
-                    >
-                      <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">
-                        {format(d, "EEE")}
-                      </div>
-                      <div className="text-xl font-semibold">{format(d, "d")}</div>
-                    </button>
-                  );
-                })}
+              <div className="flex-1 overflow-x-auto">
+                <div className="grid min-w-[360px] grid-cols-7 gap-2">
+                  {week.map((d) => {
+                    const ds = dateKey(d);
+                    const has = datesWithSlots.has(ds);
+                    const isPast = d < startOfDay(new Date());
+                    const disabled = !has || isPast;
+                    const isSelected = selectedDate && dateKey(selectedDate) === ds;
+                    return (
+                      <button
+                        key={ds}
+                        type="button"
+                        aria-pressed={!!isSelected}
+                        disabled={disabled}
+                        onClick={() => setSelectedDate(d)}
+                        className={cn(
+                          "rounded-2xl border py-3 text-center transition-colors",
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground shadow-glow"
+                            : disabled
+                            ? "border-border bg-muted/30 text-muted-foreground/50"
+                            : "border-border bg-card hover:border-primary/40"
+                        )}
+                      >
+                        <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">
+                          {format(d, "EEE")}
+                        </div>
+                        <div className="text-xl font-semibold">{format(d, "d")}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <Button
                 type="button"

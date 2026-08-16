@@ -68,7 +68,7 @@ export function CoacheeEditSheet({
           </SheetHeader>
           {editing && (
             <div className="mt-4 space-y-5">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div><Label>Full name</Label><Input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} /></div>
                 <div>
                   <Label>Status</Label>
@@ -81,7 +81,7 @@ export function CoacheeEditSheet({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <Label>Programme <span className="text-destructive">*</span></Label>
                   <Select

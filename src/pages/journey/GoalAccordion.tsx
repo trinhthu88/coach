@@ -159,15 +159,19 @@ export function GoalAccordion({
                 <li key={m.id} className="flex items-start gap-3">
                   <button
                     onClick={() => onToggle(m)}
-                    className={cn(
-                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
-                      status === "done" && "border-success bg-success text-success-foreground",
-                      status === "active" && "border-primary bg-primary/40",
-                      status === "todo" && "border-border bg-muted",
-                    )}
+                    className="-m-2 shrink-0 rounded-full p-2"
                     aria-label="Toggle milestone"
                   >
-                    {showCompletionMarks && m.is_done && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                    <span
+                      className={cn(
+                        "mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2",
+                        status === "done" && "border-success bg-success text-success-foreground",
+                        status === "active" && "border-primary bg-primary/40",
+                        status === "todo" && "border-border bg-muted",
+                      )}
+                    >
+                      {showCompletionMarks && m.is_done && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                    </span>
                   </button>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
@@ -175,7 +179,7 @@ export function GoalAccordion({
                         {m.is_done && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
                         <span>{m.title}</span>
                       </p>
-                      <button onClick={() => deleteMs(m.id)} className="text-muted-foreground hover:text-destructive">
+                      <button onClick={() => deleteMs(m.id)} className="-m-2 rounded-md p-2 text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>

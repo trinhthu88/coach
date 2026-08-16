@@ -81,7 +81,7 @@ export function WheelRadar({
   });
 
   return (
-    <div style={{ height }} className="w-full">
+    <div style={{ height: `clamp(240px, 68vw, ${height}px)` }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data} outerRadius="70%" margin={{ top: 16, right: 32, bottom: 16, left: 32 }}>
           <PolarGrid stroke="hsl(var(--border))" />

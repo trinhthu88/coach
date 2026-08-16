@@ -277,7 +277,7 @@ export default function AdminCoachProgrammes() {
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Session limits (blank = unlimited)
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label className="text-[11px]">Client coaching — given</Label>
                     <Input

@@ -252,10 +252,10 @@ export default function AdminAnalytics() {
                     const count = data.platform.dist[star - 1];
                     const pct = (count / totalRatings) * 100;
                     return (
-                      <div key={star} className="grid grid-cols-12 items-center gap-2">
-                        <span className="col-span-2 inline-flex items-center gap-1 text-[11px] font-medium"><Star className="h-3 w-3 fill-warning text-warning" /> {star}</span>
-                        <div className="col-span-8"><MiniBar pct={pct} tone={star >= 4 ? "success" : star === 3 ? "primary" : "warning"} /></div>
-                        <span className="col-span-2 text-right text-[11px] text-muted-foreground">{count}</span>
+                      <div key={star} className="flex flex-col gap-1 sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium sm:col-span-2"><Star className="h-3 w-3 fill-warning text-warning" /> {star}</span>
+                        <div className="sm:col-span-8"><MiniBar pct={pct} tone={star >= 4 ? "success" : star === 3 ? "primary" : "warning"} /></div>
+                        <span className="text-[11px] text-muted-foreground sm:col-span-2 sm:text-right">{count}</span>
                       </div>
                     );
                   })}
@@ -268,10 +268,10 @@ export default function AdminAnalytics() {
                   {COMPETENCY_LABELS.map(c => {
                     const v = data.compAvg[c.key] || 0;
                     return (
-                      <div key={c.key} className="grid grid-cols-12 items-center gap-2">
-                        <span className="col-span-6 text-[11px] text-muted-foreground">{c.label}</span>
-                        <div className="col-span-5"><MiniBar pct={v} tone={v >= 70 ? "success" : v >= 50 ? "primary" : "warning"} /></div>
-                        <span className="col-span-1 text-right text-[11px] font-semibold">{Math.round(v)}</span>
+                      <div key={c.key} className="flex flex-col gap-1 sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
+                        <span className="text-[11px] text-muted-foreground sm:col-span-6">{c.label}</span>
+                        <div className="sm:col-span-5"><MiniBar pct={v} tone={v >= 70 ? "success" : v >= 50 ? "primary" : "warning"} /></div>
+                        <span className="text-[11px] font-semibold sm:col-span-1 sm:text-right">{Math.round(v)}</span>
                       </div>
                     );
                   })}
@@ -307,11 +307,11 @@ export default function AdminAnalytics() {
             {data.coach.topCoaches.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No data yet.</p> : (
               <div className="divide-y">
                 {data.coach.topCoaches.map((c) => (
-                  <div key={c.id} className="grid grid-cols-12 items-center gap-2 py-2 text-[12px]">
-                    <span className="col-span-5 font-medium">{c.name}</span>
-                    <span className="col-span-3 text-muted-foreground">{c.coachees} coachees</span>
-                    <span className="col-span-2 text-muted-foreground">{c.delivered} sessions</span>
-                    <span className="col-span-2 text-right inline-flex items-center justify-end gap-1"><Star className="h-3 w-3 fill-warning text-warning" /> {c.rating.toFixed(1)}</span>
+                  <div key={c.id} className="flex flex-col gap-1 py-2 text-[12px] sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
+                    <span className="font-medium sm:col-span-5">{c.name}</span>
+                    <span className="text-muted-foreground sm:col-span-3">{c.coachees} coachees</span>
+                    <span className="text-muted-foreground sm:col-span-2">{c.delivered} sessions</span>
+                    <span className="inline-flex items-center gap-1 text-muted-foreground sm:col-span-2 sm:justify-end sm:text-right"><Star className="h-3 w-3 fill-warning text-warning" /> {c.rating.toFixed(1)}</span>
                   </div>
                 ))}
               </div>
@@ -329,12 +329,12 @@ export default function AdminAnalytics() {
             {data.peer.rows.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No peer-coaching coaches yet.</p> : (
               <div className="divide-y">
                 {data.peer.rows.map((r) => (
-                  <div key={r.id} className="grid grid-cols-12 items-center gap-2 py-2 text-[12px]">
-                    <span className="col-span-4 font-medium">{r.name}</span>
-                    <span className="col-span-2 text-muted-foreground">Given: {r.given}</span>
-                    <span className="col-span-2 text-muted-foreground">Received: {r.received}</span>
-                    <div className="col-span-3"><MiniBar pct={r.avgComp} tone={r.avgComp >= 70 ? "success" : r.avgComp >= 50 ? "primary" : "warning"} /></div>
-                    <span className="col-span-1 text-right">
+                  <div key={r.id} className="flex flex-col gap-1.5 py-2 text-[12px] sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
+                    <span className="font-medium sm:col-span-4">{r.name}</span>
+                    <span className="text-muted-foreground sm:col-span-2">Given: {r.given}</span>
+                    <span className="text-muted-foreground sm:col-span-2">Received: {r.received}</span>
+                    <div className="sm:col-span-3"><MiniBar pct={r.avgComp} tone={r.avgComp >= 70 ? "success" : r.avgComp >= 50 ? "primary" : "warning"} /></div>
+                    <span className="sm:col-span-1 sm:text-right">
                       <Pill tone={r.avgComp >= 70 ? "success" : r.avgComp >= 50 ? "primary" : "warning"}>{Math.round(r.avgComp)}</Pill>
                     </span>
                   </div>

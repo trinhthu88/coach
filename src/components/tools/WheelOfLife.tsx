@@ -216,7 +216,7 @@ export function WheelOfLife({
                   type="button"
                   onClick={() => remove(d.id)}
                   disabled={domains.length <= MIN_DOMAINS}
-                  className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive disabled:opacity-0 group-hover:opacity-100"
+                  className="text-muted-foreground opacity-60 transition-opacity hover:text-destructive disabled:opacity-0 sm:opacity-0 sm:hover:opacity-100 sm:group-hover:opacity-100 sm:disabled:opacity-0"
                   aria-label={`Remove ${d.label}`}
                 >
                   <X className="h-3.5 w-3.5" />

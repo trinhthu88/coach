@@ -17,16 +17,16 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans-ui">
       {/* NAV */}
-      <nav className="fixed inset-x-0 top-0 z-50 flex h-[68px] items-center justify-between border-b border-border bg-background/90 px-6 backdrop-blur-md sm:px-12">
-        <Link to="/" className="flex items-center gap-2.5">
-          <BrandMark className="h-7 w-7" />
-          <span className="text-[20px] font-bold tracking-tight text-secondary">Clariva</span>
+      <nav className="fixed inset-x-0 top-0 z-50 flex h-[68px] items-center justify-between gap-3 border-b border-border bg-background/90 px-4 backdrop-blur-md sm:px-12">
+        <Link to="/" className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5">
+          <BrandMark className="h-7 w-7 shrink-0" />
+          <span className="truncate text-[17px] font-bold tracking-tight text-secondary sm:text-[20px]">Clariva</span>
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {user ? (
             <Link
               to="/dashboard"
-              className="rounded-full bg-primary px-5 py-2.5 text-[13px] font-bold tracking-wide text-primary-foreground transition-colors hover:bg-secondary"
+              className="whitespace-nowrap rounded-full bg-primary px-3.5 py-2 text-[12px] font-bold tracking-wide text-primary-foreground transition-colors hover:bg-secondary sm:px-5 sm:py-2.5 sm:text-[13px]"
             >
               Open dashboard
             </Link>
@@ -34,15 +34,16 @@ export default function Index() {
             <>
               <Link
                 to="/auth"
-                className="rounded-full border-[1.5px] border-border px-5 py-2.5 text-[13px] font-semibold text-secondary transition-colors hover:border-primary hover:text-primary"
+                className="whitespace-nowrap rounded-full border-[1.5px] border-border px-3.5 py-2 text-[12px] font-semibold text-secondary transition-colors hover:border-primary hover:text-primary sm:px-5 sm:py-2.5 sm:text-[13px]"
               >
                 Sign in
               </Link>
               <Link
                 to="/request-access"
-                className="rounded-full bg-primary px-5 py-2.5 text-[13px] font-bold tracking-wide text-primary-foreground transition-colors hover:bg-secondary"
+                className="whitespace-nowrap rounded-full bg-primary px-3.5 py-2 text-[12px] font-bold tracking-wide text-primary-foreground transition-colors hover:bg-secondary sm:px-5 sm:py-2.5 sm:text-[13px]"
               >
-                Request access
+                <span className="sm:hidden">Request</span>
+                <span className="hidden sm:inline">Request access</span>
               </Link>
             </>
           )}
