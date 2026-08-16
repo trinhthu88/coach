@@ -151,7 +151,7 @@ export function CoachDashboardView({ userId }: { userId: string }) {
 
       <section className="grid gap-5 lg:grid-cols-3">
         {/* Next session */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2" data-onboarding="dashboard-next-session">
           <NextSessionCard
             session={
               nextSession
@@ -212,7 +212,7 @@ export function CoachDashboardView({ userId }: { userId: string }) {
       </section>
 
       {/* Booking requests */}
-      <section>
+      <section data-onboarding="dashboard-booking-requests">
         <Card className="p-5">
           <div className="mb-4 flex items-center justify-between">
             <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">

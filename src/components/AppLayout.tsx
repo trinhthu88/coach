@@ -26,12 +26,14 @@ import {
   Building2,
   FileDown,
   UserCog,
+  HelpCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import clarivaLogoDark from "@/assets/clariva-logo-dark.png";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 
 interface NavItem {
   to: string;
@@ -39,6 +41,8 @@ interface NavItem {
   icon: React.ElementType;
   roles: AppRole[];
   group?: string;
+  /** Stable hook for the onboarding pointer tour — see src/lib/onboarding/content.ts. */
+  onboardingId?: string;
 }
 
 const NAV: NavItem[] = [
@@ -48,13 +52,13 @@ const NAV: NavItem[] = [
   { to: "/sponsor/report", label: "Export report", icon: FileDown, roles: ["sponsor"], group: "Sponsor" },
 
   // Coachee
-  { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee"] },
+  { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches" },
   { to: "/coachee/profile", label: "My profile", icon: IdCard, roles: ["coachee"] },
   { to: "/coachee/journey", label: "My journey", icon: Compass, roles: ["coachee"] },
 
   // Coach — My Coaching Profile
   { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"], group: "My Coaching Profile" },
-  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"], group: "My Coaching Profile" },
+  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"], group: "My Coaching Profile", onboardingId: "nav-my-availability" },
   { to: "/coach/clients", label: "My clients", icon: UsersRound, roles: ["coach"], group: "My Coaching Profile" },
 
   // Coach — My Practice Journey
@@ -92,11 +96,13 @@ function SidebarNav({
   collapsed,
   unreadCount,
   onNavigate,
+  onHowItWorks,
 }: {
   items: NavItem[];
   collapsed: boolean;
   unreadCount: number;
   onNavigate?: () => void;
+  onHowItWorks?: () => void;
 }) {
   const location = useLocation();
   let lastGroup: string | undefined = undefined;
@@ -121,6 +127,7 @@ function SidebarNav({
               title={collapsed ? item.label : undefined}
               onClick={onNavigate}
               aria-current={isCurrent ? "page" : undefined}
+              data-onboarding={item.onboardingId}
               className={({ isActive }) =>
                 cn(
                   "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200",
@@ -158,6 +165,22 @@ function SidebarNav({
           </div>
         );
       })}
+      {onHowItWorks && (
+        <button
+          type="button"
+          title={collapsed ? "How it works" : undefined}
+          onClick={() => {
+            onHowItWorks();
+            onNavigate?.();
+          }}
+          className="group relative mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-secondary-foreground/75 transition-all duration-200 hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white"
+        >
+          <span className="relative shrink-0 opacity-90">
+            <HelpCircle className="h-5 w-5" />
+          </span>
+          {!collapsed && <span className="truncate tracking-[-0.005em]">How it works</span>}
+        </button>
+      )}
     </nav>
   );
 }
@@ -206,6 +229,36 @@ export default function AppLayout() {
   const location = useLocation();
 
   const items = NAV.filter((n) => role && n.roles.includes(role));
+  const showsOnboarding = role === "coach" || role === "coachee";
+
+  const [manualTourOpen, setManualTourOpen] = useState(false);
+  // Bumped on every "How it works" click so a re-open always starts a fresh
+  // OnboardingTour instance (back at the intro) instead of resuming wherever the
+  // previous run left off.
+  const [manualTourKey, setManualTourKey] = useState(0);
+  const openManualTour = () => {
+    setManualTourKey((k) => k + 1);
+    setManualTourOpen(true);
+  };
+
+  // Decided once, the first time `profile` actually arrives — not at AppLayout's
+  // own mount. On an interactive login (as opposed to a cold page load),
+  // ProtectedRoute's isLoading gate has already resolved (it only guards the
+  // initial getSession() check), so AppLayout can mount with profile/role still
+  // null while AuthContext's deferred post-login fetch is in flight. A one-shot
+  // `useState(() => …)` initializer would capture that transient null and lock
+  // in `false` forever. Locking via a ref instead of re-deriving on every render
+  // is still required after that: marking onboarding complete mid-tour updates
+  // profile via refreshProfile(), and re-deriving against that live value would
+  // unmount the tour out from under itself before its "done" stage ever renders.
+  const [autoTourEligible, setAutoTourEligible] = useState(false);
+  const autoTourDecidedRef = useRef(false);
+  useEffect(() => {
+    if (autoTourDecidedRef.current || !profile) return;
+    autoTourDecidedRef.current = true;
+    setAutoTourEligible(showsOnboarding && !profile.onboarding_completed_at);
+  }, [profile, showsOnboarding]);
+
   const displayName = profile?.full_name || user?.email || "User";
   const initials = displayName
     .split(" ")
@@ -299,7 +352,12 @@ export default function AppLayout() {
           </button>
         </div>
 
-        <SidebarNav items={items} collapsed={collapsed} unreadCount={unreadCount} />
+        <SidebarNav
+          items={items}
+          collapsed={collapsed}
+          unreadCount={unreadCount}
+          onHowItWorks={showsOnboarding ? openManualTour : undefined}
+        />
         <SidebarFooter role={role} collapsed={collapsed} onSignOut={handleSignOut} />
       </aside>
 
@@ -318,6 +376,7 @@ export default function AppLayout() {
             collapsed={false}
             unreadCount={unreadCount}
             onNavigate={() => setMobileNavOpen(false)}
+            onHowItWorks={showsOnboarding ? openManualTour : undefined}
           />
           <SidebarFooter
             role={role}
@@ -401,6 +460,15 @@ export default function AppLayout() {
           </div>
         </div>
       </main>
+
+      {showsOnboarding && autoTourEligible && <OnboardingTour role={role as "coach" | "coachee"} />}
+      {showsOnboarding && manualTourOpen && (
+        <OnboardingTour
+          key={manualTourKey}
+          role={role as "coach" | "coachee"}
+          onClose={() => setManualTourOpen(false)}
+        />
+      )}
     </div>
   );
 }

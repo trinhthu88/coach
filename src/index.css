@@ -166,6 +166,17 @@
     font-weight: 600;
     color: hsl(var(--primary));
   }
+
+  /* Onboarding pointer tour: highlight ring around the DOM element a pointer step
+     targets. Applied/removed imperatively via classList in PointerTour.tsx since
+     the target lives outside React's ownership of that node. */
+  .onboarding-highlight {
+    position: relative;
+    z-index: 45;
+    border-radius: 0.75rem;
+    box-shadow: 0 0 0 3px hsl(var(--accent) / 0.85), 0 0 0 8px hsl(var(--accent) / 0.2);
+    transition: box-shadow 0.2s ease;
+  }
 }
 
 @layer utilities {

@@ -68,7 +68,9 @@ export function CoacheeDashboardView() {
       </div>
 
       {/* Next session hero */}
-      <NextSessionHero session={nextSession} coach={nextCoach} programmePct={programmePct} />
+      <div data-onboarding="dashboard-next-session">
+        <NextSessionHero session={nextSession} coach={nextCoach} programmePct={programmePct} />
+      </div>
 
       {/* Stats */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -99,7 +101,7 @@ export function CoacheeDashboardView() {
       </section>
 
       {/* Recent sessions log + Action items */}
-      <section className="grid gap-5 lg:grid-cols-2">
+      <section className="grid gap-5 lg:grid-cols-2" data-onboarding="dashboard-session-log">
         <RecentSessionsLog sessions={sessions} coachesById={coachesById} />
         <ActionItemsPanel sessions={sessions} coachesById={coachesById} />
       </section>
