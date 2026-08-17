@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 
+import "@/i18n/config";
+
 // Mock the supabase client so nothing hits the network.
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {

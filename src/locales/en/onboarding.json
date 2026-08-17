@@ -1,4 +1,104 @@
 {
+  "chrome": {
+    "restart": "Restart",
+    "dismiss": "Dismiss",
+    "gotIt": "Got it",
+    "next": "Next",
+    "doneToast": {
+      "title": "Onboarding complete.",
+      "description": "You can replay this anytime from \"How it works\" in the sidebar.",
+      "replayAltText": "Replay onboarding tour",
+      "replay": "Replay"
+    }
+  },
+  "carousel": {
+    "roleLabel": { "coachee": "Coachee", "coach": "Coach", "sponsor": "Sponsor" },
+    "continue": "Continue",
+    "takeMeIn": "Take me in →",
+    "back": "Back",
+    "skipIntro": "Skip intro",
+    "journey": { "session1": "Session 1", "ongoing": "Ongoing" },
+    "goals": {
+      "hardConversations": "Hard conversations",
+      "delegateReport": "Delegate the report",
+      "protectDeepWork": "Protect deep work"
+    },
+    "match": {
+      "filtersCoach": ["LEADERSHIP", "TRANSITION", "EN / VN", "ICF PCC"],
+      "filtersCoachee": ["HARD CONV.", "DELEGATION", "VIETNAMESE", "THIS MONTH"],
+      "matchLabel": "MATCH"
+    },
+    "calendar": {
+      "days": ["MON", "TUE", "WED", "THU", "FRI"],
+      "open": "Open",
+      "booked": "Booked"
+    },
+    "privacy": {
+      "insideHeader": "INSIDE THE SESSION",
+      "you": "You",
+      "yourCoach": "Your coach",
+      "eachLeader": "Each leader",
+      "theirCoach": "Their coach",
+      "sessionNotes": "Session notes",
+      "recordings": "Recordings",
+      "goalWording": "Goal wording",
+      "everythingSaid": "Everything said",
+      "outsideHeaderCoachee": "WHAT LEAVES THE ROOM",
+      "outsideHeaderSponsor": "WHAT YOUR ACCOUNT RECEIVES",
+      "outsideHeaderCoach": "WHAT THE ORGANISATION RECEIVES",
+      "summaryShared": "A summary you choose to share",
+      "nothingElse": "Nothing else",
+      "attendance": "Attendance",
+      "sessionsUsed": "Sessions used",
+      "avgGoalGrowth": "Average goal growth"
+    },
+    "growth": { "goals": "Goals", "avgGrowth": "Avg growth", "sessions": "Sessions" },
+    "cohort": {
+      "header": "OPS DIRECTORS Q3",
+      "onTrack": "On track · 9",
+      "atRisk": "At risk · 2",
+      "notEnrolled": "Not enrolled · 1"
+    },
+    "report": {
+      "header": "CLARIVA SPONSOR SUMMARY",
+      "period": "Q3 2026",
+      "onTrackRate": "On-track rate",
+      "sessionsUsed": "Sessions used",
+      "avgGoalGrowth": "Avg goal growth",
+      "sessionNotes": "Session notes",
+      "goalWording": "Goal wording",
+      "withheld": "withheld"
+    },
+    "stateLabel": {
+      "step 1": "STEP 1", "step 2": "STEP 2", "live": "LIVE", "locked": "LOCKED",
+      "at risk": "AT RISK", "ok": "OK", "opt in": "OPT IN", "open": "OPEN",
+      "record": "RECORD", "review": "REVIEW", "book": "BOOK", "nudge": "NUDGE"
+    },
+    "practice": {
+      "coachProfile": { "label": "My coach profile", "note": "Specialties, bio, accreditation" },
+      "availability": { "label": "My availability", "note": "Weekly windows and buffers" },
+      "clients": { "label": "My clients", "note": "9 active across 3 programmes" },
+      "sessionsNotes": { "label": "Sessions & notes", "note": "Private to each pair" }
+    },
+    "peer": {
+      "give": { "label": "Peer coaching · give", "note": "You coach another accredited coach" },
+      "receive": { "label": "Peer coaching · receive", "note": "A peer coaches you" },
+      "findCoach": { "label": "Find a coach", "note": "Book a coach for yourself" },
+      "analytics": { "label": "Practice analytics", "note": "Hours, peer sessions, reflections" }
+    },
+    "clientsSponsor": {
+      "leader07": { "label": "Leader 07", "note": "No session in 5 weeks" },
+      "leader11": { "label": "Leader 11", "note": "Invitation sent 4 June" },
+      "leader04": { "label": "Leader 04", "note": "On track · ratings moving" },
+      "leader02": { "label": "Leader 02", "note": "On track · 3 of 6 sessions" }
+    },
+    "clientsDefault": {
+      "trang": { "note": "No session booked in 5 weeks" },
+      "duc": { "note": "Goal ratings flat since June" },
+      "lan": { "note": "On track · session 2 of 6" },
+      "hanh": { "note": "Final session unscheduled" }
+    }
+  },
   "coachee": {
     "steps": {
       "welcome": {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -30,16 +31,17 @@ interface Row {
 }
 
 const WEEKDAYS = [
-  { v: 1, label: "Mon" },
-  { v: 2, label: "Tue" },
-  { v: 3, label: "Wed" },
-  { v: 4, label: "Thu" },
-  { v: 5, label: "Fri" },
-  { v: 6, label: "Sat" },
-  { v: 0, label: "Sun" },
-];
+  { v: 1, key: "mon" },
+  { v: 2, key: "tue" },
+  { v: 3, key: "wed" },
+  { v: 4, key: "thu" },
+  { v: 5, key: "fri" },
+  { v: 6, key: "sat" },
+  { v: 0, key: "sun" },
+] as const;
 
 export default function BulkAvailabilityDialog({ open, onOpenChange, onCreated }: Props) {
+  const { t } = useTranslation("common");
   const { user } = useAuth();
   const [weeks, setWeeks] = useState(4);
   const [startDate, setStartDate] = useState(
@@ -58,9 +60,9 @@ export default function BulkAvailabilityDialog({ open, onOpenChange, onCreated }
 
   const submit = async () => {
     if (!user) return;
-    if (!rows.length) return toast.error("Add at least one slot template.");
+    if (!rows.length) return toast.error(t("bulkAvailabilityDialog.toast.addAtLeastOneSlot"));
     for (const r of rows) {
-      if (r.start >= r.end) return toast.error("Each slot end must be after start.");
+      if (r.start >= r.end) return toast.error(t("bulkAvailabilityDialog.toast.endAfterStart"));
     }
     setSubmitting(true);
     const { data, error } = await supabase.rpc("bulk_create_availability", {
@@ -71,7 +73,7 @@ export default function BulkAvailabilityDialog({ open, onOpenChange, onCreated }
     });
     setSubmitting(false);
     if (error) return toast.error(error.message);
-    toast.success(`Created ${data} slots across ${weeks} week${weeks > 1 ? "s" : ""}`);
+    toast.success(t("bulkAvailabilityDialog.toast.created", { count: weeks, slots: data }));
     onOpenChange(false);
     onCreated?.();
   };
@@ -80,16 +82,15 @@ export default function BulkAvailabilityDialog({ open, onOpenChange, onCreated }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Set weekly template</DialogTitle>
+          <DialogTitle>{t("bulkAvailabilityDialog.title")}</DialogTitle>
           <DialogDescription>
-            Define your typical week and apply it for several weeks at once. You can still add,
-            edit, or remove individual slots afterwards.
+            {t("bulkAvailabilityDialog.description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Starting from week of</Label>
+            <Label>{t("bulkAvailabilityDialog.startingFromWeekOf")}</Label>
             <Input
               type="date"
               value={startDate}
@@ -98,7 +99,7 @@ export default function BulkAvailabilityDialog({ open, onOpenChange, onCreated }
             />
           </div>
           <div>
-            <Label>Apply for (weeks)</Label>
+            <Label>{t("bulkAvailabilityDialog.applyForWeeks")}</Label>
             <Input
               type="number"
               min={1}
@@ -112,9 +113,9 @@ export default function BulkAvailabilityDialog({ open, onOpenChange, onCreated }
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Recurring slots</Label>
+            <Label>{t("bulkAvailabilityDialog.recurringSlots")}</Label>
             <Button type="button" variant="outline" size="sm" onClick={addRow}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Add slot
+              <Plus className="mr-1 h-3.5 w-3.5" /> {t("bulkAvailabilityDialog.addSlot")}
             </Button>
           </div>
           <div className="space-y-2">
@@ -133,7 +134,7 @@ export default function BulkAvailabilityDialog({ open, onOpenChange, onCreated }
                           : "border-border bg-card hover:border-primary/40"
                       )}
                     >
-                      {w.label}
+                      {t(`bulkAvailabilityDialog.weekdays.${w.key}`)}
                     </button>
                   ))}
                 </div>
@@ -166,11 +167,11 @@ export default function BulkAvailabilityDialog({ open, onOpenChange, onCreated }
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("bulkAvailabilityDialog.cancel")}
           </Button>
           <Button onClick={submit} disabled={submitting}>
             {submitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            Apply template
+            {t("bulkAvailabilityDialog.applyTemplate")}
           </Button>
         </DialogFooter>
       </DialogContent>

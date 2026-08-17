@@ -11,6 +11,78 @@
   "comingSoon": {
     "defaultDescription": "We're putting the finishing touches on this section. It will arrive in the next phase."
   },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "body": "An unexpected error occurred. Try reloading the page — if it keeps happening, contact contact@clariva.club.",
+    "reload": "Reload page"
+  },
+  "protectedRoute": {
+    "loading": "Loading platform…"
+  },
+  "pendingAccessRequests": {
+    "awaiting_one": "{{count}} access request awaiting approval",
+    "awaiting_other": "{{count}} access requests awaiting approval",
+    "tableHeaders": {
+      "name": "Name",
+      "email": "Email",
+      "credential": "Credential",
+      "jobCompany": "Job · Company",
+      "industry": "Industry",
+      "submitted": "Submitted",
+      "actions": "Actions"
+    },
+    "viewDetails": "View details",
+    "reject": "Reject",
+    "approve": "Approve",
+    "toast": {
+      "accountCreatedEmailed": "Account created — login link emailed",
+      "accountCreated": "Account created",
+      "approvalFailed": "Approval failed",
+      "requestRejected": "Request rejected",
+      "rejectFailed": "Failed",
+      "loginLinkResent": "Login link re-sent",
+      "approvedEmailFailed": "Approved, but the email failed to send",
+      "resendFailed": "Resend failed",
+      "copied": "Copied"
+    },
+    "confirmReject": "Reject access request from {{name}}?",
+    "detailsDialog": {
+      "role": "Role",
+      "jobTitle": "Job title",
+      "company": "Company",
+      "industry": "Industry",
+      "credential": "Professional credential",
+      "linkedin": "LinkedIn",
+      "motivation": "Motivation",
+      "close": "Close"
+    },
+    "approvedDialog": {
+      "title": "Account created for {{name}}",
+      "emailedDescription": "A one-click login link was emailed to them — no password needed.",
+      "notEmailedDescription": "The account was created, but the login-link email failed to send. Use resend below or ask them to use Forgot Password.",
+      "emailLabel": "Email",
+      "deliveryFailed": "Email delivery failed. Try resending, or check the Resend dashboard for details.",
+      "resendLoginLink": "Resend login link",
+      "done": "Done"
+    }
+  },
+  "bulkAvailabilityDialog": {
+    "title": "Set weekly template",
+    "description": "Define your typical week and apply it for several weeks at once. You can still add, edit, or remove individual slots afterwards.",
+    "startingFromWeekOf": "Starting from week of",
+    "applyForWeeks": "Apply for (weeks)",
+    "recurringSlots": "Recurring slots",
+    "addSlot": "Add slot",
+    "weekdays": { "mon": "Mon", "tue": "Tue", "wed": "Wed", "thu": "Thu", "fri": "Fri", "sat": "Sat", "sun": "Sun" },
+    "cancel": "Cancel",
+    "applyTemplate": "Apply template",
+    "toast": {
+      "addAtLeastOneSlot": "Add at least one slot template.",
+      "endAfterStart": "Each slot end must be after start.",
+      "created_one": "Created {{slots}} slots across {{count}} week",
+      "created_other": "Created {{slots}} slots across {{count}} weeks"
+    }
+  },
   "nav": {
     "dashboard": "Dashboard",
     "cohorts": "Cohorts",

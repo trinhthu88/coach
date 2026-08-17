@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronRight, RotateCcw, X } from "lucide-react";
@@ -22,6 +23,7 @@ export function PointerTour({
    * actually in the DOM and visible to highlight. */
   onSetMobileNavOpen?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation("onboarding");
   const [index, setIndex] = useState(0);
   const pointer = pointers[index];
   const isLast = index === pointers.length - 1;
@@ -121,7 +123,7 @@ export function PointerTour({
               className="gap-1.5 text-secondary-foreground/50 hover:bg-white/10 hover:text-secondary-foreground"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Restart
+              {t("chrome.restart")}
             </Button>
             <div className="flex items-center gap-3">
               <button
@@ -130,14 +132,14 @@ export function PointerTour({
                 className="flex items-center gap-1 text-xs text-secondary-foreground/40 transition-colors hover:text-secondary-foreground/70"
               >
                 <X className="h-3 w-3" />
-                Dismiss
+                {t("chrome.dismiss")}
               </button>
               <Button
                 size="sm"
                 className="gap-1.5 bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
                 onClick={() => (isLast ? onFinish() : setIndex((i) => i + 1))}
               >
-                {isLast ? "Got it" : "Next"}
+                {isLast ? t("chrome.gotIt") : t("chrome.next")}
                 {!isLast && <ChevronRight className="h-3.5 w-3.5" />}
               </Button>
             </div>

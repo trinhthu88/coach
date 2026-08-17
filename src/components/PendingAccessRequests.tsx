@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function PendingAccessRequests({ variant, onApproved }: Props) {
+  const { t } = useTranslation("common");
   const [rows, setRows] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -72,18 +74,18 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
         request_id: req.id,
         email_sent: !!result.email_sent,
       });
-      toast.success(result.email_sent ? "Account created — login link emailed" : "Account created");
+      toast.success(result.email_sent ? t("pendingAccessRequests.toast.accountCreatedEmailed") : t("pendingAccessRequests.toast.accountCreated"));
       await load();
       onApproved?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Approval failed");
+      toast.error(err instanceof Error ? err.message : t("pendingAccessRequests.toast.approvalFailed"));
     } finally {
       setBusyId(null);
     }
   };
 
   const reject = async (req: AccessRequest) => {
-    if (!confirm(`Reject access request from ${req.full_name}?`)) return;
+    if (!confirm(t("pendingAccessRequests.confirmReject", { name: req.full_name }))) return;
     setBusyId(req.id);
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -96,10 +98,10 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
         })
         .eq("id", req.id);
       if (error) throw error;
-      toast.success("Request rejected");
+      toast.success(t("pendingAccessRequests.toast.requestRejected"));
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
+      toast.error(err instanceof Error ? err.message : t("pendingAccessRequests.toast.rejectFailed"));
     } finally {
       setBusyId(null);
     }
@@ -117,10 +119,10 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       const result = data as { error?: string; email?: string; email_sent?: boolean };
       if (result?.error) throw new Error(result.error);
       setApproved((current) => current ? { ...current, email_sent: !!result.email_sent } : current);
-      toast.success(result.email_sent ? "Login link re-sent" : "Approved, but the email failed to send");
+      toast.success(result.email_sent ? t("pendingAccessRequests.toast.loginLinkResent") : t("pendingAccessRequests.toast.approvedEmailFailed"));
       onApproved?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Resend failed");
+      toast.error(err instanceof Error ? err.message : t("pendingAccessRequests.toast.resendFailed"));
     } finally {
       setBusyId(null);
     }
@@ -142,7 +144,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
             <div className="flex items-center gap-2">
               <Inbox className="h-4 w-4 text-warning" />
               <p className="text-[11px] font-bold uppercase tracking-widest text-warning">
-                {rows.length} access request{rows.length === 1 ? "" : "s"} awaiting approval
+                {t("pendingAccessRequests.awaiting", { count: rows.length })}
               </p>
             </div>
           </div>
@@ -150,12 +152,12 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
             <table className="w-full text-[12px]">
               <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2.5 text-left font-semibold">Name</th>
-                  <th className="px-3 py-2.5 text-left font-semibold">Email</th>
-                  <th className="px-3 py-2.5 text-left font-semibold">{variant === "coach" ? "Credential" : "Job · Company"}</th>
-                  <th className="px-3 py-2.5 text-left font-semibold">Industry</th>
-                  <th className="px-3 py-2.5 text-left font-semibold">Submitted</th>
-                  <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">{t("pendingAccessRequests.tableHeaders.name")}</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">{t("pendingAccessRequests.tableHeaders.email")}</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">{variant === "coach" ? t("pendingAccessRequests.tableHeaders.credential") : t("pendingAccessRequests.tableHeaders.jobCompany")}</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">{t("pendingAccessRequests.tableHeaders.industry")}</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">{t("pendingAccessRequests.tableHeaders.submitted")}</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">{t("pendingAccessRequests.tableHeaders.actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -174,7 +176,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
                     </td>
                     <td className="px-3 py-2.5 text-right">
                       <div className="inline-flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => setViewing(r)} title="View details">
+                        <Button variant="ghost" size="sm" onClick={() => setViewing(r)} title={t("pendingAccessRequests.viewDetails")}>
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
                         <Button
@@ -182,7 +184,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
                           onClick={() => reject(r)}
                           disabled={busyId === r.id}
                         >
-                          <X className="h-3.5 w-3.5" /> Reject
+                          <X className="h-3.5 w-3.5" /> {t("pendingAccessRequests.reject")}
                         </Button>
                         <Button
                           size="sm"
@@ -190,7 +192,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
                           disabled={busyId === r.id}
                         >
                           {busyId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                          Approve
+                          {t("pendingAccessRequests.approve")}
                         </Button>
                       </div>
                     </td>
@@ -211,13 +213,13 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
           </DialogHeader>
           {viewing && (
             <div className="space-y-3 text-sm">
-              <Field label="Role"><Pill tone="primary">{viewing.role}</Pill></Field>
-              {viewing.job_title && <Field label="Job title">{viewing.job_title}</Field>}
-              {viewing.company && <Field label="Company">{viewing.company}</Field>}
-              {viewing.industry && <Field label="Industry">{viewing.industry}</Field>}
-              {viewing.credential && <Field label="Professional credential">{viewing.credential}</Field>}
+              <Field label={t("pendingAccessRequests.detailsDialog.role")}><Pill tone="primary">{viewing.role}</Pill></Field>
+              {viewing.job_title && <Field label={t("pendingAccessRequests.detailsDialog.jobTitle")}>{viewing.job_title}</Field>}
+              {viewing.company && <Field label={t("pendingAccessRequests.detailsDialog.company")}>{viewing.company}</Field>}
+              {viewing.industry && <Field label={t("pendingAccessRequests.detailsDialog.industry")}>{viewing.industry}</Field>}
+              {viewing.credential && <Field label={t("pendingAccessRequests.detailsDialog.credential")}>{viewing.credential}</Field>}
               {viewing.linkedin_url && (
-                <Field label="LinkedIn">
+                <Field label={t("pendingAccessRequests.detailsDialog.linkedin")}>
                   <a href={viewing.linkedin_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
                     {viewing.linkedin_url}
                   </a>
@@ -225,17 +227,17 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
               )}
               {viewing.motivation && (
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Motivation</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("pendingAccessRequests.detailsDialog.motivation")}</p>
                   <p className="mt-1 whitespace-pre-wrap">{viewing.motivation}</p>
                 </div>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setViewing(null)}>Close</Button>
+            <Button variant="outline" onClick={() => setViewing(null)}>{t("pendingAccessRequests.detailsDialog.close")}</Button>
             {viewing && (
               <Button onClick={() => { const r = viewing; setViewing(null); approve(r); }}>
-                <Check className="h-4 w-4" /> Approve
+                <Check className="h-4 w-4" /> {t("pendingAccessRequests.approve")}
               </Button>
             )}
           </DialogFooter>
@@ -246,19 +248,19 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       <Dialog open={!!approved} onOpenChange={(o) => !o && setApproved(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Account created for {approved?.full_name}</DialogTitle>
+            <DialogTitle>{t("pendingAccessRequests.approvedDialog.title", { name: approved?.full_name })}</DialogTitle>
             <DialogDescription>
               {approved?.email_sent
-                ? "A one-click login link was emailed to them — no password needed."
-                : "The account was created, but the login-link email failed to send. Use resend below or ask them to use Forgot Password."}
+                ? t("pendingAccessRequests.approvedDialog.emailedDescription")
+                : t("pendingAccessRequests.approvedDialog.notEmailedDescription")}
             </DialogDescription>
           </DialogHeader>
           {approved && (
             <div className="space-y-3 text-sm">
-              <CopyRow label="Email" value={approved.email} />
+              <CopyRow label={t("pendingAccessRequests.approvedDialog.emailLabel")} value={approved.email} copiedLabel={t("pendingAccessRequests.toast.copied")} />
               {!approved.email_sent && (
                 <p className="rounded-lg bg-warning/10 p-3 text-[11px] text-warning">
-                  Email delivery failed. Try resending, or check the Resend dashboard for details.
+                  {t("pendingAccessRequests.approvedDialog.deliveryFailed")}
                 </p>
               )}
             </div>
@@ -266,9 +268,9 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
           <DialogFooter>
             <Button variant="outline" onClick={resendMagicLink} disabled={busyId === `resend-${approved?.request_id}`}>
               {busyId === `resend-${approved?.request_id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-              Resend login link
+              {t("pendingAccessRequests.approvedDialog.resendLoginLink")}
             </Button>
-            <Button onClick={() => setApproved(null)}>Done</Button>
+            <Button onClick={() => setApproved(null)}>{t("pendingAccessRequests.approvedDialog.done")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -285,7 +287,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function CopyRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function CopyRow({ label, value, mono, copiedLabel }: { label: string; value: string; mono?: boolean; copiedLabel: string }) {
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
@@ -293,7 +295,7 @@ function CopyRow({ label, value, mono }: { label: string; value: string; mono?: 
         <code className={mono ? "flex-1 font-mono text-[13px]" : "flex-1 text-[13px]"}>{value}</code>
         <Button
           size="sm" variant="ghost"
-          onClick={() => { navigator.clipboard.writeText(value); toast.success("Copied"); }}
+          onClick={() => { navigator.clipboard.writeText(value); toast.success(copiedLabel); }}
         >
           <Copy className="h-3.5 w-3.5" />
         </Button>

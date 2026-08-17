@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth, AppRole } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import clarivaLogo from "@/assets/clariva-logo.png";
@@ -12,6 +13,7 @@ interface Props {
 export function ProtectedRoute({ children, role: requiredRole }: Props) {
   const { user, role, profile, isLoading } = useAuth();
   const location = useLocation();
+  const { t } = useTranslation("common");
 
   if (isLoading) {
     return (
@@ -19,7 +21,7 @@ export function ProtectedRoute({ children, role: requiredRole }: Props) {
         <div className="flex flex-col items-center gap-4 text-muted-foreground">
           <img src={clarivaLogo} alt="" className="h-7 w-auto object-contain opacity-90" />
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <p className="text-xs font-semibold uppercase tracking-widest">Loading platform…</p>
+          <p className="text-xs font-semibold uppercase tracking-widest">{t("protectedRoute.loading")}</p>
         </div>
       </div>
     );

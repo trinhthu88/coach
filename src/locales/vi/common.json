@@ -12,6 +12,76 @@
   "comingSoon": {
     "defaultDescription": "Chúng tôi đang hoàn thiện những chi tiết cuối cùng cho phần này. Nó sẽ ra mắt trong giai đoạn tiếp theo."
   },
+  "errorBoundary": {
+    "title": "Đã xảy ra sự cố",
+    "body": "Đã xảy ra lỗi ngoài dự kiến. Hãy thử tải lại trang — nếu vẫn tiếp tục xảy ra, liên hệ contact@clariva.club.",
+    "reload": "Tải lại trang"
+  },
+  "protectedRoute": {
+    "loading": "Đang tải nền tảng…"
+  },
+  "pendingAccessRequests": {
+    "awaiting_other": "{{count}} đơn yêu cầu truy cập đang chờ phê duyệt",
+    "tableHeaders": {
+      "name": "Tên",
+      "email": "Email",
+      "credential": "Chứng chỉ",
+      "jobCompany": "Công việc · Công ty",
+      "industry": "Ngành nghề",
+      "submitted": "Đã gửi",
+      "actions": "Hành động"
+    },
+    "viewDetails": "Xem chi tiết",
+    "reject": "Từ chối",
+    "approve": "Chấp thuận",
+    "toast": {
+      "accountCreatedEmailed": "Đã tạo tài khoản — đã gửi link đăng nhập qua email",
+      "accountCreated": "Đã tạo tài khoản",
+      "approvalFailed": "Phê duyệt thất bại",
+      "requestRejected": "Đã từ chối yêu cầu",
+      "rejectFailed": "Thất bại",
+      "loginLinkResent": "Đã gửi lại link đăng nhập",
+      "approvedEmailFailed": "Đã phê duyệt, nhưng gửi email thất bại",
+      "resendFailed": "Gửi lại thất bại",
+      "copied": "Đã sao chép"
+    },
+    "confirmReject": "Từ chối yêu cầu truy cập từ {{name}}?",
+    "detailsDialog": {
+      "role": "Vai trò",
+      "jobTitle": "Chức danh",
+      "company": "Công ty",
+      "industry": "Ngành nghề",
+      "credential": "Chứng chỉ chuyên môn",
+      "linkedin": "LinkedIn",
+      "motivation": "Động lực",
+      "close": "Đóng"
+    },
+    "approvedDialog": {
+      "title": "Đã tạo tài khoản cho {{name}}",
+      "emailedDescription": "Một link đăng nhập một-lần-nhấp đã được gửi qua email — không cần mật khẩu.",
+      "notEmailedDescription": "Tài khoản đã được tạo, nhưng email chứa link đăng nhập gửi thất bại. Dùng nút gửi lại bên dưới hoặc yêu cầu họ dùng Quên mật khẩu.",
+      "emailLabel": "Email",
+      "deliveryFailed": "Gửi email thất bại. Hãy thử gửi lại, hoặc kiểm tra bảng điều khiển Resend để biết chi tiết.",
+      "resendLoginLink": "Gửi lại link đăng nhập",
+      "done": "Xong"
+    }
+  },
+  "bulkAvailabilityDialog": {
+    "title": "Thiết lập mẫu hàng tuần",
+    "description": "Xác định tuần điển hình của bạn và áp dụng cho nhiều tuần cùng lúc. Bạn vẫn có thể thêm, sửa, hoặc xóa từng khung giờ sau đó.",
+    "startingFromWeekOf": "Bắt đầu từ tuần của",
+    "applyForWeeks": "Áp dụng trong (số tuần)",
+    "recurringSlots": "Khung giờ lặp lại",
+    "addSlot": "Thêm khung giờ",
+    "weekdays": { "mon": "T2", "tue": "T3", "wed": "T4", "thu": "T5", "fri": "T6", "sat": "T7", "sun": "CN" },
+    "cancel": "Hủy",
+    "applyTemplate": "Áp dụng mẫu",
+    "toast": {
+      "addAtLeastOneSlot": "Thêm ít nhất một mẫu khung giờ.",
+      "endAfterStart": "Giờ kết thúc của mỗi khung giờ phải sau giờ bắt đầu.",
+      "created_other": "Đã tạo {{slots}} khung giờ trong {{count}} tuần"
+    }
+  },
   "nav": {
     "dashboard": "Trang tổng quan",
     "cohorts": "Nhóm",

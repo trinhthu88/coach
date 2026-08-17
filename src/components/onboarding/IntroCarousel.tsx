@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { OnboardingBullet, OnboardingStep, BulletKind, OnboardingRole } from "@/lib/onboarding/content";
 import clarivaLogo from "@/assets/clariva-logo-dark.png";
+import type { TFunction } from "i18next";
 
 // ─── Brand colours (from prototype source) ───────────────────────────────────
 const SKY   = "#3db4d0";
@@ -48,12 +50,6 @@ const STEP_GRAPHICS: Record<OnboardingRole, GraphicType[]> = {
   sponsor: ["cohort",   "journey",  "clients",  "privacy",  "report"],
 };
 
-const ROLE_LABEL: Record<OnboardingRole, string> = {
-  coachee: "Coachee",
-  coach:   "Coach",
-  sponsor: "Sponsor",
-};
-
 // ─── Shared helper: PracticeRows list ─────────────────────────────────────────
 // Rows rendered for practice / peer / clients / sponsor-roster graphics.
 
@@ -91,7 +87,7 @@ function getRowStyle(state: RowState) {
   return STATE_BG[state] ?? STATE_BG._default;
 }
 
-function PracticeRowsSVG({ rows }: { rows: PracticeRow[] }) {
+function PracticeRowsSVG({ rows, t }: { rows: PracticeRow[]; t: TFunction<"onboarding"> }) {
   const rowH = 42, gap = 6, startY = 6;
   const totalH = rows.length * (rowH + gap) - gap + startY;
   return (
@@ -115,11 +111,11 @@ function PracticeRowsSVG({ rows }: { rows: PracticeRow[] }) {
               fill="rgba(255,255,255,.88)" fontFamily="Montserrat, sans-serif">{row.label}</text>
             <text x="48" y={y + rowH / 2 + 10} fontSize="9.5"
               fill={`${PANEL}.5)`} fontFamily="Montserrat, sans-serif">{row.note}</text>
-            {/* State badge */}
+            {/* State badge — right-anchored so translated length never collides with the label/note on the left */}
             <text x="294" y={y + rowH / 2 + 4} fontSize="9" fontWeight="700"
               textAnchor="end" fontFamily="Montserrat, sans-serif"
               fill={stateColor} letterSpacing=".5">
-              {row.state.toUpperCase()}
+              {t(`carousel.stateLabel.${row.state}`)}
             </text>
           </g>
         );
@@ -140,7 +136,7 @@ const ARC_PTS = [
   { x: 320, y: 46,  r: 5, fill: NAVY,              stroke: `${PANEL}.35)` },
 ];
 
-function JourneySVG() {
+function JourneySVG({ t }: { t: TFunction<"onboarding"> }) {
   const solid  = "M 20 160 C 55 155 72 148 84 140 C 96 132 114 96 128 84 C 142 72 156 62 170 60";
   const dashed = "M 170 60 C 194 58 218 100 232 106 C 246 112 272 78 288 74 C 302 70 312 52 320 46";
   return (
@@ -153,8 +149,9 @@ function JourneySVG() {
         <circle key={i} cx={p.x} cy={p.y} r={p.r}
           fill={p.fill} stroke={p.stroke} strokeWidth="2" />
       ))}
-      <text x="20"  y="178" fontSize="10" fill={`${PANEL}.5)`} fontFamily="Montserrat, sans-serif">Session 1</text>
-      <text x="268" y="38"  fontSize="10" fill={`${PANEL}.5)`} fontFamily="Montserrat, sans-serif">Ongoing</text>
+      <text x="20"  y="178" fontSize="10" fill={`${PANEL}.5)`} fontFamily="Montserrat, sans-serif">{t("carousel.journey.session1")}</text>
+      {/* Right-anchored near the right edge so a longer translation grows left into open space instead of off the viewBox */}
+      <text x="325" y="38" fontSize="10" fill={`${PANEL}.5)`} textAnchor="end" fontFamily="Montserrat, sans-serif">{t("carousel.journey.ongoing")}</text>
     </svg>
   );
 }
@@ -164,11 +161,11 @@ function JourneySVG() {
 //   • Label LEFT-ALIGNED bold white on same row as rating "4 → 5" RIGHT-ALIGNED
 //   • Full-width bar below (track + sky fill up to "to" rating)
 //   • Scale "1 · 5 · 10" below each individual bar
-function GoalsSVG() {
+function GoalsSVG({ t }: { t: TFunction<"onboarding"> }) {
   const rows = [
-    { label: "Hard conversations", from: 4, to: 5 },
-    { label: "Delegate the report", from: 3, to: 5 },
-    { label: "Protect deep work",   from: 5, to: 5 },
+    { label: t("carousel.goals.hardConversations"), from: 4, to: 5 },
+    { label: t("carousel.goals.delegateReport"), from: 3, to: 5 },
+    { label: t("carousel.goals.protectDeepWork"),   from: 5, to: 5 },
   ];
   const W = 280, barH = 8, maxR = 10;
   const blockH = 56; // label row (18) + bar (barH=8) + scale row (14) + gap
@@ -216,43 +213,56 @@ function GoalsSVG() {
 }
 
 // ─── Match SVG ────────────────────────────────────────────────────────────────
-// Prototype: 4 filter chips at top, then 3×2 grid of coach cards.
-// First 2 cards (MT, HL) are highlighted with sky avatar + "MATCH" label.
-function MatchSVG({ role }: { role: OnboardingRole }) {
-  const filterChips = role === "coach"
-    ? ["LEADERSHIP", "TRANSITION", "EN / VN", "ICF PCC"]
-    : ["HARD CONV.", "DELEGATION", "VIETNAMESE", "THIS MONTH"];
+// Filter chips wrap two-per-row (rather than a single row) so translated labels —
+// which run longer than the English originals — never overflow the viewBox; row
+// count and the card grid's start position both derive from that, so it stays
+// correct regardless of string length.
+function MatchSVG({ role, t }: { role: OnboardingRole; t: TFunction<"onboarding"> }) {
+  const filterChips = t(
+    role === "coach" ? "carousel.match.filtersCoach" : "carousel.match.filtersCoachee",
+    { returnObjects: true }
+  ) as string[];
+  const matchLabel = t("carousel.match.matchLabel");
   const cards = ["MT","HL","QD","PV","TN","BK"];
-  const cardW = 89, cardH = 84, gap = 8, startX = 4, startY = 38;
+  const cardW = 89, cardH = 84, cardGap = 8, startX = 4;
+  const chipH = 22, chipGap = 8, chipRowGap = 6, chipPad = 9, charW = 6.4;
+
+  const chipRows: string[][] = [];
+  for (let i = 0; i < filterChips.length; i += 2) chipRows.push(filterChips.slice(i, i + 2));
+  const chipsAreaH = chipRows.length * (chipH + chipRowGap);
+  const startY = chipsAreaH + 12;
+  const totalH = startY + 2 * (cardH + cardGap) - cardGap;
+
   return (
-    <svg viewBox="0 0 300 230" className="w-full max-w-[300px]" aria-hidden="true">
-      {/* Filter chips row — computed left-to-right, 8px gap, font 8.5, charW 5.8 */}
-      {(() => {
-        const charW = 5.8, pad = 9, gap = 8, h = 22;
+    <svg viewBox={`0 0 300 ${totalH}`} className="w-full max-w-[300px]" aria-hidden="true">
+      {/* Filter chips — wrapped two per row, width computed from each label's own length */}
+      {chipRows.map((row, ri) => {
         let cx = 0;
-        return filterChips.map((label, i) => {
-          const w = label.length * charW + pad * 2;
+        return row.map((label, ci) => {
+          const i = ri * 2 + ci;
+          const w = label.length * charW + chipPad * 2;
           const x = cx;
-          cx += w + gap;
+          cx += w + chipGap;
+          const y = ri * (chipH + chipRowGap);
           const active = i < 2;
           return (
             <g key={i}>
-              <rect x={x} y="0" width={w} height={h} rx={h / 2}
+              <rect x={x} y={y} width={w} height={chipH} rx={chipH / 2}
                 fill={active ? `${AMBER_SOFT}.18)` : "rgba(255,255,255,.06)"}
                 stroke={active ? `${AMBER_SOFT}.5)` : "rgba(255,255,255,.15)"} strokeWidth="1" />
-              <text x={x + w / 2} y="14.5" fontSize="8.5" fontWeight="700"
+              <text x={x + w / 2} y={y + 14.5} fontSize="8.5" fontWeight="700"
                 fill={active ? "#f0a875" : `${PANEL}.55)`}
                 textAnchor="middle" fontFamily="Montserrat, sans-serif" letterSpacing=".3">{label}</text>
             </g>
           );
         });
-      })()}
+      })}
       {/* 3×2 card grid */}
       {cards.map((ini, i) => {
         const col = i % 3;
         const row = Math.floor(i / 3);
-        const x   = startX + col * (cardW + gap);
-        const y   = startY + row * (cardH + gap);
+        const x   = startX + col * (cardW + cardGap);
+        const y   = startY + row * (cardH + cardGap);
         const active = i < 2;
         const avBg = active ? SKY : "rgba(255,255,255,.14)";
         const avFg = active ? NAVY : "#cfe6ee";
@@ -274,7 +284,7 @@ function MatchSVG({ role }: { role: OnboardingRole }) {
             {/* MATCH label for top 2 */}
             {active && (
               <text x={x + 8} y={y + 76} fontSize="9" fontWeight="700"
-                fill={AMBER} fontFamily="Montserrat, sans-serif" letterSpacing=".5">MATCH</text>
+                fill={AMBER} fontFamily="Montserrat, sans-serif" letterSpacing=".5">{matchLabel}</text>
             )}
           </g>
         );
@@ -287,8 +297,8 @@ function MatchSVG({ role }: { role: OnboardingRole }) {
 // Row-major indexing: idx = row*5 + col  →  col = idx%5, row = floor(idx/5)
 // Prototype: open=[1,2,6,7,8,11,12,16,17,18,21,22]; coach booked=[7,17], coachee booked=[12]
 // idx 7 = Wed row1 (amber 14:00), idx 17 = Wed row3 (amber 14:00)
-function CalendarSVG({ role }: { role: OnboardingRole }) {
-  const days   = ["MON", "TUE", "WED", "THU", "FRI"];
+function CalendarSVG({ role, t }: { role: OnboardingRole; t: TFunction<"onboarding"> }) {
+  const days = t("carousel.calendar.days", { returnObjects: true }) as string[];
   const open   = [1,2,6,7,8,11,12,16,17,18,21,22];
   const booked = role === "coach" ? [7,17] : [12];
   const slots  = Array.from({ length: 25 }, (_, idx) => ({
@@ -330,121 +340,118 @@ function CalendarSVG({ role }: { role: OnboardingRole }) {
       })}
       {/* Legend */}
       <circle cx="8" cy="222" r="5" fill={`${SKY_SOFT}.3)`} stroke={`${SKY_SOFT}.6)`} strokeWidth="1" />
-      <text x="18" y="226" fontSize="9" fill={`${PANEL}.45)`} fontFamily="Montserrat, sans-serif">Open</text>
+      <text x="18" y="226" fontSize="9" fill={`${PANEL}.45)`} fontFamily="Montserrat, sans-serif">{t("carousel.calendar.open")}</text>
       <rect x="60" y="216" width="10" height="10" rx="3" fill={AMBER} />
-      <text x="74" y="226" fontSize="9" fill={`${PANEL}.45)`} fontFamily="Montserrat, sans-serif">Booked</text>
+      <text x="74" y="226" fontSize="9" fill={`${PANEL}.45)`} fontFamily="Montserrat, sans-serif">{t("carousel.calendar.booked")}</text>
     </svg>
   );
 }
 
 // ─── Privacy SVG ──────────────────────────────────────────────────────────────
-// Fixed-coordinate layout: avoids dynamic calculation bugs.
-//
-// Structure (all y values absolute, viewBox 0 0 300 270):
-//   y=0–130   INSIDE THE SESSION box (sky border)
-//     y=18      header: lock icon + "INSIDE THE SESSION"
-//     y=46      avatar row: LN | You    MT | Your coach
-//     y=70      chip row 1: "Session notes"  "Recordings"
-//     y=98      chip row 2: "Goal wording"   "Everything said"
-//   y=144      lock icon divider
-//   y=158–270  OUTSIDE box (dashed border)
-//     y=174      header text
-//     y=192      chip row 1
-//     y=222      chip row 2 (if needed)
-function PrivacySVG({ role }: { role: OnboardingRole }) {
+// All chip rows use a left-to-right accumulator (cx) sized from each label's own
+// rendered length, rather than hand-picked fixed x coordinates — so translated
+// text of any length lays out correctly without per-language tuning.
+function PrivacySVG({ role, t }: { role: OnboardingRole; t: TFunction<"onboarding"> }) {
   const insideWho = role === "sponsor"
-    ? [{ i: "LN", label: "Each leader" }, { i: "CO", label: "Their coach" }]
-    : [{ i: "LN", label: "You" },         { i: "MT", label: "Your coach" }];
+    ? [{ i: "LN", label: t("carousel.privacy.eachLeader") }, { i: "CO", label: t("carousel.privacy.theirCoach") }]
+    : [{ i: "LN", label: t("carousel.privacy.you") },         { i: "MT", label: t("carousel.privacy.yourCoach") }];
 
   const outsideHeader = role === "coachee"
-    ? "WHAT LEAVES THE ROOM"
+    ? t("carousel.privacy.outsideHeaderCoachee")
     : role === "sponsor"
-    ? "WHAT YOUR ACCOUNT RECEIVES"
-    : "WHAT THE ORGANISATION RECEIVES";
+    ? t("carousel.privacy.outsideHeaderSponsor")
+    : t("carousel.privacy.outsideHeaderCoach");
 
-  // Outside chip rows (fixed per role)
-  const outsideRows: { chips: string[] }[] = role === "coachee"
-    ? [{ chips: ["A summary you choose to share"] }, { chips: ["Nothing else"] }]
-    : [{ chips: ["Attendance", "Sessions used"] }, { chips: ["Average goal growth"] }];
-
-  // Fixed inside chip positions (2 per row, empirically spaced)
-  const insideChips = [
-    { label: "Session notes",   x: 10, y: 70 },
-    { label: "Recordings",      x: 118, y: 70 },
-    { label: "Goal wording",    x: 10, y: 98 },
-    { label: "Everything said", x: 113, y: 98 },
+  const insideChipRows: string[][] = [
+    [t("carousel.privacy.sessionNotes"), t("carousel.privacy.recordings")],
+    [t("carousel.privacy.goalWording"), t("carousel.privacy.everythingSaid")],
   ];
 
-  const chipH  = 22;
-  const charW  = 6.2;
-  const chipPX = 10;
-  const cw = (s: string) => s.length * charW + chipPX * 2;
+  const outsideRows: string[][] = role === "coachee"
+    ? [[t("carousel.privacy.summaryShared")], [t("carousel.privacy.nothingElse")]]
+    : [[t("carousel.privacy.attendance"), t("carousel.privacy.sessionsUsed")], [t("carousel.privacy.avgGoalGrowth")]];
 
-  // Total height = outsideBox bottom = 158 + header(20) + rows * (chipH+10) + padding
+  const chipH  = 22;
+  const charW  = 6.6;
+  const chipPX = 10;
+  const chipGap = 8;
+  const cw = (s: string) => s.length * charW + chipPX * 2;
+  const avatarSpacing = 100; // wide enough for a longer second-avatar label than the English original
+
+  const insideChipsH = insideChipRows.length * (chipH + 10);
   const outsideDataH = outsideRows.length * (chipH + 10) + 10;
   const outsideBoxH  = 20 + outsideDataH + 12;
-  const totalH       = 158 + outsideBoxH + 8;
+  const insideBoxH   = 60 + insideChipsH + 8;
+  const totalH       = insideBoxH + 26 + outsideBoxH + 8;
+  const dividerY     = insideBoxH + 12;
+  const outsideBoxY  = insideBoxH + 26;
 
   return (
     <svg viewBox={`0 0 300 ${totalH}`} className="w-full max-w-[300px]" aria-hidden="true">
 
       {/* ── INSIDE THE SESSION ── */}
-      <rect x="0" y="0" width="300" height="130" rx="12"
+      <rect x="0" y="0" width="300" height={insideBoxH} rx="12"
         fill={`${SKY_SOFT}.06)`} stroke={`${SKY_SOFT}.35)`} strokeWidth="1.5" />
 
       {/* Header */}
       <Icon d={ICONS.lock} x={14} y={16} size={13} color={SKY} />
       <text x="28" y="21" fontSize="9.5" fontWeight="700" fill={SKY}
-        fontFamily="Montserrat, sans-serif" letterSpacing="1">INSIDE THE SESSION</text>
+        fontFamily="Montserrat, sans-serif" letterSpacing="1">{t("carousel.privacy.insideHeader")}</text>
 
       {/* Avatars */}
       {insideWho.map((w, i) => (
         <g key={i}>
-          <circle cx={14 + i * 50} cy="46" r="14"
+          <circle cx={14 + i * avatarSpacing} cy="46" r="14"
             fill={`${SKY_SOFT}.22)`} stroke={`${SKY_SOFT}.55)`} strokeWidth="1.5" />
-          <text x={14 + i * 50} y="50" fontSize="9" fontWeight="700" fill={SKY}
+          <text x={14 + i * avatarSpacing} y="50" fontSize="9" fontWeight="700" fill={SKY}
             textAnchor="middle" fontFamily="Montserrat, sans-serif">{w.i}</text>
-          <text x={32 + i * 50} y="50" fontSize="10" fill={`${PANEL}.65)`}
+          <text x={32 + i * avatarSpacing} y="50" fontSize="10" fill={`${PANEL}.65)`}
             fontFamily="Montserrat, sans-serif">{w.label}</text>
         </g>
       ))}
 
-      {/* Inside chips (fixed positions) */}
-      {insideChips.map(({ label, x, y }) => {
-        const w = cw(label);
-        return (
-          <g key={label}>
-            <rect x={x} y={y} width={w} height={chipH} rx={chipH / 2}
-              fill="rgba(255,255,255,.07)" stroke="rgba(207,230,238,.22)" strokeWidth="1" />
-            <text x={x + w / 2} y={y + chipH / 2 + 4} fontSize="9.5"
-              fill={`${PANEL}.7)`} textAnchor="middle" fontFamily="Montserrat, sans-serif">{label}</text>
-          </g>
-        );
+      {/* Inside chips — each row laid out with its own accumulator */}
+      {insideChipRows.map((row, ri) => {
+        const y = 70 + ri * (chipH + 10);
+        let cx = 10;
+        return row.map((label) => {
+          const w = cw(label);
+          const x = cx;
+          cx += w + chipGap;
+          return (
+            <g key={label}>
+              <rect x={x} y={y} width={w} height={chipH} rx={chipH / 2}
+                fill="rgba(255,255,255,.07)" stroke="rgba(207,230,238,.22)" strokeWidth="1" />
+              <text x={x + w / 2} y={y + chipH / 2 + 4} fontSize="9.5"
+                fill={`${PANEL}.7)`} textAnchor="middle" fontFamily="Montserrat, sans-serif">{label}</text>
+            </g>
+          );
+        });
       })}
 
       {/* ── Lock divider ── */}
-      <line x1="0" y1="142" x2="132" y2="142" stroke="rgba(207,230,238,.12)" strokeWidth="1" />
-      <Icon d={ICONS.lock} x={150} y={144} size={16} color={`${PANEL}.28)`} />
-      <line x1="168" y1="142" x2="300" y2="142" stroke="rgba(207,230,238,.12)" strokeWidth="1" />
+      <line x1="0" y1={dividerY} x2="132" y2={dividerY} stroke="rgba(207,230,238,.12)" strokeWidth="1" />
+      <Icon d={ICONS.lock} x={150} y={dividerY + 2} size={16} color={`${PANEL}.28)`} />
+      <line x1="168" y1={dividerY} x2="300" y2={dividerY} stroke="rgba(207,230,238,.12)" strokeWidth="1" />
 
       {/* ── OUTSIDE box ── */}
-      <rect x="0" y="156" width="300" height={outsideBoxH} rx="12"
+      <rect x="0" y={outsideBoxY} width="300" height={outsideBoxH} rx="12"
         fill="rgba(255,255,255,.03)"
         stroke="rgba(207,230,238,.2)" strokeWidth="1" strokeDasharray="5 4" />
 
-      <text x="10" y="174" fontSize="9" fontWeight="700"
+      <text x="10" y={outsideBoxY + 18} fontSize="9" fontWeight="700"
         fill={`${PANEL}.5)`} fontFamily="Montserrat, sans-serif" letterSpacing="1">
         {outsideHeader}
       </text>
 
-      {/* Outside chips — each row rendered at fixed y offsets */}
+      {/* Outside chips — each row rendered with its own accumulator */}
       {outsideRows.map((row, ri) => {
-        const rowY = 182 + ri * (chipH + 10);
+        const rowY = outsideBoxY + 26 + ri * (chipH + 10);
         let cx = 10;
-        return row.chips.map((label) => {
+        return row.map((label) => {
           const w = cw(label);
           const x = cx;
-          cx += w + 8;
+          cx += w + chipGap;
           return (
             <g key={label}>
               <rect x={x} y={rowY} width={w} height={chipH} rx={chipH / 2}
@@ -468,20 +475,22 @@ const GROWTH_PTS = [
   { x: 170, y: 62  },
   { x: 230, y: 34  },
 ];
-const GROWTH_STATS = [
-  { value: "3",   label: "Goals" },
-  { value: "+1.2",label: "Avg growth" },
-  { value: "6",   label: "Sessions" },
-];
 
-function GrowthSVG() {
+function GrowthSVG({ t }: { t: TFunction<"onboarding"> }) {
+  const stats = [
+    { value: "3",    label: t("carousel.growth.goals") },
+    { value: "+1.2", label: t("carousel.growth.avgGrowth") },
+    { value: "6",    label: t("carousel.growth.sessions") },
+  ];
   const toPath = (pts: typeof GROWTH_PTS, offset: number) =>
     pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y + offset}`).join(" ");
+  // Column width widened from the original 86px to give translated stat labels more room.
+  const colW = 92;
   return (
-    <svg viewBox="0 0 260 180" className="w-full max-w-[260px]" aria-hidden="true">
+    <svg viewBox="0 0 280 180" className="w-full max-w-[280px]" aria-hidden="true">
       {/* Grid lines */}
       {[30, 70, 110].map(y => (
-        <line key={y} x1="12" y1={y} x2="248" y2={y}
+        <line key={y} x1="12" y1={y} x2="268" y2={y}
           stroke="rgba(207,230,238,.06)" strokeWidth="1" />
       ))}
       {/* 3 offset lines to simulate multiple goals */}
@@ -504,8 +513,8 @@ function GrowthSVG() {
           textAnchor="middle" fontFamily="Montserrat, sans-serif">S{i + 1}</text>
       ))}
       {/* Stats */}
-      {GROWTH_STATS.map((s, i) => {
-        const x = i * 86 + 4;
+      {stats.map((s, i) => {
+        const x = i * colW + 4;
         return (
           <g key={i}>
             <text x={x} y="163" fontSize="18" fontWeight="300" fill="rgba(255,255,255,.9)"
@@ -521,7 +530,7 @@ function GrowthSVG() {
 
 // ─── Cohort SVG — 12 leader dots + legend ─────────────────────────────────────
 // cohortDots from prototype: 9 on-track (sky), 2 at-risk (amber), 1 not-enrolled (grey).
-function CohortSVG() {
+function CohortSVG({ t }: { t: TFunction<"onboarding"> }) {
   const dots = Array.from({ length: 12 }, (_, i) => {
     const on   = i < 9;
     const risk = i === 9 || i === 10;
@@ -532,16 +541,22 @@ function CohortSVG() {
       fg:     on ? "#7dcfe3"          : (risk ? "#f0a875"           : `${PANEL}.45)`),
     };
   });
+  // Stacked vertically (rather than 3 fixed-width columns) so a longer translated
+  // legend label never collides with the next one — width no longer has a cap.
   const legend = [
-    { label: "On track · 9",    bg: `${SKY_SOFT}.22)`,   border: `${SKY_SOFT}.6)` },
-    { label: "At risk · 2",     bg: `${AMBER_SOFT}.18)`, border: `${AMBER_SOFT}.6)` },
-    { label: "Not enrolled · 1",bg: "rgba(255,255,255,.04)", border: "rgba(255,255,255,.14)" },
+    { label: t("carousel.cohort.onTrack"),     bg: `${SKY_SOFT}.22)`,   border: `${SKY_SOFT}.6)` },
+    { label: t("carousel.cohort.atRisk"),      bg: `${AMBER_SOFT}.18)`, border: `${AMBER_SOFT}.6)` },
+    { label: t("carousel.cohort.notEnrolled"), bg: "rgba(255,255,255,.04)", border: "rgba(255,255,255,.14)" },
   ];
   const cols = 4, dotW = 52, dotH = 32, gapX = 8, gapY = 8;
+  const dotsBottom = 18 + Math.ceil(dots.length / cols) * (dotH + gapY) - gapY;
+  const legendStartY = dotsBottom + 16;
+  const legendLineH = 17;
+  const totalH = legendStartY + legend.length * legendLineH + 4;
   return (
-    <svg viewBox="0 0 300 195" className="w-full max-w-[300px]" aria-hidden="true">
+    <svg viewBox={`0 0 300 ${totalH}`} className="w-full max-w-[300px]" aria-hidden="true">
       <text x="0" y="12" fontSize="9" fill={`${PANEL}.4)`} fontWeight="600"
-        fontFamily="Montserrat, sans-serif" letterSpacing="1">OPS DIRECTORS Q3</text>
+        fontFamily="Montserrat, sans-serif" letterSpacing="1">{t("carousel.cohort.header")}</text>
       {dots.map((dot, i) => {
         const ci = i % cols;
         const ri = Math.floor(i / cols);
@@ -556,14 +571,14 @@ function CohortSVG() {
           </g>
         );
       })}
-      {/* Legend */}
+      {/* Legend — one label per line */}
       {legend.map((l, i) => {
-        const x = i === 0 ? 0 : i === 1 ? 102 : 194;
+        const y = legendStartY + i * legendLineH;
         return (
           <g key={i}>
-            <rect x={x} y="150" width="10" height="10" rx="3"
+            <rect x="0" y={y - 9} width="10" height="10" rx="3"
               fill={l.bg} stroke={l.border} strokeWidth="1" />
-            <text x={x + 14} y="159" fontSize="8.5" fill={`${PANEL}.5)`}
+            <text x="14" y={y} fontSize="8.5" fill={`${PANEL}.5)`}
               fontFamily="Montserrat, sans-serif">{l.label}</text>
           </g>
         );
@@ -574,27 +589,30 @@ function CohortSVG() {
 
 // ─── Report SVG ───────────────────────────────────────────────────────────────
 // reportRows from prototype: ✓ = accessible, 🔒 = withheld.
-function ReportSVG() {
+// Width widened from the original 300 to give longer translated labels (left-anchored)
+// more clearance before the right-anchored value column.
+function ReportSVG({ t }: { t: TFunction<"onboarding"> }) {
   const rows = [
-    { ok: true,  label: "On-track rate",  value: "9 / 12" },
-    { ok: true,  label: "Sessions used",  value: "31 / 72" },
-    { ok: true,  label: "Avg goal growth",value: "+1.4" },
-    { ok: false, label: "Session notes",  value: "withheld" },
-    { ok: false, label: "Goal wording",   value: "withheld" },
+    { ok: true,  label: t("carousel.report.onTrackRate"),   value: "9 / 12" },
+    { ok: true,  label: t("carousel.report.sessionsUsed"),  value: "31 / 72" },
+    { ok: true,  label: t("carousel.report.avgGoalGrowth"), value: "+1.4" },
+    { ok: false, label: t("carousel.report.sessionNotes"),  value: t("carousel.report.withheld") },
+    { ok: false, label: t("carousel.report.goalWording"),   value: t("carousel.report.withheld") },
   ];
+  const W = 320;
   return (
-    <svg viewBox="0 0 300 200" className="w-full max-w-[300px]" aria-hidden="true">
+    <svg viewBox={`0 0 ${W} 200`} className="w-full max-w-[320px]" aria-hidden="true">
       {/* Page shell */}
-      <rect x="0" y="0" width="300" height="196" rx="10"
+      <rect x="0" y="0" width={W} height="196" rx="10"
         fill="rgba(255,255,255,.05)" stroke="rgba(207,230,238,.1)" strokeWidth="1" />
       {/* Header strip */}
-      <rect x="0" y="0" width="300" height="30" rx="10"
+      <rect x="0" y="0" width={W} height="30" rx="10"
         fill={`${SKY_SOFT}.12)`} />
-      <rect x="0" y="20" width="300" height="10" fill={`${SKY_SOFT}.12)`} />
+      <rect x="0" y="20" width={W} height="10" fill={`${SKY_SOFT}.12)`} />
       <text x="14" y="19" fontSize="9" fontWeight="700" fill={SKY}
-        fontFamily="Montserrat, sans-serif" letterSpacing="1">CLARIVA SPONSOR SUMMARY</text>
-      <text x="286" y="19" fontSize="8.5" fill={`${PANEL}.4)`}
-        textAnchor="end" fontFamily="Montserrat, sans-serif">Q3 2026</text>
+        fontFamily="Montserrat, sans-serif" letterSpacing="1">{t("carousel.report.header")}</text>
+      <text x={W - 14} y="19" fontSize="8.5" fill={`${PANEL}.4)`}
+        textAnchor="end" fontFamily="Montserrat, sans-serif">{t("carousel.report.period")}</text>
       {/* Rows */}
       {rows.map((row, i) => {
         const y = i * 30 + 44;
@@ -604,7 +622,7 @@ function ReportSVG() {
         return (
           <g key={i}>
             {/* Separator */}
-            {i > 0 && <line x1="14" y1={y - 6} x2="286" y2={y - 6}
+            {i > 0 && <line x1="14" y1={y - 6} x2={W - 14} y2={y - 6}
               stroke="rgba(207,230,238,.07)" strokeWidth="1" />}
             {/* Mark circle */}
             <circle cx="24" cy={y + 7} r="8" fill={markBg} />
@@ -614,7 +632,7 @@ function ReportSVG() {
             </text>
             <text x="38" y={y + 12} fontSize="10.5" fill={`${PANEL}.7)`}
               fontFamily="Montserrat, sans-serif">{row.label}</text>
-            <text x="286" y={y + 12} fontSize="10.5" fill={valueFg}
+            <text x={W - 14} y={y + 12} fontSize="10.5" fill={valueFg}
               textAnchor="end" fontFamily="Montserrat, sans-serif">{row.value}</text>
           </g>
         );
@@ -625,46 +643,54 @@ function ReportSVG() {
 
 // ─── Graphic dispatcher ───────────────────────────────────────────────────────
 // practiceRows data keyed by graphic type + role (from prototype renderVals).
-const PRACTICE_ROWS: Record<string, (role: OnboardingRole) => PracticeRow[]> = {
-  practice: (_role) => [
-    { label: "My coach profile",  note: "Specialties, bio, accreditation", state: "step 1",  icon: "card"  },
-    { label: "My availability",   note: "Weekly windows and buffers",      state: "step 2",  icon: "clock" },
-    { label: "My clients",        note: "9 active across 3 programmes",   state: "live",    icon: "users" },
-    { label: "Sessions & notes",  note: "Private to each pair",           state: "locked",  icon: "lock"  },
-  ],
-  peer: (_role) => [
-    { label: "Peer coaching · give",    note: "You coach another accredited coach", state: "opt in", icon: "users" },
-    { label: "Peer coaching · receive", note: "A peer coaches you",                 state: "opt in", icon: "msg"   },
-    { label: "Find a coach",            note: "Book a coach for yourself",          state: "open",   icon: "search"},
-    { label: "Practice analytics",      note: "Hours, peer sessions, reflections",  state: "record", icon: "chart" },
-  ],
-  clients: (role) => role === "sponsor" ? [
-    { label: "Leader 07", note: "No session in 5 weeks",         state: "at risk", icon: "bell"  },
-    { label: "Leader 11", note: "Invitation sent 4 June",        state: "nudge",   icon: "msg"   },
-    { label: "Leader 04", note: "On track · ratings moving",     state: "ok",      icon: "check" },
-    { label: "Leader 02", note: "On track · 3 of 6 sessions",   state: "ok",      icon: "check" },
-  ] : [
-    { label: "Trang Hoang", note: "No session booked in 5 weeks",    state: "at risk", icon: "bell"  },
-    { label: "Duc Pham",    note: "Goal ratings flat since June",     state: "review",  icon: "chart" },
-    { label: "Lan Nguyen",  note: "On track · session 2 of 6",       state: "ok",      icon: "check" },
-    { label: "Hanh Le",     note: "Final session unscheduled",        state: "book",    icon: "cal"   },
-  ],
-};
+function practiceRowsFor(type: "practice" | "peer" | "clients", role: OnboardingRole, t: TFunction<"onboarding">): PracticeRow[] {
+  if (type === "practice") {
+    return [
+      { label: t("carousel.practice.coachProfile.label"),  note: t("carousel.practice.coachProfile.note"),  state: "step 1", icon: "card"  },
+      { label: t("carousel.practice.availability.label"),  note: t("carousel.practice.availability.note"),  state: "step 2", icon: "clock" },
+      { label: t("carousel.practice.clients.label"),       note: t("carousel.practice.clients.note"),       state: "live",   icon: "users" },
+      { label: t("carousel.practice.sessionsNotes.label"), note: t("carousel.practice.sessionsNotes.note"), state: "locked", icon: "lock"  },
+    ];
+  }
+  if (type === "peer") {
+    return [
+      { label: t("carousel.peer.give.label"),      note: t("carousel.peer.give.note"),      state: "opt in", icon: "users"  },
+      { label: t("carousel.peer.receive.label"),   note: t("carousel.peer.receive.note"),   state: "opt in", icon: "msg"    },
+      { label: t("carousel.peer.findCoach.label"), note: t("carousel.peer.findCoach.note"), state: "open",   icon: "search" },
+      { label: t("carousel.peer.analytics.label"), note: t("carousel.peer.analytics.note"), state: "record", icon: "chart"  },
+    ];
+  }
+  // clients
+  if (role === "sponsor") {
+    return [
+      { label: t("carousel.clientsSponsor.leader07.label"), note: t("carousel.clientsSponsor.leader07.note"), state: "at risk", icon: "bell"  },
+      { label: t("carousel.clientsSponsor.leader11.label"), note: t("carousel.clientsSponsor.leader11.note"), state: "nudge",   icon: "msg"   },
+      { label: t("carousel.clientsSponsor.leader04.label"), note: t("carousel.clientsSponsor.leader04.note"), state: "ok",      icon: "check" },
+      { label: t("carousel.clientsSponsor.leader02.label"), note: t("carousel.clientsSponsor.leader02.note"), state: "ok",      icon: "check" },
+    ];
+  }
+  return [
+    { label: "Trang Hoang", note: t("carousel.clientsDefault.trang.note"), state: "at risk", icon: "bell"  },
+    { label: "Duc Pham",    note: t("carousel.clientsDefault.duc.note"),   state: "review",  icon: "chart" },
+    { label: "Lan Nguyen",  note: t("carousel.clientsDefault.lan.note"),   state: "ok",      icon: "check" },
+    { label: "Hanh Le",     note: t("carousel.clientsDefault.hanh.note"), state: "book",    icon: "cal"   },
+  ];
+}
 
-function StepGraphic({ type, role }: { type: GraphicType; role: OnboardingRole }) {
+function StepGraphic({ type, role, t }: { type: GraphicType; role: OnboardingRole; t: TFunction<"onboarding"> }) {
   switch (type) {
-    case "journey":  return <JourneySVG />;
-    case "goals":    return <GoalsSVG />;
-    case "match":    return <MatchSVG role={role} />;
-    case "calendar": return <CalendarSVG role={role} />;
-    case "privacy":  return <PrivacySVG role={role} />;
-    case "growth":   return <GrowthSVG />;
-    case "cohort":   return <CohortSVG />;
-    case "report":   return <ReportSVG />;
+    case "journey":  return <JourneySVG t={t} />;
+    case "goals":    return <GoalsSVG t={t} />;
+    case "match":    return <MatchSVG role={role} t={t} />;
+    case "calendar": return <CalendarSVG role={role} t={t} />;
+    case "privacy":  return <PrivacySVG role={role} t={t} />;
+    case "growth":   return <GrowthSVG t={t} />;
+    case "cohort":   return <CohortSVG t={t} />;
+    case "report":   return <ReportSVG t={t} />;
     case "practice":
     case "peer":
     case "clients":
-      return <PracticeRowsSVG rows={PRACTICE_ROWS[type](role)} />;
+      return <PracticeRowsSVG rows={practiceRowsFor(type, role, t)} t={t} />;
   }
 }
 
@@ -700,6 +726,7 @@ export function IntroCarousel({
   onFinish: () => void;
   onSkip: () => void;
 }) {
+  const { t } = useTranslation("onboarding");
   const [index, setIndex] = useState(0);
   const step    = steps[index];
   const isLast  = index === steps.length - 1;
@@ -726,13 +753,13 @@ export function IntroCarousel({
             <div className="flex items-center justify-between px-5 pt-4">
               <img src={clarivaLogo} alt="Clariva" className="h-[18px] w-auto opacity-75" />
               <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/40">
-                {ROLE_LABEL[role]}
+                {t(`carousel.roleLabel.${role}`)}
               </span>
             </div>
 
             {/* Graphic */}
             <div className="flex flex-1 items-center justify-center px-5 py-6 md:py-3">
-              <StepGraphic type={graphic} role={role} />
+              <StepGraphic type={graphic} role={role} t={t} />
             </div>
 
             {/* Step rail */}
@@ -807,7 +834,7 @@ export function IntroCarousel({
                 onClick={() => isLast ? onFinish() : setIndex((i) => i + 1)}
                 className="rounded-xl bg-accent px-7 py-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:opacity-80"
               >
-                {isLast ? "Take me in →" : "Continue"}
+                {isLast ? t("carousel.takeMeIn") : t("carousel.continue")}
               </button>
               {/* Back — only shown from step 2 onwards */}
               {index > 0 && (
@@ -816,7 +843,7 @@ export function IntroCarousel({
                   onClick={() => setIndex((i) => i - 1)}
                   className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
                 >
-                  Back
+                  {t("carousel.back")}
                 </button>
               )}
               {/* Skip intro — pushed to far right */}
@@ -825,7 +852,7 @@ export function IntroCarousel({
                 onClick={onSkip}
                 className="ml-auto text-sm text-gray-400 transition-colors hover:text-gray-600"
               >
-                Skip intro
+                {t("carousel.skipIntro")}
               </button>
             </div>
           </div>

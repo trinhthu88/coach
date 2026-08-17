@@ -1,5 +1,105 @@
 {
   "__reviewed": "The \"coachee\" section below is human-approved per docs/vi-localization-style-guide.md — do not machine-retranslate it. The \"coach\" and \"sponsor\" sections are machine-translated placeholders following the same glossary — needs review by a Vietnamese speaker before shipping to real users, same as every other __notice-flagged namespace in this project.",
+  "chrome": {
+    "restart": "Bắt đầu lại",
+    "dismiss": "Bỏ qua",
+    "gotIt": "Đã hiểu",
+    "next": "Tiếp theo",
+    "doneToast": {
+      "title": "Đã hoàn tất onboarding.",
+      "description": "Bạn có thể xem lại bất cứ lúc nào từ \"Cách thức hoạt động\" trong thanh điều hướng.",
+      "replayAltText": "Xem lại hướng dẫn onboarding",
+      "replay": "Xem lại"
+    }
+  },
+  "carousel": {
+    "roleLabel": { "coachee": "Học viên", "coach": "Coach", "sponsor": "Nhà tài trợ" },
+    "continue": "Tiếp tục",
+    "takeMeIn": "Vào ngay →",
+    "back": "Quay lại",
+    "skipIntro": "Bỏ qua giới thiệu",
+    "journey": { "session1": "Session 1", "ongoing": "Đang diễn ra" },
+    "goals": {
+      "hardConversations": "Cuộc trò chuyện khó",
+      "delegateReport": "Giao việc báo cáo",
+      "protectDeepWork": "Bảo vệ thời gian tập trung"
+    },
+    "match": {
+      "filtersCoach": ["LÃNH ĐẠO", "CHUYỂN ĐỔI", "EN / VN", "ICF PCC"],
+      "filtersCoachee": ["TRÒ CHUYỆN KHÓ", "GIAO VIỆC", "TIẾNG VIỆT", "THÁNG NÀY"],
+      "matchLabel": "PHÙ HỢP"
+    },
+    "calendar": {
+      "days": ["T2", "T3", "T4", "T5", "T6"],
+      "open": "Trống",
+      "booked": "Đã đặt"
+    },
+    "privacy": {
+      "insideHeader": "BÊN TRONG SESSION",
+      "you": "Bạn",
+      "yourCoach": "Coach của bạn",
+      "eachLeader": "Mỗi lãnh đạo",
+      "theirCoach": "Coach của họ",
+      "sessionNotes": "Ghi chú session",
+      "recordings": "Bản ghi âm",
+      "goalWording": "Cách diễn đạt mục tiêu",
+      "everythingSaid": "Mọi điều đã nói",
+      "outsideHeaderCoachee": "ĐIỀU RỜI KHỎI KHÔNG GIAN NÀY",
+      "outsideHeaderSponsor": "TÀI KHOẢN CỦA BẠN NHẬN ĐƯỢC GÌ",
+      "outsideHeaderCoach": "TỔ CHỨC NHẬN ĐƯỢC GÌ",
+      "summaryShared": "Bản tóm tắt bạn chọn chia sẻ",
+      "nothingElse": "Không gì khác",
+      "attendance": "Điểm danh",
+      "sessionsUsed": "Session đã dùng",
+      "avgGoalGrowth": "Tăng trưởng mục tiêu TB"
+    },
+    "growth": { "goals": "Mục tiêu", "avgGrowth": "Tăng trưởng TB", "sessions": "Session" },
+    "cohort": {
+      "header": "GIÁM ĐỐC VẬN HÀNH Q3",
+      "onTrack": "Đúng tiến độ · 9",
+      "atRisk": "Có nguy cơ · 2",
+      "notEnrolled": "Chưa đăng ký · 1"
+    },
+    "report": {
+      "header": "TÓM TẮT DÀNH CHO NHÀ TÀI TRỢ",
+      "period": "Q3 2026",
+      "onTrackRate": "Tỷ lệ đúng tiến độ",
+      "sessionsUsed": "Session đã dùng",
+      "avgGoalGrowth": "Tăng trưởng mục tiêu TB",
+      "sessionNotes": "Ghi chú session",
+      "goalWording": "Cách diễn đạt mục tiêu",
+      "withheld": "bị giới hạn"
+    },
+    "stateLabel": {
+      "step 1": "BƯỚC 1", "step 2": "BƯỚC 2", "live": "ĐANG HOẠT ĐỘNG", "locked": "ĐÃ KHÓA",
+      "at risk": "CÓ NGUY CƠ", "ok": "ỔN", "opt in": "ĐÃ THAM GIA", "open": "MỞ",
+      "record": "GHI NHẬN", "review": "CẦN XEM XÉT", "book": "ĐẶT LỊCH", "nudge": "NHẮC NHỞ"
+    },
+    "practice": {
+      "coachProfile": { "label": "Hồ sơ coach của tôi", "note": "Chuyên môn, giới thiệu, chứng nhận" },
+      "availability": { "label": "Lịch trống của tôi", "note": "Khung giờ hàng tuần và khoảng đệm" },
+      "clients": { "label": "Khách hàng của tôi", "note": "9 đang hoạt động trong 3 chương trình" },
+      "sessionsNotes": { "label": "Session & ghi chú", "note": "Riêng tư cho từng cặp" }
+    },
+    "peer": {
+      "give": { "label": "Peer coaching · cho", "note": "Bạn coaching cho một coach đã chứng nhận khác" },
+      "receive": { "label": "Peer coaching · nhận", "note": "Một đồng nghiệp coaching cho bạn" },
+      "findCoach": { "label": "Tìm coach", "note": "Đặt lịch với một coach cho chính mình" },
+      "analytics": { "label": "Phân tích thực hành", "note": "Số giờ, session đồng nghiệp, suy ngẫm" }
+    },
+    "clientsSponsor": {
+      "leader07": { "label": "Lãnh đạo 07", "note": "Không có session trong 5 tuần" },
+      "leader11": { "label": "Lãnh đạo 11", "note": "Đã gửi lời mời ngày 4 tháng 6" },
+      "leader04": { "label": "Lãnh đạo 04", "note": "Đúng tiến độ · mức đánh giá đang thay đổi" },
+      "leader02": { "label": "Lãnh đạo 02", "note": "Đúng tiến độ · 3/6 session" }
+    },
+    "clientsDefault": {
+      "trang": { "note": "Chưa đặt session trong 5 tuần" },
+      "duc": { "note": "Mức đánh giá mục tiêu không đổi từ tháng 6" },
+      "lan": { "note": "Đúng tiến độ · session 2/6" },
+      "hanh": { "note": "Session cuối chưa có lịch" }
+    }
+  },
   "coachee": {
     "steps": {
       "welcome": {
