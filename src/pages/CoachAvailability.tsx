@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -46,6 +47,7 @@ interface Slot {
 }
 
 export default function CoachAvailability() {
+  const { t } = useTranslation("dashboard");
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date());
@@ -73,7 +75,7 @@ export default function CoachAvailability() {
       .order("slot_date")
       .order("start_time");
     if (error) {
-      toast({ title: "Failed to load", description: error.message, variant: "destructive" });
+      toast({ title: t("availability.toast.loadFailedTitle"), description: error.message, variant: "destructive" });
     } else {
       setSlots((data ?? []) as Slot[]);
     }
@@ -108,13 +110,13 @@ export default function CoachAvailability() {
     setSavingOptIn(false);
     if (error) {
       setPeerOptIn(!checked);
-      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      toast({ title: t("availability.toast.updateFailedTitle"), description: error.message, variant: "destructive" });
     } else {
       toast({
-        title: checked ? "Peer coaching enabled" : "Peer coaching disabled",
+        title: checked ? t("availability.toast.peerEnabledTitle") : t("availability.toast.peerDisabledTitle"),
         description: checked
-          ? "Other coaches can now book your peer slots."
-          : "Your peer slots are hidden from peers.",
+          ? t("availability.toast.peerEnabledDescription")
+          : t("availability.toast.peerDisabledDescription"),
       });
     }
   };
@@ -137,8 +139,8 @@ export default function CoachAvailability() {
     if (!user || !selectedDate) return;
     if (start >= end) {
       toast({
-        title: "Invalid time",
-        description: "End time must be after start time.",
+        title: t("availability.toast.invalidTimeTitle"),
+        description: t("availability.toast.invalidTimeDescription"),
         variant: "destructive",
       });
       return;
@@ -152,9 +154,9 @@ export default function CoachAvailability() {
       slot_type: slotType,
     });
     if (error) {
-      toast({ title: "Add failed", description: error.message, variant: "destructive" });
+      toast({ title: t("availability.toast.addFailedTitle"), description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Slot added" });
+      toast({ title: t("availability.toast.slotAddedTitle") });
       await load();
     }
     setAdding(false);
@@ -163,9 +165,9 @@ export default function CoachAvailability() {
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("coach_availability").delete().eq("id", id);
     if (error) {
-      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+      toast({ title: t("availability.toast.deleteFailedTitle"), description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Slot removed" });
+      toast({ title: t("availability.toast.slotRemovedTitle") });
       await load();
     }
   };
@@ -173,13 +175,13 @@ export default function CoachAvailability() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Coach"
-        title="My"
-        emphasis="availability"
-        subtitle="Set the time slots when coachees can book sessions with you."
+        eyebrow={t("availability.eyebrow")}
+        title={t("availability.titleLead")}
+        emphasis={t("availability.titleEmphasis")}
+        subtitle={t("availability.subtitle")}
         actions={
           <Button onClick={() => setBulkOpen(true)} className="rounded-xl shadow-glow">
-            <CalendarRange className="mr-1 h-4 w-4" /> Set weekly template
+            <CalendarRange className="mr-1 h-4 w-4" /> {t("availability.setWeeklyTemplate")}
           </Button>
         }
       />
@@ -193,10 +195,9 @@ export default function CoachAvailability() {
             <MessagesSquare className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-semibold">Available for peer coaching</p>
+            <p className="font-semibold">{t("availability.peerOptIn.title")}</p>
             <p className="text-xs text-muted-foreground">
-              When on, other coaches can book your <strong>peer</strong> slots to be coached by you.
-              Your coaching slots stay reserved for coachees.
+              {t("availability.peerOptIn.bodyPrefix")} <strong>{t("availability.peerOptIn.bodyBold")}</strong> {t("availability.peerOptIn.bodySuffix")}
             </p>
           </div>
         </div>
@@ -205,15 +206,15 @@ export default function CoachAvailability() {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 rounded-xl border bg-card/40 px-4 py-2.5 text-xs text-muted-foreground">
-        <span className="font-bold uppercase tracking-widest text-[10px]">Legend</span>
+        <span className="font-bold uppercase tracking-widest text-[10px]">{t("availability.legend.label")}</span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-sm bg-primary" /> Coaching slot
+          <span className="h-3 w-3 rounded-sm bg-primary" /> {t("availability.legend.coachingSlot")}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-sm bg-accent" /> Peer slot
+          <span className="h-3 w-3 rounded-sm bg-accent" /> {t("availability.legend.peerSlot")}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-sm bg-muted-foreground/30" /> Booked
+          <span className="h-3 w-3 rounded-sm bg-muted-foreground/30" /> {t("availability.legend.booked")}
         </span>
       </div>
 
@@ -235,12 +236,12 @@ export default function CoachAvailability() {
             </div>
           ) : (
             <div className="grid grid-cols-7 gap-1">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+              {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((d) => (
                 <div
                   key={d}
                   className="px-2 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
                 >
-                  {d}
+                  {t(`availability.weekdays.${d}`)}
                 </div>
               ))}
               {days.map((d) => {
@@ -282,7 +283,7 @@ export default function CoachAvailability() {
                               : "text-primary"
                           )}
                         >
-                          {count} slot{count > 1 ? "s" : ""}
+                          {t("availability.slotCount", { count })}
                         </span>
                         {mixed && !isSelected && (
                           <div className="mt-0.5 flex gap-0.5">
@@ -303,19 +304,19 @@ export default function CoachAvailability() {
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
             <h3 className="font-semibold">
-              {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Pick a day"}
+              {selectedDate ? format(selectedDate, "EEEE, MMM d") : t("availability.pickADay")}
             </h3>
           </div>
 
           {!selectedDate ? (
             <p className="text-sm text-muted-foreground">
-              Select a day on the calendar to manage time slots.
+              {t("availability.selectDayPrompt")}
             </p>
           ) : (
             <>
               <div className="space-y-2">
                 {selectedSlots.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No slots yet for this day.</p>
+                  <p className="text-sm text-muted-foreground">{t("availability.noSlotsForDay")}</p>
                 )}
                 {selectedSlots.map((s) => (
                   <div
@@ -340,11 +341,11 @@ export default function CoachAvailability() {
                             : "bg-primary/15 text-primary"
                         )}
                       >
-                        {s.slot_type === "peer" ? "Peer" : "Coaching"}
+                        {s.slot_type === "peer" ? t("availability.slotTypePeer") : t("availability.slotTypeCoaching")}
                       </Badge>
                       {s.is_booked && (
                         <Badge variant="secondary" className="text-[10px]">
-                          Booked
+                          {t("availability.bookedBadge")}
                         </Badge>
                       )}
                     </div>
@@ -363,7 +364,7 @@ export default function CoachAvailability() {
               </div>
 
               <div className="space-y-3 border-t pt-4">
-                <Label>Add a slot</Label>
+                <Label>{t("availability.addASlot")}</Label>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -375,7 +376,7 @@ export default function CoachAvailability() {
                         : "border-border hover:border-primary/40"
                     )}
                   >
-                    Coaching
+                    {t("availability.slotTypeCoaching")}
                   </button>
                   <button
                     type="button"
@@ -388,9 +389,9 @@ export default function CoachAvailability() {
                         : "border-border hover:border-accent/40",
                       !peerOptIn && "cursor-not-allowed opacity-50"
                     )}
-                    title={!peerOptIn ? "Enable peer coaching above first" : undefined}
+                    title={!peerOptIn ? t("availability.enablePeerFirst") : undefined}
                   >
-                    Peer
+                    {t("availability.slotTypePeer")}
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -413,7 +414,7 @@ export default function CoachAvailability() {
                     ) : (
                       <Plus className="h-4 w-4" />
                     )}
-                    Add
+                    {t("availability.add")}
                   </Button>
                 </div>
               </div>

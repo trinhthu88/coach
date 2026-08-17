@@ -989,6 +989,7 @@ export type Database = {
           last_profile_update_at: string
           must_change_password: boolean
           onboarding_completed_at: string | null
+          preferred_language: string
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
         }
@@ -1002,6 +1003,7 @@ export type Database = {
           last_profile_update_at?: string
           must_change_password?: boolean
           onboarding_completed_at?: string | null
+          preferred_language?: string
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }
@@ -1015,6 +1017,7 @@ export type Database = {
           last_profile_update_at?: string
           must_change_password?: boolean
           onboarding_completed_at?: string | null
+          preferred_language?: string
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }

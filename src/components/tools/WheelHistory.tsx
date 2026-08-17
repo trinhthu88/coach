@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { format } from "date-fns";
@@ -17,6 +18,7 @@ const MIN_MATCH = 3;
  * Overlays the two most recent wheels when enough domain labels match.
  */
 export function WheelHistory({ coacheeId }: { coacheeId?: string }) {
+  const { t } = useTranslation("tools");
   const [fills, setFills] = useState<WheelFill[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +66,12 @@ export function WheelHistory({ coacheeId }: { coacheeId?: string }) {
   const [latest, previous] = fills;
   let axes = latest.domains.map((d) => d.label);
   let series: WheelSeries[] = [
-    domainsToSeries(latest.domains, "latest", `Latest · ${format(new Date(latest.date), "MMM d")}`, true),
+    domainsToSeries(
+      latest.domains,
+      "latest",
+      t("wheelHistory.latestSeries", { date: format(new Date(latest.date), "MMM d") }),
+      true
+    ),
   ];
   let note: string | null = null;
 
@@ -74,11 +81,20 @@ export function WheelHistory({ coacheeId }: { coacheeId?: string }) {
     if (shared.length >= MIN_MATCH) {
       axes = shared.map((d) => d.label);
       series = [
-        domainsToSeries(previous.domains, "prev", `Previous · ${format(new Date(previous.date), "MMM d")}`),
-        domainsToSeries(latest.domains, "latest", `Latest · ${format(new Date(latest.date), "MMM d")}`, true),
+        domainsToSeries(
+          previous.domains,
+          "prev",
+          t("wheelHistory.previousSeries", { date: format(new Date(previous.date), "MMM d") })
+        ),
+        domainsToSeries(
+          latest.domains,
+          "latest",
+          t("wheelHistory.latestSeries", { date: format(new Date(latest.date), "MMM d") }),
+          true
+        ),
       ];
     } else {
-      note = "Domains changed too much between sessions to compare directly — showing your latest wheel only.";
+      note = t("wheelHistory.tooDifferentNote");
     }
   }
 
@@ -87,7 +103,7 @@ export function WheelHistory({ coacheeId }: { coacheeId?: string }) {
   return (
     <Card className="p-4">
       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        Wheel of Life
+        {t("wheelHistory.title")}
       </p>
       <WheelRadar axes={axes} series={series} />
       {note && <p className="mt-2 text-[11px] text-muted-foreground">{note}</p>}

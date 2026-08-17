@@ -1,0 +1,373 @@
+{
+  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "greetingByRole": {
+    "coachee": "Tìm coach tiếp theo và duy trì đà phát triển.",
+    "coach": "Xem lại các yêu cầu session và truyền cảm hứng cho học viên của bạn hôm nay.",
+    "admin": "Quản lý phê duyệt, coach và tình trạng nền tảng."
+  },
+  "hero": {
+    "coachWorkspaceBadge": "không gian làm việc coach",
+    "adminWorkspaceBadge": "không gian làm việc quản trị viên",
+    "welcomeBack": "Chào mừng trở lại,",
+    "adminDashboardButton": "Bảng điều khiển quản trị",
+    "viewSessionsButton": "Xem session"
+  },
+  "admin": {
+    "stats": {
+      "totalUsers": "Tổng số người dùng",
+      "totalUsersHint": "Tài khoản học viên",
+      "bookedSessions": "Session đã đặt",
+      "bookedSessionsHint": "Chờ + đã xác nhận + hoàn thành",
+      "completedSessions": "Session đã hoàn thành",
+      "completedSessionsHint": "Trong tổng số session",
+      "cancelledSessions": "Session đã hủy",
+      "cancelledSessionsHint": "Trong tổng số session"
+    },
+    "pendingSessions": {
+      "title": "Session đang chờ",
+      "allSet": "Tất cả session sắp tới đều đã có liên kết cuộc họp.",
+      "needsLink_other": "{{count}} session vẫn cần liên kết cuộc họp.",
+      "setLinks": "Thiết lập liên kết"
+    },
+    "coaches": {
+      "title": "Coach",
+      "noNewApplications": "Không có đơn đăng ký mới.",
+      "newApplications_other": "Có đơn đăng ký mới cần xem xét.",
+      "review": "Xem xét",
+      "profilesAwaitingApproval_other": "{{count}} hồ sơ hiện có đang chờ phê duyệt"
+    },
+    "coachees": {
+      "title": "Học viên",
+      "noNewApplications": "Không có đơn đăng ký mới.",
+      "newApplications_other": "Có đơn đăng ký mới cần xem xét.",
+      "review": "Xem xét",
+      "profilesAwaitingApproval_other": "{{count}} hồ sơ hiện có đang chờ phê duyệt"
+    }
+  },
+  "coachee": {
+    "greeting": {
+      "morning": "Chào buổi sáng",
+      "afternoon": "Chào buổi chiều",
+      "evening": "Chào buổi tối"
+    },
+    "upcomingLine_other": "Bạn có {{count}} session sắp tới. Hãy duy trì đà phát triển.",
+    "noUpcomingLine": "Duyệt qua các coach được tuyển chọn của chúng tôi và đặt session tiếp theo để duy trì đà phát triển.",
+    "stats": {
+      "sessionsDone": "Session đã hoàn thành",
+      "sessionsDoneHintProgramme": "trong {{limit}} của chương trình",
+      "sessionsDoneHintPlain": "Session đã hoàn thành",
+      "hoursCoached": "Số giờ coaching",
+      "hoursCoachedHint": "Thời gian đã đầu tư",
+      "actionsOpen": "Hành động đang mở",
+      "actionsOpenHint": "Trên tất cả session",
+      "upcoming": "Sắp tới",
+      "upcomingHint": "Đã đặt"
+    },
+    "nextSession": {
+      "label": "Session tiếp theo",
+      "noneTitle": "Không có session sắp tới",
+      "noneBody": "Duyệt qua các coach được tuyển chọn của chúng tôi và đặt session đầu tiên kéo dài 30, 45 hoặc 60 phút.",
+      "findCoach": "Tìm coach",
+      "today": "Hôm nay",
+      "inOneDay": "Trong 1 ngày",
+      "inDays": "Trong {{count}} ngày",
+      "soon": "Sắp diễn ra",
+      "yourCoach": "Coach của bạn",
+      "joinAndPrepare": "Tham gia & chuẩn bị",
+      "allSessions": "Tất cả session",
+      "programmeLabel": "CHƯƠNG TRÌNH"
+    },
+    "curatedForYou": {
+      "eyebrow": "Được tuyển chọn cho bạn",
+      "title": "Coach phù hợp với mục tiêu của bạn",
+      "browseAll": "Xem tất cả",
+      "noneAvailable": "Chưa có coach nào khả dụng."
+    },
+    "coachCard": {
+      "defaultTitle": "Coach",
+      "noBio": "Hồ sơ khả dụng — mở để tìm hiểu thêm.",
+      "viewProfile": "Xem hồ sơ"
+    },
+    "recentLog": {
+      "title": "Nhật ký session gần đây",
+      "empty": "Chưa có session nào.",
+      "withCoach": "với {{name}}",
+      "defaultCoach": "coach"
+    },
+    "actionItems": {
+      "title": "Hành động cần làm",
+      "empty": "Không có hành động nào đang mở. 🎉",
+      "defaultCoach": "coach"
+    }
+  },
+  "coach": {
+    "workspace": {
+      "titleLead": "Không gian làm việc",
+      "titleEmphasis": "coach",
+      "subtitle": "Xác nhận session, hỗ trợ khách hàng và phát triển thông qua peer coaching.",
+      "editProfile": "Chỉnh sửa hồ sơ",
+      "setAvailability": "Thiết lập lịch trống"
+    },
+    "roleIndicators": {
+      "coaching": "Coaching",
+      "activeClients_other": "{{count}} khách hàng đang hoạt động",
+      "peerCoaching": "Peer coaching",
+      "availableForPeers": "Sẵn sàng cho đồng nghiệp",
+      "notOptedIn": "Chưa tham gia",
+      "coachee": "Học viên",
+      "openToBeingCoached": "Sẵn sàng được coaching"
+    },
+    "stats": {
+      "sessionsCompleted": "Session đã hoàn thành",
+      "sessionsCompletedHint": "Với vai trò coach",
+      "peerSessions": "Session đồng nghiệp",
+      "peerSessionsHint": "Session đồng nghiệp đã hoàn thành",
+      "upcoming": "Sắp tới",
+      "upcomingHint": "Đã xác nhận",
+      "avgRating": "Đánh giá trung bình",
+      "avgRatingHint": "Từ học viên"
+    },
+    "nextSession": {
+      "label": "Session tiếp theo",
+      "noneTitle": "Không có session sắp tới",
+      "noneBody": "Duyệt qua các coach được tuyển chọn của chúng tôi và đặt session đầu tiên kéo dài 30, 45 hoặc 60 phút.",
+      "findCoach": "Tìm coach",
+      "withPrefix": "với",
+      "yourCoach": "coach của bạn",
+      "enterMeeting": "Tham gia cuộc họp",
+      "awaitingConfirmation": "Đang chờ xác nhận",
+      "confirmedSoon": "Sắp được xác nhận",
+      "viewDetails": "Xem chi tiết"
+    },
+    "peerRequests": {
+      "title": "Yêu cầu đồng nghiệp",
+      "noneOptedIn": "Tham gia peer coaching từ Lịch trống của tôi.",
+      "noneAvailable": "Hiện chưa có yêu cầu đồng nghiệp nào.",
+      "defaultPeer": "Đồng nghiệp",
+      "reviewInSessions": "Xem trong session"
+    },
+    "bookingRequests": {
+      "title": "Yêu cầu đặt lịch",
+      "new": "{{count}} mới",
+      "none": "Hiện chưa có yêu cầu nào đang chờ.",
+      "defaultCoachee": "Học viên",
+      "approve": "Chấp thuận",
+      "decline": "Từ chối"
+    },
+    "upcomingSessions": {
+      "title": "Session sắp tới",
+      "none": "Không có session đã xác nhận sắp tới.",
+      "withPrefix": "với"
+    },
+    "kindPill": {
+      "coaching": "Coaching",
+      "peerGive": "Đồng nghiệp · cho",
+      "peerReceive": "Đồng nghiệp · nhận"
+    },
+    "practiceJourneyPreview": {
+      "title": "Xem trước hành trình thực hành",
+      "empty": "Các session peer coaching và session bạn đã coaching sẽ hiển thị ở đây.",
+      "sessionsDelivered": "Session đã thực hiện",
+      "peerSessionsCompleted": "Session đồng nghiệp đã hoàn thành",
+      "open": "Mở hành trình thực hành"
+    }
+  },
+  "clients": {
+    "eyebrow": "Thực hành",
+    "titleLead": "Khách hàng",
+    "titleEmphasis": "của tôi",
+    "subtitle": "Tất cả học viên đang hoạt động trong nháy mắt — tiến độ, mức độ tương tác và ghi chú riêng tư.",
+    "atCapNotice": "Đã mời {{used}} trong số {{limit}} khách hàng.",
+    "contactUs": "Liên hệ chúng tôi",
+    "forMore": "để biết thêm.",
+    "usedOfLimit": "Đã mời {{used}} trong số {{limit}} khách hàng",
+    "inviteAClient": "Mời khách hàng",
+    "stats": {
+      "activeClients": "Khách hàng đang hoạt động",
+      "activeClientsHint_other": "{{count}} không có buổi sắp tới",
+      "sessionsThisWeek": "Session tuần này",
+      "sessionsThisWeekHintNext": "tiếp theo: {{date}}",
+      "sessionsThisWeekHintNone": "chưa có lịch",
+      "overdueActions": "Hành động quá hạn",
+      "overdueActionsHint_other": "trên {{count}} học viên",
+      "overdueActionsHintNone": "tất cả đúng hạn",
+      "milestonesHit": "Cột mốc đã đạt",
+      "milestonesHitHint": "tổng số đã hoàn thành"
+    },
+    "searchPlaceholder": "Tìm theo tên hoặc email…",
+    "clickToOpen": "Nhấp vào thẻ để mở hồ sơ học viên",
+    "empty": {
+      "title": "Chưa có khách hàng nào",
+      "body": "Học viên sẽ xuất hiện ở đây khi bạn có một session đã xác nhận hoặc hoàn thành."
+    },
+    "tableHeaders": {
+      "client": "Khách hàng",
+      "programme": "Chương trình",
+      "progress": "Tiến độ",
+      "nextSession": "Session tiếp theo"
+    },
+    "row": {
+      "sessionsAndPct_other": "{{count}} session · {{pct}}%",
+      "notScheduled": "Chưa có lịch",
+      "defaultProgramme": "Chương trình"
+    },
+    "invite": {
+      "requiredFields": "Cần có họ tên và email",
+      "success": "Đã mời — đang chờ quản trị viên phê duyệt",
+      "limitReached": "Bạn đã đạt giới hạn {{limit}} khách hàng được mời.",
+      "emailRegistered": "Email đó đã được đăng ký trên Clariva.",
+      "dialogTitle": "Mời khách hàng",
+      "dialogDescription": "Họ sẽ nhận được email để thiết lập tài khoản. Quyền truy cập của họ đang chờ quản trị viên phê duyệt.",
+      "fullNameLabel": "Họ và tên",
+      "fullNamePlaceholder": "Jane Doe",
+      "emailLabel": "Email",
+      "emailPlaceholder": "jane@company.com",
+      "sessionLimitLabel": "Giới hạn session hàng tháng (không bắt buộc)",
+      "sessionLimitPlaceholder": "Sử dụng mặc định của nền tảng nếu để trống",
+      "atCapPrefix": "Liên hệ",
+      "atCapSuffix": "nếu bạn muốn mời thêm khách hàng.",
+      "cancel": "Hủy",
+      "sendInvite": "Gửi lời mời"
+    },
+    "detail": {
+      "defaultName": "Khách hàng",
+      "backToOverview": "Về trang tổng quan",
+      "removeClient": "Xóa khách hàng",
+      "removeConfirmTitle": "Xóa {{name}}?",
+      "removeConfirmDefaultName": "khách hàng này",
+      "removeConfirmBody": "Họ sẽ mất quyền truy cập để đặt session mới hoặc nhắn tin cho bạn. Các session, ghi chú và lịch sử trước đây vẫn được giữ lại — đây không phải là xóa vĩnh viễn, và bạn có thể được phân công lại cho họ sau này nếu cần.",
+      "cancel": "Hủy",
+      "removing": "Đang xóa…",
+      "statedGoals": "Mục tiêu đã nêu:",
+      "miniMetrics": {
+        "overall": "Tổng thể",
+        "overdue": "Quá hạn",
+        "next": "Tiếp theo"
+      },
+      "tabs": {
+        "goals": "Mục tiêu & cột mốc",
+        "actions": "Hành động cần làm ({{count}})",
+        "sessions": "Session ({{count}})",
+        "notes": "Ghi chú coach ({{count}})"
+      },
+      "noGoalsYet": "Học viên này chưa đặt mục tiêu nào.",
+      "doneOn": "Hoàn thành {{date}}",
+      "targetOn": "Mục tiêu {{date}}",
+      "noTarget": "Không có mục tiêu",
+      "noActionsYet": "Chưa có hành động nào được giao.",
+      "upcomingCount": "Sắp tới · {{count}}",
+      "noneScheduled": "Chưa có lịch.",
+      "pastCount": "Đã qua · {{count}}",
+      "noPastSessions": "Không có session nào trong quá khứ.",
+      "notesIntro": "Ghi chú riêng tư chỉ mình bạn có thể xem. Dùng để theo dõi các mô hình và chiến lược coaching.",
+      "notePlaceholder": "Quan sát riêng tư của bạn về học viên này…",
+      "addNote": "Thêm ghi chú",
+      "noNotesYet": "Chưa có ghi chú nào.",
+      "deleteNote": "Xóa ghi chú",
+      "ratedByCoachee": "— được đánh giá bởi học viên"
+    }
+  },
+  "availability": {
+    "toast": {
+      "loadFailedTitle": "Tải không thành công",
+      "updateFailedTitle": "Cập nhật không thành công",
+      "peerEnabledTitle": "Đã bật peer coaching",
+      "peerDisabledTitle": "Đã tắt peer coaching",
+      "peerEnabledDescription": "Các coach khác giờ đây có thể đặt khung giờ đồng nghiệp của bạn.",
+      "peerDisabledDescription": "Khung giờ đồng nghiệp của bạn đã được ẩn khỏi đồng nghiệp.",
+      "invalidTimeTitle": "Thời gian không hợp lệ",
+      "invalidTimeDescription": "Giờ kết thúc phải sau giờ bắt đầu.",
+      "addFailedTitle": "Thêm không thành công",
+      "slotAddedTitle": "Đã thêm khung giờ",
+      "deleteFailedTitle": "Xóa không thành công",
+      "slotRemovedTitle": "Đã xóa khung giờ"
+    },
+    "eyebrow": "Coach",
+    "titleLead": "Lịch trống",
+    "titleEmphasis": "của tôi",
+    "subtitle": "Thiết lập các khung giờ mà học viên có thể đặt session với bạn.",
+    "setWeeklyTemplate": "Thiết lập mẫu hàng tuần",
+    "peerOptIn": {
+      "title": "Sẵn sàng cho peer coaching",
+      "bodyPrefix": "Khi bật, các coach khác có thể đặt các khung giờ",
+      "bodyBold": "đồng nghiệp",
+      "bodySuffix": "của bạn để được bạn coaching. Các khung giờ coaching của bạn vẫn được dành riêng cho học viên."
+    },
+    "legend": {
+      "label": "Chú giải",
+      "coachingSlot": "Khung giờ coaching",
+      "peerSlot": "Khung giờ đồng nghiệp",
+      "booked": "Đã đặt"
+    },
+    "weekdays": {
+      "mon": "T2",
+      "tue": "T3",
+      "wed": "T4",
+      "thu": "T5",
+      "fri": "T6",
+      "sat": "T7",
+      "sun": "CN"
+    },
+    "slotCount_other": "{{count}} khung giờ",
+    "pickADay": "Chọn một ngày",
+    "selectDayPrompt": "Chọn một ngày trên lịch để quản lý các khung giờ.",
+    "noSlotsForDay": "Chưa có khung giờ nào cho ngày này.",
+    "slotTypePeer": "Đồng nghiệp",
+    "slotTypeCoaching": "Coaching",
+    "bookedBadge": "Đã đặt",
+    "addASlot": "Thêm khung giờ",
+    "enablePeerFirst": "Bật peer coaching ở trên trước",
+    "add": "Thêm"
+  },
+  "practiceJourney": {
+    "eyebrow": "Thực hành",
+    "titleLead": "Phân tích",
+    "titleEmphasis": "thực hành",
+    "subtitle": "Session, hoạt động peer coaching và phản hồi năng lực ICF của bạn trong nháy mắt.",
+    "competencies": {
+      "ethical_practice": "Thực hành đạo đức",
+      "coaching_mindset": "Tư duy coaching",
+      "maintains_agreements": "Duy trì thỏa thuận",
+      "trust_safety": "Tin tưởng & an toàn",
+      "maintains_presence": "Duy trì sự hiện diện",
+      "listens_actively": "Lắng nghe chủ động",
+      "evokes_awareness": "Khơi gợi nhận thức",
+      "facilitates_growth": "Thúc đẩy sự phát triển"
+    },
+    "counters": {
+      "sessionsReceivedTitle": "Session đã nhận",
+      "sessionsReceivedSubtitle": "Từ một coach",
+      "peerGivenTitle": "Session đồng nghiệp đã cho",
+      "peerGivenSubtitle": "Bạn với vai trò coach đồng nghiệp",
+      "peerReceivedTitle": "Session đồng nghiệp đã nhận",
+      "peerReceivedSubtitle": "Bạn với vai trò học viên đồng nghiệp",
+      "booked": "Đã đặt",
+      "completed": "Đã hoàn thành"
+    },
+    "tabs": {
+      "competencies": "Năng lực",
+      "trend": "Xu hướng",
+      "feedback": "Phản hồi ({{count}})",
+      "log": "Nhật ký thực hành ({{count}})"
+    },
+    "radarTitle": "Năng lực ICF trung bình (0–100)",
+    "averageLegend": "Trung bình",
+    "noFeedbackYet": "Chưa có phản hồi nào — đánh giá đầu tiên từ học viên đồng nghiệp của bạn sẽ xuất hiện ở đây.",
+    "strengths": "Điểm mạnh",
+    "growthEdges": "Điểm cần phát triển",
+    "noDataYet": "Chưa có dữ liệu.",
+    "trendTitle": "Điểm năng lực theo thời gian",
+    "noFeedbackYetShort": "Chưa có phản hồi nào.",
+    "fromPrefix": "từ",
+    "defaultPeer": "Đồng nghiệp",
+    "noWrittenNote": "Chưa có ghi chú bằng văn bản nào được cung cấp.",
+    "noWrittenFeedbackYet": "Chưa có phản hồi bằng văn bản nào.",
+    "noEntriesYet": "Chưa có mục nào.",
+    "withPrefix": "với",
+    "kindBadge": {
+      "coached": "Coaching",
+      "peerGiven": "Đồng nghiệp · đã cho",
+      "peerReceived": "Đồng nghiệp · đã nhận"
+    }
+  }
+}

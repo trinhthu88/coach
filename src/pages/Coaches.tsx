@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { PageHeader, FilterChip } from "@/components/ui/page-header";
@@ -37,6 +38,7 @@ const SPECIALTY_FILTERS = [
 ] as const;
 
 export default function Coaches() {
+  const { t } = useTranslation("coaches");
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -83,17 +85,17 @@ export default function Coaches() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Curated network"
-        title="Find your"
-        emphasis="guide"
-        subtitle={`${coaches.length} accredited coach${coaches.length === 1 ? "" : "es"}, filtered to what you're working on right now.`}
+        eyebrow={t("list.eyebrow")}
+        title={t("list.titleLead")}
+        emphasis={t("list.titleEmphasis")}
+        subtitle={t("list.subtitle", { count: coaches.length })}
       />
 
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="relative min-w-[260px] flex-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name, specialty, or focus…"
+            placeholder={t("list.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="h-11 rounded-full pl-11"
@@ -102,7 +104,7 @@ export default function Coaches() {
 
         {SPECIALTY_FILTERS.map((s) => (
           <FilterChip key={s} active={activeSpec === s} onClick={() => setActiveSpec(s)}>
-            {s === "All" ? "All Specialties" : s}
+            {s === "All" ? t("list.allSpecialtiesLabel") : s}
           </FilterChip>
         ))}
       </div>
@@ -128,6 +130,7 @@ export default function Coaches() {
 }
 
 function CoachCard({ coach }: { coach: CoachRow }) {
+  const { t } = useTranslation("coaches");
   const { isFavorite, toggle } = useFavorites();
   const fav = isFavorite(coach.id);
   const initials = (coach.profiles?.full_name || "?")
@@ -143,7 +146,7 @@ function CoachCard({ coach }: { coach: CoachRow }) {
       <div className="absolute right-4 top-4 flex items-center gap-2">
         {coach.is_featured && (
           <span className="rounded-full bg-gradient-primary px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary-foreground shadow-glow">
-            Featured
+            {t("list.featuredBadge")}
           </span>
         )}
         <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-bold text-warning">
@@ -156,7 +159,7 @@ function CoachCard({ coach }: { coach: CoachRow }) {
             e.preventDefault();
             toggle(coach.id);
           }}
-          aria-label={fav ? "Remove from favorites" : "Add to favorites"}
+          aria-label={fav ? t("list.removeFavorite") : t("list.addFavorite")}
           className={cn(
             "rounded-full p-1.5 transition-colors",
             fav ? "text-destructive" : "text-muted-foreground hover:text-destructive"
@@ -185,7 +188,7 @@ function CoachCard({ coach }: { coach: CoachRow }) {
         <p className="mt-3 line-clamp-2 text-sm italic text-muted-foreground">
           {coach.profiles?.bio
             ? `"${coach.profiles.bio}"`
-            : "Profile available — open to learn more."}
+            : t("list.noBio")}
         </p>
 
         {coach.specialties && coach.specialties.length > 0 && (
@@ -200,10 +203,12 @@ function CoachCard({ coach }: { coach: CoachRow }) {
 
         <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm">
           <span className="text-xs text-muted-foreground">
-            {coach.years_experience ?? 0} yrs{coach.country_based ? ` · ${coach.country_based}` : ""}
+            {coach.country_based
+              ? t("list.experienceWithCountry", { years: coach.years_experience ?? 0, country: coach.country_based })
+              : t("list.experienceOnly", { years: coach.years_experience ?? 0 })}
           </span>
           <Button variant="link" size="sm" className="h-auto p-0 text-primary">
-            View profile
+            {t("list.viewProfile")}
           </Button>
         </div>
       </Link>
@@ -212,35 +217,37 @@ function CoachCard({ coach }: { coach: CoachRow }) {
 }
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation("coaches");
   return (
     <Card className="flex flex-col items-center gap-3 p-12 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
         <AlertTriangle className="h-6 w-6" />
       </div>
-      <h3 className="text-lg font-semibold">Couldn't load coaches</h3>
+      <h3 className="text-lg font-semibold">{t("list.error.title")}</h3>
       <p className="max-w-md text-sm text-muted-foreground">
-        Something went wrong while fetching the coach directory. Check your connection and try again.
+        {t("list.error.body")}
       </p>
       <Button variant="outline" onClick={onRetry} className="mt-2">
-        Try again
+        {t("list.error.retry")}
       </Button>
     </Card>
   );
 }
 
 function EmptyState({ query }: { query: string }) {
+  const { t } = useTranslation("coaches");
   return (
     <Card className="flex flex-col items-center gap-3 p-12 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
         <Search className="h-6 w-6" />
       </div>
       <h3 className="text-lg font-semibold">
-        {query ? "No coaches match your search" : "No coaches available yet"}
+        {query ? t("list.empty.noMatchTitle") : t("list.empty.noneYetTitle")}
       </h3>
       <p className="max-w-md text-sm text-muted-foreground">
         {query
-          ? "Try a different keyword or specialty."
-          : "Once admins approve coach profiles, they'll appear here for booking."}
+          ? t("list.empty.noMatchBody")
+          : t("list.empty.noneYetBody")}
       </p>
     </Card>
   );

@@ -1,11 +1,13 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import clarivaLogo from "@/assets/clariva-logo-dark.png";
 
 const NotFound = () => {
   const location = useLocation();
+  const { t } = useTranslation("common");
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
@@ -22,17 +24,16 @@ const NotFound = () => {
         <img src={clarivaLogo} alt="Clariva" className="h-8 w-auto object-contain" />
         <div className="mt-10 inline-flex items-center gap-2.5 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary-glow">
           <Compass className="h-3.5 w-3.5" />
-          Lost your way
+          {t("notFound.badge")}
         </div>
         <h1 className="mt-6 font-display text-[clamp(48px,8vw,88px)] font-light leading-none tracking-tight text-white">
           404
         </h1>
         <p className="mt-4 max-w-md text-[15px] leading-[1.7] text-white/50">
-          This page doesn't exist, or you don't have access to it. Let's get you back
-          on track.
+          {t("notFound.body")}
         </p>
         <Button asChild size="lg" className="mt-8 rounded-full shadow-glow">
-          <Link to="/">Return to home</Link>
+          <Link to="/">{t("notFound.returnHome")}</Link>
         </Button>
       </div>
     </div>

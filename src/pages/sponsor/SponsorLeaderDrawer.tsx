@@ -1,4 +1,5 @@
 import { ShieldCheck, Calendar, TrendingUp, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Pill } from "@/pages/admin/_shared";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
@@ -9,24 +10,24 @@ const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "wa
   paused: "warning",
   at_risk: "destructive",
 };
-const STATUS_LABEL: Record<SponsorRosterRow["enrollment_status"], string> = {
-  active: "Active",
-  completed: "Completed",
-  paused: "Paused",
-  at_risk: "At risk",
+const STATUS_LABEL_KEY: Record<SponsorRosterRow["enrollment_status"], string> = {
+  active: "active",
+  completed: "completed",
+  paused: "paused",
+  at_risk: "atRisk",
 };
 
 function initials(name: string) {
   return name.split(" ").map(p => p[0]).join("").toUpperCase().slice(0, 2);
 }
 
-const WITHHELD = [
-  "Session notes and coaching summaries",
-  "Chat messages between leader and coach",
-  "Personal reflections and journal entries",
-  "Goal titles, descriptions, and wording",
-  "Coach identity and coaching approach details",
-];
+const WITHHELD_KEYS = [
+  "sessionNotes",
+  "chatMessages",
+  "reflections",
+  "goalWording",
+  "coachIdentity",
+] as const;
 
 interface Props {
   leader: SponsorRosterRow | null;
@@ -34,6 +35,7 @@ interface Props {
 }
 
 export function SponsorLeaderDrawer({ leader, onClose }: Props) {
+  const { t } = useTranslation("sponsor");
   if (!leader) return null;
 
   const sessionPct = leader.sessions_entitled > 0
@@ -43,7 +45,7 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
   return (
     <Sheet open={!!leader} onOpenChange={open => { if (!open) onClose(); }}>
       <SheetContent side="right" className="w-full max-w-md overflow-y-auto p-0">
-        <SheetTitle className="sr-only">{leader.full_name} — leader detail</SheetTitle>
+        <SheetTitle className="sr-only">{leader.full_name} — {t("leaderDrawer.srLabelSuffix")}</SheetTitle>
 
         {/* Header */}
         <div className="bg-gradient-to-br from-secondary to-secondary/80 p-6 text-white">
@@ -51,7 +53,7 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
             onClick={onClose}
             className="mb-4 flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition-colors"
           >
-            <X className="h-3.5 w-3.5" /> Back to roster
+            <X className="h-3.5 w-3.5" /> {t("leaderDrawer.backToRoster")}
           </button>
           <div className="flex items-center gap-4">
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/15 text-xl font-semibold text-white">
@@ -62,7 +64,7 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
               <p className="mt-0.5 text-sm text-white/60">{leader.cohort_name || "—"}</p>
               <div className="mt-2">
                 <Pill tone={STATUS_TONE[leader.enrollment_status]}>
-                  {STATUS_LABEL[leader.enrollment_status]}
+                  {t(`status.${STATUS_LABEL_KEY[leader.enrollment_status]}`)}
                 </Pill>
               </div>
             </div>
@@ -72,26 +74,26 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
         <div className="space-y-5 p-5">
           {/* Participation stats */}
           <section>
-            <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Participation</p>
+            <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("leaderDrawer.participationLabel")}</p>
             <div className="grid grid-cols-2 gap-3">
               <StatCard
                 icon={Calendar}
-                label="Sessions used"
+                label={t("leaderDrawer.sessionsUsed")}
                 value={`${leader.sessions_completed} / ${leader.sessions_entitled}`}
-                sub={`${sessionPct}% of allocation`}
+                sub={t("leaderDrawer.ofAllocation", { pct: sessionPct })}
               />
               <StatCard
                 icon={TrendingUp}
-                label="Self-rated growth"
-                value={leader.goal_growth != null ? `+${Math.round(leader.goal_growth)} pts` : "—"}
-                sub={leader.goal_growth != null ? "since baseline" : "no ratings yet"}
+                label={t("leaderDrawer.selfRatedGrowth")}
+                value={leader.goal_growth != null ? t("leaderDrawer.growthPts", { n: Math.round(leader.goal_growth) }) : "—"}
+                sub={leader.goal_growth != null ? t("leaderDrawer.sinceBaseline") : t("leaderDrawer.noRatingsYet")}
               />
             </div>
 
             {/* Progress bar */}
             <div className="mt-3">
               <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                <span>Programme progress</span>
+                <span>{t("leaderDrawer.programmeProgress")}</span>
                 <span className="font-medium">{Math.round(leader.progress_pct)}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -107,21 +109,21 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
           <section className="rounded-xl border border-border bg-muted/30 p-4">
             <div className="mb-3 flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              <p className="text-[11px] font-semibold text-foreground">This is everything you can see</p>
+              <p className="text-[11px] font-semibold text-foreground">{t("leaderDrawer.canSeeTitle")}</p>
             </div>
             <p className="mb-3 text-[11px] text-muted-foreground">
-              The following exist in Clariva and are withheld from this profile:
+              {t("leaderDrawer.withheldIntro")}
             </p>
             <ul className="space-y-1.5">
-              {WITHHELD.map(item => (
-                <li key={item} className="flex items-start gap-2 text-[11px] text-muted-foreground">
+              {WITHHELD_KEYS.map(key => (
+                <li key={key} className="flex items-start gap-2 text-[11px] text-muted-foreground">
                   <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-border" />
-                  {item}
+                  {t(`leaderDrawer.withheld.${key}`)}
                 </li>
               ))}
             </ul>
             <p className="mt-3 text-[10px] italic text-muted-foreground">
-              Every leader can see the same view of themselves that you see.
+              {t("leaderDrawer.sameViewNote")}
             </p>
           </section>
         </div>

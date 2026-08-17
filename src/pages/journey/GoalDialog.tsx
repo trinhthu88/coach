@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ export type AddGoalFn = (payload: {
 }) => Promise<boolean | undefined> | void;
 
 export function GoalDialog({ onAdd }: { onAdd: AddGoalFn }) {
+  const { t } = useTranslation("journey");
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
@@ -42,21 +44,21 @@ export function GoalDialog({ onAdd }: { onAdd: AddGoalFn }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm"><Plus className="mr-1 h-4 w-4" /> New goal</Button>
+        <Button size="sm"><Plus className="mr-1 h-4 w-4" /> {t("goalDialog.newGoal")}</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>New goal</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("goalDialog.newGoal")}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="Goal title (e.g. Become a confident public speaker)" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <Textarea placeholder="Why does this matter to you? (optional)" value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
+          <Input placeholder={t("goalDialog.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Textarea placeholder={t("goalDialog.descriptionPlaceholder")} value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
           <div>
-            <p className="mb-1 text-xs font-medium text-muted-foreground">Target date (optional)</p>
+            <p className="mb-1 text-xs font-medium text-muted-foreground">{t("goalDialog.targetDateLabel")}</p>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving || !title.trim()}>Save goal</Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>{t("goalDialog.cancel")}</Button>
+          <Button onClick={save} disabled={saving || !title.trim()}>{t("goalDialog.saveGoal")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

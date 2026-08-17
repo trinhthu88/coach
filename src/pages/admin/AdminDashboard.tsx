@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
@@ -35,6 +36,7 @@ interface DashboardEnrollmentRow {
 }
 
 export default function AdminDashboard() {
+  const { t } = useTranslation("admin");
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -121,16 +123,16 @@ export default function AdminDashboard() {
       if (newCoachApplications) {
         applicationItems.push({
           id: "new-coach-applications",
-          title: `${newCoachApplications} new coach application${newCoachApplications === 1 ? "" : "s"}`,
-          note: "Awaiting your first review",
+          title: t("dashboard.newCoachApplications", { count: newCoachApplications }),
+          note: t("dashboard.awaitingFirstReview"),
           severity: "info",
         });
       }
       if (newCoacheeApplications) {
         applicationItems.push({
           id: "new-coachee-applications",
-          title: `${newCoacheeApplications} new coachee application${newCoacheeApplications === 1 ? "" : "s"}`,
-          note: "Awaiting your first review",
+          title: t("dashboard.newCoacheeApplications", { count: newCoacheeApplications }),
+          note: t("dashboard.awaitingFirstReview"),
           severity: "info",
         });
       }
@@ -157,61 +159,61 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <AdminPageHeader eyebrow="Organisation" title="Programme" emphasize="health" trailing="" />
+      <AdminPageHeader eyebrow={t("dashboard.eyebrow")} title={t("dashboard.title")} emphasize={t("dashboard.titleEmphasis")} trailing="" />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Active coachees"
+          label={t("dashboard.statActiveCoachees")}
           value={stats.coachees}
           icon={Users}
           tone="primary"
           hint={
             stats.newCoacheeApplications > 0 ? (
-              <span className="text-warning">{stats.newCoacheeApplications} new application{stats.newCoacheeApplications === 1 ? "" : "s"}</span>
+              <span className="text-warning">{t("dashboard.newApplications", { count: stats.newCoacheeApplications })}</span>
             ) : (
-              <span className="text-success">+{Math.max(0, stats.coachees - Math.round(stats.coachees * 0.93))} this month</span>
+              <span className="text-success">{t("dashboard.growthThisMonth", { count: Math.max(0, stats.coachees - Math.round(stats.coachees * 0.93)) })}</span>
             )
           }
         />
         <StatCard
-          label="Accredited coaches"
+          label={t("dashboard.statAccreditedCoaches")}
           value={stats.coaches}
           icon={UserCheck}
           tone="secondary"
           hint={
             stats.pendingApproval + stats.newCoachApplications > 0 ? (
-              <span className="text-warning">{stats.pendingApproval + stats.newCoachApplications} pending review</span>
+              <span className="text-warning">{t("dashboard.pendingReview", { count: stats.pendingApproval + stats.newCoachApplications })}</span>
             ) : (
-              "All approved"
+              t("dashboard.allApproved")
             )
           }
         />
         <StatCard
-          label="Sessions delivered"
+          label={t("dashboard.statSessionsDelivered")}
           value={stats.sessionsThisMonth}
           icon={Calendar}
           tone="primary"
-          hint={`${format(new Date(), "MMMM")} to date`}
+          hint={t("dashboard.toDateSuffix", { month: format(new Date(), "MMMM") })}
         />
         <StatCard
-          label="Completion rate"
+          label={t("dashboard.statCompletionRate")}
           value={`${Math.round(stats.completionRate)}%`}
           icon={CheckCircle2}
           tone={stats.completionRate >= 75 ? "success" : "warning"}
-          hint={<span className={stats.completionRate >= 75 ? "text-success" : "text-warning"}>target 75%</span>}
+          hint={<span className={stats.completionRate >= 75 ? "text-success" : "text-warning"}>{t("dashboard.targetSuffix")}</span>}
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         <div className="surface-card p-6">
           <p className="mb-4 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-            Sessions delivered · by month
+            {t("dashboard.chartCaption")}
           </p>
           <MiniBarChart data={monthly} height={200} />
         </div>
 
         <AttentionPanel
-          title="Needs attention"
+          title={t("dashboard.needsAttention")}
           items={attention.map((a) => ({
             id: a.id,
             title: a.title,
@@ -224,7 +226,7 @@ export default function AdminDashboard() {
                 ? () => navigate("/admin/coachees")
                 : undefined,
           }))}
-          empty="No active alerts. All clear."
+          empty={t("dashboard.noActiveAlerts")}
         />
       </div>
     </div>

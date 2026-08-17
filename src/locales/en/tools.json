@@ -1,0 +1,62 @@
+{
+  "growWorksheet": {
+    "fields": {
+      "goal": { "title": "Goal", "prompt": "What do you want to achieve?" },
+      "reality": { "title": "Reality", "prompt": "What's the current situation?" },
+      "options": { "title": "Options", "prompt": "What options are available?" },
+      "will": { "title": "Will", "prompt": "What will you commit to?" }
+    },
+    "saveWorksheet": "Save worksheet",
+    "commitments": "Commitments",
+    "commitmentsHint": "Anything you add here becomes an agreed action on this session.",
+    "commitmentPlaceholder": "I will…",
+    "addCommitment": "Add commitment",
+    "toast": {
+      "saved": "GROW worksheet saved",
+      "loadActionItemsFailed": "Could not load action items",
+      "commitmentAdded": "Commitment added to action items"
+    }
+  },
+  "sessionToolbox": {
+    "tools": {
+      "wheelOfLife": { "label": "Wheel of Life", "blurb": "Rate life domains and spot imbalance" },
+      "growWorksheet": { "label": "GROW worksheet", "blurb": "Goal · Reality · Options · Will" }
+    }
+  },
+  "wheelHistory": {
+    "title": "Wheel of Life",
+    "latestSeries": "Latest · {{date}}",
+    "previousSeries": "Previous · {{date}}",
+    "tooDifferentNote": "Domains changed too much between sessions to compare directly — showing your latest wheel only."
+  },
+  "wheelOfLife": {
+    "defaultLabels": {
+      "career": "Career",
+      "finances": "Finances",
+      "health": "Health",
+      "relationships": "Relationships",
+      "personalGrowth": "Personal Growth",
+      "funRecreation": "Fun & Recreation",
+      "physicalEnvironment": "Physical Environment",
+      "family": "Family"
+    },
+    "newDomainLabel": "New domain",
+    "snapshotEyebrow": "Life balance snapshot",
+    "snapshotHint": "Rate each domain 0–10 · the shape shows where energy is missing.",
+    "average": "Average",
+    "lowest": "Lowest",
+    "currentSeriesName": "Current",
+    "needMoreDomains": "Add at least {{count}} domains to see the wheel.",
+    "domainsEyebrow": "Domains",
+    "domainCount": "{{count}} of {{max}}",
+    "domainNamePlaceholder": "Domain name",
+    "removeAria": "Remove {{label}}",
+    "ratingAria": "{{label}} rating",
+    "addDomain": "Add domain",
+    "saveWheel": "Save wheel",
+    "toast": {
+      "labelRequired": "Every domain needs a label",
+      "saved": "Wheel of Life saved"
+    }
+  }
+}

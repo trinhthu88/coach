@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Users, GraduationCap, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
@@ -15,6 +16,7 @@ interface ProgrammeWeeks {
 }
 
 function CoachList({ coachSummaries, showDateRange }: { coachSummaries: CoachSummary[]; showDateRange: boolean }) {
+  const { t } = useTranslation("journey");
   return (
     <ul className="divide-y">
       {coachSummaries.map((c, i) => {
@@ -30,8 +32,8 @@ function CoachList({ coachSummaries, showDateRange }: { coachSummaries: CoachSum
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{c.name}</p>
               <p className="truncate text-[11px] text-muted-foreground">
-                {c.completed}/{c.total} sessions completed
-                {showDateRange && c.nextDate ? ` · Next ${format(c.nextDate, "MMM d, p")}` : ""}
+                {t("programmeCard.sessionsCompletedOf", { completed: c.completed, total: c.total })}
+                {showDateRange && c.nextDate ? t("programmeCard.nextDateSuffix", { date: format(c.nextDate, "MMM d, p") }) : ""}
               </p>
             </div>
             <span
@@ -40,7 +42,7 @@ function CoachList({ coachSummaries, showDateRange }: { coachSummaries: CoachSum
                 lead ? "bg-primary/15 text-primary" : "bg-success/15 text-success"
               )}
             >
-              {lead ? "Lead coach" : "Specialist"}
+              {lead ? t("programmeCard.leadCoach") : t("programmeCard.specialist")}
             </span>
             {showDateRange && <span className="shrink-0 text-[11px] text-muted-foreground">{dateRange}</span>}
           </li>
@@ -69,12 +71,13 @@ export function CoacheeProgrammeCard({
   sessionsCompletedCount: number;
   avgGoalProgress: number;
 }) {
+  const { t } = useTranslation("journey");
   if (!programme) {
     return coachSummaries.length > 0 ? (
       <Card className="overflow-hidden">
         <div className="border-b bg-muted/30 px-4 py-2.5">
           <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            <Users className="h-3.5 w-3.5" /> Coaches in this programme
+            <Users className="h-3.5 w-3.5" /> {t("programmeCard.coachesInProgramme")}
           </p>
         </div>
         <CoachList coachSummaries={coachSummaries} showDateRange={false} />
@@ -90,7 +93,7 @@ export function CoacheeProgrammeCard({
             <GraduationCap className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Programme</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">{t("programmeCard.programme")}</p>
             <p className="text-base font-semibold leading-tight">{programme.programmeName}</p>
             <p className="text-[11px] text-muted-foreground">
               {programme.startDate ? format(new Date(programme.startDate), "MMM d, yyyy") : "—"}
@@ -105,7 +108,7 @@ export function CoacheeProgrammeCard({
         </div>
         {programmeWeeks && (
           <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-secondary">
-            Week {Math.min(programmeWeeks.elapsedWeeks + 1, programmeWeeks.totalWeeks)} / {programmeWeeks.totalWeeks}
+            {t("programmeCard.weekOf", { current: Math.min(programmeWeeks.elapsedWeeks + 1, programmeWeeks.totalWeeks), total: programmeWeeks.totalWeeks })}
           </span>
         )}
       </div>
@@ -113,7 +116,7 @@ export function CoacheeProgrammeCard({
       {/* Stat tiles */}
       <div className="grid gap-3 p-4 md:grid-cols-3">
         <div className="rounded-lg border bg-muted/20 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sessions received</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmeCard.sessionsReceived")}</p>
           <p className="mt-1 text-xl font-semibold">
             {sessionsCompletedCount}
             <span className="text-sm font-normal text-muted-foreground"> / {programme.sessionsAllowed || "—"}</span>
@@ -124,10 +127,10 @@ export function CoacheeProgrammeCard({
           />
         </div>
         <div className="rounded-lg border bg-muted/20 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Programme duration</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmeCard.programmeDuration")}</p>
           <p className="mt-1 text-xl font-semibold">
-            {programmeWeeks ? `${programmeWeeks.elapsedWeeks}w` : "—"}
-            <span className="text-sm font-normal text-muted-foreground"> / {programmeWeeks?.totalWeeks ?? "—"}w</span>
+            {programmeWeeks ? t("programmeCard.weeksValue", { n: programmeWeeks.elapsedWeeks }) : "—"}
+            <span className="text-sm font-normal text-muted-foreground"> / {programmeWeeks ? t("programmeCard.weeksValue", { n: programmeWeeks.totalWeeks }) : "—"}</span>
           </p>
           <Progress
             value={programmeWeeks ? Math.min(100, (programmeWeeks.elapsedWeeks / programmeWeeks.totalWeeks) * 100) : 0}
@@ -135,7 +138,7 @@ export function CoacheeProgrammeCard({
           />
         </div>
         <div className="rounded-lg border bg-muted/20 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Goal progress</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmeCard.goalProgress")}</p>
           <p className="mt-1 text-xl font-semibold text-primary">{avgGoalProgress}%</p>
           <Progress value={avgGoalProgress} className="mt-2 h-1.5" />
         </div>
@@ -146,7 +149,7 @@ export function CoacheeProgrammeCard({
         <div className="border-t">
           <div className="border-b bg-muted/20 px-4 py-2">
             <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              <Users className="h-3.5 w-3.5" /> Assigned coaches
+              <Users className="h-3.5 w-3.5" /> {t("programmeCard.assignedCoaches")}
             </p>
           </div>
           <CoachList coachSummaries={coachSummaries} showDateRange />
@@ -156,7 +159,7 @@ export function CoacheeProgrammeCard({
       <div className="flex items-start gap-2 border-t bg-muted/10 px-4 py-2.5 text-[10.5px] text-muted-foreground">
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
         <span>
-          If your organization sponsors this programme, they can see your participation, progress, and completion status — never your session notes, chat messages, or personal reflections.
+          {t("programmeCard.sponsorDisclaimer")}
         </span>
       </div>
     </Card>

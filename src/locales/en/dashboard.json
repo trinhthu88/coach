@@ -1,0 +1,383 @@
+{
+  "greetingByRole": {
+    "coachee": "Find your next coach and keep momentum going.",
+    "coach": "Review session requests and inspire your coachees today.",
+    "admin": "Manage approvals, coaches, and platform health."
+  },
+  "hero": {
+    "coachWorkspaceBadge": "coach workspace",
+    "adminWorkspaceBadge": "admin workspace",
+    "welcomeBack": "Welcome back,",
+    "adminDashboardButton": "Admin dashboard",
+    "viewSessionsButton": "View sessions"
+  },
+  "admin": {
+    "stats": {
+      "totalUsers": "Total users",
+      "totalUsersHint": "Coachee accounts",
+      "bookedSessions": "Booked sessions",
+      "bookedSessionsHint": "Pending + confirmed + done",
+      "completedSessions": "Completed sessions",
+      "completedSessionsHint": "Of all sessions",
+      "cancelledSessions": "Cancelled sessions",
+      "cancelledSessionsHint": "Of all sessions"
+    },
+    "pendingSessions": {
+      "title": "Pending sessions",
+      "allSet": "All upcoming sessions have a meeting link.",
+      "needsLink_one": "{{count}} session still needs a meeting link.",
+      "needsLink_other": "{{count}} sessions still need a meeting link.",
+      "setLinks": "Set links"
+    },
+    "coaches": {
+      "title": "Coaches",
+      "noNewApplications": "No new applications.",
+      "newApplications_one": "New application to review.",
+      "newApplications_other": "New applications to review.",
+      "review": "Review",
+      "profilesAwaitingApproval_one": "{{count}} existing profile awaiting approval",
+      "profilesAwaitingApproval_other": "{{count}} existing profiles awaiting approval"
+    },
+    "coachees": {
+      "title": "Coachees",
+      "noNewApplications": "No new applications.",
+      "newApplications_one": "New application to review.",
+      "newApplications_other": "New applications to review.",
+      "review": "Review",
+      "profilesAwaitingApproval_one": "{{count}} existing profile awaiting approval",
+      "profilesAwaitingApproval_other": "{{count}} existing profiles awaiting approval"
+    }
+  },
+  "coachee": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "upcomingLine_one": "You have {{count}} upcoming session. Keep the momentum going.",
+    "upcomingLine_other": "You have {{count}} upcoming sessions. Keep the momentum going.",
+    "noUpcomingLine": "Browse our curated coaches and book your next session to keep momentum going.",
+    "stats": {
+      "sessionsDone": "Sessions done",
+      "sessionsDoneHintProgramme": "of {{limit}} in programme",
+      "sessionsDoneHintPlain": "Completed sessions",
+      "hoursCoached": "Hours coached",
+      "hoursCoachedHint": "Time invested",
+      "actionsOpen": "Actions open",
+      "actionsOpenHint": "Across sessions",
+      "upcoming": "Upcoming",
+      "upcomingHint": "Booked"
+    },
+    "nextSession": {
+      "label": "Next session",
+      "noneTitle": "No upcoming sessions",
+      "noneBody": "Browse our curated coaches and book your first 30, 45, or 60-minute session.",
+      "findCoach": "Find a coach",
+      "today": "Today",
+      "inOneDay": "In 1 day",
+      "inDays": "In {{count}} days",
+      "soon": "Soon",
+      "yourCoach": "Your coach",
+      "joinAndPrepare": "Join & prepare",
+      "allSessions": "All sessions",
+      "programmeLabel": "PROGRAMME"
+    },
+    "curatedForYou": {
+      "eyebrow": "Curated for you",
+      "title": "Coaches matched to your goals",
+      "browseAll": "Browse all",
+      "noneAvailable": "No coaches available yet."
+    },
+    "coachCard": {
+      "defaultTitle": "Coach",
+      "noBio": "Profile available — open to learn more.",
+      "viewProfile": "View profile"
+    },
+    "recentLog": {
+      "title": "Recent session log",
+      "empty": "No sessions yet.",
+      "withCoach": "with {{name}}",
+      "defaultCoach": "coach"
+    },
+    "actionItems": {
+      "title": "Action items",
+      "empty": "No open action items. 🎉",
+      "defaultCoach": "coach"
+    }
+  },
+  "coach": {
+    "workspace": {
+      "titleLead": "Coach",
+      "titleEmphasis": "workspace",
+      "subtitle": "Confirm sessions, support clients, and grow through peer coaching.",
+      "editProfile": "Edit profile",
+      "setAvailability": "Set availability"
+    },
+    "roleIndicators": {
+      "coaching": "Coaching",
+      "activeClients_one": "{{count}} active client",
+      "activeClients_other": "{{count}} active clients",
+      "peerCoaching": "Peer coaching",
+      "availableForPeers": "Available for peers",
+      "notOptedIn": "Not opted in",
+      "coachee": "Coachee",
+      "openToBeingCoached": "Open to being coached"
+    },
+    "stats": {
+      "sessionsCompleted": "Sessions completed",
+      "sessionsCompletedHint": "As coach",
+      "peerSessions": "Peer sessions",
+      "peerSessionsHint": "Completed peer",
+      "upcoming": "Upcoming",
+      "upcomingHint": "Confirmed",
+      "avgRating": "Avg. rating",
+      "avgRatingHint": "From coachees"
+    },
+    "nextSession": {
+      "label": "Next session",
+      "noneTitle": "No upcoming sessions",
+      "noneBody": "Browse our curated coaches and book your first 30, 45, or 60-minute session.",
+      "findCoach": "Find a coach",
+      "withPrefix": "with",
+      "yourCoach": "your coach",
+      "enterMeeting": "Enter meeting",
+      "awaitingConfirmation": "Awaiting confirmation",
+      "confirmedSoon": "Confirmed soon",
+      "viewDetails": "View details"
+    },
+    "peerRequests": {
+      "title": "Peer requests",
+      "noneOptedIn": "Opt in to peer coaching from My availability.",
+      "noneAvailable": "No peer requests right now.",
+      "defaultPeer": "Peer",
+      "reviewInSessions": "Review in sessions"
+    },
+    "bookingRequests": {
+      "title": "Booking requests",
+      "new": "{{count}} new",
+      "none": "No pending requests right now.",
+      "defaultCoachee": "Coachee",
+      "approve": "Approve",
+      "decline": "Decline"
+    },
+    "upcomingSessions": {
+      "title": "Upcoming sessions",
+      "none": "No confirmed sessions ahead.",
+      "withPrefix": "with"
+    },
+    "kindPill": {
+      "coaching": "Coaching",
+      "peerGive": "Peer · give",
+      "peerReceive": "Peer · receive"
+    },
+    "practiceJourneyPreview": {
+      "title": "Practice journey preview",
+      "empty": "Your peer-coaching and coached sessions will appear here.",
+      "sessionsDelivered": "Sessions delivered",
+      "peerSessionsCompleted": "Peer sessions completed",
+      "open": "Open practice journey"
+    }
+  },
+  "clients": {
+    "eyebrow": "Practice",
+    "titleLead": "My",
+    "titleEmphasis": "clients",
+    "subtitle": "All active coachees at a glance — progress, engagement, and private notes.",
+    "atCapNotice": "{{used}} of {{limit}} clients invited.",
+    "contactUs": "Contact us",
+    "forMore": "for more.",
+    "usedOfLimit": "{{used}} of {{limit}} clients invited",
+    "inviteAClient": "Invite a client",
+    "stats": {
+      "activeClients": "Active clients",
+      "activeClientsHint_one": "{{count}} no upcoming",
+      "activeClientsHint_other": "{{count}} no upcoming",
+      "sessionsThisWeek": "Sessions this week",
+      "sessionsThisWeekHintNext": "next: {{date}}",
+      "sessionsThisWeekHintNone": "none scheduled",
+      "overdueActions": "Overdue actions",
+      "overdueActionsHint_one": "across {{count}} coachee",
+      "overdueActionsHint_other": "across {{count}} coachees",
+      "overdueActionsHintNone": "all on time",
+      "milestonesHit": "Milestones hit",
+      "milestonesHitHint": "completed total"
+    },
+    "searchPlaceholder": "Search by name or email…",
+    "clickToOpen": "Click a card to open the coachee profile",
+    "empty": {
+      "title": "No clients yet",
+      "body": "Coachees appear here once you have a confirmed or completed session."
+    },
+    "tableHeaders": {
+      "client": "Client",
+      "programme": "Programme",
+      "progress": "Progress",
+      "nextSession": "Next session"
+    },
+    "row": {
+      "sessionsAndPct_one": "{{count}} session · {{pct}}%",
+      "sessionsAndPct_other": "{{count}} sessions · {{pct}}%",
+      "notScheduled": "Not scheduled",
+      "defaultProgramme": "Programme"
+    },
+    "invite": {
+      "requiredFields": "Full name and email are required",
+      "success": "Invited — pending admin approval",
+      "limitReached": "You've reached your limit of {{limit}} clients invited.",
+      "emailRegistered": "That email is already registered on Clariva.",
+      "dialogTitle": "Invite a client",
+      "dialogDescription": "They'll get an email to set up their account. Their access is pending admin approval.",
+      "fullNameLabel": "Full name",
+      "fullNamePlaceholder": "Jane Doe",
+      "emailLabel": "Email",
+      "emailPlaceholder": "jane@company.com",
+      "sessionLimitLabel": "Monthly session limit (optional)",
+      "sessionLimitPlaceholder": "Uses the platform default if left blank",
+      "atCapPrefix": "Reach out to",
+      "atCapSuffix": "if you'd like to invite more clients.",
+      "cancel": "Cancel",
+      "sendInvite": "Send invite"
+    },
+    "detail": {
+      "defaultName": "Client",
+      "backToOverview": "Back to overview",
+      "removeClient": "Remove client",
+      "removeConfirmTitle": "Remove {{name}}?",
+      "removeConfirmDefaultName": "this client",
+      "removeConfirmBody": "They'll lose access to book new sessions or message you. Past sessions, notes, and history are kept — this isn't a delete, and you can be re-assigned to them again later if needed.",
+      "cancel": "Cancel",
+      "removing": "Removing…",
+      "statedGoals": "Stated goals:",
+      "miniMetrics": {
+        "overall": "Overall",
+        "overdue": "Overdue",
+        "next": "Next"
+      },
+      "tabs": {
+        "goals": "Goals & milestones",
+        "actions": "Action items ({{count}})",
+        "sessions": "Sessions ({{count}})",
+        "notes": "Coach notes ({{count}})"
+      },
+      "noGoalsYet": "This coachee hasn't set goals yet.",
+      "doneOn": "Done {{date}}",
+      "targetOn": "Target {{date}}",
+      "noTarget": "No target",
+      "noActionsYet": "No action items assigned yet.",
+      "upcomingCount": "Upcoming · {{count}}",
+      "noneScheduled": "None scheduled.",
+      "pastCount": "Past · {{count}}",
+      "noPastSessions": "No past sessions.",
+      "notesIntro": "Private notes visible only to you. Use to track patterns and coaching strategy.",
+      "notePlaceholder": "Your private observations about this coachee…",
+      "addNote": "Add note",
+      "noNotesYet": "No notes yet.",
+      "deleteNote": "Delete note",
+      "ratedByCoachee": "— rated by coachee"
+    }
+  },
+  "availability": {
+    "toast": {
+      "loadFailedTitle": "Failed to load",
+      "updateFailedTitle": "Update failed",
+      "peerEnabledTitle": "Peer coaching enabled",
+      "peerDisabledTitle": "Peer coaching disabled",
+      "peerEnabledDescription": "Other coaches can now book your peer slots.",
+      "peerDisabledDescription": "Your peer slots are hidden from peers.",
+      "invalidTimeTitle": "Invalid time",
+      "invalidTimeDescription": "End time must be after start time.",
+      "addFailedTitle": "Add failed",
+      "slotAddedTitle": "Slot added",
+      "deleteFailedTitle": "Delete failed",
+      "slotRemovedTitle": "Slot removed"
+    },
+    "eyebrow": "Coach",
+    "titleLead": "My",
+    "titleEmphasis": "availability",
+    "subtitle": "Set the time slots when coachees can book sessions with you.",
+    "setWeeklyTemplate": "Set weekly template",
+    "peerOptIn": {
+      "title": "Available for peer coaching",
+      "bodyPrefix": "When on, other coaches can book your",
+      "bodyBold": "peer",
+      "bodySuffix": "slots to be coached by you. Your coaching slots stay reserved for coachees."
+    },
+    "legend": {
+      "label": "Legend",
+      "coachingSlot": "Coaching slot",
+      "peerSlot": "Peer slot",
+      "booked": "Booked"
+    },
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "slotCount_one": "{{count}} slot",
+    "slotCount_other": "{{count}} slots",
+    "pickADay": "Pick a day",
+    "selectDayPrompt": "Select a day on the calendar to manage time slots.",
+    "noSlotsForDay": "No slots yet for this day.",
+    "slotTypePeer": "Peer",
+    "slotTypeCoaching": "Coaching",
+    "bookedBadge": "Booked",
+    "addASlot": "Add a slot",
+    "enablePeerFirst": "Enable peer coaching above first",
+    "add": "Add"
+  },
+  "practiceJourney": {
+    "eyebrow": "Practice",
+    "titleLead": "Practice",
+    "titleEmphasis": "analytics",
+    "subtitle": "Your sessions, peer-coaching activity, and ICF competency feedback at a glance.",
+    "competencies": {
+      "ethical_practice": "Ethical practice",
+      "coaching_mindset": "Coaching mindset",
+      "maintains_agreements": "Maintains agreements",
+      "trust_safety": "Trust & safety",
+      "maintains_presence": "Maintains presence",
+      "listens_actively": "Listens actively",
+      "evokes_awareness": "Evokes awareness",
+      "facilitates_growth": "Facilitates growth"
+    },
+    "counters": {
+      "sessionsReceivedTitle": "Sessions received",
+      "sessionsReceivedSubtitle": "From a coach",
+      "peerGivenTitle": "Peer sessions given",
+      "peerGivenSubtitle": "You as peer-coach",
+      "peerReceivedTitle": "Peer sessions received",
+      "peerReceivedSubtitle": "You as peer-coachee",
+      "booked": "Booked",
+      "completed": "Completed"
+    },
+    "tabs": {
+      "competencies": "Competencies",
+      "trend": "Trend",
+      "feedback": "Feedback ({{count}})",
+      "log": "Practice log ({{count}})"
+    },
+    "radarTitle": "ICF competency average (0–100)",
+    "averageLegend": "Average",
+    "noFeedbackYet": "No feedback yet — your first peer-coachee rating will appear here.",
+    "strengths": "Strengths",
+    "growthEdges": "Growth edges",
+    "noDataYet": "No data yet.",
+    "trendTitle": "Competency scores over time",
+    "noFeedbackYetShort": "No feedback yet.",
+    "fromPrefix": "from",
+    "defaultPeer": "Peer",
+    "noWrittenNote": "No written note provided.",
+    "noWrittenFeedbackYet": "No written feedback yet.",
+    "noEntriesYet": "No entries yet.",
+    "withPrefix": "with",
+    "kindBadge": {
+      "coached": "Coached",
+      "peerGiven": "Peer · given",
+      "peerReceived": "Peer · received"
+    }
+  }
+}

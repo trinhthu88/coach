@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,40 +37,43 @@ import {
 import { PeerFeedbackState, SessionStatus } from "@/hooks/sessions/types";
 import { canMarkSessionComplete } from "@/hooks/sessions/completionGate";
 
-const STATUS_META: Record<
+function getStatusMeta(t: (key: string) => string): Record<
   SessionStatus,
   { label: string; className: string; icon: LucideIcon }
-> = {
-  pending_coach_approval: {
-    label: "Awaiting confirmation",
-    className: "bg-warning/12 text-warning",
-    icon: AlertCircle,
-  },
-  confirmed: {
-    label: "Confirmed",
-    className: "bg-primary-soft text-primary",
-    icon: CheckCircle2,
-  },
-  completed: {
-    label: "Completed",
-    className: "bg-success/12 text-success",
-    icon: CheckCircle2,
-  },
-  cancelled: {
-    label: "Cancelled",
-    className: "bg-destructive/10 text-destructive",
-    icon: XCircle,
-  },
-  rescheduled: {
-    label: "Rescheduled",
-    className: "bg-muted text-muted-foreground",
-    icon: Clock,
-  },
-};
+> {
+  return {
+    pending_coach_approval: {
+      label: t("status.pending_coach_approval"),
+      className: "bg-warning/12 text-warning",
+      icon: AlertCircle,
+    },
+    confirmed: {
+      label: t("status.confirmed"),
+      className: "bg-primary-soft text-primary",
+      icon: CheckCircle2,
+    },
+    completed: {
+      label: t("status.completed"),
+      className: "bg-success/12 text-success",
+      icon: CheckCircle2,
+    },
+    cancelled: {
+      label: t("status.cancelled"),
+      className: "bg-destructive/10 text-destructive",
+      icon: XCircle,
+    },
+    rescheduled: {
+      label: t("status.rescheduled"),
+      className: "bg-muted text-muted-foreground",
+      icon: Clock,
+    },
+  };
+}
 
 type TabKey = "notes" | "actions" | "files" | "toolbox";
 
 export default function SessionDetail() {
+  const { t } = useTranslation("sessions");
   const { sessionId } = useParams<{ sessionId: string }>();
   const [searchParams] = useSearchParams();
   const isPeer = searchParams.get("type") === "peer";
@@ -137,9 +141,9 @@ export default function SessionDetail() {
   if (!session) {
     return (
       <Card className="p-12 text-center">
-        <h2 className="text-xl font-semibold">Session not found</h2>
+        <h2 className="text-xl font-semibold">{t("detail.sessionNotFound.title")}</h2>
         <Button asChild variant="outline" className="mt-6">
-          <Link to="/sessions">Back to sessions</Link>
+          <Link to="/sessions">{t("detail.sessionNotFound.backToSessions")}</Link>
         </Button>
       </Card>
     );
@@ -155,7 +159,7 @@ export default function SessionDetail() {
   const isAdmin = role === "admin";
 
   const start = new Date(session.start_time);
-  const meta = STATUS_META[session.status];
+  const meta = getStatusMeta(t)[session.status];
   const StatusIcon = meta.icon;
   const canCancel =
     session.status !== "cancelled" &&
@@ -172,8 +176,8 @@ export default function SessionDetail() {
     peerFeedbackExisted: feedback.existed,
   });
   const missingRequirementHint = isPeer
-    ? "Waiting on the peer-coachee's competency feedback before this session can be marked complete."
-    : "Waiting on the coachee's reflection before this session can be marked complete.";
+    ? t("detail.missingRequirementHintPeer")
+    : t("detail.missingRequirementHintCoaching");
 
   const handleSaveProgress = async () => {
     const { error } = await saveProgress({
@@ -191,7 +195,7 @@ export default function SessionDetail() {
       if (pErr) return;
     }
 
-    toast.success("Progress saved");
+    toast.success(t("detail.toast.progressSaved"));
     reload();
   };
 
@@ -210,10 +214,10 @@ export default function SessionDetail() {
   const openItems = items.filter((i) => !i.done);
 
   const TABS: { key: TabKey; label: string }[] = [
-    { key: "notes", label: "Notes" },
-    { key: "actions", label: "Actions" },
-    { key: "files", label: "Files" },
-    ...(showToolbox ? [{ key: "toolbox" as TabKey, label: "Toolbox" }] : []),
+    { key: "notes", label: t("detail.tabs.notes") },
+    { key: "actions", label: t("detail.tabs.actions") },
+    { key: "files", label: t("detail.tabs.files") },
+    ...(showToolbox ? [{ key: "toolbox" as TabKey, label: t("detail.tabs.toolbox") }] : []),
   ];
 
   return (
@@ -222,7 +226,7 @@ export default function SessionDetail() {
         to="/sessions"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> All sessions
+        <ArrowLeft className="h-4 w-4" /> {t("detail.allSessions")}
       </Link>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start">
@@ -258,7 +262,7 @@ export default function SessionDetail() {
                     {counterpart?.full_name || "—"}
                   </p>
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    {isCoach ? "Coachee" : "Coach"}
+                    {isCoach ? t("detail.counterpartRole.coachee") : t("detail.counterpartRole.coach")}
                   </p>
                 </div>
               </div>
@@ -270,7 +274,7 @@ export default function SessionDetail() {
                     className="rounded-full bg-primary px-7 text-primary-foreground shadow-glow hover:bg-primary/90"
                   >
                     <a href={session.meeting_url} target="_blank" rel="noreferrer">
-                      <Video className="mr-1.5 h-4 w-4" /> Join Zoom meeting
+                      <Video className="mr-1.5 h-4 w-4" /> {t("detail.joinZoomMeeting")}
                     </a>
                   </Button>
                 )}
@@ -287,7 +291,7 @@ export default function SessionDetail() {
                     ) : (
                       <Save className="mr-1.5 h-4 w-4" />
                     )}
-                    Save progress
+                    {t("detail.saveProgress")}
                   </Button>
                 )}
               </div>
@@ -318,8 +322,8 @@ export default function SessionDetail() {
               {tab === "notes" && (
                 <div className="space-y-8">
                   <NoteBlock
-                    label="Coach note"
-                    hint={isCoach || isAdmin ? undefined : "Read only"}
+                    label={t("detail.notes.coachNoteLabel")}
+                    hint={isCoach || isAdmin ? undefined : t("detail.notes.readOnly")}
                   >
                     <Textarea
                       value={coachNotes}
@@ -329,27 +333,27 @@ export default function SessionDetail() {
                       className="resize-none border-0 bg-transparent p-0 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 disabled:opacity-100"
                       placeholder={
                         isCoach || isAdmin
-                          ? "Write notes visible to the coachee…"
-                          : "Coach hasn't added notes yet."
+                          ? t("detail.notes.coachNotePlaceholderEditable")
+                          : t("detail.notes.coachNotePlaceholderReadOnly")
                       }
                     />
                   </NoteBlock>
 
                   {(isCoach || isAdmin) && (
-                    <NoteBlock label="Private note" hint="Only you">
+                    <NoteBlock label={t("detail.notes.privateNoteLabel")} hint={t("detail.notes.onlyYou")}>
                       <Textarea
                         value={coachPrivate}
                         onChange={(e) => setCoachPrivate(e.target.value)}
                         rows={3}
-                        placeholder="Private notes (only you can see)"
+                        placeholder={t("detail.notes.privateNotePlaceholder")}
                         className="resize-none rounded-[14px] bg-muted/40 text-[15px] leading-relaxed"
                       />
                     </NoteBlock>
                   )}
 
                   <NoteBlock
-                    label="Client reflection"
-                    hint={isCoachee || isAdmin ? undefined : "Read only"}
+                    label={t("detail.notes.clientReflectionLabel")}
+                    hint={isCoachee || isAdmin ? undefined : t("detail.notes.readOnly")}
                   >
                     <Textarea
                       value={coacheeNotes}
@@ -359,8 +363,8 @@ export default function SessionDetail() {
                       className="resize-none border-0 bg-transparent p-0 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 disabled:opacity-100"
                       placeholder={
                         isCoachee || isAdmin
-                          ? "Capture your reflections, takeaways and questions…"
-                          : "Coachee hasn't shared reflections yet."
+                          ? t("detail.notes.clientReflectionPlaceholderEditable")
+                          : t("detail.notes.clientReflectionPlaceholderReadOnly")
                       }
                     />
                   </NoteBlock>
@@ -370,7 +374,7 @@ export default function SessionDetail() {
               {tab === "actions" && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="eyebrow text-primary">Agreed actions</p>
+                    <p className="eyebrow text-primary">{t("detail.actions.eyebrow")}</p>
                     {(isCoach || isCoachee || isAdmin) && (
                       <Button
                         size="sm"
@@ -384,21 +388,21 @@ export default function SessionDetail() {
                         ) : (
                           <Save className="mr-1 h-3 w-3" />
                         )}
-                        Save
+                        {t("detail.actions.save")}
                       </Button>
                     )}
                   </div>
 
                   {session.status === "completed" && (
                     <p className="rounded-[14px] bg-success/8 px-4 py-3 text-xs text-success">
-                      Session completed — you can still add or update action items anytime and click Save.
+                      {t("detail.actions.completedBanner")}
                     </p>
                   )}
 
                   <ul className="space-y-3">
                     {items.length === 0 && (
                       <li className="rounded-[16px] border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-                        No actions agreed yet.
+                        {t("detail.actions.empty")}
                       </li>
                     )}
                     {items.map((it, idx) => {
@@ -415,7 +419,7 @@ export default function SessionDetail() {
                                   ? "border-success bg-success/12 text-success"
                                   : "border-border text-transparent hover:border-primary"
                               )}
-                              aria-label={it.done ? "Mark incomplete" : "Mark complete"}
+                              aria-label={it.done ? t("detail.actions.markIncomplete") : t("detail.actions.markCompleteAria")}
                             >
                               <CheckSquare className="h-3.5 w-3.5" />
                             </button>
@@ -426,13 +430,13 @@ export default function SessionDetail() {
                                 "h-9 flex-1 rounded-[10px] bg-card text-sm",
                                 it.done && "text-muted-foreground line-through"
                               )}
-                              placeholder="Action item"
+                              placeholder={t("detail.actions.itemPlaceholder")}
                             />
                             <button
                               type="button"
                               onClick={() => removeItem(idx)}
                               className="-m-2 mt-0 shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:text-destructive"
-                              aria-label="Remove action item"
+                              aria-label={t("detail.actions.removeItem")}
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -449,7 +453,7 @@ export default function SessionDetail() {
                               onChange={(e) => updateItem(idx, { milestone_id: e.target.value || null })}
                               className="h-8 rounded-[10px] border border-input bg-card px-2 text-xs"
                             >
-                              <option value="">— No milestone —</option>
+                              <option value="">{t("detail.actions.noMilestone")}</option>
                               {milestones.map((m) => (
                                 <option key={m.id} value={m.id}>
                                   {m.goal_title ? `${m.goal_title} → ${m.title}` : m.title}
@@ -471,7 +475,7 @@ export default function SessionDetail() {
                     <Input
                       value={newItem}
                       onChange={(e) => setNewItem(e.target.value)}
-                      placeholder="Add new action item…"
+                      placeholder={t("detail.actions.addPlaceholder")}
                       className="rounded-full"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -481,17 +485,17 @@ export default function SessionDetail() {
                       }}
                     />
                     <Button type="button" variant="outline" className="rounded-full" onClick={handleAddItem}>
-                      Add
+                      {t("detail.actions.add")}
                     </Button>
                   </div>
 
                   {milestones.length === 0 && (
                     <p className="text-xs text-muted-foreground">
-                      Tip: the coachee can create goals & milestones in{" "}
+                      {t("detail.actions.tipPrefix")}{" "}
                       <Link to="/coachee/journey" className="text-primary underline">
-                        My journey
+                        {t("detail.actions.tipLinkText")}
                       </Link>{" "}
-                      so action items can be linked.
+                      {t("detail.actions.tipSuffix")}
                     </p>
                   )}
                 </div>
@@ -499,10 +503,10 @@ export default function SessionDetail() {
 
               {tab === "files" && (
                 <div className="space-y-3">
-                  <p className="eyebrow text-primary">Attachments</p>
+                  <p className="eyebrow text-primary">{t("detail.files.eyebrow")}</p>
                   {attachments.length === 0 && (
                     <p className="rounded-[16px] border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-                      No files attached yet.
+                      {t("detail.files.empty")}
                     </p>
                   )}
                   {attachments.map((a) => (
@@ -523,7 +527,7 @@ export default function SessionDetail() {
                           type="button"
                           onClick={() => removeAttachment(a)}
                           className="-m-2 shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:text-destructive"
-                          aria-label="Remove attachment"
+                          aria-label={t("detail.files.removeAttachment")}
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -537,9 +541,9 @@ export default function SessionDetail() {
                       ) : (
                         <Upload className="h-4 w-4" />
                       )}
-                      Add attachment
+                      {t("detail.files.addAttachment")}
                     </span>
-                    <span className="text-[10px] uppercase tracking-[0.16em]">PDF · JPG · MP3 · MP4</span>
+                    <span className="text-[10px] uppercase tracking-[0.16em]">{t("detail.files.acceptedTypes")}</span>
                     <input
                       type="file"
                       className="hidden"
@@ -554,10 +558,9 @@ export default function SessionDetail() {
               {tab === "toolbox" && showToolbox && (
                 <div className="space-y-4">
                   <div>
-                    <p className="eyebrow text-primary">Coaching tools</p>
+                    <p className="eyebrow text-primary">{t("detail.toolbox.eyebrow")}</p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Open a tool to work through it together. Whatever you fill in stays attached to this
-                      session.
+                      {t("detail.toolbox.subtitle")}
                     </p>
                   </div>
                   <SessionToolbox
@@ -602,17 +605,17 @@ export default function SessionDetail() {
               style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.3), transparent 70%)" }}
             />
             <div className="relative">
-              <p className="eyebrow text-primary">Session focus</p>
+              <p className="eyebrow text-primary">{t("detail.sessionFocus.eyebrow")}</p>
               <p className="font-display mt-4 text-[1.6rem] leading-snug">{session.topic}</p>
               <div className="mt-7 grid grid-cols-2 gap-4 border-t border-primary-foreground/15 pt-6">
                 <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">Date</p>
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">{t("detail.sessionFocus.dateLabel")}</p>
                   <p className="font-display mt-2 text-[1.7rem] leading-none">{format(start, "d MMM")}</p>
                 </div>
                 <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">Duration</p>
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">{t("detail.sessionFocus.durationLabel")}</p>
                   <p className="font-display mt-2 text-[1.7rem] leading-none">
-                    {session.duration_minutes} min
+                    {t("detail.sessionFocus.durationValue", { n: session.duration_minutes })}
                   </p>
                 </div>
               </div>
@@ -621,7 +624,7 @@ export default function SessionDetail() {
 
           {openItems.length > 0 && (
             <Card className="animate-rise p-7">
-              <p className="eyebrow text-primary">Prepare</p>
+              <p className="eyebrow text-primary">{t("detail.prepare")}</p>
               <ul className="mt-5 space-y-3.5">
                 {openItems.slice(0, 5).map((it, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm leading-snug">
@@ -640,17 +643,16 @@ export default function SessionDetail() {
 
           {isAdmin ? (
             <Card className="space-y-3 p-7">
-              <p className="eyebrow text-primary">Meeting link (admin)</p>
+              <p className="eyebrow text-primary">{t("detail.meetingLink.adminEyebrow")}</p>
               <Input
                 value={meetingUrl}
                 onChange={(e) => setMeetingUrl(e.target.value)}
-                placeholder="https://meet.google.com/… or https://zoom.us/…"
+                placeholder={t("detail.meetingLink.placeholder")}
                 type="url"
                 maxLength={500}
               />
               <p className="text-xs text-muted-foreground">
-                A video room is created automatically when the session is confirmed. Paste a Zoom/Meet link here
-                only if you want to override it.
+                {t("detail.meetingLink.helper")}
               </p>
               <div className="flex items-center justify-between gap-2">
                 {meetingUrl && /^https?:\/\//i.test(meetingUrl) ? (
@@ -660,10 +662,10 @@ export default function SessionDetail() {
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary hover:underline"
                   >
-                    <Video className="h-3 w-3" /> Test link
+                    <Video className="h-3 w-3" /> {t("detail.meetingLink.testLink")}
                   </a>
                 ) : (
-                  <span className="text-xs text-muted-foreground">No link saved yet</span>
+                  <span className="text-xs text-muted-foreground">{t("detail.meetingLink.noLinkSaved")}</span>
                 )}
                 <Button
                   size="sm"
@@ -672,7 +674,7 @@ export default function SessionDetail() {
                   onClick={() => {
                     const trimmed = meetingUrl.trim();
                     if (trimmed && !/^https?:\/\//i.test(trimmed)) {
-                      toast.error("Meeting link must start with http:// or https://");
+                      toast.error(t("detail.toast.meetingLinkInvalid"));
                       return;
                     }
                     saveMeetingUrl(trimmed);
@@ -684,7 +686,7 @@ export default function SessionDetail() {
                   ) : (
                     <Save className="mr-1 h-3 w-3" />
                   )}
-                  Save link
+                  {t("detail.meetingLink.save")}
                 </Button>
               </div>
             </Card>
@@ -692,25 +694,25 @@ export default function SessionDetail() {
             session.status === "confirmed" &&
             !session.meeting_url && (
               <Card className="space-y-2 p-7">
-                <p className="eyebrow text-primary">Meeting link</p>
+                <p className="eyebrow text-primary">{t("detail.meetingLink.pendingEyebrow")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Your video room is being set up. Refresh in a moment.
+                  {t("detail.meetingLink.pendingBody")}
                 </p>
               </Card>
             )
           )}
 
           <Card className="space-y-5 p-7">
-            <p className="eyebrow text-primary">Participants</p>
-            <Participant label="Coach" name={coach?.full_name} email={coach?.email} tone="primary" />
-            <Participant label="Coachee" name={coachee?.full_name} email={coachee?.email} tone="success" />
+            <p className="eyebrow text-primary">{t("detail.participants")}</p>
+            <Participant label={t("detail.counterpartRole.coach")} name={coach?.full_name} email={coach?.email} tone="primary" />
+            <Participant label={t("detail.counterpartRole.coachee")} name={coachee?.full_name} email={coachee?.email} tone="success" />
           </Card>
 
           {(isCoach || canCancel) && (
             <Card className="flex flex-wrap gap-2 p-7">
               {isCoach && session.status === "pending_coach_approval" && (
                 <Button className="rounded-full" onClick={confirmSession} disabled={saving}>
-                  <CheckCircle2 className="mr-1 h-4 w-4" /> Confirm session
+                  <CheckCircle2 className="mr-1 h-4 w-4" /> {t("detail.confirmSession")}
                 </Button>
               )}
               {isCoach && session.status === "confirmed" && sessionStarted && (
@@ -721,7 +723,7 @@ export default function SessionDetail() {
                     onClick={completeSession}
                     disabled={saving || !canMarkComplete}
                   >
-                    Mark complete
+                    {t("detail.markComplete")}
                   </Button>
                   {!canMarkComplete && (
                     <p className="text-xs text-muted-foreground">{missingRequirementHint}</p>
@@ -735,7 +737,7 @@ export default function SessionDetail() {
                   onClick={handleCancelSession}
                   disabled={saving}
                 >
-                  Cancel session
+                  {t("detail.cancelSession")}
                 </Button>
               )}
             </Card>
@@ -746,12 +748,12 @@ export default function SessionDetail() {
               <HelpCircle className="h-4 w-4" />
             </div>
             <div className="text-sm">
-              <p className="font-semibold">Need help with this session?</p>
+              <p className="font-semibold">{t("detail.help.title")}</p>
               <a
                 href="mailto:contact@clariva.club"
                 className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary"
               >
-                Contact platform support
+                {t("detail.help.contact")}
               </a>
             </div>
           </Card>
@@ -816,15 +818,15 @@ function Participant({
   );
 }
 
-const COMPETENCIES: { key: keyof Omit<PeerFeedbackState, "feedback_note" | "existed">; label: string }[] = [
-  { key: "ethical_practice", label: "Demonstrates Ethical Practice" },
-  { key: "coaching_mindset", label: "Embodies a Coaching Mindset" },
-  { key: "maintains_agreements", label: "Establishes & Maintains Agreements" },
-  { key: "trust_safety", label: "Cultivates Trust and Safety" },
-  { key: "maintains_presence", label: "Maintains Presence" },
-  { key: "listens_actively", label: "Listens Actively" },
-  { key: "evokes_awareness", label: "Evokes Awareness" },
-  { key: "facilitates_growth", label: "Facilitates Client Growth" },
+const COMPETENCY_KEYS: { key: keyof Omit<PeerFeedbackState, "feedback_note" | "existed">; i18nKey: string }[] = [
+  { key: "ethical_practice", i18nKey: "ethicalPractice" },
+  { key: "coaching_mindset", i18nKey: "coachingMindset" },
+  { key: "maintains_agreements", i18nKey: "maintainsAgreements" },
+  { key: "trust_safety", i18nKey: "trustSafety" },
+  { key: "maintains_presence", i18nKey: "maintainsPresence" },
+  { key: "listens_actively", i18nKey: "listensActively" },
+  { key: "evokes_awareness", i18nKey: "evokesAwareness" },
+  { key: "facilitates_growth", i18nKey: "facilitatesGrowth" },
 ];
 
 function PeerCompetencyFeedback({
@@ -838,6 +840,7 @@ function PeerCompetencyFeedback({
   onSaved?: () => void;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation("sessions");
   const [state, setState] = useState<PeerFeedbackState>(existing);
   const [saving, setSaving] = useState(false);
 
@@ -856,20 +859,20 @@ function PeerCompetencyFeedback({
   return (
     <Card className="space-y-5 p-8">
       <div>
-        <p className="eyebrow text-primary">ICF competency feedback</p>
+        <p className="eyebrow text-primary">{t("detail.peerFeedback.eyebrow")}</p>
         <h2 className="font-display mt-3 text-[1.6rem] leading-tight">
-          Rate your peer coach{" "}
-          {readOnly && <span className="text-sm text-muted-foreground">(read only)</span>}
+          {t("detail.peerFeedback.heading")}{" "}
+          {readOnly && <span className="text-sm text-muted-foreground">{t("detail.peerFeedback.readOnlySuffix")}</span>}
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Score the 8 ICF coaching competencies from 0 to 100.
+          {t("detail.peerFeedback.subtitle")}
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        {COMPETENCIES.map((c) => (
+        {COMPETENCY_KEYS.map((c) => (
           <div key={c.key} className="space-y-1.5">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">{c.label}</span>
+              <span className="font-medium">{t(`detail.peerFeedback.competencies.${c.i18nKey}`)}</span>
               <span className="font-bold text-primary">{state[c.key]}</span>
             </div>
             <input
@@ -886,20 +889,20 @@ function PeerCompetencyFeedback({
         ))}
       </div>
       <div>
-        <p className="eyebrow mb-2 text-primary">Written feedback</p>
+        <p className="eyebrow mb-2 text-primary">{t("detail.peerFeedback.writtenFeedback")}</p>
         <Textarea
           rows={4}
           disabled={readOnly}
           value={state.feedback_note}
           onChange={(e) => setState((p) => ({ ...p, feedback_note: e.target.value }))}
-          placeholder="What went well? What could grow further?"
+          placeholder={t("detail.peerFeedback.feedbackPlaceholder")}
         />
       </div>
       {!readOnly && (
         <div className="flex justify-end">
           <Button className="rounded-full" onClick={save} disabled={saving}>
             {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
-            {state.existed ? "Update feedback" : "Submit feedback"}
+            {state.existed ? t("detail.peerFeedback.updateFeedback") : t("detail.peerFeedback.submitFeedback")}
           </Button>
         </div>
       )}

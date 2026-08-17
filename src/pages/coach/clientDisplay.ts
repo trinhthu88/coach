@@ -26,6 +26,6 @@ export function initialsOf(s: string) {
     .toUpperCase();
 }
 
-export function programmeLabel(client: Client): string {
-  return client.goalsAll[0]?.title?.split(" ")[0] || "Programme";
+export function programmeLabel(client: Client, fallback: string): string {
+  return client.goalsAll[0]?.title?.split(" ")[0] || fallback;
 }

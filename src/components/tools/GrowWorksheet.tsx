@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
@@ -25,11 +26,11 @@ interface ActionItem {
 
 const EMPTY: GrowResponses = { goal: "", reality: "", options: "", will_notes: "" };
 
-const FIELDS: { key: keyof GrowResponses; step: number; title: string; prompt: string }[] = [
-  { key: "goal", step: 1, title: "Goal", prompt: "What do you want to achieve?" },
-  { key: "reality", step: 2, title: "Reality", prompt: "What's the current situation?" },
-  { key: "options", step: 3, title: "Options", prompt: "What options are available?" },
-  { key: "will_notes", step: 4, title: "Will", prompt: "What will you commit to?" },
+const FIELD_KEYS: { key: keyof GrowResponses; step: number; i18nKey: "goal" | "reality" | "options" | "will" }[] = [
+  { key: "goal", step: 1, i18nKey: "goal" },
+  { key: "reality", step: 2, i18nKey: "reality" },
+  { key: "options", step: 3, i18nKey: "options" },
+  { key: "will_notes", step: 4, i18nKey: "will" },
 ];
 
 export function GrowWorksheet({
@@ -41,6 +42,7 @@ export function GrowWorksheet({
   peerSessionId?: string;
   onActionItemsChanged?: () => void;
 }) {
+  const { t } = useTranslation("tools");
   const { user } = useAuth();
   const parentTable = sessionId ? "sessions" : "peer_sessions";
   const parentId = (sessionId ?? peerSessionId)!;
@@ -123,7 +125,7 @@ export function GrowWorksheet({
       return;
     }
     if (data?.id) setRowId(data.id);
-    toast.success("GROW worksheet saved");
+    toast.success(t("growWorksheet.toast.saved"));
   };
 
   const addCommitment = async () => {
@@ -138,7 +140,7 @@ export function GrowWorksheet({
       .maybeSingle()) as { data: { action_items: unknown } | null; error: { message: string } | null };
     if (readErr || !current) {
       setAdding(false);
-      toast.error(readErr?.message || "Could not load action items");
+      toast.error(readErr?.message || t("growWorksheet.toast.loadActionItemsFailed"));
       return;
     }
     const existing = Array.isArray(current.action_items)
@@ -161,7 +163,7 @@ export function GrowWorksheet({
     setItems(next);
     setCommitment("");
     setDueDate("");
-    toast.success("Commitment added to action items");
+    toast.success(t("growWorksheet.toast.commitmentAdded"));
     onActionItemsChanged?.();
   };
 
@@ -177,8 +179,10 @@ export function GrowWorksheet({
     <div className="space-y-5">
       {/* Steps */}
       <ol className="space-y-3">
-        {FIELDS.map((f) => {
+        {FIELD_KEYS.map((f) => {
           const filled = values[f.key].trim().length > 0;
+          const title = t(`growWorksheet.fields.${f.i18nKey}.title`);
+          const prompt = t(`growWorksheet.fields.${f.i18nKey}.prompt`);
           return (
             <li
               key={f.key}
@@ -196,16 +200,16 @@ export function GrowWorksheet({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-xl font-light leading-tight text-foreground">
-                    {f.title}
+                    {title}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{f.prompt}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{prompt}</p>
                   <Textarea
                     value={values[f.key]}
                     onChange={(e) =>
                       setValues((v) => ({ ...v, [f.key]: e.target.value }))
                     }
                     rows={4}
-                    placeholder={f.prompt}
+                    placeholder={prompt}
                     className="mt-3 rounded-[14px] bg-muted/30"
                   />
                 </div>
@@ -227,14 +231,14 @@ export function GrowWorksheet({
         ) : (
           <Save className="mr-1 h-3.5 w-3.5" />
         )}
-        Save worksheet
+        {t("growWorksheet.saveWorksheet")}
       </Button>
 
       {/* Commitments → action items */}
       <div className="rounded-[20px] border border-border bg-card p-4 sm:p-6">
-        <p className="eyebrow text-primary">Commitments</p>
+        <p className="eyebrow text-primary">{t("growWorksheet.commitments")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Anything you add here becomes an agreed action on this session.
+          {t("growWorksheet.commitmentsHint")}
         </p>
 
         {items.length > 0 && (
@@ -270,7 +274,7 @@ export function GrowWorksheet({
           <Input
             value={commitment}
             onChange={(e) => setCommitment(e.target.value)}
-            placeholder="I will…"
+            placeholder={t("growWorksheet.commitmentPlaceholder")}
             className="rounded-full"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -299,7 +303,7 @@ export function GrowWorksheet({
               ) : (
                 <Plus className="mr-1 h-3.5 w-3.5" />
               )}
-              Add commitment
+              {t("growWorksheet.addCommitment")}
             </Button>
           </div>
         </div>

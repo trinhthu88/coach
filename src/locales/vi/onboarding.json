@@ -1,0 +1,196 @@
+{
+  "__reviewed": "The \"coachee\" section below is human-approved per docs/vi-localization-style-guide.md — do not machine-retranslate it. The \"coach\" and \"sponsor\" sections are machine-translated placeholders following the same glossary — needs review by a Vietnamese speaker before shipping to real users, same as every other __notice-flagged namespace in this project.",
+  "coachee": {
+    "steps": {
+      "welcome": {
+        "kicker": "Chào mừng đến với Clariva",
+        "title": "Một chương trình được xây dựng quanh mục tiêu của bạn.",
+        "body": "Kế hoạch của bạn xác định số lượng session và khoảng thời gian thực hiện. Không có gì được lên lịch sẵn thay bạn, cũng không có giáo trình cố định — mỗi session sẽ xoay quanh đúng điều bạn mang đến."
+      },
+      "goals": {
+        "kicker": "Bước một",
+        "title": "Nêu rõ điều bạn muốn thay đổi.",
+        "body": "Viết ra một đến ba mục tiêu bằng chính lời của bạn, và đánh giá mỗi mục tiêu theo thang điểm 1-10 ngay hôm nay. Mức đánh giá này là điểm khởi đầu, không phải một lời phán xét — và chỉ bạn mới có quyền thay đổi nó.",
+        "bullets": [
+          { "label": "Cụ thể", "text": "\"Có thể nói thẳng một điều khó nói mà không giảm nhẹ\" tốt hơn nhiều so với \"giao tiếp tốt hơn.\"" },
+          { "label": "Của riêng bạn", "text": "Bạn có thể viết lại, tách nhỏ, hoặc bỏ một mục tiêu bất cứ lúc nào trong chương trình." },
+          { "label": "Có đánh giá", "text": "Đánh giá lại bất cứ khi nào có sự thay đổi — chính sự thay đổi đó là tiến bộ của bạn." }
+        ]
+      },
+      "coach": {
+        "kicker": "Bước hai",
+        "title": "Chọn coach của bạn.",
+        "body": "Mục tiêu của bạn sẽ lọc ra trong mạng lưới coach đã được chứng nhận những người phù hợp nhất với đúng vấn đề bạn đang cần. Đọc hồ sơ, đặt một buổi trò chuyện làm quen (chemistry call) miễn phí 20 phút, và quyết định sau khi đã gặp trực tiếp.",
+        "bullets": [
+          { "label": "Lọc theo tiêu chí", "text": "Theo lĩnh vực chuyên môn, ngôn ngữ, và lịch trống trong tháng." },
+          { "label": "Gặp trước khi quyết định", "text": "Buổi trò chuyện làm quen không tính vào số session của bạn." },
+          { "label": "Có thể đổi một lần", "text": "Bạn có thể đổi coach giữa chương trình mà không cần nêu lý do." }
+        ]
+      },
+      "book": {
+        "kicker": "Bước ba",
+        "title": "Đặt session đầu tiên.",
+        "body": "Bạn xem lịch trống thực tế của coach và chọn một khung giờ phù hợp. Nhắc lịch, đường link video, và việc đổi lịch — tất cả đều nằm ngay trong session, không cần trao đổi qua email."
+      },
+      "privacy": {
+        "kicker": "Bước bốn",
+        "title": "Session là một không gian riêng khép kín.",
+        "body": "Ghi chú, bản ghi âm, cách bạn diễn đạt mục tiêu, và mọi điều bạn chia sẻ đều thuộc về bạn và coach của bạn. Không có gì rời khỏi không gian đó trừ khi chính bạn gửi đi.",
+        "bullets": [
+          { "label": "Bạn là người quyết định", "text": "Bạn viết gì, chia sẻ gì, và mời ai tham gia." },
+          { "label": "Không bao giờ bị lộ", "text": "Ghi chú buổi session, bản ghi âm, và cách bạn diễn đạt mục tiêu." },
+          { "label": "Coach của bạn", "text": "Cũng giữ ghi chú chuẩn bị riêng; chỉ những phần tóm tắt được đánh dấu chia sẻ mới đến tay bạn." }
+        ]
+      },
+      "progress": {
+        "kicker": "Bước năm",
+        "title": "Tiến bộ chính là mức đánh giá của riêng bạn, đang thay đổi.",
+        "body": "Trang tổng quan của bạn theo dõi mức đánh giá của từng mục tiêu qua mỗi session. Không có điểm số nào được tính sẵn thay bạn, và cũng không có bảng xếp hạng — đường biểu đồ chỉ thay đổi khi chính bạn nói rằng nó đã thay đổi."
+      }
+    },
+    "pointers": {
+      "findCoaches": {
+        "where": "Điều hướng bên trái",
+        "title": "\"Find coaches\" là điểm bắt đầu của bạn.",
+        "body": "Hồ sơ coach, buổi trò chuyện làm quen, và lịch trống thực tế — tất cả đều nằm ở đây. Mục này luôn mở trong suốt chương trình, kể cả khi bạn đổi coach."
+      },
+      "nextSession": {
+        "where": "Đầu trang tổng quan",
+        "title": "Session tiếp theo của bạn luôn hiển thị đầu tiên.",
+        "body": "Chủ đề, coach, và thời gian. Mở ra để thêm những điều bạn muốn trao đổi — chỉ coach của bạn nhìn thấy, không ai khác."
+      },
+      "sessionLog": {
+        "where": "Nhật ký session và việc cần làm",
+        "title": "Những điều bạn đã thống nhất, tất cả ở một nơi.",
+        "body": "Mỗi session đều để lại nhật ký và danh sách việc cần làm tại đây. Đánh dấu hoàn thành khi bạn thực hiện xong — đây cũng là nơi bạn đánh giá lại mục tiêu khi có điều gì đó thay đổi."
+      }
+    }
+  },
+  "coach": {
+    "steps": {
+      "welcome": {
+        "kicker": "Chào mừng đến với Clariva",
+        "title": "Toàn bộ hoạt động coaching của bạn, trên một nền tảng.",
+        "body": "Việc ghép cặp, đặt lịch, nhắc lịch, ghi chú và lịch sử session đều nằm ở một nơi — cho những khách hàng bạn coaching, và cho hoạt động thực hành của chính bạn với tư cách coachee và peer. Bạn giữ phương pháp của riêng mình; nền tảng chỉ giúp bạn giảm bớt việc hành chính xung quanh nó."
+      },
+      "profile": {
+        "kicker": "Bước một",
+        "title": "Hoàn thiện hồ sơ coach của bạn.",
+        "body": "Chuyên môn, kinh nghiệm và ngôn ngữ của bạn chính là cơ sở để hệ thống ghép cặp hoạt động. Một hồ sơ sơ sài đơn giản sẽ không xuất hiện khi coachee lọc theo mục tiêu của họ.",
+        "bullets": [
+          { "label": "Chuyên môn", "text": "Chọn hai hoặc ba lĩnh vực bạn thực sự làm việc, không phải tất cả những gì bạn có thể làm." },
+          { "label": "Giới thiệu bản thân", "text": "Một đoạn ngắn bằng chính giọng văn của bạn — nó sẽ xuất hiện trên mọi thẻ ghép cặp." },
+          { "label": "Chứng nhận chuyên môn", "text": "Chứng chỉ được xác minh một lần, sau đó hiển thị dưới dạng huy hiệu trên hồ sơ của bạn." }
+        ]
+      },
+      "availability": {
+        "kicker": "Bước hai",
+        "title": "Công bố lịch trống của bạn.",
+        "body": "Sẽ không ai đặt lịch được với bạn cho đến khi có khung giờ trống. Thiết lập các khung giờ lặp lại hằng tuần theo múi giờ của bạn; nền tảng sẽ tự quy đổi cho từng coachee và giữ khoảng đệm giữa các session.",
+        "bullets": [
+          { "label": "Lặp lại", "text": "Thiết lập một lần, lặp lại hằng tuần. Bạn có thể đóng riêng bất kỳ tuần nào khi cần." },
+          { "label": "Khoảng đệm", "text": "Thêm khoảng trống để các session không bị đặt liền kề nhau." },
+          { "label": "Buổi trò chuyện làm quen", "text": "Dành riêng một khung giờ ngắn mỗi tuần cho các buổi trò chuyện làm quen 20 phút." }
+        ]
+      },
+      "practice": {
+        "kicker": "Bước ba",
+        "title": "Vừa coaching, vừa được coaching.",
+        "body": "Clariva cũng là nơi hoạt động coaching của chính bạn phát triển. Tham gia peer coaching để trao đổi session với các coach đã được chứng nhận khác, đặt lịch với một coach cho riêng mình, và lưu lại toàn bộ giờ thực hành trong một hồ sơ duy nhất.",
+        "bullets": [
+          { "label": "Trao đổi peer", "text": "Cho đi một session, nhận lại một session. Cả hai đều được tính là peer session trên trang tổng quan của bạn." },
+          { "label": "Coach của riêng bạn", "text": "Find a coach hoạt động hoàn toàn giống như với một coachee — ở đó, bạn chính là coachee." },
+          { "label": "Hành trình thực hành", "text": "Các session đã thực hiện, peer session, và những chiêm nghiệm của bạn tạo nên hồ sơ đứng sau chứng nhận chuyên môn của bạn." }
+        ]
+      },
+      "privacy": {
+        "kicker": "Bước bốn",
+        "title": "Ghi chú của bạn ở lại trong không gian riêng.",
+        "body": "Tổ chức tài trợ cho chương trình nhưng không có cách nào tiếp cận nội dung session. Ranh giới này được thực thi bởi chính sản phẩm, chứ không chỉ bằng chính sách.",
+        "bullets": [
+          { "label": "Tổ chức nhìn thấy", "text": "Một session đã diễn ra, thời lượng của nó, và việc có tham dự hay không." },
+          { "label": "Họ không bao giờ thấy", "text": "Ghi chú, bản ghi âm, hoặc tên bạn gắn với một cá nhân cụ thể." },
+          { "label": "Coachee của bạn thấy", "text": "Chỉ những phần tóm tắt bạn đánh dấu là chia sẻ. Ghi chú chuẩn bị vẫn ở chế độ riêng tư." }
+        ]
+      },
+      "flags": {
+        "kicker": "Bước năm",
+        "title": "Nền tảng cảnh báo ai đang chững lại.",
+        "body": "Mức đánh giá mục tiêu không thay đổi và khoảng cách đặt lịch kéo dài sẽ hiện lên trang tổng quan của bạn trước khi chương trình hết session. Lời nhắc luôn được gửi đi từ chính bạn, không bao giờ từ phía nhà tuyển dụng của họ."
+      }
+    },
+    "pointers": {
+      "availability": {
+        "where": "Điều hướng bên trái",
+        "title": "Lịch trống của tôi cần được thiết lập trước tiên.",
+        "body": "Cho đến khi có khung giờ trống ở đây, các coachee được ghép cặp sẽ thấy bạn là đã kín lịch. Đây là màn hình duy nhất bạn cần ghé qua trước bất kỳ điều gì khác."
+      },
+      "nextSession": {
+        "where": "Đầu trang tổng quan",
+        "title": "Session tiếp theo, kèm bối cảnh.",
+        "body": "Chủ đề, khách hàng, và thời gian — cả session coaching lẫn peer session đều hiển thị ở đây. Mở ra để xem lại ghi chú gần nhất trước khi bạn tham gia."
+      },
+      "bookingRequests": {
+        "where": "Yêu cầu đặt lịch",
+        "title": "Chấp nhận hoặc từ chối chỉ với một thao tác.",
+        "body": "Các yêu cầu xuất hiện ở đây kèm chủ đề, thời lượng và thời gian. Chấp nhận sẽ xác nhận khung giờ và gửi đường link cuộc họp; từ chối sẽ giải phóng khung giờ đó ngay lập tức."
+      }
+    }
+  },
+  "sponsor": {
+    "steps": {
+      "welcome": {
+        "kicker": "Chào mừng đến với Clariva",
+        "title": "Sức khỏe chương trình, không đi kèm nội dung.",
+        "body": "Bạn có thể thấy nhóm của mình có đang tham gia tích cực hay không, và mọi người có đang tiến triển hay không. Bạn không thể thấy nội dung coaching. Chính sự đánh đổi đó khiến các session đủ thẳng thắn để thực sự hiệu quả."
+      },
+      "timing": {
+        "kicker": "Bước một",
+        "title": "Biết nhóm của bạn đang ở đâu trong dòng thời gian.",
+        "body": "Mọi con số đều cần được đọc trong khung thời gian của chương trình. Sáu session trải trong bốn tháng nghĩa là mức sử dụng thấp ở tháng đầu tiên là bình thường, còn mức đánh giá không thay đổi ở tháng thứ ba thì không."
+      },
+      "enrolment": {
+        "kicker": "Bước hai",
+        "title": "Hoàn tất việc đăng ký.",
+        "body": "Mười một trong số mười hai lãnh đạo đã chấp nhận. Mở danh sách, tìm ra người còn lại, và gửi lời nhắc — lời nhắc đó đến từ chương trình, không phải từ quản lý.",
+        "bullets": [
+          { "label": "Mời", "text": "Thêm lãnh đạo qua email; mỗi người sẽ tự chọn coach của riêng mình." },
+          { "label": "Nhắc nhở", "text": "Chỉ một thao tác cho bất kỳ ai chưa đăng ký hoặc chưa đặt lịch." },
+          { "label": "Có nguy cơ", "text": "Cảnh báo tự động xuất hiện sau năm tuần không có session nào." }
+        ]
+      },
+      "withheld": {
+        "kicker": "Bước ba",
+        "title": "Điều gì không được hiển thị, và vì sao.",
+        "body": "Các giới hạn được thể hiện ngay trong sản phẩm dưới dạng mục bị khóa nhưng vẫn hiển thị, để bạn luôn biết điều gì tồn tại thay vì tự hỏi mình đang thiếu điều gì.",
+        "bullets": [
+          { "label": "Bạn thấy", "text": "Tình trạng đăng ký, điểm danh, số session đã dùng, trạng thái đúng tiến độ, và mức tăng trưởng mục tiêu." },
+          { "label": "Bạn không bao giờ thấy", "text": "Ghi chú, bản ghi âm, cách diễn đạt mục tiêu, hoặc coach mà một cá nhân đã chọn." },
+          { "label": "Dưới năm người", "text": "Số liệu phân bổ sẽ bị ẩn, chỉ hiển thị mức trung bình của cả nhóm." }
+        ]
+      },
+      "metrics": {
+        "kicker": "Bước bốn",
+        "title": "Hai con số quyết định việc gia hạn chương trình.",
+        "body": "Tỷ lệ đúng tiến độ cho biết mọi người có đang tham gia đầy đủ hay không. Mức tăng trưởng mục tiêu trung bình cho biết liệu có điều gì thực sự thay đổi hay không. Bạn có thể xuất cả hai số liệu này cho bất kỳ khoảng thời gian nào, có hoặc không kèm danh sách."
+      }
+    },
+    "pointers": {
+      "navigation": {
+        "where": "Điều hướng bên trái",
+        "title": "Ba màn hình, không có màn hình thứ tư.",
+        "body": "Không có đường nào từ đây dẫn vào nội dung session. Sự vắng mặt này là có chủ đích — không có gì ẩn sau một quyền truy cập mà bạn có thể xin cấp sau này."
+      },
+      "cohortFilter": {
+        "where": "Đầu trang tổng quan",
+        "title": "Mỗi lần một nhóm.",
+        "body": "Chuyển nhóm tại đây và mọi con số bên dưới sẽ thay đổi theo, kể cả danh sách và bản xuất dữ liệu."
+      },
+      "roster": {
+        "where": "Danh sách",
+        "title": "Tình trạng, không phải câu chuyện.",
+        "body": "Tình trạng đăng ký, số session đã dùng, và mức tăng trưởng tự đánh giá của từng người. Các dòng không mở ra nội dung — chúng chỉ mở ra cùng những số liệu tổng hợp đó, cộng với phần bị giới hạn."
+      }
+    }
+  }
+}

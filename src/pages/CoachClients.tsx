@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import { InviteClientDialog } from "./coach/InviteClientDialog";
 const CONTACT_EMAIL = "contact@clariva.club";
 
 export default function CoachClients() {
+  const { t } = useTranslation("dashboard");
   const { user } = useAuth();
   const { clients, loading, reload, metrics } = useCoachClients(user?.id);
   const inviteSlots = useCoachInviteSlots(user?.id);
@@ -37,31 +39,31 @@ export default function CoachClients() {
     <div className="space-y-6">
       <PageHeader
           className="mb-0"
-          eyebrow="Practice"
-          title="My"
-          emphasis="clients"
-          subtitle="All active coachees at a glance — progress, engagement, and private notes."
+          eyebrow={t("clients.eyebrow")}
+          title={t("clients.titleLead")}
+          emphasis={t("clients.titleEmphasis")}
+          subtitle={t("clients.subtitle")}
           actions={
             atCap ? (
               <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>
-                  {inviteSlots.used} of {inviteSlots.limit} clients invited.{" "}
+                  {t("clients.atCapNotice", { used: inviteSlots.used, limit: inviteSlots.limit })}{" "}
                   <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold underline">
-                    Contact us
+                    {t("clients.contactUs")}
                   </a>{" "}
-                  for more.
+                  {t("clients.forMore")}
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-3">
                 {!inviteSlots.loading && (
                   <span className="text-xs text-muted-foreground">
-                    {inviteSlots.used} of {inviteSlots.limit} clients invited
+                    {t("clients.usedOfLimit", { used: inviteSlots.used, limit: inviteSlots.limit })}
                   </span>
                 )}
                 <Button onClick={() => setInviteOpen(true)}>
-                  <UserPlus className="h-4 w-4" /> Invite a client
+                  <UserPlus className="h-4 w-4" /> {t("clients.inviteAClient")}
                 </Button>
               </div>
             )
@@ -72,28 +74,28 @@ export default function CoachClients() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard
           icon={Users}
-          label="Active clients"
+          label={t("clients.stats.activeClients")}
           value={metrics.active}
-          hint={`${clients.filter((c) => c.upcomingCount === 0 && c.completed > 0).length} no upcoming`}
+          hint={t("clients.stats.activeClientsHint", { count: clients.filter((c) => c.upcomingCount === 0 && c.completed > 0).length })}
         />
         <StatCard
           icon={Calendar}
-          label="Sessions this week"
+          label={t("clients.stats.sessionsThisWeek")}
           value={metrics.sessionsThisWeek}
-          hint={metrics.nextOverall ? `next: ${format(new Date(metrics.nextOverall), "MMM d, p")}` : "none scheduled"}
+          hint={metrics.nextOverall ? t("clients.stats.sessionsThisWeekHintNext", { date: format(new Date(metrics.nextOverall), "MMM d, p") }) : t("clients.stats.sessionsThisWeekHintNone")}
         />
         <StatCard
           icon={AlertCircle}
-          label="Overdue actions"
+          label={t("clients.stats.overdueActions")}
           value={metrics.overdue}
-          hint={metrics.overdue ? `across ${metrics.overdueClients} coachee${metrics.overdueClients === 1 ? "" : "s"}` : "all on time"}
+          hint={metrics.overdue ? t("clients.stats.overdueActionsHint", { count: metrics.overdueClients }) : t("clients.stats.overdueActionsHintNone")}
           tone={metrics.overdue ? "warning" : "success"}
         />
         <StatCard
           icon={TrendingUp}
-          label="Milestones hit"
+          label={t("clients.stats.milestonesHit")}
           value={metrics.milestonesHit}
-          hint="completed total"
+          hint={t("clients.stats.milestonesHitHint")}
           tone="success"
         />
       </div>
@@ -102,13 +104,13 @@ export default function CoachClients() {
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name or email…"
+            placeholder={t("clients.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
           />
         </div>
-        <p className="text-xs text-muted-foreground">Click a card to open the coachee profile</p>
+        <p className="text-xs text-muted-foreground">{t("clients.clickToOpen")}</p>
       </div>
 
       {loading ? (
@@ -117,18 +119,18 @@ export default function CoachClients() {
         </div>
       ) : filtered.length === 0 ? (
         <Card className="p-12 text-center">
-          <h3 className="text-lg font-semibold">No clients yet</h3>
+          <h3 className="text-lg font-semibold">{t("clients.empty.title")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Coachees appear here once you have a confirmed or completed session.
+            {t("clients.empty.body")}
           </p>
         </Card>
       ) : (
         <div className="surface-card overflow-hidden p-0">
           <div className="hidden grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] gap-4 border-b border-border px-5 py-3 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground md:grid">
-            <span>Client</span>
-            <span>Programme</span>
-            <span>Progress</span>
-            <span>Next session</span>
+            <span>{t("clients.tableHeaders.client")}</span>
+            <span>{t("clients.tableHeaders.programme")}</span>
+            <span>{t("clients.tableHeaders.progress")}</span>
+            <span>{t("clients.tableHeaders.nextSession")}</span>
           </div>
           <div className="divide-y divide-border">
             {filtered.map((c) => (

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ interface SessionRow {
 }
 
 export default function AdminSessions() {
+  const { t } = useTranslation("admin");
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -159,13 +161,13 @@ export default function AdminSessions() {
         })
         .eq("id", editing.id);
       if (error) throw error;
-      toast({ title: "Session updated" });
+      toast({ title: t("sessions.sessionUpdated") });
       setEditing(null);
       setCancelReason("");
       await load();
     } catch (err) {
       toast({
-        title: "Save failed",
+        title: t("sessions.saveFailed"),
         description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       });
@@ -185,17 +187,17 @@ export default function AdminSessions() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Admin"
-        title="All"
-        emphasis="sessions"
-        subtitle={`${rows.length} session${rows.length === 1 ? "" : "s"} across the platform.`}
+        eyebrow={t("sessions.eyebrow")}
+        title={t("sessions.titleAll")}
+        emphasis={t("sessions.titleEmphasis")}
+        subtitle={t("sessions.subtitle", { count: rows.length })}
       />
 
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-64">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search topic, coach or coachee"
+            placeholder={t("sessions.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -206,10 +208,10 @@ export default function AdminSessions() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="all">{t("sessions.allStatuses")}</SelectItem>
             {STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
-                {s.replace(/_/g, " ")}
+                {t(`sessions.statusLabels.${s}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -219,21 +221,21 @@ export default function AdminSessions() {
       <Card>
         {filtered.length === 0 ? (
           <div className="p-12 text-center text-sm text-muted-foreground">
-            No sessions match your filters.
+            {t("sessions.noMatch")}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Topic</TableHead>
-                <TableHead>Coach</TableHead>
-                <TableHead>Coachee</TableHead>
-                <TableHead>When</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Link</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("sessions.tableHeaders.type")}</TableHead>
+                <TableHead>{t("sessions.tableHeaders.topic")}</TableHead>
+                <TableHead>{t("sessions.tableHeaders.coach")}</TableHead>
+                <TableHead>{t("sessions.tableHeaders.coachee")}</TableHead>
+                <TableHead>{t("sessions.tableHeaders.when")}</TableHead>
+                <TableHead>{t("sessions.tableHeaders.status")}</TableHead>
+                <TableHead>{t("sessions.tableHeaders.link")}</TableHead>
+                <TableHead>{t("sessions.tableHeaders.rating")}</TableHead>
+                <TableHead className="text-right">{t("sessions.tableHeaders.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -252,7 +254,7 @@ export default function AdminSessions() {
                   >
                     <TableCell>
                       <Badge variant={s.kind === "peer" ? "outline" : "secondary"} className="text-[10px]">
-                        {s.kind === "peer" ? "Peer" : "Coaching"}
+                        {s.kind === "peer" ? t("sessions.kindPeer") : t("sessions.kindCoaching")}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">
@@ -281,7 +283,7 @@ export default function AdminSessions() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="capitalize">
-                        {s.status.replace(/_/g, " ")}
+                        {t(`sessions.statusLabels.${s.status}`)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -292,14 +294,14 @@ export default function AdminSessions() {
                           rel="noreferrer"
                           className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                         >
-                          Open <ExternalLink className="h-3 w-3" />
+                          {t("sessions.open")} <ExternalLink className="h-3 w-3" />
                         </a>
                       ) : (
                         <Badge
                           variant="outline"
                           className="gap-1 border-warning/40 text-warning"
                         >
-                          <AlertCircle className="h-3 w-3" /> Missing
+                          <AlertCircle className="h-3 w-3" /> {t("sessions.missing")}
                         </Badge>
                       )}
                     </TableCell>
@@ -318,7 +320,7 @@ export default function AdminSessions() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="outline" size="sm" onClick={() => { setEditing(s); setCancelReason(""); }}>
-                        <Pencil className="h-4 w-4" /> Edit
+                        <Pencil className="h-4 w-4" /> {t("sessions.edit")}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -332,12 +334,12 @@ export default function AdminSessions() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Edit session</DialogTitle>
+            <DialogTitle>{t("sessions.editDialogTitle")}</DialogTitle>
           </DialogHeader>
           {editing && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Topic</Label>
+                <Label>{t("sessions.topicLabel")}</Label>
                 <Input
                   value={editing.topic}
                   onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
@@ -345,7 +347,7 @@ export default function AdminSessions() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Start time</Label>
+                  <Label>{t("sessions.startTimeLabel")}</Label>
                   <Input
                     type="datetime-local"
                     value={format(new Date(editing.start_time), "yyyy-MM-dd'T'HH:mm")}
@@ -358,7 +360,7 @@ export default function AdminSessions() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Duration (min)</Label>
+                  <Label>{t("sessions.durationLabel")}</Label>
                   <Input
                     type="number"
                     min={15}
@@ -373,7 +375,7 @@ export default function AdminSessions() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>{t("sessions.statusLabel")}</Label>
                 <Select
                   value={editing.status}
                   onValueChange={(v) => setEditing({ ...editing, status: v })}
@@ -384,7 +386,7 @@ export default function AdminSessions() {
                   <SelectContent>
                     {STATUSES.map((s) => (
                       <SelectItem key={s} value={s}>
-                        {s.replace(/_/g, " ")}
+                        {t(`sessions.statusLabels.${s}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -392,17 +394,17 @@ export default function AdminSessions() {
               </div>
               {isCancelling && (
                 <div className="space-y-2">
-                  <Label>Cancellation reason (optional)</Label>
+                  <Label>{t("sessions.cancellationReasonLabel")}</Label>
                   <Textarea
                     rows={2}
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
-                    placeholder="Included in the cancellation email to both parties…"
+                    placeholder={t("sessions.cancellationReasonPlaceholder")}
                   />
                 </div>
               )}
               <div className="space-y-2">
-                <Label>Meeting URL</Label>
+                <Label>{t("sessions.meetingUrlLabel")}</Label>
                 <Input
                   value={editing.meeting_url ?? ""}
                   onChange={(e) =>
@@ -412,7 +414,7 @@ export default function AdminSessions() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Coach notes</Label>
+                <Label>{t("sessions.coachNotesLabel")}</Label>
                 <Textarea
                   rows={3}
                   value={editing.coach_notes ?? ""}
@@ -422,7 +424,7 @@ export default function AdminSessions() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Coachee notes</Label>
+                <Label>{t("sessions.coacheeNotesLabel")}</Label>
                 <Textarea
                   rows={3}
                   value={editing.coachee_notes ?? ""}
@@ -435,7 +437,7 @@ export default function AdminSessions() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)} disabled={saving}>
-              Cancel
+              {t("sessions.cancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? (
@@ -443,7 +445,7 @@ export default function AdminSessions() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Save
+              {t("sessions.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

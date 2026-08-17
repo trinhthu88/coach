@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -32,13 +33,7 @@ import PendingAccessRequests from "@/components/PendingAccessRequests";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
-const STATUS_LABEL: Record<Status, string> = {
-  pending_approval: "Awaiting approval",
-  active: "Active",
-  rejected: "Rejected",
-  suspended: "Suspended",
-  reach_limit: "Reached limit",
-};
+const STATUS_KEYS: Status[] = ["pending_approval", "active", "rejected", "suspended", "reach_limit"];
 const STATUS_TONE: Record<Status, "muted"|"success"|"warning"|"destructive"> = {
   pending_approval: "warning",
   active: "success",
@@ -86,6 +81,7 @@ interface CoachRow {
 }
 
 export default function AdminCoaches() {
+  const { t } = useTranslation("admin");
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<CoachRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
@@ -232,36 +228,36 @@ export default function AdminCoaches() {
   const exportXlsx = async () => {
     const XLSX = await import("xlsx");
     const data = filtered.map(c => ({
-      Name: c.full_name,
-      Email: c.email,
-      Registered: format(new Date(c.created_at), "yyyy-MM-dd"),
-      Status: STATUS_LABEL[c.status],
-      "Coach programme": c.coach_programme_name || "",
-      "Coach session limit": fmtLimit(c.coach_session_limit),
-      "Coach sessions used": c.coach_used,
-      "Assigned coaches": c.assigned_coaches.map(x => x.name).join("; "),
-      "Peer received limit": fmtLimit(c.peer_session_limit),
-      "Peer received used": c.peer_used,
-      "Peer given limit": fmtLimit(c.peer_given_limit),
-      "Peer given used": c.peer_given_used,
-      "# Coachees": c.coachees_count,
-      "Avg rating": c.rating_avg.toFixed(2),
-      "Booked coaching sessions": c.booked_sessions,
-      "Completed coaching sessions": c.completed_sessions,
-      Cohort: c.cohort_name || "",
-      Programme: c.programme_name || "",
+      [t("coaches.export.name")]: c.full_name,
+      [t("coaches.export.email")]: c.email,
+      [t("coaches.export.registered")]: format(new Date(c.created_at), "yyyy-MM-dd"),
+      [t("coaches.export.status")]: t(`coaches.statusLabels.${c.status}`),
+      [t("coaches.export.coachProgramme")]: c.coach_programme_name || "",
+      [t("coaches.export.coachSessionLimit")]: fmtLimit(c.coach_session_limit),
+      [t("coaches.export.coachSessionsUsed")]: c.coach_used,
+      [t("coaches.export.assignedCoaches")]: c.assigned_coaches.map(x => x.name).join("; "),
+      [t("coaches.export.peerReceivedLimit")]: fmtLimit(c.peer_session_limit),
+      [t("coaches.export.peerReceivedUsed")]: c.peer_used,
+      [t("coaches.export.peerGivenLimit")]: fmtLimit(c.peer_given_limit),
+      [t("coaches.export.peerGivenUsed")]: c.peer_given_used,
+      [t("coaches.export.coacheesCount")]: c.coachees_count,
+      [t("coaches.export.avgRating")]: c.rating_avg.toFixed(2),
+      [t("coaches.export.bookedSessions")]: c.booked_sessions,
+      [t("coaches.export.completedSessions")]: c.completed_sessions,
+      [t("coaches.export.cohort")]: c.cohort_name || "",
+      [t("coaches.export.programme")]: c.programme_name || "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Coaches");
+    XLSX.utils.book_append_sheet(wb, ws, t("coaches.export.sheetName"));
     XLSX.writeFile(wb, `coaches-${format(new Date(), "yyyyMMdd")}.xlsx`);
-    toast.success("Exported");
+    toast.success(t("coaches.exported"));
   };
 
   const saveEdit = async () => {
     if (!editing) return;
     if (!editing.programme_id) {
-      toast.error("Programme is required");
+      toast.error(t("coaches.programmeRequired"));
       return;
     }
     setSaving(true);
@@ -309,11 +305,11 @@ export default function AdminCoaches() {
         });
       }
 
-      toast.success("Coach updated");
+      toast.success(t("coaches.coachUpdated"));
       setEditing(null);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(e instanceof Error ? e.message : t("coaches.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -330,14 +326,14 @@ export default function AdminCoaches() {
   return (
     <div>
       <AdminPageHeader
-        eyebrow="Organisation"
-        title="Coach"
-        emphasize="roster"
+        eyebrow={t("coaches.eyebrow")}
+        title={t("coaches.title")}
+        emphasize={t("coaches.titleEmphasis")}
         trailing=""
-        subtitle={`${rows.length} total coaches · click any row to edit`}
+        subtitle={t("coaches.subtitle", { count: rows.length })}
         right={
           <Button variant="outline" size="sm" onClick={exportXlsx}>
-            <FileDown className="h-4 w-4" /> Export Excel
+            <FileDown className="h-4 w-4" /> {t("coaches.exportExcel")}
           </Button>
         }
       />
@@ -345,23 +341,23 @@ export default function AdminCoaches() {
       <PendingAccessRequests variant="coach" onApproved={load} />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
-        <Kpi label="Total" value={rows.length} icon={Users} tone="primary" />
-        <Kpi label="Active" value={active} icon={Users} tone="success" />
-        <Kpi label="Awaiting approval" value={pending} icon={Users} tone="warning" />
-        <Kpi label="Reached limit" value={reachLimit} icon={Users} tone="destructive" />
+        <Kpi label={t("coaches.kpiTotal")} value={rows.length} icon={Users} tone="primary" />
+        <Kpi label={t("coaches.kpiActive")} value={active} icon={Users} tone="success" />
+        <Kpi label={t("coaches.kpiAwaitingApproval")} value={pending} icon={Users} tone="warning" />
+        <Kpi label={t("coaches.kpiReachedLimit")} value={reachLimit} icon={Users} tone="destructive" />
       </div>
 
       <div className="mb-3 flex flex-wrap gap-2">
         <div className="relative min-w-64 flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("coaches.searchPlaceholder")} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | Status)}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {(Object.keys(STATUS_LABEL) as Status[]).map(s => (
-              <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+            <SelectItem value="all">{t("coaches.allStatuses")}</SelectItem>
+            {STATUS_KEYS.map(s => (
+              <SelectItem key={s} value={s}>{t(`coaches.statusLabels.${s}`)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -372,20 +368,20 @@ export default function AdminCoaches() {
           <table className="w-full text-[12px]">
             <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="px-3 py-2.5 text-left font-semibold">Coach</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Status</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Registered</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Coaching received</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Peer received</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Peer given</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Programme</th>
-                <th className="px-3 py-2.5 text-left font-semibold">% Complete</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Assigned</th>
-                <th className="px-3 py-2.5 text-left font-semibold"># Coachees</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Rating</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Booked</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Done</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.coach")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.status")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.registered")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.coachingReceived")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.peerReceived")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.peerGiven")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.programme")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.percentComplete")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.assigned")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.coacheesCount")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.rating")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.booked")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.done")}</th>
+                <th className="px-3 py-2.5 text-right font-semibold">{t("coaches.tableHeaders.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -400,7 +396,7 @@ export default function AdminCoaches() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Pill></td>
+                  <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{t(`coaches.statusLabels.${r.status}`)}</Pill></td>
                   <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{format(new Date(r.created_at), "MMM d, yyyy")}</td>
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.coach_used}/{fmtLimit(r.coach_session_limit)}</span></td>
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_used}/{fmtLimit(r.peer_session_limit)}</span></td>
@@ -420,7 +416,7 @@ export default function AdminCoaches() {
                       );
                     })()}
                   </td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.assigned_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : `${r.assigned_coaches.length} coach${r.assigned_coaches.length === 1 ? "" : "es"}`}</td>
+                  <td className="px-3 py-2.5 text-[11px]">{r.assigned_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : t("coaches.assignedCoachesCount", { count: r.assigned_coaches.length })}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.coachees_count}</td>
                   <td className="px-3 py-2.5 text-[11px]">
                     <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-warning text-warning" /> {r.rating_avg.toFixed(1)}</span>
@@ -429,14 +425,14 @@ export default function AdminCoaches() {
                   <td className="px-3 py-2.5 text-[11px]">{r.completed_sessions}</td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
-                      <Button asChild variant="ghost" size="icon" title="View profile"><Link to={`/coaches/${r.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                      <Button asChild variant="ghost" size="icon" title={t("coaches.viewProfile")}><Link to={`/coaches/${r.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
                       <Button variant="ghost" size="icon" onClick={() => setEditing({ ...r, assigned_coaches: [...r.assigned_coaches] })}><Pencil className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={14} className="p-12 text-center text-sm text-muted-foreground">No coaches match your filters.</td></tr>
+                <tr><td colSpan={14} className="p-12 text-center text-sm text-muted-foreground">{t("coaches.noMatch")}</td></tr>
               )}
             </tbody>
           </table>
@@ -447,19 +443,19 @@ export default function AdminCoaches() {
       <Sheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Edit coach</SheetTitle>
+            <SheetTitle>{t("coaches.editCoach")}</SheetTitle>
             <SheetDescription>{editing?.email}</SheetDescription>
           </SheetHeader>
           {editing && (
             <div className="mt-4 space-y-5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div><Label>Full name</Label><Input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} /></div>
+                <div><Label>{t("coaches.fullName")}</Label><Input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} /></div>
                 <div>
-                  <Label>Status</Label>
+                  <Label>{t("coaches.status")}</Label>
                   <Select value={editing.status} onValueChange={(v) => setEditing({ ...editing, status: v as Status })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(Object.keys(STATUS_LABEL) as Status[]).map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
+                      {STATUS_KEYS.map(s => <SelectItem key={s} value={s}>{t(`coaches.statusLabels.${s}`)}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -467,7 +463,7 @@ export default function AdminCoaches() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <Label>Programme <span className="text-destructive">*</span></Label>
+                  <Label>{t("coaches.programme")} <span className="text-destructive">*</span></Label>
                   <Select
                     value={editing.programme_id || ""}
                     onValueChange={(v) => {
@@ -480,19 +476,19 @@ export default function AdminCoaches() {
                       });
                     }}
                   >
-                    <SelectTrigger><SelectValue placeholder="Select a programme…" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t("coaches.selectProgrammePlaceholder")} /></SelectTrigger>
                     <SelectContent>
                       {programmes.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <p className="mt-1 text-[10px] text-muted-foreground">Required. This coach's own coaching journey (progress tracking), separate from their session limits below.</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{t("coaches.programmeHint")}</p>
                 </div>
                 <div>
-                  <Label>Cohort</Label>
+                  <Label>{t("coaches.cohort")}</Label>
                   <Select value={editing.cohort_id || "none"} onValueChange={(v) => setEditing({ ...editing, cohort_id: v === "none" ? null : v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">— None —</SelectItem>
+                      <SelectItem value="none">{t("coaches.noneOption")}</SelectItem>
                       {cohorts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -501,23 +497,23 @@ export default function AdminCoaches() {
 
               <div className="rounded-lg border p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session limits</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coaches.sessionLimits")}</p>
                   <Button asChild variant="link" size="sm" className="h-auto p-0 text-[11px]">
-                    <Link to="/admin/coach-programmes">Change coach programme →</Link>
+                    <Link to="/admin/coach-programmes">{t("coaches.changeCoachProgramme")} →</Link>
                   </Button>
                 </div>
-                <p className="mb-2 text-[12px] font-medium">{editing.coach_programme_name || <span className="italic text-muted-foreground">Not enrolled</span>}</p>
+                <p className="mb-2 text-[12px] font-medium">{editing.coach_programme_name || <span className="italic text-muted-foreground">{t("coaches.notEnrolled")}</span>}</p>
                 <div className="grid grid-cols-1 gap-3 text-[11px] sm:grid-cols-3">
                   <div>
-                    <p className="text-muted-foreground">Coaching received</p>
+                    <p className="text-muted-foreground">{t("coaches.coachingReceived")}</p>
                     <p className="font-mono">{editing.coach_used}/{fmtLimit(editing.coach_session_limit)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Peer received</p>
+                    <p className="text-muted-foreground">{t("coaches.peerReceived")}</p>
                     <p className="font-mono">{editing.peer_used}/{fmtLimit(editing.peer_session_limit)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Peer given</p>
+                    <p className="text-muted-foreground">{t("coaches.peerGiven")}</p>
                     <p className="font-mono">{editing.peer_given_used}/{fmtLimit(editing.peer_given_limit)}</p>
                   </div>
                 </div>
@@ -529,7 +525,7 @@ export default function AdminCoaches() {
                 return (
                   <div className="rounded-lg border bg-muted/20 p-3">
                     <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      <span>Programme progress</span>
+                      <span>{t("coaches.programmeProgress")}</span>
                       <span className="font-mono text-foreground">{pct}%</span>
                     </div>
                     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -540,7 +536,7 @@ export default function AdminCoaches() {
               })()}
 
               <div className="rounded-lg border p-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Assigned coaches (when this coach is being coached)</p>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coaches.assignedCoachesLabel")}</p>
                 <div className="max-h-48 space-y-1 overflow-y-auto">
                   {coachOpts.filter(c => c.id !== editing.id).map(c => {
                     const checked = editing.assigned_coaches.some(a => a.id === c.id);
@@ -560,16 +556,16 @@ export default function AdminCoaches() {
               </div>
 
               <div className="rounded-lg bg-muted/40 p-3 text-[11px] text-muted-foreground">
-                <p>Sessions delivered: <strong>{editing.completed_sessions}</strong> completed · <strong>{editing.booked_sessions}</strong> booked</p>
-                <p>Coachees served: <strong>{editing.coachees_count}</strong></p>
-                <p>Avg rating: <strong>{editing.rating_avg.toFixed(2)}</strong></p>
+                <p>{t("coaches.sessionsDeliveredPrefix")} <strong>{editing.completed_sessions}</strong> {t("coaches.completedLabel")} · <strong>{editing.booked_sessions}</strong> {t("coaches.bookedLabel")}</p>
+                <p>{t("coaches.coacheesServedPrefix")} <strong>{editing.coachees_count}</strong></p>
+                <p>{t("coaches.avgRatingPrefix")} <strong>{editing.rating_avg.toFixed(2)}</strong></p>
               </div>
             </div>
           )}
           <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditing(null)}>{t("coaches.cancel")}</Button>
             <Button onClick={saveEdit} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("coaches.save")}
             </Button>
           </SheetFooter>
         </SheetContent>

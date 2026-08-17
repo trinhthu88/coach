@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight, Check, Lock, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -48,6 +49,7 @@ export function GoalAccordion({
   /** Shows the goal-done checkmark, target date in the header, and a check inside done milestone circles — used by the coach's own journey view. */
   showCompletionMarks?: boolean;
 }) {
+  const { t } = useTranslation("journey");
   const [open, setOpen] = useState(!!defaultOpen);
   const [adding, setAdding] = useState(false);
   const [newMs, setNewMs] = useState("");
@@ -65,7 +67,7 @@ export function GoalAccordion({
   };
 
   const deleteGoal = async () => {
-    if (!confirm("Delete this goal and all its milestones?")) return;
+    if (!confirm(t("goalAccordion.confirmDeleteGoal"))) return;
     await onDeleteGoal(goal.id);
   };
 
@@ -89,7 +91,7 @@ export function GoalAccordion({
             <span>{goal.title}</span>
             {goal.target_date && (
               <span className="ml-2 text-[10px] font-normal text-muted-foreground">
-                · target {format(new Date(goal.target_date), "MMM d")}
+                · {t("goalAccordion.goalHeaderTargetDate", { date: format(new Date(goal.target_date), "MMM d") })}
               </span>
             )}
           </span>
@@ -112,26 +114,26 @@ export function GoalAccordion({
             <div className="mb-4 rounded-lg border bg-muted/20 p-3">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Start &amp; Target · 0–100
+                  {t("goalAccordion.startAndTarget")}
                 </p>
                 {startTargetLocked && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title="Locked once you complete a session after adding this goal">
-                    <Lock className="h-3 w-3" /> Locked
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title={t("goalAccordion.lockedHint")}>
+                    <Lock className="h-3 w-3" /> {t("goalAccordion.locked")}
                   </span>
                 )}
               </div>
               <div className="space-y-3">
                 <RatingSlider
-                  label="Start"
-                  hint={startTargetLocked ? "Locked after your next completed session" : "Where you are today"}
+                  label={t("goalAccordion.startLabel")}
+                  hint={startTargetLocked ? t("goalAccordion.lockedHint") : t("goalAccordion.startHint")}
                   value={rating.start}
                   trackColor="bg-primary/40"
                   disabled={startTargetLocked}
                   onChange={(v) => onRatingChange({ start_rating: v })}
                 />
                 <RatingSlider
-                  label="Target"
-                  hint={startTargetLocked ? "Locked after your next completed session" : "Where you want to be"}
+                  label={t("goalAccordion.targetLabel")}
+                  hint={startTargetLocked ? t("goalAccordion.lockedHint") : t("goalAccordion.targetHint")}
                   value={rating.target}
                   trackColor="bg-accent"
                   disabled={startTargetLocked}
@@ -139,13 +141,13 @@ export function GoalAccordion({
                 />
               </div>
               <p className="mt-3 text-[10px] text-muted-foreground">
-                Your <strong>current</strong> rating is captured after each session in the session log and traced on the wheel.
+                {t("goalAccordion.currentRatingPrefix")} <strong>{t("goalAccordion.currentRatingBold")}</strong> {t("goalAccordion.currentRatingSuffix")}
               </p>
             </div>
           )}
 
           <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            {showLinkedActions ? "Milestones & linked actions" : "Milestones"}
+            {showLinkedActions ? t("goalAccordion.milestonesAndActions") : t("goalAccordion.milestonesOnly")}
           </p>
           <ul className="space-y-3">
             {milestones.map((m) => {
@@ -160,7 +162,7 @@ export function GoalAccordion({
                   <button
                     onClick={() => onToggle(m)}
                     className="-m-2 shrink-0 rounded-full p-2"
-                    aria-label="Toggle milestone"
+                    aria-label={t("goalAccordion.toggleMilestone")}
                   >
                     <span
                       className={cn(
@@ -185,16 +187,16 @@ export function GoalAccordion({
                     </div>
                     <p className="text-[10px] text-muted-foreground">
                       {m.is_done && m.done_at
-                        ? `Done ${format(new Date(m.done_at), "MMM d")}`
+                        ? t("goalAccordion.doneOn", { date: format(new Date(m.done_at), "MMM d") })
                         : m.target_date
-                        ? `Target ${format(new Date(m.target_date), "MMM d")}`
-                        : "No target date"}
-                      {linked.length > 0 && ` · ${linked.filter((a) => a.done).length}/${linked.length} actions`}
+                        ? t("goalAccordion.targetOn", { date: format(new Date(m.target_date), "MMM d") })
+                        : t("goalAccordion.noTargetDate")}
+                      {linked.length > 0 && t("goalAccordion.actionsCountSuffix", { done: linked.filter((a) => a.done).length, total: linked.length })}
                     </p>
                     {showLinkedActions && linked.length > 0 && (
                       <div className="mt-2 space-y-1.5 rounded-md border bg-muted/20 p-2">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                          Linked actions
+                          {t("goalAccordion.linkedActions")}
                         </p>
                         {linked.map((a, i) => (
                           <ActionRow key={i} a={a} hideMilestone onToggle={onToggleAction} showSourceBadge={showCompletionMarks} />
@@ -209,20 +211,20 @@ export function GoalAccordion({
 
           {adding ? (
             <div className="mt-3 space-y-2 rounded-lg border bg-muted/30 p-3">
-              <Input placeholder="Milestone title" value={newMs} onChange={(e) => setNewMs(e.target.value)} />
+              <Input placeholder={t("goalAccordion.milestoneTitlePlaceholder")} value={newMs} onChange={(e) => setNewMs(e.target.value)} />
               <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
               <div className="flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>Cancel</Button>
-                <Button size="sm" onClick={addMs}>Add</Button>
+                <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>{t("goalAccordion.cancel")}</Button>
+                <Button size="sm" onClick={addMs}>{t("goalAccordion.add")}</Button>
               </div>
             </div>
           ) : (
             <div className="mt-3 flex items-center justify-between">
               <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
-                <Plus className="mr-1 h-3 w-3" /> Add milestone
+                <Plus className="mr-1 h-3 w-3" /> {t("goalAccordion.addMilestone")}
               </Button>
               <button onClick={deleteGoal} className="text-xs text-muted-foreground hover:text-destructive">
-                Delete goal
+                {t("goalAccordion.deleteGoal")}
               </button>
             </div>
           )}

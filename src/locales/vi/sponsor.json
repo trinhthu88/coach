@@ -1,0 +1,204 @@
+{
+  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "status": {
+    "active": "Đang hoạt động",
+    "completed": "Đã hoàn thành",
+    "paused": "Tạm dừng",
+    "atRisk": "Có nguy cơ"
+  },
+  "dashboard": {
+    "compareAllCohorts": "So sánh tất cả các nhóm",
+    "header": {
+      "eyebrow": "Chương trình",
+      "title": "Các lãnh đạo của bạn,",
+      "emphasis": "ở góc nhìn tổng hợp.",
+      "subtitle": "Sự tham gia, tiến độ và kết quả — được bảo mật theo thiết kế."
+    },
+    "firstLogin": {
+      "startsInDay_one": "Chương trình bắt đầu sau {{count}} ngày",
+      "startsInDay_other": "Chương trình bắt đầu sau {{count}} ngày",
+      "startsInBody": "Mọi thứ đã sẵn sàng. Các chỉ số đầu tiên của bạn — sự tham gia, tiến độ tự đánh giá và mức độ hài lòng — sẽ xuất hiện sau session đầu tiên của mỗi lãnh đạo.",
+      "dataAppears": "Dữ liệu xuất hiện khi các session diễn ra",
+      "dataAppearsBody": "Trang tổng quan của bạn sẽ tự động cập nhật sau khi mỗi lãnh đạo hoàn thành session đầu tiên. Hãy quay lại kiểm tra sau.",
+      "enrolledAwaiting_one": "{{count}} lãnh đạo đã đăng ký và đang chờ session đầu tiên.",
+      "enrolledAwaiting_other": "{{count}} lãnh đạo đã đăng ký và đang chờ session đầu tiên."
+    },
+    "kpis": {
+      "leadersEnrolled": "Lãnh đạo đã đăng ký",
+      "onTrack": "Đúng tiến độ",
+      "atRisk": "Có nguy cơ",
+      "sessionsUsed": "Session đã dùng"
+    },
+    "goalGrowth": {
+      "label": "Tiến bộ mục tiêu",
+      "scaleNote": "Tự đánh giá · thang điểm 0–10",
+      "averageGrowth": "Mức tăng trưởng trung bình",
+      "pts": "điểm",
+      "pctProgressing": "{{pct}}% lãnh đạo đã thu hẹp ít nhất một nửa khoảng cách đến mục tiêu của họ",
+      "noRatingsYet": "Chưa có đánh giá mục tiêu nào",
+      "hitTarget": "Đạt mục tiêu",
+      "meaningfulProgress": "Tiến bộ đáng kể",
+      "justStarted": "Mới bắt đầu",
+      "flatDeclined": "Không đổi / giảm",
+      "distributionHidden": "Phân bổ được ẩn — chỉ hiển thị khi tổ chức của bạn có ít nhất {{min}} lãnh đạo đã đăng ký, để không có cá nhân nào bị chỉ ra riêng lẻ.",
+      "footnote": "Tiêu đề và mô tả mục tiêu không bao giờ được chia sẻ — chỉ có mức tăng trưởng tổng thể trong tiến độ tự đánh giá."
+    },
+    "timeline": {
+      "label": "Thời gian chương trình",
+      "daysRemaining_one": "Còn lại {{count}} ngày",
+      "daysRemaining_other": "Còn lại {{count}} ngày",
+      "noEndDate": "Chưa đặt ngày kết thúc"
+    },
+    "satisfaction": {
+      "label": "Mức độ hài lòng",
+      "noRatingsYet": "Chưa có đánh giá nào",
+      "acrossRated_one": "trên {{count}} session đã được đánh giá",
+      "acrossRated_other": "trên {{count}} session đã được đánh giá",
+      "writtenFeedbackNote": "Phản hồi bằng văn bản được giữ lại với coach"
+    },
+    "roster": {
+      "label_one": "Danh sách · {{count}} lãnh đạo",
+      "label_other": "Danh sách · {{count}} lãnh đạo",
+      "allCohorts": "Tất cả các nhóm",
+      "note": "Chỉ trạng thái và mức độ tham gia. Nhấp vào một lãnh đạo để xem chi tiết tổng hợp của họ.",
+      "columns": {
+        "leader": "Lãnh đạo",
+        "cohort": "Nhóm",
+        "status": "Trạng thái",
+        "progress": "Tiến độ",
+        "sessions": "Session",
+        "growth": "Tăng trưởng"
+      },
+      "empty": "Chưa có lãnh đạo nào đăng ký.",
+      "footnote": "Tiêu đề mục tiêu, ghi chú session và tin nhắn không nằm trong bảng này — theo thiết kế, không phải theo cấp quyền."
+    },
+    "privacy": {
+      "titlePrefix": "Nội dung được bảo mật.",
+      "body": "Quyền truy cập của bạn chỉ bao gồm mức độ tham gia và đánh giá. Ghi chú session, tin nhắn trò chuyện, suy ngẫm và cách diễn đạt mục tiêu không bao giờ rời khỏi cặp coaching."
+    }
+  },
+  "cohorts": {
+    "header": {
+      "eyebrow": "Nhà tài trợ",
+      "title": "Trên tất cả",
+      "emphasis": "các chương trình.",
+      "subtitle": "Tổng hợp trên mọi thứ bạn tài trợ, sau đó chia theo từng nhóm."
+    },
+    "rolledUpLabel": "Tổng hợp · tất cả các nhóm",
+    "kpis": {
+      "leadersEnrolled": "Lãnh đạo đã đăng ký",
+      "onTrack": "Đúng tiến độ",
+      "atRisk": "Có nguy cơ",
+      "sessionsUsed": "Session đã dùng",
+      "avgGoalGrowth": "Tăng trưởng mục tiêu TB"
+    },
+    "unnamedCohort": "Nhóm chưa đặt tên",
+    "leaderCount_one": "{{count}} lãnh đạo",
+    "leaderCount_other": "{{count}} lãnh đạo",
+    "openInDashboard": "Mở trong trang tổng quan",
+    "statusMix": "Phân bổ trạng thái",
+    "sessions": "Session",
+    "avgGrowth": "Tăng trưởng TB",
+    "growthPts": "+{{n}} điểm",
+    "suppressed": "Đã ẩn <{{min}}",
+    "noRatingsYet": "Chưa có đánh giá nào",
+    "suppressedNote": "Phân tích chi tiết bị ẩn — dưới {{min}} lãnh đạo. Xem tổng hợp trên tất cả các nhóm ở trên.",
+    "noCohortsFound": "Không tìm thấy nhóm nào.",
+    "privacyNote": "So sánh giữa các nhóm chỉ sử dụng mức độ tham gia và tiến độ tự đánh giá. Danh tính coach, ghi chú session và cách diễn đạt mục tiêu được loại trừ khỏi mọi góc nhìn theo nhóm."
+  },
+  "leaderDrawer": {
+    "srLabelSuffix": "chi tiết lãnh đạo",
+    "backToRoster": "Về danh sách",
+    "withheld": {
+      "sessionNotes": "Ghi chú session và tóm tắt coaching",
+      "chatMessages": "Tin nhắn trò chuyện giữa lãnh đạo và coach",
+      "reflections": "Suy ngẫm cá nhân và nhật ký",
+      "goalWording": "Tiêu đề, mô tả và cách diễn đạt mục tiêu",
+      "coachIdentity": "Danh tính coach và chi tiết phương pháp coaching"
+    },
+    "participationLabel": "Mức độ tham gia",
+    "sessionsUsed": "Session đã dùng",
+    "ofAllocation": "{{pct}}% phân bổ",
+    "selfRatedGrowth": "Tăng trưởng tự đánh giá",
+    "growthPts": "+{{n}} điểm",
+    "sinceBaseline": "kể từ mốc ban đầu",
+    "noRatingsYet": "chưa có đánh giá nào",
+    "programmeProgress": "Tiến độ chương trình",
+    "canSeeTitle": "Đây là tất cả những gì bạn có thể thấy",
+    "withheldIntro": "Những mục sau tồn tại trong Clariva nhưng bị ẩn khỏi hồ sơ này:",
+    "sameViewNote": "Mỗi lãnh đạo đều thấy chính góc nhìn về bản thân mà bạn đang thấy."
+  },
+  "report": {
+    "period": {
+      "all": "Toàn thời gian",
+      "90d": "90 ngày qua",
+      "60d": "60 ngày qua",
+      "30d": "30 ngày qua"
+    },
+    "header": {
+      "eyebrow": "Nhà tài trợ",
+      "title": "Xuất",
+      "emphasis": "báo cáo.",
+      "subtitle": "Một trang tóm tắt cho buổi QBR của bạn. Cùng số liệu với trang tổng quan, được trình bày lại cho một cuộc trao đổi ngân sách."
+    },
+    "setup": {
+      "label": "Thiết lập báo cáo",
+      "periodLabel": "Khoảng thời gian",
+      "scopeLabel": "Phạm vi",
+      "allCohorts": "Tất cả các nhóm",
+      "includeRoster": "Bao gồm danh sách lãnh đạo",
+      "includeRosterHint": "Tắt để có một trang tổng hợp hoàn toàn — không có tên.",
+      "generate": "Tạo báo cáo",
+      "generating": "Đang tạo…",
+      "downloadPdf": "Tải PDF · 1 trang"
+    },
+    "nothingPrivateNote": "Không có nội dung riêng tư nào được bao gồm. Tệp này an toàn để chuyển tiếp.",
+    "preview": {
+      "placeholderTitle": "Trang tóm tắt của bạn sẽ hiển thị ở đây",
+      "placeholderBody": "Chọn khoảng thời gian và phạm vi, sau đó tạo báo cáo."
+    },
+    "documentHeader": {
+      "brand": "Tóm tắt dành cho nhà tài trợ Clariva"
+    },
+    "issuedOn": "{{period}} · phát hành {{date}}",
+    "kpis": {
+      "enrolled": "Đã đăng ký",
+      "leadersSuffix": "lãnh đạo",
+      "sessionsUsed": "Session đã dùng",
+      "avgRating": "Đánh giá TB",
+      "outOfFive": "/ 5.0",
+      "atRisk": "Có nguy cơ"
+    },
+    "goalGrowth": {
+      "label": "Tiến bộ mục tiêu",
+      "avgGrowthSuffix": "tăng trưởng TB",
+      "pctProgressing": "{{pct}}% đang tiến triển",
+      "noRatingsYet": "Chưa có đánh giá nào",
+      "hitTarget": "Đạt mục tiêu",
+      "meaningfulProgress": "Tiến bộ đáng kể",
+      "justStarted": "Mới bắt đầu",
+      "flatDeclined": "Không đổi / giảm",
+      "distributionWithheld": "Phân bổ bị ẩn — nhóm dưới {{min}} lãnh đạo."
+    },
+    "programmeSatisfaction": {
+      "label": "Chương trình & mức độ hài lòng",
+      "daysRemaining": "Số ngày còn lại",
+      "avgRating": "Đánh giá TB",
+      "ratedSessions": "Session đã đánh giá"
+    },
+    "window": {
+      "label": "Khoảng thời gian"
+    },
+    "roster": {
+      "label": "Danh sách",
+      "columns": {
+        "leader": "Lãnh đạo",
+        "cohort": "Nhóm",
+        "status": "Trạng thái",
+        "progress": "T.độ",
+        "growth": "Tăng trưởng"
+      }
+    },
+    "footerDisclaimer": "Được chuẩn bị từ dữ liệu tổng hợp của chương trình. Ghi chú session, tin nhắn trò chuyện, suy ngẫm và cách diễn đạt mục tiêu bị loại trừ khỏi báo cáo dành cho nhà tài trợ của Clariva và không có sẵn cho người yêu cầu."
+  }
+}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
@@ -39,6 +40,7 @@ import { GoalDialog } from "./journey/GoalDialog";
 import { CoacheeProgrammeCard } from "./journey/CoacheeProgrammeCard";
 
 export default function CoacheeJourney() {
+  const { t } = useTranslation("journey");
   const { user } = useAuth();
   const goalsApi = useJourneyGoals(user?.id);
   const ratingsApi = useJourneyRatings(user?.id);
@@ -114,10 +116,10 @@ export default function CoacheeJourney() {
     <div className="space-y-6">
       <PageHeader
           className="mb-0"
-          eyebrow="Progress"
-          title="My"
-          emphasis="journey"
-          subtitle="Track your goals, action items, sessions and personal reflections."
+          eyebrow={t("journeyPage.eyebrow")}
+          title={t("journeyPage.titleLead")}
+          emphasis={t("journeyPage.titleEmphasis")}
+          subtitle={t("coacheeJourney.subtitle")}
         />
 
       {/* PROGRESS RINGS */}
@@ -127,23 +129,23 @@ export default function CoacheeJourney() {
             value={usage?.monthly_limit ? (sessionsCompletedCount / usage.monthly_limit) * 100 : overallPct}
             tone="primary"
           />
-          <p className="text-sm font-semibold">Programme</p>
+          <p className="text-sm font-semibold">{t("coacheeJourney.progressRings.programme")}</p>
           <p className="text-xs text-muted-foreground">
-            {sessionsCompletedCount} of {usage?.monthly_limit ?? programme?.sessionsAllowed ?? "—"} sessions
+            {t("coacheeJourney.progressRings.programmeSub", { completed: sessionsCompletedCount, limit: usage?.monthly_limit ?? programme?.sessionsAllowed ?? "—" })}
           </p>
         </Card>
         <Card className="flex flex-col items-center gap-2 p-6">
           <ProgressRing value={avgGoalProgress} tone="warning" />
-          <p className="text-sm font-semibold">Goals on track</p>
+          <p className="text-sm font-semibold">{t("coacheeJourney.progressRings.goalsOnTrack")}</p>
           <p className="text-xs text-muted-foreground">
-            {goals.filter((g) => goalProgress(g.id) >= 50).length} of {goals.length} advancing
+            {t("coacheeJourney.progressRings.goalsOnTrackSub", { count: goals.filter((g) => goalProgress(g.id) >= 50).length, total: goals.length })}
           </p>
         </Card>
         <Card className="flex flex-col items-center gap-2 p-6">
           <ProgressRing value={aiTotal ? Math.round((aiDone / aiTotal) * 100) : 0} tone="success" />
-          <p className="text-sm font-semibold">Actions closed</p>
+          <p className="text-sm font-semibold">{t("coacheeJourney.progressRings.actionsClosed")}</p>
           <p className="text-xs text-muted-foreground">
-            {aiDone} of {aiTotal} completed
+            {t("coacheeJourney.progressRings.actionsClosedSub", { done: aiDone, total: aiTotal })}
           </p>
         </Card>
       </div>
@@ -151,7 +153,7 @@ export default function CoacheeJourney() {
       {/* MILESTONE TIMELINE */}
       {milestones.length > 0 && (
         <Card className="p-6">
-          <p className="eyebrow mb-5">Milestones</p>
+          <p className="eyebrow mb-5">{t("coacheeJourney.milestonesEyebrow")}</p>
           <TimelineList
             items={milestones
               .slice()
@@ -183,11 +185,11 @@ export default function CoacheeJourney() {
 
       <Tabs defaultValue="home">
         <TabsList>
-          <TabsTrigger value="home">Overview</TabsTrigger>
-          <TabsTrigger value="goals">Goals & milestones</TabsTrigger>
-          <TabsTrigger value="actions">Action items ({aiTotal})</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
-          <TabsTrigger value="reflections">Reflections ({reflections.length})</TabsTrigger>
+          <TabsTrigger value="home">{t("journeyPage.tabs.overview")}</TabsTrigger>
+          <TabsTrigger value="goals">{t("journeyPage.tabs.goals")}</TabsTrigger>
+          <TabsTrigger value="actions">{t("journeyPage.tabs.actions", { count: aiTotal })}</TabsTrigger>
+          <TabsTrigger value="sessions">{t("journeyPage.tabs.sessions", { count: sessions.length })}</TabsTrigger>
+          <TabsTrigger value="reflections">{t("journeyPage.tabs.reflections", { count: reflections.length })}</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
@@ -198,10 +200,10 @@ export default function CoacheeJourney() {
               <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div className="flex-1">
                 <p className="font-semibold text-primary">
-                  Reflection time — rate your goals after this session
+                  {t("journeyPage.reflectionBanner.title")}
                 </p>
                 <p className="text-xs text-primary/80">
-                  Open <Link to={`/sessions/${pendingReflectionSession.id}`} className="font-semibold underline">{pendingReflectionSession.topic}</Link> ({format(new Date(pendingReflectionSession.start_time), "MMM d")}) to log a 0–100 self-rating per goal. Each reflection becomes a new layer on the wheel.
+                  {t("journeyPage.reflectionBanner.openPrefix")} <Link to={`/sessions/${pendingReflectionSession.id}`} className="font-semibold underline">{pendingReflectionSession.topic}</Link> {t("journeyPage.reflectionBanner.afterLinkPrefix")}{format(new Date(pendingReflectionSession.start_time), "MMM d")}{t("journeyPage.reflectionBanner.afterLinkSuffix")}
                 </p>
               </div>
             </div>

@@ -1,0 +1,86 @@
+{
+  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "coachEditor": {
+    "toast": {
+      "savedTitle": "Đã lưu hồ sơ",
+      "savedDescription": "Hồ sơ coach của bạn đã được cập nhật.",
+      "failedTitle": "Lưu không thành công",
+      "failedDefaultDescription": "Vui lòng thử lại."
+    },
+    "header": {
+      "eyebrow": "Coach",
+      "titleLead": "Hồ sơ coach",
+      "titleEmphasis": "của tôi",
+      "subtitle": "Đây là những gì học viên thấy khi duyệt qua danh bạ."
+    },
+    "statusLabel": {
+      "pending_approval": "Đang chờ phê duyệt",
+      "active": "Đang hoạt động",
+      "rejected": "Bị từ chối"
+    },
+    "pendingNotice": "Hồ sơ của bạn đang chờ quản trị viên phê duyệt. Sau khi được phê duyệt, hồ sơ sẽ xuất hiện trong danh bạ coach công khai.",
+    "basicInfo": {
+      "heading": "Thông tin cơ bản",
+      "fullNameLabel": "Họ và tên",
+      "titleLabel": "Tiêu đề / chức danh",
+      "titlePlaceholder": "Executive Leadership Coach",
+      "bioLabel": "Giới thiệu bản thân",
+      "bioPlaceholder": "Cho học viên biết về phương pháp, kinh nghiệm và kết quả bạn giúp họ đạt được."
+    },
+    "practiceDetails": {
+      "heading": "Chi tiết hoạt động",
+      "yearsExperienceLabel": "Số năm kinh nghiệm",
+      "nationalityLabel": "Quốc tịch",
+      "countryBasedLabel": "Quốc gia sinh sống",
+      "calendlyLabel": "URL Calendly (không bắt buộc)",
+      "calendlyPlaceholder": "https://calendly.com/your-handle",
+      "specialtiesLabel": "Chuyên môn (phân tách bằng dấu phẩy)",
+      "specialtiesPlaceholder": "Lãnh đạo, Chuyển đổi nghề nghiệp, Hiện diện điều hành",
+      "diplomasLabel": "Bằng cấp & chứng chỉ (phân tách bằng dấu phẩy)",
+      "diplomasPlaceholder": "ICF PCC, Erickson Solution-Focused Coach"
+    },
+    "saveProfile": "Lưu hồ sơ"
+  },
+  "coacheeEditor": {
+    "toast": {
+      "saveFailedDefault": "Lưu không thành công",
+      "updated": "Đã cập nhật hồ sơ"
+    },
+    "header": {
+      "eyebrow": "Tài khoản",
+      "titleLead": "Hồ sơ",
+      "titleEmphasis": "của tôi",
+      "subtitle": "Các coach bạn đặt lịch cùng sẽ thấy thông tin này."
+    },
+    "fields": {
+      "fullNameLabel": "Họ và tên",
+      "emailLabel": "Email",
+      "jobTitleLabel": "Chức danh",
+      "jobTitlePlaceholder": "ví dụ: Trưởng phòng kỹ thuật",
+      "industryLabel": "Ngành nghề",
+      "industryPlaceholder": "ví dụ: Phần mềm",
+      "locationLabel": "Địa điểm",
+      "locationPlaceholder": "Thành phố, Quốc gia",
+      "phoneLabel": "Số điện thoại",
+      "phonePlaceholder": "Không bắt buộc",
+      "timezoneLabel": "Múi giờ",
+      "timezonePlaceholder": "ví dụ: Asia/Ho_Chi_Minh",
+      "aboutYouLabel": "Giới thiệu về bạn",
+      "coachingGoalsLabel": "Mục tiêu coaching",
+      "coachingGoalsPlaceholder": "Bạn muốn đạt được điều gì?"
+    },
+    "saveChanges": "Lưu thay đổi"
+  },
+  "peerCoaching": {
+    "header": {
+      "eyebrow": "Cộng đồng",
+      "titleLead": "Peer",
+      "titleEmphasis": "coaching",
+      "subtitle": "Các coach đã tham gia peer coaching. Đặt session để được coaching bởi một coach đồng nghiệp."
+    },
+    "empty": "Hiện chưa có coach đồng nghiệp nào khả dụng. Vui lòng quay lại sau.",
+    "defaultTitle": "Coach đồng nghiệp",
+    "view": "Xem",
+    "bookPeer": "Đặt lịch đồng nghiệp"
+  }
+}

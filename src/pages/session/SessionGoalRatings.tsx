@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ interface RatingRow {
 }
 
 export function SessionGoalRatings({ sessionId, coacheeId, canEdit, sessionStatus }: Props) {
+  const { t } = useTranslation("sessions");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [goals, setGoals] = useState<GoalRow[]>([]);
@@ -80,7 +82,7 @@ export function SessionGoalRatings({ sessionId, coacheeId, canEdit, sessionStatu
       .upsert(rows, { onConflict: "session_id,goal_id" });
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Goal ratings saved — your wheel will update.");
+    toast.success(t("goalRatings.toast.saved"));
     load();
   };
 
@@ -97,10 +99,10 @@ export function SessionGoalRatings({ sessionId, coacheeId, canEdit, sessionStatu
       <Card className="p-5 text-sm text-muted-foreground">
         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           <Target className="h-3.5 w-3.5 text-primary" />
-          Goal reflection
+          {t("goalRatings.title")}
         </div>
         <p className="mt-2">
-          No active goals yet. Add goals in <span className="font-semibold">My journey</span> to score them after each session.
+          {t("goalRatings.emptyPrefix")} <span className="font-semibold">{t("goalRatings.emptyLinkText")}</span> {t("goalRatings.emptySuffix")}
         </p>
       </Card>
     );
@@ -114,30 +116,30 @@ export function SessionGoalRatings({ sessionId, coacheeId, canEdit, sessionStatu
         <div>
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             <Target className="h-3.5 w-3.5 text-primary" />
-            Goal reflection
+            {t("goalRatings.title")}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {locked ? (
               sessionStatus !== "completed" ? (
                 <span className="inline-flex items-center gap-1.5">
                   <Lock className="h-3.5 w-3.5" />
-                  Available once the session is marked <strong className="font-semibold">completed</strong>.
+                  {t("goalRatings.lockedNotCompleted")} <strong className="font-semibold">{t("goalRatings.lockedNotCompletedSuffix")}</strong>.
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5">
                   <Lock className="h-3.5 w-3.5" />
-                  Read-only — only the coachee can rate their own goals.
+                  {t("goalRatings.lockedReadOnly")}
                 </span>
               )
             ) : (
-              <>Score 0–100 for each goal. Your wheel will plot this session as a new layer.</>
+              <>{t("goalRatings.unlockedHint")}</>
             )}
           </p>
         </div>
         {canEdit && (
           <Button onClick={save} disabled={saving} size="sm">
             {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}
-            Save reflection
+            {t("goalRatings.saveReflection")}
           </Button>
         )}
       </div>
@@ -175,7 +177,7 @@ export function SessionGoalRatings({ sessionId, coacheeId, canEdit, sessionStatu
               />
               <Textarea
                 className="mt-2 min-h-[60px] text-xs"
-                placeholder={locked ? "" : "Optional reflection note for this goal…"}
+                placeholder={locked ? "" : t("goalRatings.notePlaceholder")}
                 value={r.note}
                 disabled={locked}
                 onChange={(e) =>

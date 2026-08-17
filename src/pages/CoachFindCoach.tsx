@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -18,6 +19,7 @@ interface CoachRow {
 
 export default function CoachFindCoach() {
   const { user } = useAuth();
+  const { t } = useTranslation("coaches");
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   // null = unlimited, 0 = "not loaded yet" (matches the previous coach_session_limits
   // fallback sentinel so the hint line below only renders once a real value is known).
@@ -56,19 +58,21 @@ export default function CoachFindCoach() {
     <div className="space-y-6">
       <PageHeader
             className="mb-0"
-            eyebrow="Curated network"
-            title="Find a"
-            emphasis="coach"
-            subtitle="Coaches curated by admin for your continued growth."
+            eyebrow={t("findCoach.eyebrow")}
+            title={t("findCoach.titleLead")}
+            emphasis={t("findCoach.titleEmphasis")}
+            subtitle={t("findCoach.subtitle")}
           />
 
       <Card className="flex items-start gap-2 border-warning/30 bg-warning/5 p-4 text-sm">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         <div>
-          The coach list and your session allowance are set by the platform admin.
-          {limit === null && <> Current allowance: <strong>unlimited</strong> sessions.</>}
+          {t("findCoach.notice")}
+          {limit === null && (
+            <> {t("findCoach.allowancePrefix")} <strong>{t("findCoach.unlimitedValue")}</strong> {t("findCoach.allowanceSuffix")}</>
+          )}
           {typeof limit === "number" && limit > 0 && (
-            <> Current allowance: <strong>{limit}</strong> sessions.</>
+            <> {t("findCoach.allowancePrefix")} <strong>{limit}</strong> {t("findCoach.allowanceSuffix")}</>
           )}
         </div>
       </Card>
@@ -79,7 +83,7 @@ export default function CoachFindCoach() {
         </div>
       ) : coaches.length === 0 ? (
         <Card className="p-12 text-center text-sm text-muted-foreground">
-          No coaches have been assigned to you yet. Reach out to your admin.
+          {t("findCoach.empty")}
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -96,7 +100,7 @@ export default function CoachFindCoach() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">{c.profiles?.full_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{c.title || "Coach"}</p>
+                  <p className="truncate text-xs text-muted-foreground">{c.title || t("findCoach.defaultTitle")}</p>
                 </div>
                 <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-foreground">
                   <Star className="h-3 w-3 fill-warning text-warning" />
@@ -116,10 +120,10 @@ export default function CoachFindCoach() {
 
               <div className="mt-auto flex items-center gap-2 pt-1">
                 <Button asChild size="sm" variant="outline" className="flex-1">
-                  <Link to={`/coaches/${c.id}`}>View</Link>
+                  <Link to={`/coaches/${c.id}`}>{t("findCoach.view")}</Link>
                 </Button>
                 <Button asChild size="sm" className="flex-1">
-                  <Link to={`/coaches/${c.id}/book`}>Book</Link>
+                  <Link to={`/coaches/${c.id}/book`}>{t("findCoach.book")}</Link>
                 </Button>
               </div>
             </div>

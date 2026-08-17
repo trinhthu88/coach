@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Star, TrendingUp, Award, Users, MessagesSquare } from "lucide-react";
 import { AdminPageHeader, Kpi, SectionCard, MiniBar, Pill } from "./_shared";
@@ -15,15 +16,15 @@ type CompetencyKey =
   | "evokes_awareness"
   | "facilitates_growth";
 
-const COMPETENCY_LABELS: { key: CompetencyKey; label: string }[] = [
-  { key: "ethical_practice", label: "Demonstrates ethical practice" },
-  { key: "coaching_mindset", label: "Embodies coaching mindset" },
-  { key: "maintains_agreements", label: "Establishes & maintains agreements" },
-  { key: "trust_safety", label: "Cultivates trust & safety" },
-  { key: "maintains_presence", label: "Maintains presence" },
-  { key: "listens_actively", label: "Listens actively" },
-  { key: "evokes_awareness", label: "Evokes awareness" },
-  { key: "facilitates_growth", label: "Facilitates client growth" },
+const COMPETENCY_LABELS: { key: CompetencyKey }[] = [
+  { key: "ethical_practice" },
+  { key: "coaching_mindset" },
+  { key: "maintains_agreements" },
+  { key: "trust_safety" },
+  { key: "maintains_presence" },
+  { key: "listens_actively" },
+  { key: "evokes_awareness" },
+  { key: "facilitates_growth" },
 ];
 
 interface AnalyticsProfileRow {
@@ -81,6 +82,7 @@ interface AnalyticsData {
 }
 
 export default function AdminAnalytics() {
+  const { t } = useTranslation("admin");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AnalyticsData | null>(null);
 
@@ -226,27 +228,27 @@ export default function AdminAnalytics() {
 
   return (
     <div>
-      <AdminPageHeader eyebrow="Organisation" title="Platform" emphasize="analytics" subtitle="Performance, satisfaction and competency insights." />
+      <AdminPageHeader eyebrow={t("analytics.eyebrow")} title={t("analytics.title")} emphasize={t("analytics.titleEmphasis")} subtitle={t("analytics.subtitle")} />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
-        <Kpi label="Coaching sessions" value={data.platform.sessTotal} icon={Award} tone="primary" />
-        <Kpi label="Peer sessions" value={data.platform.peerTotal} icon={MessagesSquare} tone="accent" />
-        <Kpi label="Total hours" value={data.platform.totalHours.toFixed(0)} icon={TrendingUp} tone="success" />
-        <Kpi label="Avg rating" value={data.platform.avgRating ? data.platform.avgRating.toFixed(2) : "—"} icon={Star} tone="warning" />
+        <Kpi label={t("analytics.coachingSessions")} value={data.platform.sessTotal} icon={Award} tone="primary" />
+        <Kpi label={t("analytics.peerSessions")} value={data.platform.peerTotal} icon={MessagesSquare} tone="accent" />
+        <Kpi label={t("analytics.totalHours")} value={data.platform.totalHours.toFixed(0)} icon={TrendingUp} tone="success" />
+        <Kpi label={t("analytics.avgRating")} value={data.platform.avgRating ? data.platform.avgRating.toFixed(2) : "—"} icon={Star} tone="warning" />
       </div>
 
       <Tabs defaultValue="platform">
         <TabsList>
-          <TabsTrigger value="platform">Platform</TabsTrigger>
-          <TabsTrigger value="coachee">Coachees</TabsTrigger>
-          <TabsTrigger value="coach">Coaches</TabsTrigger>
-          <TabsTrigger value="peer">Peer coaching</TabsTrigger>
+          <TabsTrigger value="platform">{t("analytics.tabs.platform")}</TabsTrigger>
+          <TabsTrigger value="coachee">{t("analytics.tabs.coachees")}</TabsTrigger>
+          <TabsTrigger value="coach">{t("analytics.tabs.coaches")}</TabsTrigger>
+          <TabsTrigger value="peer">{t("analytics.tabs.peerCoaching")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="platform" className="space-y-3 pt-4">
           <div className="grid gap-3 lg:grid-cols-2">
-            <SectionCard label="Satisfaction distribution">
-              {totalRatings === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No ratings yet.</p> : (
+            <SectionCard label={t("analytics.satisfactionDistribution")}>
+              {totalRatings === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.noRatingsYet")}</p> : (
                 <div className="space-y-2">
                   {[5, 4, 3, 2, 1].map((star) => {
                     const count = data.platform.dist[star - 1];
@@ -262,14 +264,14 @@ export default function AdminAnalytics() {
                 </div>
               )}
             </SectionCard>
-            <SectionCard label="ICF competency averages (peer feedback)">
-              {Object.keys(data.compAvg).length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No competency feedback yet.</p> : (
+            <SectionCard label={t("analytics.icfCompetencyAverages")}>
+              {Object.keys(data.compAvg).length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.noCompetencyFeedbackYet")}</p> : (
                 <div className="space-y-2.5">
                   {COMPETENCY_LABELS.map(c => {
                     const v = data.compAvg[c.key] || 0;
                     return (
                       <div key={c.key} className="flex flex-col gap-1 sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
-                        <span className="text-[11px] text-muted-foreground sm:col-span-6">{c.label}</span>
+                        <span className="text-[11px] text-muted-foreground sm:col-span-6">{t(`analytics.competencies.${c.key}`)}</span>
                         <div className="sm:col-span-5"><MiniBar pct={v} tone={v >= 70 ? "success" : v >= 50 ? "primary" : "warning"} /></div>
                         <span className="text-[11px] font-semibold sm:col-span-1 sm:text-right">{Math.round(v)}</span>
                       </div>
@@ -283,34 +285,34 @@ export default function AdminAnalytics() {
 
         <TabsContent value="coachee" className="space-y-3 pt-4">
           <div className="grid gap-3 sm:grid-cols-4">
-            <Kpi label="Total coachees" value={data.platform.totalCoachees} icon={Users} tone="primary" />
-            <Kpi label="Active" value={data.coachee.active} icon={Users} tone="success" />
-            <Kpi label="Enrolled in programme" value={data.coachee.enrolled} icon={Award} tone="accent" />
-            <Kpi label="At risk" value={data.coachee.atRisk} icon={Users} tone="destructive" />
+            <Kpi label={t("analytics.totalCoachees")} value={data.platform.totalCoachees} icon={Users} tone="primary" />
+            <Kpi label={t("analytics.active")} value={data.coachee.active} icon={Users} tone="success" />
+            <Kpi label={t("analytics.enrolledInProgramme")} value={data.coachee.enrolled} icon={Award} tone="accent" />
+            <Kpi label={t("analytics.atRisk")} value={data.coachee.atRisk} icon={Users} tone="destructive" />
           </div>
-          <SectionCard label="Average programme progress">
+          <SectionCard label={t("analytics.averageProgrammeProgress")}>
             <div className="flex items-center gap-3">
               <div className="flex-1"><MiniBar pct={data.coachee.progressAvg} tone={data.coachee.progressAvg >= 70 ? "success" : "primary"} /></div>
               <span className="text-sm font-semibold">{Math.round(data.coachee.progressAvg)}%</span>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">Average across all enrolled coachees.</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("analytics.averageAcrossEnrolled")}</p>
           </SectionCard>
         </TabsContent>
 
         <TabsContent value="coach" className="space-y-3 pt-4">
           <div className="grid gap-3 sm:grid-cols-3">
-            <Kpi label="Total coaches" value={data.platform.totalCoaches} icon={Users} tone="primary" />
-            <Kpi label="Sessions delivered" value={data.platform.sessTotal} icon={Award} tone="success" />
-            <Kpi label="Avg rating" value={data.platform.avgRating ? data.platform.avgRating.toFixed(2) : "—"} icon={Star} tone="warning" />
+            <Kpi label={t("analytics.totalCoaches")} value={data.platform.totalCoaches} icon={Users} tone="primary" />
+            <Kpi label={t("analytics.sessionsDelivered")} value={data.platform.sessTotal} icon={Award} tone="success" />
+            <Kpi label={t("analytics.avgRating")} value={data.platform.avgRating ? data.platform.avgRating.toFixed(2) : "—"} icon={Star} tone="warning" />
           </div>
-          <SectionCard label="Top coaches by sessions delivered">
-            {data.coach.topCoaches.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No data yet.</p> : (
+          <SectionCard label={t("analytics.topCoachesBySessions")}>
+            {data.coach.topCoaches.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.noDataYet")}</p> : (
               <div className="divide-y">
                 {data.coach.topCoaches.map((c) => (
                   <div key={c.id} className="flex flex-col gap-1 py-2 text-[12px] sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
                     <span className="font-medium sm:col-span-5">{c.name}</span>
-                    <span className="text-muted-foreground sm:col-span-3">{c.coachees} coachees</span>
-                    <span className="text-muted-foreground sm:col-span-2">{c.delivered} sessions</span>
+                    <span className="text-muted-foreground sm:col-span-3">{t("analytics.coacheesCount", { count: c.coachees })}</span>
+                    <span className="text-muted-foreground sm:col-span-2">{t("analytics.sessionsCount", { count: c.delivered })}</span>
                     <span className="inline-flex items-center gap-1 text-muted-foreground sm:col-span-2 sm:justify-end sm:text-right"><Star className="h-3 w-3 fill-warning text-warning" /> {c.rating.toFixed(1)}</span>
                   </div>
                 ))}
@@ -321,18 +323,18 @@ export default function AdminAnalytics() {
 
         <TabsContent value="peer" className="space-y-3 pt-4">
           <div className="grid gap-3 sm:grid-cols-3">
-            <Kpi label="Coaches in peer pool" value={data.platform.peerOptIns} icon={Users} tone="primary" />
-            <Kpi label="Peer sessions completed" value={data.peer.totalSessions} icon={MessagesSquare} tone="accent" />
-            <Kpi label="Competency feedback" value={data.peer.totalFeedback} icon={Award} tone="success" />
+            <Kpi label={t("analytics.coachesInPeerPool")} value={data.platform.peerOptIns} icon={Users} tone="primary" />
+            <Kpi label={t("analytics.peerSessionsCompleted")} value={data.peer.totalSessions} icon={MessagesSquare} tone="accent" />
+            <Kpi label={t("analytics.competencyFeedback")} value={data.peer.totalFeedback} icon={Award} tone="success" />
           </div>
-          <SectionCard label="Peer-coaching trainees — competencies & activity">
-            {data.peer.rows.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">No peer-coaching coaches yet.</p> : (
+          <SectionCard label={t("analytics.peerCoachingTrainees")}>
+            {data.peer.rows.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.noPeerCoachingCoachesYet")}</p> : (
               <div className="divide-y">
                 {data.peer.rows.map((r) => (
                   <div key={r.id} className="flex flex-col gap-1.5 py-2 text-[12px] sm:grid sm:grid-cols-12 sm:items-center sm:gap-2">
                     <span className="font-medium sm:col-span-4">{r.name}</span>
-                    <span className="text-muted-foreground sm:col-span-2">Given: {r.given}</span>
-                    <span className="text-muted-foreground sm:col-span-2">Received: {r.received}</span>
+                    <span className="text-muted-foreground sm:col-span-2">{t("analytics.given")}: {r.given}</span>
+                    <span className="text-muted-foreground sm:col-span-2">{t("analytics.received")}: {r.received}</span>
                     <div className="sm:col-span-3"><MiniBar pct={r.avgComp} tone={r.avgComp >= 70 ? "success" : r.avgComp >= 50 ? "primary" : "warning"} /></div>
                     <span className="sm:col-span-1 sm:text-right">
                       <Pill tone={r.avgComp >= 70 ? "success" : r.avgComp >= 50 ? "primary" : "warning"}>{Math.round(r.avgComp)}</Pill>

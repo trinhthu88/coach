@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { syncLanguageFromProfile } from "@/i18n/language";
 
 export type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (seq !== loadSeqRef.current) return;
 
     setProfile(profileData);
+    syncLanguageFromProfile(profileData?.preferred_language);
     if (roleData && roleData.length > 0) {
       const priority: Record<AppRole, number> = { admin: 1, coach: 2, coachee: 3, sponsor: 4 };
       const top = [...roleData].sort(

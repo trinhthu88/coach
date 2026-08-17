@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Loader2, Users, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard, Pill, Kpi } from "@/pages/admin/_shared";
@@ -12,19 +13,19 @@ const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "wa
   paused: "warning",
   at_risk: "destructive",
 };
-const STATUS_LABEL: Record<SponsorRosterRow["enrollment_status"], string> = {
-  active: "Active",
-  completed: "Completed",
-  paused: "Paused",
-  at_risk: "At risk",
+const STATUS_LABEL_KEY: Record<SponsorRosterRow["enrollment_status"], string> = {
+  active: "active",
+  completed: "completed",
+  paused: "paused",
+  at_risk: "atRisk",
 };
 
 type StatusCounts = Record<SponsorRosterRow["enrollment_status"], number>;
 
-function groupByCohort(roster: SponsorRosterRow[]): Map<string, SponsorRosterRow[]> {
+function groupByCohort(roster: SponsorRosterRow[], unnamedLabel: string): Map<string, SponsorRosterRow[]> {
   const map = new Map<string, SponsorRosterRow[]>();
   for (const r of roster) {
-    const key = r.cohort_name || "Unnamed cohort";
+    const key = r.cohort_name || unnamedLabel;
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(r);
   }
@@ -39,6 +40,7 @@ function statusCounts(rows: SponsorRosterRow[]): StatusCounts {
 }
 
 export default function SponsorCohorts() {
+  const { t } = useTranslation("sponsor");
   const navigate = useNavigate();
   const { kpis, roster, minLeadersForDistribution, loading } = useSponsorDashboardData();
 
@@ -50,7 +52,7 @@ export default function SponsorCohorts() {
     );
   }
 
-  const cohortMap = groupByCohort(roster);
+  const cohortMap = groupByCohort(roster, t("cohorts.unnamedCohort"));
   const cohortList = Array.from(cohortMap.entries());
 
   const avgGrowthAll = (() => {
@@ -65,25 +67,25 @@ export default function SponsorCohorts() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Sponsor"
-        title="Across"
-        emphasis="programmes."
-        subtitle="Rolled up across everything you sponsor, then split by cohort."
+        eyebrow={t("cohorts.header.eyebrow")}
+        title={t("cohorts.header.title")}
+        emphasis={t("cohorts.header.emphasis")}
+        subtitle={t("cohorts.header.subtitle")}
       />
 
       {/* Rolled-up KPIs */}
-      <SectionCard label="Rolled up · all cohorts">
+      <SectionCard label={t("cohorts.rolledUpLabel")}>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))" }}>
-          <Kpi label="Leaders enrolled" value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
-          <Kpi label="On track" value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
-          <Kpi label="At risk" value={kpis?.at_risk_count ?? 0} icon={AlertTriangle} tone="warning" />
+          <Kpi label={t("cohorts.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
+          <Kpi label={t("cohorts.kpis.onTrack")} value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
+          <Kpi label={t("cohorts.kpis.atRisk")} value={kpis?.at_risk_count ?? 0} icon={AlertTriangle} tone="warning" />
           <Kpi
-            label="Sessions used"
+            label={t("cohorts.kpis.sessionsUsed")}
             value={`${sessionsUsedAll} / ${sessionsEntitledAll}`}
             tone="secondary"
           />
           {avgGrowthAll != null && (
-            <Kpi label="Avg goal growth" value={`+${Math.round(avgGrowthAll)} pts`} tone="accent" />
+            <Kpi label={t("cohorts.kpis.avgGoalGrowth")} value={t("cohorts.growthPts", { n: Math.round(avgGrowthAll) })} tone="accent" />
           )}
         </div>
       </SectionCard>
@@ -105,23 +107,23 @@ export default function SponsorCohorts() {
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold">{cohortName}</p>
-                  <p className="text-[11px] text-muted-foreground">{rows.length} leader{rows.length === 1 ? "" : "s"}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("cohorts.leaderCount", { count: rows.length })}</p>
                 </div>
                 <button
                   onClick={() => navigate(`/sponsor?cohort=${encodeURIComponent(cohortName)}`)}
                   className="flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-3 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors"
                 >
-                  Open in dashboard <ArrowRight className="h-2.5 w-2.5" />
+                  {t("cohorts.openInDashboard")} <ArrowRight className="h-2.5 w-2.5" />
                 </button>
               </div>
 
               {/* Status mix */}
               <div className="mb-3">
-                <p className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Status mix</p>
+                <p className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("cohorts.statusMix")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {(Object.entries(counts) as [SponsorRosterRow["enrollment_status"], number][]).map(([status, n]) => (
                     <Pill key={status} tone={STATUS_TONE[status]}>
-                      {n} {STATUS_LABEL[status].toLowerCase()}
+                      {n} {t(`status.${STATUS_LABEL_KEY[status]}`).toLowerCase()}
                     </Pill>
                   ))}
                 </div>
@@ -130,24 +132,24 @@ export default function SponsorCohorts() {
               {/* Stats row */}
               <div className="grid grid-cols-2 gap-2 border-t border-border pt-3">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Sessions</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("cohorts.sessions")}</p>
                   <p className="font-mono text-sm">{sessions.used} / {sessions.total}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Avg growth</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("cohorts.avgGrowth")}</p>
                   {suppressed ? (
-                    <p className="text-[11px] italic text-muted-foreground">Suppressed &lt;{minLeadersForDistribution}</p>
+                    <p className="text-[11px] italic text-muted-foreground">{t("cohorts.suppressed", { min: minLeadersForDistribution })}</p>
                   ) : avgGrowth != null ? (
-                    <p className="text-sm font-medium">+{Math.round(avgGrowth)} pts</p>
+                    <p className="text-sm font-medium">{t("cohorts.growthPts", { n: Math.round(avgGrowth) })}</p>
                   ) : (
-                    <p className="text-[11px] italic text-muted-foreground">No ratings yet</p>
+                    <p className="text-[11px] italic text-muted-foreground">{t("cohorts.noRatingsYet")}</p>
                   )}
                 </div>
               </div>
 
               {suppressed && (
                 <p className="mt-2 text-[10px] italic text-muted-foreground">
-                  Breakdowns suppressed — under {minLeadersForDistribution} leaders. View rolled up across all cohorts above.
+                  {t("cohorts.suppressedNote", { min: minLeadersForDistribution })}
                 </p>
               )}
             </Card>
@@ -155,14 +157,14 @@ export default function SponsorCohorts() {
         })}
 
         {cohortList.length === 0 && (
-          <div className="col-span-2 py-12 text-center text-sm text-muted-foreground">No cohorts found.</div>
+          <div className="col-span-2 py-12 text-center text-sm text-muted-foreground">{t("cohorts.noCohortsFound")}</div>
         )}
       </div>
 
       {/* Privacy */}
       <div className="flex items-start gap-2 rounded-xl bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        Cohort comparison uses participation and self-rated progress only. Coach identities, session notes, and goal wording are excluded from every cohort view.
+        {t("cohorts.privacyNote")}
       </div>
     </div>
   );

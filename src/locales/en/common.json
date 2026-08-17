@@ -1,0 +1,58 @@
+{
+  "languageSwitcherDemo": "Welcome to Clariva",
+  "actions": {
+    "signOut": "Sign out"
+  },
+  "notFound": {
+    "badge": "Lost your way",
+    "body": "This page doesn't exist, or you don't have access to it. Let's get you back on track.",
+    "returnHome": "Return to home"
+  },
+  "comingSoon": {
+    "defaultDescription": "We're putting the finishing touches on this section. It will arrive in the next phase."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "cohorts": "Cohorts",
+    "exportReport": "Export report",
+    "findCoaches": "Find coaches",
+    "myProfile": "My profile",
+    "myJourney": "My journey",
+    "myCoachProfile": "My coach profile",
+    "myAvailability": "My availability",
+    "myClients": "My clients",
+    "peerCoaching": "Peer coaching",
+    "findACoach": "Find a coach",
+    "practiceAnalytics": "Practice analytics",
+    "sessions": "Sessions",
+    "messages": "Messages",
+    "alerts": "Alerts",
+    "activity": "Activity",
+    "coaches": "Coaches",
+    "coachees": "Coachees",
+    "organizations": "Organizations",
+    "programmes": "Programmes",
+    "coachProgrammes": "Coach programmes",
+    "analytics": "Analytics",
+    "overview": "Overview"
+  },
+  "navGroups": {
+    "sponsor": "Sponsor",
+    "myCoachingProfile": "My Coaching Profile",
+    "myPracticeJourney": "My Practice Journey",
+    "communication": "Communication",
+    "overview": "Overview",
+    "people": "People",
+    "programmes": "Programmes",
+    "operations": "Operations"
+  },
+  "layout": {
+    "howItWorks": "How it works",
+    "signedInAs": "Signed in as",
+    "toggleSidebar": "Toggle sidebar",
+    "navigation": "Navigation",
+    "openNavMenu": "Open navigation menu",
+    "coachingOsTagline": "Coaching OS",
+    "defaultUserName": "User"
+  }
+}

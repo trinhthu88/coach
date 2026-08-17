@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { ONBOARDING_CONTENT } from "@/lib/onboarding/content";
+import { getOnboardingContent } from "@/lib/onboarding/content";
 import { IntroCarousel } from "./IntroCarousel";
 import { PointerTour } from "./PointerTour";
 import { OnboardingDoneToast } from "./OnboardingDoneToast";
@@ -28,8 +29,9 @@ export function OnboardingTour({
   onSetMobileNavOpen?: (open: boolean) => void;
 }) {
   const { user, refreshProfile } = useAuth();
+  const { t } = useTranslation("onboarding");
   const [stage, setStage] = useState<Stage>("intro");
-  const content = ONBOARDING_CONTENT[role];
+  const content = getOnboardingContent(t, role);
 
   const markComplete = useCallback(async () => {
     if (!user) return;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -18,6 +19,7 @@ interface PeerCoach {
 
 export default function CoachPeerCoaching() {
   const { user } = useAuth();
+  const { t } = useTranslation("profile");
   const [coaches, setCoaches] = useState<PeerCoach[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,10 +50,10 @@ export default function CoachPeerCoaching() {
     <div className="space-y-6">
       <PageHeader
             className="mb-0"
-            eyebrow="Community"
-            title="Peer"
-            emphasis="coaching"
-            subtitle="Coaches who have opted in to peer coaching. Book a session to be coached by a peer."
+            eyebrow={t("peerCoaching.header.eyebrow")}
+            title={t("peerCoaching.header.titleLead")}
+            emphasis={t("peerCoaching.header.titleEmphasis")}
+            subtitle={t("peerCoaching.header.subtitle")}
           />
 
       {loading ? (
@@ -60,7 +62,7 @@ export default function CoachPeerCoaching() {
         </div>
       ) : coaches.length === 0 ? (
         <Card className="p-12 text-center text-sm text-muted-foreground">
-          No peer coaches available right now. Check back soon.
+          {t("peerCoaching.empty")}
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -77,7 +79,7 @@ export default function CoachPeerCoaching() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{c.full_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{c.title || "Peer coach"}</p>
+                  <p className="truncate text-xs text-muted-foreground">{c.title || t("peerCoaching.defaultTitle")}</p>
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold">
                   <Star className="h-3 w-3 fill-warning text-warning" />
@@ -86,10 +88,10 @@ export default function CoachPeerCoaching() {
               </div>
               <div className="mt-4 flex gap-2">
                 <Button asChild variant="outline" size="sm" className="flex-1">
-                  <Link to={`/coaches/${c.id}`}>View</Link>
+                  <Link to={`/coaches/${c.id}`}>{t("peerCoaching.view")}</Link>
                 </Button>
                 <Button asChild size="sm" className="flex-1">
-                  <Link to={`/coaches/${c.id}/book?mode=peer`}>Book peer</Link>
+                  <Link to={`/coaches/${c.id}/book?mode=peer`}>{t("peerCoaching.bookPeer")}</Link>
                 </Button>
               </div>
             </Card>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ interface Sponsor {
 }
 
 export default function AdminOrganizations() {
+  const { t } = useTranslation("admin");
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [sponsorsByOrg, setSponsorsByOrg] = useState<Record<string, Sponsor>>({});
   const [enrollmentCounts, setEnrollmentCounts] = useState<Record<string, number>>({});
@@ -69,7 +71,7 @@ export default function AdminOrganizations() {
   useEffect(() => { load(); }, []);
 
   const saveOrg = async () => {
-    if (!editing?.name?.trim()) { toast.error("Name is required"); return; }
+    if (!editing?.name?.trim()) { toast.error(t("organizations.nameRequired")); return; }
     setSaving(true);
     try {
       const payload = { name: editing.name, industry: editing.industry || null };
@@ -80,7 +82,7 @@ export default function AdminOrganizations() {
         const { error } = await supabase.from("organizations").insert(payload);
         if (error) throw error;
       }
-      toast.success("Organization saved");
+      toast.success(t("organizations.orgSaved"));
       setEditing(null);
       load();
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
@@ -88,9 +90,9 @@ export default function AdminOrganizations() {
   };
 
   const removeOrg = async (id: string) => {
-    if (!confirm("Delete organization? Any linked enrollments keep their programme but lose the org link.")) return;
+    if (!confirm(t("organizations.deleteConfirm"))) return;
     const { error } = await supabase.from("organizations").delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Deleted"); load(); }
+    if (error) toast.error(error.message); else { toast.success(t("organizations.deleted")); load(); }
   };
 
   const openInvite = (org: Organization) => {
@@ -101,7 +103,7 @@ export default function AdminOrganizations() {
   const submitInvite = async () => {
     if (!inviting) return;
     if (!inviteForm.email.trim() || !inviteForm.full_name.trim()) {
-      toast.error("Email and name are required");
+      toast.error(t("organizations.emailNameRequired"));
       return;
     }
     setInviteBusy(true);
@@ -119,11 +121,11 @@ export default function AdminOrganizations() {
       const result = data as { error?: string; temp_password?: string; email?: string; full_name?: string };
       if (result?.error) throw new Error(result.error);
       setCredential({ email: result.email!, password: result.temp_password!, full_name: result.full_name! });
-      toast.success("Sponsor account created");
+      toast.success(t("organizations.sponsorAccountCreated"));
       setInviting(null);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not invite sponsor");
+      toast.error(e instanceof Error ? e.message : t("organizations.couldNotInviteSponsor"));
     } finally {
       setInviteBusy(false);
     }
@@ -139,9 +141,9 @@ export default function AdminOrganizations() {
       const result = data as { error?: string; temp_password?: string; email?: string; full_name?: string };
       if (result?.error) throw new Error(result.error);
       setCredential({ email: result.email!, password: result.temp_password!, full_name: result.full_name! });
-      toast.success("Temporary password reset");
+      toast.success(t("organizations.tempPasswordReset"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not reset password");
+      toast.error(e instanceof Error ? e.message : t("organizations.couldNotResetPassword"));
     } finally {
       setResetBusy(null);
     }
@@ -152,10 +154,10 @@ export default function AdminOrganizations() {
   return (
     <div>
       <AdminPageHeader
-        title="Organizations"
-        emphasize="& sponsors"
-        subtitle="Client companies sponsoring leaders through the programme, and their sponsor contact."
-        right={<Button onClick={() => setEditing({ name: "" })}><Plus className="h-4 w-4" /> New organization</Button>}
+        title={t("organizations.title")}
+        emphasize={t("organizations.titleEmphasis")}
+        subtitle={t("organizations.subtitle")}
+        right={<Button onClick={() => setEditing({ name: "" })}><Plus className="h-4 w-4" /> {t("organizations.newOrganization")}</Button>}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -172,13 +174,13 @@ export default function AdminOrganizations() {
               </div>
 
               <p className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                <UsersRound className="h-3 w-3" /> {enrollmentCounts[o.id] || 0} enrolled leader{enrollmentCounts[o.id] === 1 ? "" : "s"}
+                <UsersRound className="h-3 w-3" /> {t("organizations.enrolledLeaders", { count: enrollmentCounts[o.id] || 0 })}
               </p>
 
               <div className="mt-3 rounded-lg border bg-muted/20 p-2.5">
                 {sponsor ? (
                   <>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sponsor</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("organizations.sponsor")}</p>
                     <p className="mt-1 truncate text-[12px] font-medium">{sponsor.full_name}</p>
                     <p className="truncate text-[11px] text-muted-foreground">{sponsor.email}</p>
                     {sponsor.title && <p className="text-[11px] text-muted-foreground">{sponsor.title}{sponsor.department ? ` · ${sponsor.department}` : ""}</p>}
@@ -188,29 +190,29 @@ export default function AdminOrganizations() {
                       disabled={resetBusy === o.id}
                     >
                       {resetBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                      Reset password
+                      {t("organizations.resetPassword")}
                     </Button>
                   </>
                 ) : (
                   <>
-                    <p className="text-[11px] text-muted-foreground">No sponsor assigned yet.</p>
+                    <p className="text-[11px] text-muted-foreground">{t("organizations.noSponsorYet")}</p>
                     <Button variant="outline" size="sm" className="mt-2 w-full" onClick={() => openInvite(o)}>
-                      <Plus className="h-3.5 w-3.5" /> Invite sponsor
+                      <Plus className="h-3.5 w-3.5" /> {t("organizations.inviteSponsor")}
                     </Button>
                   </>
                 )}
               </div>
 
               <div className="mt-3 flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setEditing(o)}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
-                <Button variant="ghost" size="sm" onClick={() => removeOrg(o.id)}><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+                <Button variant="outline" size="sm" onClick={() => setEditing(o)}><Pencil className="h-3.5 w-3.5" /> {t("organizations.edit")}</Button>
+                <Button variant="ghost" size="sm" onClick={() => removeOrg(o.id)}><Trash2 className="h-3.5 w-3.5" /> {t("organizations.delete")}</Button>
               </div>
             </Card>
           );
         })}
         {orgs.length === 0 && (
           <Card className="col-span-full p-12 text-center text-sm text-muted-foreground">
-            No organizations yet. Add one to start assigning leaders and a sponsor contact.
+            {t("organizations.empty")}
           </Card>
         )}
       </div>
@@ -218,16 +220,16 @@ export default function AdminOrganizations() {
       {/* Create/edit organization */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing?.id ? "Edit" : "New"} organization</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing?.id ? t("organizations.dialogTitleEdit") : t("organizations.dialogTitleNew")}</DialogTitle></DialogHeader>
           {editing && (
             <div className="space-y-3">
-              <div><Label>Name</Label><Input value={editing.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
-              <div><Label>Industry</Label><Input value={editing.industry || ""} onChange={(e) => setEditing({ ...editing, industry: e.target.value })} /></div>
+              <div><Label>{t("organizations.nameLabel")}</Label><Input value={editing.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div><Label>{t("organizations.industryLabel")}</Label><Input value={editing.industry || ""} onChange={(e) => setEditing({ ...editing, industry: e.target.value })} /></div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-            <Button onClick={saveOrg} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}Save</Button>
+            <Button variant="outline" onClick={() => setEditing(null)}>{t("organizations.cancel")}</Button>
+            <Button onClick={saveOrg} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}{t("organizations.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -236,20 +238,20 @@ export default function AdminOrganizations() {
       <Dialog open={!!inviting} onOpenChange={(o) => !o && setInviting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invite sponsor for {inviting?.name}</DialogTitle>
-            <DialogDescription>Creates their account and shows a one-time temporary password to share privately.</DialogDescription>
+            <DialogTitle>{t("organizations.inviteSponsorFor", { name: inviting?.name })}</DialogTitle>
+            <DialogDescription>{t("organizations.inviteSponsorHint")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label>Full name</Label><Input value={inviteForm.full_name} onChange={(e) => setInviteForm({ ...inviteForm, full_name: e.target.value })} /></div>
-            <div><Label>Email</Label><Input type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} /></div>
+            <div><Label>{t("organizations.fullNameLabel")}</Label><Input value={inviteForm.full_name} onChange={(e) => setInviteForm({ ...inviteForm, full_name: e.target.value })} /></div>
+            <div><Label>{t("organizations.emailLabel")}</Label><Input type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} /></div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><Label>Title (optional)</Label><Input value={inviteForm.title} onChange={(e) => setInviteForm({ ...inviteForm, title: e.target.value })} /></div>
-              <div><Label>Department (optional)</Label><Input value={inviteForm.department} onChange={(e) => setInviteForm({ ...inviteForm, department: e.target.value })} /></div>
+              <div><Label>{t("organizations.titleLabelOptional")}</Label><Input value={inviteForm.title} onChange={(e) => setInviteForm({ ...inviteForm, title: e.target.value })} /></div>
+              <div><Label>{t("organizations.departmentLabelOptional")}</Label><Input value={inviteForm.department} onChange={(e) => setInviteForm({ ...inviteForm, department: e.target.value })} /></div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInviting(null)}>Cancel</Button>
-            <Button onClick={submitInvite} disabled={inviteBusy}>{inviteBusy && <Loader2 className="h-4 w-4 animate-spin" />}Create sponsor account</Button>
+            <Button variant="outline" onClick={() => setInviting(null)}>{t("organizations.cancel")}</Button>
+            <Button onClick={submitInvite} disabled={inviteBusy}>{inviteBusy && <Loader2 className="h-4 w-4 animate-spin" />}{t("organizations.createSponsorAccount")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -258,17 +260,17 @@ export default function AdminOrganizations() {
       <Dialog open={!!credential} onOpenChange={(o) => !o && setCredential(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Account ready for {credential?.full_name}</DialogTitle>
-            <DialogDescription>Share these credentials privately. The temporary password is shown only once and is not stored anywhere.</DialogDescription>
+            <DialogTitle>{t("organizations.accountReadyFor", { name: credential?.full_name })}</DialogTitle>
+            <DialogDescription>{t("organizations.shareCredentialsHint")}</DialogDescription>
           </DialogHeader>
           {credential && (
             <div className="space-y-3 text-sm">
-              <CopyRow label="Email" value={credential.email} />
-              <CopyRow label="Temporary password" value={credential.password} mono />
+              <CopyRow label={t("organizations.email")} value={credential.email} />
+              <CopyRow label={t("organizations.tempPassword")} value={credential.password} mono />
             </div>
           )}
           <DialogFooter>
-            <Button onClick={() => setCredential(null)}>Done</Button>
+            <Button onClick={() => setCredential(null)}>{t("organizations.done")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -277,12 +279,13 @@ export default function AdminOrganizations() {
 }
 
 function CopyRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  const { t } = useTranslation("admin");
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
       <div className="mt-1 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
         <code className={mono ? "flex-1 font-mono text-[13px]" : "flex-1 text-[13px]"}>{value}</code>
-        <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(value); toast.success("Copied"); }}>
+        <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(value); toast.success(t("organizations.copied")); }}>
           <Copy className="h-3.5 w-3.5" />
         </Button>
       </div>

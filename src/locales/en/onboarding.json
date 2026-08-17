@@ -1,0 +1,195 @@
+{
+  "coachee": {
+    "steps": {
+      "welcome": {
+        "kicker": "Welcome to Clariva",
+        "title": "A programme shaped around your goals.",
+        "body": "Your plan sets how many sessions you have and over what period. Nothing is scheduled for you and no curriculum is assigned — each session covers whatever you bring to it."
+      },
+      "goals": {
+        "kicker": "Step one",
+        "title": "Name what you want to change.",
+        "body": "Write one to three goals in your own words and rate each 1-10 today. The rating is a starting line, not a judgement, and only you can change it.",
+        "bullets": [
+          { "label": "Specific", "text": "'Hold a hard conversation without softening it' beats 'communicate better'." },
+          { "label": "Yours", "text": "Rewrite, split, or drop a goal at any point in the programme." },
+          { "label": "Rated", "text": "Re-rate whenever something shifts — that movement is your progress." }
+        ]
+      },
+      "coach": {
+        "kicker": "Step two",
+        "title": "Choose your coach.",
+        "body": "Your goals filter the accredited network down to the coaches who work on exactly that. Read profiles, book a free 20-minute chemistry call, and decide after you've met.",
+        "bullets": [
+          { "label": "Filter", "text": "By focus area, language, and availability this month." },
+          { "label": "Meet first", "text": "Chemistry calls don't count against your session allowance." },
+          { "label": "Switch once", "text": "You can change coach mid-programme without giving a reason." }
+        ]
+      },
+      "book": {
+        "kicker": "Step three",
+        "title": "Book session one.",
+        "body": "You see your coach's live availability and pick a slot. Reminders, the video link, and rescheduling all live in the session — no email chains."
+      },
+      "privacy": {
+        "kicker": "Step four",
+        "title": "The session is a closed room.",
+        "body": "Notes, recordings, your goal wording, and everything you say belong to you and your coach. Nothing leaves that room unless you send it yourself.",
+        "bullets": [
+          { "label": "You control", "text": "What you write, what you share, and who you invite in." },
+          { "label": "Never exposed", "text": "Session notes, recordings, and the wording of your goals." },
+          { "label": "Your coach", "text": "Keeps private prep notes too; only summaries marked shared reach you." }
+        ]
+      },
+      "progress": {
+        "kicker": "Step five",
+        "title": "Progress is your own rating, moving.",
+        "body": "Your dashboard tracks each goal's rating across every session you have. No score is calculated for you, and there is no ranking — the line moves when you say it moved."
+      }
+    },
+    "pointers": {
+      "findCoaches": {
+        "where": "Left navigation",
+        "title": "Find coaches is your starting point.",
+        "body": "Profiles, chemistry calls, and live calendars all sit here. It stays open for the whole programme, including if you switch coach."
+      },
+      "nextSession": {
+        "where": "Top of your dashboard",
+        "title": "Your next session, always first.",
+        "body": "Topic, coach, and time. Open it to add what you want to cover — your coach sees that, nobody else does."
+      },
+      "sessionLog": {
+        "where": "Session log and action items",
+        "title": "What you agreed to, in one place.",
+        "body": "Every session leaves its log entry and its action items here. Tick them off as you go — this is also where you re-rate a goal after something shifts."
+      }
+    }
+  },
+  "coach": {
+    "steps": {
+      "welcome": {
+        "kicker": "Welcome to Clariva",
+        "title": "Your practice, on one surface.",
+        "body": "Matching, booking, reminders, notes, and session history sit in one place — for the clients you coach and for your own practice as a coachee and peer. You keep your method; the platform removes the admin around it."
+      },
+      "profile": {
+        "kicker": "Step one",
+        "title": "Complete your coach profile.",
+        "body": "Your specialties, experience, and languages are what the matching runs on. A thin profile simply doesn't surface when a coachee filters by their goal.",
+        "bullets": [
+          { "label": "Specialties", "text": "Pick the two or three you genuinely work in, not everything you could." },
+          { "label": "Bio", "text": "One paragraph in your own voice — it appears on every match card." },
+          { "label": "Accreditation", "text": "Credentials are verified once, then shown as a badge on your profile." }
+        ]
+      },
+      "availability": {
+        "kicker": "Step two",
+        "title": "Publish your availability.",
+        "body": "Nobody can book you until windows are open. Set recurring weekly blocks in your own timezone; the platform converts them for each coachee and holds buffers between sessions.",
+        "bullets": [
+          { "label": "Recurring", "text": "Set once, repeats weekly. Close any individual week when you need to." },
+          { "label": "Buffers", "text": "Add gaps so back-to-back sessions can't be booked." },
+          { "label": "Chemistry calls", "text": "Reserve a short weekly window for 20-minute intro calls." }
+        ]
+      },
+      "practice": {
+        "kicker": "Step three",
+        "title": "Coach, and be coached.",
+        "body": "Clariva is also where your own practice grows. Opt in to peer coaching to exchange sessions with other accredited coaches, book a coach for yourself, and keep your practice hours in one record.",
+        "bullets": [
+          { "label": "Peer exchange", "text": "Give a session, receive a session. Both count as peer sessions on your dashboard." },
+          { "label": "Your own coach", "text": "Find a coach works exactly as it does for a coachee — you are the coachee there." },
+          { "label": "Practice journey", "text": "Sessions delivered, peer sessions, and reflections build the record behind your accreditation." }
+        ]
+      },
+      "privacy": {
+        "kicker": "Step four",
+        "title": "Your notes stay in the room.",
+        "body": "Organisations fund programmes but have no route into sessions. That boundary is enforced by the product, not by policy.",
+        "bullets": [
+          { "label": "Organisations see", "text": "That a session happened, its length, and attendance." },
+          { "label": "They never see", "text": "Notes, recordings, or your name against a named individual." },
+          { "label": "Your coachee sees", "text": "Only the summaries you mark as shared. Prep notes stay private." }
+        ]
+      },
+      "flags": {
+        "kicker": "Step five",
+        "title": "The platform flags who is stalling.",
+        "body": "Flat goal ratings and long booking gaps surface on your dashboard before a programme runs out of sessions. Nudges go out from you, never from anyone's employer."
+      }
+    },
+    "pointers": {
+      "availability": {
+        "where": "Left navigation",
+        "title": "My availability comes first.",
+        "body": "Until there are open windows here, matched coachees see you as fully booked. It is the one screen to visit before anything else."
+      },
+      "nextSession": {
+        "where": "Top of your dashboard",
+        "title": "Next session, with context.",
+        "body": "Topic, client, and time — coaching and peer sessions both surface here. Open it to review your last notes before you join."
+      },
+      "bookingRequests": {
+        "where": "Booking requests",
+        "title": "Approve or decline in one tap.",
+        "body": "Requests land here with topic, length, and time. Approving confirms the slot and sends the meeting link; declining frees the window immediately."
+      }
+    }
+  },
+  "sponsor": {
+    "steps": {
+      "welcome": {
+        "kicker": "Welcome to Clariva",
+        "title": "Programme health, without the content.",
+        "body": "You can see whether your cohort is engaged and whether people are moving. You cannot see coaching. That trade is what makes the sessions candid enough to work."
+      },
+      "timing": {
+        "kicker": "Step one",
+        "title": "Know where the cohort sits in time.",
+        "body": "Every figure is read against the programme window. Six sessions across four months means low usage in month one is normal and flat ratings in month three are not."
+      },
+      "enrolment": {
+        "kicker": "Step two",
+        "title": "Close out enrolment.",
+        "body": "Eleven of twelve leaders have accepted. Open the roster, find who hasn't, and send a reminder — it arrives from the programme, not from a manager.",
+        "bullets": [
+          { "label": "Invite", "text": "Add leaders by email; each one picks their own coach." },
+          { "label": "Nudge", "text": "One tap for anyone who hasn't enrolled or hasn't booked." },
+          { "label": "At risk", "text": "Flags appear automatically after five weeks with no session." }
+        ]
+      },
+      "withheld": {
+        "kicker": "Step three",
+        "title": "What is withheld, and why.",
+        "body": "Restrictions appear in the product as visible locked items, so you always know what exists rather than wondering what you're missing.",
+        "bullets": [
+          { "label": "You see", "text": "Enrolment, attendance, sessions used, on-track status, goal growth." },
+          { "label": "You never see", "text": "Notes, recordings, goal wording, or an individual's chosen coach." },
+          { "label": "Under five people", "text": "Distributions are suppressed and only the cohort average shows." }
+        ]
+      },
+      "metrics": {
+        "kicker": "Step four",
+        "title": "Two numbers renew a programme.",
+        "body": "On-track rate says whether people are showing up. Average goal growth says whether anything changed. Export both for any period, with or without the roster."
+      }
+    },
+    "pointers": {
+      "navigation": {
+        "where": "Left navigation",
+        "title": "Three screens, no fourth.",
+        "body": "There is no route from here into session content. The absence is deliberate — nothing sits behind a permission you could request later."
+      },
+      "cohortFilter": {
+        "where": "Top of the dashboard",
+        "title": "One cohort at a time.",
+        "body": "Switch cohort here and every figure below follows, including the roster and the export."
+      },
+      "roster": {
+        "where": "Roster",
+        "title": "Status, not stories.",
+        "body": "Enrolment, sessions used, and self-rated growth per person. Rows don't open into content — they open into the same aggregates plus what's withheld."
+      }
+    }
+  }
+}

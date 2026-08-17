@@ -1,0 +1,66 @@
+{
+  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "detail": {
+    "notFound": {
+      "title": "Không tìm thấy coach",
+      "body": "Coach bạn đang tìm không tồn tại hoặc hiện không khả dụng."
+    },
+    "backToCoaches": "Về danh sách coach",
+    "featuredBadge": "Coach nổi bật",
+    "defaultBadge": "Coach",
+    "bookASession": "Đặt session",
+    "stats": {
+      "rating": "Đánh giá",
+      "sessions": "Session",
+      "experience": "Kinh nghiệm",
+      "experienceValue": "{{years}} năm"
+    },
+    "approach": "Phương pháp",
+    "noBio": "Coach này chưa viết giới thiệu bản thân.",
+    "specialties": "Chuyên môn",
+    "credentials": "Chứng chỉ",
+    "basedIn": "Sống tại",
+    "chooseATime": "Chọn thời gian"
+  },
+  "list": {
+    "eyebrow": "Mạng lưới được tuyển chọn",
+    "titleLead": "Tìm",
+    "titleEmphasis": "người đồng hành",
+    "subtitle_one": "{{count}} coach đã được chứng nhận, được lọc theo đúng điều bạn đang tập trung ngay bây giờ.",
+    "subtitle_other": "{{count}} coach đã được chứng nhận, được lọc theo đúng điều bạn đang tập trung ngay bây giờ.",
+    "searchPlaceholder": "Tìm theo tên, chuyên môn, hoặc trọng tâm…",
+    "allSpecialtiesLabel": "Tất cả chuyên môn",
+    "featuredBadge": "Nổi bật",
+    "addFavorite": "Thêm vào yêu thích",
+    "removeFavorite": "Bỏ khỏi yêu thích",
+    "noBio": "Có hồ sơ — mở để tìm hiểu thêm.",
+    "experienceWithCountry": "{{years}} năm · {{country}}",
+    "experienceOnly": "{{years}} năm",
+    "viewProfile": "Xem hồ sơ",
+    "error": {
+      "title": "Không thể tải danh sách coach",
+      "body": "Đã xảy ra lỗi khi tải danh bạ coach. Vui lòng kiểm tra kết nối và thử lại.",
+      "retry": "Thử lại"
+    },
+    "empty": {
+      "noMatchTitle": "Không có coach nào khớp với tìm kiếm của bạn",
+      "noneYetTitle": "Chưa có coach nào khả dụng",
+      "noMatchBody": "Hãy thử một từ khóa hoặc chuyên môn khác.",
+      "noneYetBody": "Khi quản trị viên phê duyệt hồ sơ coach, họ sẽ xuất hiện ở đây để đặt lịch."
+    }
+  },
+  "findCoach": {
+    "eyebrow": "Mạng lưới được tuyển chọn",
+    "titleLead": "Tìm một",
+    "titleEmphasis": "coach",
+    "subtitle": "Coach được quản trị viên tuyển chọn cho sự phát triển liên tục của bạn.",
+    "notice": "Danh sách coach và số session được cấp phép của bạn do quản trị viên nền tảng thiết lập.",
+    "allowancePrefix": "Số lượng hiện tại:",
+    "allowanceSuffix": "session.",
+    "unlimitedValue": "không giới hạn",
+    "empty": "Chưa có coach nào được chỉ định cho bạn. Hãy liên hệ quản trị viên của bạn.",
+    "defaultTitle": "Coach",
+    "view": "Xem",
+    "book": "Đặt lịch"
+  }
+}

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { FlatAction, GroupedActions } from "@/hooks/journey/useFlatActionItems";
@@ -21,6 +22,7 @@ export function ActionGroups({
   showSourceBadge?: boolean;
   emptyMessage: string;
 }) {
+  const { t } = useTranslation("journey");
   const labelFor = (a: FlatAction) => {
     if (!milestones || !goals || !a.milestone_id) return undefined;
     const m = milestones.find((x) => x.id === a.milestone_id);
@@ -62,10 +64,10 @@ export function ActionGroups({
 
   return (
     <Card className={cn("p-4", compact && "space-y-1")}>
-      <Group title="Overdue" items={grouped.overdue} danger />
-      <Group title="Due this week" items={grouped.thisWeek} />
-      <Group title="Upcoming" items={grouped.upcoming} />
-      {!compact && <Group title="Completed" items={grouped.completed} />}
+      <Group title={t("actionGroups.overdue")} items={grouped.overdue} danger />
+      <Group title={t("actionGroups.dueThisWeek")} items={grouped.thisWeek} />
+      <Group title={t("actionGroups.upcoming")} items={grouped.upcoming} />
+      {!compact && <Group title={t("actionGroups.completed")} items={grouped.completed} />}
     </Card>
   );
 }

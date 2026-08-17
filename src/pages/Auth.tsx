@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { ArrowRight, Loader2, ShieldCheck, Sparkles, GraduationCap, Compass } fr
 import authHero from "@/assets/auth-hero.jpg";
 import clarivaLogo from "@/assets/clariva-logo-dark.png";
 import { cn } from "@/lib/utils";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 type SignupRole = "coachee" | "coach";
 
@@ -23,6 +25,7 @@ function isSameOriginRelativePath(path: string): boolean {
 }
 
 export default function Auth() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
@@ -42,7 +45,7 @@ export default function Auth() {
           password: form.password,
         });
         if (error) throw error;
-        toast({ title: "Welcome back", description: "You're signed in." });
+        toast({ title: t("toast.signInSuccess.title"), description: t("toast.signInSuccess.description") });
         navigate(isSameOriginRelativePath(next) ? next : "/dashboard", { replace: true });
       } else {
         const returnTo = isSameOriginRelativePath(next) ? `${window.location.origin}${next}` : `${window.location.origin}/dashboard`;
@@ -56,18 +59,18 @@ export default function Auth() {
         });
         if (error) throw error;
         toast({
-          title: "Account created",
+          title: t("toast.signUpSuccess.title"),
           description:
             signupRole === "coach"
-              ? "Your coach account is pending admin approval. You can fill in your profile now."
-              : "Your account is pending admin approval. We'll let you know as soon as you're in.",
+              ? t("toast.signUpSuccessCoach")
+              : t("toast.signUpSuccessCoachee"),
         });
         navigate(isSameOriginRelativePath(next) ? next : "/dashboard", { replace: true });
       }
     } catch (err) {
       toast({
-        title: "Authentication failed",
-        description: err instanceof Error ? err.message : "Please try again.",
+        title: t("toast.error.title"),
+        description: err instanceof Error ? err.message : t("toast.error.genericDescription"),
         variant: "destructive",
       });
     } finally {
@@ -81,59 +84,59 @@ export default function Auth() {
       <aside className="relative hidden overflow-hidden lg:flex">
         <img
           src={authHero}
-          alt="Premium executive coaching"
+          alt={t("heroPane.imageAlt")}
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-hero opacity-90" />
         <div className="relative z-10 flex w-full flex-col justify-between p-12 text-primary-foreground">
           <div className="flex items-center gap-3">
-            <img src={clarivaLogo} alt="Clariva" className="h-11 w-auto object-contain" />
+            <img src={clarivaLogo} alt={t("heroPane.logoAlt")} className="h-11 w-auto object-contain" />
           </div>
 
           <div className="space-y-6 max-w-lg">
             <h1 className="font-display text-5xl font-light leading-[1.05] sm:text-6xl">
-              Unlock your <em className="block text-primary-glow">peak potential.</em>
+              {t("heroPane.titleLead")} <em className="block text-primary-glow">{t("heroPane.titleEmphasis")}</em>
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
-              The private marketplace for elite executive coaching. Vetted coaches.
-              Real progress. Measurable outcomes.
+              {t("heroPane.subtitle")}
             </p>
           </div>
 
           <div className="space-y-6 border-t border-white/10 pt-8">
             <div className="grid grid-cols-2 gap-8">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Active coaches</p>
-                <p className="mt-1 text-3xl font-semibold">500+</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">{t("heroPane.stats.activeCoachesLabel")}</p>
+                <p className="mt-1 text-3xl font-semibold">{t("heroPane.stats.activeCoachesValue")}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Leaders served</p>
-                <p className="mt-1 text-3xl font-semibold">12k</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">{t("heroPane.stats.leadersServedLabel")}</p>
+                <p className="mt-1 text-3xl font-semibold">{t("heroPane.stats.leadersServedValue")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/60">
               <ShieldCheck className="h-4 w-4" />
-              Secure verified environment
+              {t("heroPane.secureBadge")}
             </div>
           </div>
         </div>
       </aside>
 
       {/* Form pane */}
-      <main className="flex items-center justify-center bg-gradient-subtle p-6 sm:p-12">
+      <main className="relative flex items-center justify-center bg-gradient-subtle p-6 sm:p-12">
+        <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+          <LanguageSwitcher />
+        </div>
         <Card className="w-full max-w-md border-border/60 p-8 shadow-lg sm:p-10">
           <div className="mb-8 space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
               <Sparkles className="h-3 w-3" />
-              {mode === "signin" ? "Welcome back" : "Get started"}
+              {mode === "signin" ? t("badge.signin") : t("badge.signup")}
             </div>
             <h2 className="font-display text-4xl font-light tracking-tight text-secondary">
-              {mode === "signin" ? "Sign in to Clariva" : "Create your account"}
+              {mode === "signin" ? t("heading.signin") : t("heading.signup")}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {mode === "signin"
-                ? "Enter your credentials to access your dashboard."
-                : "Join a curated community of coaches and leaders."}
+              {mode === "signin" ? t("subheading.signin") : t("subheading.signup")}
             </p>
           </div>
 
@@ -141,11 +144,11 @@ export default function Auth() {
             {mode === "signup" && (
               <>
                 <div className="space-y-2">
-                  <Label>I'm joining as</Label>
+                  <Label>{t("roleSelect.label")}</Label>
                   <div className="grid grid-cols-2 gap-3">
                     {([
-                      { value: "coachee", label: "Coachee", desc: "Find and book coaches", icon: Compass },
-                      { value: "coach", label: "Coach", desc: "Offer coaching sessions", icon: GraduationCap },
+                      { value: "coachee", label: t("roleSelect.coachee.label"), desc: t("roleSelect.coachee.desc"), icon: Compass },
+                      { value: "coach", label: t("roleSelect.coach.label"), desc: t("roleSelect.coach.desc"), icon: GraduationCap },
                     ] as const).map((opt) => {
                       const Icon = opt.icon;
                       const active = signupRole === opt.value;
@@ -171,19 +174,19 @@ export default function Auth() {
                   </div>
                   {signupRole === "coach" && (
                     <p className="text-[11px] text-muted-foreground">
-                      Coach accounts require admin approval before appearing in the directory.
+                      {t("roleSelect.coachApprovalNotice")}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full name</Label>
+                  <Label htmlFor="fullName">{t("fields.fullNameLabel")}</Label>
                   <Input
                     id="fullName"
                     required
                     value={form.fullName}
                     onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                    placeholder="Marcus Aurelius"
+                    placeholder={t("fields.fullNamePlaceholder")}
                     className="h-11"
                   />
                 </div>
@@ -191,23 +194,23 @@ export default function Auth() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="email">{t("fields.emailLabel")}</Label>
               <Input
                 id="email"
                 type="email"
                 required
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="name@company.com"
+                placeholder={t("fields.emailPlaceholder")}
                 className="h-11"
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("fields.passwordLabel")}</Label>
                 <Link to="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
-                  Forgot password?
+                  {t("fields.forgotPassword")}
                 </Link>
               </div>
               <Input
@@ -217,7 +220,7 @@ export default function Auth() {
                 minLength={8}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="At least 8 characters"
+                placeholder={t("fields.passwordPlaceholder")}
                 className="h-11"
               />
             </div>
@@ -227,7 +230,7 @@ export default function Auth() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  {mode === "signin" ? "Sign in" : "Create account"}
+                  {mode === "signin" ? t("submit.signin") : t("submit.signup")}
                   <ArrowRight className="ml-1 h-4 w-4" />
                 </>
               )}
@@ -236,15 +239,15 @@ export default function Auth() {
 
           {mode === "signin" && (
             <div className="mt-8 border-t border-border/60 pt-6 text-center text-sm text-muted-foreground">
-              New to Clariva?{" "}
+              {t("footer.newToClariva")}{" "}
               <Link to="/request-access" className="font-semibold text-primary hover:underline">
-                Request access
+                {t("footer.requestAccess")}
               </Link>
             </div>
           )}
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            <Link to="/" className="hover:text-foreground">← Back to home</Link>
+            <Link to="/" className="hover:text-foreground">{t("footer.backToHome")}</Link>
           </p>
         </Card>
       </main>

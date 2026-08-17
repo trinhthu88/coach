@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -49,35 +50,38 @@ interface SessionRow {
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
 }
 
-const STATUS_META: Record<SessionStatus, { label: string; icon: LucideIcon; className: string }> = {
-  pending_coach_approval: {
-    label: "Awaiting confirmation",
-    icon: AlertCircle,
-    className: "bg-warning/10 text-warning border-warning/20",
-  },
-  confirmed: {
-    label: "Confirmed",
-    icon: CheckCircle2,
-    className: "bg-primary/10 text-primary border-primary/20",
-  },
-  completed: {
-    label: "Completed",
-    icon: CheckCircle2,
-    className: "bg-success/10 text-success border-success/20",
-  },
-  cancelled: {
-    label: "Cancelled",
-    icon: XCircle,
-    className: "bg-destructive/10 text-destructive border-destructive/20",
-  },
-  rescheduled: {
-    label: "Rescheduled",
-    icon: Clock,
-    className: "bg-secondary text-secondary-foreground border-border",
-  },
-};
+function getStatusMeta(t: (key: string) => string): Record<SessionStatus, { label: string; icon: LucideIcon; className: string }> {
+  return {
+    pending_coach_approval: {
+      label: t("status.pending_coach_approval"),
+      icon: AlertCircle,
+      className: "bg-warning/10 text-warning border-warning/20",
+    },
+    confirmed: {
+      label: t("status.confirmed"),
+      icon: CheckCircle2,
+      className: "bg-primary/10 text-primary border-primary/20",
+    },
+    completed: {
+      label: t("status.completed"),
+      icon: CheckCircle2,
+      className: "bg-success/10 text-success border-success/20",
+    },
+    cancelled: {
+      label: t("status.cancelled"),
+      icon: XCircle,
+      className: "bg-destructive/10 text-destructive border-destructive/20",
+    },
+    rescheduled: {
+      label: t("status.rescheduled"),
+      icon: Clock,
+      className: "bg-secondary text-secondary-foreground border-border",
+    },
+  };
+}
 
 export default function Sessions() {
+  const { t } = useTranslation("sessions");
   const { user, role } = useAuth();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -166,20 +170,20 @@ export default function Sessions() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Schedule"
-        title="Your"
-        emphasis="sessions"
+        eyebrow={t("list.eyebrow")}
+        title={t("list.titleLead")}
+        emphasis={t("list.titleEmphasis")}
 
         subtitle={
           role === "coach"
-            ? "Confirm requests, manage notes and meeting links."
-            : "Track upcoming bookings, notes and action items."
+            ? t("list.subtitleCoach")
+            : t("list.subtitleCoachee")
         }
         actions={
           role === "coachee" && (
             <Button asChild className="shadow-glow">
               <Link to="/coaches">
-                <Calendar className="mr-1 h-4 w-4" /> Book a session
+                <Calendar className="mr-1 h-4 w-4" /> {t("list.bookASession")}
               </Link>
             </Button>
           )
@@ -194,14 +198,14 @@ export default function Sessions() {
       ) : (
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
-            <TabsTrigger value="upcoming">Upcoming ({upcoming.length})</TabsTrigger>
-            <TabsTrigger value="past">Past ({past.length})</TabsTrigger>
+            <TabsTrigger value="upcoming">{t("list.tabs.upcoming", { count: upcoming.length })}</TabsTrigger>
+            <TabsTrigger value="past">{t("list.tabs.past", { count: past.length })}</TabsTrigger>
           </TabsList>
           <TabsContent value="upcoming" className="mt-4 space-y-3">
             {upcoming.length === 0 ? (
               <EmptyState
-                title="No upcoming sessions"
-                subtitle={role === "coachee" ? "Browse coaches and book your next session." : "You're all caught up."}
+                title={t("list.empty.noUpcomingTitle")}
+                subtitle={role === "coachee" ? t("list.empty.noUpcomingSubtitleCoachee") : t("list.empty.noUpcomingSubtitleCoach")}
               />
             ) : (
               upcoming.map((s) => (
@@ -223,7 +227,7 @@ export default function Sessions() {
           </TabsContent>
           <TabsContent value="past" className="mt-4 space-y-3">
             {past.length === 0 ? (
-              <EmptyState title="Nothing yet" subtitle="Past sessions will show up here." />
+              <EmptyState title={t("list.empty.noPastTitle")} subtitle={t("list.empty.noPastSubtitle")} />
             ) : (
               past.map((s) => (
                 <SessionCard
@@ -268,7 +272,8 @@ function SessionCard({
   onOpen: () => void;
   onChanged: () => void;
 }) {
-  const meta = STATUS_META[session.status];
+  const { t } = useTranslation("sessions");
+  const meta = getStatusMeta(t)[session.status];
   const Icon = meta.icon;
   const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
   // For peer sessions: peer_coach (giver) acts as "coach", peer_coachee (receiver) acts as "coachee"
@@ -300,11 +305,11 @@ function SessionCard({
       .eq("id", session.id);
     setCompleting(false);
     if (error) return toast.error(error.message);
-    toast.success("Session marked completed");
+    toast.success(t("list.toast.markedComplete"));
     onChanged();
   };
 
-  const kindLabel = isPeer ? (userIsPeerCoach ? "Peer · give" : "Peer · receive") : role === "coach" ? "with" : "Coach";
+  const kindLabel = isPeer ? (userIsPeerCoach ? t("dashboard:coach.kindPill.peerGive") : t("dashboard:coach.kindPill.peerReceive")) : role === "coach" ? t("list.kindLabelWith") : t("list.kindLabelCoach");
   return (
     <Card className="overflow-hidden p-0">
       <SessionRow
@@ -329,7 +334,7 @@ function SessionCard({
         {canMarkComplete && (
           <Button size="sm" variant="secondary" onClick={markComplete} disabled={completing} className="mb-2">
             {completing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
-            Mark complete
+            {t("list.markComplete")}
           </Button>
         )}
         <ActionItemsList items={session.action_items} date={session.start_time} />
@@ -344,6 +349,7 @@ function SessionCard({
 }
 
 function RateSession({ session, onChanged }: { session: SessionRow; onChanged: () => void }) {
+  const { t } = useTranslation("sessions");
   const [rating, setRating] = useState<number>(session.coachee_rating || 0);
   const [hover, setHover] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -362,14 +368,14 @@ function RateSession({ session, onChanged }: { session: SessionRow; onChanged: (
       toast.error(error.message);
       return;
     }
-    toast.success(isRated ? "Rating updated" : "Thanks for your rating!");
+    toast.success(isRated ? t("list.toast.ratingUpdated") : t("list.toast.ratingThanks"));
     onChanged();
   };
 
   return (
     <div className="flex items-center gap-2">
       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        {isRated ? "Your rating" : "Rate this session"}
+        {isRated ? t("list.rating.yourRating") : t("list.rating.rateThisSession")}
       </span>
       <div className="flex items-center gap-0.5">
         {[1, 2, 3, 4, 5].map((n) => {
@@ -383,7 +389,7 @@ function RateSession({ session, onChanged }: { session: SessionRow; onChanged: (
               onMouseLeave={() => setHover(0)}
               onClick={() => submit(n)}
               className="p-0.5 transition-transform hover:scale-110 disabled:opacity-50"
-              aria-label={`Rate ${n} star${n > 1 ? "s" : ""}`}
+              aria-label={t("list.rating.rateStars", { count: n })}
             >
               <Star
                 className={cn(
@@ -408,6 +414,7 @@ interface ActionItem {
 }
 
 function ActionItemsList({ items, date }: { items: Tables<"sessions">["action_items"]; date: string }) {
+  const { t } = useTranslation("sessions");
   const list: ActionItem[] = Array.isArray(items)
     ? items
         .map((it) => (typeof it === "string" ? { text: it, done: false } : (it as unknown as ActionItem)))
@@ -417,7 +424,7 @@ function ActionItemsList({ items, date }: { items: Tables<"sessions">["action_it
   return (
     <div className="mt-4 border-t pt-3">
       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        Action items
+        {t("list.actionItems.title")}
       </p>
       <ul className="space-y-1.5">
         {list.slice(0, 4).map((it, idx: number) => (
@@ -434,7 +441,7 @@ function ActionItemsList({ items, date }: { items: Tables<"sessions">["action_it
           </li>
         ))}
         {list.length > 4 && (
-          <li className="text-[10px] text-muted-foreground">+{list.length - 4} more</li>
+          <li className="text-[10px] text-muted-foreground">{t("list.actionItems.more", { count: list.length - 4 })}</li>
         )}
       </ul>
     </div>

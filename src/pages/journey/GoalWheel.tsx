@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import {
   Radar,
@@ -38,6 +39,7 @@ export function GoalWheel({
   rows: GoalRatingRow[];
   sessionSeries?: SessionRatingSeries[];
 }) {
+  const { t } = useTranslation("journey");
   const data = useMemo(() => {
     return rows.map((r) => {
       const point: { axis: string; Start: number; Target: number; [key: string]: string | number } = {
@@ -56,7 +58,7 @@ export function GoalWheel({
   if (rows.length < 3) {
     return (
       <Card className="p-6 text-center text-sm text-muted-foreground">
-        Add at least 3 goals to see the goal wheel.
+        {t("goalWheel.needThreeGoals")}
       </Card>
     );
   }
@@ -66,7 +68,7 @@ export function GoalWheel({
   return (
     <Card className="p-4">
       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        Goal wheel
+        {t("goalWheel.title")}
       </p>
       <div className="h-[320px] w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -83,7 +85,7 @@ export function GoalWheel({
               stroke="hsl(var(--border))"
             />
             <Radar
-              name="Start"
+              name={t("goalWheel.start")}
               dataKey="Start"
               stroke="hsl(var(--primary) / 0.55)"
               fill="hsl(var(--primary) / 0.05)"
@@ -97,7 +99,7 @@ export function GoalWheel({
               return (
                 <Radar
                   key={s.sessionId}
-                  name={`S${idx + 1} · ${format(new Date(s.date), "MMM d")}`}
+                  name={t("goalWheel.sessionSeriesName", { n: idx + 1, date: format(new Date(s.date), "MMM d") })}
                   dataKey={`s${idx}`}
                   stroke={`hsl(${hue} 70% ${isLatest ? "45%" : "60%"})`}
                   fill={`hsl(${hue} 70% 50% / ${isLatest ? 0.32 : 0.1})`}
@@ -107,7 +109,7 @@ export function GoalWheel({
               );
             })}
             <Radar
-              name="Target"
+              name={t("goalWheel.target")}
               dataKey="Target"
               stroke="hsl(var(--accent))"
               fill="transparent"
@@ -124,11 +126,12 @@ export function GoalWheel({
 }
 
 export function GoalScoreCards({ rows }: { rows: GoalRatingRow[] }) {
+  const { t } = useTranslation("journey");
   if (!rows.length) return null;
   const cards: { label: string; key: "start" | "current" | "target"; tone: string; barCls: string }[] = [
-    { label: "Start", key: "start", tone: "text-primary/70", barCls: "bg-primary/40" },
-    { label: "Current", key: "current", tone: "text-primary", barCls: "bg-primary" },
-    { label: "Target", key: "target", tone: "text-accent", barCls: "bg-accent" },
+    { label: t("goalWheel.start"), key: "start", tone: "text-primary/70", barCls: "bg-primary/40" },
+    { label: t("goalWheel.current"), key: "current", tone: "text-primary", barCls: "bg-primary" },
+    { label: t("goalWheel.target"), key: "target", tone: "text-accent", barCls: "bg-accent" },
   ];
   return (
     <div className="grid gap-3 md:grid-cols-3">

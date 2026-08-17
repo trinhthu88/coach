@@ -1,0 +1,59 @@
+{
+  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "languageSwitcherDemo": "Chào mừng đến với Clariva",
+  "actions": {
+    "signOut": "Đăng xuất"
+  },
+  "notFound": {
+    "badge": "Bạn đã đi lạc đường",
+    "body": "Trang này không tồn tại, hoặc bạn không có quyền truy cập. Hãy để chúng tôi đưa bạn trở lại đúng hướng.",
+    "returnHome": "Về trang chủ"
+  },
+  "comingSoon": {
+    "defaultDescription": "Chúng tôi đang hoàn thiện những chi tiết cuối cùng cho phần này. Nó sẽ ra mắt trong giai đoạn tiếp theo."
+  },
+  "nav": {
+    "dashboard": "Trang tổng quan",
+    "cohorts": "Nhóm",
+    "exportReport": "Xuất báo cáo",
+    "findCoaches": "Tìm coach",
+    "myProfile": "Hồ sơ của tôi",
+    "myJourney": "Hành trình của tôi",
+    "myCoachProfile": "Hồ sơ coach của tôi",
+    "myAvailability": "Lịch trống của tôi",
+    "myClients": "Khách hàng của tôi",
+    "peerCoaching": "Peer coaching",
+    "findACoach": "Tìm coach",
+    "practiceAnalytics": "Phân tích thực hành",
+    "sessions": "Session",
+    "messages": "Tin nhắn",
+    "alerts": "Cảnh báo",
+    "activity": "Hoạt động",
+    "coaches": "Coach",
+    "coachees": "Học viên",
+    "organizations": "Tổ chức",
+    "programmes": "Chương trình",
+    "coachProgrammes": "Chương trình coach",
+    "analytics": "Phân tích",
+    "overview": "Tổng quan"
+  },
+  "navGroups": {
+    "sponsor": "Nhà tài trợ",
+    "myCoachingProfile": "Hồ sơ Coaching của tôi",
+    "myPracticeJourney": "Hành trình thực hành của tôi",
+    "communication": "Liên lạc",
+    "overview": "Tổng quan",
+    "people": "Con người",
+    "programmes": "Chương trình",
+    "operations": "Vận hành"
+  },
+  "layout": {
+    "howItWorks": "Cách thức hoạt động",
+    "signedInAs": "Đăng nhập với vai trò",
+    "toggleSidebar": "Thu gọn/mở rộng thanh bên",
+    "navigation": "Điều hướng",
+    "openNavMenu": "Mở menu điều hướng",
+    "coachingOsTagline": "Coaching OS",
+    "defaultUserName": "Người dùng"
+  }
+}

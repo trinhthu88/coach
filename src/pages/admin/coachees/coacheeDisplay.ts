@@ -1,14 +1,9 @@
 import { format } from "date-fns";
+import type { TFunction } from "i18next";
 
 export type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 
-export const STATUS_LABEL: Record<Status, string> = {
-  pending_approval: "Awaiting approval",
-  active: "Active",
-  rejected: "Rejected",
-  suspended: "Suspended",
-  reach_limit: "Reached limit",
-};
+export const STATUS_KEYS: Status[] = ["pending_approval", "active", "rejected", "suspended", "reach_limit"];
 
 export const STATUS_TONE: Record<Status, "muted" | "success" | "warning" | "destructive"> = {
   pending_approval: "warning",
@@ -52,22 +47,22 @@ export interface Row {
   access_request_id: string | null;
 }
 
-export async function exportCoacheesXlsx(rows: Row[]): Promise<void> {
+export async function exportCoacheesXlsx(rows: Row[], t: TFunction<"admin">): Promise<void> {
   const XLSX = await import("xlsx");
   const data = rows.map((c) => ({
-    Name: c.full_name,
-    Email: c.email,
-    Registered: format(new Date(c.created_at), "yyyy-MM-dd"),
-    Status: STATUS_LABEL[c.status],
-    "Booked sessions": c.booked,
-    "Completed sessions": c.done,
-    "Session limit": c.session_limit,
-    Programme: c.programme_name || "",
-    Cohort: c.cohort_name || "",
-    "Selected coaches": c.selected_coaches.map((s) => s.name).join("; "),
+    [t("coachees.export.name")]: c.full_name,
+    [t("coachees.export.email")]: c.email,
+    [t("coachees.export.registered")]: format(new Date(c.created_at), "yyyy-MM-dd"),
+    [t("coachees.export.status")]: t(`coachees.statusLabels.${c.status}`),
+    [t("coachees.export.bookedSessions")]: c.booked,
+    [t("coachees.export.completedSessions")]: c.done,
+    [t("coachees.export.sessionLimit")]: c.session_limit,
+    [t("coachees.export.programme")]: c.programme_name || "",
+    [t("coachees.export.cohort")]: c.cohort_name || "",
+    [t("coachees.export.selectedCoaches")]: c.selected_coaches.map((s) => s.name).join("; "),
   }));
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Coachees");
+  XLSX.utils.book_append_sheet(wb, ws, t("coachees.export.sheetName"));
   XLSX.writeFile(wb, `coachees-${format(new Date(), "yyyyMMdd")}.xlsx`);
 }

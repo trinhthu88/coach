@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/context/AuthContext";
@@ -7,29 +8,34 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Loader2, Plus, Save, X } from "lucide-react";
 import { toast } from "sonner";
+import type { TFunction } from "i18next";
 import { WheelRadar, domainsToSeries, WheelDomain } from "./WheelRadar";
 
 const MIN_DOMAINS = 3;
 const MAX_DOMAINS = 10;
 
-const DEFAULT_LABELS = [
-  "Career",
-  "Finances",
-  "Health",
-  "Relationships",
-  "Personal Growth",
-  "Fun & Recreation",
-  "Physical Environment",
-  "Family",
-];
+const DEFAULT_LABEL_KEYS = [
+  "career",
+  "finances",
+  "health",
+  "relationships",
+  "personalGrowth",
+  "funRecreation",
+  "physicalEnvironment",
+  "family",
+] as const;
 
 const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `d${Math.random().toString(36).slice(2, 10)}`;
 
-const defaultDomains = (): WheelDomain[] =>
-  DEFAULT_LABELS.map((label) => ({ id: newId(), label, rating: 5 }));
+const defaultDomains = (t: TFunction<"tools">): WheelDomain[] =>
+  DEFAULT_LABEL_KEYS.map((key) => ({
+    id: newId(),
+    label: t(`wheelOfLife.defaultLabels.${key}`),
+    rating: 5,
+  }));
 
 export function WheelOfLife({
   sessionId,
@@ -38,8 +44,9 @@ export function WheelOfLife({
   sessionId?: string;
   peerSessionId?: string;
 }) {
+  const { t } = useTranslation("tools");
   const { user } = useAuth();
-  const [domains, setDomains] = useState<WheelDomain[]>(defaultDomains);
+  const [domains, setDomains] = useState<WheelDomain[]>(() => defaultDomains(t));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rowId, setRowId] = useState<string | null>(null);
@@ -92,13 +99,13 @@ export function WheelOfLife({
     setDomains((prev) =>
       prev.length >= MAX_DOMAINS
         ? prev
-        : [...prev, { id: newId(), label: "New domain", rating: 5 }]
+        : [...prev, { id: newId(), label: t("wheelOfLife.newDomainLabel"), rating: 5 }]
     );
 
   const save = async () => {
     if (!user) return;
     if (domains.some((d) => !d.label.trim())) {
-      toast.error("Every domain needs a label");
+      toast.error(t("wheelOfLife.toast.labelRequired"));
       return;
     }
     setSaving(true);
@@ -123,7 +130,7 @@ export function WheelOfLife({
       return;
     }
     if (data?.id) setRowId(data.id);
-    toast.success("Wheel of Life saved");
+    toast.success(t("wheelOfLife.toast.saved"));
   };
 
   if (loading) {
@@ -147,15 +154,15 @@ export function WheelOfLife({
       <div className="rounded-[20px] border border-border bg-card p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="eyebrow text-primary">Life balance snapshot</p>
+            <p className="eyebrow text-primary">{t("wheelOfLife.snapshotEyebrow")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Rate each domain 0–10 · the shape shows where energy is missing.
+              {t("wheelOfLife.snapshotHint")}
             </p>
           </div>
           <div className="flex gap-6">
             <div className="text-right">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                Average
+                {t("wheelOfLife.average")}
               </p>
               <p className="font-display text-3xl font-light leading-none text-foreground">
                 {avg.toFixed(1)}
@@ -164,7 +171,7 @@ export function WheelOfLife({
             {lowest && (
               <div className="text-right">
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                  Lowest
+                  {t("wheelOfLife.lowest")}
                 </p>
                 <p className="max-w-[9rem] truncate text-sm font-semibold text-accent">
                   {lowest.label} · {lowest.rating}
@@ -177,12 +184,12 @@ export function WheelOfLife({
         {domains.length >= MIN_DOMAINS ? (
           <WheelRadar
             axes={domains.map((d) => d.label)}
-            series={[domainsToSeries(domains, "now", "Current", true)]}
+            series={[domainsToSeries(domains, "now", t("wheelOfLife.currentSeriesName"), true)]}
             height={380}
           />
         ) : (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            Add at least {MIN_DOMAINS} domains to see the wheel.
+            {t("wheelOfLife.needMoreDomains", { count: MIN_DOMAINS })}
           </p>
         )}
       </div>
@@ -190,9 +197,9 @@ export function WheelOfLife({
       {/* Domain editor */}
       <div className="rounded-[20px] border border-border bg-card p-4 sm:p-6">
         <div className="mb-4 flex items-center justify-between">
-          <p className="eyebrow text-primary">Domains</p>
+          <p className="eyebrow text-primary">{t("wheelOfLife.domainsEyebrow")}</p>
           <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-            {domains.length} of {MAX_DOMAINS}
+            {t("wheelOfLife.domainCount", { count: domains.length, max: MAX_DOMAINS })}
           </span>
         </div>
 
@@ -207,7 +214,7 @@ export function WheelOfLife({
                   value={d.label}
                   onChange={(e) => update(d.id, { label: e.target.value })}
                   className="h-7 flex-1 border-0 bg-transparent px-0 text-sm font-semibold shadow-none focus-visible:ring-0"
-                  placeholder="Domain name"
+                  placeholder={t("wheelOfLife.domainNamePlaceholder")}
                 />
                 <span className="grid h-7 w-9 shrink-0 place-items-center rounded-full bg-primary-soft text-xs font-bold tabular-nums text-primary">
                   {d.rating}
@@ -217,7 +224,7 @@ export function WheelOfLife({
                   onClick={() => remove(d.id)}
                   disabled={domains.length <= MIN_DOMAINS}
                   className="text-muted-foreground opacity-60 transition-opacity hover:text-destructive disabled:opacity-0 sm:opacity-0 sm:hover:opacity-100 sm:group-hover:opacity-100 sm:disabled:opacity-0"
-                  aria-label={`Remove ${d.label}`}
+                  aria-label={t("wheelOfLife.removeAria", { label: d.label })}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -229,7 +236,7 @@ export function WheelOfLife({
                 max={10}
                 step={1}
                 onValueChange={([v]) => update(d.id, { rating: v })}
-                aria-label={`${d.label} rating`}
+                aria-label={t("wheelOfLife.ratingAria", { label: d.label })}
               />
             </li>
           ))}
@@ -244,7 +251,7 @@ export function WheelOfLife({
             onClick={add}
             disabled={domains.length >= MAX_DOMAINS}
           >
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add domain
+            <Plus className="mr-1 h-3.5 w-3.5" /> {t("wheelOfLife.addDomain")}
           </Button>
           <Button
             type="button"
@@ -258,7 +265,7 @@ export function WheelOfLife({
             ) : (
               <Save className="mr-1 h-3.5 w-3.5" />
             )}
-            Save wheel
+            {t("wheelOfLife.saveWheel")}
           </Button>
         </div>
       </div>

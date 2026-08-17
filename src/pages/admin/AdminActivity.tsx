@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Loader2, Calendar, MessagesSquare, UserPlus, Star } from "lucide-react";
@@ -51,6 +52,7 @@ interface MilestoneActivityRow {
 }
 
 export default function AdminActivity() {
+  const { t } = useTranslation("admin");
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,8 +79,8 @@ export default function AdminActivity() {
           list.push({
             id: `s-${s.id}`,
             kind: "session",
-            title: `Session "${s.topic}" completed`,
-            sub: `${profById.get(s.coach_id) || "Coach"} → ${profById.get(s.coachee_id) || "Coachee"}${s.coachee_rating ? ` · ${s.coachee_rating}/5` : ""}`,
+            title: t("activity.sessionCompleted", { topic: s.topic }),
+            sub: `${profById.get(s.coach_id) || t("activity.defaultCoach")} → ${profById.get(s.coachee_id) || t("activity.defaultCoachee")}${s.coachee_rating ? ` · ${s.coachee_rating}/5` : ""}`,
             at: new Date(s.updated_at || s.start_time),
           });
         }
@@ -88,8 +90,8 @@ export default function AdminActivity() {
           list.push({
             id: `p-${s.id}`,
             kind: "peer",
-            title: `Peer session "${s.topic}"`,
-            sub: `${profById.get(s.peer_coach_id) || "Peer coach"} → ${profById.get(s.peer_coachee_id) || "Peer coachee"}`,
+            title: t("activity.peerSessionTitle", { topic: s.topic }),
+            sub: `${profById.get(s.peer_coach_id) || t("activity.defaultPeerCoach")} → ${profById.get(s.peer_coachee_id) || t("activity.defaultPeerCoachee")}`,
             at: new Date(s.updated_at || s.start_time),
           });
         }
@@ -99,8 +101,8 @@ export default function AdminActivity() {
           list.push({
             id: `u-${p.id}`,
             kind: "coachee",
-            title: `${p.full_name} joined`,
-            sub: "New active member",
+            title: t("activity.joined", { name: p.full_name }),
+            sub: t("activity.newActiveMember"),
             at: new Date(p.created_at),
           });
         }
@@ -109,8 +111,8 @@ export default function AdminActivity() {
         list.push({
           id: `m-${m.id}`,
           kind: "milestone",
-          title: `Milestone "${m.title}" completed`,
-          sub: profById.get(m.coachee_id) || "Coachee",
+          title: t("activity.milestoneCompleted", { title: m.title }),
+          sub: profById.get(m.coachee_id) || t("activity.defaultCoachee"),
           at: new Date(m.done_at || Date.now()),
         });
       });
@@ -136,11 +138,11 @@ export default function AdminActivity() {
 
   return (
     <div>
-      <AdminPageHeader title="Activity" emphasize="feed" subtitle="Everything happening across the platform." />
+      <AdminPageHeader title={t("activity.title")} emphasize={t("activity.titleEmphasis")} subtitle={t("activity.subtitle")} />
 
       <Card className="p-4">
         {items.length === 0 ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">No recent activity.</p>
+          <p className="py-12 text-center text-sm text-muted-foreground">{t("activity.noRecentActivity")}</p>
         ) : (
           <ul className="divide-y">
             {items.map((it) => {

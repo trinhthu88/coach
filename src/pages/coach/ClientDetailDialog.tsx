@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { format, isBefore } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export function ClientDetailDialog({
   onRemoved: () => void;
   removeClient: (coacheeId: string) => Promise<boolean>;
 }) {
+  const { t } = useTranslation("dashboard");
   const {
     profile,
     coacheeProfile,
@@ -80,36 +82,35 @@ export function ClientDetailDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="sr-only">{profile?.full_name || "Client"}</DialogTitle>
+          <DialogTitle className="sr-only">{profile?.full_name || t("clients.detail.defaultName")}</DialogTitle>
         </DialogHeader>
 
         <div className="mb-2 flex items-center justify-between">
           <button onClick={onClose} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-            <ArrowLeft className="h-3 w-3" /> Back to overview
+            <ArrowLeft className="h-3 w-3" /> {t("clients.detail.backToOverview")}
           </button>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
-                <UserMinus className="h-3.5 w-3.5" /> Remove client
+                <UserMinus className="h-3.5 w-3.5" /> {t("clients.detail.removeClient")}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Remove {profile?.full_name || "this client"}?</AlertDialogTitle>
+                <AlertDialogTitle>{t("clients.detail.removeConfirmTitle", { name: profile?.full_name || t("clients.detail.removeConfirmDefaultName") })}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  They'll lose access to book new sessions or message you. Past sessions, notes, and history
-                  are kept — this isn't a delete, and you can be re-assigned to them again later if needed.
+                  {t("clients.detail.removeConfirmBody")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={removing}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel disabled={removing}>{t("clients.detail.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={confirmRemove}
                   disabled={removing}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {removing ? "Removing…" : "Remove client"}
+                  {removing ? t("clients.detail.removing") : t("clients.detail.removeClient")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -133,29 +134,29 @@ export function ClientDetailDialog({
             </p>
             {coacheeProfile?.goals && (
               <p className="mt-2 rounded-lg border bg-muted/30 p-2 text-xs">
-                <span className="font-semibold">Stated goals:</span> {coacheeProfile.goals}
+                <span className="font-semibold">{t("clients.detail.statedGoals")}</span> {coacheeProfile.goals}
               </p>
             )}
           </div>
           <div className="hidden grid-cols-3 gap-2 md:grid">
-            <MiniMetric label="Overall" value={`${overallPct}%`} />
-            <MiniMetric label="Overdue" value={String(overdue.length)} tone={overdue.length ? "danger" : undefined} />
-            <MiniMetric label="Next" value={upcoming[0] ? format(new Date(upcoming[upcoming.length - 1].start_time), "MMM d") : "—"} />
+            <MiniMetric label={t("clients.detail.miniMetrics.overall")} value={`${overallPct}%`} />
+            <MiniMetric label={t("clients.detail.miniMetrics.overdue")} value={String(overdue.length)} tone={overdue.length ? "danger" : undefined} />
+            <MiniMetric label={t("clients.detail.miniMetrics.next")} value={upcoming[0] ? format(new Date(upcoming[upcoming.length - 1].start_time), "MMM d") : "—"} />
           </div>
         </div>
 
         <Tabs defaultValue="goals">
           <TabsList>
-            <TabsTrigger value="goals">Goals & milestones</TabsTrigger>
-            <TabsTrigger value="actions">Action items ({allActions.length})</TabsTrigger>
-            <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
-            <TabsTrigger value="notes">Coach notes ({notes.length})</TabsTrigger>
+            <TabsTrigger value="goals">{t("clients.detail.tabs.goals")}</TabsTrigger>
+            <TabsTrigger value="actions">{t("clients.detail.tabs.actions", { count: allActions.length })}</TabsTrigger>
+            <TabsTrigger value="sessions">{t("clients.detail.tabs.sessions", { count: sessions.length })}</TabsTrigger>
+            <TabsTrigger value="notes">{t("clients.detail.tabs.notes", { count: notes.length })}</TabsTrigger>
           </TabsList>
 
           {/* GOALS */}
           <TabsContent value="goals" className="mt-4 space-y-4">
             {goals.length === 0 ? (
-              <p className="text-sm text-muted-foreground">This coachee hasn't set goals yet.</p>
+              <p className="text-sm text-muted-foreground">{t("clients.detail.noGoalsYet")}</p>
             ) : (
               goals.map((g, gi) => {
                 const ms = milestones.filter((m) => m.goal_id === g.id);
@@ -188,10 +189,10 @@ export function ClientDetailDialog({
                               </p>
                               <p className="text-[10px] text-muted-foreground">
                                 {m.is_done && m.done_at
-                                  ? `Done ${format(new Date(m.done_at), "MMM d")}`
+                                  ? t("clients.detail.doneOn", { date: format(new Date(m.done_at), "MMM d") })
                                   : m.target_date
-                                  ? `Target ${format(new Date(m.target_date), "MMM d")}`
-                                  : "No target"}
+                                  ? t("clients.detail.targetOn", { date: format(new Date(m.target_date), "MMM d") })
+                                  : t("clients.detail.noTarget")}
                               </p>
                             </div>
                           </li>
@@ -207,12 +208,12 @@ export function ClientDetailDialog({
           {/* ACTIONS */}
           <TabsContent value="actions" className="mt-4">
             {allActions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No action items assigned yet.</p>
+              <p className="text-sm text-muted-foreground">{t("clients.detail.noActionsYet")}</p>
             ) : (
               <div className="space-y-4">
-                <ActionGroup title="Overdue" tone="danger" items={overdue} labelFor={labelFor} />
-                <ActionGroup title="Due this week" items={dueWeek} labelFor={labelFor} />
-                <ActionGroup title="Completed" items={completed} labelFor={labelFor} />
+                <ActionGroup title={t("actionGroups.overdue", { ns: "journey" })} tone="danger" items={overdue} labelFor={labelFor} />
+                <ActionGroup title={t("actionGroups.dueThisWeek", { ns: "journey" })} items={dueWeek} labelFor={labelFor} />
+                <ActionGroup title={t("actionGroups.completed", { ns: "journey" })} items={completed} labelFor={labelFor} />
               </div>
             )}
           </TabsContent>
@@ -221,10 +222,10 @@ export function ClientDetailDialog({
           <TabsContent value="sessions" className="mt-4 space-y-4">
             <div>
               <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Upcoming · {upcoming.length}
+                {t("clients.detail.upcomingCount", { count: upcoming.length })}
               </p>
               {upcoming.length === 0 ? (
-                <p className="text-sm text-muted-foreground">None scheduled.</p>
+                <p className="text-sm text-muted-foreground">{t("clients.detail.noneScheduled")}</p>
               ) : (
                 <div className="space-y-2">
                   {upcoming.map((s) => (
@@ -235,10 +236,10 @@ export function ClientDetailDialog({
             </div>
             <div>
               <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Past · {past.length}
+                {t("clients.detail.pastCount", { count: past.length })}
               </p>
               {past.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No past sessions.</p>
+                <p className="text-sm text-muted-foreground">{t("clients.detail.noPastSessions")}</p>
               ) : (
                 <div className="space-y-2">
                   {past.map((s) => (
@@ -252,23 +253,23 @@ export function ClientDetailDialog({
           {/* NOTES */}
           <TabsContent value="notes" className="mt-4 space-y-3">
             <p className="text-xs text-muted-foreground">
-              Private notes visible only to you. Use to track patterns and coaching strategy.
+              {t("clients.detail.notesIntro")}
             </p>
             <Card className="space-y-2 p-3">
               <Textarea
-                placeholder="Your private observations about this coachee…"
+                placeholder={t("clients.detail.notePlaceholder")}
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 rows={3}
               />
               <div className="flex justify-end">
                 <Button onClick={submitNote} disabled={saving || !newNote.trim()} size="sm">
-                  <StickyNote className="mr-1 h-4 w-4" /> Add note
+                  <StickyNote className="mr-1 h-4 w-4" /> {t("clients.detail.addNote")}
                 </Button>
               </div>
             </Card>
             {notes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No notes yet.</p>
+              <p className="text-sm text-muted-foreground">{t("clients.detail.noNotesYet")}</p>
             ) : (
               <div className="space-y-2">
                 {notes.map((n) => (
@@ -278,7 +279,7 @@ export function ClientDetailDialog({
                       <button
                         onClick={() => deleteNote(n.id)}
                         className="-m-2 shrink-0 rounded-md p-2 text-muted-foreground hover:text-destructive"
-                        aria-label="Delete note"
+                        aria-label={t("clients.detail.deleteNote")}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -317,6 +318,7 @@ function ActionGroup({
   items: FlatClientAction[];
   labelFor: (mid?: string | null) => string | undefined;
 }) {
+  const { t } = useTranslation("dashboard");
   if (!items.length) return null;
   return (
     <div>
@@ -349,7 +351,7 @@ function ActionGroup({
                 <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px]">
                   {a.item.due_date && (
                     <span className={cn(overdue ? "font-medium text-destructive" : "text-muted-foreground")}>
-                      {a.item.done ? "Done" : overdue ? "Overdue" : "Due"} {format(new Date(a.item.due_date), "MMM d")}
+                      {a.item.done ? t("actionRow.done", { ns: "journey" }) : overdue ? t("actionRow.overdue", { ns: "journey" }) : t("actionRow.due", { ns: "journey" })} {format(new Date(a.item.due_date), "MMM d")}
                     </span>
                   )}
                   {lbl && <span className="text-primary">· {lbl}</span>}
@@ -367,6 +369,7 @@ function ActionGroup({
 }
 
 function SessionRow({ s, showRating }: { s: Tables<"sessions">; showRating?: boolean }) {
+  const { t } = useTranslation("dashboard");
   const d = new Date(s.start_time);
   return (
     <Link to={`/sessions/${s.id}`} className="block rounded-lg border p-3 text-sm transition hover:border-primary/40">
@@ -387,7 +390,7 @@ function SessionRow({ s, showRating }: { s: Tables<"sessions">; showRating?: boo
             <p className="mt-1 text-[11px] text-warning">
               {"★".repeat(s.coachee_rating)}
               {"☆".repeat(5 - s.coachee_rating)}{" "}
-              <span className="text-muted-foreground">— rated by coachee</span>
+              <span className="text-muted-foreground">{t("clients.detail.ratedByCoachee")}</span>
             </p>
           )}
           {showRating && s.coachee_rating_comment && (

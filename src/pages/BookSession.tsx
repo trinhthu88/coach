@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -63,6 +64,7 @@ function dateKey(d: Date) {
 }
 
 export default function BookSession() {
+  const { t } = useTranslation("sessions");
   const { coachId } = useParams<{ coachId: string }>();
   const [searchParams] = useSearchParams();
   const mode = (searchParams.get("mode") === "peer" ? "peer" : "coaching") as "peer" | "coaching";
@@ -291,24 +293,22 @@ export default function BookSession() {
       if ((error as { code?: string }).code === "23505") {
         setSlots((prev) => prev.filter((s) => s.id !== opt.slotId));
         setSelectedStart(null);
-        toast.error("That time was just booked by someone else. Please pick another slot.");
+        toast.error(t("bookSession.toast.slotTaken"));
         return;
       }
       // Belt-and-suspenders: the pre-submit eligible check above should already have
       // caught this, but eligibility can change between that check and submit (e.g. an
       // admin edits the allowlist mid-session). 42501 = RLS policy rejection.
       if ((error as { code?: string }).code === "42501") {
-        toast.error(
-          "You're not able to book this session right now — your access to this coach or your session limit may have changed. Please refresh and try again."
-        );
+        toast.error(t("bookSession.toast.notEligible"));
         return;
       }
       return toast.error(error.message);
     }
     toast.success(
       mode === "peer"
-        ? "Peer session requested. Awaiting peer coach confirmation."
-        : "Session requested. Awaiting coach confirmation."
+        ? t("bookSession.toast.successPeer")
+        : t("bookSession.toast.successCoaching")
     );
     navigate("/sessions");
   };
@@ -323,12 +323,12 @@ export default function BookSession() {
   if (loadError) {
     return (
       <Card className="p-12 text-center">
-        <h2 className="text-xl font-semibold">Couldn't load this page</h2>
+        <h2 className="text-xl font-semibold">{t("bookSession.loadError.title")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong while loading the coach's availability. Please try again.
+          {t("bookSession.loadError.body")}
         </p>
         <Button variant="outline" className="mt-6" onClick={() => setRetryKey((k) => k + 1)}>
-          Try again
+          {t("bookSession.loadError.retry")}
         </Button>
       </Card>
     );
@@ -336,9 +336,9 @@ export default function BookSession() {
   if (!coach) {
     return (
       <Card className="p-12 text-center">
-        <h2 className="text-xl font-semibold">Coach not found</h2>
+        <h2 className="text-xl font-semibold">{t("bookSession.coachNotFound.title")}</h2>
         <Button asChild variant="outline" className="mt-6">
-          <Link to="/coaches">Back to coaches</Link>
+          <Link to="/coaches">{t("bookSession.coachNotFound.backToCoaches")}</Link>
         </Button>
       </Card>
     );
@@ -357,7 +357,7 @@ export default function BookSession() {
         to={`/coaches/${coach.id}`}
         className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
       >
-        <ChevronLeft className="h-4 w-4" /> Back to coach
+        <ChevronLeft className="h-4 w-4" /> {t("bookSession.backToCoach")}
       </Link>
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -376,11 +376,11 @@ export default function BookSession() {
           </div>
           <div>
             <h2 className="text-xl font-semibold tracking-tight">{coach.profiles?.full_name}</h2>
-            <p className="text-sm font-medium text-primary">{coach.title || "Coach"}</p>
+            <p className="text-sm font-medium text-primary">{coach.title || t("bookSession.coachSummary.defaultTitle")}</p>
           </div>
           <div className="grid grid-cols-3 gap-2 border-y py-4">
             <MiniStat
-              label="Rating"
+              label={t("bookSession.coachSummary.ratingLabel")}
               value={
                 <span className="inline-flex items-center gap-1">
                   <Star className="h-3.5 w-3.5 fill-warning text-warning" />
@@ -388,25 +388,25 @@ export default function BookSession() {
                 </span>
               }
             />
-            <MiniStat label="Experience" value={`${coach.years_experience ?? 0} yrs`} />
-            <MiniStat label="Sessions" value={String(coach.sessions_completed)} />
+            <MiniStat label={t("bookSession.coachSummary.experienceLabel")} value={t("bookSession.coachSummary.experienceValue", { years: coach.years_experience ?? 0 })} />
+            <MiniStat label={t("bookSession.coachSummary.sessionsLabel")} value={String(coach.sessions_completed)} />
           </div>
           {coach.country_based && (
             <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Globe className="h-4 w-4 text-primary" />
-              {coach.nationality ? `${coach.nationality} (Based in ${coach.country_based})` : coach.country_based}
+              {coach.nationality ? t("bookSession.coachSummary.basedIn", { nationality: coach.nationality, country: coach.country_based }) : coach.country_based}
             </p>
           )}
           <Badge className="bg-success/10 text-success hover:bg-success/10">
-            <ShieldCheck className="mr-1 h-3 w-3" /> Verified expert
+            <ShieldCheck className="mr-1 h-3 w-3" /> {t("bookSession.coachSummary.verifiedExpert")}
           </Badge>
           {usage && (
             <div className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 text-xs">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
-                You've used <strong>{usage.used_this_month}</strong> of your{" "}
-                <strong>{usage.monthly_limit === null ? "unlimited" : usage.monthly_limit}</strong>{" "}
-                {mode === "peer" ? "peer coaching" : "coaching"} sessions this month.
+                {t("bookSession.coachSummary.usagePrefix")} <strong>{usage.used_this_month}</strong> {t("bookSession.coachSummary.usageOfYour")}{" "}
+                <strong>{usage.monthly_limit === null ? t("bookSession.coachSummary.unlimited") : usage.monthly_limit}</strong>{" "}
+                {mode === "peer" ? t("bookSession.modeWord.peer") : t("bookSession.modeWord.coaching")} {t("bookSession.coachSummary.usageSuffix")}
               </span>
             </div>
           )}
@@ -417,16 +417,16 @@ export default function BookSession() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="font-display text-[1.9rem] leading-[1.1] tracking-tight">
-                {mode === "peer" ? "Book a peer coaching session" : "Book your session"}
+                {mode === "peer" ? t("bookSession.title.peer") : t("bookSession.title.coaching")}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {mode === "peer"
-                  ? "You're booking a peer session — to be coached by another coach."
-                  : "Select your preferred duration and time to get started."}
+                  ? t("bookSession.subtitle.peer")
+                  : t("bookSession.subtitle.coaching")}
               </p>
             </div>
             {mode === "peer" && (
-              <Badge className="bg-success/15 text-success hover:bg-success/15">Peer</Badge>
+              <Badge className="bg-success/15 text-success hover:bg-success/15">{t("bookSession.peerBadge")}</Badge>
             )}
           </div>
 
@@ -434,20 +434,18 @@ export default function BookSession() {
             <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
-                You've used all {usage?.monthly_limit} of your free{" "}
-                {mode === "peer" ? "peer coaching" : "coaching"} sessions. Paid plans with more
-                sessions are coming soon — reach out to{" "}
+                {t("bookSession.freePlanNotice.prefix", { limit: usage?.monthly_limit, modeWord: mode === "peer" ? t("bookSession.modeWord.peer") : t("bookSession.modeWord.coaching") })}{" "}
                 <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold underline">
                   {CONTACT_EMAIL}
                 </a>{" "}
-                if you'd like to discuss options.
+                {t("bookSession.freePlanNotice.suffix")}
               </span>
             </div>
           ) : (
             overLimit && (
               <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4" />
-                Session limit reached ({usage?.used_this_month}/{usage?.monthly_limit} completed). You can't book another session.
+                {t("bookSession.limitReached", { used: usage?.used_this_month, limit: usage?.monthly_limit })}
               </div>
             )
           )}
@@ -455,12 +453,11 @@ export default function BookSession() {
           {ineligibleForOtherReason && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
-              You're not currently eligible to book this coach. Your access may have changed —
-              please contact your admin if this seems wrong.
+              {t("bookSession.ineligible")}
             </div>
           )}
 
-          <Step number={1} label="Select duration">
+          <Step number={1} label={t("bookSession.steps.duration")}>
             <div className="mt-3 grid grid-cols-3 gap-3">
               {DURATIONS.map((d) => (
                 <button
@@ -475,13 +472,13 @@ export default function BookSession() {
                       : "border-border bg-card hover:border-primary/40"
                   )}
                 >
-                  {d} Minutes
+                  {t("bookSession.steps.durationOption", { n: d })}
                 </button>
               ))}
             </div>
           </Step>
 
-          <Step number={2} label="Select date">
+          <Step number={2} label={t("bookSession.steps.date")}>
             <div className="mt-3 flex items-center gap-2">
               <Button
                 type="button"
@@ -538,13 +535,13 @@ export default function BookSession() {
 
           <Step
             number={3}
-            label={`Select time (${Intl.DateTimeFormat().resolvedOptions().timeZone})`}
+            label={t("bookSession.steps.time", { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
           >
             {!selectedDate ? (
-              <p className="mt-3 text-sm text-muted-foreground">Pick a date above to see times.</p>
+              <p className="mt-3 text-sm text-muted-foreground">{t("bookSession.pickDatePrompt")}</p>
             ) : startOptions.length === 0 ? (
               <p className="mt-3 text-sm text-muted-foreground">
-                No {duration}-minute window available on this day.
+                {t("bookSession.noWindowAvailable", { duration })}
               </p>
             ) : (
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -573,13 +570,13 @@ export default function BookSession() {
               htmlFor="topic"
               className="text-xs font-bold uppercase tracking-widest text-muted-foreground"
             >
-              Coaching topic
+              {t("bookSession.topicLabel")}
             </Label>
             <Textarea
               id="topic"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="What would you like to focus on in this session?"
+              placeholder={t("bookSession.topicPlaceholder")}
               className="mt-2"
               rows={3}
             />
@@ -588,14 +585,14 @@ export default function BookSession() {
           <div className="flex flex-col items-start justify-between gap-3 border-t pt-4 sm:flex-row sm:items-center">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Selected schedule
+                {t("bookSession.selectedScheduleLabel")}
               </p>
               <p className="mt-1 flex items-center gap-2 font-semibold">
                 {selectedDate && selectedStart
                   ? `${format(selectedDate, "EEE, MMM d")} · ${fmtTime(selectedStart)}`
-                  : "Select a time slot"}
+                  : t("bookSession.selectATimeSlot")}
                 <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-success">
-                  {duration} min
+                  {t("bookSession.durationBadge", { n: duration })}
                 </span>
               </p>
             </div>
@@ -610,7 +607,7 @@ export default function BookSession() {
               ) : (
                 <ChevronRightCircle className="mr-1 h-4 w-4" />
               )}
-              Confirm Booking
+              {t("bookSession.confirmButton")}
             </Button>
           </div>
         </Card>

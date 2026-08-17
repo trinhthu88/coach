@@ -1,0 +1,63 @@
+{
+  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "growWorksheet": {
+    "fields": {
+      "goal": { "title": "Mục tiêu", "prompt": "Bạn muốn đạt được điều gì?" },
+      "reality": { "title": "Thực tế", "prompt": "Tình hình hiện tại là gì?" },
+      "options": { "title": "Lựa chọn", "prompt": "Có những lựa chọn nào?" },
+      "will": { "title": "Cam kết", "prompt": "Bạn sẽ cam kết điều gì?" }
+    },
+    "saveWorksheet": "Lưu phiếu GROW",
+    "commitments": "Cam kết",
+    "commitmentsHint": "Bất cứ điều gì bạn thêm vào đây sẽ trở thành một hành động đã thống nhất trong session này.",
+    "commitmentPlaceholder": "Tôi sẽ…",
+    "addCommitment": "Thêm cam kết",
+    "toast": {
+      "saved": "Đã lưu phiếu GROW",
+      "loadActionItemsFailed": "Không thể tải hành động cần làm",
+      "commitmentAdded": "Đã thêm cam kết vào hành động cần làm"
+    }
+  },
+  "sessionToolbox": {
+    "tools": {
+      "wheelOfLife": { "label": "Bánh xe cuộc sống", "blurb": "Đánh giá các lĩnh vực cuộc sống và phát hiện sự mất cân bằng" },
+      "growWorksheet": { "label": "Phiếu GROW", "blurb": "Mục tiêu · Thực tế · Lựa chọn · Cam kết" }
+    }
+  },
+  "wheelHistory": {
+    "title": "Bánh xe cuộc sống",
+    "latestSeries": "Gần nhất · {{date}}",
+    "previousSeries": "Trước đó · {{date}}",
+    "tooDifferentNote": "Các lĩnh vực thay đổi quá nhiều giữa các session để so sánh trực tiếp — chỉ hiển thị bánh xe gần nhất của bạn."
+  },
+  "wheelOfLife": {
+    "defaultLabels": {
+      "career": "Sự nghiệp",
+      "finances": "Tài chính",
+      "health": "Sức khỏe",
+      "relationships": "Các mối quan hệ",
+      "personalGrowth": "Phát triển bản thân",
+      "funRecreation": "Giải trí",
+      "physicalEnvironment": "Môi trường sống",
+      "family": "Gia đình"
+    },
+    "newDomainLabel": "Lĩnh vực mới",
+    "snapshotEyebrow": "Bức tranh tổng thể về cân bằng cuộc sống",
+    "snapshotHint": "Đánh giá mỗi lĩnh vực từ 0–10 · hình dạng cho thấy nơi đang thiếu năng lượng.",
+    "average": "Trung bình",
+    "lowest": "Thấp nhất",
+    "currentSeriesName": "Hiện tại",
+    "needMoreDomains": "Thêm ít nhất {{count}} lĩnh vực để xem bánh xe.",
+    "domainsEyebrow": "Các lĩnh vực",
+    "domainCount": "{{count}} / {{max}}",
+    "domainNamePlaceholder": "Tên lĩnh vực",
+    "removeAria": "Xóa {{label}}",
+    "ratingAria": "Mức đánh giá {{label}}",
+    "addDomain": "Thêm lĩnh vực",
+    "saveWheel": "Lưu bánh xe",
+    "toast": {
+      "labelRequired": "Mỗi lĩnh vực cần có tên",
+      "saved": "Đã lưu Bánh xe cuộc sống"
+    }
+  }
+}

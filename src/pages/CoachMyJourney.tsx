@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
@@ -52,6 +53,7 @@ function Metric({
 }
 
 export default function CoachMyJourney() {
+  const { t } = useTranslation("journey");
   const { user } = useAuth();
   const goalsApi = useJourneyGoals(user?.id);
   const ratingsApi = useJourneyRatings(user?.id);
@@ -130,29 +132,29 @@ export default function CoachMyJourney() {
     <div className="space-y-6">
       <PageHeader
           className="mb-0"
-          eyebrow="Progress"
-          title="My"
-          emphasis="journey"
-          subtitle="Your growth as a coachee — across coaching and peer sessions you receive."
+          eyebrow={t("journeyPage.eyebrow")}
+          title={t("journeyPage.titleLead")}
+          emphasis={t("journeyPage.titleEmphasis")}
+          subtitle={t("coachMyJourney.subtitle")}
         />
 
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label="Overall progress" value={`${overallPct}%`} sub={`across ${goals.length} goal${goals.length === 1 ? "" : "s"}`} />
-        <Metric label="Actions done" value={String(aiDone)} sub={aiOverdue ? `${aiOverdue} overdue` : `of ${aiTotal} total`} subClass={aiOverdue ? "text-destructive" : ""} />
+        <Metric label={t("coachMyJourney.metrics.overallProgress")} value={`${overallPct}%`} sub={t("coachMyJourney.metrics.overallProgressSub", { count: goals.length })} />
+        <Metric label={t("coachMyJourney.metrics.actionsDone")} value={String(aiDone)} sub={aiOverdue ? t("coachMyJourney.metrics.actionsDoneSubOverdue", { count: aiOverdue }) : t("coachMyJourney.metrics.actionsDoneSubTotal", { count: aiTotal })} subClass={aiOverdue ? "text-destructive" : ""} />
         <Metric
-          label="Sessions received"
+          label={t("coachMyJourney.metrics.sessionsReceived")}
           value={
             usage
               ? `${sessions.filter((s) => s.status === "completed").length} / ${usage.monthly_limit}`
               : `${sessions.filter((s) => s.status === "completed").length}`
           }
-          sub={`${upcoming.length} upcoming`}
+          sub={t("coachMyJourney.metrics.sessionsReceivedSub", { count: upcoming.length })}
         />
         <Metric
-          label="Next session"
+          label={t("coachMyJourney.metrics.nextSession")}
           value={nextSession ? format(new Date(nextSession.start_time), "MMM d") : "—"}
-          sub={nextSession ? format(new Date(nextSession.start_time), "p") : "Nothing scheduled"}
+          sub={nextSession ? format(new Date(nextSession.start_time), "p") : t("coachMyJourney.metrics.nothingScheduled")}
         />
       </div>
 
@@ -167,11 +169,11 @@ export default function CoachMyJourney() {
 
       <Tabs defaultValue="home">
         <TabsList>
-          <TabsTrigger value="home">Overview</TabsTrigger>
-          <TabsTrigger value="goals">Goals & milestones</TabsTrigger>
-          <TabsTrigger value="actions">Action items ({aiTotal})</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
-          <TabsTrigger value="reflections">Reflections ({reflections.length})</TabsTrigger>
+          <TabsTrigger value="home">{t("journeyPage.tabs.overview")}</TabsTrigger>
+          <TabsTrigger value="goals">{t("journeyPage.tabs.goals")}</TabsTrigger>
+          <TabsTrigger value="actions">{t("journeyPage.tabs.actions", { count: aiTotal })}</TabsTrigger>
+          <TabsTrigger value="sessions">{t("journeyPage.tabs.sessions", { count: sessions.length })}</TabsTrigger>
+          <TabsTrigger value="reflections">{t("journeyPage.tabs.reflections", { count: reflections.length })}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="home" className="mt-4 space-y-6">
@@ -181,10 +183,10 @@ export default function CoachMyJourney() {
               <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div className="flex-1">
                 <p className="font-semibold text-primary">
-                  Reflection time — rate your goals after this session
+                  {t("journeyPage.reflectionBanner.title")}
                 </p>
                 <p className="text-xs text-primary/80">
-                  Open <Link to={`/sessions/${pendingReflectionSession.id}`} className="font-semibold underline">{pendingReflectionSession.topic}</Link> ({format(new Date(pendingReflectionSession.start_time), "MMM d")}) to log a 0–100 self-rating per goal. Each reflection becomes a new layer on the wheel.
+                  {t("journeyPage.reflectionBanner.openPrefix")} <Link to={`/sessions/${pendingReflectionSession.id}`} className="font-semibold underline">{pendingReflectionSession.topic}</Link> {t("journeyPage.reflectionBanner.afterLinkPrefix")}{format(new Date(pendingReflectionSession.start_time), "MMM d")}{t("journeyPage.reflectionBanner.afterLinkSuffix")}
                 </p>
               </div>
             </div>
@@ -199,11 +201,11 @@ export default function CoachMyJourney() {
           )}
 
           <SectionHeader
-            title="Goals & milestones"
+            title={t("journeyPage.tabs.goals")}
             action={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} /> : undefined}
           />
           {goals.length === 0 ? (
-            <EmptyGoals onAdd={goalsApi.addGoal} description="Define what you want to achieve in your own coaching journey." />
+            <EmptyGoals onAdd={goalsApi.addGoal} description={t("coachMyJourney.emptyGoalsDescription")} />
           ) : (
             <div className="space-y-2">
               {goals.map((g, i) => (
@@ -229,13 +231,13 @@ export default function CoachMyJourney() {
             </div>
           )}
 
-          <SectionHeader title="Action items" />
+          <SectionHeader title={t("journeyPage.actionItemsHeader")} />
           <ActionGroups
             grouped={grouped}
             compact
             onToggleAction={toggleAction}
             showSourceBadge
-            emptyMessage="No action items yet. They'll appear here once a coach assigns them."
+            emptyMessage={t("coachMyJourney.actionsEmptyMessage")}
           />
         </TabsContent>
 
@@ -244,7 +246,7 @@ export default function CoachMyJourney() {
             <GoalDialog onAdd={goalsApi.addGoal} />
           </div>
           {goals.length === 0 ? (
-            <EmptyGoals onAdd={goalsApi.addGoal} description="Define what you want to achieve in your own coaching journey." />
+            <EmptyGoals onAdd={goalsApi.addGoal} description={t("coachMyJourney.emptyGoalsDescription")} />
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-3">
@@ -260,7 +262,7 @@ export default function CoachMyJourney() {
                       </p>
                       <p className="mt-1 text-2xl font-semibold">{pct}%</p>
                       {g.target_date && (
-                        <p className="text-[10px] text-muted-foreground">Target {format(new Date(g.target_date), "MMM d, yyyy")}</p>
+                        <p className="text-[10px] text-muted-foreground">{t("goalAccordion.targetOn", { date: format(new Date(g.target_date), "MMM d, yyyy") })}</p>
                       )}
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                         <div className={cn("h-full", ac.fill)} style={{ width: `${pct}%` }} />
@@ -298,7 +300,7 @@ export default function CoachMyJourney() {
 
         <TabsContent value="actions" className="mt-4">
           <p className="mb-3 text-xs text-muted-foreground">
-            {aiTotal} total · {aiDone} done · {aiOverdue} overdue
+            {t("journeyPage.actionsSummary", { total: aiTotal, done: aiDone, overdue: aiOverdue })}
           </p>
           <ActionGroups
             grouped={grouped}
@@ -306,41 +308,41 @@ export default function CoachMyJourney() {
             goals={goals}
             onToggleAction={toggleAction}
             showSourceBadge
-            emptyMessage="No action items yet. They'll appear here once a coach assigns them."
+            emptyMessage={t("coachMyJourney.actionsEmptyMessage")}
           />
         </TabsContent>
 
         <TabsContent value="sessions" className="mt-4 space-y-4">
-          <SessionsBlock title="Upcoming" items={upcoming} coachNames={coachNames} showSourceBadge />
-          <SessionsBlock title="Past & completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} coachNames={coachNames} showSourceBadge />
+          <SessionsBlock title={t("coachMyJourney.sessionsBlockUpcoming")} items={upcoming} coachNames={coachNames} showSourceBadge />
+          <SessionsBlock title={t("coachMyJourney.sessionsBlockPast")} items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} coachNames={coachNames} showSourceBadge />
         </TabsContent>
 
         <TabsContent value="reflections" className="mt-4 space-y-4">
           <Card className="p-4">
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-              <BookOpen className="h-4 w-4 text-primary" /> New reflection
+              <BookOpen className="h-4 w-4 text-primary" /> {t("journeyPage.newReflection")}
             </div>
             <Input
-              placeholder="Mood (optional, e.g. focused, stuck, proud)…"
+              placeholder={t("journeyPage.moodPlaceholder")}
               value={reflectionMood}
               onChange={(e) => setReflectionMood(e.target.value)}
               className="mb-2"
             />
             <Textarea
-              placeholder="What's on your mind? Wins, blockers, insights…"
+              placeholder={t("journeyPage.reflectionPlaceholder")}
               value={newReflection}
               onChange={(e) => setNewReflection(e.target.value)}
               rows={4}
             />
             <div className="mt-2 flex justify-end">
               <Button size="sm" onClick={addReflection} disabled={savingRef || !newReflection.trim()}>
-                <Sparkles className="mr-1 h-4 w-4" /> Save reflection
+                <Sparkles className="mr-1 h-4 w-4" /> {t("journeyPage.saveReflection")}
               </Button>
             </div>
           </Card>
 
           {reflections.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground">Your private reflections will appear here.</p>
+            <p className="text-center text-sm text-muted-foreground">{t("journeyPage.noReflectionsYet")}</p>
           ) : (
             reflections.map((r) => (
               <Card key={r.id} className="p-4">

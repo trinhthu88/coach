@@ -1,0 +1,169 @@
+{
+  "brandName": "Clariva",
+  "cta": {
+    "openDashboard": "Open dashboard",
+    "signIn": "Sign in",
+    "requestAccess": "Request access",
+    "requestAccessShort": "Request",
+    "howItWorks": "How it works"
+  },
+  "hero": {
+    "badge": "Private · Invite-driven · Vetted coaches",
+    "titleLine1": "The private",
+    "titleLine2": "marketplace for",
+    "titleEmphasis": "elite coaching.",
+    "subtitle": "Vetted coaches. Real progress. Measurable outcomes. A private, invite-driven platform connecting top executives with world-class coaches — booking, sessions, and growth in one place."
+  },
+  "trustStrip": {
+    "icfCertified": "ICF-certified coaches only",
+    "encrypted": "End-to-end encrypted sessions",
+    "inviteOnly": "Invite-only access",
+    "vetted": "Rigorously vetted coaches",
+    "competencyTracking": "ICF competency tracking built-in"
+  },
+  "howItWorks": {
+    "eyebrow": "How it works",
+    "titleLine1": "From invitation",
+    "titleLine2Lead": "to",
+    "titleEmphasis": "lasting clarity",
+    "subtitle": "Clariva is built around the coaching journey — not just scheduling software. Every feature is designed to protect the work and accelerate outcomes.",
+    "steps": {
+      "match": { "n": "01", "title": "Get matched", "desc": "Request access and receive curated coach recommendations based on your goals, industry, and leadership context. Every match is intentional." },
+      "book": { "n": "02", "title": "Book and connect", "desc": "Schedule directly in the platform. Video sessions happen right inside Clariva — no third-party links, no confusion, no dropped connections." },
+      "track": { "n": "03", "title": "Track your journey", "desc": "Set goals, log milestones, capture action items. Your coaching journey is documented, visible, and moving — session after session." }
+    }
+  },
+  "forBoth": {
+    "eyebrow": "Built for both sides",
+    "titleLine1Lead": "For executives who",
+    "titleLine1Emphasis": "lead",
+    "titleLine2Lead": "and those who",
+    "titleLine2Emphasis": "grow",
+    "titleLine2Trail": "them",
+    "coachees": {
+      "eyebrow": "For coachees",
+      "titleLead": "The coach who",
+      "titleEmphasis": "sees",
+      "titleTrail": "what's next.",
+      "sub": "Top executives don't search for coaches — they get matched. Clariva's invite-driven model connects you with vetted coaches aligned to your exact leadership context.",
+      "features": [
+        "Curated coach matching based on your goals, industry, and leadership level",
+        "Book sessions directly with real-time availability — no back-and-forth email",
+        "Track goals, milestones, and action items across your entire coaching journey",
+        "Secure in-platform messaging between sessions",
+        "Session recaps and reflections stored privately in your journey log"
+      ]
+    },
+    "coaches": {
+      "eyebrow": "For coaches",
+      "titleLead": "A practice as",
+      "titleEmphasis": "serious",
+      "titleTrail": "as your craft.",
+      "sub": "Clariva admits coaches by application only. If accepted, you get infrastructure that matches your professional standard — and clients who are ready to do the work.",
+      "features": [
+        "Public coach profile with credentials, specialties, and coachee reviews",
+        "Availability management and calendar sync — no scheduling chaos",
+        "ICF competency radar — see your strengths and growth edges at a glance",
+        "Structured peer supervision with credentialed colleagues — supporting your ongoing mastery",
+        "Practice analytics dashboard — sessions, ratings, and trends over time"
+      ]
+    }
+  },
+  "statsStrip": {
+    "credentialed": { "num": "100", "em": "%", "label": "Coaches hold ICF credentials" },
+    "rating": { "num": "4", "em": ".8", "label": "Average coach rating" },
+    "outcomes": { "num": "94", "em": "%", "label": "Executives report measurable outcomes" },
+    "speed": { "num": "3", "em": "×", "label": "Faster goal progress vs. self-directed growth" }
+  },
+  "testimonials": {
+    "eyebrow": "What people say",
+    "titleLine1": "Real clarity.",
+    "titleEmphasis": "Real momentum.",
+    "james": {
+      "quotePrefix": "\"I came in with a complex leadership challenge. Three sessions in, I had ",
+      "quoteEmphasis": "absolute clarity on direction",
+      "quoteSuffix": " and the conviction to make the call I'd been deferring for months.\"",
+      "name": "James Kalder",
+      "role": "CEO · Series B · Singapore",
+      "initials": "JK"
+    },
+    "elena": {
+      "quotePrefix": "\"The competency framework embedded in the platform means my clients can ",
+      "quoteEmphasis": "see their own growth",
+      "quoteSuffix": " in real time. It's transformed the depth of the work.\"",
+      "name": "Elena Richter",
+      "role": "Executive Coach · ICF PCC · Berlin",
+      "initials": "ER"
+    },
+    "soren": {
+      "quotePrefix": "\"I've tried coaching tools before. Clariva is different — it gets out of the way and lets the relationship be the focus. ",
+      "quoteEmphasis": "Private, precise, human.",
+      "quoteSuffix": "\"",
+      "name": "Soren Madsen",
+      "role": "Managing Director · Copenhagen",
+      "initials": "SM"
+    }
+  },
+  "ctaBanner": {
+    "eyebrow": "By invitation only",
+    "titleLine1": "Your most important",
+    "titleLine2Lead": "conversations",
+    "titleLine2Emphasis": "deserve",
+    "titleLine3": "a serious platform.",
+    "subtitle": "Clariva is a private, invite-driven marketplace. Access is granted by application. If you're ready to work at the highest level, we're ready for you."
+  },
+  "footer": {
+    "tagline": "The private marketplace for elite executive coaching. Vetted coaches. Real progress. Measurable outcomes.",
+    "platformCol": "Platform",
+    "companyCol": "Company",
+    "legalCol": "Legal",
+    "companyItems": { "about": "About us", "blog": "Blog", "careers": "Careers", "contact": "Contact" },
+    "legalItems": { "privacy": "Privacy policy", "terms": "Terms of service", "cookies": "Cookie settings" },
+    "copyright": "© 2026 Clariva. All rights reserved.",
+    "tagline2": "Clarity that moves."
+  },
+  "mock": {
+    "tabs": { "executive": "executive", "coach": "coach" },
+    "headerName": { "coach": "Elena Richter", "executive": "Marcus Webb" },
+    "headerRole": { "coach": "Coach · PCC", "executive": "Executive" },
+    "headerInitials": { "coach": "ER", "executive": "MW" },
+    "navCoach": ["Dashboard", "Coach profile", "My availability", "My clients"],
+    "navExecutive": ["Dashboard", "Find coaches", "My profile", "My journey"],
+    "commsSectionLabel": "Comms",
+    "navComms": ["Sessions", "Messages"],
+    "workspaceLabel": { "coach": "Coach", "executive": "Executive" },
+    "workspaceSuffix": "workspace",
+    "welcomeBack": "Welcome back,",
+    "firstName": { "coach": "Elena.", "executive": "Marcus." },
+    "subtext": {
+      "coach": "Review sessions and inspire your clients today.",
+      "executive": "Your next session is ready. Keep the momentum going."
+    },
+    "quickActions": {
+      "coach": ["📅 View sessions", "Set availability"],
+      "executive": ["📅 Book a session", "View sessions"]
+    },
+    "stats": {
+      "coach": [
+        { "l": "Sessions done", "v": "1" },
+        { "l": "Peer sessions", "v": "1" },
+        { "l": "Upcoming", "v": "2" },
+        { "l": "Avg. rating", "v": "4.0" }
+      ],
+      "executive": [
+        { "l": "Recap", "v": "1" },
+        { "l": "Done", "v": "1" },
+        { "l": "Upcoming", "v": "1" },
+        { "l": "Hours", "v": "0.8" }
+      ]
+    },
+    "nextSessionLabel": "Next session",
+    "sessionTitle": { "coach": "Executive clarity", "executive": "Leadership focus" },
+    "sessionDetail": {
+      "coach": "with Marcus Webb · {{date}} · 11:15 AM",
+      "executive": "with Coach Elena R. · {{date}} · 11:15 AM"
+    },
+    "enterMeeting": "▶ Enter meeting",
+    "details": "Details"
+  }
+}

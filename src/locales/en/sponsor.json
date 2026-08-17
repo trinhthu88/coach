@@ -1,0 +1,203 @@
+{
+  "status": {
+    "active": "Active",
+    "completed": "Completed",
+    "paused": "Paused",
+    "atRisk": "At risk"
+  },
+  "dashboard": {
+    "compareAllCohorts": "Compare all cohorts",
+    "header": {
+      "eyebrow": "Programme",
+      "title": "Your leaders,",
+      "emphasis": "in aggregate.",
+      "subtitle": "Participation, progress, and outcomes — private by design."
+    },
+    "firstLogin": {
+      "startsInDay_one": "Programme starts in {{count}} day",
+      "startsInDay_other": "Programme starts in {{count}} days",
+      "startsInBody": "Everything is set. Your first metrics — participation, self-rated progress, and satisfaction — populate after each leader's first session.",
+      "dataAppears": "Data appears as sessions happen",
+      "dataAppearsBody": "Your dashboard updates automatically after each leader completes their first session. Check back soon.",
+      "enrolledAwaiting_one": "{{count}} leader enrolled and awaiting first session.",
+      "enrolledAwaiting_other": "{{count}} leaders enrolled and awaiting first session."
+    },
+    "kpis": {
+      "leadersEnrolled": "Leaders enrolled",
+      "onTrack": "On track",
+      "atRisk": "At risk",
+      "sessionsUsed": "Sessions used"
+    },
+    "goalGrowth": {
+      "label": "Goal growth",
+      "scaleNote": "Self-rated · 0–10 scale",
+      "averageGrowth": "Average growth",
+      "pts": "pts",
+      "pctProgressing": "{{pct}}% of leaders have closed at least half the gap to their target",
+      "noRatingsYet": "No goal ratings yet",
+      "hitTarget": "Hit target",
+      "meaningfulProgress": "Meaningful progress",
+      "justStarted": "Just started",
+      "flatDeclined": "Flat / declined",
+      "distributionHidden": "Distribution hidden — shown once your organization has at least {{min}} enrolled leaders, so no individual can be singled out.",
+      "footnote": "Goal titles and descriptions are never shared — only overall growth in self-rated progress."
+    },
+    "timeline": {
+      "label": "Programme timeline",
+      "daysRemaining_one": "{{count}} day remaining",
+      "daysRemaining_other": "{{count}} days remaining",
+      "noEndDate": "No end date set"
+    },
+    "satisfaction": {
+      "label": "Satisfaction",
+      "noRatingsYet": "No ratings yet",
+      "acrossRated_one": "across {{count}} rated session",
+      "acrossRated_other": "across {{count}} rated sessions",
+      "writtenFeedbackNote": "Written feedback stays with the coach"
+    },
+    "roster": {
+      "label_one": "Roster · {{count}} leader",
+      "label_other": "Roster · {{count}} leaders",
+      "allCohorts": "All cohorts",
+      "note": "Status and participation only. Click a leader for their aggregate detail.",
+      "columns": {
+        "leader": "Leader",
+        "cohort": "Cohort",
+        "status": "Status",
+        "progress": "Progress",
+        "sessions": "Sessions",
+        "growth": "Growth"
+      },
+      "empty": "No leaders enrolled yet.",
+      "footnote": "Goal titles, session notes and messages are not part of this table — by design, not by permission level."
+    },
+    "privacy": {
+      "titlePrefix": "Content-private.",
+      "body": "Your access covers participation and ratings only. Session notes, chat messages, reflections, and the wording of goals never leave the coaching pair."
+    }
+  },
+  "cohorts": {
+    "header": {
+      "eyebrow": "Sponsor",
+      "title": "Across",
+      "emphasis": "programmes.",
+      "subtitle": "Rolled up across everything you sponsor, then split by cohort."
+    },
+    "rolledUpLabel": "Rolled up · all cohorts",
+    "kpis": {
+      "leadersEnrolled": "Leaders enrolled",
+      "onTrack": "On track",
+      "atRisk": "At risk",
+      "sessionsUsed": "Sessions used",
+      "avgGoalGrowth": "Avg goal growth"
+    },
+    "unnamedCohort": "Unnamed cohort",
+    "leaderCount_one": "{{count}} leader",
+    "leaderCount_other": "{{count}} leaders",
+    "openInDashboard": "Open in dashboard",
+    "statusMix": "Status mix",
+    "sessions": "Sessions",
+    "avgGrowth": "Avg growth",
+    "growthPts": "+{{n}} pts",
+    "suppressed": "Suppressed <{{min}}",
+    "noRatingsYet": "No ratings yet",
+    "suppressedNote": "Breakdowns suppressed — under {{min}} leaders. View rolled up across all cohorts above.",
+    "noCohortsFound": "No cohorts found.",
+    "privacyNote": "Cohort comparison uses participation and self-rated progress only. Coach identities, session notes, and goal wording are excluded from every cohort view."
+  },
+  "leaderDrawer": {
+    "srLabelSuffix": "leader detail",
+    "backToRoster": "Back to roster",
+    "withheld": {
+      "sessionNotes": "Session notes and coaching summaries",
+      "chatMessages": "Chat messages between leader and coach",
+      "reflections": "Personal reflections and journal entries",
+      "goalWording": "Goal titles, descriptions, and wording",
+      "coachIdentity": "Coach identity and coaching approach details"
+    },
+    "participationLabel": "Participation",
+    "sessionsUsed": "Sessions used",
+    "ofAllocation": "{{pct}}% of allocation",
+    "selfRatedGrowth": "Self-rated growth",
+    "growthPts": "+{{n}} pts",
+    "sinceBaseline": "since baseline",
+    "noRatingsYet": "no ratings yet",
+    "programmeProgress": "Programme progress",
+    "canSeeTitle": "This is everything you can see",
+    "withheldIntro": "The following exist in Clariva and are withheld from this profile:",
+    "sameViewNote": "Every leader can see the same view of themselves that you see."
+  },
+  "report": {
+    "period": {
+      "all": "All time",
+      "90d": "Last 90 days",
+      "60d": "Last 60 days",
+      "30d": "Last 30 days"
+    },
+    "header": {
+      "eyebrow": "Sponsor",
+      "title": "Export",
+      "emphasis": "report.",
+      "subtitle": "A one-pager for your QBR. Same numbers as the dashboard, reformatted for a budget conversation."
+    },
+    "setup": {
+      "label": "Report setup",
+      "periodLabel": "Period",
+      "scopeLabel": "Scope",
+      "allCohorts": "All cohorts",
+      "includeRoster": "Include leader roster",
+      "includeRosterHint": "Off gives a fully aggregate one-pager — no names.",
+      "generate": "Generate report",
+      "generating": "Generating…",
+      "downloadPdf": "Download PDF · 1 page"
+    },
+    "nothingPrivateNote": "Nothing private is included. The file is safe to forward.",
+    "preview": {
+      "placeholderTitle": "Your one-pager previews here",
+      "placeholderBody": "Pick a period and scope, then generate."
+    },
+    "documentHeader": {
+      "brand": "Clariva Sponsor Summary"
+    },
+    "issuedOn": "{{period}} · issued {{date}}",
+    "kpis": {
+      "enrolled": "Enrolled",
+      "leadersSuffix": "leaders",
+      "sessionsUsed": "Sessions used",
+      "avgRating": "Avg rating",
+      "outOfFive": "/ 5.0",
+      "atRisk": "At risk"
+    },
+    "goalGrowth": {
+      "label": "Goal growth",
+      "avgGrowthSuffix": "avg growth",
+      "pctProgressing": "{{pct}}% progressing",
+      "noRatingsYet": "No ratings yet",
+      "hitTarget": "Hit target",
+      "meaningfulProgress": "Meaningful progress",
+      "justStarted": "Just started",
+      "flatDeclined": "Flat / declined",
+      "distributionWithheld": "Distribution withheld — cohort under {{min}} leaders."
+    },
+    "programmeSatisfaction": {
+      "label": "Programme & satisfaction",
+      "daysRemaining": "Days remaining",
+      "avgRating": "Avg rating",
+      "ratedSessions": "Rated sessions"
+    },
+    "window": {
+      "label": "Window"
+    },
+    "roster": {
+      "label": "Roster",
+      "columns": {
+        "leader": "Leader",
+        "cohort": "Cohort",
+        "status": "Status",
+        "progress": "Prog.",
+        "growth": "Growth"
+      }
+    },
+    "footerDisclaimer": "Prepared from aggregate programme data. Session notes, chat messages, reflections and goal wording are excluded from Clariva sponsor reporting and were not available to the requester."
+  }
+}

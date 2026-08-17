@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -47,14 +48,15 @@ interface ProfileLite {
 
 const MESSAGE_PAGE_SIZE = 50;
 
-const formatStamp = (iso: string) => {
+const formatStamp = (iso: string, tr: (key: string) => string) => {
   const d = new Date(iso);
   if (isToday(d)) return format(d, "p");
-  if (isYesterday(d)) return "Yesterday";
+  if (isYesterday(d)) return tr("messages.yesterday");
   return format(d, "MMM d");
 };
 
 export default function Messages() {
+  const { t: tr } = useTranslation("sessions");
   const { user, role } = useAuth();
   const [sessions, setSessions] = useState<SessionLite[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -140,7 +142,7 @@ export default function Messages() {
             latest_topic: sortedSessions[0]?.topic || "",
             latest_at: latest?.created_at || sortedSessions[0]?.start_time,
             unread: unreadByOther.get(otherId) || 0,
-            last_preview: latest?.body || "No messages yet",
+            last_preview: latest?.body || tr("messages.noMessagesYet"),
           };
         }
       );
@@ -149,7 +151,7 @@ export default function Messages() {
       setThreads(list);
       if (list.length && !activeId) setActiveId(list[0].counterpart_id);
     },
-    [user, role, activeId]
+    [user, role, activeId, tr]
   );
 
   // Load sessions
@@ -324,28 +326,28 @@ export default function Messages() {
     <div className="space-y-6">
       <PageHeader
           className="mb-0"
-          eyebrow="Conversations"
-          title="Your"
-          emphasis="messages"
+          eyebrow={tr("messages.eyebrow")}
+          title={tr("messages.titleLead")}
+          emphasis={tr("messages.titleEmphasis")}
           subtitle={
             totalUnread > 0
-              ? `${totalUnread} unread message${totalUnread > 1 ? "s" : ""}`
-              : "Chat unlocks once a session is confirmed."
+              ? tr("messages.unread", { count: totalUnread })
+              : tr("messages.unlocksHint")
           }
         />
 
       {threads.length === 0 ? (
         <Card className="p-12 text-center">
-          <h3 className="text-lg font-semibold">No conversations yet</h3>
+          <h3 className="text-lg font-semibold">{tr("messages.empty.title")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Once a session is confirmed, the conversation thread will appear here.
+            {tr("messages.empty.body")}
           </p>
         </Card>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
           <Card className={cn("overflow-hidden p-0", mobileShowThread ? "hidden lg:block" : "block")}>
             <div className="border-b px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Threads
+              {tr("messages.threadsLabel")}
             </div>
             <ul className="max-h-[60vh] overflow-y-auto">
               {threads.map((t) => {
@@ -395,7 +397,7 @@ export default function Messages() {
                             {t.counterpart_name || "—"}
                           </p>
                           <span className="shrink-0 text-[10px] text-muted-foreground">
-                            {t.latest_at ? formatStamp(t.latest_at) : ""}
+                            {t.latest_at ? formatStamp(t.latest_at, tr) : ""}
                           </span>
                         </div>
                         <p
@@ -410,15 +412,14 @@ export default function Messages() {
                         </p>
                         <div className="mt-1 flex items-center gap-1.5">
                           <span className="text-[10px] text-muted-foreground">
-                            {t.session_ids.length} session
-                            {t.session_ids.length !== 1 ? "s" : ""}
+                            {tr("messages.sessionCount", { count: t.session_ids.length })}
                           </span>
                           {t.unread > 0 && (
                             <Badge
                               variant="destructive"
                               className="h-4 px-1.5 text-[10px] leading-none"
                             >
-                              {t.unread} new
+                              {tr("messages.newBadge", { count: t.unread })}
                             </Badge>
                           )}
                         </div>
@@ -440,12 +441,11 @@ export default function Messages() {
                     className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground lg:hidden"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
-                    Threads
+                    {tr("messages.threadsLabel")}
                   </button>
                   <p className="text-sm font-semibold">{active.counterpart_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {active.session_ids.length} session
-                    {active.session_ids.length !== 1 ? "s" : ""} · {active.latest_topic}
+                    {tr("messages.sessionCount", { count: active.session_ids.length })} · {active.latest_topic}
                   </p>
                 </div>
                 <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-5">
@@ -460,14 +460,14 @@ export default function Messages() {
                         {loadingOlder ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                          "Load earlier messages"
+                          tr("messages.loadEarlier")
                         )}
                       </Button>
                     </div>
                   )}
                   {messages.length === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
-                      Say hello — this is the start of your conversation.
+                      {tr("messages.conversationEmpty")}
                     </p>
                   ) : (
                     messages.map((m) => {
@@ -510,7 +510,7 @@ export default function Messages() {
                   <Input
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="Type a message…"
+                    placeholder={tr("messages.typeMessagePlaceholder")}
                   />
                   <Button type="submit" disabled={!text.trim()}>
                     <Send className="h-4 w-4" />
@@ -519,7 +519,7 @@ export default function Messages() {
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-                Select a thread to start chatting.
+                {tr("messages.selectThreadPrompt")}
               </div>
             )}
           </Card>

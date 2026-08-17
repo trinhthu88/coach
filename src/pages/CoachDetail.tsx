@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -29,6 +30,7 @@ interface CoachDetail {
 export default function CoachDetail() {
   const { coachId } = useParams<{ coachId: string }>();
   const { role } = useAuth();
+  const { t } = useTranslation("coaches");
   const [coach, setCoach] = useState<CoachDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,12 +58,12 @@ export default function CoachDetail() {
   if (!coach) {
     return (
       <Card className="p-12 text-center">
-        <h2 className="text-xl font-semibold">Coach not found</h2>
+        <h2 className="text-xl font-semibold">{t("detail.notFound.title")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The coach you're looking for doesn't exist or isn't available.
+          {t("detail.notFound.body")}
         </p>
         <Button asChild variant="outline" className="mt-6">
-          <Link to="/coaches">Back to coaches</Link>
+          <Link to="/coaches">{t("detail.backToCoaches")}</Link>
         </Button>
       </Card>
     );
@@ -80,7 +82,7 @@ export default function CoachDetail() {
         to="/coaches"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to coaches
+        <ArrowLeft className="h-4 w-4" /> {t("detail.backToCoaches")}
       </Link>
 
       <HeroPanel>
@@ -95,7 +97,7 @@ export default function CoachDetail() {
             </div>
             <div className="min-w-0">
               <p className="eyebrow mb-2 text-primary">
-                {coach.is_featured ? "Featured coach" : coach.country_based || "Coach"}
+                {coach.is_featured ? t("detail.featuredBadge") : coach.country_based || t("detail.defaultBadge")}
               </p>
               <h1 className="font-display text-[clamp(2.1rem,4.2vw,3rem)] leading-[1.05]">
                 {coach.profiles?.full_name}
@@ -106,7 +108,7 @@ export default function CoachDetail() {
           {(role === "coachee" || role === "coach") && (
             <Button asChild size="lg" className="bg-accent text-accent-foreground shadow-glow hover:bg-accent/90">
               <Link to={`/coaches/${coach.id}/book`}>
-                <Calendar className="mr-1 h-4 w-4" /> Book a session
+                <Calendar className="mr-1 h-4 w-4" /> {t("detail.bookASession")}
               </Link>
             </Button>
           )}
@@ -114,7 +116,7 @@ export default function CoachDetail() {
 
         <div className="mt-9 grid gap-6 border-t border-primary-foreground/15 pt-7 sm:grid-cols-3">
           <Stat
-            label="Rating"
+            label={t("detail.stats.rating")}
             value={
               <span className="inline-flex items-center gap-2">
                 <Star className="h-5 w-5 fill-warning text-warning" />
@@ -122,20 +124,23 @@ export default function CoachDetail() {
               </span>
             }
           />
-          <Stat label="Sessions" value={coach.sessions_completed.toString()} />
-          <Stat label="Experience" value={`${coach.years_experience ?? 0} yrs`} />
+          <Stat label={t("detail.stats.sessions")} value={coach.sessions_completed.toString()} />
+          <Stat
+            label={t("detail.stats.experience")}
+            value={t("detail.stats.experienceValue", { years: coach.years_experience ?? 0 })}
+          />
         </div>
       </HeroPanel>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="surface-card p-8 lg:col-span-2">
-          <h2 className="font-display text-[1.6rem] leading-tight">Approach</h2>
+          <h2 className="font-display text-[1.6rem] leading-tight">{t("detail.approach")}</h2>
           <p className="mt-4 leading-relaxed text-muted-foreground">
-            {coach.profiles?.bio || "This coach hasn't written a bio yet."}
+            {coach.profiles?.bio || t("detail.noBio")}
           </p>
           {coach.specialties && coach.specialties.length > 0 && (
             <div className="mt-7">
-              <p className="eyebrow mb-3">Specialties</p>
+              <p className="eyebrow mb-3">{t("detail.specialties")}</p>
               <div className="flex flex-wrap gap-2">
                 {coach.specialties.map((s) => (
                   <span
@@ -153,7 +158,7 @@ export default function CoachDetail() {
         <div className="surface-card space-y-6 p-7">
           {coach.diplomas_certifications && coach.diplomas_certifications.length > 0 && (
             <div>
-              <p className="eyebrow mb-4">Credentials</p>
+              <p className="eyebrow mb-4">{t("detail.credentials")}</p>
               <ul className="space-y-3.5">
                 {coach.diplomas_certifications.map((d) => (
                   <li key={d} className="flex items-start gap-3 text-sm">
@@ -168,7 +173,7 @@ export default function CoachDetail() {
           )}
 
           <div className="border-t border-border pt-6">
-            <p className="eyebrow mb-2.5">Based in</p>
+            <p className="eyebrow mb-2.5">{t("detail.basedIn")}</p>
             <p className="inline-flex items-center gap-1.5 text-sm">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               {coach.country_based || "—"}
@@ -180,7 +185,7 @@ export default function CoachDetail() {
 
           {(role === "coachee" || role === "coach") && (
             <Button asChild size="lg" variant="secondary" className="w-full">
-              <Link to={`/coaches/${coach.id}/book`}>Choose a time</Link>
+              <Link to={`/coaches/${coach.id}/book`}>{t("detail.chooseATime")}</Link>
             </Button>
           )}
         </div>

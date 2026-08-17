@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { format, differenceInCalendarDays } from "date-fns";
 import {
@@ -21,11 +22,11 @@ const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "wa
   paused: "warning",
   at_risk: "destructive",
 };
-const STATUS_LABEL: Record<SponsorRosterRow["enrollment_status"], string> = {
-  active: "Active",
-  completed: "Completed",
-  paused: "Paused",
-  at_risk: "At risk",
+const STATUS_LABEL_KEY: Record<SponsorRosterRow["enrollment_status"], string> = {
+  active: "active",
+  completed: "completed",
+  paused: "paused",
+  at_risk: "atRisk",
 };
 
 function initials(name: string) {
@@ -33,6 +34,7 @@ function initials(name: string) {
 }
 
 export default function SponsorDashboard() {
+  const { t } = useTranslation("sponsor");
   const { user } = useAuth();
   const { kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution, loading } = useSponsorDashboardData();
   const [orgName, setOrgName] = useState<string | null>(null);
@@ -90,10 +92,10 @@ export default function SponsorDashboard() {
               </div>
             )}
             <PageHeader
-              eyebrow="Programme"
-              title="Your leaders,"
-              emphasis="in aggregate."
-              subtitle="Participation, progress, and outcomes — private by design."
+              eyebrow={t("dashboard.header.eyebrow")}
+              title={t("dashboard.header.title")}
+              emphasis={t("dashboard.header.emphasis")}
+              subtitle={t("dashboard.header.subtitle")}
             />
           </div>
           {cohortNames.length > 1 && (
@@ -101,7 +103,7 @@ export default function SponsorDashboard() {
               to="/sponsor/cohorts"
               className="flex items-center gap-1.5 rounded-full bg-primary-soft px-3 py-1.5 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/20"
             >
-              Compare all cohorts <ArrowRight className="h-3 w-3" />
+              {t("dashboard.compareAllCohorts")} <ArrowRight className="h-3 w-3" />
             </Link>
           )}
         </div>
@@ -116,22 +118,22 @@ export default function SponsorDashboard() {
               <div>
                 {daysUntilStart !== null && daysUntilStart > 0 ? (
                   <>
-                    <p className="font-semibold">Programme starts in {daysUntilStart} day{daysUntilStart === 1 ? "" : "s"}</p>
+                    <p className="font-semibold">{t("dashboard.firstLogin.startsInDay", { count: daysUntilStart })}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Everything is set. Your first metrics — participation, self-rated progress, and satisfaction — populate after each leader's first session.
+                      {t("dashboard.firstLogin.startsInBody")}
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="font-semibold">Data appears as sessions happen</p>
+                    <p className="font-semibold">{t("dashboard.firstLogin.dataAppears")}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Your dashboard updates automatically after each leader completes their first session. Check back soon.
+                      {t("dashboard.firstLogin.dataAppearsBody")}
                     </p>
                   </>
                 )}
                 {roster.length > 0 && (
                   <p className="mt-2 text-[11px] text-muted-foreground">
-                    {roster.length} leader{roster.length === 1 ? "" : "s"} enrolled and awaiting first session.
+                    {t("dashboard.firstLogin.enrolledAwaiting", { count: roster.length })}
                   </p>
                 )}
               </div>
@@ -141,11 +143,11 @@ export default function SponsorDashboard() {
 
         {/* KPI ROW */}
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
-          <Kpi label="Leaders enrolled" value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
-          <Kpi label="On track" value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
-          <Kpi label="At risk" value={kpis?.at_risk_count ?? 0} icon={AlertTriangle} tone="warning" />
+          <Kpi label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
+          <Kpi label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
+          <Kpi label={t("dashboard.kpis.atRisk")} value={kpis?.at_risk_count ?? 0} icon={AlertTriangle} tone="warning" />
           <Kpi
-            label="Sessions used"
+            label={t("dashboard.kpis.sessionsUsed")}
             value={`${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`}
             icon={CalendarCheck}
             tone="secondary"
@@ -155,49 +157,49 @@ export default function SponsorDashboard() {
         {!isFirstLogin && (
           <>
             {/* GOAL GROWTH */}
-            <SectionCard label="Goal growth" action={
+            <SectionCard label={t("dashboard.goalGrowth.label")} action={
               <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
-                Self-rated · 0–10 scale
+                {t("dashboard.goalGrowth.scaleNote")}
               </span>
             }>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Average growth</p>
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("dashboard.goalGrowth.averageGrowth")}</p>
                   <p className="font-display mt-1 text-[2rem] font-normal leading-none">
                     {goalGrowth?.avg_growth != null ? `+${Math.round(goalGrowth.avg_growth)}` : "—"}
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">pts</span>
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">{t("dashboard.goalGrowth.pts")}</span>
                   </p>
                   <p className="mt-2 text-[11px] text-muted-foreground">
                     {goalGrowth?.pct_progressing != null
-                      ? `${Math.round(goalGrowth.pct_progressing)}% of leaders have closed at least half the gap to their target`
-                      : "No goal ratings yet"}
+                      ? t("dashboard.goalGrowth.pctProgressing", { pct: Math.round(goalGrowth.pct_progressing) })
+                      : t("dashboard.goalGrowth.noRatingsYet")}
                   </p>
                 </div>
                 <div>
                   {distributionShown ? (
                     <div className="space-y-2">
-                      <DistRow label="Hit target" count={goalGrowth!.hit_target_count} total={distributionTotal} tone="success" />
-                      <DistRow label="Meaningful progress" count={goalGrowth!.meaningful_progress_count} total={distributionTotal} tone="primary" />
-                      <DistRow label="Just started" count={goalGrowth!.just_started_count} total={distributionTotal} tone="warning" />
-                      <DistRow label="Flat / declined" count={goalGrowth!.flat_declined_count} total={distributionTotal} tone="destructive" />
+                      <DistRow label={t("dashboard.goalGrowth.hitTarget")} count={goalGrowth!.hit_target_count} total={distributionTotal} tone="success" />
+                      <DistRow label={t("dashboard.goalGrowth.meaningfulProgress")} count={goalGrowth!.meaningful_progress_count} total={distributionTotal} tone="primary" />
+                      <DistRow label={t("dashboard.goalGrowth.justStarted")} count={goalGrowth!.just_started_count} total={distributionTotal} tone="warning" />
+                      <DistRow label={t("dashboard.goalGrowth.flatDeclined")} count={goalGrowth!.flat_declined_count} total={distributionTotal} tone="destructive" />
                     </div>
                   ) : (
                     <div className="rounded-xl bg-muted/40 p-3">
                       <p className="text-[11px] text-muted-foreground">
-                        Distribution hidden — shown once your organization has at least {minLeadersForDistribution} enrolled leaders, so no individual can be singled out.
+                        {t("dashboard.goalGrowth.distributionHidden", { min: minLeadersForDistribution })}
                       </p>
                     </div>
                   )}
                 </div>
               </div>
               <p className="mt-4 text-[10px] italic text-muted-foreground">
-                Goal titles and descriptions are never shared — only overall growth in self-rated progress.
+                {t("dashboard.goalGrowth.footnote")}
               </p>
             </SectionCard>
 
             {/* TIMELINE + SATISFACTION */}
             <div className="grid gap-4 sm:grid-cols-2">
-              <SectionCard label="Programme timeline">
+              <SectionCard label={t("dashboard.timeline.label")}>
                 <div className="flex items-center gap-3">
                   <CalendarRange className="h-8 w-8 text-primary" />
                   <div>
@@ -207,24 +209,24 @@ export default function SponsorDashboard() {
                       {timeline?.latest_end ? format(new Date(timeline.latest_end), "MMM d, yyyy") : "—"}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      {daysRemaining != null ? `${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining` : "No end date set"}
+                      {daysRemaining != null ? t("dashboard.timeline.daysRemaining", { count: daysRemaining }) : t("dashboard.timeline.noEndDate")}
                       {timeline?.programme_names?.length ? ` · ${timeline.programme_names.join(", ")}` : ""}
                     </p>
                   </div>
                 </div>
               </SectionCard>
 
-              <SectionCard label="Satisfaction">
+              <SectionCard label={t("dashboard.satisfaction.label")}>
                 <div className="flex items-center gap-3">
                   <Star className="h-8 w-8 text-warning" />
                   <div>
                     <p className="text-[13px] font-medium">
-                      {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : "No ratings yet"}
+                      {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : t("dashboard.satisfaction.noRatingsYet")}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      across {satisfaction?.rated_session_count ?? 0} rated session{satisfaction?.rated_session_count === 1 ? "" : "s"}
+                      {t("dashboard.satisfaction.acrossRated", { count: satisfaction?.rated_session_count ?? 0 })}
                     </p>
-                    <p className="mt-1 text-[10px] italic text-muted-foreground">Written feedback stays with the coach</p>
+                    <p className="mt-1 text-[10px] italic text-muted-foreground">{t("dashboard.satisfaction.writtenFeedbackNote")}</p>
                   </div>
                 </div>
               </SectionCard>
@@ -235,17 +237,17 @@ export default function SponsorDashboard() {
         {/* ROSTER */}
         <div data-onboarding="sponsor-roster">
         <SectionCard
-          label={`Roster · ${filteredRoster.length} leader${filteredRoster.length === 1 ? "" : "s"}`}
+          label={t("dashboard.roster.label", { count: filteredRoster.length })}
           action={
             cohortNames.length > 1 ? (
               <div className="flex items-center gap-1.5" data-onboarding="sponsor-cohort-filter">
                 <Filter className="h-3 w-3 text-muted-foreground" />
                 <Select value={cohortFilter} onValueChange={setCohortFilter}>
                   <SelectTrigger className="h-6 w-32 border-0 bg-transparent p-0 text-[10px] text-muted-foreground shadow-none focus:ring-0">
-                    <SelectValue placeholder="All cohorts" />
+                    <SelectValue placeholder={t("dashboard.roster.allCohorts")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all" className="text-xs">All cohorts</SelectItem>
+                    <SelectItem value="all" className="text-xs">{t("dashboard.roster.allCohorts")}</SelectItem>
                     {cohortNames.map(c => (
                       <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
                     ))}
@@ -256,18 +258,18 @@ export default function SponsorDashboard() {
           }
         >
           <p className="mb-3 text-[10px] text-muted-foreground">
-            Status and participation only. Click a leader for their aggregate detail.
+            {t("dashboard.roster.note")}
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-[12px]">
               <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="px-2 py-2 text-left font-semibold">Leader</th>
-                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">Cohort</th>
-                  <th className="px-2 py-2 text-left font-semibold">Status</th>
-                  <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">Progress</th>
-                  <th className="px-2 py-2 text-left font-semibold">Sessions</th>
-                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">Growth</th>
+                  <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.leader")}</th>
+                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.roster.columns.cohort")}</th>
+                  <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.status")}</th>
+                  <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.roster.columns.progress")}</th>
+                  <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.sessions")}</th>
+                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.roster.columns.growth")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -286,24 +288,24 @@ export default function SponsorDashboard() {
                       </div>
                     </td>
                     <td className="px-2 py-2.5 text-muted-foreground hidden sm:table-cell">{r.cohort_name || "—"}</td>
-                    <td className="px-2 py-2.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{STATUS_LABEL[r.enrollment_status]}</Pill></td>
+                    <td className="px-2 py-2.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{t(`status.${STATUS_LABEL_KEY[r.enrollment_status]}`)}</Pill></td>
                     <td className="px-2 py-2.5 hidden md:table-cell">
                       <div className="w-24"><MiniBar pct={r.progress_pct} tone="primary" /></div>
                     </td>
                     <td className="px-2 py-2.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
                     <td className="px-2 py-2.5 hidden sm:table-cell">
-                      {r.goal_growth != null ? `+${Math.round(r.goal_growth)} pts` : <span className="italic text-muted-foreground">—</span>}
+                      {r.goal_growth != null ? t("cohorts.growthPts", { n: Math.round(r.goal_growth) }) : <span className="italic text-muted-foreground">—</span>}
                     </td>
                   </tr>
                 ))}
                 {filteredRoster.length === 0 && (
-                  <tr><td colSpan={6} className="px-2 py-8 text-center text-[12px] text-muted-foreground">No leaders enrolled yet.</td></tr>
+                  <tr><td colSpan={6} className="px-2 py-8 text-center text-[12px] text-muted-foreground">{t("dashboard.roster.empty")}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
           <p className="mt-3 text-[10px] italic text-muted-foreground">
-            Goal titles, session notes and messages are not part of this table — by design, not by permission level.
+            {t("dashboard.roster.footnote")}
           </p>
         </SectionCard>
         </div>
@@ -312,8 +314,8 @@ export default function SponsorDashboard() {
         <div className="flex items-start gap-2 rounded-xl bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div>
-            <span className="font-semibold text-foreground">Content-private. </span>
-            Your access covers participation and ratings only. Session notes, chat messages, reflections, and the wording of goals never leave the coaching pair.
+            <span className="font-semibold text-foreground">{t("dashboard.privacy.titlePrefix")} </span>
+            {t("dashboard.privacy.body")}
           </div>
         </div>
       </div>

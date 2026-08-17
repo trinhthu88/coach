@@ -1,0 +1,170 @@
+{
+  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "brandName": "Clariva",
+  "cta": {
+    "openDashboard": "Mở bảng điều khiển",
+    "signIn": "Đăng nhập",
+    "requestAccess": "Yêu cầu quyền truy cập",
+    "requestAccessShort": "Yêu cầu",
+    "howItWorks": "Cách thức hoạt động"
+  },
+  "hero": {
+    "badge": "Riêng tư · Theo lời mời · Coach được thẩm định",
+    "titleLine1": "Thị trường riêng tư",
+    "titleLine2": "dành cho",
+    "titleEmphasis": "coaching đỉnh cao.",
+    "subtitle": "Coach được thẩm định. Tiến bộ thực sự. Kết quả đo lường được. Một nền tảng riêng tư, theo lời mời kết nối các lãnh đạo hàng đầu với các coach đẳng cấp thế giới — đặt lịch, session và phát triển trong một nơi duy nhất."
+  },
+  "trustStrip": {
+    "icfCertified": "Chỉ coach có chứng chỉ ICF",
+    "encrypted": "Session được mã hóa đầu cuối",
+    "inviteOnly": "Chỉ truy cập theo lời mời",
+    "vetted": "Coach được thẩm định kỹ lưỡng",
+    "competencyTracking": "Theo dõi năng lực ICF tích hợp sẵn"
+  },
+  "howItWorks": {
+    "eyebrow": "Cách thức hoạt động",
+    "titleLine1": "Từ lời mời",
+    "titleLine2Lead": "đến",
+    "titleEmphasis": "sự rõ ràng lâu dài",
+    "subtitle": "Clariva được xây dựng xoay quanh hành trình coaching — không chỉ là phần mềm lên lịch. Mọi tính năng đều được thiết kế để bảo vệ công việc và thúc đẩy kết quả.",
+    "steps": {
+      "match": { "n": "01", "title": "Được ghép nối", "desc": "Yêu cầu quyền truy cập và nhận các đề xuất coach được tuyển chọn dựa trên mục tiêu, ngành nghề và bối cảnh lãnh đạo của bạn. Mỗi sự kết hợp đều có chủ đích." },
+      "book": { "n": "02", "title": "Đặt lịch và kết nối", "desc": "Lên lịch trực tiếp trong nền tảng. Các session video diễn ra ngay trong Clariva — không có liên kết bên thứ ba, không nhầm lẫn, không mất kết nối." },
+      "track": { "n": "03", "title": "Theo dõi hành trình của bạn", "desc": "Đặt mục tiêu, ghi lại các cột mốc, nắm bắt các hành động cần làm. Hành trình coaching của bạn được ghi lại, hiển thị và luôn tiến triển — qua từng session." }
+    }
+  },
+  "forBoth": {
+    "eyebrow": "Được xây dựng cho cả hai phía",
+    "titleLine1Lead": "Dành cho các lãnh đạo",
+    "titleLine1Emphasis": "dẫn dắt",
+    "titleLine2Lead": "và những người",
+    "titleLine2Emphasis": "phát triển",
+    "titleLine2Trail": "họ",
+    "coachees": {
+      "eyebrow": "Dành cho học viên",
+      "titleLead": "Coach",
+      "titleEmphasis": "nhìn thấy",
+      "titleTrail": "điều tiếp theo.",
+      "sub": "Các lãnh đạo hàng đầu không tự tìm coach — họ được ghép nối. Mô hình theo lời mời của Clariva kết nối bạn với các coach phù hợp với đúng bối cảnh lãnh đạo của bạn.",
+      "features": [
+        "Ghép nối coach được tuyển chọn dựa trên mục tiêu, ngành nghề và cấp độ lãnh đạo của bạn",
+        "Đặt lịch trực tiếp với lịch trống theo thời gian thực — không cần trao đổi email qua lại",
+        "Theo dõi mục tiêu, cột mốc và hành động cần làm trong suốt hành trình coaching của bạn",
+        "Nhắn tin an toàn trong nền tảng giữa các session",
+        "Tóm tắt session và suy ngẫm được lưu trữ riêng tư trong nhật ký hành trình của bạn"
+      ]
+    },
+    "coaches": {
+      "eyebrow": "Dành cho coach",
+      "titleLead": "Một hoạt động chuyên nghiệp",
+      "titleEmphasis": "nghiêm túc",
+      "titleTrail": "như chính nghề của bạn.",
+      "sub": "Clariva chỉ nhận coach qua đơn đăng ký. Nếu được chấp nhận, bạn sẽ có cơ sở hạ tầng phù hợp với tiêu chuẩn chuyên môn của mình — và những khách hàng sẵn sàng làm việc.",
+      "features": [
+        "Hồ sơ coach công khai với chứng chỉ, chuyên môn và đánh giá từ học viên",
+        "Quản lý lịch trống và đồng bộ lịch — không còn hỗn loạn trong việc lên lịch",
+        "Biểu đồ năng lực ICF — xem điểm mạnh và điểm cần phát triển của bạn trong nháy mắt",
+        "Giám sát đồng nghiệp có cấu trúc với các đồng nghiệp có chứng chỉ — hỗ trợ sự phát triển liên tục của bạn",
+        "Bảng phân tích hoạt động — session, đánh giá và xu hướng theo thời gian"
+      ]
+    }
+  },
+  "statsStrip": {
+    "credentialed": { "num": "100", "em": "%", "label": "Coach có chứng chỉ ICF" },
+    "rating": { "num": "4", "em": ".8", "label": "Đánh giá trung bình của coach" },
+    "outcomes": { "num": "94", "em": "%", "label": "Lãnh đạo báo cáo kết quả có thể đo lường được" },
+    "speed": { "num": "3", "em": "×", "label": "Tiến độ mục tiêu nhanh hơn so với tự phát triển" }
+  },
+  "testimonials": {
+    "eyebrow": "Mọi người nói gì",
+    "titleLine1": "Sự rõ ràng thực sự.",
+    "titleEmphasis": "Động lực thực sự.",
+    "james": {
+      "quotePrefix": "\"Tôi đến với một thách thức lãnh đạo phức tạp. Sau ba session, tôi đã có ",
+      "quoteEmphasis": "sự rõ ràng tuyệt đối về hướng đi",
+      "quoteSuffix": " và sự quyết tâm để đưa ra quyết định mà tôi đã trì hoãn nhiều tháng.\"",
+      "name": "James Kalder",
+      "role": "CEO · Series B · Singapore",
+      "initials": "JK"
+    },
+    "elena": {
+      "quotePrefix": "\"Khung năng lực được tích hợp trong nền tảng có nghĩa là khách hàng của tôi có thể ",
+      "quoteEmphasis": "thấy sự phát triển của chính họ",
+      "quoteSuffix": " theo thời gian thực. Nó đã thay đổi chiều sâu của công việc.\"",
+      "name": "Elena Richter",
+      "role": "Coach điều hành · ICF PCC · Berlin",
+      "initials": "ER"
+    },
+    "soren": {
+      "quotePrefix": "\"Tôi đã thử các công cụ coaching khác trước đây. Clariva thì khác — nó không cản trở và để mối quan hệ trở thành trọng tâm. ",
+      "quoteEmphasis": "Riêng tư, chính xác, con người.",
+      "quoteSuffix": "\"",
+      "name": "Soren Madsen",
+      "role": "Giám đốc điều hành · Copenhagen",
+      "initials": "SM"
+    }
+  },
+  "ctaBanner": {
+    "eyebrow": "Chỉ dành cho khách mời",
+    "titleLine1": "Những cuộc trò chuyện",
+    "titleLine2Lead": "quan trọng nhất của bạn",
+    "titleLine2Emphasis": "xứng đáng",
+    "titleLine3": "một nền tảng nghiêm túc.",
+    "subtitle": "Clariva là một thị trường riêng tư, theo lời mời. Quyền truy cập được cấp qua đơn đăng ký. Nếu bạn sẵn sàng làm việc ở cấp độ cao nhất, chúng tôi sẵn sàng cho bạn."
+  },
+  "footer": {
+    "tagline": "Thị trường riêng tư dành cho dịch vụ coaching điều hành cao cấp. Coach được thẩm định. Tiến bộ thực sự. Kết quả đo lường được.",
+    "platformCol": "Nền tảng",
+    "companyCol": "Công ty",
+    "legalCol": "Pháp lý",
+    "companyItems": { "about": "Về chúng tôi", "blog": "Blog", "careers": "Tuyển dụng", "contact": "Liên hệ" },
+    "legalItems": { "privacy": "Chính sách bảo mật", "terms": "Điều khoản dịch vụ", "cookies": "Cài đặt cookie" },
+    "copyright": "© 2026 Clariva. Bảo lưu mọi quyền.",
+    "tagline2": "Sự rõ ràng tạo nên chuyển động."
+  },
+  "mock": {
+    "tabs": { "executive": "lãnh đạo", "coach": "coach" },
+    "headerName": { "coach": "Elena Richter", "executive": "Marcus Webb" },
+    "headerRole": { "coach": "Coach · PCC", "executive": "Lãnh đạo" },
+    "headerInitials": { "coach": "ER", "executive": "MW" },
+    "navCoach": ["Bảng điều khiển", "Hồ sơ coach", "Lịch trống của tôi", "Khách hàng của tôi"],
+    "navExecutive": ["Bảng điều khiển", "Tìm coach", "Hồ sơ của tôi", "Hành trình của tôi"],
+    "commsSectionLabel": "Liên lạc",
+    "navComms": ["Session", "Tin nhắn"],
+    "workspaceLabel": { "coach": "Coach", "executive": "Lãnh đạo" },
+    "workspaceSuffix": "không gian làm việc",
+    "welcomeBack": "Chào mừng trở lại,",
+    "firstName": { "coach": "Elena.", "executive": "Marcus." },
+    "subtext": {
+      "coach": "Xem lại các session và truyền cảm hứng cho khách hàng của bạn hôm nay.",
+      "executive": "Session tiếp theo của bạn đã sẵn sàng. Hãy tiếp tục đà phát triển."
+    },
+    "quickActions": {
+      "coach": ["📅 Xem session", "Đặt lịch trống"],
+      "executive": ["📅 Đặt session", "Xem session"]
+    },
+    "stats": {
+      "coach": [
+        { "l": "Session đã hoàn thành", "v": "1" },
+        { "l": "Session đồng nghiệp", "v": "1" },
+        { "l": "Sắp tới", "v": "2" },
+        { "l": "Đánh giá trung bình", "v": "4.0" }
+      ],
+      "executive": [
+        { "l": "Tóm tắt", "v": "1" },
+        { "l": "Đã hoàn thành", "v": "1" },
+        { "l": "Sắp tới", "v": "1" },
+        { "l": "Giờ học", "v": "0.8" }
+      ]
+    },
+    "nextSessionLabel": "Session tiếp theo",
+    "sessionTitle": { "coach": "Sự rõ ràng cho lãnh đạo", "executive": "Trọng tâm lãnh đạo" },
+    "sessionDetail": {
+      "coach": "với Marcus Webb · {{date}} · 11:15 AM",
+      "executive": "với Coach Elena R. · {{date}} · 11:15 AM"
+    },
+    "enterMeeting": "▶ Tham gia cuộc họp",
+    "details": "Chi tiết"
+  }
+}

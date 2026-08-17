@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ interface Cohort {
 }
 
 export default function AdminCohorts() {
+  const { t } = useTranslation("admin");
   const [rows, setRows] = useState<Cohort[]>([]);
   const [progs, setProgs] = useState<{ id: string; name: string }[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -48,7 +50,7 @@ export default function AdminCohorts() {
   useEffect(() => { load(); }, []);
 
   const save = async () => {
-    if (!editing?.name?.trim()) { toast.error("Name is required"); return; }
+    if (!editing?.name?.trim()) { toast.error(t("cohorts.nameRequired")); return; }
     setSaving(true);
     try {
       const payload: Omit<Cohort, "id"> = {
@@ -65,7 +67,7 @@ export default function AdminCohorts() {
         const { error } = await supabase.from("cohorts").insert(payload);
         if (error) throw error;
       }
-      toast.success("Cohort saved");
+      toast.success(t("cohorts.saved"));
       setEditing(null);
       load();
     } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
@@ -73,9 +75,9 @@ export default function AdminCohorts() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Delete cohort? Enrolled coachees keep their programme.")) return;
+    if (!confirm(t("cohorts.deleteConfirm"))) return;
     const { error } = await supabase.from("cohorts").delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Deleted"); load(); }
+    if (error) toast.error(error.message); else { toast.success(t("cohorts.deleted")); load(); }
   };
 
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -83,10 +85,10 @@ export default function AdminCohorts() {
   return (
     <div>
       <AdminPageHeader
-        title="Cohorts"
-        emphasize="& groups"
-        subtitle="Group coachees together — usually by programme intake."
-        right={<Button onClick={() => setEditing({ name: "" })}><Plus className="h-4 w-4" /> New cohort</Button>}
+        title={t("cohorts.title")}
+        emphasize={t("cohorts.titleEmphasis")}
+        subtitle={t("cohorts.subtitle")}
+        right={<Button onClick={() => setEditing({ name: "" })}><Plus className="h-4 w-4" /> {t("cohorts.newCohort")}</Button>}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -100,49 +102,49 @@ export default function AdminCohorts() {
               </div>
               {c.description && <p className="text-[12px] text-muted-foreground">{c.description}</p>}
               <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span className="inline-flex items-center gap-1"><UsersRound className="h-3 w-3" /> {counts[c.id] || 0} members</span>
+                <span className="inline-flex items-center gap-1"><UsersRound className="h-3 w-3" /> {t("cohorts.membersCount", { count: counts[c.id] || 0 })}</span>
                 {c.start_date && <span>{format(new Date(c.start_date), "MMM yyyy")}{c.end_date ? ` → ${format(new Date(c.end_date), "MMM yyyy")}` : ""}</span>}
               </div>
               <div className="mt-3 flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setEditing(c)}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
-                <Button variant="ghost" size="sm" onClick={() => remove(c.id)}><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+                <Button variant="outline" size="sm" onClick={() => setEditing(c)}><Pencil className="h-3.5 w-3.5" /> {t("cohorts.edit")}</Button>
+                <Button variant="ghost" size="sm" onClick={() => remove(c.id)}><Trash2 className="h-3.5 w-3.5" /> {t("cohorts.delete")}</Button>
               </div>
             </Card>
           );
         })}
         {rows.length === 0 && (
           <Card className="col-span-full p-12 text-center text-sm text-muted-foreground">
-            No cohorts yet. Group coachees by intake to manage them together.
+            {t("cohorts.empty")}
           </Card>
         )}
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing?.id ? "Edit" : "New"} cohort</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing?.id ? t("cohorts.dialogTitleEdit") : t("cohorts.dialogTitleNew")}</DialogTitle></DialogHeader>
           {editing && (
             <div className="space-y-3">
-              <div><Label>Name</Label><Input value={editing.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
-              <div><Label>Description</Label><Textarea rows={2} value={editing.description || ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
+              <div><Label>{t("cohorts.nameLabel")}</Label><Input value={editing.name || ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div><Label>{t("cohorts.descriptionLabel")}</Label><Textarea rows={2} value={editing.description || ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
               <div>
-                <Label>Programme</Label>
+                <Label>{t("cohorts.programmeLabel")}</Label>
                 <Select value={editing.programme_id || "none"} onValueChange={(v) => setEditing({ ...editing, programme_id: v === "none" ? null : v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">— None —</SelectItem>
+                    <SelectItem value="none">{t("cohorts.noneOption")}</SelectItem>
                     {progs.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Start date</Label><Input type="date" value={editing.start_date || ""} onChange={(e) => setEditing({ ...editing, start_date: e.target.value })} /></div>
-                <div><Label>End date</Label><Input type="date" value={editing.end_date || ""} onChange={(e) => setEditing({ ...editing, end_date: e.target.value })} /></div>
+                <div><Label>{t("cohorts.startDateLabel")}</Label><Input type="date" value={editing.start_date || ""} onChange={(e) => setEditing({ ...editing, start_date: e.target.value })} /></div>
+                <div><Label>{t("cohorts.endDateLabel")}</Label><Input type="date" value={editing.end_date || ""} onChange={(e) => setEditing({ ...editing, end_date: e.target.value })} /></div>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-            <Button onClick={save} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}Save</Button>
+            <Button variant="outline" onClick={() => setEditing(null)}>{t("cohorts.cancel")}</Button>
+            <Button onClick={save} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}{t("cohorts.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

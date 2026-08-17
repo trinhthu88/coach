@@ -1,9 +1,11 @@
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { Client } from "@/hooks/coach/types";
 import { paletteFor, initialsOf, programmeLabel } from "./clientDisplay";
 
 export function ClientRow({ client, onOpen }: { client: Client; onOpen: () => void }) {
+  const { t } = useTranslation("dashboard");
   const av = paletteFor(client.id);
   const pct = client.milestonesTotal
     ? Math.round((client.milestonesDone / client.milestonesTotal) * 100)
@@ -21,14 +23,14 @@ export function ClientRow({ client, onOpen }: { client: Client; onOpen: () => vo
 
   const programmeBadge = (
     <span className="w-fit shrink-0 rounded-full bg-primary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-      {programmeLabel(client)}
+      {programmeLabel(client, t("clients.row.defaultProgramme"))}
     </span>
   );
 
   const progressBar = (
     <div className="min-w-0">
       <p className="mb-1.5 text-[11px] text-muted-foreground">
-        {client.totalSessions} session{client.totalSessions === 1 ? "" : "s"} · {pct}%
+        {t("clients.row.sessionsAndPct", { count: client.totalSessions, pct })}
       </p>
       <div className="h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-muted">
         <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
@@ -41,7 +43,7 @@ export function ClientRow({ client, onOpen }: { client: Client; onOpen: () => vo
       {format(new Date(client.nextSession), "EEE HH:mm")}
     </span>
   ) : (
-    <span className="text-sm font-semibold text-accent">Not scheduled</span>
+    <span className="text-sm font-semibold text-accent">{t("clients.row.notScheduled")}</span>
   );
 
   return (
@@ -60,7 +62,7 @@ export function ClientRow({ client, onOpen }: { client: Client; onOpen: () => vo
         </div>
         {progressBar}
         <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-          <span>Next session</span>
+          <span>{t("clients.tableHeaders.nextSession")}</span>
           {nextSession}
         </div>
       </div>

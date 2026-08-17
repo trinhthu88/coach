@@ -1,5 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import "@/i18n/config";
+import i18n from "@/i18n/config";
+
+beforeEach(async () => {
+  await i18n.changeLanguage("en");
+});
 
 // Mock the supabase client's rpc() so the dashboard renders from
 // controlled fixture data instead of hitting the network. Each sponsor_*

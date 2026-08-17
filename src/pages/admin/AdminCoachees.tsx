@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +15,10 @@ import { useAdminCoacheesData } from "@/hooks/admin/useAdminCoacheesData";
 import { CoacheeProfileSheet } from "./coachees/CoacheeProfileSheet";
 import { CoacheeEditSheet } from "./coachees/CoacheeEditSheet";
 import { ImportDialog } from "./coachees/ImportDialog";
-import { STATUS_LABEL, STATUS_TONE, programmeCompletionPct, exportCoacheesXlsx, type Row, type Status } from "./coachees/coacheeDisplay";
+import { STATUS_KEYS, STATUS_TONE, programmeCompletionPct, exportCoacheesXlsx, type Row, type Status } from "./coachees/coacheeDisplay";
 
 export default function AdminCoachees() {
+  const { t } = useTranslation("admin");
   const { loading, rows, coachOpts, programmes, cohorts, organizations, defaultLimit, load } = useAdminCoacheesData();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
@@ -25,15 +27,15 @@ export default function AdminCoachees() {
   const [importOpen, setImportOpen] = useState(false);
 
   const filtered = useMemo(() => rows.filter(r => {
-    const t = q.trim().toLowerCase();
-    const okQ = !t || r.full_name.toLowerCase().includes(t) || r.email.toLowerCase().includes(t);
+    const query = q.trim().toLowerCase();
+    const okQ = !query || r.full_name.toLowerCase().includes(query) || r.email.toLowerCase().includes(query);
     const okS = statusFilter === "all" || r.status === statusFilter;
     return okQ && okS;
   }), [rows, q, statusFilter]);
 
   const exportXlsx = async () => {
-    await exportCoacheesXlsx(filtered);
-    toast.success("Exported");
+    await exportCoacheesXlsx(filtered, t);
+    toast.success(t("coachees.exported"));
   };
 
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -45,14 +47,14 @@ export default function AdminCoachees() {
   return (
     <div>
       <AdminPageHeader
-        eyebrow="Organisation"
-        title="Coachees"
+        eyebrow={t("coachees.eyebrow")}
+        title={t("coachees.title")}
         trailing=""
-        subtitle={`${rows.length} total · click any row to edit`}
+        subtitle={t("coachees.subtitle", { total: rows.length })}
         right={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}><FileUp className="h-4 w-4" /> Import Excel</Button>
-            <Button variant="outline" size="sm" onClick={exportXlsx}><FileDown className="h-4 w-4" /> Export Excel</Button>
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}><FileUp className="h-4 w-4" /> {t("coachees.importExcel")}</Button>
+            <Button variant="outline" size="sm" onClick={exportXlsx}><FileDown className="h-4 w-4" /> {t("coachees.exportExcel")}</Button>
           </div>
         }
       />
@@ -60,22 +62,22 @@ export default function AdminCoachees() {
       <PendingAccessRequests variant="coachee" onApproved={load} />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
-        <Kpi label="Total" value={rows.length} icon={Users} tone="primary" />
-        <Kpi label="Active" value={active} icon={Users} tone="success" />
-        <Kpi label="Awaiting approval" value={pending} icon={Users} tone="warning" />
-        <Kpi label="Reached limit" value={reachLimit} icon={Users} tone="destructive" />
+        <Kpi label={t("coachees.kpiTotal")} value={rows.length} icon={Users} tone="primary" />
+        <Kpi label={t("coachees.kpiActive")} value={active} icon={Users} tone="success" />
+        <Kpi label={t("coachees.kpiAwaitingApproval")} value={pending} icon={Users} tone="warning" />
+        <Kpi label={t("coachees.kpiReachedLimit")} value={reachLimit} icon={Users} tone="destructive" />
       </div>
 
       <div className="mb-3 flex flex-wrap gap-2">
         <div className="relative min-w-64 flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("coachees.searchPlaceholder")} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | Status)}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {(Object.keys(STATUS_LABEL) as Status[]).map(s => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
+            <SelectItem value="all">{t("coachees.allStatuses")}</SelectItem>
+            {STATUS_KEYS.map(s => <SelectItem key={s} value={s}>{t(`coachees.statusLabels.${s}`)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -85,16 +87,16 @@ export default function AdminCoachees() {
           <table className="w-full text-[12px]">
             <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="px-3 py-2.5 text-left font-semibold">Coachee</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Status</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Registered</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Limit</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Booked</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Done</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Programme</th>
-                <th className="px-3 py-2.5 text-left font-semibold">% Complete</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Selected coaches</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.coachee")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.status")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.registered")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.limit")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.booked")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.done")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.programme")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.percentComplete")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.selectedCoaches")}</th>
+                <th className="px-3 py-2.5 text-right font-semibold">{t("coachees.tableHeaders.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -109,7 +111,7 @@ export default function AdminCoachees() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Pill></td>
+                  <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{t(`coachees.statusLabels.${r.status}`)}</Pill></td>
                   <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{format(new Date(r.created_at), "MMM d, yyyy")}</td>
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.done}/{r.session_limit}</span></td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked}</td>
@@ -133,17 +135,17 @@ export default function AdminCoachees() {
                       );
                     })()}
                   </td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.selected_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : `${r.selected_coaches.length} coach${r.selected_coaches.length === 1 ? "" : "es"}`}</td>
+                  <td className="px-3 py-2.5 text-[11px]">{r.selected_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : t("coachees.selectedCoachesCount", { count: r.selected_coaches.length })}</td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
-                      <Button variant="ghost" size="icon" title="View profile" onClick={() => setViewing(r)}><Eye className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" title="Edit" onClick={() => setEditing(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" title={t("coachees.viewProfile")} onClick={() => setViewing(r)}><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" title={t("coachees.edit")} onClick={() => setEditing(r)}><Pencil className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={10} className="p-12 text-center text-sm text-muted-foreground">No coachees match your filters.</td></tr>
+                <tr><td colSpan={10} className="p-12 text-center text-sm text-muted-foreground">{t("coachees.noMatch")}</td></tr>
               )}
             </tbody>
           </table>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { PageHeader } from "@/components/ui/page-header";
 
 export default function CoacheeProfileEditor() {
   const { user, profile, refreshProfile } = useAuth();
+  const { t } = useTranslation("profile");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -72,10 +74,10 @@ export default function CoacheeProfileEditor() {
 
     setSaving(false);
     if (pErr || cErr) {
-      toast.error((pErr || cErr)?.message || "Failed to save");
+      toast.error((pErr || cErr)?.message || t("coacheeEditor.toast.saveFailedDefault"));
       return;
     }
-    toast.success("Profile updated");
+    toast.success(t("coacheeEditor.toast.updated"));
     await refreshProfile();
   };
 
@@ -91,54 +93,54 @@ export default function CoacheeProfileEditor() {
     <div className="space-y-6">
       <PageHeader
           className="mb-0"
-          eyebrow="Account"
-          title="My"
-          emphasis="profile"
-          subtitle="Coaches you book with see this information."
+          eyebrow={t("coacheeEditor.header.eyebrow")}
+          title={t("coacheeEditor.header.titleLead")}
+          emphasis={t("coacheeEditor.header.titleEmphasis")}
+          subtitle={t("coacheeEditor.header.subtitle")}
         />
 
       <Card className="space-y-5 p-6">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Full name">
+          <Field label={t("coacheeEditor.fields.fullNameLabel")}>
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </Field>
-          <Field label="Email">
+          <Field label={t("coacheeEditor.fields.emailLabel")}>
             <Input value={profile?.email || ""} disabled />
           </Field>
-          <Field label="Job title">
-            <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Engineering Manager" />
+          <Field label={t("coacheeEditor.fields.jobTitleLabel")}>
+            <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder={t("coacheeEditor.fields.jobTitlePlaceholder")} />
           </Field>
-          <Field label="Industry">
-            <Input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Software" />
+          <Field label={t("coacheeEditor.fields.industryLabel")}>
+            <Input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder={t("coacheeEditor.fields.industryPlaceholder")} />
           </Field>
-          <Field label="Location">
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, Country" />
+          <Field label={t("coacheeEditor.fields.locationLabel")}>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t("coacheeEditor.fields.locationPlaceholder")} />
           </Field>
-          <Field label="Phone">
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" />
+          <Field label={t("coacheeEditor.fields.phoneLabel")}>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t("coacheeEditor.fields.phonePlaceholder")} />
           </Field>
-          <Field label="Timezone">
-            <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="e.g. Asia/Ho_Chi_Minh" />
+          <Field label={t("coacheeEditor.fields.timezoneLabel")}>
+            <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder={t("coacheeEditor.fields.timezonePlaceholder")} />
           </Field>
         </div>
 
-        <Field label="About you">
+        <Field label={t("coacheeEditor.fields.aboutYouLabel")}>
           <Textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} />
         </Field>
 
-        <Field label="Coaching goals">
+        <Field label={t("coacheeEditor.fields.coachingGoalsLabel")}>
           <Textarea
             value={goals}
             onChange={(e) => setGoals(e.target.value)}
             rows={3}
-            placeholder="What do you want to achieve?"
+            placeholder={t("coacheeEditor.fields.coachingGoalsPlaceholder")}
           />
         </Field>
 
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving}>
             {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            Save changes
+            {t("coacheeEditor.saveChanges")}
           </Button>
         </div>
       </Card>

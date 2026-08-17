@@ -1,0 +1,85 @@
+{
+  "coachEditor": {
+    "toast": {
+      "savedTitle": "Profile saved",
+      "savedDescription": "Your coach profile has been updated.",
+      "failedTitle": "Save failed",
+      "failedDefaultDescription": "Please try again."
+    },
+    "header": {
+      "eyebrow": "Coach",
+      "titleLead": "My coach",
+      "titleEmphasis": "profile",
+      "subtitle": "This is what coachees see when browsing the directory."
+    },
+    "statusLabel": {
+      "pending_approval": "Pending approval",
+      "active": "Active",
+      "rejected": "Rejected"
+    },
+    "pendingNotice": "Your profile is awaiting admin approval. Once approved, it will appear in the public coach directory.",
+    "basicInfo": {
+      "heading": "Basic information",
+      "fullNameLabel": "Full name",
+      "titleLabel": "Headline / title",
+      "titlePlaceholder": "Executive Leadership Coach",
+      "bioLabel": "Bio",
+      "bioPlaceholder": "Tell coachees about your approach, experience and the outcomes you help create."
+    },
+    "practiceDetails": {
+      "heading": "Practice details",
+      "yearsExperienceLabel": "Years of experience",
+      "nationalityLabel": "Nationality",
+      "countryBasedLabel": "Country based in",
+      "calendlyLabel": "Calendly URL (optional)",
+      "calendlyPlaceholder": "https://calendly.com/your-handle",
+      "specialtiesLabel": "Specialties (comma separated)",
+      "specialtiesPlaceholder": "Leadership, Career transition, Executive presence",
+      "diplomasLabel": "Diplomas & certifications (comma separated)",
+      "diplomasPlaceholder": "ICF PCC, Erickson Solution-Focused Coach"
+    },
+    "saveProfile": "Save profile"
+  },
+  "coacheeEditor": {
+    "toast": {
+      "saveFailedDefault": "Failed to save",
+      "updated": "Profile updated"
+    },
+    "header": {
+      "eyebrow": "Account",
+      "titleLead": "My",
+      "titleEmphasis": "profile",
+      "subtitle": "Coaches you book with see this information."
+    },
+    "fields": {
+      "fullNameLabel": "Full name",
+      "emailLabel": "Email",
+      "jobTitleLabel": "Job title",
+      "jobTitlePlaceholder": "e.g. Engineering Manager",
+      "industryLabel": "Industry",
+      "industryPlaceholder": "e.g. Software",
+      "locationLabel": "Location",
+      "locationPlaceholder": "City, Country",
+      "phoneLabel": "Phone",
+      "phonePlaceholder": "Optional",
+      "timezoneLabel": "Timezone",
+      "timezonePlaceholder": "e.g. Asia/Ho_Chi_Minh",
+      "aboutYouLabel": "About you",
+      "coachingGoalsLabel": "Coaching goals",
+      "coachingGoalsPlaceholder": "What do you want to achieve?"
+    },
+    "saveChanges": "Save changes"
+  },
+  "peerCoaching": {
+    "header": {
+      "eyebrow": "Community",
+      "titleLead": "Peer",
+      "titleEmphasis": "coaching",
+      "subtitle": "Coaches who have opted in to peer coaching. Book a session to be coached by a peer."
+    },
+    "empty": "No peer coaches available right now. Check back soon.",
+    "defaultTitle": "Peer coach",
+    "view": "View",
+    "bookPeer": "Book peer"
+  }
+}

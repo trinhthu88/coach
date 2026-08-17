@@ -1,6 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { vi } from "vitest";
+import "@/i18n/config";
+import i18n from "@/i18n/config";
+
+beforeEach(async () => {
+  await i18n.changeLanguage("en");
+});
 
 const rpcResponses: Record<string, unknown> = {
   sponsor_kpis: [{ leaders_enrolled: 6, on_track_count: 5, at_risk_count: 1, sessions_used: 20, sessions_entitled: 48 }],

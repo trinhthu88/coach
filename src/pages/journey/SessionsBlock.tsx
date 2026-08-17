@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
 import { Card } from "@/components/ui/card";
@@ -40,13 +41,14 @@ export function SessionsBlock<S extends DisplaySession>({
   /** Shows a Peer/Coaching badge per session — used by the coach's own journey view. */
   showSourceBadge?: boolean;
 }) {
+  const { t } = useTranslation("journey");
   return (
     <Card className="p-4">
       <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         {title} · {items.length}
       </p>
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nothing here yet.</p>
+        <p className="text-sm text-muted-foreground">{t("sessionsBlock.nothingHere")}</p>
       ) : (
         <div className="divide-y">
           {items.map((s) => {
@@ -86,6 +88,7 @@ function SessionRow<S extends DisplaySession>({
   coachName?: string;
   showSourceBadge?: boolean;
 }) {
+  const { t } = useTranslation("journey");
   const [open, setOpen] = useState(false);
   const d = new Date(s.start_time);
   const items: RawActionItem[] = Array.isArray(s.action_items)
@@ -114,7 +117,7 @@ function SessionRow<S extends DisplaySession>({
             {s.topic}
           </Link>
           <p className="text-[11px] text-muted-foreground">
-            {format(d, "p")} · {s.duration_minutes}m{coachName ? ` · ${source === "peer" ? "Peer coach" : "Coach"}: ${coachName}` : ""}
+            {format(d, "p")} · {s.duration_minutes}m{coachName ? ` · ${source === "peer" ? t("sessionsBlock.peerCoachPrefix") : t("sessionsBlock.coachPrefix")}: ${coachName}` : ""}
           </p>
           {showSourceBadge ? (
             <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -125,11 +128,11 @@ function SessionRow<S extends DisplaySession>({
                   source === "peer" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
                 )}
               >
-                {source === "peer" ? "Peer" : "Coaching"}
+                {source === "peer" ? t("actionRow.sourcePeer") : t("actionRow.sourceCoaching")}
               </span>
               {expandable && (s.coachee_notes || items.length > 0) && (
                 <button onClick={() => setOpen((o) => !o)} className="ml-1 text-[11px] text-primary hover:underline">
-                  {open ? "Hide details ▴" : "Show details ▾"}
+                  {open ? t("sessionsBlock.hideDetails") : t("sessionsBlock.showDetails")}
                 </button>
               )}
             </div>
@@ -141,7 +144,7 @@ function SessionRow<S extends DisplaySession>({
                   onClick={() => setOpen((o) => !o)}
                   className="ml-2 text-[11px] text-primary hover:underline"
                 >
-                  {open ? "Hide details ▴" : "Show details ▾"}
+                  {open ? t("sessionsBlock.hideDetails") : t("sessionsBlock.showDetails")}
                 </button>
               )}
             </>
@@ -154,7 +157,7 @@ function SessionRow<S extends DisplaySession>({
           {s.coachee_notes && (
             <>
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Reflection note
+                {t("sessionsBlock.reflectionNote")}
               </p>
               <p className="text-xs italic text-muted-foreground">"{s.coachee_notes}"</p>
             </>
@@ -162,7 +165,7 @@ function SessionRow<S extends DisplaySession>({
           {items.length > 0 && (
             <>
               <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Action items from this session
+                {t("sessionsBlock.actionItemsFromSession")}
               </p>
               {items.map((it, i) => (
                 <ActionRow

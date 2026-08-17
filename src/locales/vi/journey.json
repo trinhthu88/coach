@@ -1,0 +1,150 @@
+{
+  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "actionGroups": {
+    "overdue": "Quá hạn",
+    "dueThisWeek": "Đến hạn tuần này",
+    "upcoming": "Sắp tới",
+    "completed": "Đã hoàn thành"
+  },
+  "actionRow": {
+    "markAsDone": "Đánh dấu đã hoàn thành",
+    "markAsNotDone": "Đánh dấu chưa hoàn thành",
+    "done": "Đã xong",
+    "overdue": "Quá hạn",
+    "due": "Đến hạn",
+    "sourcePeer": "Đồng nghiệp",
+    "sourceCoaching": "Coaching"
+  },
+  "programmeCard": {
+    "coachesInProgramme": "Coach trong chương trình này",
+    "sessionsCompletedOf": "{{completed}}/{{total}} session đã hoàn thành",
+    "nextDateSuffix": " · Tiếp theo {{date}}",
+    "leadCoach": "Coach chính",
+    "specialist": "Chuyên gia",
+    "coachTag": "Coach",
+    "peerTag": "Đồng nghiệp",
+    "coachPeerTag": "Coach + Đồng nghiệp",
+    "programme": "Chương trình",
+    "weekOf": "Tuần {{current}} / {{total}}",
+    "sessionsReceived": "Session đã nhận",
+    "programmeDuration": "Thời lượng chương trình",
+    "weeksValue": "{{n}} tuần",
+    "goalProgress": "Tiến độ mục tiêu",
+    "assignedCoaches": "Coach được phân công",
+    "sponsorDisclaimer": "Nếu tổ chức của bạn tài trợ chương trình này, họ có thể xem sự tham gia, tiến độ và trạng thái hoàn thành của bạn — không bao giờ xem ghi chú buổi session, tin nhắn trò chuyện hoặc suy ngẫm cá nhân của bạn."
+  },
+  "emptyGoals": {
+    "title": "Đặt mục tiêu đầu tiên của bạn"
+  },
+  "goalAccordion": {
+    "confirmDeleteGoal": "Xóa mục tiêu này và tất cả các cột mốc của nó?",
+    "startAndTarget": "Bắt đầu & Mục tiêu · 0–100",
+    "locked": "Đã khóa",
+    "startLabel": "Bắt đầu",
+    "startHint": "Bạn đang ở đâu hôm nay",
+    "targetLabel": "Mục tiêu",
+    "targetHint": "Bạn muốn đạt được điều gì",
+    "lockedHint": "Bị khóa sau session hoàn thành tiếp theo của bạn",
+    "currentRatingPrefix": "Đánh giá",
+    "currentRatingBold": "hiện tại",
+    "currentRatingSuffix": "của bạn được ghi lại sau mỗi session trong nhật ký session và theo dõi trên bánh xe.",
+    "milestonesAndActions": "Cột mốc & hành động liên kết",
+    "milestonesOnly": "Cột mốc",
+    "doneOn": "Hoàn thành {{date}}",
+    "targetOn": "Mục tiêu {{date}}",
+    "goalHeaderTargetDate": "mục tiêu {{date}}",
+    "toggleMilestone": "Chuyển đổi cột mốc",
+    "noTargetDate": "Không có ngày mục tiêu",
+    "actionsCountSuffix": " · {{done}}/{{total}} hành động",
+    "linkedActions": "Hành động liên kết",
+    "milestoneTitlePlaceholder": "Tiêu đề cột mốc",
+    "cancel": "Hủy",
+    "add": "Thêm",
+    "addMilestone": "Thêm cột mốc",
+    "deleteGoal": "Xóa mục tiêu"
+  },
+  "goalDialog": {
+    "newGoal": "Mục tiêu mới",
+    "titlePlaceholder": "Tiêu đề mục tiêu (ví dụ: Trở thành người nói trước công chúng tự tin)",
+    "descriptionPlaceholder": "Tại sao điều này quan trọng với bạn? (không bắt buộc)",
+    "targetDateLabel": "Ngày mục tiêu (không bắt buộc)",
+    "cancel": "Hủy",
+    "saveGoal": "Lưu mục tiêu"
+  },
+  "goalWheel": {
+    "needThreeGoals": "Thêm ít nhất 3 mục tiêu để xem bánh xe mục tiêu.",
+    "title": "Bánh xe mục tiêu",
+    "start": "Bắt đầu",
+    "target": "Mục tiêu",
+    "current": "Hiện tại",
+    "sessionSeriesName": "S{{n}} · {{date}}"
+  },
+  "sessionsBlock": {
+    "nothingHere": "Chưa có gì ở đây.",
+    "hideDetails": "Ẩn chi tiết ▴",
+    "showDetails": "Hiện chi tiết ▾",
+    "reflectionNote": "Ghi chú suy ngẫm",
+    "actionItemsFromSession": "Hành động cần làm từ session này",
+    "peerCoachPrefix": "Coach đồng nghiệp",
+    "coachPrefix": "Coach"
+  },
+  "journeyPage": {
+    "eyebrow": "Tiến độ",
+    "titleLead": "Hành trình",
+    "titleEmphasis": "của tôi",
+    "tabs": {
+      "overview": "Tổng quan",
+      "goals": "Mục tiêu & cột mốc",
+      "actions": "Hành động cần làm ({{count}})",
+      "sessions": "Session ({{count}})",
+      "reflections": "Suy ngẫm ({{count}})"
+    },
+    "actionItemsHeader": "Hành động cần làm",
+    "reflectionBanner": {
+      "title": "Giờ suy ngẫm — đánh giá mục tiêu của bạn sau session này",
+      "openPrefix": "Mở",
+      "afterLinkPrefix": "(",
+      "afterLinkSuffix": ") để ghi lại đánh giá bản thân từ 0–100 cho mỗi mục tiêu. Mỗi suy ngẫm trở thành một lớp mới trên bánh xe."
+    },
+    "actionsSummary": "{{total}} tổng cộng · {{done}} đã hoàn thành · {{overdue}} quá hạn",
+    "newReflection": "Suy ngẫm mới",
+    "moodPlaceholder": "Tâm trạng (không bắt buộc, ví dụ: tập trung, bế tắc, tự hào)…",
+    "reflectionPlaceholder": "Bạn đang nghĩ gì? Thành công, trở ngại, những điều nhận ra…",
+    "saveReflection": "Lưu suy ngẫm",
+    "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây."
+  },
+  "coachMyJourney": {
+    "subtitle": "Sự phát triển của bạn với vai trò học viên — qua các session coaching và session đồng nghiệp bạn nhận được.",
+    "metrics": {
+      "overallProgress": "Tiến độ tổng thể",
+      "overallProgressSub_other": "trên {{count}} mục tiêu",
+      "actionsDone": "Hành động đã hoàn thành",
+      "actionsDoneSubOverdue": "{{count}} quá hạn",
+      "actionsDoneSubTotal": "trong tổng số {{count}}",
+      "sessionsReceived": "Session đã nhận",
+      "sessionsReceivedSub_other": "{{count}} sắp tới",
+      "nextSession": "Session tiếp theo",
+      "nothingScheduled": "Chưa có lịch"
+    },
+    "emptyGoalsDescription": "Xác định điều bạn muốn đạt được trong hành trình coaching của chính mình.",
+    "actionsEmptyMessage": "Chưa có hành động nào. Chúng sẽ xuất hiện ở đây khi một coach giao cho bạn.",
+    "sessionsBlockUpcoming": "Sắp tới",
+    "sessionsBlockPast": "Đã qua & hoàn thành"
+  },
+  "coacheeJourney": {
+    "subtitle": "Theo dõi mục tiêu, hành động cần làm, session và suy ngẫm cá nhân của bạn.",
+    "progressRings": {
+      "programme": "Chương trình",
+      "programmeSub": "{{completed}} trong số {{limit}} session",
+      "goalsOnTrack": "Mục tiêu đang đúng hướng",
+      "goalsOnTrackSub": "{{count}} trong số {{total}} đang tiến triển",
+      "actionsClosed": "Hành động đã đóng",
+      "actionsClosedSub": "{{done}} trong số {{total}} đã hoàn thành"
+    },
+    "milestonesEyebrow": "Cột mốc",
+    "emptyGoalsDescription": "Xác định điều bạn muốn đạt được và coach của bạn có thể gắn hành động vào các cột mốc.",
+    "actionsEmptyMessage": "Chưa có hành động nào. Chúng sẽ xuất hiện ở đây khi coach của bạn giao cho bạn.",
+    "sessionsBlockUpcoming": "Sắp tới",
+    "sessionsBlockCompleted": "Đã hoàn thành"
+  }
+}

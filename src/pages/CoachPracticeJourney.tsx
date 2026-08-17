@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -23,18 +24,18 @@ import {
 } from "recharts";
 import { PageHeader } from "@/components/ui/page-header";
 
-const COMPETENCIES = [
-  { key: "ethical_practice", label: "Ethical practice" },
-  { key: "coaching_mindset", label: "Coaching mindset" },
-  { key: "maintains_agreements", label: "Maintains agreements" },
-  { key: "trust_safety", label: "Trust & safety" },
-  { key: "maintains_presence", label: "Maintains presence" },
-  { key: "listens_actively", label: "Listens actively" },
-  { key: "evokes_awareness", label: "Evokes awareness" },
-  { key: "facilitates_growth", label: "Facilitates growth" },
+const COMPETENCY_KEYS = [
+  "ethical_practice",
+  "coaching_mindset",
+  "maintains_agreements",
+  "trust_safety",
+  "maintains_presence",
+  "listens_actively",
+  "evokes_awareness",
+  "facilitates_growth",
 ] as const;
 
-type CompKey = (typeof COMPETENCIES)[number]["key"];
+type CompKey = (typeof COMPETENCY_KEYS)[number];
 
 interface Entry {
   id: string;
@@ -63,7 +64,12 @@ interface Feedback {
 }
 
 export default function CoachPracticeJourney() {
+  const { t } = useTranslation("dashboard");
   const { user } = useAuth();
+  const COMPETENCIES = useMemo(
+    () => COMPETENCY_KEYS.map((key) => ({ key, label: t(`practiceJourney.competencies.${key}`) })),
+    [t]
+  );
   const [entries, setEntries] = useState<Entry[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [profilesById, setProfilesById] = useState<Record<string, { full_name: string }>>({});
@@ -159,7 +165,7 @@ export default function CoachPracticeJourney() {
       const avg = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
       return { competency: c.label, score: Math.round(avg) };
     });
-  }, [feedback]);
+  }, [feedback, COMPETENCIES]);
 
   // Trend data: per feedback entry, plot all 8 scores over time
   const trendData = useMemo(() => {
@@ -173,7 +179,7 @@ export default function CoachPracticeJourney() {
       });
       return row;
     });
-  }, [feedback]);
+  }, [feedback, COMPETENCIES]);
 
   // Strengths & growth edges
   const insights = useMemo(() => {
@@ -197,31 +203,31 @@ export default function CoachPracticeJourney() {
     <div className="space-y-6">
       <PageHeader
             className="mb-0"
-            eyebrow="Practice"
-            title="Practice"
-            emphasis="analytics"
-            subtitle="Your sessions, peer-coaching activity, and ICF competency feedback at a glance."
+            eyebrow={t("practiceJourney.eyebrow")}
+            title={t("practiceJourney.titleLead")}
+            emphasis={t("practiceJourney.titleEmphasis")}
+            subtitle={t("practiceJourney.subtitle")}
           />
 
       {/* COUNTERS */}
       <div className="grid gap-3 md:grid-cols-3">
         <CounterTile
-          title="Sessions received"
-          subtitle="From a coach"
+          title={t("practiceJourney.counters.sessionsReceivedTitle")}
+          subtitle={t("practiceJourney.counters.sessionsReceivedSubtitle")}
           booked={stats.coached.booked}
           completed={stats.coached.completed}
           tone="primary"
         />
         <CounterTile
-          title="Peer sessions given"
-          subtitle="You as peer-coach"
+          title={t("practiceJourney.counters.peerGivenTitle")}
+          subtitle={t("practiceJourney.counters.peerGivenSubtitle")}
           booked={stats.peerGiven.booked}
           completed={stats.peerGiven.completed}
           tone="warning"
         />
         <CounterTile
-          title="Peer sessions received"
-          subtitle="You as peer-coachee"
+          title={t("practiceJourney.counters.peerReceivedTitle")}
+          subtitle={t("practiceJourney.counters.peerReceivedSubtitle")}
           booked={stats.peerReceived.booked}
           completed={stats.peerReceived.completed}
           tone="success"
@@ -230,10 +236,10 @@ export default function CoachPracticeJourney() {
 
       <Tabs defaultValue="competencies">
         <TabsList>
-          <TabsTrigger value="competencies">Competencies</TabsTrigger>
-          <TabsTrigger value="trend">Trend</TabsTrigger>
-          <TabsTrigger value="feedback">Feedback ({feedback.length})</TabsTrigger>
-          <TabsTrigger value="log">Practice log ({entries.length})</TabsTrigger>
+          <TabsTrigger value="competencies">{t("practiceJourney.tabs.competencies")}</TabsTrigger>
+          <TabsTrigger value="trend">{t("practiceJourney.tabs.trend")}</TabsTrigger>
+          <TabsTrigger value="feedback">{t("practiceJourney.tabs.feedback", { count: feedback.length })}</TabsTrigger>
+          <TabsTrigger value="log">{t("practiceJourney.tabs.log", { count: entries.length })}</TabsTrigger>
         </TabsList>
 
         {/* RADAR + INSIGHTS */}
@@ -241,10 +247,10 @@ export default function CoachPracticeJourney() {
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="p-5 lg:col-span-2">
               <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                ICF competency average (0–100)
+                {t("practiceJourney.radarTitle")}
               </p>
               {feedback.length === 0 ? (
-                <EmptyHint text="No feedback yet — your first peer-coachee rating will appear here." />
+                <EmptyHint text={t("practiceJourney.noFeedbackYet")} />
               ) : (
                 <div className="h-[360px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -260,7 +266,7 @@ export default function CoachPracticeJourney() {
                         tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
                       />
                       <Radar
-                        name="Average"
+                        name={t("practiceJourney.averageLegend")}
                         dataKey="score"
                         stroke="hsl(var(--primary))"
                         fill="hsl(var(--primary))"
@@ -275,10 +281,10 @@ export default function CoachPracticeJourney() {
             <div className="space-y-3">
               <Card className="p-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-success">
-                  Strengths
+                  {t("practiceJourney.strengths")}
                 </p>
                 {insights.strengths.length === 0 ? (
-                  <p className="mt-2 text-xs text-muted-foreground">No data yet.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{t("practiceJourney.noDataYet")}</p>
                 ) : (
                   <ul className="mt-2 space-y-1.5">
                     {insights.strengths.map((s) => (
@@ -292,10 +298,10 @@ export default function CoachPracticeJourney() {
               </Card>
               <Card className="p-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-warning">
-                  Growth edges
+                  {t("practiceJourney.growthEdges")}
                 </p>
                 {insights.growth.length === 0 ? (
-                  <p className="mt-2 text-xs text-muted-foreground">No data yet.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{t("practiceJourney.noDataYet")}</p>
                 ) : (
                   <ul className="mt-2 space-y-1.5">
                     {insights.growth.map((s) => (
@@ -317,11 +323,11 @@ export default function CoachPracticeJourney() {
             <div className="mb-3 flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Competency scores over time
+                {t("practiceJourney.trendTitle")}
               </p>
             </div>
             {trendData.length === 0 ? (
-              <EmptyHint text="No feedback yet." />
+              <EmptyHint text={t("practiceJourney.noFeedbackYetShort")} />
             ) : (
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -365,7 +371,7 @@ export default function CoachPracticeJourney() {
         <TabsContent value="feedback" className="mt-4 space-y-3">
           {feedback.length === 0 ? (
             <Card className="p-8">
-              <EmptyHint text="No written feedback yet." />
+              <EmptyHint text={t("practiceJourney.noWrittenFeedbackYet")} />
             </Card>
           ) : (
             [...feedback].reverse().map((f) => (
@@ -374,14 +380,14 @@ export default function CoachPracticeJourney() {
                   <MessageSquareQuote className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground">
-                      from {profilesById[f.peer_coachee_id]?.full_name || "Peer"} ·{" "}
+                      {t("practiceJourney.fromPrefix")} {profilesById[f.peer_coachee_id]?.full_name || t("practiceJourney.defaultPeer")} ·{" "}
                       {format(new Date(f.created_at), "MMM d, yyyy")}
                     </p>
                     {f.feedback_note ? (
                       <p className="mt-1.5 whitespace-pre-wrap text-sm">{f.feedback_note}</p>
                     ) : (
                       <p className="mt-1.5 text-sm italic text-muted-foreground">
-                        No written note provided.
+                        {t("practiceJourney.noWrittenNote")}
                       </p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -410,7 +416,7 @@ export default function CoachPracticeJourney() {
         <TabsContent value="log" className="mt-4">
           <Card className="p-5">
             {entries.length === 0 ? (
-              <EmptyHint text="No entries yet." />
+              <EmptyHint text={t("practiceJourney.noEntriesYet")} />
             ) : (
               <ul className="divide-y">
                 {entries.map((e) => {
@@ -422,7 +428,7 @@ export default function CoachPracticeJourney() {
                         <p className="font-semibold">{e.topic}</p>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        with {counterpart} · {format(new Date(e.start_time), "MMM d, yyyy · p")} ·{" "}
+                        {t("practiceJourney.withPrefix")} {counterpart} · {format(new Date(e.start_time), "MMM d, yyyy · p")} ·{" "}
                         {e.duration_minutes} min · {e.status.replace(/_/g, " ")}
                       </p>
                     </li>
@@ -450,6 +456,7 @@ function CounterTile({
   completed: number;
   tone: "primary" | "warning" | "success";
 }) {
+  const { t } = useTranslation("dashboard");
   const toneMap = {
     primary: "bg-primary/10 text-primary",
     warning: "bg-warning/15 text-warning",
@@ -464,11 +471,11 @@ function CounterTile({
       <div className="mt-3 flex items-baseline gap-4">
         <div>
           <p className="text-2xl font-semibold">{booked}</p>
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Booked</p>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{t("practiceJourney.counters.booked")}</p>
         </div>
         <div>
           <p className={cn("text-2xl font-semibold", toneMap[tone].split(" ")[1])}>{completed}</p>
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Completed</p>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{t("practiceJourney.counters.completed")}</p>
         </div>
       </div>
     </Card>
@@ -476,10 +483,11 @@ function CounterTile({
 }
 
 function KindBadge({ kind }: { kind: Entry["kind"] }) {
+  const { t } = useTranslation("dashboard");
   const map = {
-    coached: { label: "Coached", className: "bg-primary/15 text-primary" },
-    "peer-given": { label: "Peer · given", className: "bg-warning/15 text-warning" },
-    "peer-received": { label: "Peer · received", className: "bg-success/15 text-success" },
+    coached: { label: t("practiceJourney.kindBadge.coached"), className: "bg-primary/15 text-primary" },
+    "peer-given": { label: t("practiceJourney.kindBadge.peerGiven"), className: "bg-warning/15 text-warning" },
+    "peer-received": { label: t("practiceJourney.kindBadge.peerReceived"), className: "bg-success/15 text-success" },
   } as const;
   const m = map[kind];
   return (

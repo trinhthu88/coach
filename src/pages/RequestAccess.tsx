@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,15 @@ import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle2, Clock, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import clarivaLogo from "@/assets/clariva-logo-dark.png";
 import { cn } from "@/lib/utils";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 type Role = "executive" | "coach";
 
+// NOTE: these values are stored verbatim in access_requests.industry / .credential
+// (see handleSubmit below) and are also matched against elsewhere (admin review UI).
+// Translating the displayed label would either desync it from the stored value or
+// require decoupling value/label — a data-modeling decision, not a mechanical
+// extraction. Left untranslated for now; flagged in the Phase 5 batch-1 report.
 const INDUSTRIES = [
   "Technology and Software",
   "Financial Services and Banking",
@@ -34,6 +41,8 @@ const INDUSTRIES = [
   "Other",
 ];
 
+// Professional credential names (ICF designations) — industry-standard terms, not
+// translated regardless of UI language. Also stored verbatim, same note as above.
 const CREDENTIALS = [
   "ACC — Associate Certified Coach",
   "PCC — Professional Certified Coach",
@@ -42,6 +51,7 @@ const CREDENTIALS = [
 ];
 
 export default function RequestAccess() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const [role, setRole] = useState<Role>("executive");
   const [submitting, setSubmitting] = useState(false);
@@ -88,10 +98,10 @@ export default function RequestAccess() {
         pgError?.code === "23505" ||
         String(pgError?.message ?? "").toLowerCase().includes("access_requests_email_unique");
       toast({
-        title: "Submission failed",
+        title: t("requestAccess.toast.error.title"),
         description: duplicate
-          ? "This email already has an application on file. Please contact the administrator if you need help."
-          : pgError?.message ?? "Please try again.",
+          ? t("requestAccess.toast.error.duplicateDescription")
+          : pgError?.message ?? t("toast.error.genericDescription"),
         variant: "destructive",
       });
     } finally {
@@ -103,14 +113,17 @@ export default function RequestAccess() {
     <div className="min-h-screen bg-secondary text-primary-foreground">
       <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-white/5 bg-secondary/85 px-6 backdrop-blur sm:px-12">
         <Link to="/" className="flex items-center gap-3">
-          <img src={clarivaLogo} alt="Clariva" className="h-8 w-auto object-contain" />
+          <img src={clarivaLogo} alt={t("heroPane.logoAlt")} className="h-8 w-auto object-contain" />
         </Link>
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-xs font-semibold tracking-wider text-white/40 transition-colors hover:text-white/80"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to home
-        </Link>
+        <div className="flex items-center gap-4">
+          <LanguageSwitcher />
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-xs font-semibold tracking-wider text-white/40 transition-colors hover:text-white/80"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> {t("requestAccess.backToHome")}
+          </Link>
+        </div>
       </header>
 
       <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-2">
@@ -120,40 +133,27 @@ export default function RequestAccess() {
           <div className="relative">
             <div className="mb-9 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-primary-glow">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              By invitation only
+              {t("requestAccess.invitationBadge")}
             </div>
             <h1 className="font-display text-5xl font-light leading-[0.95] tracking-tight">
-              Access begins<br />
-              with a <em className="text-primary-glow">conversation.</em>
+              {t("requestAccess.heroTitleLine1")}<br />
+              {t("requestAccess.heroTitleLine2Lead")} <em className="text-primary-glow">{t("requestAccess.heroTitleEmphasis")}</em>
             </h1>
             <p className="mt-5 max-w-md text-sm leading-relaxed text-white/45">
-              Clariva is a private platform. We review every application to ensure both coaches
-              and executives are ready for work at the highest level.
+              {t("requestAccess.heroSubtitle")}
             </p>
             <div className="mt-12 space-y-5">
-              {[
-                {
-                  icon: ShieldCheck,
-                  title: "Vetted on both sides.",
-                  body: "Every coach holds an ICF credential. Every executive is reviewed for readiness and intent.",
-                },
-                {
-                  icon: Clock,
-                  title: "Response within 48 hours.",
-                  body: "Our team reviews every application personally — not by algorithm.",
-                },
-                {
-                  icon: Sparkles,
-                  title: "Your data stays private.",
-                  body: "Application information is never shared or used for any purpose other than your access review.",
-                },
-              ].map((p) => (
-                <div key={p.title} className="flex items-start gap-3.5">
+              {([
+                { icon: ShieldCheck, key: "vetted" },
+                { icon: Clock, key: "response" },
+                { icon: Sparkles, key: "privacy" },
+              ] as const).map((p) => (
+                <div key={p.key} className="flex items-start gap-3.5">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
                     <p.icon className="h-4 w-4 text-primary-glow" />
                   </div>
                   <p className="pt-1 text-sm leading-relaxed text-white/45">
-                    <strong className="font-semibold text-white/80">{p.title}</strong> {p.body}
+                    <strong className="font-semibold text-white/80">{t(`requestAccess.vettingPoints.${p.key}.title`)}</strong> {t(`requestAccess.vettingPoints.${p.key}.body`)}
                   </p>
                 </div>
               ))}
@@ -169,26 +169,25 @@ export default function RequestAccess() {
                 <CheckCircle2 className="h-7 w-7 text-success" />
               </div>
               <h2 className="font-display text-4xl font-light leading-none">
-                Application <em className="text-primary-glow">received.</em>
+                {t("requestAccess.success.titleLead")} <em className="text-primary-glow">{t("requestAccess.success.titleEmphasis")}</em>
               </h2>
               <p className="max-w-sm text-sm leading-relaxed text-white/40">
-                Thank you. Our team will review your application and reach out within 48 hours.
+                {t("requestAccess.success.body")}
               </p>
               <Button
                 variant="outline"
                 onClick={() => navigate("/")}
                 className="mt-2 rounded-full border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
               >
-                Back to Clariva
+                {t("requestAccess.success.backButton")}
               </Button>
             </div>
           ) : (
             <div className="mx-auto max-w-xl">
               <div className="mb-8">
-                <h2 className="text-2xl font-bold tracking-tight">Request access</h2>
+                <h2 className="text-2xl font-bold tracking-tight">{t("requestAccess.formHeading")}</h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/40">
-                  Tell us about yourself. We will review your application and be in touch within
-                  48 hours.
+                  {t("requestAccess.formSubtitle")}
                 </p>
               </div>
 
@@ -198,16 +197,14 @@ export default function RequestAccess() {
                   [
                     {
                       value: "executive",
-                      label: "I am an executive",
-                      sub: "Seeking a vetted coach for leadership growth",
+                      key: "executive",
                       activeBg: "bg-primary/10",
                       activeLabel: "text-primary-glow",
                       dot: "bg-primary",
                     },
                     {
                       value: "coach",
-                      label: "I am a coach",
-                      sub: "ICF-credentialed, applying to join the platform",
+                      key: "coach",
                       activeBg: "bg-accent/10",
                       activeLabel: "text-accent",
                       dot: "bg-accent",
@@ -237,9 +234,9 @@ export default function RequestAccess() {
                           active ? opt.activeLabel : "text-white/35"
                         )}
                       >
-                        {opt.label}
+                        {t(`requestAccess.roleToggle.${opt.key}.label`)}
                       </span>
-                      <span className="text-[11px] leading-snug text-white/25">{opt.sub}</span>
+                      <span className="text-[11px] leading-snug text-white/25">{t(`requestAccess.roleToggle.${opt.key}.sub`)}</span>
                     </button>
                   );
                 })}
@@ -247,52 +244,52 @@ export default function RequestAccess() {
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field id="fullName" label="Full name" required>
+                  <Field id="fullName" label={t("requestAccess.fields.fullNameLabel")} required>
                     <DarkInput
                       id="fullName"
                       required
                       value={form.fullName}
                       onChange={(e) => update("fullName", e.target.value)}
-                      placeholder="Your full name"
+                      placeholder={t("requestAccess.fields.fullNamePlaceholder")}
                     />
                   </Field>
-                  <Field id="email" label="Work email" required>
+                  <Field id="email" label={t("requestAccess.fields.emailLabel")} required>
                     <DarkInput
                       id="email"
                       type="email"
                       required
                       value={form.email}
                       onChange={(e) => update("email", e.target.value)}
-                      placeholder="you@company.com"
+                      placeholder={t("requestAccess.fields.emailPlaceholder")}
                     />
                   </Field>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field id="jobTitle" label="Job title" required>
+                  <Field id="jobTitle" label={t("requestAccess.fields.jobTitleLabel")} required>
                     <DarkInput
                       id="jobTitle"
                       required
                       value={form.jobTitle}
                       onChange={(e) => update("jobTitle", e.target.value)}
-                      placeholder="e.g. Chief Executive Officer"
+                      placeholder={t("requestAccess.fields.jobTitlePlaceholder")}
                     />
                   </Field>
-                  <Field id="company" label="Company" required>
+                  <Field id="company" label={t("requestAccess.fields.companyLabel")} required>
                     <DarkInput
                       id="company"
                       required
                       value={form.company}
                       onChange={(e) => update("company", e.target.value)}
-                      placeholder="Your organisation"
+                      placeholder={t("requestAccess.fields.companyPlaceholder")}
                     />
                   </Field>
                 </div>
 
-                <Field id="industry" label="Industry" required>
+                <Field id="industry" label={t("requestAccess.fields.industryLabel")} required>
                   <Select value={form.industry} onValueChange={(v) => update("industry", v)}>
                     <SelectTrigger className="h-12 rounded-[10px] border-white/10 bg-white/[0.05] text-sm font-medium text-white hover:bg-white/[0.07] focus:border-primary/50 focus:ring-0">
-                      <SelectValue placeholder="Select your industry" />
+                      <SelectValue placeholder={t("requestAccess.fields.industryPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {INDUSTRIES.map((i) => (
@@ -304,25 +301,25 @@ export default function RequestAccess() {
                   </Select>
                 </Field>
 
-                <Field id="linkedin" label="LinkedIn profile URL" optional>
+                <Field id="linkedin" label={t("requestAccess.fields.linkedinLabel")} optional>
                   <DarkInput
                     id="linkedin"
                     type="url"
                     value={form.linkedin}
                     onChange={(e) => update("linkedin", e.target.value)}
-                    placeholder="https://linkedin.com/in/yourname"
+                    placeholder={t("requestAccess.fields.linkedinPlaceholder")}
                   />
                 </Field>
 
                 {role === "coach" && (
                   <>
-                    <Field id="credential" label="Professional credential" required>
+                    <Field id="credential" label={t("requestAccess.fields.credentialLabel")} required>
                       <Select
                         value={form.credential}
                         onValueChange={(v) => update("credential", v)}
                       >
                         <SelectTrigger className="h-12 rounded-[10px] border-white/10 bg-white/[0.05] text-sm font-medium text-white hover:bg-white/[0.07] focus:border-primary/50 focus:ring-0">
-                          <SelectValue placeholder="Select your credential" />
+                          <SelectValue placeholder={t("requestAccess.fields.credentialPlaceholder")} />
                         </SelectTrigger>
                         <SelectContent>
                           {CREDENTIALS.map((c) => (
@@ -334,13 +331,13 @@ export default function RequestAccess() {
                       </Select>
                     </Field>
                     {form.credential === "Other" && (
-                      <Field id="credentialOther" label="Please specify your credential" required>
+                      <Field id="credentialOther" label={t("requestAccess.fields.credentialOtherLabel")} required>
                         <DarkInput
                           id="credentialOther"
                           required
                           value={form.credentialOther}
                           onChange={(e) => update("credentialOther", e.target.value)}
-                          placeholder="e.g. Erickson Solution-Focused Coach"
+                          placeholder={t("requestAccess.fields.credentialOtherPlaceholder")}
                         />
                       </Field>
                     )}
@@ -351,8 +348,8 @@ export default function RequestAccess() {
                   id="motivation"
                   label={
                     role === "coach"
-                      ? "What draws you to Clariva?"
-                      : "What are you hoping to work on?"
+                      ? t("requestAccess.fields.motivationLabelCoach")
+                      : t("requestAccess.fields.motivationLabelExecutive")
                   }
                   optional
                 >
@@ -362,8 +359,8 @@ export default function RequestAccess() {
                     onChange={(e) => update("motivation", e.target.value)}
                     placeholder={
                       role === "coach"
-                        ? "Tell us about your coaching philosophy and the clients you serve best…"
-                        : "Brief context helps us find the right match for you…"
+                        ? t("requestAccess.fields.motivationPlaceholderCoach")
+                        : t("requestAccess.fields.motivationPlaceholderExecutive")
                     }
                     className="min-h-[96px] resize-none rounded-[10px] border-white/10 bg-white/[0.05] text-sm text-white placeholder:text-white/20 focus-visible:border-primary/50 focus-visible:ring-0"
                   />
@@ -384,19 +381,16 @@ export default function RequestAccess() {
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        <ShieldCheck className="h-4 w-4" /> Submit application
+                        <ShieldCheck className="h-4 w-4" /> {t("requestAccess.submit")}
                       </>
                     )}
                   </Button>
                   <p className="mt-3.5 text-center text-[11px] leading-relaxed text-white/20">
-                    By submitting you agree to our Privacy Policy and Terms of Service. We will
-                    never share your information.
+                    {t("requestAccess.disclaimer")}
                   </p>
                   {role === "executive" && (
                     <p className="mt-2 text-center text-[11px] leading-relaxed text-white/20">
-                      If your organization sponsors your programme, your sponsor can see your
-                      participation, progress, and completion status. They cannot see session
-                      notes, chat messages, or personal reflections.
+                      {t("requestAccess.sponsorDisclaimer")}
                     </p>
                   )}
                 </div>
@@ -422,6 +416,7 @@ function Field({
   optional?: boolean;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation("auth");
   return (
     <div className="space-y-2">
       <Label
@@ -431,7 +426,7 @@ function Field({
         {label}
         {required && <span className="ml-1 text-destructive">*</span>}
         {optional && (
-          <span className="ml-1 normal-case tracking-normal text-white/20">(optional)</span>
+          <span className="ml-1 normal-case tracking-normal text-white/20">{t("requestAccess.fields.optionalSuffix")}</span>
         )}
       </Label>
       {children}

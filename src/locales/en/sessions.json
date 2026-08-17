@@ -1,0 +1,256 @@
+{
+  "status": {
+    "pending_coach_approval": "Awaiting confirmation",
+    "confirmed": "Confirmed",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "rescheduled": "Rescheduled"
+  },
+  "bookSession": {
+    "backToCoach": "Back to coach",
+    "loadError": {
+      "title": "Couldn't load this page",
+      "body": "Something went wrong while loading the coach's availability. Please try again.",
+      "retry": "Try again"
+    },
+    "coachNotFound": {
+      "title": "Coach not found",
+      "backToCoaches": "Back to coaches"
+    },
+    "coachSummary": {
+      "defaultTitle": "Coach",
+      "ratingLabel": "Rating",
+      "experienceLabel": "Experience",
+      "experienceValue": "{{years}} yrs",
+      "sessionsLabel": "Sessions",
+      "basedIn": "{{nationality}} (Based in {{country}})",
+      "verifiedExpert": "Verified expert",
+      "usagePrefix": "You've used",
+      "usageOfYour": "of your",
+      "usageSuffix": "sessions this month.",
+      "unlimited": "unlimited"
+    },
+    "modeWord": {
+      "peer": "peer coaching",
+      "coaching": "coaching"
+    },
+    "title": {
+      "peer": "Book a peer coaching session",
+      "coaching": "Book your session"
+    },
+    "subtitle": {
+      "peer": "You're booking a peer session — to be coached by another coach.",
+      "coaching": "Select your preferred duration and time to get started."
+    },
+    "peerBadge": "Peer",
+    "freePlanNotice": {
+      "prefix": "You've used all {{limit}} of your free {{modeWord}} sessions. Paid plans with more sessions are coming soon — reach out to",
+      "suffix": "if you'd like to discuss options."
+    },
+    "limitReached": "Session limit reached ({{used}}/{{limit}} completed). You can't book another session.",
+    "ineligible": "You're not currently eligible to book this coach. Your access may have changed — please contact your admin if this seems wrong.",
+    "steps": {
+      "duration": "Select duration",
+      "durationOption": "{{n}} Minutes",
+      "date": "Select date",
+      "time": "Select time ({{timezone}})"
+    },
+    "pickDatePrompt": "Pick a date above to see times.",
+    "noWindowAvailable": "No {{duration}}-minute window available on this day.",
+    "topicLabel": "Coaching topic",
+    "topicPlaceholder": "What would you like to focus on in this session?",
+    "selectedScheduleLabel": "Selected schedule",
+    "selectATimeSlot": "Select a time slot",
+    "durationBadge": "{{n}} min",
+    "confirmButton": "Confirm Booking",
+    "toast": {
+      "slotTaken": "That time was just booked by someone else. Please pick another slot.",
+      "notEligible": "You're not able to book this session right now — your access to this coach or your session limit may have changed. Please refresh and try again.",
+      "successPeer": "Peer session requested. Awaiting peer coach confirmation.",
+      "successCoaching": "Session requested. Awaiting coach confirmation."
+    }
+  },
+  "list": {
+    "eyebrow": "Schedule",
+    "titleLead": "Your",
+    "titleEmphasis": "sessions",
+    "subtitleCoach": "Confirm requests, manage notes and meeting links.",
+    "subtitleCoachee": "Track upcoming bookings, notes and action items.",
+    "bookASession": "Book a session",
+    "tabs": {
+      "upcoming": "Upcoming ({{count}})",
+      "past": "Past ({{count}})"
+    },
+    "empty": {
+      "noUpcomingTitle": "No upcoming sessions",
+      "noUpcomingSubtitleCoachee": "Browse coaches and book your next session.",
+      "noUpcomingSubtitleCoach": "You're all caught up.",
+      "noPastTitle": "Nothing yet",
+      "noPastSubtitle": "Past sessions will show up here."
+    },
+    "kindLabelWith": "with",
+    "kindLabelCoach": "Coach",
+    "markComplete": "Mark complete",
+    "toast": {
+      "markedComplete": "Session marked completed",
+      "ratingUpdated": "Rating updated",
+      "ratingThanks": "Thanks for your rating!"
+    },
+    "rating": {
+      "yourRating": "Your rating",
+      "rateThisSession": "Rate this session",
+      "rateStars_one": "Rate {{count}} star",
+      "rateStars_other": "Rate {{count}} stars"
+    },
+    "actionItems": {
+      "title": "Action items",
+      "more": "+{{count}} more"
+    }
+  },
+  "detail": {
+    "sessionNotFound": {
+      "title": "Session not found",
+      "backToSessions": "Back to sessions"
+    },
+    "allSessions": "All sessions",
+    "missingRequirementHintPeer": "Waiting on the peer-coachee's competency feedback before this session can be marked complete.",
+    "missingRequirementHintCoaching": "Waiting on the coachee's reflection before this session can be marked complete.",
+    "toast": {
+      "progressSaved": "Progress saved",
+      "meetingLinkInvalid": "Meeting link must start with http:// or https://"
+    },
+    "counterpartRole": {
+      "coachee": "Coachee",
+      "coach": "Coach"
+    },
+    "joinZoomMeeting": "Join Zoom meeting",
+    "saveProgress": "Save progress",
+    "tabs": {
+      "notes": "Notes",
+      "actions": "Actions",
+      "files": "Files",
+      "toolbox": "Toolbox"
+    },
+    "notes": {
+      "coachNoteLabel": "Coach note",
+      "readOnly": "Read only",
+      "onlyYou": "Only you",
+      "coachNotePlaceholderEditable": "Write notes visible to the coachee…",
+      "coachNotePlaceholderReadOnly": "Coach hasn't added notes yet.",
+      "privateNoteLabel": "Private note",
+      "privateNotePlaceholder": "Private notes (only you can see)",
+      "clientReflectionLabel": "Client reflection",
+      "clientReflectionPlaceholderEditable": "Capture your reflections, takeaways and questions…",
+      "clientReflectionPlaceholderReadOnly": "Coachee hasn't shared reflections yet."
+    },
+    "actions": {
+      "eyebrow": "Agreed actions",
+      "save": "Save",
+      "completedBanner": "Session completed — you can still add or update action items anytime and click Save.",
+      "empty": "No actions agreed yet.",
+      "noMilestone": "— No milestone —",
+      "addPlaceholder": "Add new action item…",
+      "add": "Add",
+      "markIncomplete": "Mark incomplete",
+      "markCompleteAria": "Mark complete",
+      "itemPlaceholder": "Action item",
+      "removeItem": "Remove action item",
+      "tipPrefix": "Tip: the coachee can create goals & milestones in",
+      "tipLinkText": "My journey",
+      "tipSuffix": "so action items can be linked."
+    },
+    "files": {
+      "eyebrow": "Attachments",
+      "empty": "No files attached yet.",
+      "addAttachment": "Add attachment",
+      "acceptedTypes": "PDF · JPG · MP3 · MP4",
+      "removeAttachment": "Remove attachment"
+    },
+    "toolbox": {
+      "eyebrow": "Coaching tools",
+      "subtitle": "Open a tool to work through it together. Whatever you fill in stays attached to this session."
+    },
+    "sessionFocus": {
+      "eyebrow": "Session focus",
+      "dateLabel": "Date",
+      "durationLabel": "Duration",
+      "durationValue": "{{n}} min"
+    },
+    "prepare": "Prepare",
+    "meetingLink": {
+      "adminEyebrow": "Meeting link (admin)",
+      "placeholder": "https://meet.google.com/… or https://zoom.us/…",
+      "helper": "A video room is created automatically when the session is confirmed. Paste a Zoom/Meet link here only if you want to override it.",
+      "testLink": "Test link",
+      "noLinkSaved": "No link saved yet",
+      "save": "Save link",
+      "pendingEyebrow": "Meeting link",
+      "pendingBody": "Your video room is being set up. Refresh in a moment."
+    },
+    "participants": "Participants",
+    "confirmSession": "Confirm session",
+    "markComplete": "Mark complete",
+    "cancelSession": "Cancel session",
+    "help": {
+      "title": "Need help with this session?",
+      "contact": "Contact platform support"
+    },
+    "peerFeedback": {
+      "eyebrow": "ICF competency feedback",
+      "heading": "Rate your peer coach",
+      "readOnlySuffix": "(read only)",
+      "subtitle": "Score the 8 ICF coaching competencies from 0 to 100.",
+      "competencies": {
+        "ethicalPractice": "Demonstrates Ethical Practice",
+        "coachingMindset": "Embodies a Coaching Mindset",
+        "maintainsAgreements": "Establishes & Maintains Agreements",
+        "trustSafety": "Cultivates Trust and Safety",
+        "maintainsPresence": "Maintains Presence",
+        "listensActively": "Listens Actively",
+        "evokesAwareness": "Evokes Awareness",
+        "facilitatesGrowth": "Facilitates Client Growth"
+      },
+      "writtenFeedback": "Written feedback",
+      "feedbackPlaceholder": "What went well? What could grow further?",
+      "updateFeedback": "Update feedback",
+      "submitFeedback": "Submit feedback"
+    }
+  },
+  "goalRatings": {
+    "title": "Goal reflection",
+    "emptyPrefix": "No active goals yet. Add goals in",
+    "emptyLinkText": "My journey",
+    "emptySuffix": "to score them after each session.",
+    "lockedNotCompleted": "Available once the session is marked",
+    "lockedNotCompletedSuffix": "completed",
+    "lockedReadOnly": "Read-only — only the coachee can rate their own goals.",
+    "unlockedHint": "Score 0–100 for each goal. Your wheel will plot this session as a new layer.",
+    "saveReflection": "Save reflection",
+    "notePlaceholder": "Optional reflection note for this goal…",
+    "toast": {
+      "saved": "Goal ratings saved — your wheel will update."
+    }
+  },
+  "messages": {
+    "yesterday": "Yesterday",
+    "noMessagesYet": "No messages yet",
+    "eyebrow": "Conversations",
+    "titleLead": "Your",
+    "titleEmphasis": "messages",
+    "unread_one": "{{count}} unread message",
+    "unread_other": "{{count}} unread messages",
+    "unlocksHint": "Chat unlocks once a session is confirmed.",
+    "empty": {
+      "title": "No conversations yet",
+      "body": "Once a session is confirmed, the conversation thread will appear here."
+    },
+    "threadsLabel": "Threads",
+    "sessionCount_one": "{{count}} session",
+    "sessionCount_other": "{{count}} sessions",
+    "newBadge": "{{count}} new",
+    "typeMessagePlaceholder": "Type a message…",
+    "conversationEmpty": "Say hello — this is the start of your conversation.",
+    "loadEarlier": "Load earlier messages",
+    "selectThreadPrompt": "Select a thread to start chatting."
+  }
+}

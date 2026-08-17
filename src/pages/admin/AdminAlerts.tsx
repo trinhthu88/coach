@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, RefreshCw, Flag, Users, BarChart3, Calendar as CalendarIcon, PanelsTopLeft, type LucideIcon } from "lucide-react";
@@ -65,13 +66,14 @@ const TYPE_ICON: Record<string, LucideIcon> = {
   renewal: PanelsTopLeft,
 };
 
-function scopeFor(a: Alert) {
-  if (a.related_coach_id) return "Coach roster";
-  if (a.related_coachee_id) return "Coachee";
-  return "All programmes";
+function scopeFor(a: Alert, t: (key: string) => string) {
+  if (a.related_coach_id) return t("alerts.scopeCoachRoster");
+  if (a.related_coachee_id) return t("alerts.scopeCoachee");
+  return t("alerts.scopeAllProgrammes");
 }
 
 export default function AdminAlerts() {
+  const { t } = useTranslation("admin");
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -171,7 +173,7 @@ export default function AdminAlerts() {
         .eq("resolved", false);
       if (newAlerts.length) await supabase.from("admin_alerts").insert(newAlerts);
 
-      toast.success(`Scan complete · ${newAlerts.length} active alerts`);
+      toast.success(t("alerts.scanComplete", { count: newAlerts.length }));
       load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -182,7 +184,7 @@ export default function AdminAlerts() {
 
   const resolve = async (id: string) => {
     await supabase.from("admin_alerts").update({ resolved: true, resolved_at: new Date().toISOString() }).eq("id", id);
-    toast.success("Alert resolved");
+    toast.success(t("alerts.alertResolved"));
     load();
   };
 
@@ -210,16 +212,16 @@ export default function AdminAlerts() {
   return (
     <div>
       <AdminPageHeader
-        eyebrow="Organisation"
-        title="Alerts"
+        eyebrow={t("alerts.eyebrow")}
+        title={t("alerts.title")}
         trailing=""
-        subtitle={`${open.length} open. Sorted by what will cost you a cohort first.`}
+        subtitle={t("alerts.subtitle", { count: open.length })}
         right={
           <div className="flex items-center gap-2">
-            <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>All</FilterChip>
-            <FilterChip active={filter === "critical"} onClick={() => setFilter("critical")}>Critical</FilterChip>
-            <FilterChip active={filter === "warning"} onClick={() => setFilter("warning")}>Warning</FilterChip>
-            <FilterChip active={filter === "info"} onClick={() => setFilter("info")}>Info</FilterChip>
+            <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>{t("alerts.filterAll")}</FilterChip>
+            <FilterChip active={filter === "critical"} onClick={() => setFilter("critical")}>{t("alerts.filterCritical")}</FilterChip>
+            <FilterChip active={filter === "warning"} onClick={() => setFilter("warning")}>{t("alerts.filterWarning")}</FilterChip>
+            <FilterChip active={filter === "info"} onClick={() => setFilter("info")}>{t("alerts.filterInfo")}</FilterChip>
           </div>
         }
       />
@@ -227,36 +229,36 @@ export default function AdminAlerts() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="grid flex-1 gap-3 sm:grid-cols-4">
           <div className="surface-card border-l-4 border-l-accent p-4">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Open</p>
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("alerts.statOpen")}</p>
             <p className="font-display mt-2 text-[2rem] leading-none">{open.length}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">of {alerts.length} raised</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("alerts.statOpenHint", { total: alerts.length })}</p>
           </div>
           <div className="surface-card border-l-4 border-l-destructive p-4">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Critical</p>
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("alerts.statCritical")}</p>
             <p className="font-display mt-2 text-[2rem] leading-none text-destructive">{critical.length}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">cohort revenue at risk</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("alerts.statCriticalHint")}</p>
           </div>
           <div className="surface-card border-l-4 border-l-warning p-4">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Warning</p>
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("alerts.statWarning")}</p>
             <p className="font-display mt-2 text-[2rem] leading-none text-warning">{warning.length}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">service standards slipping</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("alerts.statWarningHint")}</p>
           </div>
           <div className="surface-card border-l-4 border-l-success p-4">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Resolved today</p>
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("alerts.statResolvedToday")}</p>
             <p className="font-display mt-2 text-[2rem] leading-none text-success">{resolvedToday.length}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">by you</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("alerts.statResolvedTodayHint")}</p>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={runScan} disabled={scanning}>
           {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Run scan
+          {t("alerts.runScan")}
         </Button>
       </div>
 
       <div className="space-y-3">
         {visible.length === 0 ? (
           <div className="surface-card p-10 text-center text-sm text-muted-foreground">
-            {filter === "all" ? "All clear. Run a scan to refresh." : "Nothing here right now."}
+            {filter === "all" ? t("alerts.allClear") : t("alerts.nothingHere")}
           </div>
         ) : (
           visible.map((a) => {
@@ -276,14 +278,14 @@ export default function AdminAlerts() {
                     <Pill tone={a.severity === "critical" ? "destructive" : a.severity === "warning" ? "warning" : "primary"}>
                       {a.severity}
                     </Pill>
-                    <span>{formatDistanceToNow(new Date(a.created_at))} · {scopeFor(a)}</span>
+                    <span>{formatDistanceToNow(new Date(a.created_at))} · {scopeFor(a, t)}</span>
                   </div>
                   <p className="mt-2 text-[15px] font-semibold text-foreground">{a.title}</p>
                   {a.message && <p className="mt-1 text-[12.5px] text-muted-foreground">{a.message}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <Button size="sm" onClick={() => resolve(a.id)}>
-                    <Check className="h-3.5 w-3.5" /> Resolve
+                    <Check className="h-3.5 w-3.5" /> {t("alerts.resolve")}
                   </Button>
                 </div>
               </div>
@@ -295,7 +297,7 @@ export default function AdminAlerts() {
       {resolved.length > 0 && (
         <div className="surface-card mt-4 p-5">
           <p className="mb-3 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-            Resolved ({resolved.length})
+            {t("alerts.resolvedCount", { count: resolved.length })}
           </p>
           <ul className="divide-y">
             {resolved.slice(0, 10).map((a) => (

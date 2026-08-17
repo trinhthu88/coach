@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -35,6 +36,7 @@ const empty: CoachForm = {
 
 export default function CoachProfileEditor() {
   const { user, profile, refreshProfile } = useAuth();
+  const { t } = useTranslation("profile");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string>("pending_approval");
@@ -99,11 +101,11 @@ export default function CoachProfileEditor() {
       if (cErr) throw cErr;
 
       await refreshProfile();
-      toast({ title: "Profile saved", description: "Your coach profile has been updated." });
+      toast({ title: t("coachEditor.toast.savedTitle"), description: t("coachEditor.toast.savedDescription") });
     } catch (err) {
       toast({
-        title: "Save failed",
-        description: err instanceof Error ? err.message : "Please try again.",
+        title: t("coachEditor.toast.failedTitle"),
+        description: err instanceof Error ? err.message : t("coachEditor.toast.failedDefaultDescription"),
         variant: "destructive",
       });
     } finally {
@@ -125,57 +127,56 @@ export default function CoachProfileEditor() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Coach"
-        title="My coach"
-        emphasis="profile"
-        subtitle="This is what coachees see when browsing the directory."
+        eyebrow={t("coachEditor.header.eyebrow")}
+        title={t("coachEditor.header.titleLead")}
+        emphasis={t("coachEditor.header.titleEmphasis")}
+        subtitle={t("coachEditor.header.subtitle")}
         actions={
-          <Badge variant={statusVariant} className="capitalize">
-            {status.replace("_", " ")}
+          <Badge variant={statusVariant}>
+            {t(`coachEditor.statusLabel.${status}`, { defaultValue: status.replace("_", " ") })}
           </Badge>
         }
       />
 
       {status === "pending_approval" && (
         <Card className="border-warning/30 bg-warning/5 p-4 text-sm">
-          Your profile is awaiting admin approval. Once approved, it will appear in the public coach
-          directory.
+          {t("coachEditor.pendingNotice")}
         </Card>
       )}
 
       <form onSubmit={handleSave} className="space-y-6">
         <Card className="p-6 space-y-5">
-          <h2 className="text-lg font-semibold">Basic information</h2>
+          <h2 className="text-lg font-semibold">{t("coachEditor.basicInfo.heading")}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Full name</Label>
+              <Label>{t("coachEditor.basicInfo.fullNameLabel")}</Label>
               <Input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label>Headline / title</Label>
+              <Label>{t("coachEditor.basicInfo.titleLabel")}</Label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Executive Leadership Coach"
+                placeholder={t("coachEditor.basicInfo.titlePlaceholder")}
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Bio</Label>
+            <Label>{t("coachEditor.basicInfo.bioLabel")}</Label>
             <Textarea
               rows={5}
               value={form.bio}
               onChange={(e) => setForm({ ...form, bio: e.target.value })}
-              placeholder="Tell coachees about your approach, experience and the outcomes you help create."
+              placeholder={t("coachEditor.basicInfo.bioPlaceholder")}
             />
           </div>
         </Card>
 
         <Card className="p-6 space-y-5">
-          <h2 className="text-lg font-semibold">Practice details</h2>
+          <h2 className="text-lg font-semibold">{t("coachEditor.practiceDetails.heading")}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Years of experience</Label>
+              <Label>{t("coachEditor.practiceDetails.yearsExperienceLabel")}</Label>
               <Input
                 type="number"
                 min={0}
@@ -184,43 +185,43 @@ export default function CoachProfileEditor() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Nationality</Label>
+              <Label>{t("coachEditor.practiceDetails.nationalityLabel")}</Label>
               <Input
                 value={form.nationality}
                 onChange={(e) => setForm({ ...form, nationality: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>Country based in</Label>
+              <Label>{t("coachEditor.practiceDetails.countryBasedLabel")}</Label>
               <Input
                 value={form.country_based}
                 onChange={(e) => setForm({ ...form, country_based: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>Calendly URL (optional)</Label>
+              <Label>{t("coachEditor.practiceDetails.calendlyLabel")}</Label>
               <Input
                 type="url"
                 value={form.calendly_url}
                 onChange={(e) => setForm({ ...form, calendly_url: e.target.value })}
-                placeholder="https://calendly.com/your-handle"
+                placeholder={t("coachEditor.practiceDetails.calendlyPlaceholder")}
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Specialties (comma separated)</Label>
+            <Label>{t("coachEditor.practiceDetails.specialtiesLabel")}</Label>
             <Input
               value={form.specialties}
               onChange={(e) => setForm({ ...form, specialties: e.target.value })}
-              placeholder="Leadership, Career transition, Executive presence"
+              placeholder={t("coachEditor.practiceDetails.specialtiesPlaceholder")}
             />
           </div>
           <div className="space-y-2">
-            <Label>Diplomas & certifications (comma separated)</Label>
+            <Label>{t("coachEditor.practiceDetails.diplomasLabel")}</Label>
             <Input
               value={form.diplomas_certifications}
               onChange={(e) => setForm({ ...form, diplomas_certifications: e.target.value })}
-              placeholder="ICF PCC, Erickson Solution-Focused Coach"
+              placeholder={t("coachEditor.practiceDetails.diplomasPlaceholder")}
             />
           </div>
         </Card>
@@ -228,7 +229,7 @@ export default function CoachProfileEditor() {
         <div className="flex justify-end">
           <Button type="submit" disabled={saving} className="shadow-glow">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save profile
+            {t("coachEditor.saveProfile")}
           </Button>
         </div>
       </form>

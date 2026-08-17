@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { format, isBefore } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ export function ActionRow({
   /** Shows the done-check inline with the text and a Peer/Coaching badge — used by the coach's own journey view, which mixes both session sources. */
   showSourceBadge?: boolean;
 }) {
+  const { t } = useTranslation("journey");
   const overdue = !a.done && a.due_date && isBefore(new Date(a.due_date), new Date());
   return (
     <div className="flex items-start gap-2 py-1">
@@ -25,7 +27,7 @@ export function ActionRow({
         type="button"
         onClick={() => onToggle?.(a)}
         disabled={!onToggle}
-        aria-label={a.done ? "Mark as not done" : "Mark as done"}
+        aria-label={a.done ? t("actionRow.markAsNotDone") : t("actionRow.markAsDone")}
         className={cn("group -m-2 shrink-0 rounded-md p-2", onToggle ? "cursor-pointer" : "cursor-default")}
       >
         <span
@@ -51,7 +53,7 @@ export function ActionRow({
         <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
           {a.due_date && (
             <span className={cn(overdue ? "text-destructive font-medium" : "text-muted-foreground")}>
-              {a.done ? "Done" : overdue ? "Overdue" : "Due"} {format(new Date(a.due_date), "MMM d")}
+              {a.done ? t("actionRow.done") : overdue ? t("actionRow.overdue") : t("actionRow.due")} {format(new Date(a.due_date), "MMM d")}
             </span>
           )}
           {!hideMilestone && milestoneLabel && (
@@ -64,7 +66,7 @@ export function ActionRow({
                 a.source === "peer" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
               )}
             >
-              {a.source === "peer" ? "Peer" : "Coaching"}
+              {a.source === "peer" ? t("actionRow.sourcePeer") : t("actionRow.sourceCoaching")}
             </span>
           )}
           <Link to={`/sessions/${a.sessionId}`} className="text-muted-foreground hover:text-primary">

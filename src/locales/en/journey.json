@@ -1,0 +1,151 @@
+{
+  "actionGroups": {
+    "overdue": "Overdue",
+    "dueThisWeek": "Due this week",
+    "upcoming": "Upcoming",
+    "completed": "Completed"
+  },
+  "actionRow": {
+    "markAsDone": "Mark as done",
+    "markAsNotDone": "Mark as not done",
+    "done": "Done",
+    "overdue": "Overdue",
+    "due": "Due",
+    "sourcePeer": "Peer",
+    "sourceCoaching": "Coaching"
+  },
+  "programmeCard": {
+    "coachesInProgramme": "Coaches in this programme",
+    "sessionsCompletedOf": "{{completed}}/{{total}} sessions completed",
+    "nextDateSuffix": " · Next {{date}}",
+    "leadCoach": "Lead coach",
+    "specialist": "Specialist",
+    "coachTag": "Coach",
+    "peerTag": "Peer",
+    "coachPeerTag": "Coach + Peer",
+    "programme": "Programme",
+    "weekOf": "Week {{current}} / {{total}}",
+    "sessionsReceived": "Sessions received",
+    "programmeDuration": "Programme duration",
+    "weeksValue": "{{n}}w",
+    "goalProgress": "Goal progress",
+    "assignedCoaches": "Assigned coaches",
+    "sponsorDisclaimer": "If your organization sponsors this programme, they can see your participation, progress, and completion status — never your session notes, chat messages, or personal reflections."
+  },
+  "emptyGoals": {
+    "title": "Set your first goal"
+  },
+  "goalAccordion": {
+    "confirmDeleteGoal": "Delete this goal and all its milestones?",
+    "startAndTarget": "Start & Target · 0–100",
+    "locked": "Locked",
+    "startLabel": "Start",
+    "startHint": "Where you are today",
+    "targetLabel": "Target",
+    "targetHint": "Where you want to be",
+    "lockedHint": "Locked after your next completed session",
+    "currentRatingPrefix": "Your",
+    "currentRatingBold": "current",
+    "currentRatingSuffix": "rating is captured after each session in the session log and traced on the wheel.",
+    "milestonesAndActions": "Milestones & linked actions",
+    "milestonesOnly": "Milestones",
+    "doneOn": "Done {{date}}",
+    "targetOn": "Target {{date}}",
+    "goalHeaderTargetDate": "target {{date}}",
+    "toggleMilestone": "Toggle milestone",
+    "noTargetDate": "No target date",
+    "actionsCountSuffix": " · {{done}}/{{total}} actions",
+    "linkedActions": "Linked actions",
+    "milestoneTitlePlaceholder": "Milestone title",
+    "cancel": "Cancel",
+    "add": "Add",
+    "addMilestone": "Add milestone",
+    "deleteGoal": "Delete goal"
+  },
+  "goalDialog": {
+    "newGoal": "New goal",
+    "titlePlaceholder": "Goal title (e.g. Become a confident public speaker)",
+    "descriptionPlaceholder": "Why does this matter to you? (optional)",
+    "targetDateLabel": "Target date (optional)",
+    "cancel": "Cancel",
+    "saveGoal": "Save goal"
+  },
+  "goalWheel": {
+    "needThreeGoals": "Add at least 3 goals to see the goal wheel.",
+    "title": "Goal wheel",
+    "start": "Start",
+    "target": "Target",
+    "current": "Current",
+    "sessionSeriesName": "S{{n}} · {{date}}"
+  },
+  "sessionsBlock": {
+    "nothingHere": "Nothing here yet.",
+    "hideDetails": "Hide details ▴",
+    "showDetails": "Show details ▾",
+    "reflectionNote": "Reflection note",
+    "actionItemsFromSession": "Action items from this session",
+    "peerCoachPrefix": "Peer coach",
+    "coachPrefix": "Coach"
+  },
+  "journeyPage": {
+    "eyebrow": "Progress",
+    "titleLead": "My",
+    "titleEmphasis": "journey",
+    "tabs": {
+      "overview": "Overview",
+      "goals": "Goals & milestones",
+      "actions": "Action items ({{count}})",
+      "sessions": "Sessions ({{count}})",
+      "reflections": "Reflections ({{count}})"
+    },
+    "actionItemsHeader": "Action items",
+    "reflectionBanner": {
+      "title": "Reflection time — rate your goals after this session",
+      "openPrefix": "Open",
+      "afterLinkPrefix": "(",
+      "afterLinkSuffix": ") to log a 0–100 self-rating per goal. Each reflection becomes a new layer on the wheel."
+    },
+    "actionsSummary": "{{total}} total · {{done}} done · {{overdue}} overdue",
+    "newReflection": "New reflection",
+    "moodPlaceholder": "Mood (optional, e.g. focused, stuck, proud)…",
+    "reflectionPlaceholder": "What's on your mind? Wins, blockers, insights…",
+    "saveReflection": "Save reflection",
+    "noReflectionsYet": "Your private reflections will appear here."
+  },
+  "coachMyJourney": {
+    "subtitle": "Your growth as a coachee — across coaching and peer sessions you receive.",
+    "metrics": {
+      "overallProgress": "Overall progress",
+      "overallProgressSub_one": "across {{count}} goal",
+      "overallProgressSub_other": "across {{count}} goals",
+      "actionsDone": "Actions done",
+      "actionsDoneSubOverdue": "{{count}} overdue",
+      "actionsDoneSubTotal": "of {{count}} total",
+      "sessionsReceived": "Sessions received",
+      "sessionsReceivedSub_one": "{{count}} upcoming",
+      "sessionsReceivedSub_other": "{{count}} upcoming",
+      "nextSession": "Next session",
+      "nothingScheduled": "Nothing scheduled"
+    },
+    "emptyGoalsDescription": "Define what you want to achieve in your own coaching journey.",
+    "actionsEmptyMessage": "No action items yet. They'll appear here once a coach assigns them.",
+    "sessionsBlockUpcoming": "Upcoming",
+    "sessionsBlockPast": "Past & completed"
+  },
+  "coacheeJourney": {
+    "subtitle": "Track your goals, action items, sessions and personal reflections.",
+    "progressRings": {
+      "programme": "Programme",
+      "programmeSub": "{{completed}} of {{limit}} sessions",
+      "goalsOnTrack": "Goals on track",
+      "goalsOnTrackSub": "{{count}} of {{total}} advancing",
+      "actionsClosed": "Actions closed",
+      "actionsClosedSub": "{{done}} of {{total}} completed"
+    },
+    "milestonesEyebrow": "Milestones",
+    "emptyGoalsDescription": "Define what you want to achieve and your coach can attach action items to milestones.",
+    "actionsEmptyMessage": "No action items yet. They'll appear here once your coach assigns them.",
+    "sessionsBlockUpcoming": "Upcoming",
+    "sessionsBlockCompleted": "Completed"
+  }
+}

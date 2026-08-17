@@ -1,0 +1,65 @@
+{
+  "detail": {
+    "notFound": {
+      "title": "Coach not found",
+      "body": "The coach you're looking for doesn't exist or isn't available."
+    },
+    "backToCoaches": "Back to coaches",
+    "featuredBadge": "Featured coach",
+    "defaultBadge": "Coach",
+    "bookASession": "Book a session",
+    "stats": {
+      "rating": "Rating",
+      "sessions": "Sessions",
+      "experience": "Experience",
+      "experienceValue": "{{years}} yrs"
+    },
+    "approach": "Approach",
+    "noBio": "This coach hasn't written a bio yet.",
+    "specialties": "Specialties",
+    "credentials": "Credentials",
+    "basedIn": "Based in",
+    "chooseATime": "Choose a time"
+  },
+  "list": {
+    "eyebrow": "Curated network",
+    "titleLead": "Find your",
+    "titleEmphasis": "guide",
+    "subtitle_one": "{{count}} accredited coach, filtered to what you're working on right now.",
+    "subtitle_other": "{{count}} accredited coaches, filtered to what you're working on right now.",
+    "searchPlaceholder": "Search by name, specialty, or focus…",
+    "allSpecialtiesLabel": "All Specialties",
+    "featuredBadge": "Featured",
+    "addFavorite": "Add to favorites",
+    "removeFavorite": "Remove from favorites",
+    "noBio": "Profile available — open to learn more.",
+    "experienceWithCountry": "{{years}} yrs · {{country}}",
+    "experienceOnly": "{{years}} yrs",
+    "viewProfile": "View profile",
+    "error": {
+      "title": "Couldn't load coaches",
+      "body": "Something went wrong while fetching the coach directory. Check your connection and try again.",
+      "retry": "Try again"
+    },
+    "empty": {
+      "noMatchTitle": "No coaches match your search",
+      "noneYetTitle": "No coaches available yet",
+      "noMatchBody": "Try a different keyword or specialty.",
+      "noneYetBody": "Once admins approve coach profiles, they'll appear here for booking."
+    }
+  },
+  "findCoach": {
+    "eyebrow": "Curated network",
+    "titleLead": "Find a",
+    "titleEmphasis": "coach",
+    "subtitle": "Coaches curated by admin for your continued growth.",
+    "notice": "The coach list and your session allowance are set by the platform admin.",
+    "allowancePrefix": "Current allowance:",
+    "allowanceSuffix": "sessions.",
+    "unlimitedValue": "unlimited",
+    "empty": "No coaches have been assigned to you yet. Reach out to your admin.",
+    "defaultTitle": "Coach",
+    "view": "View",
+    "book": "Book"
+  }
+}

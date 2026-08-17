@@ -29,66 +29,68 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import clarivaLogoDark from "@/assets/clariva-logo-dark.png";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 interface NavItem {
   to: string;
-  label: string;
+  labelKey: string;
   icon: React.ElementType;
   roles: AppRole[];
-  group?: string;
+  groupKey?: string;
   /** Stable hook for the onboarding pointer tour — see src/lib/onboarding/content.ts. */
   onboardingId?: string;
 }
 
 const NAV: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["coach", "coachee"] },
-  { to: "/sponsor", label: "Dashboard", icon: LayoutDashboard, roles: ["sponsor"], group: "Sponsor", onboardingId: "nav-sponsor-dashboard" },
-  { to: "/sponsor/cohorts", label: "Cohorts", icon: Layers, roles: ["sponsor"], group: "Sponsor" },
-  { to: "/sponsor/report", label: "Export report", icon: FileDown, roles: ["sponsor"], group: "Sponsor" },
+  { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["coach", "coachee"] },
+  { to: "/sponsor", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["sponsor"], groupKey: "navGroups.sponsor", onboardingId: "nav-sponsor-dashboard" },
+  { to: "/sponsor/cohorts", labelKey: "nav.cohorts", icon: Layers, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
+  { to: "/sponsor/report", labelKey: "nav.exportReport", icon: FileDown, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
 
   // Coachee
-  { to: "/coaches", label: "Find coaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches" },
-  { to: "/coachee/profile", label: "My profile", icon: IdCard, roles: ["coachee"] },
-  { to: "/coachee/journey", label: "My journey", icon: Compass, roles: ["coachee"] },
+  { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches" },
+  { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"] },
+  { to: "/coachee/journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coachee"] },
 
   // Coach — My Coaching Profile
-  { to: "/coach/profile", label: "My coach profile", icon: IdCard, roles: ["coach"], group: "My Coaching Profile" },
-  { to: "/coach/availability", label: "My availability", icon: CalendarClock, roles: ["coach"], group: "My Coaching Profile", onboardingId: "nav-my-availability" },
-  { to: "/coach/clients", label: "My clients", icon: UsersRound, roles: ["coach"], group: "My Coaching Profile" },
+  { to: "/coach/profile", labelKey: "nav.myCoachProfile", icon: IdCard, roles: ["coach"], groupKey: "navGroups.myCoachingProfile" },
+  { to: "/coach/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coach"], groupKey: "navGroups.myCoachingProfile", onboardingId: "nav-my-availability" },
+  { to: "/coach/clients", labelKey: "nav.myClients", icon: UsersRound, roles: ["coach"], groupKey: "navGroups.myCoachingProfile" },
 
   // Coach — My Practice Journey
-  { to: "/coach/peer-coaching", label: "Peer coaching", icon: MessagesSquare, roles: ["coach"], group: "My Practice Journey" },
-  { to: "/coach/find-coach", label: "Find a coach", icon: Search, roles: ["coach"], group: "My Practice Journey" },
-  { to: "/coach/my-journey", label: "My journey", icon: Compass, roles: ["coach"], group: "My Practice Journey" },
-  { to: "/coach/practice-journey", label: "Practice analytics", icon: Layers, roles: ["coach"], group: "My Practice Journey" },
+  { to: "/coach/peer-coaching", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
+  { to: "/coach/find-coach", labelKey: "nav.findACoach", icon: Search, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
+  { to: "/coach/my-journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
+  { to: "/coach/practice-journey", labelKey: "nav.practiceAnalytics", icon: Layers, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
 
   // Communication (shared)
-  { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["coach", "coachee"], group: "Communication" },
-  { to: "/messages", label: "Messages", icon: MessageSquare, roles: ["coach", "coachee"], group: "Communication" },
+  { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coach", "coachee"], groupKey: "navGroups.communication" },
+  { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coach", "coachee"], groupKey: "navGroups.communication" },
 
   // Admin — Overview
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: ["admin"], group: "Overview" },
-  { to: "/admin/alerts", label: "Alerts", icon: Bell, roles: ["admin"], group: "Overview" },
-  { to: "/admin/activity", label: "Activity", icon: Activity, roles: ["admin"], group: "Overview" },
+  { to: "/admin", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["admin"], groupKey: "navGroups.overview" },
+  { to: "/admin/alerts", labelKey: "nav.alerts", icon: Bell, roles: ["admin"], groupKey: "navGroups.overview" },
+  { to: "/admin/activity", labelKey: "nav.activity", icon: Activity, roles: ["admin"], groupKey: "navGroups.overview" },
 
   // Admin — People
-  { to: "/admin/coaches", label: "Coaches", icon: Users, roles: ["admin"], group: "People" },
-  { to: "/admin/coachees", label: "Coachees", icon: GraduationCap, roles: ["admin"], group: "People" },
-  { to: "/admin/organizations", label: "Organizations", icon: Building2, roles: ["admin"], group: "People" },
+  { to: "/admin/coaches", labelKey: "nav.coaches", icon: Users, roles: ["admin"], groupKey: "navGroups.people" },
+  { to: "/admin/coachees", labelKey: "nav.coachees", icon: GraduationCap, roles: ["admin"], groupKey: "navGroups.people" },
+  { to: "/admin/organizations", labelKey: "nav.organizations", icon: Building2, roles: ["admin"], groupKey: "navGroups.people" },
 
   // Admin — Programmes
-  { to: "/admin/programmes", label: "Programmes", icon: BookOpen, roles: ["admin"], group: "Programmes" },
-  { to: "/admin/cohorts", label: "Cohorts", icon: Network, roles: ["admin"], group: "Programmes" },
-  { to: "/admin/coach-programmes", label: "Coach programmes", icon: UserCog, roles: ["admin"], group: "Programmes" },
+  { to: "/admin/programmes", labelKey: "nav.programmes", icon: BookOpen, roles: ["admin"], groupKey: "navGroups.programmes" },
+  { to: "/admin/cohorts", labelKey: "nav.cohorts", icon: Network, roles: ["admin"], groupKey: "navGroups.programmes" },
+  { to: "/admin/coach-programmes", labelKey: "nav.coachProgrammes", icon: UserCog, roles: ["admin"], groupKey: "navGroups.programmes" },
 
   // Admin — Operations
-  { to: "/admin/sessions", label: "Sessions", icon: ClipboardList, roles: ["admin"], group: "Operations" },
-  { to: "/admin/analytics", label: "Analytics", icon: BarChart3, roles: ["admin"], group: "Operations" },
+  { to: "/admin/sessions", labelKey: "nav.sessions", icon: ClipboardList, roles: ["admin"], groupKey: "navGroups.operations" },
+  { to: "/admin/analytics", labelKey: "nav.analytics", icon: BarChart3, roles: ["admin"], groupKey: "navGroups.operations" },
 ];
 
 function SidebarNav({
@@ -104,27 +106,29 @@ function SidebarNav({
   onNavigate?: () => void;
   onHowItWorks?: () => void;
 }) {
+  const { t } = useTranslation("common");
   const location = useLocation();
   let lastGroup: string | undefined = undefined;
   return (
     <nav className="relative flex flex-1 flex-col gap-[3px] overflow-y-auto px-3 pb-3">
       {items.map((item) => {
         const showBadge = item.to === "/messages" && unreadCount > 0;
-        const showHeader = !collapsed && item.group && item.group !== lastGroup;
-        if (item.group) lastGroup = item.group;
+        const showHeader = !collapsed && item.groupKey && item.groupKey !== lastGroup;
+        if (item.groupKey) lastGroup = item.groupKey;
         const end = item.to === "/admin";
         const isCurrent = end ? location.pathname === item.to : location.pathname.startsWith(item.to);
+        const label = t(item.labelKey);
         return (
           <div key={item.to}>
             {showHeader && (
               <p className="px-3 pb-1.5 pt-4 text-[8.5px] font-bold uppercase tracking-[0.2em] text-secondary-foreground/40">
-                {item.group}
+                {t(item.groupKey!)}
               </p>
             )}
             <NavLink
               to={item.to}
               end={end}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? label : undefined}
               onClick={onNavigate}
               aria-current={isCurrent ? "page" : undefined}
               data-onboarding={item.onboardingId}
@@ -153,7 +157,7 @@ function SidebarNav({
                       </span>
                     )}
                   </span>
-                  {!collapsed && <span className="truncate tracking-[-0.005em]">{item.label}</span>}
+                  {!collapsed && <span className="truncate tracking-[-0.005em]">{label}</span>}
                   {showBadge && !collapsed && (
                     <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-accent-foreground">
                       {unreadCount > 99 ? "99+" : unreadCount}
@@ -168,7 +172,7 @@ function SidebarNav({
       {onHowItWorks && (
         <button
           type="button"
-          title={collapsed ? "How it works" : undefined}
+          title={collapsed ? t("layout.howItWorks") : undefined}
           onClick={() => {
             onHowItWorks();
             onNavigate?.();
@@ -178,7 +182,7 @@ function SidebarNav({
           <span className="relative shrink-0 opacity-90">
             <HelpCircle className="h-5 w-5" />
           </span>
-          {!collapsed && <span className="truncate tracking-[-0.005em]">How it works</span>}
+          {!collapsed && <span className="truncate tracking-[-0.005em]">{t("layout.howItWorks")}</span>}
         </button>
       )}
     </nav>
@@ -194,17 +198,23 @@ function SidebarFooter({
   collapsed: boolean;
   onSignOut: () => void;
 }) {
+  const { t } = useTranslation("common");
   return (
     <div className="relative border-t border-white/10 p-3.5">
       {!collapsed && (
         <p className="px-2 pb-2 text-[8.5px] font-bold uppercase tracking-[0.2em] text-secondary-foreground/40">
-          Signed in as
+          {t("layout.signedInAs")}
         </p>
       )}
       {!collapsed && (
         <p className="truncate px-2 pb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
           {role}
         </p>
+      )}
+      {!collapsed && (
+        <div className="px-2 pb-3">
+          <LanguageSwitcher />
+        </div>
       )}
       <button
         onClick={onSignOut}
@@ -214,13 +224,14 @@ function SidebarFooter({
         )}
       >
         <LogOut className="h-5 w-5 shrink-0" />
-        {!collapsed && <span>Sign out</span>}
+        {!collapsed && <span>{t("actions.signOut")}</span>}
       </button>
     </div>
   );
 }
 
 export default function AppLayout() {
+  const { t } = useTranslation("common");
   const { user, profile, role, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -259,7 +270,7 @@ export default function AppLayout() {
     setAutoTourEligible(showsOnboarding && !profile.onboarding_completed_at);
   }, [profile, showsOnboarding]);
 
-  const displayName = profile?.full_name || user?.email || "User";
+  const displayName = profile?.full_name || user?.email || t("layout.defaultUserName");
   const initials = displayName
     .split(" ")
     .map((n) => n[0])
@@ -314,6 +325,7 @@ export default function AppLayout() {
 
   const activeItem = items.find((i) => location.pathname === i.to) ||
     [...items].sort((a, b) => b.to.length - a.to.length).find((i) => location.pathname.startsWith(i.to));
+  const activeLabel = activeItem ? t(activeItem.labelKey) : t("nav.overview");
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -339,14 +351,14 @@ export default function AppLayout() {
             />
             {!collapsed && (
               <p className="mt-2 pl-0.5 text-[8.5px] font-bold uppercase tracking-[0.26em] text-primary">
-                Coaching OS
+                {t("layout.coachingOsTagline")}
               </p>
             )}
           </div>
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="shrink-0 rounded-lg p-1.5 text-secondary-foreground/50 transition-colors hover:bg-white/10 hover:text-secondary-foreground"
-            aria-label="Toggle sidebar"
+            aria-label={t("layout.toggleSidebar")}
           >
             {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
           </button>
@@ -367,7 +379,7 @@ export default function AppLayout() {
           side="left"
           className="flex w-[264px] max-w-[80vw] flex-col overflow-hidden border-0 bg-secondary p-0 text-secondary-foreground [&>button]:text-secondary-foreground/60 [&>button]:hover:text-secondary-foreground"
         >
-          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SheetTitle className="sr-only">{t("layout.navigation")}</SheetTitle>
           <div className="relative flex items-start gap-2 px-5 pb-5 pt-6">
             <img src={clarivaLogoDark} alt="Clariva" className="h-[30px] w-auto object-contain object-left" />
           </div>
@@ -395,7 +407,7 @@ export default function AppLayout() {
           <button
             onClick={() => setMobileNavOpen(true)}
             className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary lg:hidden"
-            aria-label="Open navigation menu"
+            aria-label={t("layout.openNavMenu")}
           >
             <Menu className="h-[18px] w-[18px]" />
           </button>
@@ -403,9 +415,9 @@ export default function AppLayout() {
           <div className="hidden min-w-0 items-center gap-2 text-[11px] tracking-[0.04em] sm:flex">
             <span className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">{role}</span>
             <span className="text-muted-foreground/40">/</span>
-            <span className="truncate font-semibold text-foreground">{activeItem?.label ?? "Overview"}</span>
+            <span className="truncate font-semibold text-foreground">{activeLabel}</span>
           </div>
-          <span className="truncate font-semibold text-foreground sm:hidden">{activeItem?.label ?? "Overview"}</span>
+          <span className="truncate font-semibold text-foreground sm:hidden">{activeLabel}</span>
 
           <div className="flex-1" />
 
@@ -417,14 +429,14 @@ export default function AppLayout() {
             )}
           >
             <Search className="h-[15px] w-[15px]" />
-            Find coaches
+            {t("nav.findCoaches")}
           </NavLink>
 
           <div className="relative">
             <NavLink
               to="/messages"
               className="grid h-[34px] w-[34px] place-items-center rounded-[11px] border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
-              aria-label="Messages"
+              aria-label={t("nav.messages")}
             >
               <Bell className="h-[17px] w-[17px]" />
             </NavLink>

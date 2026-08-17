@@ -1,0 +1,254 @@
+{
+  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "status": {
+    "pending_coach_approval": "Đang chờ xác nhận",
+    "confirmed": "Đã xác nhận",
+    "completed": "Đã hoàn thành",
+    "cancelled": "Đã hủy",
+    "rescheduled": "Đã dời lịch"
+  },
+  "bookSession": {
+    "backToCoach": "Về trang coach",
+    "loadError": {
+      "title": "Không thể tải trang này",
+      "body": "Đã xảy ra lỗi khi tải lịch trống của coach. Vui lòng thử lại.",
+      "retry": "Thử lại"
+    },
+    "coachNotFound": {
+      "title": "Không tìm thấy coach",
+      "backToCoaches": "Về danh sách coach"
+    },
+    "coachSummary": {
+      "defaultTitle": "Coach",
+      "ratingLabel": "Đánh giá",
+      "experienceLabel": "Kinh nghiệm",
+      "experienceValue": "{{years}} năm",
+      "sessionsLabel": "Session",
+      "basedIn": "{{nationality}} (Sống tại {{country}})",
+      "verifiedExpert": "Chuyên gia đã xác minh",
+      "usagePrefix": "Bạn đã sử dụng",
+      "usageOfYour": "trong tổng số",
+      "usageSuffix": "session của bạn trong tháng này.",
+      "unlimited": "không giới hạn"
+    },
+    "modeWord": {
+      "peer": "peer coaching",
+      "coaching": "coaching"
+    },
+    "title": {
+      "peer": "Đặt session peer coaching",
+      "coaching": "Đặt session của bạn"
+    },
+    "subtitle": {
+      "peer": "Bạn đang đặt một session đồng nghiệp — để được coaching bởi một coach khác.",
+      "coaching": "Chọn thời lượng và thời gian ưa thích của bạn để bắt đầu."
+    },
+    "peerBadge": "Đồng nghiệp",
+    "freePlanNotice": {
+      "prefix": "Bạn đã sử dụng hết {{limit}} session {{modeWord}} miễn phí của mình. Các gói trả phí với nhiều session hơn sắp ra mắt — liên hệ",
+      "suffix": "nếu bạn muốn thảo luận về các lựa chọn."
+    },
+    "limitReached": "Đã đạt giới hạn session ({{used}}/{{limit}} đã hoàn thành). Bạn không thể đặt thêm session.",
+    "ineligible": "Bạn hiện không đủ điều kiện để đặt lịch với coach này. Quyền truy cập của bạn có thể đã thay đổi — vui lòng liên hệ quản trị viên nếu điều này có vẻ không đúng.",
+    "steps": {
+      "duration": "Chọn thời lượng",
+      "durationOption": "{{n}} Phút",
+      "date": "Chọn ngày",
+      "time": "Chọn giờ ({{timezone}})"
+    },
+    "pickDatePrompt": "Chọn một ngày ở trên để xem giờ trống.",
+    "noWindowAvailable": "Không có khung giờ {{duration}} phút khả dụng vào ngày này.",
+    "topicLabel": "Chủ đề coaching",
+    "topicPlaceholder": "Bạn muốn tập trung vào điều gì trong session này?",
+    "selectedScheduleLabel": "Lịch đã chọn",
+    "selectATimeSlot": "Chọn một khung giờ",
+    "durationBadge": "{{n}} phút",
+    "confirmButton": "Xác nhận đặt lịch",
+    "toast": {
+      "slotTaken": "Khung giờ đó vừa được người khác đặt. Vui lòng chọn khung giờ khác.",
+      "notEligible": "Bạn hiện không thể đặt session này — quyền truy cập của bạn với coach này hoặc giới hạn session của bạn có thể đã thay đổi. Vui lòng làm mới và thử lại.",
+      "successPeer": "Đã yêu cầu session đồng nghiệp. Đang chờ coach đồng nghiệp xác nhận.",
+      "successCoaching": "Đã yêu cầu session. Đang chờ coach xác nhận."
+    }
+  },
+  "list": {
+    "eyebrow": "Lịch trình",
+    "titleLead": "Session",
+    "titleEmphasis": "của bạn",
+    "subtitleCoach": "Xác nhận yêu cầu, quản lý ghi chú và liên kết cuộc họp.",
+    "subtitleCoachee": "Theo dõi các lịch đặt sắp tới, ghi chú và hành động cần làm.",
+    "bookASession": "Đặt session",
+    "tabs": {
+      "upcoming": "Sắp tới ({{count}})",
+      "past": "Đã qua ({{count}})"
+    },
+    "empty": {
+      "noUpcomingTitle": "Không có session sắp tới",
+      "noUpcomingSubtitleCoachee": "Duyệt qua coach và đặt session tiếp theo của bạn.",
+      "noUpcomingSubtitleCoach": "Bạn đã hoàn tất mọi việc.",
+      "noPastTitle": "Chưa có gì",
+      "noPastSubtitle": "Các session đã qua sẽ hiển thị ở đây."
+    },
+    "kindLabelWith": "với",
+    "kindLabelCoach": "Coach",
+    "markComplete": "Đánh dấu hoàn thành",
+    "toast": {
+      "markedComplete": "Đã đánh dấu session hoàn thành",
+      "ratingUpdated": "Đã cập nhật đánh giá",
+      "ratingThanks": "Cảm ơn bạn đã đánh giá!"
+    },
+    "rating": {
+      "yourRating": "Đánh giá của bạn",
+      "rateThisSession": "Đánh giá session này",
+      "rateStars_other": "Đánh giá {{count}} sao"
+    },
+    "actionItems": {
+      "title": "Hành động cần làm",
+      "more": "+{{count}} thêm"
+    }
+  },
+  "detail": {
+    "sessionNotFound": {
+      "title": "Không tìm thấy session",
+      "backToSessions": "Về danh sách session"
+    },
+    "allSessions": "Tất cả session",
+    "missingRequirementHintPeer": "Đang chờ phản hồi năng lực từ học viên đồng nghiệp trước khi session này có thể được đánh dấu hoàn thành.",
+    "missingRequirementHintCoaching": "Đang chờ suy ngẫm của học viên trước khi session này có thể được đánh dấu hoàn thành.",
+    "toast": {
+      "progressSaved": "Đã lưu tiến độ",
+      "meetingLinkInvalid": "Liên kết cuộc họp phải bắt đầu bằng http:// hoặc https://"
+    },
+    "counterpartRole": {
+      "coachee": "Học viên",
+      "coach": "Coach"
+    },
+    "joinZoomMeeting": "Tham gia cuộc họp Zoom",
+    "saveProgress": "Lưu tiến độ",
+    "tabs": {
+      "notes": "Ghi chú",
+      "actions": "Hành động",
+      "files": "Tệp tin",
+      "toolbox": "Bộ công cụ"
+    },
+    "notes": {
+      "coachNoteLabel": "Ghi chú của coach",
+      "readOnly": "Chỉ đọc",
+      "onlyYou": "Chỉ mình bạn",
+      "coachNotePlaceholderEditable": "Viết ghi chú mà học viên có thể xem…",
+      "coachNotePlaceholderReadOnly": "Coach chưa thêm ghi chú.",
+      "privateNoteLabel": "Ghi chú riêng tư",
+      "privateNotePlaceholder": "Ghi chú riêng tư (chỉ mình bạn có thể xem)",
+      "clientReflectionLabel": "Suy ngẫm của khách hàng",
+      "clientReflectionPlaceholderEditable": "Ghi lại suy ngẫm, bài học và câu hỏi của bạn…",
+      "clientReflectionPlaceholderReadOnly": "Học viên chưa chia sẻ suy ngẫm."
+    },
+    "actions": {
+      "eyebrow": "Hành động đã thống nhất",
+      "save": "Lưu",
+      "completedBanner": "Session đã hoàn thành — bạn vẫn có thể thêm hoặc cập nhật hành động bất cứ lúc nào và nhấn Lưu.",
+      "empty": "Chưa có hành động nào được thống nhất.",
+      "noMilestone": "— Không có cột mốc —",
+      "addPlaceholder": "Thêm hành động mới…",
+      "add": "Thêm",
+      "markIncomplete": "Đánh dấu chưa hoàn thành",
+      "markCompleteAria": "Đánh dấu hoàn thành",
+      "itemPlaceholder": "Hành động cần làm",
+      "removeItem": "Xóa hành động",
+      "tipPrefix": "Mẹo: học viên có thể tạo mục tiêu & cột mốc trong",
+      "tipLinkText": "Hành trình của tôi",
+      "tipSuffix": "để các hành động có thể được liên kết."
+    },
+    "files": {
+      "eyebrow": "Tệp đính kèm",
+      "empty": "Chưa có tệp nào được đính kèm.",
+      "addAttachment": "Thêm tệp đính kèm",
+      "acceptedTypes": "PDF · JPG · MP3 · MP4",
+      "removeAttachment": "Xóa tệp đính kèm"
+    },
+    "toolbox": {
+      "eyebrow": "Công cụ coaching",
+      "subtitle": "Mở một công cụ để cùng nhau thực hiện. Bất cứ điều gì bạn điền sẽ được lưu lại với session này."
+    },
+    "sessionFocus": {
+      "eyebrow": "Trọng tâm session",
+      "dateLabel": "Ngày",
+      "durationLabel": "Thời lượng",
+      "durationValue": "{{n}} phút"
+    },
+    "prepare": "Chuẩn bị",
+    "meetingLink": {
+      "adminEyebrow": "Liên kết cuộc họp (quản trị viên)",
+      "placeholder": "https://meet.google.com/… hoặc https://zoom.us/…",
+      "helper": "Phòng họp video được tạo tự động khi session được xác nhận. Dán liên kết Zoom/Meet vào đây chỉ khi bạn muốn ghi đè lên nó.",
+      "testLink": "Kiểm tra liên kết",
+      "noLinkSaved": "Chưa có liên kết nào được lưu",
+      "save": "Lưu liên kết",
+      "pendingEyebrow": "Liên kết cuộc họp",
+      "pendingBody": "Phòng họp video của bạn đang được thiết lập. Vui lòng làm mới sau một chút."
+    },
+    "participants": "Người tham gia",
+    "confirmSession": "Xác nhận session",
+    "markComplete": "Đánh dấu hoàn thành",
+    "cancelSession": "Hủy session",
+    "help": {
+      "title": "Cần trợ giúp với session này?",
+      "contact": "Liên hệ hỗ trợ nền tảng"
+    },
+    "peerFeedback": {
+      "eyebrow": "Phản hồi năng lực ICF",
+      "heading": "Đánh giá coach đồng nghiệp của bạn",
+      "readOnlySuffix": "(chỉ đọc)",
+      "subtitle": "Chấm điểm 8 năng lực coaching ICF từ 0 đến 100.",
+      "competencies": {
+        "ethicalPractice": "Thể hiện Thực hành Đạo đức",
+        "coachingMindset": "Thể hiện Tư duy Coaching",
+        "maintainsAgreements": "Thiết lập & Duy trì Thỏa thuận",
+        "trustSafety": "Xây dựng Sự tin tưởng và An toàn",
+        "maintainsPresence": "Duy trì Sự hiện diện",
+        "listensActively": "Lắng nghe Chủ động",
+        "evokesAwareness": "Khơi gợi Nhận thức",
+        "facilitatesGrowth": "Thúc đẩy Sự phát triển của Khách hàng"
+      },
+      "writtenFeedback": "Phản hồi bằng văn bản",
+      "feedbackPlaceholder": "Điều gì đã diễn ra tốt? Điều gì có thể phát triển thêm?",
+      "updateFeedback": "Cập nhật phản hồi",
+      "submitFeedback": "Gửi phản hồi"
+    }
+  },
+  "goalRatings": {
+    "title": "Suy ngẫm về mục tiêu",
+    "emptyPrefix": "Chưa có mục tiêu nào đang hoạt động. Thêm mục tiêu trong",
+    "emptyLinkText": "Hành trình của tôi",
+    "emptySuffix": "để chấm điểm chúng sau mỗi session.",
+    "lockedNotCompleted": "Khả dụng khi session được đánh dấu",
+    "lockedNotCompletedSuffix": "đã hoàn thành",
+    "lockedReadOnly": "Chỉ đọc — chỉ học viên mới có thể đánh giá mục tiêu của chính họ.",
+    "unlockedHint": "Chấm điểm 0–100 cho mỗi mục tiêu. Bánh xe của bạn sẽ vẽ session này như một lớp mới.",
+    "saveReflection": "Lưu suy ngẫm",
+    "notePlaceholder": "Ghi chú suy ngẫm tùy chọn cho mục tiêu này…",
+    "toast": {
+      "saved": "Đã lưu đánh giá mục tiêu — bánh xe của bạn sẽ cập nhật."
+    }
+  },
+  "messages": {
+    "yesterday": "Hôm qua",
+    "noMessagesYet": "Chưa có tin nhắn nào",
+    "eyebrow": "Cuộc trò chuyện",
+    "titleLead": "Tin nhắn",
+    "titleEmphasis": "của bạn",
+    "unread_other": "{{count}} tin nhắn chưa đọc",
+    "unlocksHint": "Trò chuyện được mở khóa khi session được xác nhận.",
+    "empty": {
+      "title": "Chưa có cuộc trò chuyện nào",
+      "body": "Khi một session được xác nhận, chuỗi trò chuyện sẽ xuất hiện ở đây."
+    },
+    "threadsLabel": "Chuỗi trò chuyện",
+    "sessionCount_other": "{{count}} session",
+    "newBadge": "{{count}} mới",
+    "typeMessagePlaceholder": "Nhập tin nhắn…",
+    "conversationEmpty": "Nói xin chào — đây là khởi đầu cuộc trò chuyện của bạn.",
+    "loadEarlier": "Tải tin nhắn trước đó",
+    "selectThreadPrompt": "Chọn một chuỗi trò chuyện để bắt đầu."
+  }
+}

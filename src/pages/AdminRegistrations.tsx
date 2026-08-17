@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,14 +55,6 @@ import {
 import { CoachListRow, CoachOpt, CoacheeRow, Status } from "@/hooks/admin/types";
 import { PageHeader } from "@/components/ui/page-header";
 
-const STATUS_LABEL: Record<Status, string> = {
-  pending_approval: "Awaiting approval",
-  active: "Active",
-  rejected: "Rejected",
-  suspended: "Suspended",
-  reach_limit: "Reached limit",
-};
-
 const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "outline"> = {
   pending_approval: "secondary",
   active: "default",
@@ -76,6 +69,7 @@ function fmtLimit(n: number | null): string {
 }
 
 export default function AdminRegistrations() {
+  const { t } = useTranslation("admin");
   const {
     loading,
     coachees,
@@ -121,20 +115,20 @@ export default function AdminRegistrations() {
   const exportCoachees = async () => {
     const XLSX = await import("xlsx");
     const data = filteredCoachees.map((c) => ({
-      Name: c.full_name,
-      Email: c.email,
-      Registered: format(new Date(c.created_at), "yyyy-MM-dd"),
-      Status: STATUS_LABEL[c.status],
-      "Booked sessions": c.booked,
-      "Sessions done": c.done,
-      "Monthly limit": c.monthly_limit,
-      "Selected coaches": c.selected_coaches.map((s) => s.name).join("; "),
+      [t("registrations.export.name")]: c.full_name,
+      [t("registrations.export.email")]: c.email,
+      [t("registrations.export.registered")]: format(new Date(c.created_at), "yyyy-MM-dd"),
+      [t("registrations.export.status")]: t(`registrations.statusLabels.${c.status}`),
+      [t("registrations.export.bookedSessions")]: c.booked,
+      [t("registrations.export.sessionsDone")]: c.done,
+      [t("registrations.export.monthlyLimit")]: c.monthly_limit,
+      [t("registrations.export.selectedCoaches")]: c.selected_coaches.map((s) => s.name).join("; "),
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Coachees");
+    XLSX.utils.book_append_sheet(wb, ws, t("registrations.export.coacheesSheetName"));
     XLSX.writeFile(wb, `coachees-${format(new Date(), "yyyyMMdd")}.xlsx`);
-    toast({ title: "Exported" });
+    toast({ title: t("registrations.exported") });
   };
 
   if (loading) {
@@ -148,19 +142,19 @@ export default function AdminRegistrations() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Admin"
-        title="All"
-        emphasis="registrations"
-        subtitle="Manage all coaches and coachees."
+        eyebrow={t("registrations.eyebrow")}
+        title={t("registrations.titleAll")}
+        emphasis={t("registrations.titleEmphasis")}
+        subtitle={t("registrations.subtitle")}
       />
 
       <Tabs defaultValue="coachees">
         <TabsList>
           <TabsTrigger value="coachees" className="gap-2">
-            <Users className="h-4 w-4" /> Coachees ({coachees.length})
+            <Users className="h-4 w-4" /> {t("registrations.coacheesTab", { count: coachees.length })}
           </TabsTrigger>
           <TabsTrigger value="coaches" className="gap-2">
-            <ShieldCheck className="h-4 w-4" /> Coaches ({coaches.length})
+            <ShieldCheck className="h-4 w-4" /> {t("registrations.coachesTab", { count: coaches.length })}
           </TabsTrigger>
         </TabsList>
 
@@ -172,7 +166,7 @@ export default function AdminRegistrations() {
               <Input
                 value={coacheeQuery}
                 onChange={(e) => setCoacheeQuery(e.target.value)}
-                placeholder="Search by name or email"
+                placeholder={t("registrations.searchPlaceholder")}
                 className="pl-9"
               />
             </div>
@@ -181,18 +175,18 @@ export default function AdminRegistrations() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="pending_approval">Awaiting approval</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="reach_limit">Reached limit</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="all">{t("registrations.allStatuses")}</SelectItem>
+                <SelectItem value="pending_approval">{t("registrations.statusLabels.pending_approval")}</SelectItem>
+                <SelectItem value="active">{t("registrations.statusLabels.active")}</SelectItem>
+                <SelectItem value="reach_limit">{t("registrations.statusLabels.reach_limit")}</SelectItem>
+                <SelectItem value="rejected">{t("registrations.statusLabels.rejected")}</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={exportCoachees}>
-              <FileDown className="h-4 w-4" /> Export
+              <FileDown className="h-4 w-4" /> {t("registrations.export.exportButton")}
             </Button>
             <Button onClick={() => setImportOpen(true)}>
-              <FileUp className="h-4 w-4" /> Import Excel
+              <FileUp className="h-4 w-4" /> {t("registrations.importExcel")}
             </Button>
           </div>
 
@@ -200,22 +194,22 @@ export default function AdminRegistrations() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 text-left">Name</th>
-                  <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Registered</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-right">Booked</th>
-                  <th className="px-4 py-3 text-right">Done</th>
-                  <th className="px-4 py-3 text-right">Limit</th>
-                  <th className="px-4 py-3 text-left">Selected coaches</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3 text-left">{t("registrations.coacheeTableHeaders.name")}</th>
+                  <th className="px-4 py-3 text-left">{t("registrations.coacheeTableHeaders.email")}</th>
+                  <th className="px-4 py-3 text-left">{t("registrations.coacheeTableHeaders.registered")}</th>
+                  <th className="px-4 py-3 text-left">{t("registrations.coacheeTableHeaders.status")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.booked")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.done")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.limit")}</th>
+                  <th className="px-4 py-3 text-left">{t("registrations.coacheeTableHeaders.selectedCoaches")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCoachees.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
-                      No coachees match your filters.
+                      {t("registrations.noCoacheesMatch")}
                     </td>
                   </tr>
                 ) : (
@@ -227,7 +221,7 @@ export default function AdminRegistrations() {
                         {format(new Date(c.created_at), "PP")}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
+                        <Badge variant={STATUS_TONE[c.status]}>{t(`registrations.statusLabels.${c.status}`)}</Badge>
                       </td>
                       <td className="px-4 py-3 text-right">{c.booked}</td>
                       <td className="px-4 py-3 text-right">{c.done}</td>
@@ -235,7 +229,7 @@ export default function AdminRegistrations() {
                       <td className="px-4 py-3">
                         {c.selected_coaches.length === 0 ? (
                           <span className="text-xs italic text-muted-foreground">
-                            None assigned
+                            {t("registrations.noneAssigned")}
                           </span>
                         ) : (
                           <div className="flex flex-wrap gap-1">
@@ -259,7 +253,7 @@ export default function AdminRegistrations() {
                             variant="outline"
                             onClick={() => setEditing(c)}
                           >
-                            <Pencil className="h-3.5 w-3.5" /> Edit
+                            <Pencil className="h-3.5 w-3.5" /> {t("registrations.edit")}
                           </Button>
                           {c.status === "pending_approval" && (
                             <>
@@ -298,7 +292,7 @@ export default function AdminRegistrations() {
               <Input
                 value={coachQuery}
                 onChange={(e) => setCoachQuery(e.target.value)}
-                placeholder="Search by name or email"
+                placeholder={t("registrations.searchPlaceholder")}
                 className="pl-9"
               />
             </div>
@@ -307,11 +301,11 @@ export default function AdminRegistrations() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="pending_approval">Awaiting approval</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="all">{t("registrations.allStatuses")}</SelectItem>
+                <SelectItem value="pending_approval">{t("registrations.statusLabels.pending_approval")}</SelectItem>
+                <SelectItem value="active">{t("registrations.statusLabels.active")}</SelectItem>
+                <SelectItem value="suspended">{t("registrations.statusLabels.suspended")}</SelectItem>
+                <SelectItem value="rejected">{t("registrations.statusLabels.rejected")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -320,21 +314,21 @@ export default function AdminRegistrations() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 text-left">Name</th>
-                  <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Status (get coached)</th>
-                  <th className="px-4 py-3 text-right">Coach limit (total)</th>
-                  <th className="px-4 py-3 text-left">Assigned coaches</th>
-                  <th className="px-4 py-3 text-right">Peer limit (total)</th>
-                  <th className="px-4 py-3 text-right">Given (sessions / coachees / ★)</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.name")}</th>
+                  <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.email")}</th>
+                  <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.statusGetCoached")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.coachLimitTotal")}</th>
+                  <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.assignedCoaches")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.peerLimitTotal")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.given")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCoaches.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
-                      No coaches match your filters.
+                      {t("registrations.noCoachesMatch")}
                     </td>
                   </tr>
                 ) : (
@@ -343,12 +337,12 @@ export default function AdminRegistrations() {
                       <td className="px-4 py-3">
                         <div className="font-semibold">{c.full_name}</div>
                         <div className="text-[11px] text-muted-foreground">
-                          {c.country_based || "—"} · Reg. {format(new Date(c.created_at), "PP")}
+                          {c.country_based || "—"} · {t("registrations.regPrefix")} {format(new Date(c.created_at), "PP")}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{c.email}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
+                        <Badge variant={STATUS_TONE[c.status]}>{t(`registrations.statusLabels.${c.status}`)}</Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className={c.coach_limit !== null && c.coach_used >= c.coach_limit ? "font-semibold text-destructive" : ""}>
@@ -357,7 +351,7 @@ export default function AdminRegistrations() {
                       </td>
                       <td className="px-4 py-3">
                         {c.assigned_coaches.length === 0 ? (
-                          <span className="text-xs italic text-muted-foreground">None</span>
+                          <span className="text-xs italic text-muted-foreground">{t("registrations.none")}</span>
                         ) : (
                           <div className="flex flex-wrap gap-1">
                             {c.assigned_coaches.slice(0, 3).map((s) => (
@@ -388,7 +382,7 @@ export default function AdminRegistrations() {
                             variant="outline"
                             onClick={() => setEditingCoach(c)}
                           >
-                            <Pencil className="h-3.5 w-3.5" /> Edit
+                            <Pencil className="h-3.5 w-3.5" /> {t("registrations.edit")}
                           </Button>
                           {c.status === "pending_approval" && (
                             <>
@@ -416,7 +410,7 @@ export default function AdminRegistrations() {
                               disabled={busyId === c.id}
                               onClick={() => setCoachStatusValue(c.id, "suspended")}
                             >
-                              Suspend
+                              {t("registrations.suspend")}
                             </Button>
                           )}
                           {c.status === "suspended" && (
@@ -425,7 +419,7 @@ export default function AdminRegistrations() {
                               disabled={busyId === c.id}
                               onClick={() => setCoachStatusValue(c.id, "active")}
                             >
-                              Reactivate
+                              {t("registrations.reactivate")}
                             </Button>
                           )}
                         </div>
@@ -483,6 +477,7 @@ function EditCoacheeDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation("admin");
   const [limit, setLimit] = useState<number>(defaultLimit);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -520,12 +515,12 @@ function EditCoacheeDialog({
     <Dialog open={!!coachee} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit {coachee.full_name}</DialogTitle>
+          <DialogTitle>{t("registrations.editDialogTitle", { name: coachee.full_name })}</DialogTitle>
         </DialogHeader>
         <div className="space-y-5">
           <div>
             <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Monthly session limit
+              {t("registrations.monthlySessionLimit")}
             </label>
             <Input
               type="number"
@@ -539,18 +534,18 @@ function EditCoacheeDialog({
 
           <div>
             <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Coaches this coachee can book ({picked.size})
+              {t("registrations.coachesThisCoacheeCanBook", { count: picked.size })}
             </label>
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search coaches…"
+              placeholder={t("registrations.searchCoachesPlaceholder")}
               className="mb-2"
             />
             <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2">
               {filtered.length === 0 ? (
                 <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                  No coaches.
+                  {t("registrations.noCoaches")}
                 </p>
               ) : (
                 filtered.map((c) => (
@@ -571,11 +566,11 @@ function EditCoacheeDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t("registrations.cancel")}
           </Button>
           <Button onClick={save} disabled={saving}>
             {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            Save
+            {t("registrations.save")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -594,6 +589,7 @@ function EditCoachDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation("admin");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const { saving, save: saveAssignment } = useUpdateCoachAssignment();
@@ -629,26 +625,26 @@ function EditCoachDialog({
     <Dialog open={!!coach} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit {coach.full_name}</DialogTitle>
+          <DialogTitle>{t("registrations.editDialogTitle", { name: coach.full_name })}</DialogTitle>
         </DialogHeader>
         <div className="space-y-5">
           <div className="rounded-lg border p-3">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Session limits</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("registrations.sessionLimits")}</p>
               <Button asChild variant="link" size="sm" className="h-auto p-0 text-[11px]">
-                <Link to="/admin/coach-programmes">Change coach programme →</Link>
+                <Link to="/admin/coach-programmes">{t("registrations.changeCoachProgramme")} →</Link>
               </Button>
             </div>
             <p className="mb-2 text-sm font-medium">
-              {coach.coach_programme_name || <span className="italic text-muted-foreground">Not enrolled</span>}
+              {coach.coach_programme_name || <span className="italic text-muted-foreground">{t("registrations.notEnrolled")}</span>}
             </p>
             <div className="grid grid-cols-2 gap-3 text-[11px]">
               <div>
-                <p className="text-muted-foreground">Coaching received</p>
+                <p className="text-muted-foreground">{t("registrations.coachingReceived")}</p>
                 <p className="font-mono">{coach.coach_used} / {fmtLimit(coach.coach_limit)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Peer received</p>
+                <p className="text-muted-foreground">{t("registrations.peerReceived")}</p>
                 <p className="font-mono">{coach.peer_used} / {fmtLimit(coach.peer_limit)}</p>
               </div>
             </div>
@@ -656,18 +652,18 @@ function EditCoachDialog({
 
           <div>
             <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Coaches assigned for this coach's coaching sessions ({picked.size})
+              {t("registrations.coachesAssignedForSessions", { count: picked.size })}
             </label>
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search coaches…"
+              placeholder={t("registrations.searchCoachesPlaceholder")}
               className="mb-2"
             />
             <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2">
               {filtered.length === 0 ? (
                 <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                  No coaches.
+                  {t("registrations.noCoaches")}
                 </p>
               ) : (
                 filtered.map((c) => (
@@ -688,11 +684,11 @@ function EditCoachDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t("registrations.cancel")}
           </Button>
           <Button onClick={save} disabled={saving}>
             {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            Save
+            {t("registrations.save")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -740,15 +736,6 @@ function normalizeImportRow(row: ParsedImportRow, defaultRole: BulkInviteRole): 
   };
 }
 
-const PREVIEW_STATUS_LABEL: Record<PreviewStatus, string> = {
-  valid: "Ready to invite",
-  already_exists: "Already exists",
-  bad_email: "Bad email",
-  invalid_role: "Invalid role",
-  duplicate_in_file: "Duplicate in file",
-  coach_not_found: "Coach not found",
-};
-
 const PREVIEW_STATUS_TONE: Record<PreviewStatus, "default" | "secondary" | "destructive" | "outline"> = {
   valid: "default",
   already_exists: "outline",
@@ -756,12 +743,6 @@ const PREVIEW_STATUS_TONE: Record<PreviewStatus, "default" | "secondary" | "dest
   invalid_role: "destructive",
   duplicate_in_file: "destructive",
   coach_not_found: "destructive",
-};
-
-const SUBMIT_STATUS_LABEL: Record<SubmitStatus, string> = {
-  invited: "Invited",
-  skipped: "Skipped",
-  failed: "Failed",
 };
 
 const SUBMIT_STATUS_TONE: Record<SubmitStatus, "default" | "secondary" | "destructive" | "outline"> = {
@@ -783,6 +764,7 @@ function BulkInviteDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation("admin");
   const { busy, dryRun, submit, fetchBatchRows, fetchRecentBatches } = useBulkInviteUsers();
   const fileInputRef = useRef<HTMLInputElement>(null);
   // useAdminRegistrations' load() sets its `loading` flag while it refetches, and
@@ -841,7 +823,7 @@ function BulkInviteDialog({
     const ws = wb.Sheets[wb.SheetNames[0]];
     const parsed = XLSX.utils.sheet_to_json<ParsedImportRow>(ws, { defval: "" });
     if (parsed.length === 0) {
-      toast({ title: "Empty file", variant: "destructive" });
+      toast({ title: t("registrations.bulkImport.emptyFile"), variant: "destructive" });
       return;
     }
     const normalized = parsed.map((r) => normalizeImportRow(r, defaultRole));
@@ -852,8 +834,8 @@ function BulkInviteDialog({
       setStep("preview");
     } catch (err) {
       toast({
-        title: "Preview failed",
-        description: err instanceof Error ? err.message : "Unknown error",
+        title: t("registrations.bulkImport.previewFailed"),
+        description: err instanceof Error ? err.message : t("registrations.bulkImport.unknownError"),
         variant: "destructive",
       });
     }
@@ -887,8 +869,8 @@ function BulkInviteDialog({
       fetchRecentBatches().then(setRecentBatches).catch(() => {});
     } catch (err) {
       toast({
-        title: "Send failed",
-        description: err instanceof Error ? err.message : "Unknown error",
+        title: t("registrations.bulkImport.sendFailed"),
+        description: err instanceof Error ? err.message : t("registrations.bulkImport.unknownError"),
         variant: "destructive",
       });
     }
@@ -911,8 +893,8 @@ function BulkInviteDialog({
       needsReloadRef.current = true;
     } catch (err) {
       toast({
-        title: "Retry failed",
-        description: err instanceof Error ? err.message : "Unknown error",
+        title: t("registrations.bulkImport.retryFailed"),
+        description: err instanceof Error ? err.message : t("registrations.bulkImport.unknownError"),
         variant: "destructive",
       });
     }
@@ -926,8 +908,8 @@ function BulkInviteDialog({
       setStep("resume");
     } catch (err) {
       toast({
-        title: "Could not load batch",
-        description: err instanceof Error ? err.message : "Unknown error",
+        title: t("registrations.bulkImport.couldNotLoadBatch"),
+        description: err instanceof Error ? err.message : t("registrations.bulkImport.unknownError"),
         variant: "destructive",
       });
     }
@@ -952,8 +934,8 @@ function BulkInviteDialog({
       fetchRecentBatches().then(setRecentBatches).catch(() => {});
     } catch (err) {
       toast({
-        title: "Resume failed",
-        description: err instanceof Error ? err.message : "Unknown error",
+        title: t("registrations.bulkImport.resumeFailed"),
+        description: err instanceof Error ? err.message : t("registrations.bulkImport.unknownError"),
         variant: "destructive",
       });
     }
@@ -983,40 +965,39 @@ function BulkInviteDialog({
                 type="button"
                 onClick={backToForm}
                 className="text-muted-foreground hover:text-foreground"
-                aria-label="Back"
+                aria-label={t("registrations.bulkImport.back")}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
-            Bulk import users
+            {t("registrations.bulkImport.title")}
           </DialogTitle>
         </DialogHeader>
 
         {step === "form" && (
           <div className="space-y-4 text-sm">
             <p className="text-muted-foreground">
-              Upload an Excel file (.xlsx) with columns <code>Name</code>, <code>Email</code>, optionally{" "}
-              <code>Role</code> (coach/coachee — falls back to the selector below if omitted),{" "}
-              <code>Session limit</code> (coachees only, falls back to the platform default of {defaultLimit}), and{" "}
-              <code>Assign coach email</code> (coachees only, optional). Every account gets an email invite to set
-              their password; new accounts are pending admin approval, same as any other signup.
+              {t("registrations.bulkImport.uploadInstructionsPrefix")} <code>Name</code>, <code>Email</code>, {t("registrations.bulkImport.uploadInstructionsOptionally")}{" "}
+              <code>Role</code> {t("registrations.bulkImport.uploadInstructionsRoleHint")}{" "}
+              <code>Session limit</code> {t("registrations.bulkImport.uploadInstructionsSessionLimitHint", { limit: defaultLimit })}{" "}
+              <code>Assign coach email</code> {t("registrations.bulkImport.uploadInstructionsSuffix")}
             </p>
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Default role (used for rows without a Role column)
+                {t("registrations.bulkImport.defaultRoleLabel")}
               </label>
               <Select value={defaultRole} onValueChange={(v) => setDefaultRole(v as BulkInviteRole)}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="coachee">Coachee</SelectItem>
-                  <SelectItem value="coach">Coach</SelectItem>
+                  <SelectItem value="coachee">{t("registrations.bulkImport.roleCoachee")}</SelectItem>
+                  <SelectItem value="coach">{t("registrations.bulkImport.roleCoach")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Button variant="outline" onClick={downloadTemplate}>
-              <FileDown className="h-4 w-4" /> Download template
+              <FileDown className="h-4 w-4" /> {t("registrations.bulkImport.downloadTemplate")}
             </Button>
             <div>
               <input
@@ -1029,7 +1010,7 @@ function BulkInviteDialog({
               />
               {busy && (
                 <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Validating rows…
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("registrations.bulkImport.validatingRows")}
                 </p>
               )}
             </div>
@@ -1037,7 +1018,7 @@ function BulkInviteDialog({
             {recentBatches.length > 0 && (
               <div className="rounded-lg border p-3">
                 <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  <History className="h-3.5 w-3.5" /> Recent batches
+                  <History className="h-3.5 w-3.5" /> {t("registrations.bulkImport.recentBatches")}
                 </p>
                 <div className="space-y-1">
                   {recentBatches.map((b) => (
@@ -1048,7 +1029,7 @@ function BulkInviteDialog({
                       className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted/50"
                     >
                       <span className="font-mono text-muted-foreground">{b.id.slice(0, 8)}…</span>
-                      <span>{b.total_rows} rows</span>
+                      <span>{t("registrations.bulkImport.rowsCount", { count: b.total_rows })}</span>
                       <span className="text-muted-foreground">{format(new Date(b.created_at), "PP p")}</span>
                     </button>
                   ))}
@@ -1056,11 +1037,11 @@ function BulkInviteDialog({
               </div>
             )}
             <div className="flex items-center gap-2">
-              <p className="text-xs text-muted-foreground">Or resume a batch by id:</p>
+              <p className="text-xs text-muted-foreground">{t("registrations.bulkImport.resumeByIdPrefix")}</p>
               <Input
                 value={resumeBatchIdInput}
                 onChange={(e) => setResumeBatchIdInput(e.target.value)}
-                placeholder="batch id"
+                placeholder={t("registrations.bulkImport.batchIdPlaceholder")}
                 className="h-8 flex-1 text-xs"
               />
               <Button
@@ -1069,7 +1050,7 @@ function BulkInviteDialog({
                 disabled={!resumeBatchIdInput.trim()}
                 onClick={() => loadBatch(resumeBatchIdInput.trim())}
               >
-                Load
+                {t("registrations.bulkImport.load")}
               </Button>
             </div>
           </div>
@@ -1080,7 +1061,7 @@ function BulkInviteDialog({
             <div className="flex flex-wrap gap-2">
               {Object.entries(previewCounts).map(([status, count]) => (
                 <Badge key={status} variant={PREVIEW_STATUS_TONE[status as PreviewStatus]}>
-                  {count} {PREVIEW_STATUS_LABEL[status as PreviewStatus]}
+                  {count} {t(`registrations.previewStatusLabels.${status}`)}
                 </Badge>
               ))}
             </div>
@@ -1088,9 +1069,9 @@ function BulkInviteDialog({
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/60 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-left">Email</th>
-                    <th className="px-3 py-2 text-left">Status</th>
-                    <th className="px-3 py-2 text-left">Note</th>
+                    <th className="px-3 py-2 text-left">{t("registrations.bulkImport.email")}</th>
+                    <th className="px-3 py-2 text-left">{t("registrations.bulkImport.status")}</th>
+                    <th className="px-3 py-2 text-left">{t("registrations.bulkImport.note")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1099,7 +1080,7 @@ function BulkInviteDialog({
                       <td className="px-3 py-2">{p.email}</td>
                       <td className="px-3 py-2">
                         <Badge variant={PREVIEW_STATUS_TONE[p.status]} className="text-[10px]">
-                          {PREVIEW_STATUS_LABEL[p.status]}
+                          {t(`registrations.previewStatusLabels.${p.status}`)}
                         </Badge>
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">{p.message ?? "—"}</td>
@@ -1109,9 +1090,7 @@ function BulkInviteDialog({
               </table>
             </div>
             <p className="text-xs text-muted-foreground">
-              Rows flagged above (bad email, duplicate, coach not found) will be skipped automatically — only rows
-              marked "Ready to invite" or "Already exists" are acted on. Fix the file and re-upload, or send now and
-              skip the flagged rows.
+              {t("registrations.bulkImport.previewFooterHint")}
             </p>
           </div>
         )}
@@ -1121,7 +1100,7 @@ function BulkInviteDialog({
             <div className="flex flex-wrap gap-2">
               {Object.entries(submitCounts).map(([status, count]) => (
                 <Badge key={status} variant={SUBMIT_STATUS_TONE[status as SubmitStatus]}>
-                  {count} {SUBMIT_STATUS_LABEL[status as SubmitStatus]}
+                  {count} {t(`registrations.submitStatusLabels.${status}`)}
                 </Badge>
               ))}
             </div>
@@ -1129,9 +1108,9 @@ function BulkInviteDialog({
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/60 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-left">Email</th>
-                    <th className="px-3 py-2 text-left">Status</th>
-                    <th className="px-3 py-2 text-left">Reason</th>
+                    <th className="px-3 py-2 text-left">{t("registrations.bulkImport.email")}</th>
+                    <th className="px-3 py-2 text-left">{t("registrations.bulkImport.status")}</th>
+                    <th className="px-3 py-2 text-left">{t("registrations.bulkImport.reason")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1140,7 +1119,7 @@ function BulkInviteDialog({
                       <td className="px-3 py-2">{r.email}</td>
                       <td className="px-3 py-2">
                         <Badge variant={SUBMIT_STATUS_TONE[r.status]} className="text-[10px]">
-                          {SUBMIT_STATUS_LABEL[r.status]}
+                          {t(`registrations.submitStatusLabels.${r.status}`)}
                         </Badge>
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">{r.message ?? "—"}</td>
@@ -1151,14 +1130,13 @@ function BulkInviteDialog({
             </div>
             {batchId && (
               <p className="text-xs text-muted-foreground">
-                Batch id: <span className="font-mono">{batchId}</span> — closed the browser mid-run? Look this up
-                later from the form step to resume.
+                {t("registrations.bulkImport.batchIdPrefix")} <span className="font-mono">{batchId}</span> {t("registrations.bulkImport.batchIdSuffix")}
               </p>
             )}
             {submitCounts.failed > 0 && (
               <Button variant="outline" onClick={retryFailed} disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                Retry {submitCounts.failed} failed row{submitCounts.failed === 1 ? "" : "s"}
+                {t("registrations.bulkImport.retryFailedRows", { count: submitCounts.failed })}
               </Button>
             )}
           </div>
@@ -1167,16 +1145,15 @@ function BulkInviteDialog({
         {step === "resume" && (
           <div className="space-y-3 text-sm">
             <p className="text-muted-foreground">
-              Batch <span className="font-mono">{resumeBatchId}</span> — {resumeRows.length} rows,{" "}
-              {resumePendingCount} still pending or failed.
+              {t("registrations.bulkImport.batchPrefix")} <span className="font-mono">{resumeBatchId}</span> — {t("registrations.bulkImport.batchRowsSummary", { total: resumeRows.length, pending: resumePendingCount })}
             </p>
             <div className="max-h-80 overflow-y-auto rounded-lg border">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/60 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-left">Email</th>
-                    <th className="px-3 py-2 text-left">Status</th>
-                    <th className="px-3 py-2 text-left">Reason</th>
+                    <th className="px-3 py-2 text-left">{t("registrations.bulkImport.email")}</th>
+                    <th className="px-3 py-2 text-left">{t("registrations.bulkImport.status")}</th>
+                    <th className="px-3 py-2 text-left">{t("registrations.bulkImport.reason")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1196,7 +1173,7 @@ function BulkInviteDialog({
                           }
                           className="text-[10px]"
                         >
-                          {r.status}
+                          {t(`registrations.submitStatusLabels.${r.status}`, { defaultValue: r.status ?? "" })}
                         </Badge>
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">{r.error_message ?? "—"}</td>
@@ -1210,18 +1187,18 @@ function BulkInviteDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-            Close
+            {t("registrations.bulkImport.close")}
           </Button>
           {step === "preview" && (
             <Button onClick={sendInvites} disabled={busy}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              Send invites
+              {t("registrations.bulkImport.sendInvites")}
             </Button>
           )}
           {step === "resume" && resumePendingCount > 0 && (
             <Button onClick={resumePending} disabled={busy}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-              Resume {resumePendingCount} row{resumePendingCount === 1 ? "" : "s"}
+              {t("registrations.bulkImport.resumeRows", { count: resumePendingCount })}
             </Button>
           )}
         </DialogFooter>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AlertCircle, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export function InviteClientDialog({
   >;
   onInvited: () => void;
 }) {
+  const { t } = useTranslation("dashboard");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [sessionLimit, setSessionLimit] = useState("");
@@ -47,7 +49,7 @@ export function InviteClientDialog({
 
   const submit = async () => {
     if (!fullName.trim() || !email.trim()) {
-      toast.error("Full name and email are required");
+      toast.error(t("clients.invite.requiredFields"));
       return;
     }
     setInlineError(null);
@@ -62,7 +64,7 @@ export function InviteClientDialog({
       });
 
       if (result.ok) {
-        toast.success("Invited — pending admin approval");
+        toast.success(t("clients.invite.success"));
         reset();
         onOpenChange(false);
         onInvited();
@@ -70,13 +72,13 @@ export function InviteClientDialog({
       }
 
       if (result.error === "invite_limit_reached") {
-        setInlineError(`You've reached your limit of ${result.limit} clients invited.`);
+        setInlineError(t("clients.invite.limitReached", { limit: result.limit }));
         setAtCap(true);
         onInvited(); // refresh slot usage so the page's cap UI reflects reality
         return;
       }
       if (result.error === "email_already_registered") {
-        setInlineError("That email is already registered on Clariva.");
+        setInlineError(t("clients.invite.emailRegistered"));
         return;
       }
       toast.error(result.message);
@@ -89,28 +91,28 @@ export function InviteClientDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite a client</DialogTitle>
+          <DialogTitle>{t("clients.invite.dialogTitle")}</DialogTitle>
           <DialogDescription>
-            They'll get an email to set up their account. Their access is pending admin approval.
+            {t("clients.invite.dialogDescription")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Full name</Label>
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Doe" />
+            <Label>{t("clients.invite.fullNameLabel")}</Label>
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t("clients.invite.fullNamePlaceholder")} />
           </div>
           <div>
-            <Label>Email</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane@company.com" />
+            <Label>{t("clients.invite.emailLabel")}</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("clients.invite.emailPlaceholder")} />
           </div>
           <div>
-            <Label>Monthly session limit (optional)</Label>
+            <Label>{t("clients.invite.sessionLimitLabel")}</Label>
             <Input
               type="number"
               min={1}
               value={sessionLimit}
               onChange={(e) => setSessionLimit(e.target.value)}
-              placeholder="Uses the platform default if left blank"
+              placeholder={t("clients.invite.sessionLimitPlaceholder")}
             />
           </div>
 
@@ -124,22 +126,22 @@ export function InviteClientDialog({
             <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
-                Reach out to{" "}
+                {t("clients.invite.atCapPrefix")}{" "}
                 <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold underline">
                   {CONTACT_EMAIL}
                 </a>{" "}
-                if you'd like to invite more clients.
+                {t("clients.invite.atCapSuffix")}
               </span>
             </div>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
-            Cancel
+            {t("clients.invite.cancel")}
           </Button>
           <Button onClick={submit} disabled={busy}>
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            Send invite
+            {t("clients.invite.sendInvite")}
           </Button>
         </DialogFooter>
       </DialogContent>

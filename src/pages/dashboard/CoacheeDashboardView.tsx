@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { HeroPanel, StatCard } from "@/components/ui/page-header";
@@ -24,6 +25,7 @@ import { ProgressRing } from "@/components/ui/proto";
 import { Json } from "@/integrations/supabase/types";
 
 export function CoacheeDashboardView() {
+  const { t } = useTranslation("dashboard");
   const { user, profile } = useAuth();
   const firstName = (profile?.full_name || "there").split(" ")[0];
   const { favorites } = useFavorites();
@@ -48,7 +50,7 @@ export function CoacheeDashboardView() {
   const nextCoach = nextSession ? coachesById[nextSession.coach_id] : null;
 
   const hour = now.getHours();
-  const timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const timeGreeting = hour < 12 ? t("coachee.greeting.morning") : hour < 18 ? t("coachee.greeting.afternoon") : t("coachee.greeting.evening");
 
   const programmePct = sessionLimit > 0 ? Math.round((stats.completed / sessionLimit) * 100) : 0;
 
@@ -62,8 +64,8 @@ export function CoacheeDashboardView() {
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
           {nextSession
-            ? `You have ${stats.upcoming.length} upcoming session${stats.upcoming.length === 1 ? "" : "s"}. Keep the momentum going.`
-            : "Browse our curated coaches and book your next session to keep momentum going."}
+            ? t("coachee.upcomingLine", { count: stats.upcoming.length })
+            : t("coachee.noUpcomingLine")}
         </p>
       </div>
 
@@ -75,29 +77,29 @@ export function CoacheeDashboardView() {
       {/* Stats */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Sessions done"
+          label={t("coachee.stats.sessionsDone")}
           value={sessionLimit > 0 ? `${stats.completed} / ${sessionLimit}` : String(stats.completed)}
-          hint={sessionLimit > 0 ? `of ${sessionLimit} in programme` : "Completed sessions"}
+          hint={sessionLimit > 0 ? t("coachee.stats.sessionsDoneHintProgramme", { limit: sessionLimit }) : t("coachee.stats.sessionsDoneHintPlain")}
           icon={Calendar}
         />
         <StatCard
-          label="Hours coached"
+          label={t("coachee.stats.hoursCoached")}
           value={stats.hours.toFixed(1)}
-          hint="Time invested"
+          hint={t("coachee.stats.hoursCoachedHint")}
           icon={TrendingUp}
         />
         <StatCard
-          label="Actions open"
+          label={t("coachee.stats.actionsOpen")}
           value={String(
             sessions.reduce((acc, s) => {
               const arr = Array.isArray(s.action_items) ? s.action_items : [];
               return acc + arr.filter((it: Json) => (typeof it === "string" ? true : !(it as { done?: boolean })?.done)).length;
             }, 0)
           )}
-          hint="Across sessions"
+          hint={t("coachee.stats.actionsOpenHint")}
           icon={ListChecks}
         />
-        <StatCard label="Upcoming" value={String(stats.upcoming.length)} hint="Booked" icon={CalendarCheck} />
+        <StatCard label={t("coachee.stats.upcoming")} value={String(stats.upcoming.length)} hint={t("coachee.stats.upcomingHint")} icon={CalendarCheck} />
       </section>
 
       {/* Recent sessions log + Action items */}
@@ -110,20 +112,20 @@ export function CoacheeDashboardView() {
       <section>
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <p className="eyebrow mb-1">Curated for you</p>
+            <p className="eyebrow mb-1">{t("coachee.curatedForYou.eyebrow")}</p>
             <h2 className="font-display text-xl tracking-tight text-foreground">
-              Coaches matched to your goals
+              {t("coachee.curatedForYou.title")}
             </h2>
           </div>
           <Button asChild variant="ghost" size="sm">
             <Link to="/coaches">
-              Browse all <ArrowUpRight className="ml-1 h-4 w-4" />
+              {t("coachee.curatedForYou.browseAll")} <ArrowUpRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
         </div>
         {recCoaches.length === 0 ? (
           <Card className="p-8 text-center text-sm text-muted-foreground">
-            No coaches available yet.
+            {t("coachee.curatedForYou.noneAvailable")}
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -146,20 +148,21 @@ function NextSessionHero({
   coach: { full_name: string; avatar_url: string | null } | null;
   programmePct: number;
 }) {
+  const { t } = useTranslation("dashboard");
   if (!session) {
     return (
       <HeroPanel>
         <div className="flex flex-col items-start gap-4">
           <p className="text-[11px] font-bold uppercase tracking-widest text-white/70">
-            Next session
+            {t("coachee.nextSession.label")}
           </p>
-          <h3 className="font-display text-2xl leading-tight sm:text-3xl">No upcoming sessions</h3>
+          <h3 className="font-display text-2xl leading-tight sm:text-3xl">{t("coachee.nextSession.noneTitle")}</h3>
           <p className="max-w-md text-sm text-white/70">
-            Browse our curated coaches and book your first 30, 45, or 60-minute session.
+            {t("coachee.nextSession.noneBody")}
           </p>
           <Button asChild variant="secondary" className="font-semibold">
             <Link to="/coaches">
-              <Search className="mr-1 h-4 w-4" /> Find a coach
+              <Search className="mr-1 h-4 w-4" /> {t("coachee.nextSession.findCoach")}
             </Link>
           </Button>
         </div>
@@ -169,7 +172,7 @@ function NextSessionHero({
 
   const start = new Date(session.start_time);
   const days = differenceInCalendarDays(start, new Date());
-  const inLabel = isToday(start) ? "Today" : days === 1 ? "In 1 day" : days > 1 ? `In ${days} days` : "Soon";
+  const inLabel = isToday(start) ? t("coachee.nextSession.today") : days === 1 ? t("coachee.nextSession.inOneDay") : days > 1 ? t("coachee.nextSession.inDays", { count: days }) : t("coachee.nextSession.soon");
   const initials = (coach?.full_name || "?")
     .split(" ")
     .map((n) => n[0])
@@ -183,7 +186,7 @@ function NextSessionHero({
         <div className="min-w-0 max-w-xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.2em] backdrop-blur-sm">
             <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
-            Next session · {inLabel}
+            {t("coachee.nextSession.label")} · {inLabel}
           </span>
           <h3 className="font-display mt-5 text-[clamp(1.6rem,3.4vw,2.4rem)] leading-[1.1]">
             {session.topic}
@@ -197,7 +200,7 @@ function NextSessionHero({
               )}
             </div>
             <div>
-              <p className="text-sm font-semibold">{coach?.full_name || "Your coach"}</p>
+              <p className="text-sm font-semibold">{coach?.full_name || t("coachee.nextSession.yourCoach")}</p>
               <p className="text-xs text-white/70">
                 {format(start, "EEE d MMM")} · {format(start, "HH:mm")} · {session.duration_minutes} min
               </p>
@@ -206,7 +209,7 @@ function NextSessionHero({
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild variant="secondary" className="font-semibold">
               <Link to={`/sessions/${session.id}`}>
-                <Video className="mr-1 h-4 w-4" /> Join & prepare
+                <Video className="mr-1 h-4 w-4" /> {t("coachee.nextSession.joinAndPrepare")}
               </Link>
             </Button>
             <Button
@@ -214,7 +217,7 @@ function NextSessionHero({
               variant="outline"
               className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
             >
-              <Link to="/sessions">All sessions</Link>
+              <Link to="/sessions">{t("coachee.nextSession.allSessions")}</Link>
             </Button>
           </div>
         </div>
@@ -223,7 +226,7 @@ function NextSessionHero({
             value={programmePct}
             tone="primary"
             invert
-            label={<span className="text-[9.5px] tracking-[0.2em]">PROGRAMME</span>}
+            label={<span className="text-[9.5px] tracking-[0.2em]">{t("coachee.nextSession.programmeLabel")}</span>}
             size={140}
           />
         </div>
@@ -233,6 +236,7 @@ function NextSessionHero({
 }
 
 function RecommendedCoachCard({ coach }: { coach: CoachLite }) {
+  const { t } = useTranslation("dashboard");
   const initials = (coach.profiles?.full_name || "?")
     .split(" ")
     .map((n) => n[0])
@@ -258,12 +262,12 @@ function RecommendedCoachCard({ coach }: { coach: CoachLite }) {
                 {Number(coach.rating_avg).toFixed(1)}
               </span>
             </div>
-            <p className="truncate text-xs text-muted-foreground">{coach.title || "Coach"}</p>
+            <p className="truncate text-xs text-muted-foreground">{coach.title || t("coachee.coachCard.defaultTitle")}</p>
           </div>
         </div>
 
         <p className="mt-3 line-clamp-2 flex-1 text-sm italic text-muted-foreground">
-          {coach.profiles?.bio ? `"${coach.profiles.bio}"` : "Profile available — open to learn more."}
+          {coach.profiles?.bio ? `"${coach.profiles.bio}"` : t("coachee.coachCard.noBio")}
         </p>
 
         {coach.specialties && coach.specialties.length > 0 && (
@@ -281,7 +285,7 @@ function RecommendedCoachCard({ coach }: { coach: CoachLite }) {
             <MapPin className="h-3.5 w-3.5" />
             {coach.years_experience ?? 0} yrs{coach.country_based ? ` · ${coach.country_based}` : ""}
           </span>
-          <span className="text-sm font-semibold text-primary">View profile</span>
+          <span className="text-sm font-semibold text-primary">{t("coachee.coachCard.viewProfile")}</span>
         </div>
       </Card>
     </Link>
@@ -295,17 +299,18 @@ function RecentSessionsLog({
   sessions: SessionLite[];
   coachesById: Record<string, { full_name: string; avatar_url: string | null }>;
 }) {
+  const { t } = useTranslation("dashboard");
   const recent = sessions.slice(0, 6);
   return (
     <Card className="p-5">
       <div className="mb-3 flex items-center gap-2">
         <History className="h-4 w-4 text-primary" />
         <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-          Recent session log
+          {t("coachee.recentLog.title")}
         </p>
       </div>
       {recent.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No sessions yet.</p>
+        <p className="text-sm text-muted-foreground">{t("coachee.recentLog.empty")}</p>
       ) : (
         <ul className="divide-y">
           {recent.map((s) => {
@@ -319,7 +324,7 @@ function RecentSessionsLog({
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{s.topic}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      with {coach?.full_name || "coach"} ·{" "}
+                      {t("coachee.recentLog.withCoach", { name: coach?.full_name || t("coachee.recentLog.defaultCoach") })} ·{" "}
                       {format(new Date(s.start_time), "MMM d, yyyy")}
                     </p>
                   </div>
@@ -343,6 +348,7 @@ function ActionItemsPanel({
   sessions: SessionLite[];
   coachesById: Record<string, { full_name: string; avatar_url: string | null }>;
 }) {
+  const { t } = useTranslation("dashboard");
   const items: { text: string; done: boolean; sessionId: string; topic: string; date: string; coach: string }[] = [];
   sessions.forEach((s) => {
     const arr = Array.isArray(s.action_items) ? s.action_items : [];
@@ -356,7 +362,7 @@ function ActionItemsPanel({
           sessionId: s.id,
           topic: s.topic,
           date: s.start_time,
-          coach: coachesById[s.coach_id]?.full_name || "coach",
+          coach: coachesById[s.coach_id]?.full_name || t("coachee.actionItems.defaultCoach"),
         });
       }
     });
@@ -369,11 +375,11 @@ function ActionItemsPanel({
       <div className="mb-3 flex items-center gap-2">
         <ListChecks className="h-4 w-4 text-primary" />
         <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-          Action items
+          {t("coachee.actionItems.title")}
         </p>
       </div>
       {open.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No open action items. 🎉</p>
+        <p className="text-sm text-muted-foreground">{t("coachee.actionItems.empty")}</p>
       ) : (
         <ul className="space-y-2">
           {open.map((it, idx) => (

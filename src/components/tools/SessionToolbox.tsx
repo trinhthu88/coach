@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Compass, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WheelOfLife } from "./WheelOfLife";
@@ -8,22 +9,11 @@ type ToolKey = "wheel_of_life" | "grow_worksheet";
 
 const TOOLS: {
   key: ToolKey;
-  label: string;
-  blurb: string;
+  i18nKey: "wheelOfLife" | "growWorksheet";
   icon: typeof Compass;
 }[] = [
-  {
-    key: "wheel_of_life",
-    label: "Wheel of Life",
-    blurb: "Rate life domains and spot imbalance",
-    icon: Compass,
-  },
-  {
-    key: "grow_worksheet",
-    label: "GROW worksheet",
-    blurb: "Goal · Reality · Options · Will",
-    icon: PenLine,
-  },
+  { key: "wheel_of_life", i18nKey: "wheelOfLife", icon: Compass },
+  { key: "grow_worksheet", i18nKey: "growWorksheet", icon: PenLine },
 ];
 
 export function SessionToolbox({
@@ -35,19 +25,20 @@ export function SessionToolbox({
   peerSessionId?: string;
   onActionItemsChanged?: () => void;
 }) {
+  const { t } = useTranslation("tools");
   const [active, setActive] = useState<ToolKey>("wheel_of_life");
 
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2">
-        {TOOLS.map((t) => {
-          const Icon = t.icon;
-          const on = active === t.key;
+        {TOOLS.map((tool) => {
+          const Icon = tool.icon;
+          const on = active === tool.key;
           return (
             <button
-              key={t.key}
+              key={tool.key}
               type="button"
-              onClick={() => setActive(t.key)}
+              onClick={() => setActive(tool.key)}
               aria-pressed={on}
               className={cn(
                 "flex items-start gap-3 rounded-[18px] border p-4 text-left transition-all",
@@ -65,8 +56,12 @@ export function SessionToolbox({
                 <Icon className="h-4 w-4" />
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-semibold text-foreground">{t.label}</span>
-                <span className="block text-xs text-muted-foreground">{t.blurb}</span>
+                <span className="block text-sm font-semibold text-foreground">
+                  {t(`sessionToolbox.tools.${tool.i18nKey}.label`)}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {t(`sessionToolbox.tools.${tool.i18nKey}.blurb`)}
+                </span>
               </span>
             </button>
           );
