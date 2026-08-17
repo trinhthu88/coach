@@ -47,7 +47,7 @@ describe("Auth page i18n", () => {
       expect(screen.getByRole("heading", { name: "Đăng nhập vào Clariva" })).toBeInTheDocument()
     );
     expect(
-      screen.getByText("Nhập thông tin đăng nhập để truy cập bảng điều khiển của bạn.")
+      screen.getByText("Nhập thông tin đăng nhập để truy cập trang tổng quan của bạn.")
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Địa chỉ email")).toBeInTheDocument();
     expect(screen.getByLabelText("Mật khẩu")).toBeInTheDocument();

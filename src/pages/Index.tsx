@@ -452,19 +452,18 @@ function FooterCol({ title, items }: { title: string; items: { label: string; to
 
 /**
  * Always a few days out from today, so the marketing mockup never looks stale.
- * NOTE: hardcodes the "en-US" locale — flagged during Phase 5 batch-1 i18n extraction
- * as a raw toLocaleDateString call that doesn't yet respect the active UI language.
  */
-function mockNextSessionDate(): string {
+function mockNextSessionDate(language: string): string {
   const d = new Date();
   d.setDate(d.getDate() + 4);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const locale = language.startsWith("vi") ? "vi-VN" : "en-US";
+  return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 function MockBody({ view }: { view: "executive" | "coach" }) {
-  const { t } = useTranslation("landing");
+  const { t, i18n } = useTranslation("landing");
   const isCoach = view === "coach";
-  const nextSessionDate = mockNextSessionDate();
+  const nextSessionDate = mockNextSessionDate(i18n.language);
   const navItems = t(isCoach ? "mock.navCoach" : "mock.navExecutive", { returnObjects: true }) as string[];
   const commsItems = t("mock.navComms", { returnObjects: true }) as string[];
   const quickActions = t(isCoach ? "mock.quickActions.coach" : "mock.quickActions.executive", { returnObjects: true }) as string[];
@@ -485,15 +484,15 @@ function MockBody({ view }: { view: "executive" | "coach" }) {
                 : "text-white/35"
             }`}
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-50" />
-            {label}
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-50" />
+            <span className="truncate">{label}</span>
           </div>
         ))}
         <div className="mt-2 px-4 pb-1 pt-2 text-[7px] font-bold uppercase tracking-wider text-white/20">{t("mock.commsSectionLabel")}</div>
         {commsItems.map((l) => (
           <div key={l} className="flex items-center gap-2 px-4 py-2 text-[10px] font-semibold text-white/35">
-            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-50" />
-            {l}
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-50" />
+            <span className="truncate">{l}</span>
           </div>
         ))}
       </aside>

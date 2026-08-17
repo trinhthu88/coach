@@ -1,5 +1,5 @@
 {
-  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "__notice": "Reviewed against docs/vi-localization-style-guide.md (2026-08-17): fixed dashboard-term consistency (hero.adminDashboardButton) and spot-checked glossary/register compliance. Recommend a final native-speaker skim before shipping.",
   "greetingByRole": {
     "coachee": "Tìm coach tiếp theo và duy trì đà phát triển.",
     "coach": "Xem lại các yêu cầu session và truyền cảm hứng cho học viên của bạn hôm nay.",
@@ -9,7 +9,7 @@
     "coachWorkspaceBadge": "không gian làm việc coach",
     "adminWorkspaceBadge": "không gian làm việc quản trị viên",
     "welcomeBack": "Chào mừng trở lại,",
-    "adminDashboardButton": "Bảng điều khiển quản trị",
+    "adminDashboardButton": "Trang tổng quan quản trị",
     "viewSessionsButton": "Xem session"
   },
   "admin": {

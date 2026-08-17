@@ -1,8 +1,8 @@
 {
-  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "__notice": "Reviewed against docs/vi-localization-style-guide.md (2026-08-17): fixed dashboard-term consistency (bảng điều khiển → trang tổng quan in cta.openDashboard and mock nav labels) and spot-checked glossary/register compliance. Recommend a final native-speaker skim before shipping.",
   "brandName": "Clariva",
   "cta": {
-    "openDashboard": "Mở bảng điều khiển",
+    "openDashboard": "Mở trang tổng quan",
     "signIn": "Đăng nhập",
     "requestAccess": "Yêu cầu quyền truy cập",
     "requestAccessShort": "Yêu cầu",
@@ -128,8 +128,8 @@
     "headerName": { "coach": "Elena Richter", "executive": "Marcus Webb" },
     "headerRole": { "coach": "Coach · PCC", "executive": "Lãnh đạo" },
     "headerInitials": { "coach": "ER", "executive": "MW" },
-    "navCoach": ["Bảng điều khiển", "Hồ sơ coach", "Lịch trống của tôi", "Khách hàng của tôi"],
-    "navExecutive": ["Bảng điều khiển", "Tìm coach", "Hồ sơ của tôi", "Hành trình của tôi"],
+    "navCoach": ["Trang tổng quan", "Hồ sơ coach", "Lịch trống của tôi", "Khách hàng của tôi"],
+    "navExecutive": ["Trang tổng quan", "Tìm coach", "Hồ sơ của tôi", "Hành trình của tôi"],
     "commsSectionLabel": "Liên lạc",
     "navComms": ["Session", "Tin nhắn"],
     "workspaceLabel": { "coach": "Coach", "executive": "Lãnh đạo" },

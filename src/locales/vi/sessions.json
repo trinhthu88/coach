@@ -1,5 +1,5 @@
 {
-  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "__notice": "Reviewed against docs/vi-localization-style-guide.md (2026-08-17): fixed the 8 ICF competency labels under feedback.competencies (Title Case → sentence case for natural Vietnamese) and booking.durationOption stray capitalization; spot-checked glossary/register compliance. Recommend a final native-speaker skim before shipping.",
   "status": {
     "pending_coach_approval": "Đang chờ xác nhận",
     "confirmed": "Đã xác nhận",
@@ -52,7 +52,7 @@
     "ineligible": "Bạn hiện không đủ điều kiện để đặt lịch với coach này. Quyền truy cập của bạn có thể đã thay đổi — vui lòng liên hệ quản trị viên nếu điều này có vẻ không đúng.",
     "steps": {
       "duration": "Chọn thời lượng",
-      "durationOption": "{{n}} Phút",
+      "durationOption": "{{n}} phút",
       "date": "Chọn ngày",
       "time": "Chọn giờ ({{timezone}})"
     },
@@ -201,14 +201,14 @@
       "readOnlySuffix": "(chỉ đọc)",
       "subtitle": "Chấm điểm 8 năng lực coaching ICF từ 0 đến 100.",
       "competencies": {
-        "ethicalPractice": "Thể hiện Thực hành Đạo đức",
-        "coachingMindset": "Thể hiện Tư duy Coaching",
-        "maintainsAgreements": "Thiết lập & Duy trì Thỏa thuận",
-        "trustSafety": "Xây dựng Sự tin tưởng và An toàn",
-        "maintainsPresence": "Duy trì Sự hiện diện",
-        "listensActively": "Lắng nghe Chủ động",
-        "evokesAwareness": "Khơi gợi Nhận thức",
-        "facilitatesGrowth": "Thúc đẩy Sự phát triển của Khách hàng"
+        "ethicalPractice": "Thể hiện thực hành đạo đức",
+        "coachingMindset": "Thể hiện tư duy coaching",
+        "maintainsAgreements": "Thiết lập & duy trì thỏa thuận",
+        "trustSafety": "Xây dựng sự tin tưởng và an toàn",
+        "maintainsPresence": "Duy trì sự hiện diện",
+        "listensActively": "Lắng nghe chủ động",
+        "evokesAwareness": "Khơi gợi nhận thức",
+        "facilitatesGrowth": "Thúc đẩy sự phát triển của khách hàng"
       },
       "writtenFeedback": "Phản hồi bằng văn bản",
       "feedbackPlaceholder": "Điều gì đã diễn ra tốt? Điều gì có thể phát triển thêm?",

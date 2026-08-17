@@ -4,9 +4,9 @@
 // src/locales/{en,vi}/onboarding.json, built via buildRoleContent(t, role) below.
 //
 // The "coachee" section's Vietnamese text is human-approved — see
-// docs/vi-localization-style-guide.md. "coach" and "sponsor" are machine-translated
-// placeholders (see the __reviewed note at the top of vi/onboarding.json) pending
-// the same approved pass.
+// docs/vi-localization-style-guide.md. "coach" and "sponsor" have since been
+// reviewed against the same guide too (see the __reviewed note at the top of
+// vi/onboarding.json) — still pending a final native-speaker skim before shipping.
 
 import type { TFunction } from "i18next";
 

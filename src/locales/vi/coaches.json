@@ -1,5 +1,5 @@
 {
-  "__notice": "Machine-translated placeholder — needs review by a Vietnamese speaker before shipping to real users.",
+  "__notice": "Reviewed against docs/vi-localization-style-guide.md (2026-08-17): fixed findCoach.allowancePrefix (restored \"session allowance\" meaning lost in generic phrasing) and spot-checked glossary/register compliance. Recommend a final native-speaker skim before shipping.",
   "detail": {
     "notFound": {
       "title": "Không tìm thấy coach",
@@ -55,7 +55,7 @@
     "titleEmphasis": "coach",
     "subtitle": "Coach được quản trị viên tuyển chọn cho sự phát triển liên tục của bạn.",
     "notice": "Danh sách coach và số session được cấp phép của bạn do quản trị viên nền tảng thiết lập.",
-    "allowancePrefix": "Số lượng hiện tại:",
+    "allowancePrefix": "Hạn mức của bạn:",
     "allowanceSuffix": "session.",
     "unlimitedValue": "không giới hạn",
     "empty": "Chưa có coach nào được chỉ định cho bạn. Hãy liên hệ quản trị viên của bạn.",

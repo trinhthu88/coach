@@ -1,5 +1,5 @@
 {
-  "__reviewed": "The \"coachee\" section below is human-approved per docs/vi-localization-style-guide.md — do not machine-retranslate it. The \"coach\" and \"sponsor\" sections are machine-translated placeholders following the same glossary — needs review by a Vietnamese speaker before shipping to real users, same as every other __notice-flagged namespace in this project.",
+  "__reviewed": "The \"coachee\" section below is human-approved per docs/vi-localization-style-guide.md — do not machine-retranslate it. The \"coach\" and \"sponsor\" sections were reviewed against docs/vi-localization-style-guide.md (2026-08-17): coach section — fixed the chemistry-call English gloss missing on first use (steps.availability bullet) and confirmed accreditation/glossary terms elsewhere were already compliant; sponsor section — fixed a \"withheld\" translation inconsistency (steps.withheld.title now matches the carousel.report.withheld precedent, \"bị giới hạn\") and confirmed register/glossary compliance otherwise. Both recommend a final native-speaker skim before shipping. The \"carousel\" section (shared mockup copy) was not part of this pass.",
   "chrome": {
     "restart": "Bắt đầu lại",
     "dismiss": "Bỏ qua",
@@ -190,7 +190,7 @@
         "bullets": [
           { "label": "Lặp lại", "text": "Thiết lập một lần, lặp lại hằng tuần. Bạn có thể đóng riêng bất kỳ tuần nào khi cần." },
           { "label": "Khoảng đệm", "text": "Thêm khoảng trống để các session không bị đặt liền kề nhau." },
-          { "label": "Buổi trò chuyện làm quen", "text": "Dành riêng một khung giờ ngắn mỗi tuần cho các buổi trò chuyện làm quen 20 phút." }
+          { "label": "Buổi trò chuyện làm quen", "text": "Dành riêng một khung giờ ngắn mỗi tuần cho các buổi trò chuyện làm quen (chemistry call) 20 phút." }
         ]
       },
       "practice": {
@@ -261,7 +261,7 @@
       },
       "withheld": {
         "kicker": "Bước ba",
-        "title": "Điều gì không được hiển thị, và vì sao.",
+        "title": "Điều gì bị giới hạn, và vì sao.",
         "body": "Các giới hạn được thể hiện ngay trong sản phẩm dưới dạng mục bị khóa nhưng vẫn hiển thị, để bạn luôn biết điều gì tồn tại thay vì tự hỏi mình đang thiếu điều gì.",
         "bullets": [
           { "label": "Bạn thấy", "text": "Tình trạng đăng ký, điểm danh, số session đã dùng, trạng thái đúng tiến độ, và mức tăng trưởng mục tiêu." },
