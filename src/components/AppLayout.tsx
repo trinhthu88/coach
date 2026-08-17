@@ -121,7 +121,7 @@ function SidebarNav({
         return (
           <div key={item.to}>
             {showHeader && (
-              <p className="px-3 pb-1.5 pt-4 text-[8.5px] font-bold uppercase tracking-[0.2em] text-secondary-foreground/40">
+              <p className="truncate px-3 pb-1.5 pt-4 text-micro font-bold uppercase tracking-[0.15em] text-secondary-foreground/40">
                 {t(item.groupKey!)}
               </p>
             )}
@@ -134,7 +134,7 @@ function SidebarNav({
               data-onboarding={item.onboardingId}
               className={({ isActive }) =>
                 cn(
-                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200",
+                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm2 font-medium transition-all duration-200",
                   isActive
                     ? "bg-white/[0.09] text-white"
                     : "text-secondary-foreground/75 hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white"
@@ -152,14 +152,14 @@ function SidebarNav({
                   <span className="relative shrink-0 opacity-90">
                     <item.icon className="h-5 w-5" />
                     {showBadge && collapsed && (
-                      <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-accent-foreground">
+                      <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-micro font-bold text-accent-foreground">
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </span>
                     )}
                   </span>
                   {!collapsed && <span className="truncate tracking-[-0.005em]">{label}</span>}
                   {showBadge && !collapsed && (
-                    <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-accent-foreground">
+                    <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 text-2xs font-bold text-accent-foreground">
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}
@@ -177,7 +177,7 @@ function SidebarNav({
             onHowItWorks();
             onNavigate?.();
           }}
-          className="group relative mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-secondary-foreground/75 transition-all duration-200 hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white"
+          className="group relative mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm2 font-medium text-secondary-foreground/75 transition-all duration-200 hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white"
         >
           <span className="relative shrink-0 opacity-90">
             <HelpCircle className="h-5 w-5" />
@@ -202,12 +202,12 @@ function SidebarFooter({
   return (
     <div className="relative border-t border-white/10 p-3.5">
       {!collapsed && (
-        <p className="px-2 pb-2 text-[8.5px] font-bold uppercase tracking-[0.2em] text-secondary-foreground/40">
+        <p className="truncate px-2 pb-2 text-micro font-bold uppercase tracking-[0.15em] text-secondary-foreground/40">
           {t("layout.signedInAs")}
         </p>
       )}
       {!collapsed && (
-        <p className="truncate px-2 pb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+        <p className="truncate px-2 pb-3 text-2xs font-bold uppercase tracking-[0.14em] text-primary">
           {role}
         </p>
       )}
@@ -219,7 +219,7 @@ function SidebarFooter({
       <button
         onClick={onSignOut}
         className={cn(
-          "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-secondary-foreground/70 transition-colors hover:bg-white/[0.07] hover:text-white",
+          "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm2 font-medium text-secondary-foreground/70 transition-colors hover:bg-white/[0.07] hover:text-white",
           collapsed && "justify-center px-0"
         )}
       >
@@ -350,7 +350,7 @@ export default function AppLayout() {
               className={cn("w-auto object-contain object-left", collapsed ? "h-7" : "h-[30px]")}
             />
             {!collapsed && (
-              <p className="mt-2 pl-0.5 text-[8.5px] font-bold uppercase tracking-[0.26em] text-primary">
+              <p className="truncate mt-2 pl-0.5 text-micro font-bold uppercase tracking-[0.2em] text-primary">
                 {t("layout.coachingOsTagline")}
               </p>
             )}
@@ -412,8 +412,8 @@ export default function AppLayout() {
             <Menu className="h-[18px] w-[18px]" />
           </button>
 
-          <div className="hidden min-w-0 items-center gap-2 text-[11px] tracking-[0.04em] sm:flex">
-            <span className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">{role}</span>
+          <div className="hidden min-w-0 items-center gap-2 text-2xs tracking-[0.04em] sm:flex">
+            <span className="text-micro font-bold uppercase tracking-[0.2em] text-primary">{role}</span>
             <span className="text-muted-foreground/40">/</span>
             <span className="truncate font-semibold text-foreground">{activeLabel}</span>
           </div>
@@ -424,7 +424,7 @@ export default function AppLayout() {
           <NavLink
             to={role === "coach" ? "/coach/find-coach" : "/coaches"}
             className={cn(
-              "hidden h-[34px] items-center gap-2 rounded-[11px] border border-border bg-card px-3.5 text-[11.5px] font-semibold text-muted-foreground transition-all hover:-translate-y-px hover:border-primary/60 hover:text-primary sm:flex",
+              "hidden h-[34px] items-center gap-2 rounded-[11px] border border-border bg-card px-3.5 text-2xs font-semibold text-muted-foreground transition-all hover:-translate-y-px hover:border-primary/60 hover:text-primary sm:flex",
               (role === "admin" || role === "sponsor") && "invisible"
             )}
           >
@@ -453,8 +453,8 @@ export default function AppLayout() {
 
           <div className="flex items-center gap-2.5 border-l border-border pl-3.5">
             <div className="hidden text-right leading-tight sm:block">
-              <p className="text-[12.5px] font-semibold">{displayName}</p>
-              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{role}</p>
+              <p className="text-sm2 font-semibold">{displayName}</p>
+              <p className="text-micro font-bold uppercase tracking-[0.16em] text-muted-foreground">{role}</p>
             </div>
             <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary-soft text-xs font-bold text-primary ring-[3px] ring-primary/[0.13]">
               {profile?.avatar_url ? (

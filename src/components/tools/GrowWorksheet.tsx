@@ -261,7 +261,7 @@ export function GrowWorksheet({
                   {it.text}
                 </span>
                 {it.due_date && (
-                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-accent">
+                  <span className="shrink-0 text-micro font-bold uppercase tracking-[0.14em] text-accent">
                     {format(new Date(it.due_date), "d MMM")}
                   </span>
                 )}

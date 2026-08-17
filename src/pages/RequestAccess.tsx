@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import { ArrowLeft, CheckCircle2, Clock, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import clarivaLogo from "@/assets/clariva-logo-dark.png";
 import { cn } from "@/lib/utils";
@@ -72,6 +73,25 @@ export default function RequestAccess() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Select isn't a native <select>, so it doesn't participate in the browser's
+    // built-in `required` validation the way the text Inputs on this form do —
+    // these two have to be checked explicitly.
+    if (!form.industry) {
+      toast({
+        title: t("requestAccess.toast.error.title"),
+        description: t("requestAccess.fields.selectRequiredError"),
+        variant: "destructive",
+      });
+      return;
+    }
+    if (role === "coach" && !form.credential) {
+      toast({
+        title: t("requestAccess.toast.error.title"),
+        description: t("requestAccess.fields.selectRequiredError"),
+        variant: "destructive",
+      });
+      return;
+    }
     setSubmitting(true);
     try {
       const email = form.email.trim().toLowerCase();
@@ -101,7 +121,7 @@ export default function RequestAccess() {
         title: t("requestAccess.toast.error.title"),
         description: duplicate
           ? t("requestAccess.toast.error.duplicateDescription")
-          : pgError?.message ?? t("toast.error.genericDescription"),
+          : getFriendlyErrorMessage(pgError, t, { fallback: t("toast.error.genericDescription") }),
         variant: "destructive",
       });
     } finally {

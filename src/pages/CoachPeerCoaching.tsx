@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Star } from "lucide-react";
+import { Loader2, Star, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface PeerCoach {
   id: string;
@@ -22,29 +23,39 @@ export default function CoachPeerCoaching() {
   const { t } = useTranslation("profile");
   const [coaches, setCoaches] = useState<PeerCoach[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    const { data, error: fetchError } = await supabase
+      .from("coach_profiles")
+      .select("id, title, specialties, rating_avg, peer_coaching_opt_in, profiles!inner(full_name, avatar_url)")
+      .eq("approval_status", "active")
+      .eq("peer_coaching_opt_in", true)
+      .neq("id", user.id);
+    if (fetchError) {
+      setError(getFriendlyErrorMessage(fetchError, t));
+      setLoading(false);
+      return;
+    }
+    setCoaches(
+      (data || []).map((c) => ({
+        id: c.id,
+        title: c.title,
+        specialties: c.specialties,
+        rating_avg: c.rating_avg,
+        full_name: c.profiles?.full_name,
+        avatar_url: c.profiles?.avatar_url,
+      }))
+    );
+    setLoading(false);
+  }, [user, t]);
 
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data } = await supabase
-        .from("coach_profiles")
-        .select("id, title, specialties, rating_avg, peer_coaching_opt_in, profiles!inner(full_name, avatar_url)")
-        .eq("approval_status", "active")
-        .eq("peer_coaching_opt_in", true)
-        .neq("id", user.id);
-      setCoaches(
-        (data || []).map((c) => ({
-          id: c.id,
-          title: c.title,
-          specialties: c.specialties,
-          rating_avg: c.rating_avg,
-          full_name: c.profiles?.full_name,
-          avatar_url: c.profiles?.avatar_url,
-        }))
-      );
-      setLoading(false);
-    })();
-  }, [user]);
+    load();
+  }, [load]);
 
   return (
     <div className="space-y-6">
@@ -60,6 +71,14 @@ export default function CoachPeerCoaching() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
+      ) : error ? (
+        <Card className="flex flex-col items-center gap-3 border-destructive/30 bg-destructive/5 p-12 text-center text-sm">
+          <AlertTriangle className="h-5 w-5 text-destructive" />
+          <p className="text-muted-foreground">{error}</p>
+          <Button size="sm" variant="outline" onClick={load}>
+            {t("peerCoaching.retry")}
+          </Button>
+        </Card>
       ) : coaches.length === 0 ? (
         <Card className="p-12 text-center text-sm text-muted-foreground">
           {t("peerCoaching.empty")}

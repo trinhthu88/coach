@@ -22,6 +22,8 @@ interface DashboardProfileRow {
 interface DashboardSessionRow {
   id: string;
   start_time: string;
+  status?: string;
+  meeting_url?: string | null;
 }
 
 interface DashboardCoachProfileRow {
@@ -70,7 +72,7 @@ export default function AdminDashboard() {
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("profiles").select("id, full_name, status, created_at"),
         supabase.from("coach_profiles").select("id, approval_status"),
-        supabase.from("sessions").select("id, coach_id, start_time, status"),
+        supabase.from("sessions").select("id, coach_id, start_time, status, meeting_url"),
         supabase.from("peer_sessions").select("id, start_time, status"),
         supabase.from("programme_enrollments").select("id, status, progress_pct"),
         supabase.from("admin_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(6),
@@ -86,6 +88,11 @@ export default function AdminDashboard() {
         + (peerSessions || []).filter((s: DashboardSessionRow) => new Date(s.start_time) >= new Date(monthStart)).length;
 
       const pending = Array.from(coachIds).filter((id) => (cps || []).find((c: DashboardCoachProfileRow) => c.id === id)?.approval_status === "pending_approval").length;
+
+      const pendingLinkSessions = (sessions || []).filter(
+        (s: DashboardSessionRow) =>
+          ["confirmed", "pending_coach_approval"].includes(s.status ?? "") && !s.meeting_url
+      ).length;
 
       const avgProgress = (enrollments || []).length
         ? (enrollments || []).reduce((acc: number, e: DashboardEnrollmentRow) => acc + (e.progress_pct || 0), 0) / (enrollments || []).length
@@ -120,6 +127,14 @@ export default function AdminDashboard() {
       setMonthly(months);
 
       const applicationItems: typeof attention = [];
+      if (pendingLinkSessions) {
+        applicationItems.push({
+          id: "sessions-needing-link",
+          title: t("dashboard.sessionsNeedingLink", { count: pendingLinkSessions }),
+          note: t("dashboard.awaitingMeetingLink"),
+          severity: "warning",
+        });
+      }
       if (newCoachApplications) {
         applicationItems.push({
           id: "new-coach-applications",
@@ -224,6 +239,8 @@ export default function AdminDashboard() {
                 ? () => navigate("/admin/coaches")
                 : a.id === "new-coachee-applications"
                 ? () => navigate("/admin/coachees")
+                : a.id === "sessions-needing-link"
+                ? () => navigate("/admin/sessions")
                 : undefined,
           }))}
           empty={t("dashboard.noActiveAlerts")}

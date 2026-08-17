@@ -76,7 +76,11 @@
     "start": "Start",
     "target": "Target",
     "current": "Current",
-    "sessionSeriesName": "S{{n}} · {{date}}"
+    "sessionSeriesName": "S{{n}} · {{date}}",
+    "chartAriaLabel": "Goal wheel radar chart comparing start and target ratings across {{count}} goals",
+    "tableHeaders": {
+      "goal": "Goal"
+    }
   },
   "sessionsBlock": {
     "nothingHere": "Nothing here yet.",
@@ -130,7 +134,8 @@
     "emptyGoalsDescription": "Define what you want to achieve in your own coaching journey.",
     "actionsEmptyMessage": "No action items yet. They'll appear here once a coach assigns them.",
     "sessionsBlockUpcoming": "Upcoming",
-    "sessionsBlockPast": "Past & completed"
+    "sessionsBlockPast": "Past & completed",
+    "modeBadge": "You, as coachee"
   },
   "coacheeJourney": {
     "subtitle": "Track your goals, action items, sessions and personal reflections.",

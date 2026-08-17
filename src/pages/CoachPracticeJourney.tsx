@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, MessageSquareQuote, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
@@ -207,6 +208,11 @@ export default function CoachPracticeJourney() {
             title={t("practiceJourney.titleLead")}
             emphasis={t("practiceJourney.titleEmphasis")}
             subtitle={t("practiceJourney.subtitle")}
+            actions={
+              <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
+                {t("practiceJourney.modeBadge")}
+              </Badge>
+            }
           />
 
       {/* COUNTERS */}

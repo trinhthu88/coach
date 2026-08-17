@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import {
   Loader2, Search, FileDown, Eye, Star, Users, Pencil, Save,
 } from "lucide-react";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
   if (!startDate || !durationMonths) return null;
@@ -28,12 +29,13 @@ function programmeCompletionPct(startDate: string | null, durationMonths: number
   return Math.round(((now - start) / (end - start)) * 100);
 }
 import { format } from "date-fns";
-import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
+import { AdminPageHeader, Kpi, Pill, Avatar, TablePager } from "./_shared";
 import PendingAccessRequests from "@/components/PendingAccessRequests";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 const STATUS_KEYS: Status[] = ["pending_approval", "active", "rejected", "suspended", "reach_limit"];
+const PAGE_SIZE = 25;
 const STATUS_TONE: Record<Status, "muted"|"success"|"warning"|"destructive"> = {
   pending_approval: "warning",
   active: "success",
@@ -91,6 +93,7 @@ export default function AdminCoaches() {
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<CoachRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -225,6 +228,11 @@ export default function AdminCoaches() {
     return okQ && okS;
   }), [rows, q, statusFilter]);
 
+  useEffect(() => { setPage(1); }, [q, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSafe = Math.min(page, totalPages);
+  const paged = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
+
   const exportXlsx = async () => {
     const XLSX = await import("xlsx");
     const data = filtered.map(c => ({
@@ -309,7 +317,7 @@ export default function AdminCoaches() {
       setEditing(null);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("coaches.saveFailed"));
+      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("coaches.saveFailed") }));
     } finally {
       setSaving(false);
     }
@@ -385,7 +393,7 @@ export default function AdminCoaches() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filtered.map(r => (
+              {paged.map(r => (
                 <tr key={r.id} className="hover:bg-muted/30">
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
@@ -401,7 +409,18 @@ export default function AdminCoaches() {
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.coach_used}/{fmtLimit(r.coach_session_limit)}</span></td>
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_used}/{fmtLimit(r.peer_session_limit)}</span></td>
                   <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_given_used}/{fmtLimit(r.peer_given_limit)}</span></td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.programme_name || <span className="italic text-muted-foreground">—</span>}{r.cohort_name && <p className="text-[10px] text-muted-foreground">{r.cohort_name}</p>}</td>
+                  <td className="px-3 py-2.5 text-[11px]">
+                    {r.programme_name ? (
+                      <Link to="/admin/programmes" className="text-primary hover:underline">{r.programme_name}</Link>
+                    ) : (
+                      <span className="italic text-muted-foreground">—</span>
+                    )}
+                    {r.cohort_name && (
+                      <p className="text-[10px]">
+                        <Link to="/admin/cohorts" className="text-muted-foreground hover:text-primary hover:underline">{r.cohort_name}</Link>
+                      </p>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {(() => {
                       const pct = programmeCompletionPct(r.enrollment_start_date, r.programme_duration_months);
@@ -426,7 +445,7 @@ export default function AdminCoaches() {
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
                       <Button asChild variant="ghost" size="icon" title={t("coaches.viewProfile")}><Link to={`/coaches/${r.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                      <Button variant="ghost" size="icon" onClick={() => setEditing({ ...r, assigned_coaches: [...r.assigned_coaches] })}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" title={t("coaches.edit")} aria-label={t("coaches.edit")} onClick={() => setEditing({ ...r, assigned_coaches: [...r.assigned_coaches] })}><Pencil className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -437,6 +456,7 @@ export default function AdminCoaches() {
             </tbody>
           </table>
         </div>
+        <TablePager page={pageSafe} totalPages={totalPages} onChange={setPage} />
       </Card>
 
       {/* Edit drawer */}

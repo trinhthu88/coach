@@ -161,7 +161,7 @@ export function WheelOfLife({
           </div>
           <div className="flex gap-6">
             <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="text-micro font-bold uppercase tracking-[0.16em] text-muted-foreground">
                 {t("wheelOfLife.average")}
               </p>
               <p className="font-display text-3xl font-light leading-none text-foreground">
@@ -170,7 +170,7 @@ export function WheelOfLife({
             </div>
             {lowest && (
               <div className="text-right">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                <p className="text-micro font-bold uppercase tracking-[0.16em] text-muted-foreground">
                   {t("wheelOfLife.lowest")}
                 </p>
                 <p className="max-w-[9rem] truncate text-sm font-semibold text-accent">
@@ -198,7 +198,7 @@ export function WheelOfLife({
       <div className="rounded-[20px] border border-border bg-card p-4 sm:p-6">
         <div className="mb-4 flex items-center justify-between">
           <p className="eyebrow text-primary">{t("wheelOfLife.domainsEyebrow")}</p>
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          <span className="text-micro font-bold uppercase tracking-[0.16em] text-muted-foreground">
             {t("wheelOfLife.domainCount", { count: domains.length, max: MAX_DOMAINS })}
           </span>
         </div>

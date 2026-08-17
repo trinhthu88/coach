@@ -229,7 +229,9 @@
     "notePlaceholder": "Ghi chú suy ngẫm tùy chọn cho mục tiêu này…",
     "toast": {
       "saved": "Đã lưu đánh giá mục tiêu — bánh xe của bạn sẽ cập nhật."
-    }
+    },
+    "noteLockedLabel": "Đã khóa",
+    "noteLockedEmptyPlaceholder": "Không có ghi chú nào được thêm vào"
   },
   "messages": {
     "yesterday": "Hôm qua",

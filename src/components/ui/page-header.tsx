@@ -75,7 +75,7 @@ export function StatCard({
   return (
     <div className={cn("surface-card hover-lift p-5", className)}>
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
+        <p className="text-micro font-bold uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
         {Icon && (
           <span
             className={cn(
@@ -130,7 +130,7 @@ export function FilterChip({
       aria-pressed={active}
       {...props}
       className={cn(
-        "rounded-full px-4 py-2 text-[10.5px] font-bold uppercase tracking-[0.16em] transition-all",
+        "rounded-full px-4 py-2 text-2xs font-bold uppercase tracking-[0.16em] transition-all",
         active
           ? "bg-secondary text-secondary-foreground shadow-sm"
           : "border border-border bg-card text-muted-foreground hover:border-primary/45 hover:text-foreground"

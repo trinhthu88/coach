@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Loader2, Plus, Pencil, Trash2, Building2, UsersRound, RotateCcw, Copy } from "lucide-react";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
+import { useConfirm } from "@/hooks/use-confirm";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface Organization {
   id: string;
@@ -38,6 +40,7 @@ export default function AdminOrganizations() {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [resetBusy, setResetBusy] = useState<string | null>(null);
   const [credential, setCredential] = useState<{ email: string; password: string; full_name: string } | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -85,14 +88,20 @@ export default function AdminOrganizations() {
       toast.success(t("organizations.orgSaved"));
       setEditing(null);
       load();
-    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+    } catch (e) { toast.error(getFriendlyErrorMessage(e, t)); }
     finally { setSaving(false); }
   };
 
   const removeOrg = async (id: string) => {
-    if (!confirm(t("organizations.deleteConfirm"))) return;
+    const ok = await confirm({
+      title: t("organizations.delete"),
+      description: t("organizations.deleteConfirm"),
+      confirmLabel: t("organizations.delete"),
+      destructive: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from("organizations").delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success(t("organizations.deleted")); load(); }
+    if (error) toast.error(getFriendlyErrorMessage(error, t)); else { toast.success(t("organizations.deleted")); load(); }
   };
 
   const openInvite = (org: Organization) => {
@@ -125,7 +134,7 @@ export default function AdminOrganizations() {
       setInviting(null);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("organizations.couldNotInviteSponsor"));
+      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("organizations.couldNotInviteSponsor") }));
     } finally {
       setInviteBusy(false);
     }
@@ -143,7 +152,7 @@ export default function AdminOrganizations() {
       setCredential({ email: result.email!, password: result.temp_password!, full_name: result.full_name! });
       toast.success(t("organizations.tempPasswordReset"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("organizations.couldNotResetPassword"));
+      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("organizations.couldNotResetPassword") }));
     } finally {
       setResetBusy(null);
     }
@@ -274,6 +283,7 @@ export default function AdminOrganizations() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {ConfirmDialog}
     </div>
   );
 }

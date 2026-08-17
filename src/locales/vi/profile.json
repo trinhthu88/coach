@@ -35,16 +35,17 @@
       "calendlyLabel": "URL Calendly (không bắt buộc)",
       "calendlyPlaceholder": "https://calendly.com/your-handle",
       "specialtiesLabel": "Chuyên môn (phân tách bằng dấu phẩy)",
-      "specialtiesPlaceholder": "Lãnh đạo, Chuyển đổi nghề nghiệp, Hiện diện điều hành",
+      "specialtiesPlaceholder": "VD: Lãnh đạo — nhấn Enter để thêm",
       "diplomasLabel": "Bằng cấp & chứng chỉ (phân tách bằng dấu phẩy)",
-      "diplomasPlaceholder": "ICF PCC, Erickson Solution-Focused Coach"
+      "diplomasPlaceholder": "VD: ICF PCC — nhấn Enter để thêm"
     },
     "saveProfile": "Lưu hồ sơ"
   },
   "coacheeEditor": {
     "toast": {
       "saveFailedDefault": "Lưu không thành công",
-      "updated": "Đã cập nhật hồ sơ"
+      "updated": "Đã cập nhật hồ sơ",
+      "fullNameRequired": "Vui lòng nhập họ và tên"
     },
     "header": {
       "eyebrow": "Tài khoản",
@@ -67,7 +68,10 @@
       "timezonePlaceholder": "ví dụ: Asia/Ho_Chi_Minh",
       "aboutYouLabel": "Giới thiệu về bạn",
       "coachingGoalsLabel": "Mục tiêu coaching",
-      "coachingGoalsPlaceholder": "Bạn muốn đạt được điều gì?"
+      "coachingGoalsPlaceholder": "Bạn muốn đạt được điều gì?",
+      "timezoneButtonPlaceholder": "Chọn múi giờ của bạn",
+      "timezoneSearchPlaceholder": "Tìm múi giờ…",
+      "timezoneNoMatch": "Không tìm thấy múi giờ phù hợp."
     },
     "saveChanges": "Lưu thay đổi"
   },
@@ -81,6 +85,7 @@
     "empty": "Hiện chưa có coach đồng nghiệp nào khả dụng. Vui lòng quay lại sau.",
     "defaultTitle": "Coach đồng nghiệp",
     "view": "Xem",
-    "bookPeer": "Đặt session"
+    "bookPeer": "Đặt session",
+    "retry": "Thử lại"
   }
 }

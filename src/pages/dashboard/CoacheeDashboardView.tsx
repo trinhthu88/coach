@@ -125,7 +125,9 @@ export function CoacheeDashboardView() {
         </div>
         {recCoaches.length === 0 ? (
           <Card className="p-8 text-center text-sm text-muted-foreground">
-            {t("coachee.curatedForYou.noneAvailable")}
+            {stats.total === 0
+              ? t("coachee.curatedForYou.noneAvailableNewCoachee")
+              : t("coachee.curatedForYou.noneAvailableExisting")}
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

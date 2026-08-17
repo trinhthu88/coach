@@ -2,7 +2,10 @@
   "__notice": "Reviewed against docs/vi-localization-style-guide.md (2026-08-17): fixed navGroups.people (too-literal \"Con người\" → \"Người dùng\") and navGroups.myCoachingProfile capitalization; spot-checked glossary/register compliance. Recommend a final native-speaker skim before shipping.",
   "languageSwitcherDemo": "Chào mừng đến với Clariva",
   "actions": {
-    "signOut": "Đăng xuất"
+    "signOut": "Đăng xuất",
+    "cancel": "Hủy",
+    "confirm": "Xác nhận",
+    "failed": "Thất bại"
   },
   "notFound": {
     "badge": "Bạn đã đi lạc đường",
@@ -73,7 +76,15 @@
     "applyForWeeks": "Áp dụng trong (số tuần)",
     "recurringSlots": "Khung giờ lặp lại",
     "addSlot": "Thêm khung giờ",
-    "weekdays": { "mon": "T2", "tue": "T3", "wed": "T4", "thu": "T5", "fri": "T6", "sat": "T7", "sun": "CN" },
+    "weekdays": {
+      "mon": "T2",
+      "tue": "T3",
+      "wed": "T4",
+      "thu": "T5",
+      "fri": "T6",
+      "sat": "T7",
+      "sun": "CN"
+    },
     "cancel": "Hủy",
     "applyTemplate": "Áp dụng mẫu",
     "toast": {
@@ -125,5 +136,11 @@
     "openNavMenu": "Mở menu điều hướng",
     "coachingOsTagline": "Coaching OS",
     "defaultUserName": "Người dùng"
+  },
+  "errors": {
+    "generic": "Đã có lỗi xảy ra. Vui lòng thử lại — nếu vẫn tiếp diễn, hãy liên hệ contact@clariva.club.",
+    "duplicate": "Giá trị này đã tồn tại — vui lòng thử giá trị khác.",
+    "permissionDenied": "Bạn không có quyền thực hiện thao tác này.",
+    "foreignKeyViolation": "Không thể hoàn tất vì một dữ liệu liên quan không còn tồn tại."
   }
 }

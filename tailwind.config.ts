@@ -18,6 +18,17 @@ export default {
         serif: ["Fraunces", "Georgia", "serif"],
         display: ["Fraunces", "Georgia", "serif"],
       },
+      // A small scale of named micro-sizes to replace one-off `text-[Npx]`
+      // arbitrary values (nav labels, badges, meta text). Pairs with the
+      // built-in `text-xs` (12px) / `text-sm` (14px) rungs — don't redefine
+      // those, just fill the gaps below and between them. Letter-spacing is
+      // intentionally left to `tracking-*` utilities at call sites rather
+      // than baked in here, so the two never fight over the same property.
+      fontSize: {
+        micro: ["0.625rem", { lineHeight: "1.5" }], // 10px — smallest uppercase labels (was 8.5–9.5px arbitrary)
+        "2xs": ["0.6875rem", { lineHeight: "1.45" }], // 11px — meta text, badges, breadcrumbs (was 10–11.5px arbitrary)
+        sm2: ["0.8125rem", { lineHeight: "1.5" }], // 13px — secondary body/nav text (was 12.5–13px arbitrary)
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

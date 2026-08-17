@@ -175,9 +175,15 @@ export function SessionGoalRatings({ sessionId, coacheeId, canEdit, sessionStatu
                   }))
                 }
               />
+              {locked && (
+                <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Lock className="h-3 w-3" />
+                  {t("goalRatings.noteLockedLabel")}
+                </div>
+              )}
               <Textarea
-                className="mt-2 min-h-[60px] text-xs"
-                placeholder={locked ? "" : t("goalRatings.notePlaceholder")}
+                className={cn("min-h-[60px] text-xs", locked ? "mt-1" : "mt-2")}
+                placeholder={locked ? t("goalRatings.noteLockedEmptyPlaceholder") : t("goalRatings.notePlaceholder")}
                 value={r.note}
                 disabled={locked}
                 onChange={(e) =>

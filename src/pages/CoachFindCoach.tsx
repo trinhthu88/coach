@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, Loader2, Info } from "lucide-react";
+import { Star, Loader2, Info, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface CoachRow {
   id: string;
@@ -25,34 +26,54 @@ export default function CoachFindCoach() {
   // fallback sentinel so the hint line below only renders once a real value is known).
   const [limit, setLimit] = useState<number | null>(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    const { data: allowlist, error: allowlistError } = await supabase
+      .from("coach_as_coachee_allowlist")
+      .select("selectable_coach_id")
+      .eq("coach_user_id", user.id);
+    if (allowlistError) {
+      setError(getFriendlyErrorMessage(allowlistError, t));
+      setLoading(false);
+      return;
+    }
+    const ids = (allowlist || []).map((r: { selectable_coach_id: string }) => r.selectable_coach_id);
+    if (ids.length) {
+      const { data, error: coachesError } = await supabase
+        .from("coach_profiles")
+        .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
+        .in("id", ids)
+        .eq("approval_status", "active");
+      if (coachesError) {
+        setError(getFriendlyErrorMessage(coachesError, t));
+        setLoading(false);
+        return;
+      }
+      setCoaches((data as unknown as CoachRow[]) || []);
+    } else {
+      setCoaches([]);
+    }
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from("coach_programme_enrollments")
+      .select("coach_programme:coach_programmes(mentee_sessions_limit)")
+      .eq("coach_id", user.id)
+      .maybeSingle();
+    if (enrollmentError) {
+      setError(getFriendlyErrorMessage(enrollmentError, t));
+      setLoading(false);
+      return;
+    }
+    setLimit(enrollment ? enrollment.coach_programme?.mentee_sessions_limit ?? null : 0);
+    setLoading(false);
+  }, [user, t]);
 
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data: allowlist } = await supabase
-        .from("coach_as_coachee_allowlist")
-        .select("selectable_coach_id")
-        .eq("coach_user_id", user.id);
-      const ids = (allowlist || []).map((r: { selectable_coach_id: string }) => r.selectable_coach_id);
-      if (ids.length) {
-        const { data } = await supabase
-          .from("coach_profiles")
-          .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
-          .in("id", ids)
-          .eq("approval_status", "active");
-        setCoaches((data as unknown as CoachRow[]) || []);
-      } else {
-        setCoaches([]);
-      }
-      const { data: enrollment } = await supabase
-        .from("coach_programme_enrollments")
-        .select("coach_programme:coach_programmes(mentee_sessions_limit)")
-        .eq("coach_id", user.id)
-        .maybeSingle();
-      setLimit(enrollment ? enrollment.coach_programme?.mentee_sessions_limit ?? null : 0);
-      setLoading(false);
-    })();
-  }, [user]);
+    load();
+  }, [load]);
 
   return (
     <div className="space-y-6">
@@ -81,6 +102,14 @@ export default function CoachFindCoach() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
+      ) : error ? (
+        <Card className="flex flex-col items-center gap-3 border-destructive/30 bg-destructive/5 p-12 text-center text-sm">
+          <AlertTriangle className="h-5 w-5 text-destructive" />
+          <p className="text-muted-foreground">{error}</p>
+          <Button size="sm" variant="outline" onClick={load}>
+            {t("findCoach.retry")}
+          </Button>
+        </Card>
       ) : coaches.length === 0 ? (
         <Card className="p-12 text-center text-sm text-muted-foreground">
           {t("findCoach.empty")}

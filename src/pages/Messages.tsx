@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -316,8 +317,33 @@ export default function Messages() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+        <Card className="overflow-hidden p-0">
+          <div className="border-b px-4 py-3">
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <ul>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <li key={i} className="flex items-start gap-3 border-b px-4 py-3">
+                <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <Skeleton className="h-3.5 w-2/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card className="hidden h-[60vh] flex-col p-0 lg:flex">
+          <div className="border-b px-4 py-3">
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="flex-1 space-y-3 p-4">
+            <Skeleton className="h-10 w-2/3 rounded-2xl" />
+            <Skeleton className="ml-auto h-10 w-1/2 rounded-2xl" />
+            <Skeleton className="h-10 w-3/5 rounded-2xl" />
+          </div>
+        </Card>
       </div>
     );
   }

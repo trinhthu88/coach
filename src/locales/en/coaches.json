@@ -46,6 +46,13 @@
       "noneYetTitle": "No coaches available yet",
       "noMatchBody": "Try a different keyword or specialty.",
       "noneYetBody": "Once admins approve coach profiles, they'll appear here for booking."
+    },
+    "specialtyLabels": {
+      "Leadership": "Leadership",
+      "Productivity": "Productivity",
+      "Mindset": "Mindset",
+      "Communication": "Communication",
+      "Wellness": "Wellness"
     }
   },
   "findCoach": {
@@ -60,6 +67,7 @@
     "empty": "No coaches have been assigned to you yet. Reach out to your admin.",
     "defaultTitle": "Coach",
     "view": "View",
-    "book": "Book"
+    "book": "Book",
+    "retry": "Try again"
   }
 }

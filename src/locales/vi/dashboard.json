@@ -81,7 +81,9 @@
       "eyebrow": "Được tuyển chọn cho bạn",
       "title": "Coach phù hợp với mục tiêu của bạn",
       "browseAll": "Xem tất cả",
-      "noneAvailable": "Chưa có coach nào khả dụng."
+      "noneAvailable": "Chưa có coach nào khả dụng.",
+      "noneAvailableNewCoachee": "Bạn chưa được gán coach nào — quản trị viên chương trình của bạn đang thiết lập việc này. Vui lòng quay lại sau.",
+      "noneAvailableExisting": "Hiện bạn không có coach nào được gán. Hãy liên hệ quản trị viên chương trình nếu bạn muốn đặt một session mới."
     },
     "coachCard": {
       "defaultTitle": "Coach",
@@ -152,7 +154,11 @@
       "none": "Hiện chưa có yêu cầu nào đang chờ.",
       "defaultCoachee": "Học viên",
       "approve": "Chấp thuận",
-      "decline": "Từ chối"
+      "decline": "Từ chối",
+      "toast": {
+        "confirmed": "Đã xác nhận session. Cuộc họp Zoom đã sẵn sàng.",
+        "declined": "Đã từ chối yêu cầu"
+      }
     },
     "upcomingSessions": {
       "title": "Session sắp tới",
@@ -280,7 +286,9 @@
       "addFailedTitle": "Thêm không thành công",
       "slotAddedTitle": "Đã thêm khung giờ",
       "deleteFailedTitle": "Xóa không thành công",
-      "slotRemovedTitle": "Đã xóa khung giờ"
+      "slotRemovedTitle": "Đã xóa khung giờ",
+      "overlapTitle": "Trùng thời gian",
+      "overlapDescription": "Khung giờ này trùng với một khung giờ bạn đã có trong ngày này."
     },
     "eyebrow": "Coach",
     "titleLead": "Lịch trống",
@@ -317,7 +325,10 @@
     "bookedBadge": "Đã đặt",
     "addASlot": "Thêm khung giờ",
     "enablePeerFirst": "Bật peer coaching ở trên trước",
-    "add": "Thêm"
+    "add": "Thêm",
+    "slotTypeGroupLabel": "Loại khung giờ",
+    "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} đồng nghiệp",
+    "dayLabelEmpty": "{{date}}: không có khung giờ"
   },
   "practiceJourney": {
     "eyebrow": "Thực hành",
@@ -368,6 +379,7 @@
       "coached": "Coaching",
       "peerGiven": "Đồng nghiệp · đã cho",
       "peerReceived": "Đồng nghiệp · đã nhận"
-    }
+    },
+    "modeBadge": "Sự phát triển năng lực của bạn"
   }
 }

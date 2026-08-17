@@ -77,7 +77,11 @@
     "start": "Bắt đầu",
     "target": "Mục tiêu",
     "current": "Hiện tại",
-    "sessionSeriesName": "S{{n}} · {{date}}"
+    "sessionSeriesName": "S{{n}} · {{date}}",
+    "chartAriaLabel": "Biểu đồ radar bánh xe mục tiêu so sánh mức đánh giá bắt đầu và mục tiêu trên {{count}} mục tiêu",
+    "tableHeaders": {
+      "goal": "Mục tiêu"
+    }
   },
   "sessionsBlock": {
     "nothingHere": "Chưa có gì ở đây.",
@@ -129,7 +133,8 @@
     "emptyGoalsDescription": "Xác định điều bạn muốn đạt được trong hành trình coaching của chính mình.",
     "actionsEmptyMessage": "Chưa có hành động nào. Chúng sẽ xuất hiện ở đây khi một coach giao cho bạn.",
     "sessionsBlockUpcoming": "Sắp tới",
-    "sessionsBlockPast": "Đã qua & hoàn thành"
+    "sessionsBlockPast": "Đã qua & hoàn thành",
+    "modeBadge": "Bạn, với vai trò học viên"
   },
   "coacheeJourney": {
     "subtitle": "Theo dõi mục tiêu, hành động cần làm, session và suy ngẫm cá nhân của bạn.",

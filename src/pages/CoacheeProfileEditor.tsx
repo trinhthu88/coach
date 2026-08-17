@@ -7,9 +7,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { getFriendlyErrorMessage } from "@/lib/errors";
+import { cn } from "@/lib/utils";
+
+// Intl.supportedValuesOf isn't in this project's ES2020 lib target, so it's
+// typed manually here rather than widening tsconfig's lib for one call site.
+function getTimezoneOptions(): string[] {
+  try {
+    const supportedValuesOf = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] })
+      .supportedValuesOf;
+    if (supportedValuesOf) return supportedValuesOf("timeZone");
+  } catch {
+    // Older browser without Intl.supportedValuesOf — fall through to the default below.
+  }
+  return ["UTC"];
+}
+
+const TIMEZONES = getTimezoneOptions();
 
 export default function CoacheeProfileEditor() {
   const { user, profile, refreshProfile } = useAuth();
@@ -25,6 +51,7 @@ export default function CoacheeProfileEditor() {
   const [phone, setPhone] = useState("");
   const [timezone, setTimezone] = useState("");
   const [goals, setGoals] = useState("");
+  const [timezoneOpen, setTimezoneOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -39,7 +66,7 @@ export default function CoacheeProfileEditor() {
         setIndustry(data.industry || "");
         setLocation(data.location || "");
         setPhone(data.phone || "");
-        setTimezone(data.timezone || "");
+        setTimezone(data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
         setGoals(data.goals || "");
       }
       setLoading(false);
@@ -55,6 +82,10 @@ export default function CoacheeProfileEditor() {
 
   const handleSave = async () => {
     if (!user) return;
+    if (!fullName.trim()) {
+      toast.error(t("coacheeEditor.toast.fullNameRequired"));
+      return;
+    }
     setSaving(true);
 
     const { error: pErr } = await supabase
@@ -74,7 +105,7 @@ export default function CoacheeProfileEditor() {
 
     setSaving(false);
     if (pErr || cErr) {
-      toast.error((pErr || cErr)?.message || t("coacheeEditor.toast.saveFailedDefault"));
+      toast.error(getFriendlyErrorMessage(pErr || cErr, t, { fallback: t("coacheeEditor.toast.saveFailedDefault") }));
       return;
     }
     toast.success(t("coacheeEditor.toast.updated"));
@@ -101,7 +132,7 @@ export default function CoacheeProfileEditor() {
 
       <Card className="space-y-5 p-6">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("coacheeEditor.fields.fullNameLabel")}>
+          <Field label={t("coacheeEditor.fields.fullNameLabel")} required>
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </Field>
           <Field label={t("coacheeEditor.fields.emailLabel")}>
@@ -120,7 +151,43 @@ export default function CoacheeProfileEditor() {
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t("coacheeEditor.fields.phonePlaceholder")} />
           </Field>
           <Field label={t("coacheeEditor.fields.timezoneLabel")}>
-            <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder={t("coacheeEditor.fields.timezonePlaceholder")} />
+            <Popover open={timezoneOpen} onOpenChange={setTimezoneOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={timezoneOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {timezone || t("coacheeEditor.fields.timezoneButtonPlaceholder")}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                  <CommandInput placeholder={t("coacheeEditor.fields.timezoneSearchPlaceholder")} />
+                  <CommandList>
+                    <CommandEmpty>{t("coacheeEditor.fields.timezoneNoMatch")}</CommandEmpty>
+                    <CommandGroup>
+                      {TIMEZONES.map((tz) => (
+                        <CommandItem
+                          key={tz}
+                          value={tz}
+                          onSelect={(value) => {
+                            setTimezone(value);
+                            setTimezoneOpen(false);
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", timezone === tz ? "opacity-100" : "opacity-0")} />
+                          {tz}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </Field>
         </div>
 
@@ -148,11 +215,20 @@ export default function CoacheeProfileEditor() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
         {label}
+        {required && <span className="ml-1 text-destructive">*</span>}
       </Label>
       <div className="mt-1.5">{children}</div>
     </div>

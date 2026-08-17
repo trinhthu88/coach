@@ -47,6 +47,13 @@
       "noneYetTitle": "Chưa có coach nào khả dụng",
       "noMatchBody": "Hãy thử một từ khóa hoặc chuyên môn khác.",
       "noneYetBody": "Khi quản trị viên phê duyệt hồ sơ coach, họ sẽ xuất hiện ở đây để đặt lịch."
+    },
+    "specialtyLabels": {
+      "Leadership": "Lãnh đạo",
+      "Productivity": "Năng suất",
+      "Mindset": "Tư duy",
+      "Communication": "Giao tiếp",
+      "Wellness": "Sức khỏe"
     }
   },
   "findCoach": {
@@ -61,6 +68,7 @@
     "empty": "Chưa có coach nào được chỉ định cho bạn. Hãy liên hệ quản trị viên của bạn.",
     "defaultTitle": "Coach",
     "view": "Xem",
-    "book": "Đặt lịch"
+    "book": "Đặt lịch",
+    "retry": "Thử lại"
   }
 }

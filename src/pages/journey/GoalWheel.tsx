@@ -70,7 +70,11 @@ export function GoalWheel({
       <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         {t("goalWheel.title")}
       </p>
-      <div className="h-[320px] w-full">
+      <div
+        className="h-[320px] w-full"
+        role="img"
+        aria-label={t("goalWheel.chartAriaLabel", { count: rows.length })}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart data={data} outerRadius="78%">
             <PolarGrid stroke="hsl(var(--border))" />
@@ -121,6 +125,27 @@ export function GoalWheel({
           </RadarChart>
         </ResponsiveContainer>
       </div>
+      <table className="sr-only">
+        <caption>{t("goalWheel.chartAriaLabel", { count: rows.length })}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("goalWheel.tableHeaders.goal")}</th>
+            <th scope="col">{t("goalWheel.start")}</th>
+            <th scope="col">{t("goalWheel.current")}</th>
+            <th scope="col">{t("goalWheel.target")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.goalId}>
+              <th scope="row">{r.title}</th>
+              <td>{r.start}</td>
+              <td>{r.current}</td>
+              <td>{r.target}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </Card>
   );
 }

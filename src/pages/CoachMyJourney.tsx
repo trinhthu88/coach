@@ -19,6 +19,7 @@ import {
 } from "@/hooks/journey/useJourneyDerived";
 import type { JourneySession } from "@/hooks/journey/types";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -136,6 +137,11 @@ export default function CoachMyJourney() {
           title={t("journeyPage.titleLead")}
           emphasis={t("journeyPage.titleEmphasis")}
           subtitle={t("coachMyJourney.subtitle")}
+          actions={
+            <Badge variant="outline" className="border-accent/40 bg-accent/10 text-accent">
+              {t("coachMyJourney.modeBadge")}
+            </Badge>
+          }
         />
 
       {/* METRICS */}

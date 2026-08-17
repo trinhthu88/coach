@@ -143,14 +143,14 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
           <div className="flex items-center justify-between gap-2 border-b bg-warning/10 px-4 py-2.5">
             <div className="flex items-center gap-2">
               <Inbox className="h-4 w-4 text-warning" />
-              <p className="text-[11px] font-bold uppercase tracking-widest text-warning">
+              <p className="text-2xs font-bold uppercase tracking-widest text-warning">
                 {t("pendingAccessRequests.awaiting", { count: rows.length })}
               </p>
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
-              <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+            <table className="w-full text-xs">
+              <thead className="bg-muted/40 text-micro uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2.5 text-left font-semibold">{t("pendingAccessRequests.tableHeaders.name")}</th>
                   <th className="px-3 py-2.5 text-left font-semibold">{t("pendingAccessRequests.tableHeaders.email")}</th>
@@ -165,13 +165,13 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
                   <tr key={r.id} className="hover:bg-muted/30">
                     <td className="px-3 py-2.5 font-medium">{r.full_name}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{r.email}</td>
-                    <td className="px-3 py-2.5 text-[11px]">
+                    <td className="px-3 py-2.5 text-2xs">
                       {variant === "coach"
                         ? (r.credential ?? "—")
                         : `${r.job_title ?? "—"}${r.company ? ` · ${r.company}` : ""}`}
                     </td>
-                    <td className="px-3 py-2.5 text-[11px]">{r.industry ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-[11px] text-muted-foreground">
+                    <td className="px-3 py-2.5 text-2xs">{r.industry ?? "—"}</td>
+                    <td className="px-3 py-2.5 text-2xs text-muted-foreground">
                       {format(new Date(r.created_at), "MMM d, yyyy")}
                     </td>
                     <td className="px-3 py-2.5 text-right">
@@ -227,7 +227,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
               )}
               {viewing.motivation && (
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("pendingAccessRequests.detailsDialog.motivation")}</p>
+                  <p className="text-micro font-bold uppercase tracking-widest text-muted-foreground">{t("pendingAccessRequests.detailsDialog.motivation")}</p>
                   <p className="mt-1 whitespace-pre-wrap">{viewing.motivation}</p>
                 </div>
               )}
@@ -259,7 +259,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
             <div className="space-y-3 text-sm">
               <CopyRow label={t("pendingAccessRequests.approvedDialog.emailLabel")} value={approved.email} copiedLabel={t("pendingAccessRequests.toast.copied")} />
               {!approved.email_sent && (
-                <p className="rounded-lg bg-warning/10 p-3 text-[11px] text-warning">
+                <p className="rounded-lg bg-warning/10 p-3 text-2xs text-warning">
                   {t("pendingAccessRequests.approvedDialog.deliveryFailed")}
                 </p>
               )}
@@ -281,7 +281,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-baseline gap-3">
-      <span className="w-28 shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+      <span className="w-28 shrink-0 text-micro font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
       <span className="min-w-0 flex-1">{children}</span>
     </div>
   );
@@ -290,9 +290,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function CopyRow({ label, value, mono, copiedLabel }: { label: string; value: string; mono?: boolean; copiedLabel: string }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="text-micro font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
       <div className="mt-1 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-        <code className={mono ? "flex-1 font-mono text-[13px]" : "flex-1 text-[13px]"}>{value}</code>
+        <code className={mono ? "flex-1 font-mono text-sm2" : "flex-1 text-sm2"}>{value}</code>
         <Button
           size="sm" variant="ghost"
           onClick={() => { navigator.clipboard.writeText(value); toast.success(copiedLabel); }}

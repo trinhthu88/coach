@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Users, Loader2, Calendar, AlertCircle, Search, TrendingUp, UserPlus, Info } from "lucide-react";
+import { Users, Calendar, AlertCircle, Search, TrendingUp, UserPlus, Info } from "lucide-react";
 import { format } from "date-fns";
 import { PageHeader, StatCard } from "@/components/ui/page-header";
 import { useCoachClients } from "@/hooks/coach/useCoachClients";
@@ -114,8 +115,26 @@ export default function CoachClients() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <div className="surface-card overflow-hidden p-0">
+          <div className="hidden grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] gap-4 border-b border-border px-5 py-3 text-micro font-bold uppercase tracking-[0.2em] text-muted-foreground md:grid">
+            <span>{t("clients.tableHeaders.client")}</span>
+            <span>{t("clients.tableHeaders.programme")}</span>
+            <span>{t("clients.tableHeaders.progress")}</span>
+            <span>{t("clients.tableHeaders.nextSession")}</span>
+          </div>
+          <div className="divide-y divide-border">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="grid grid-cols-1 gap-3 px-5 py-4 md:grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] md:gap-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : filtered.length === 0 ? (
         <Card className="p-12 text-center">
@@ -126,7 +145,7 @@ export default function CoachClients() {
         </Card>
       ) : (
         <div className="surface-card overflow-hidden p-0">
-          <div className="hidden grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] gap-4 border-b border-border px-5 py-3 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground md:grid">
+          <div className="hidden grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] gap-4 border-b border-border px-5 py-3 text-micro font-bold uppercase tracking-[0.2em] text-muted-foreground md:grid">
             <span>{t("clients.tableHeaders.client")}</span>
             <span>{t("clients.tableHeaders.programme")}</span>
             <span>{t("clients.tableHeaders.progress")}</span>

@@ -18,6 +18,7 @@ export function CoachDashboardView({ userId }: { userId: string }) {
     profilesById,
     loading,
     actingId,
+    actingAction,
     peerOptIn,
     coachProfile,
     approve,
@@ -260,7 +261,12 @@ export function CoachDashboardView({ userId }: { userId: string }) {
                         onClick={() => approve(s)}
                         disabled={actingId === s.id}
                       >
-                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> {t("coach.bookingRequests.approve")}
+                        {actingId === s.id && actingAction === "approve" ? (
+                          <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                        )}
+                        {t("coach.bookingRequests.approve")}
                       </Button>
                       <Button
                         size="sm"
@@ -268,6 +274,9 @@ export function CoachDashboardView({ userId }: { userId: string }) {
                         onClick={() => decline(s)}
                         disabled={actingId === s.id}
                       >
+                        {actingId === s.id && actingAction === "decline" && (
+                          <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                        )}
                         {t("coach.bookingRequests.decline")}
                       </Button>
                     </div>

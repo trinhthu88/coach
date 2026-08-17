@@ -83,7 +83,7 @@ export function PointerTour({
         <div className="p-5">
           {/* Where + count */}
           <div className="mb-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-secondary-foreground/50">
+            <div className="flex items-center gap-2 text-micro font-bold uppercase tracking-[0.2em] text-secondary-foreground/50">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
               <span className="truncate">{pointer.where}</span>
             </div>
@@ -100,7 +100,7 @@ export function PointerTour({
                   />
                 ))}
               </div>
-              <span className="text-[10px] text-secondary-foreground/30">
+              <span className="text-micro text-secondary-foreground/30">
                 {index + 1}/{pointers.length}
               </span>
             </div>
@@ -110,7 +110,7 @@ export function PointerTour({
           <h3 className="font-display text-lg leading-tight text-secondary-foreground">
             {pointer.title}
           </h3>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-secondary-foreground/70">
+          <p className="mt-1.5 text-sm2 leading-relaxed text-secondary-foreground/70">
             {pointer.body}
           </p>
 

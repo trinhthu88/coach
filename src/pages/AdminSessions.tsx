@@ -34,6 +34,10 @@ import { Loader2, Search, ExternalLink, Pencil, Save, AlertCircle, Star } from "
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 import { PageHeader } from "@/components/ui/page-header";
+import { TablePager } from "./admin/_shared";
+import { getFriendlyErrorMessage } from "@/lib/errors";
+
+const PAGE_SIZE = 25;
 
 const STATUSES = [
   "pending_coach_approval",
@@ -71,6 +75,7 @@ export default function AdminSessions() {
   const [editing, setEditing] = useState<SessionRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -125,6 +130,11 @@ export default function AdminSessions() {
     );
   });
 
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSafe = Math.min(page, totalPages);
+  const paged = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
+
   const editingOriginal = editing ? rows.find((r) => r.id === editing.id) : undefined;
   const isCancelling = !!editing && editing.status === "cancelled" && editingOriginal?.status !== "cancelled";
 
@@ -168,7 +178,7 @@ export default function AdminSessions() {
     } catch (err) {
       toast({
         title: t("sessions.saveFailed"),
-        description: err instanceof Error ? err.message : String(err),
+        description: getFriendlyErrorMessage(err, t),
         variant: "destructive",
       });
     } finally {
@@ -239,7 +249,7 @@ export default function AdminSessions() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((s) => {
+              {paged.map((s) => {
                 const missingLink =
                   !s.meeting_url &&
                   ["pending_coach_approval", "confirmed"].includes(s.status);
@@ -329,6 +339,7 @@ export default function AdminSessions() {
             </TableBody>
           </Table>
         )}
+        <TablePager page={pageSafe} totalPages={totalPages} onChange={setPage} />
       </Card>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>

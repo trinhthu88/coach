@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { addDays, format, startOfDay } from "date-fns";
 import { toast } from "sonner";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import { canSubmitBooking, isOverSessionLimit } from "./bookingEligibility";
 import { computeStartOptions } from "./bookingSlots";
 
@@ -303,7 +304,7 @@ export default function BookSession() {
         toast.error(t("bookSession.toast.notEligible"));
         return;
       }
-      return toast.error(error.message);
+      return toast.error(getFriendlyErrorMessage(error, t));
     }
     toast.success(
       mode === "peer"

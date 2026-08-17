@@ -58,7 +58,9 @@
     "noActiveAlerts": "Không có cảnh báo nào đang hoạt động. Mọi thứ đều ổn.",
     "newCoachApplications_other": "{{count}} đơn đăng ký coach mới",
     "newCoacheeApplications_other": "{{count}} đơn đăng ký học viên mới",
-    "awaitingFirstReview": "Đang chờ bạn xem xét lần đầu"
+    "awaitingFirstReview": "Đang chờ bạn xem xét lần đầu",
+    "sessionsNeedingLink_other": "{{count}} session cần liên kết cuộc họp",
+    "awaitingMeetingLink": "Thêm liên kết trước khi session bắt đầu"
   },
   "alerts": {
     "scopeCoachRoster": "Danh sách coach",
@@ -519,7 +521,8 @@
       "cohort": "Nhóm",
       "programme": "Chương trình",
       "sheetName": "Coach"
-    }
+    },
+    "edit": "Sửa"
   },
   "registrations": {
     "eyebrow": "Quản trị",
@@ -645,6 +648,15 @@
       "close": "Đóng",
       "sendInvites": "Gửi lời mời",
       "resumeRows_other": "Tiếp tục {{count}} hàng"
-    }
+    },
+    "reject": "Từ chối",
+    "approve": "Phê duyệt",
+    "rejectConfirmTitle": "Từ chối {{name}}?",
+    "rejectConfirmDescription": "Người này sẽ không thể truy cập nền tảng. Bạn có thể hoàn tác sau từ bảng này."
+  },
+  "pager": {
+    "pageOf": "Trang {{page}} / {{total}}",
+    "previous": "Trước",
+    "next": "Tiếp"
   }
 }

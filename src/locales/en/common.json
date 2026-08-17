@@ -1,7 +1,10 @@
 {
   "languageSwitcherDemo": "Welcome to Clariva",
   "actions": {
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "failed": "Failed"
   },
   "notFound": {
     "badge": "Lost your way",
@@ -73,7 +76,15 @@
     "applyForWeeks": "Apply for (weeks)",
     "recurringSlots": "Recurring slots",
     "addSlot": "Add slot",
-    "weekdays": { "mon": "Mon", "tue": "Tue", "wed": "Wed", "thu": "Thu", "fri": "Fri", "sat": "Sat", "sun": "Sun" },
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
     "cancel": "Cancel",
     "applyTemplate": "Apply template",
     "toast": {
@@ -126,5 +137,11 @@
     "openNavMenu": "Open navigation menu",
     "coachingOsTagline": "Coaching OS",
     "defaultUserName": "User"
+  },
+  "errors": {
+    "generic": "Something went wrong on our end. Please try again — if it keeps happening, contact contact@clariva.club.",
+    "duplicate": "That already exists — try a different value.",
+    "permissionDenied": "You don't have permission to do that.",
+    "foreignKeyViolation": "That can't be completed because something it depends on no longer exists."
   }
 }

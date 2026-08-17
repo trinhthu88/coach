@@ -34,16 +34,17 @@
       "calendlyLabel": "Calendly URL (optional)",
       "calendlyPlaceholder": "https://calendly.com/your-handle",
       "specialtiesLabel": "Specialties (comma separated)",
-      "specialtiesPlaceholder": "Leadership, Career transition, Executive presence",
+      "specialtiesPlaceholder": "e.g. Leadership — press Enter to add",
       "diplomasLabel": "Diplomas & certifications (comma separated)",
-      "diplomasPlaceholder": "ICF PCC, Erickson Solution-Focused Coach"
+      "diplomasPlaceholder": "e.g. ICF PCC — press Enter to add"
     },
     "saveProfile": "Save profile"
   },
   "coacheeEditor": {
     "toast": {
       "saveFailedDefault": "Failed to save",
-      "updated": "Profile updated"
+      "updated": "Profile updated",
+      "fullNameRequired": "Full name is required"
     },
     "header": {
       "eyebrow": "Account",
@@ -66,7 +67,10 @@
       "timezonePlaceholder": "e.g. Asia/Ho_Chi_Minh",
       "aboutYouLabel": "About you",
       "coachingGoalsLabel": "Coaching goals",
-      "coachingGoalsPlaceholder": "What do you want to achieve?"
+      "coachingGoalsPlaceholder": "What do you want to achieve?",
+      "timezoneButtonPlaceholder": "Select your timezone",
+      "timezoneSearchPlaceholder": "Search timezones…",
+      "timezoneNoMatch": "No matching timezone found."
     },
     "saveChanges": "Save changes"
   },
@@ -80,6 +84,7 @@
     "empty": "No peer coaches available right now. Check back soon.",
     "defaultTitle": "Peer coach",
     "view": "View",
-    "bookPeer": "Book peer"
+    "bookPeer": "Book peer",
+    "retry": "Try again"
   }
 }

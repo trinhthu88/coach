@@ -229,7 +229,9 @@
     "notePlaceholder": "Optional reflection note for this goal…",
     "toast": {
       "saved": "Goal ratings saved — your wheel will update."
-    }
+    },
+    "noteLockedLabel": "Locked",
+    "noteLockedEmptyPlaceholder": "No note was added"
   },
   "messages": {
     "yesterday": "Yesterday",

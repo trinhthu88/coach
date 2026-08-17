@@ -60,7 +60,10 @@
     "newCoachApplications_other": "{{count}} new coach applications",
     "newCoacheeApplications_one": "{{count}} new coachee application",
     "newCoacheeApplications_other": "{{count}} new coachee applications",
-    "awaitingFirstReview": "Awaiting your first review"
+    "awaitingFirstReview": "Awaiting your first review",
+    "sessionsNeedingLink_one": "{{count}} session needs a meeting link",
+    "sessionsNeedingLink_other": "{{count}} sessions need a meeting link",
+    "awaitingMeetingLink": "Add a link before the session starts"
   },
   "alerts": {
     "scopeCoachRoster": "Coach roster",
@@ -528,7 +531,8 @@
       "cohort": "Cohort",
       "programme": "Programme",
       "sheetName": "Coaches"
-    }
+    },
+    "edit": "Edit"
   },
   "registrations": {
     "eyebrow": "Admin",
@@ -661,6 +665,15 @@
       "sendInvites": "Send invites",
       "resumeRows_one": "Resume {{count}} row",
       "resumeRows_other": "Resume {{count}} rows"
-    }
+    },
+    "reject": "Reject",
+    "approve": "Approve",
+    "rejectConfirmTitle": "Reject {{name}}?",
+    "rejectConfirmDescription": "They won't be able to access the platform. You can reverse this later from this table."
+  },
+  "pager": {
+    "pageOf": "Page {{page}} of {{total}}",
+    "previous": "Previous",
+    "next": "Next"
   }
 }

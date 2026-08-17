@@ -5,16 +5,18 @@ import { format, differenceInCalendarDays } from "date-fns";
 import {
   Users, CheckCircle2, AlertTriangle, CalendarCheck, Star,
   CalendarRange, ShieldCheck, Loader2, ArrowRight, Building2,
-  Clock, Filter,
+  Clock, Filter, ChevronDown, type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { Kpi, SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
+import { SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import { SponsorLeaderDrawer } from "./SponsorLeaderDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
   active: "success",
@@ -141,97 +143,112 @@ export default function SponsorDashboard() {
           </div>
         )}
 
-        {/* KPI ROW */}
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
-          <Kpi label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
-          <Kpi label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
-          <Kpi label={t("dashboard.kpis.atRisk")} value={kpis?.at_risk_count ?? 0} icon={AlertTriangle} tone="warning" />
-          <Kpi
-            label={t("dashboard.kpis.sessionsUsed")}
-            value={`${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`}
-            icon={CalendarCheck}
-            tone="secondary"
-          />
+        {/* HEADLINE NUMBERS — a lighter, larger-type summary rather than the
+            dense admin-style KPI grid; sponsors are occasional visitors
+            checking in, not power users monitoring the whole platform. */}
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="grid gap-6 sm:grid-cols-3">
+            <HeadlineStat label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
+            <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
+            <HeadlineStat
+              label={t("dashboard.kpis.sessionsUsed")}
+              value={`${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`}
+              icon={CalendarCheck}
+              tone="secondary"
+            />
+          </div>
+          {(kpis?.at_risk_count ?? 0) > 0 && (
+            <p className="mt-5 flex items-center gap-1.5 border-t border-border pt-4 text-[12px] font-medium text-warning">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              {t("dashboard.kpis.atRiskInline", { count: kpis?.at_risk_count ?? 0 })}
+            </p>
+          )}
         </div>
 
         {!isFirstLogin && (
-          <>
-            {/* GOAL GROWTH */}
-            <SectionCard label={t("dashboard.goalGrowth.label")} action={
-              <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
-                {t("dashboard.goalGrowth.scaleNote")}
-              </span>
-            }>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("dashboard.goalGrowth.averageGrowth")}</p>
-                  <p className="font-display mt-1 text-[2rem] font-normal leading-none">
-                    {goalGrowth?.avg_growth != null ? `+${Math.round(goalGrowth.avg_growth)}` : "—"}
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">{t("dashboard.goalGrowth.pts")}</span>
-                  </p>
-                  <p className="mt-2 text-[11px] text-muted-foreground">
-                    {goalGrowth?.pct_progressing != null
-                      ? t("dashboard.goalGrowth.pctProgressing", { pct: Math.round(goalGrowth.pct_progressing) })
-                      : t("dashboard.goalGrowth.noRatingsYet")}
-                  </p>
+          <Collapsible>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-muted/40 [&[data-state=open]>svg]:rotate-180">
+              {t("dashboard.detailsToggle")}
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pt-4">
+              {/* GOAL GROWTH */}
+              <SectionCard label={t("dashboard.goalGrowth.label")} action={
+                <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                  {t("dashboard.goalGrowth.scaleNote")}
+                </span>
+              }>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("dashboard.goalGrowth.averageGrowth")}</p>
+                    <p className="font-display mt-1 text-[2rem] font-normal leading-none">
+                      {goalGrowth?.avg_growth != null ? `+${Math.round(goalGrowth.avg_growth)}` : "—"}
+                      <span className="ml-1 text-sm font-normal text-muted-foreground">{t("dashboard.goalGrowth.pts")}</span>
+                    </p>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      {goalGrowth?.pct_progressing != null
+                        ? t("dashboard.goalGrowth.pctProgressing", { pct: Math.round(goalGrowth.pct_progressing) })
+                        : t("dashboard.goalGrowth.noRatingsYet")}
+                    </p>
+                  </div>
+                  <div>
+                    {distributionShown ? (
+                      <div className="space-y-2">
+                        <DistRow label={t("dashboard.goalGrowth.hitTarget")} count={goalGrowth!.hit_target_count} total={distributionTotal} tone="success" />
+                        <DistRow label={t("dashboard.goalGrowth.meaningfulProgress")} count={goalGrowth!.meaningful_progress_count} total={distributionTotal} tone="primary" />
+                        <DistRow label={t("dashboard.goalGrowth.justStarted")} count={goalGrowth!.just_started_count} total={distributionTotal} tone="warning" />
+                        <DistRow label={t("dashboard.goalGrowth.flatDeclined")} count={goalGrowth!.flat_declined_count} total={distributionTotal} tone="destructive" />
+                      </div>
+                    ) : (
+                      <div className="rounded-xl bg-muted/40 p-3">
+                        <p className="text-[11px] text-muted-foreground">
+                          {t("dashboard.goalGrowth.distributionHidden", { min: minLeadersForDistribution })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  {distributionShown ? (
-                    <div className="space-y-2">
-                      <DistRow label={t("dashboard.goalGrowth.hitTarget")} count={goalGrowth!.hit_target_count} total={distributionTotal} tone="success" />
-                      <DistRow label={t("dashboard.goalGrowth.meaningfulProgress")} count={goalGrowth!.meaningful_progress_count} total={distributionTotal} tone="primary" />
-                      <DistRow label={t("dashboard.goalGrowth.justStarted")} count={goalGrowth!.just_started_count} total={distributionTotal} tone="warning" />
-                      <DistRow label={t("dashboard.goalGrowth.flatDeclined")} count={goalGrowth!.flat_declined_count} total={distributionTotal} tone="destructive" />
-                    </div>
-                  ) : (
-                    <div className="rounded-xl bg-muted/40 p-3">
+                <p className="mt-4 text-[10px] italic text-muted-foreground">
+                  {t("dashboard.goalGrowth.footnote")}
+                </p>
+              </SectionCard>
+
+              {/* TIMELINE + SATISFACTION */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SectionCard label={t("dashboard.timeline.label")}>
+                  <div className="flex items-center gap-3">
+                    <CalendarRange className="h-8 w-8 text-primary" />
+                    <div>
+                      <p className="text-[13px] font-medium">
+                        {timeline?.earliest_start ? format(new Date(timeline.earliest_start), "MMM d, yyyy") : "—"}
+                        {" → "}
+                        {timeline?.latest_end ? format(new Date(timeline.latest_end), "MMM d, yyyy") : "—"}
+                      </p>
                       <p className="text-[11px] text-muted-foreground">
-                        {t("dashboard.goalGrowth.distributionHidden", { min: minLeadersForDistribution })}
+                        {daysRemaining != null ? t("dashboard.timeline.daysRemaining", { count: daysRemaining }) : t("dashboard.timeline.noEndDate")}
+                        {timeline?.programme_names?.length ? ` · ${timeline.programme_names.join(", ")}` : ""}
                       </p>
                     </div>
-                  )}
-                </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard label={t("dashboard.satisfaction.label")}>
+                  <div className="flex items-center gap-3">
+                    <Star className="h-8 w-8 text-warning" />
+                    <div>
+                      <p className="text-[13px] font-medium">
+                        {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : t("dashboard.satisfaction.noRatingsYet")}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {t("dashboard.satisfaction.acrossRated", { count: satisfaction?.rated_session_count ?? 0 })}
+                      </p>
+                      <p className="mt-1 text-[10px] italic text-muted-foreground">{t("dashboard.satisfaction.writtenFeedbackNote")}</p>
+                    </div>
+                  </div>
+                </SectionCard>
               </div>
-              <p className="mt-4 text-[10px] italic text-muted-foreground">
-                {t("dashboard.goalGrowth.footnote")}
-              </p>
-            </SectionCard>
-
-            {/* TIMELINE + SATISFACTION */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SectionCard label={t("dashboard.timeline.label")}>
-                <div className="flex items-center gap-3">
-                  <CalendarRange className="h-8 w-8 text-primary" />
-                  <div>
-                    <p className="text-[13px] font-medium">
-                      {timeline?.earliest_start ? format(new Date(timeline.earliest_start), "MMM d, yyyy") : "—"}
-                      {" → "}
-                      {timeline?.latest_end ? format(new Date(timeline.latest_end), "MMM d, yyyy") : "—"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {daysRemaining != null ? t("dashboard.timeline.daysRemaining", { count: daysRemaining }) : t("dashboard.timeline.noEndDate")}
-                      {timeline?.programme_names?.length ? ` · ${timeline.programme_names.join(", ")}` : ""}
-                    </p>
-                  </div>
-                </div>
-              </SectionCard>
-
-              <SectionCard label={t("dashboard.satisfaction.label")}>
-                <div className="flex items-center gap-3">
-                  <Star className="h-8 w-8 text-warning" />
-                  <div>
-                    <p className="text-[13px] font-medium">
-                      {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : t("dashboard.satisfaction.noRatingsYet")}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {t("dashboard.satisfaction.acrossRated", { count: satisfaction?.rated_session_count ?? 0 })}
-                    </p>
-                    <p className="mt-1 text-[10px] italic text-muted-foreground">{t("dashboard.satisfaction.writtenFeedbackNote")}</p>
-                  </div>
-                </div>
-              </SectionCard>
-            </div>
-          </>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {/* ROSTER */}
@@ -323,6 +340,33 @@ export default function SponsorDashboard() {
       {/* Leader detail drawer */}
       <SponsorLeaderDrawer leader={selectedLeader} onClose={() => setSelectedLeader(null)} />
     </>
+  );
+}
+
+function HeadlineStat({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  icon: LucideIcon;
+  tone: "primary" | "success" | "secondary";
+}) {
+  const iconTone: Record<string, string> = {
+    primary: "text-primary",
+    success: "text-success",
+    secondary: "text-secondary",
+  };
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className={cn("mt-1 h-5 w-5 shrink-0", iconTone[tone])} />
+      <div>
+        <p className="font-display text-[2.25rem] font-normal leading-none tracking-tight">{value}</p>
+        <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+      </div>
+    </div>
   );
 }
 

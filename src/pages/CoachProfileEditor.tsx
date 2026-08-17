@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface CoachForm {
   title: string;
@@ -18,8 +19,8 @@ interface CoachForm {
   years_experience: string;
   nationality: string;
   country_based: string;
-  specialties: string;
-  diplomas_certifications: string;
+  specialties: string[];
+  diplomas_certifications: string[];
   calendly_url: string;
 }
 
@@ -29,10 +30,69 @@ const empty: CoachForm = {
   years_experience: "",
   nationality: "",
   country_based: "",
-  specialties: "",
-  diplomas_certifications: "",
+  specialties: [],
+  diplomas_certifications: [],
   calendly_url: "",
 };
+
+/**
+ * Enter-to-add tag editor, previewing tags with the same pill style
+ * `CoachDetail.tsx` / `CoachFindCoach.tsx` use to display them to coachees —
+ * what a coach edits here is what they'll actually see rendered elsewhere.
+ */
+function TagInput({
+  values,
+  onChange,
+  placeholder,
+}: {
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState("");
+
+  const commit = () => {
+    const value = draft.trim();
+    if (value && !values.includes(value)) onChange([...values, value]);
+    setDraft("");
+  };
+
+  return (
+    <div className="space-y-2">
+      {values.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {values.map((v) => (
+            <span
+              key={v}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft py-1.5 pl-4 pr-2 text-2xs font-bold uppercase tracking-[0.16em] text-primary"
+            >
+              {v}
+              <button
+                type="button"
+                onClick={() => onChange(values.filter((x) => x !== v))}
+                className="rounded-full p-0.5 hover:bg-primary/15"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <Input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            commit();
+          }
+        }}
+        onBlur={commit}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
 
 export default function CoachProfileEditor() {
   const { user, profile, refreshProfile } = useAuth();
@@ -60,8 +120,8 @@ export default function CoachProfileEditor() {
           years_experience: data.years_experience?.toString() ?? "",
           nationality: data.nationality ?? "",
           country_based: data.country_based ?? "",
-          specialties: (data.specialties ?? []).join(", "),
-          diplomas_certifications: (data.diplomas_certifications ?? []).join(", "),
+          specialties: data.specialties ?? [],
+          diplomas_certifications: data.diplomas_certifications ?? [],
           calendly_url: data.calendly_url ?? "",
         });
       }
@@ -87,14 +147,8 @@ export default function CoachProfileEditor() {
           years_experience: form.years_experience ? Number(form.years_experience) : null,
           nationality: form.nationality || null,
           country_based: form.country_based || null,
-          specialties: form.specialties
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
-          diplomas_certifications: form.diplomas_certifications
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
+          specialties: form.specialties,
+          diplomas_certifications: form.diplomas_certifications,
           calendly_url: form.calendly_url || null,
         })
         .eq("id", user.id);
@@ -105,7 +159,7 @@ export default function CoachProfileEditor() {
     } catch (err) {
       toast({
         title: t("coachEditor.toast.failedTitle"),
-        description: err instanceof Error ? err.message : t("coachEditor.toast.failedDefaultDescription"),
+        description: getFriendlyErrorMessage(err, t, { fallback: t("coachEditor.toast.failedDefaultDescription") }),
         variant: "destructive",
       });
     } finally {
@@ -210,17 +264,17 @@ export default function CoachProfileEditor() {
           </div>
           <div className="space-y-2">
             <Label>{t("coachEditor.practiceDetails.specialtiesLabel")}</Label>
-            <Input
-              value={form.specialties}
-              onChange={(e) => setForm({ ...form, specialties: e.target.value })}
+            <TagInput
+              values={form.specialties}
+              onChange={(specialties) => setForm({ ...form, specialties })}
               placeholder={t("coachEditor.practiceDetails.specialtiesPlaceholder")}
             />
           </div>
           <div className="space-y-2">
             <Label>{t("coachEditor.practiceDetails.diplomasLabel")}</Label>
-            <Input
-              value={form.diplomas_certifications}
-              onChange={(e) => setForm({ ...form, diplomas_certifications: e.target.value })}
+            <TagInput
+              values={form.diplomas_certifications}
+              onChange={(diplomas_certifications) => setForm({ ...form, diplomas_certifications })}
               placeholder={t("coachEditor.practiceDetails.diplomasPlaceholder")}
             />
           </div>

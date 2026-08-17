@@ -1,7 +1,9 @@
 import { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 
 export function AdminPageHeader({
@@ -137,6 +139,38 @@ export function MiniBar({ pct, tone = "primary" }: { pct: number; tone?: "primar
         <div className={cn("h-full rounded-full", fill[tone])} style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
       </div>
       <span className="w-8 text-right text-[10px] font-medium text-muted-foreground">{Math.round(pct)}%</span>
+    </div>
+  );
+}
+
+/**
+ * Client-side pager for admin tables that already fetch the full dataset and
+ * filter in-memory — slice `rows` to a page yourself (`rows.slice((page-1)*pageSize, page*pageSize)`)
+ * and render this beneath the table to move between pages. Renders nothing
+ * when everything fits on one page.
+ */
+export function TablePager({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (page: number) => void;
+}) {
+  const { t } = useTranslation("admin");
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between border-t px-4 py-3">
+      <p className="text-[11px] text-muted-foreground">{t("pager.pageOf", { page, total: totalPages })}</p>
+      <div className="flex items-center gap-1.5">
+        <Button variant="outline" size="sm" onClick={() => onChange(page - 1)} disabled={page <= 1}>
+          <ChevronLeft className="h-3.5 w-3.5" /> {t("pager.previous")}
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onChange(page + 1)} disabled={page >= totalPages}>
+          {t("pager.next")} <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+      </div>
     </div>
   );
 }

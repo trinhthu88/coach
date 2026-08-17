@@ -54,6 +54,7 @@ import {
 } from "@/hooks/admin/useBulkInviteUsers";
 import { CoachListRow, CoachOpt, CoacheeRow, Status } from "@/hooks/admin/types";
 import { PageHeader } from "@/components/ui/page-header";
+import { useConfirm } from "@/hooks/use-confirm";
 
 const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "outline"> = {
   pending_approval: "secondary",
@@ -79,6 +80,27 @@ export default function AdminRegistrations() {
     reload: load,
   } = useAdminRegistrations();
   const { busyId, setCoacheeStatusValue, setCoachStatusValue } = useAdminRegistrationApprovals(load);
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  const rejectCoachee = async (c: CoacheeRow) => {
+    const ok = await confirm({
+      title: t("registrations.rejectConfirmTitle", { name: c.full_name }),
+      description: t("registrations.rejectConfirmDescription"),
+      confirmLabel: t("registrations.reject"),
+      destructive: true,
+    });
+    if (ok) setCoacheeStatusValue(c.id, "rejected");
+  };
+
+  const rejectCoach = async (c: CoachListRow) => {
+    const ok = await confirm({
+      title: t("registrations.rejectConfirmTitle", { name: c.full_name }),
+      description: t("registrations.rejectConfirmDescription"),
+      confirmLabel: t("registrations.reject"),
+      destructive: true,
+    });
+    if (ok) setCoachStatusValue(c.id, "rejected");
+  };
   const [coacheeQuery, setCoacheeQuery] = useState("");
   const [coachQuery, setCoachQuery] = useState("");
   const [coacheeStatus, setCoacheeStatus] = useState<"all" | Status>("all");
@@ -261,7 +283,9 @@ export default function AdminRegistrations() {
                                 size="sm"
                                 variant="outline"
                                 disabled={busyId === c.id}
-                                onClick={() => setCoacheeStatusValue(c.id, "rejected")}
+                                onClick={() => rejectCoachee(c)}
+                                aria-label={t("registrations.reject")}
+                                title={t("registrations.reject")}
                               >
                                 <X className="h-3.5 w-3.5" />
                               </Button>
@@ -269,6 +293,8 @@ export default function AdminRegistrations() {
                                 size="sm"
                                 disabled={busyId === c.id}
                                 onClick={() => setCoacheeStatusValue(c.id, "active")}
+                                aria-label={t("registrations.approve")}
+                                title={t("registrations.approve")}
                               >
                                 <Check className="h-3.5 w-3.5" />
                               </Button>
@@ -390,7 +416,9 @@ export default function AdminRegistrations() {
                                 size="sm"
                                 variant="outline"
                                 disabled={busyId === c.id}
-                                onClick={() => setCoachStatusValue(c.id, "rejected")}
+                                onClick={() => rejectCoach(c)}
+                                aria-label={t("registrations.reject")}
+                                title={t("registrations.reject")}
                               >
                                 <X className="h-3.5 w-3.5" />
                               </Button>
@@ -398,6 +426,8 @@ export default function AdminRegistrations() {
                                 size="sm"
                                 disabled={busyId === c.id}
                                 onClick={() => setCoachStatusValue(c.id, "active")}
+                                aria-label={t("registrations.approve")}
+                                title={t("registrations.approve")}
                               >
                                 <Check className="h-3.5 w-3.5" />
                               </Button>
@@ -460,6 +490,7 @@ export default function AdminRegistrations() {
         onClose={() => setImportOpen(false)}
         onDone={load}
       />
+      {ConfirmDialog}
     </div>
   );
 }

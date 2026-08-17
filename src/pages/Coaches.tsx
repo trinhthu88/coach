@@ -28,6 +28,9 @@ interface CoachRow {
   } | null;
 }
 
+// Values stay English — they're matched against `coach.specialties`, which coaches
+// enter as free-text English tags (see CoachProfileEditor.tsx), not localized data.
+// Only the displayed chip label is translated, via `list.specialtyLabels.<value>`.
 const SPECIALTY_FILTERS = [
   "All",
   "Leadership",
@@ -104,7 +107,7 @@ export default function Coaches() {
 
         {SPECIALTY_FILTERS.map((s) => (
           <FilterChip key={s} active={activeSpec === s} onClick={() => setActiveSpec(s)}>
-            {s === "All" ? t("list.allSpecialtiesLabel") : s}
+            {s === "All" ? t("list.allSpecialtiesLabel") : t(`list.specialtyLabels.${s}`, { defaultValue: s })}
           </FilterChip>
         ))}
       </div>

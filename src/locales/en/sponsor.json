@@ -26,7 +26,9 @@
       "leadersEnrolled": "Leaders enrolled",
       "onTrack": "On track",
       "atRisk": "At risk",
-      "sessionsUsed": "Sessions used"
+      "sessionsUsed": "Sessions used",
+      "atRiskInline_other": "{{count}} leaders at risk and may need attention",
+      "atRiskInline_one": "{{count}} leader at risk and may need attention"
     },
     "goalGrowth": {
       "label": "Goal growth",
@@ -74,7 +76,8 @@
     "privacy": {
       "titlePrefix": "Content-private.",
       "body": "Your access covers participation and ratings only. Session notes, chat messages, reflections, and the wording of goals never leave the coaching pair."
-    }
+    },
+    "detailsToggle": "See programme details"
   },
   "cohorts": {
     "header": {

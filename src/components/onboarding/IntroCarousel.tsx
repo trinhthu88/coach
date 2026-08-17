@@ -7,12 +7,12 @@ import clarivaLogo from "@/assets/clariva-logo-dark.png";
 import type { TFunction } from "i18next";
 
 // ─── Brand colours (from prototype source) ───────────────────────────────────
-const SKY   = "#3db4d0";
-const AMBER = "#e8874a";
-const NAVY  = "#062f3e";
-const PANEL = "rgba(207,230,238,";       // partial for alpha variants
-const SKY_SOFT   = `rgba(61,180,208,`;
-const AMBER_SOFT = `rgba(232,135,74,`;
+const SKY   = "hsl(var(--primary))";
+const AMBER = "hsl(var(--accent))";
+const NAVY  = "hsl(var(--secondary))";
+const PANEL = "hsl(var(--primary-soft) / ";       // partial for alpha variants
+const SKY_SOFT   = `hsl(var(--primary) / `;
+const AMBER_SOFT = `hsl(var(--accent) / `;
 
 // ─── Icon paths (from prototype P.* constants) ────────────────────────────────
 const ICONS: Record<string, string> = {
@@ -63,7 +63,7 @@ interface PracticeRow {
 }
 
 const STATE_COLOR: Record<string, string> = {
-  "live":    "#4ade80",
+  "live":    "hsl(var(--success))",
   "ok":      SKY,
   "open":    SKY,
   "at risk": AMBER,
@@ -96,7 +96,7 @@ function PracticeRowsSVG({ rows, t }: { rows: PracticeRow[]; t: TFunction<"onboa
         const y = startY + i * (rowH + gap);
         const s = getRowStyle(row.state);
         const iconColor = row.state === "at risk" || row.state === "review" || row.state === "nudge"
-          ? "#f0a875" : SKY;
+          ? "hsl(var(--accent))" : SKY;
         const stateColor = STATE_COLOR[row.state] ?? `${PANEL}.45)`;
         return (
           <g key={i}>
@@ -188,7 +188,7 @@ function GoalsSVG({ t }: { t: TFunction<"onboarding"> }) {
             </text>
             {/* Bar track */}
             <rect x="0" y={baseY + 20} width={W} height={barH} rx={barH / 2}
-              fill="rgba(207,230,238,.1)" />
+              fill="hsl(var(--primary-soft) / .1)" />
             {/* "from" fill (dimmer sky) */}
             <rect x="0" y={baseY + 20} width={fromW} height={barH} rx={barH / 2}
               fill={SKY} fillOpacity="0.45" />
@@ -251,7 +251,7 @@ function MatchSVG({ role, t }: { role: OnboardingRole; t: TFunction<"onboarding"
                 fill={active ? `${AMBER_SOFT}.18)` : "rgba(255,255,255,.06)"}
                 stroke={active ? `${AMBER_SOFT}.5)` : "rgba(255,255,255,.15)"} strokeWidth="1" />
               <text x={x + w / 2} y={y + 14.5} fontSize="8.5" fontWeight="700"
-                fill={active ? "#f0a875" : `${PANEL}.55)`}
+                fill={active ? "hsl(var(--accent))" : `${PANEL}.55)`}
                 textAnchor="middle" fontFamily="Montserrat, sans-serif" letterSpacing=".3">{label}</text>
             </g>
           );
@@ -265,7 +265,7 @@ function MatchSVG({ role, t }: { role: OnboardingRole; t: TFunction<"onboarding"
         const y   = startY + row * (cardH + cardGap);
         const active = i < 2;
         const avBg = active ? SKY : "rgba(255,255,255,.14)";
-        const avFg = active ? NAVY : "#cfe6ee";
+        const avFg = active ? NAVY : "hsl(var(--primary-soft))";
         const cardBg = active ? `${SKY_SOFT}.1)`  : "rgba(255,255,255,.04)";
         const cardBd = active ? `${SKY_SOFT}.38)` : "rgba(255,255,255,.1)";
         return (
@@ -278,9 +278,9 @@ function MatchSVG({ role, t }: { role: OnboardingRole; t: TFunction<"onboarding"
               fill={avFg} textAnchor="middle" fontFamily="Montserrat, sans-serif">{ini}</text>
             {/* Grey line placeholders (name + bio) */}
             <rect x={x + 8} y={y + 38} width={cardW - 20} height="7" rx="3.5"
-              fill="rgba(207,230,238,.12)" />
+              fill="hsl(var(--primary-soft) / .12)" />
             <rect x={x + 8} y={y + 50} width={cardW - 34} height="5" rx="2.5"
-              fill="rgba(207,230,238,.07)" />
+              fill="hsl(var(--primary-soft) / .07)" />
             {/* MATCH label for top 2 */}
             {active && (
               <text x={x + 8} y={y + 76} fontSize="9" fontWeight="700"
@@ -421,7 +421,7 @@ function PrivacySVG({ role, t }: { role: OnboardingRole; t: TFunction<"onboardin
           return (
             <g key={label}>
               <rect x={x} y={y} width={w} height={chipH} rx={chipH / 2}
-                fill="rgba(255,255,255,.07)" stroke="rgba(207,230,238,.22)" strokeWidth="1" />
+                fill="rgba(255,255,255,.07)" stroke="hsl(var(--primary-soft) / .22)" strokeWidth="1" />
               <text x={x + w / 2} y={y + chipH / 2 + 4} fontSize="9.5"
                 fill={`${PANEL}.7)`} textAnchor="middle" fontFamily="Montserrat, sans-serif">{label}</text>
             </g>
@@ -430,14 +430,14 @@ function PrivacySVG({ role, t }: { role: OnboardingRole; t: TFunction<"onboardin
       })}
 
       {/* ── Lock divider ── */}
-      <line x1="0" y1={dividerY} x2="132" y2={dividerY} stroke="rgba(207,230,238,.12)" strokeWidth="1" />
+      <line x1="0" y1={dividerY} x2="132" y2={dividerY} stroke="hsl(var(--primary-soft) / .12)" strokeWidth="1" />
       <Icon d={ICONS.lock} x={150} y={dividerY + 2} size={16} color={`${PANEL}.28)`} />
-      <line x1="168" y1={dividerY} x2="300" y2={dividerY} stroke="rgba(207,230,238,.12)" strokeWidth="1" />
+      <line x1="168" y1={dividerY} x2="300" y2={dividerY} stroke="hsl(var(--primary-soft) / .12)" strokeWidth="1" />
 
       {/* ── OUTSIDE box ── */}
       <rect x="0" y={outsideBoxY} width="300" height={outsideBoxH} rx="12"
         fill="rgba(255,255,255,.03)"
-        stroke="rgba(207,230,238,.2)" strokeWidth="1" strokeDasharray="5 4" />
+        stroke="hsl(var(--primary-soft) / .2)" strokeWidth="1" strokeDasharray="5 4" />
 
       <text x="10" y={outsideBoxY + 18} fontSize="9" fontWeight="700"
         fill={`${PANEL}.5)`} fontFamily="Montserrat, sans-serif" letterSpacing="1">
@@ -455,7 +455,7 @@ function PrivacySVG({ role, t }: { role: OnboardingRole; t: TFunction<"onboardin
           return (
             <g key={label}>
               <rect x={x} y={rowY} width={w} height={chipH} rx={chipH / 2}
-                fill="rgba(255,255,255,.07)" stroke="rgba(207,230,238,.2)" strokeWidth="1" />
+                fill="rgba(255,255,255,.07)" stroke="hsl(var(--primary-soft) / .2)" strokeWidth="1" />
               <text x={x + w / 2} y={rowY + chipH / 2 + 4} fontSize="9.5"
                 fill={`${PANEL}.65)`} textAnchor="middle" fontFamily="Montserrat, sans-serif">{label}</text>
             </g>
@@ -491,7 +491,7 @@ function GrowthSVG({ t }: { t: TFunction<"onboarding"> }) {
       {/* Grid lines */}
       {[30, 70, 110].map(y => (
         <line key={y} x1="12" y1={y} x2="268" y2={y}
-          stroke="rgba(207,230,238,.06)" strokeWidth="1" />
+          stroke="hsl(var(--primary-soft) / .06)" strokeWidth="1" />
       ))}
       {/* 3 offset lines to simulate multiple goals */}
       {[0, 8, -8].map((offset, li) => {
@@ -538,7 +538,7 @@ function CohortSVG({ t }: { t: TFunction<"onboarding"> }) {
       label: String(i + 1).padStart(2, "0"),
       bg:     on ? `${SKY_SOFT}.22)` : (risk ? `${AMBER_SOFT}.18)` : "rgba(255,255,255,.04)"),
       border: on ? `${SKY_SOFT}.6)`  : (risk ? `${AMBER_SOFT}.6)`  : "rgba(255,255,255,.14)"),
-      fg:     on ? "#7dcfe3"          : (risk ? "#f0a875"           : `${PANEL}.45)`),
+      fg:     on ? "hsl(var(--primary-glow))"          : (risk ? "hsl(var(--accent))"           : `${PANEL}.45)`),
     };
   });
   // Stacked vertically (rather than 3 fixed-width columns) so a longer translated
@@ -604,7 +604,7 @@ function ReportSVG({ t }: { t: TFunction<"onboarding"> }) {
     <svg viewBox={`0 0 ${W} 200`} className="w-full max-w-[320px]" aria-hidden="true">
       {/* Page shell */}
       <rect x="0" y="0" width={W} height="196" rx="10"
-        fill="rgba(255,255,255,.05)" stroke="rgba(207,230,238,.1)" strokeWidth="1" />
+        fill="rgba(255,255,255,.05)" stroke="hsl(var(--primary-soft) / .1)" strokeWidth="1" />
       {/* Header strip */}
       <rect x="0" y="0" width={W} height="30" rx="10"
         fill={`${SKY_SOFT}.12)`} />
@@ -616,14 +616,14 @@ function ReportSVG({ t }: { t: TFunction<"onboarding"> }) {
       {/* Rows */}
       {rows.map((row, i) => {
         const y = i * 30 + 44;
-        const markFg = row.ok ? "#2f7a52" : "#a8563a";
-        const markBg = row.ok ? "rgba(47,122,82,.2)" : "rgba(168,86,58,.2)";
+        const markFg = row.ok ? "hsl(var(--success))" : "hsl(var(--destructive))";
+        const markBg = row.ok ? "hsl(var(--success) / .2)" : "hsl(var(--destructive) / .2)";
         const valueFg = row.ok ? "rgba(255,255,255,.85)" : `${PANEL}.35)`;
         return (
           <g key={i}>
             {/* Separator */}
             {i > 0 && <line x1="14" y1={y - 6} x2={W - 14} y2={y - 6}
-              stroke="rgba(207,230,238,.07)" strokeWidth="1" />}
+              stroke="hsl(var(--primary-soft) / .07)" strokeWidth="1" />}
             {/* Mark circle */}
             <circle cx="24" cy={y + 7} r="8" fill={markBg} />
             <text x="24" y={y + 11} fontSize="10" fill={markFg}
@@ -779,13 +779,13 @@ export function IntroCarousel({
                     <span
                       className="mb-1.5 h-0.5 w-full rounded-full transition-colors duration-300"
                       style={{
-                        backgroundColor: active ? AMBER : past ? SKY : "rgba(207,230,238,.18)",
+                        backgroundColor: active ? AMBER : past ? SKY : "hsl(var(--primary-soft) / .18)",
                       }}
                     />
                     {/* Label */}
                     <span
                       className="line-clamp-3 text-[7.5px] font-bold uppercase leading-tight tracking-wide"
-                      style={{ color: active ? "#fff" : "rgba(207,230,238,.6)" }}
+                      style={{ color: active ? "#fff" : "hsl(var(--primary-soft) / .6)" }}
                     >
                       {s.kicker}
                     </span>

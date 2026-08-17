@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 export type CoachSession = Pick<
   Database["public"]["Tables"]["sessions"]["Row"],
@@ -24,9 +26,12 @@ interface CoachDashboardData {
   coachProfile: { rating_avg: number; sessions_completed: number } | null;
 }
 
+type ActingAction = "approve" | "decline";
+
 interface UseCoachDashboardDataResult extends CoachDashboardData {
   loading: boolean;
   actingId: string | null;
+  actingAction: ActingAction | null;
   approve: (s: CoachSession) => Promise<void>;
   decline: (s: CoachSession) => Promise<void>;
 }
@@ -89,8 +94,10 @@ async function fetchCoachDashboardData(userId: string): Promise<CoachDashboardDa
 }
 
 export function useCoachDashboardData(userId: string): UseCoachDashboardDataResult {
+  const { t } = useTranslation("dashboard");
   const queryClient = useQueryClient();
   const [actingId, setActingId] = useState<string | null>(null);
+  const [actingAction, setActingAction] = useState<ActingAction | null>(null);
   const queryKey = ["coach-dashboard", userId];
 
   const { data, isLoading } = useQuery({
@@ -108,10 +115,10 @@ export function useCoachDashboardData(userId: string): UseCoachDashboardDataResu
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Session confirmed. Zoom meeting is ready.");
+      toast.success(t("coach.bookingRequests.toast.confirmed"));
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
+    onError: (error) => toast.error(getFriendlyErrorMessage(error, t)),
   });
 
   const declineMutation = useMutation({
@@ -122,28 +129,33 @@ export function useCoachDashboardData(userId: string): UseCoachDashboardDataResu
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Request declined");
+      toast.success(t("coach.bookingRequests.toast.declined"));
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
+    onError: (error) => toast.error(getFriendlyErrorMessage(error, t)),
   });
 
   const approve = async (s: CoachSession) => {
     setActingId(s.id);
+    setActingAction("approve");
     await approveMutation.mutateAsync(s).catch(() => {});
     setActingId(null);
+    setActingAction(null);
   };
 
   const decline = async (s: CoachSession) => {
     setActingId(s.id);
+    setActingAction("decline");
     await declineMutation.mutateAsync(s).catch(() => {});
     setActingId(null);
+    setActingAction(null);
   };
 
   return {
     ...(data ?? emptyData),
     loading: isLoading,
     actingId,
+    actingAction,
     approve,
     decline,
   };

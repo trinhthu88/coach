@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import { Status } from "./types";
 
 type CoachProfileUpdate = Database["public"]["Tables"]["coach_profiles"]["Update"];
@@ -19,12 +21,13 @@ const STATUS_LABEL: Record<Status, string> = {
  * admin registrations page.
  */
 export function useAdminRegistrationApprovals(onDone: () => Promise<void> | void) {
+  const { t } = useTranslation("common");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const setCoacheeStatusValue = async (id: string, status: Status) => {
     setBusyId(id);
     const { error } = await supabase.from("profiles").update({ status }).eq("id", id);
-    if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
+    if (error) toast({ title: t("actions.failed"), description: getFriendlyErrorMessage(error, t), variant: "destructive" });
     else {
       toast({ title: `Coachee ${STATUS_LABEL[status].toLowerCase()}` });
       await onDone();
@@ -45,7 +48,7 @@ export function useAdminRegistrationApprovals(onDone: () => Promise<void> | void
       toast({ title: `Coach ${STATUS_LABEL[status].toLowerCase()}` });
       await onDone();
     } else {
-      toast({ title: "Failed", description: cErr.message, variant: "destructive" });
+      toast({ title: t("actions.failed"), description: getFriendlyErrorMessage(cErr, t), variant: "destructive" });
     }
     setBusyId(null);
   };

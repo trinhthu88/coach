@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +10,15 @@ import {
 import { toast } from "sonner";
 import { Loader2, Search, FileDown, FileUp, Eye, Users, Pencil } from "lucide-react";
 import { format } from "date-fns";
-import { AdminPageHeader, Kpi, Pill, Avatar } from "./_shared";
+import { AdminPageHeader, Kpi, Pill, Avatar, TablePager } from "./_shared";
 import PendingAccessRequests from "@/components/PendingAccessRequests";
 import { useAdminCoacheesData } from "@/hooks/admin/useAdminCoacheesData";
 import { CoacheeProfileSheet } from "./coachees/CoacheeProfileSheet";
 import { CoacheeEditSheet } from "./coachees/CoacheeEditSheet";
 import { ImportDialog } from "./coachees/ImportDialog";
 import { STATUS_KEYS, STATUS_TONE, programmeCompletionPct, exportCoacheesXlsx, type Row, type Status } from "./coachees/coacheeDisplay";
+
+const PAGE_SIZE = 25;
 
 export default function AdminCoachees() {
   const { t } = useTranslation("admin");
@@ -25,6 +28,7 @@ export default function AdminCoachees() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [viewing, setViewing] = useState<Row | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => rows.filter(r => {
     const query = q.trim().toLowerCase();
@@ -32,6 +36,11 @@ export default function AdminCoachees() {
     const okS = statusFilter === "all" || r.status === statusFilter;
     return okQ && okS;
   }), [rows, q, statusFilter]);
+
+  useEffect(() => { setPage(1); }, [q, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSafe = Math.min(page, totalPages);
+  const paged = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
 
   const exportXlsx = async () => {
     await exportCoacheesXlsx(filtered, t);
@@ -100,7 +109,7 @@ export default function AdminCoachees() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filtered.map(r => (
+              {paged.map(r => (
                 <tr key={r.id} className="hover:bg-muted/30">
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
@@ -117,9 +126,21 @@ export default function AdminCoachees() {
                   <td className="px-3 py-2.5 text-[11px]">{r.booked}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.done}</td>
                   <td className="px-3 py-2.5 text-[11px]">
-                    {r.programme_name || <span className="italic text-muted-foreground">—</span>}
-                    {r.cohort_name && <p className="text-[10px] text-muted-foreground">{r.cohort_name}</p>}
-                    {r.organization_name && <p className="text-[10px] text-primary">{r.organization_name}</p>}
+                    {r.programme_name ? (
+                      <Link to="/admin/programmes" className="text-primary hover:underline">{r.programme_name}</Link>
+                    ) : (
+                      <span className="italic text-muted-foreground">—</span>
+                    )}
+                    {r.cohort_name && (
+                      <p className="text-[10px]">
+                        <Link to="/admin/cohorts" className="text-muted-foreground hover:text-primary hover:underline">{r.cohort_name}</Link>
+                      </p>
+                    )}
+                    {r.organization_name && (
+                      <p className="text-[10px]">
+                        <Link to="/admin/organizations" className="text-primary hover:underline">{r.organization_name}</Link>
+                      </p>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {(() => {
@@ -150,6 +171,7 @@ export default function AdminCoachees() {
             </tbody>
           </table>
         </div>
+        <TablePager page={pageSafe} totalPages={totalPages} onChange={setPage} />
       </Card>
 
       <CoacheeProfileSheet row={viewing} onClose={() => setViewing(null)} />

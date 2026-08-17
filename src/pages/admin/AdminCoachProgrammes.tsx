@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
+import { useConfirm } from "@/hooks/use-confirm";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface CoachProgramme {
   id: string;
@@ -56,6 +58,7 @@ export default function AdminCoachProgrammes() {
   const [editing, setEditing] = useState<Partial<CoachProgramme> | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingCoachId, setSavingCoachId] = useState<string | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -120,16 +123,22 @@ export default function AdminCoachProgrammes() {
       setEditing(null);
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(getFriendlyErrorMessage(e, t));
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async (id: string) => {
-    if (!confirm(t("coachProgrammes.deleteConfirm"))) return;
+    const ok = await confirm({
+      title: t("coachProgrammes.delete"),
+      description: t("coachProgrammes.deleteConfirm"),
+      confirmLabel: t("coachProgrammes.delete"),
+      destructive: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from("coach_programmes").delete().eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) toast.error(getFriendlyErrorMessage(error, t));
     else {
       toast.success(t("coachProgrammes.deleted"));
       load();
@@ -149,7 +158,7 @@ export default function AdminCoachProgrammes() {
       toast.success(t("coachProgrammes.coachProgrammeUpdated", { name: coach.full_name }));
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(getFriendlyErrorMessage(e, t));
     } finally {
       setSavingCoachId(null);
     }
@@ -326,6 +335,7 @@ export default function AdminCoachProgrammes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {ConfirmDialog}
     </div>
   );
 }

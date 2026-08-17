@@ -34,6 +34,7 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 type SlotType = "coaching" | "peer";
 
@@ -75,7 +76,7 @@ export default function CoachAvailability() {
       .order("slot_date")
       .order("start_time");
     if (error) {
-      toast({ title: t("availability.toast.loadFailedTitle"), description: error.message, variant: "destructive" });
+      toast({ title: t("availability.toast.loadFailedTitle"), description: getFriendlyErrorMessage(error, t), variant: "destructive" });
     } else {
       setSlots((data ?? []) as Slot[]);
     }
@@ -110,7 +111,7 @@ export default function CoachAvailability() {
     setSavingOptIn(false);
     if (error) {
       setPeerOptIn(!checked);
-      toast({ title: t("availability.toast.updateFailedTitle"), description: error.message, variant: "destructive" });
+      toast({ title: t("availability.toast.updateFailedTitle"), description: getFriendlyErrorMessage(error, t), variant: "destructive" });
     } else {
       toast({
         title: checked ? t("availability.toast.peerEnabledTitle") : t("availability.toast.peerDisabledTitle"),
@@ -145,6 +146,20 @@ export default function CoachAvailability() {
       });
       return;
     }
+    // Same-day overlap check — the DB doesn't enforce this, so it has to happen
+    // here before insert (a coach silently creating overlapping slots only used
+    // to surface later as a booking-race error to a coachee, not to the coach).
+    const overlaps = selectedSlots.some(
+      (s) => start < s.end_time.slice(0, 5) && s.start_time.slice(0, 5) < end
+    );
+    if (overlaps) {
+      toast({
+        title: t("availability.toast.overlapTitle"),
+        description: t("availability.toast.overlapDescription"),
+        variant: "destructive",
+      });
+      return;
+    }
     setAdding(true);
     const { error } = await supabase.from("coach_availability").insert({
       coach_id: user.id,
@@ -154,7 +169,7 @@ export default function CoachAvailability() {
       slot_type: slotType,
     });
     if (error) {
-      toast({ title: t("availability.toast.addFailedTitle"), description: error.message, variant: "destructive" });
+      toast({ title: t("availability.toast.addFailedTitle"), description: getFriendlyErrorMessage(error, t), variant: "destructive" });
     } else {
       toast({ title: t("availability.toast.slotAddedTitle") });
       await load();
@@ -165,7 +180,7 @@ export default function CoachAvailability() {
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("coach_availability").delete().eq("id", id);
     if (error) {
-      toast({ title: t("availability.toast.deleteFailedTitle"), description: error.message, variant: "destructive" });
+      toast({ title: t("availability.toast.deleteFailedTitle"), description: getFriendlyErrorMessage(error, t), variant: "destructive" });
     } else {
       toast({ title: t("availability.toast.slotRemovedTitle") });
       await load();
@@ -254,10 +269,20 @@ export default function CoachAvailability() {
                 const isSelected = selectedDate && isSameDay(d, selectedDate);
                 const onlyPeer = peerCount > 0 && coachingCount === 0;
                 const mixed = peerCount > 0 && coachingCount > 0;
+                const dayLabel =
+                  count > 0
+                    ? t("availability.dayLabelWithSlots", {
+                        date: format(d, "MMMM d"),
+                        coaching: coachingCount,
+                        peer: peerCount,
+                      })
+                    : t("availability.dayLabelEmpty", { date: format(d, "MMMM d") });
                 return (
                   <button
                     key={key}
                     onClick={() => setSelectedDate(d)}
+                    aria-label={dayLabel}
+                    aria-pressed={!!isSelected}
                     className={cn(
                       "flex aspect-square flex-col items-center justify-center rounded-lg border text-sm transition-colors",
                       inMonth ? "" : "opacity-40",
@@ -364,10 +389,12 @@ export default function CoachAvailability() {
               </div>
 
               <div className="space-y-3 border-t pt-4">
-                <Label>{t("availability.addASlot")}</Label>
-                <div className="flex gap-2">
+                <Label id="slot-type-label">{t("availability.addASlot")}</Label>
+                <div role="radiogroup" aria-labelledby="slot-type-label" className="flex gap-2">
                   <button
                     type="button"
+                    role="radio"
+                    aria-checked={slotType === "coaching"}
                     onClick={() => setSlotType("coaching")}
                     className={cn(
                       "flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
@@ -380,6 +407,8 @@ export default function CoachAvailability() {
                   </button>
                   <button
                     type="button"
+                    role="radio"
+                    aria-checked={slotType === "peer"}
                     onClick={() => setSlotType("peer")}
                     disabled={!peerOptIn}
                     className={cn(

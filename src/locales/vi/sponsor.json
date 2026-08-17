@@ -27,7 +27,8 @@
       "leadersEnrolled": "Lãnh đạo đã đăng ký",
       "onTrack": "Đúng tiến độ",
       "atRisk": "Có nguy cơ",
-      "sessionsUsed": "Session đã dùng"
+      "sessionsUsed": "Session đã dùng",
+      "atRiskInline_other": "{{count}} người có rủi ro cần được chú ý"
     },
     "goalGrowth": {
       "label": "Tiến bộ mục tiêu",
@@ -75,7 +76,8 @@
     "privacy": {
       "titlePrefix": "Nội dung được bảo mật.",
       "body": "Quyền truy cập của bạn chỉ bao gồm mức độ tham gia và đánh giá. Ghi chú session, tin nhắn trò chuyện, suy ngẫm và cách diễn đạt mục tiêu không bao giờ rời khỏi cặp coaching."
-    }
+    },
+    "detailsToggle": "Xem chi tiết chương trình"
   },
   "cohorts": {
     "header": {

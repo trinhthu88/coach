@@ -12,6 +12,8 @@ import { Loader2, Plus, Pencil, Trash2, UsersRound } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
+import { useConfirm } from "@/hooks/use-confirm";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface Cohort {
   id: string;
@@ -30,6 +32,7 @@ export default function AdminCohorts() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Cohort> | null>(null);
   const [saving, setSaving] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -70,14 +73,20 @@ export default function AdminCohorts() {
       toast.success(t("cohorts.saved"));
       setEditing(null);
       load();
-    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); }
+    } catch (e) { toast.error(getFriendlyErrorMessage(e, t)); }
     finally { setSaving(false); }
   };
 
   const remove = async (id: string) => {
-    if (!confirm(t("cohorts.deleteConfirm"))) return;
+    const ok = await confirm({
+      title: t("cohorts.delete"),
+      description: t("cohorts.deleteConfirm"),
+      confirmLabel: t("cohorts.delete"),
+      destructive: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from("cohorts").delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success(t("cohorts.deleted")); load(); }
+    if (error) toast.error(getFriendlyErrorMessage(error, t)); else { toast.success(t("cohorts.deleted")); load(); }
   };
 
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -148,6 +157,7 @@ export default function AdminCohorts() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {ConfirmDialog}
     </div>
   );
 }

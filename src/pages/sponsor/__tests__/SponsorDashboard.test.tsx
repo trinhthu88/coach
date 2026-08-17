@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import "@/i18n/config";
 import i18n from "@/i18n/config";
 
@@ -104,6 +104,10 @@ describe("SponsorDashboard", () => {
       screen.getByText(/session notes, chat messages, reflections, and the wording of goals never leave the coaching pair/i)
     ).toBeInTheDocument();
 
+    // Goal-growth distribution is behind the "See programme details" disclosure by
+    // default (progressive disclosure — see SponsorDashboard's Collapsible usage).
+    fireEvent.click(screen.getByText(/see programme details/i));
+
     // Distribution shown (org has 8 >= 5 leaders)
     expect(screen.getByText("Hit target")).toBeInTheDocument();
     expect(screen.getByText("Meaningful progress")).toBeInTheDocument();
@@ -124,6 +128,9 @@ describe("SponsorDashboard", () => {
       ],
     });
     render(<SponsorDashboard />);
+
+    await waitFor(() => expect(screen.getByText(/see programme details/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/see programme details/i));
 
     await waitFor(() => expect(screen.getByText(/distribution hidden/i)).toBeInTheDocument());
     expect(screen.queryByText("Hit target")).not.toBeInTheDocument();

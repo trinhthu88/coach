@@ -13,6 +13,8 @@ import { Loader2, Plus, Pencil, Trash2, ArrowUpRight } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
+import { useConfirm } from "@/hooks/use-confirm";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface Programme {
   id: string;
@@ -55,6 +57,7 @@ export default function AdminProgrammes() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Programme> | null>(null);
   const [saving, setSaving] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -100,16 +103,22 @@ export default function AdminProgrammes() {
       setEditing(null);
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.error(getFriendlyErrorMessage(e, t));
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async (id: string) => {
-    if (!confirm(t("programmes.deleteConfirm"))) return;
+    const ok = await confirm({
+      title: t("programmes.delete"),
+      description: t("programmes.deleteConfirm"),
+      confirmLabel: t("programmes.delete"),
+      destructive: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from("programmes").delete().eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) toast.error(getFriendlyErrorMessage(error, t));
     else { toast.success(t("programmes.deleted")); load(); }
   };
 
@@ -266,6 +275,7 @@ export default function AdminProgrammes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {ConfirmDialog}
     </div>
   );
 }
