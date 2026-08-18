@@ -804,6 +804,231 @@ export type Database = {
           },
         ]
       }
+      mentor_profiles: {
+        Row: {
+          bio: string | null
+          coach_user_id: string
+          created_at: string
+          expertise_tags: string[]
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          coach_user_id: string
+          created_at?: string
+          expertise_tags?: string[]
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          coach_user_id?: string
+          created_at?: string
+          expertise_tags?: string[]
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_profiles_coach_user_id_fkey"
+            columns: ["coach_user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentoring_allowlist: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          mentee_user_id: string
+          mentor_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mentee_user_id: string
+          mentor_user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mentee_user_id?: string
+          mentor_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentoring_allowlist_mentor_user_id_fkey"
+            columns: ["mentor_user_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_profiles"
+            referencedColumns: ["coach_user_id"]
+          },
+        ]
+      }
+      mentoring_feedback: {
+        Row: {
+          coaching_mindset: string | null
+          created_at: string
+          ethical_practice: string | null
+          evokes_awareness: string | null
+          facilitates_growth: string | null
+          id: string
+          listens_actively: string | null
+          maintains_agreements: string | null
+          maintains_presence: string | null
+          mentee_id: string
+          mentor_id: string
+          mentoring_session_id: string
+          overall_notes: string | null
+          submitted_at: string
+          submitted_by: string
+          trust_safety: string | null
+          updated_at: string
+        }
+        Insert: {
+          coaching_mindset?: string | null
+          created_at?: string
+          ethical_practice?: string | null
+          evokes_awareness?: string | null
+          facilitates_growth?: string | null
+          id?: string
+          listens_actively?: string | null
+          maintains_agreements?: string | null
+          maintains_presence?: string | null
+          mentee_id: string
+          mentor_id: string
+          mentoring_session_id: string
+          overall_notes?: string | null
+          submitted_at?: string
+          submitted_by: string
+          trust_safety?: string | null
+          updated_at?: string
+        }
+        Update: {
+          coaching_mindset?: string | null
+          created_at?: string
+          ethical_practice?: string | null
+          evokes_awareness?: string | null
+          facilitates_growth?: string | null
+          id?: string
+          listens_actively?: string | null
+          maintains_agreements?: string | null
+          maintains_presence?: string | null
+          mentee_id?: string
+          mentor_id?: string
+          mentoring_session_id?: string
+          overall_notes?: string | null
+          submitted_at?: string
+          submitted_by?: string
+          trust_safety?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentoring_feedback_mentoring_session_id_fkey"
+            columns: ["mentoring_session_id"]
+            isOneToOne: true
+            referencedRelation: "mentoring_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentoring_sessions: {
+        Row: {
+          action_items: Json
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          created_at: string
+          duration_minutes: number
+          feedback_submitted_at: string | null
+          id: string
+          meeting_url: string | null
+          mentee_id: string
+          mentee_notes: string | null
+          mentor_id: string
+          mentor_notes: string | null
+          prep_file_notes: string | null
+          prep_file_path: string | null
+          prep_file_submitted_at: string | null
+          slot_id: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["session_status"]
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          action_items?: Json
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          duration_minutes: number
+          feedback_submitted_at?: string | null
+          id?: string
+          meeting_url?: string | null
+          mentee_id: string
+          mentee_notes?: string | null
+          mentor_id: string
+          mentor_notes?: string | null
+          prep_file_notes?: string | null
+          prep_file_path?: string | null
+          prep_file_submitted_at?: string | null
+          slot_id?: string | null
+          start_time: string
+          status?: Database["public"]["Enums"]["session_status"]
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          action_items?: Json
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          feedback_submitted_at?: string | null
+          id?: string
+          meeting_url?: string | null
+          mentee_id?: string
+          mentee_notes?: string | null
+          mentor_id?: string
+          mentor_notes?: string | null
+          prep_file_notes?: string | null
+          prep_file_path?: string | null
+          prep_file_submitted_at?: string | null
+          slot_id?: string | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentoring_sessions_mentee_id_fkey"
+            columns: ["mentee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentoring_sessions_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -1563,6 +1788,10 @@ export type Database = {
         }
         Returns: number
       }
+      can_book_mentoring_session: {
+        Args: { p_mentee_id: string; p_mentor_id: string }
+        Returns: boolean
+      }
       can_book_session: {
         Args: { p_coach_id: string; p_coachee_id: string }
         Returns: boolean
@@ -1573,6 +1802,10 @@ export type Database = {
       }
       can_message_session: {
         Args: { _session_id: string; _user_id: string }
+        Returns: boolean
+      }
+      check_can_book_mentoring_session: {
+        Args: { p_mentor_id: string }
         Returns: boolean
       }
       check_can_book_session: { Args: { p_coach_id: string }; Returns: boolean }
@@ -1693,7 +1926,7 @@ export type Database = {
     Enums: {
       alert_severity: "info" | "warning" | "critical"
       app_role: "admin" | "coach" | "coachee" | "sponsor"
-      availability_slot_type: "coaching" | "peer"
+      availability_slot_type: "coaching" | "peer" | "mentoring"
       enrollment_status: "active" | "completed" | "paused" | "at_risk"
       session_status:
         | "pending_coach_approval"
@@ -1840,7 +2073,7 @@ export const Constants = {
     Enums: {
       alert_severity: ["info", "warning", "critical"],
       app_role: ["admin", "coach", "coachee", "sponsor"],
-      availability_slot_type: ["coaching", "peer"],
+      availability_slot_type: ["coaching", "peer", "mentoring"],
       enrollment_status: ["active", "completed", "paused", "at_risk"],
       session_status: [
         "pending_coach_approval",
