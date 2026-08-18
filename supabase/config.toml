@@ -7,6 +7,8 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.confirm-mentoring-session]
     verify_jwt = true
+  [functions.send-mentoring-prep-file]
+    verify_jwt = true
   [functions.cancel-session]
     verify_jwt = true
   [functions.auth-email-hook]

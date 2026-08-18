@@ -44,5 +44,55 @@
       "notEligible": "Bạn hiện không thể đặt lịch với mentor này — quyền truy cập của bạn có thể đã thay đổi. Vui lòng làm mới và thử lại.",
       "success": "Đã yêu cầu buổi mentoring. Đang chờ mentor xác nhận."
     }
+  },
+  "status": {
+    "pending_coach_approval": "Đang chờ xác nhận",
+    "confirmed": "Đã xác nhận",
+    "completed": "Đã hoàn thành",
+    "cancelled": "Đã hủy",
+    "rescheduled": "Đã dời lịch"
+  },
+  "sessionDetail": {
+    "notFound": "Không tìm thấy buổi mentoring",
+    "backToMentors": "Về danh sách mentor",
+    "withCounterpart": "Với {{name}}",
+    "minutes": "phút",
+    "joinMeeting": "Tham gia buổi họp",
+    "confirmSession": "Xác nhận buổi mentoring",
+    "markComplete": "Đánh dấu hoàn thành",
+    "markedComplete": "Đã đánh dấu hoàn thành",
+    "prepFileRequiredToComplete": "Hãy tải lên tệp chuẩn bị trước khi đánh dấu buổi này là hoàn thành.",
+    "notesSaved": "Đã lưu ghi chú",
+    "prepFileSection": "Tệp chuẩn bị",
+    "prepFileSubmitted": "Đã nộp tệp chuẩn bị",
+    "viewFile": "Xem tệp",
+    "prepFilePrompt": "Tải lên tệp chuẩn bị (.docx hoặc .pdf) trước buổi này, cùng với ghi chú hoặc mục tiêu bạn muốn mentor xem.",
+    "prepNotesPlaceholder": "Bạn muốn đạt được điều gì trong buổi này?",
+    "submitPrepFile": "Nộp",
+    "prepFileAwaited": "Đang chờ mentee nộp tệp chuẩn bị.",
+    "prepNotesLabel": "Ghi chú từ mentee",
+    "notesSection": "Ghi chú",
+    "mentorNotes": "Ghi chú của mentor",
+    "menteeNotes": "Ghi chú của mentee",
+    "saveNotes": "Lưu ghi chú",
+    "feedbackSection": "Phản hồi từ mentor",
+    "feedbackIntro": "Suy ngẫm về từng năng lực và chia sẻ phản hồi bằng văn bản cho mentee của bạn.",
+    "feedbackReadonlyIntro": "Phản hồi từ mentor của bạn.",
+    "feedbackNotAvailable": "Mentor của bạn chưa gửi phản hồi.",
+    "feedbackNotReady": "Có thể gửi phản hồi sau khi buổi này được đánh dấu hoàn thành.",
+    "overallNotes": "Ghi chú tổng quan",
+    "saveFeedback": "Gửi phản hồi",
+    "updateFeedback": "Cập nhật phản hồi",
+    "feedbackSaved": "Đã lưu phản hồi",
+    "competencies": {
+      "ethical_practice": "Thể hiện thực hành đạo đức",
+      "coaching_mindset": "Thể hiện tư duy coaching",
+      "maintains_agreements": "Thiết lập & duy trì thỏa thuận",
+      "trust_safety": "Xây dựng sự tin tưởng và an toàn",
+      "maintains_presence": "Duy trì sự hiện diện",
+      "listens_actively": "Lắng nghe chủ động",
+      "evokes_awareness": "Khơi gợi nhận thức",
+      "facilitates_growth": "Thúc đẩy sự phát triển của khách hàng"
+    }
   }
 }

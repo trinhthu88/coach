@@ -44,5 +44,55 @@
       "notEligible": "You're not able to book this mentor right now — your access may have changed. Please refresh and try again.",
       "success": "Mentoring session requested. Awaiting mentor confirmation."
     }
+  },
+  "status": {
+    "pending_coach_approval": "Awaiting confirmation",
+    "confirmed": "Confirmed",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "rescheduled": "Rescheduled"
+  },
+  "sessionDetail": {
+    "notFound": "Session not found",
+    "backToMentors": "Back to mentors",
+    "withCounterpart": "With {{name}}",
+    "minutes": "min",
+    "joinMeeting": "Join meeting",
+    "confirmSession": "Confirm session",
+    "markComplete": "Mark complete",
+    "markedComplete": "Marked complete",
+    "prepFileRequiredToComplete": "Upload a preparation file before marking this session complete.",
+    "notesSaved": "Notes saved",
+    "prepFileSection": "Preparation file",
+    "prepFileSubmitted": "Preparation file submitted",
+    "viewFile": "View file",
+    "prepFilePrompt": "Upload a preparation file (.docx or .pdf) before this session, along with any notes or goals you'd like your mentor to see.",
+    "prepNotesPlaceholder": "What do you want to get out of this session?",
+    "submitPrepFile": "Submit",
+    "prepFileAwaited": "Waiting for the mentee to submit a preparation file.",
+    "prepNotesLabel": "Notes from the mentee",
+    "notesSection": "Notes",
+    "mentorNotes": "Mentor notes",
+    "menteeNotes": "Mentee notes",
+    "saveNotes": "Save notes",
+    "feedbackSection": "Mentor feedback",
+    "feedbackIntro": "Reflect on each competency and share written feedback for your mentee.",
+    "feedbackReadonlyIntro": "Feedback from your mentor.",
+    "feedbackNotAvailable": "Your mentor hasn't submitted feedback yet.",
+    "feedbackNotReady": "Feedback can be submitted once the session is marked complete.",
+    "overallNotes": "Overall notes",
+    "saveFeedback": "Submit feedback",
+    "updateFeedback": "Update feedback",
+    "feedbackSaved": "Feedback saved",
+    "competencies": {
+      "ethical_practice": "Demonstrates Ethical Practice",
+      "coaching_mindset": "Embodies a Coaching Mindset",
+      "maintains_agreements": "Establishes & Maintains Agreements",
+      "trust_safety": "Cultivates Trust and Safety",
+      "maintains_presence": "Maintains Presence",
+      "listens_actively": "Listens Actively",
+      "evokes_awareness": "Evokes Awareness",
+      "facilitates_growth": "Facilitates Client Growth"
+    }
   }
 }
