@@ -82,27 +82,27 @@ export function GoalAccordion({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-3 bg-muted/30 px-3 py-2.5 text-left hover:bg-muted/50"
       >
-        <div className={cn("flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-semibold", accent.bg, accent.text)}>
+        <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold", accent.bg, accent.text)}>
           {initials(goal.title)}
         </div>
         {showCompletionMarks ? (
-          <span className="flex-1 text-sm font-semibold inline-flex items-center gap-1.5">
-            {goalDone && <Check className="h-3.5 w-3.5 text-success" strokeWidth={3} />}
-            <span>{goal.title}</span>
+          <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold">
+            {goalDone && <Check className="h-3.5 w-3.5 shrink-0 text-success" strokeWidth={3} />}
+            <span className="truncate">{goal.title}</span>
             {goal.target_date && (
-              <span className="ml-2 text-[10px] font-normal text-muted-foreground">
+              <span className="ml-2 hidden shrink-0 text-[10px] font-normal text-muted-foreground sm:inline">
                 · {t("goalAccordion.goalHeaderTargetDate", { date: format(new Date(goal.target_date), "MMM d") })}
               </span>
             )}
           </span>
         ) : (
-          <span className="flex-1 text-sm font-semibold">{goal.title}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{goal.title}</span>
         )}
-        <span className="text-xs text-muted-foreground">{pct}%</span>
+        <span className="shrink-0 text-xs text-muted-foreground">{pct}%</span>
         <div className="hidden h-1 w-14 overflow-hidden rounded-full bg-background sm:block">
           <div className={cn("h-full", accent.fill)} style={{ width: `${pct}%` }} />
         </div>
-        {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+        {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
       </button>
 
       {open && (

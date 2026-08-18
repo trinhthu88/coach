@@ -115,7 +115,7 @@ export function PointerTour({
           </p>
 
           {/* Actions */}
-          <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <Button
               variant="ghost"
               size="sm"
@@ -125,7 +125,7 @@ export function PointerTour({
               <RotateCcw className="h-3.5 w-3.5" />
               {t("chrome.restart")}
             </Button>
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-3">
               <button
                 type="button"
                 onClick={onDismiss}

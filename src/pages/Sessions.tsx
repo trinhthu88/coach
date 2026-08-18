@@ -336,11 +336,11 @@ function SessionCard({
         status={
           <span
             className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest",
+              "inline-flex max-w-[92px] items-center gap-1 whitespace-normal rounded-full border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase leading-tight tracking-wide sm:max-w-none sm:shrink-0 sm:whitespace-nowrap sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-widest",
               meta.className
             )}
           >
-            <Icon className="h-3 w-3" /> {meta.label}
+            <Icon className="h-3 w-3 shrink-0" /> {meta.label}
           </span>
         }
         onClick={onOpen}

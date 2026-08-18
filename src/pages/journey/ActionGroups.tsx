@@ -35,7 +35,7 @@ export function ActionGroups({
     grouped.overdue.length + grouped.thisWeek.length + grouped.upcoming.length + grouped.completed.length;
   if (!total) {
     return (
-      <Card className="p-12 text-center text-sm text-muted-foreground">
+      <Card className="p-6 text-center text-sm text-muted-foreground sm:p-12">
         {emptyMessage}
       </Card>
     );

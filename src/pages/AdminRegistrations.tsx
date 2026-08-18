@@ -1096,7 +1096,7 @@ function BulkInviteDialog({
                 </Badge>
               ))}
             </div>
-            <div className="max-h-80 overflow-y-auto rounded-lg border">
+            <div className="max-h-80 overflow-auto rounded-lg border">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/60 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   <tr>
@@ -1135,7 +1135,7 @@ function BulkInviteDialog({
                 </Badge>
               ))}
             </div>
-            <div className="max-h-80 overflow-y-auto rounded-lg border">
+            <div className="max-h-80 overflow-auto rounded-lg border">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/60 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   <tr>
@@ -1178,7 +1178,7 @@ function BulkInviteDialog({
             <p className="text-muted-foreground">
               {t("registrations.bulkImport.batchPrefix")} <span className="font-mono">{resumeBatchId}</span> — {t("registrations.bulkImport.batchRowsSummary", { total: resumeRows.length, pending: resumePendingCount })}
             </p>
-            <div className="max-h-80 overflow-y-auto rounded-lg border">
+            <div className="max-h-80 overflow-auto rounded-lg border">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/60 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   <tr>

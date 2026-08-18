@@ -124,15 +124,15 @@ export function SessionRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "surface-card hover-lift group flex w-full items-center gap-5 p-5 text-left",
+        "surface-card hover-lift group flex w-full items-center gap-3 p-4 text-left sm:gap-5 sm:p-5",
         className
       )}
     >
-      <div className="w-[62px] shrink-0 border-r border-border pr-4 text-center">
+      <div className="w-11 shrink-0 border-r border-border pr-2 text-center sm:w-[62px] sm:pr-4">
         <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
           {month}
         </p>
-        <p className="font-display text-[1.9rem] leading-none">{day}</p>
+        <p className="font-display text-xl leading-none sm:text-[1.9rem]">{day}</p>
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-semibold text-foreground">{title}</p>

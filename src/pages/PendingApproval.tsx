@@ -12,7 +12,7 @@ export default function PendingApproval() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-subtle p-6">
-      <Card className="max-w-md p-10 text-center">
+      <Card className="w-full max-w-md p-6 text-center sm:p-10">
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
           <Clock className="h-6 w-6" />
         </div>

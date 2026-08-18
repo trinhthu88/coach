@@ -101,8 +101,8 @@ export default function CoachClients() {
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="relative max-w-sm flex-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="relative w-full sm:max-w-sm sm:flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={t("clients.searchPlaceholder")}

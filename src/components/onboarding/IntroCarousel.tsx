@@ -798,7 +798,7 @@ export function IntroCarousel({
           {/* ── Right panel ── */}
           <div className="flex flex-col bg-white">
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-8 pb-4 pt-7">
+            <div className="flex-1 overflow-y-auto px-5 pb-4 pt-7 sm:px-8">
               {/* Kicker + count row */}
               <div className="mb-4 flex items-center justify-between gap-4">
                 <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">
@@ -827,12 +827,12 @@ export function IntroCarousel({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center gap-3 px-8 py-5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-5 sm:px-8">
               {/* Continue */}
               <button
                 type="button"
                 onClick={() => isLast ? onFinish() : setIndex((i) => i + 1)}
-                className="rounded-xl bg-accent px-7 py-3 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:opacity-80"
+                className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:opacity-80 sm:px-7 sm:py-3"
               >
                 {isLast ? t("carousel.takeMeIn") : t("carousel.continue")}
               </button>
@@ -841,7 +841,7 @@ export function IntroCarousel({
                 <button
                   type="button"
                   onClick={() => setIndex((i) => i - 1)}
-                  className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+                  className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 sm:px-6 sm:py-3"
                 >
                   {t("carousel.back")}
                 </button>

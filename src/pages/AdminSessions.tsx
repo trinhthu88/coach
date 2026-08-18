@@ -356,7 +356,7 @@ export default function AdminSessions() {
                   onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>{t("sessions.startTimeLabel")}</Label>
                   <Input

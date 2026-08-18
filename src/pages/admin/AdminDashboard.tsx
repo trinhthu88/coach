@@ -220,11 +220,13 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-        <div className="surface-card p-6">
+        <div className="surface-card p-4 sm:p-6">
           <p className="mb-4 text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
             {t("dashboard.chartCaption")}
           </p>
-          <MiniBarChart data={monthly} height={200} />
+          <div className="overflow-x-auto">
+            <MiniBarChart data={monthly} height={200} className="min-w-[420px]" />
+          </div>
         </div>
 
         <AttentionPanel

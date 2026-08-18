@@ -347,13 +347,13 @@ export default function CoachAvailability() {
                   <div
                     key={s.id}
                     className={cn(
-                      "flex items-center justify-between rounded-lg border p-2.5",
+                      "flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2.5",
                       s.slot_type === "peer"
                         ? "border-accent/40 bg-accent/5"
                         : "border-primary/30 bg-primary-soft/40"
                     )}
                   >
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-1.5 text-sm sm:gap-2">
                       <span>
                         {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
                       </span>
@@ -377,9 +377,9 @@ export default function CoachAvailability() {
                     {!s.is_booked && (
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => handleDelete(s.id)}
-                        className="text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive sm:h-9 sm:w-9"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -423,21 +423,21 @@ export default function CoachAvailability() {
                     {t("availability.slotTypePeer")}
                   </button>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Input
                     type="time"
                     value={start}
                     onChange={(e) => setStart(e.target.value)}
-                    className="w-28"
+                    className="w-24 sm:w-28"
                   />
                   <span className="text-muted-foreground">–</span>
                   <Input
                     type="time"
                     value={end}
                     onChange={(e) => setEnd(e.target.value)}
-                    className="w-28"
+                    className="w-24 sm:w-28"
                   />
-                  <Button size="sm" onClick={handleAddSlot} disabled={adding}>
+                  <Button size="sm" onClick={handleAddSlot} disabled={adding} className="shrink-0">
                     {adding ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (

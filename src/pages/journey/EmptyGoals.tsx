@@ -6,7 +6,7 @@ import { GoalDialog, type AddGoalFn } from "./GoalDialog";
 export function EmptyGoals({ onAdd, description }: { onAdd: AddGoalFn; description: string }) {
   const { t } = useTranslation("journey");
   return (
-    <Card className="p-12 text-center">
+    <Card className="p-6 text-center sm:p-12">
       <Target className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
       <h3 className="font-semibold">{t("emptyGoals.title")}</h3>
       <p className="mt-1 mb-4 text-sm text-muted-foreground">{description}</p>

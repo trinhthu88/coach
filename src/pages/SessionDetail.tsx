@@ -233,7 +233,7 @@ export default function SessionDetail() {
         {/* ---------- Main column ---------- */}
         <div className="space-y-6">
           {/* Hero */}
-          <Card className="animate-rise p-8">
+          <Card className="animate-rise p-5 sm:p-8">
             <div className="flex flex-wrap items-center gap-4">
               <span
                 className={cn(
@@ -299,7 +299,7 @@ export default function SessionDetail() {
           </Card>
 
           {/* Tabbed workspace */}
-          <Card className="animate-rise p-8">
+          <Card className="animate-rise p-5 sm:p-8">
             <div className="inline-flex flex-wrap gap-1 rounded-full bg-muted/60 p-1.5">
               {TABS.map((t) => (
                 <button
@@ -598,7 +598,7 @@ export default function SessionDetail() {
 
         {/* ---------- Side column ---------- */}
         <aside className="space-y-6">
-          <div className="animate-rise relative overflow-hidden rounded-[26px] gradient-hero p-8 text-secondary-foreground">
+          <div className="animate-rise relative overflow-hidden rounded-[26px] gradient-hero p-6 text-secondary-foreground sm:p-8">
             <div
               aria-hidden
               className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full"
@@ -623,7 +623,7 @@ export default function SessionDetail() {
           </div>
 
           {openItems.length > 0 && (
-            <Card className="animate-rise p-7">
+            <Card className="animate-rise p-5 sm:p-7">
               <p className="eyebrow text-primary">{t("detail.prepare")}</p>
               <ul className="mt-5 space-y-3.5">
                 {openItems.slice(0, 5).map((it, i) => (
@@ -642,7 +642,7 @@ export default function SessionDetail() {
           )}
 
           {isAdmin ? (
-            <Card className="space-y-3 p-7">
+            <Card className="space-y-3 p-5 sm:p-7">
               <p className="eyebrow text-primary">{t("detail.meetingLink.adminEyebrow")}</p>
               <Input
                 value={meetingUrl}
@@ -693,7 +693,7 @@ export default function SessionDetail() {
           ) : (
             session.status === "confirmed" &&
             !session.meeting_url && (
-              <Card className="space-y-2 p-7">
+              <Card className="space-y-2 p-5 sm:p-7">
                 <p className="eyebrow text-primary">{t("detail.meetingLink.pendingEyebrow")}</p>
                 <p className="text-sm text-muted-foreground">
                   {t("detail.meetingLink.pendingBody")}
@@ -702,14 +702,14 @@ export default function SessionDetail() {
             )
           )}
 
-          <Card className="space-y-5 p-7">
+          <Card className="space-y-5 p-5 sm:p-7">
             <p className="eyebrow text-primary">{t("detail.participants")}</p>
             <Participant label={t("detail.counterpartRole.coach")} name={coach?.full_name} email={coach?.email} tone="primary" />
             <Participant label={t("detail.counterpartRole.coachee")} name={coachee?.full_name} email={coachee?.email} tone="success" />
           </Card>
 
           {(isCoach || canCancel) && (
-            <Card className="flex flex-wrap gap-2 p-7">
+            <Card className="flex flex-wrap gap-2 p-5 sm:p-7">
               {isCoach && session.status === "pending_coach_approval" && (
                 <Button className="rounded-full" onClick={confirmSession} disabled={saving}>
                   <CheckCircle2 className="mr-1 h-4 w-4" /> {t("detail.confirmSession")}
@@ -857,7 +857,7 @@ function PeerCompetencyFeedback({
   };
 
   return (
-    <Card className="space-y-5 p-8">
+    <Card className="space-y-5 p-5 sm:p-8">
       <div>
         <p className="eyebrow text-primary">{t("detail.peerFeedback.eyebrow")}</p>
         <h2 className="font-display mt-3 text-[1.6rem] leading-tight">

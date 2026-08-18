@@ -133,7 +133,7 @@ export default function CoachDetail() {
       </HeroPanel>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="surface-card p-8 lg:col-span-2">
+        <div className="surface-card p-4 sm:p-8 lg:col-span-2">
           <h2 className="font-display text-[1.6rem] leading-tight">{t("detail.approach")}</h2>
           <p className="mt-4 leading-relaxed text-muted-foreground">
             {coach.profiles?.bio || t("detail.noBio")}
@@ -155,7 +155,7 @@ export default function CoachDetail() {
           )}
         </div>
 
-        <div className="surface-card space-y-6 p-7">
+        <div className="surface-card space-y-6 p-4 sm:p-7">
           {coach.diplomas_certifications && coach.diplomas_certifications.length > 0 && (
             <div>
               <p className="eyebrow mb-4">{t("detail.credentials")}</p>
@@ -198,7 +198,7 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-primary">{label}</p>
-      <p className="font-display mt-2 text-[2.2rem] leading-none tracking-tight">{value}</p>
+      <p className="font-display mt-2 text-[1.7rem] leading-none tracking-tight sm:text-[2.2rem]">{value}</p>
     </div>
   );
 }

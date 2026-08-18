@@ -363,7 +363,7 @@ export default function BookSession() {
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         {/* Coach summary card */}
-        <Card className="h-fit space-y-5 p-6">
+        <Card className="h-fit space-y-5 p-4 sm:p-6">
           <div className="flex h-44 items-center justify-center overflow-hidden rounded-2xl bg-primary-soft text-6xl font-bold text-primary">
             {coach.profiles?.avatar_url ? (
               <img
@@ -414,10 +414,10 @@ export default function BookSession() {
         </Card>
 
         {/* Booking panel */}
-        <Card className="space-y-6 p-6">
-          <div className="flex items-start justify-between gap-3">
+        <Card className="space-y-6 p-4 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="font-display text-[1.9rem] leading-[1.1] tracking-tight">
+              <h1 className="font-display text-[1.5rem] leading-[1.1] tracking-tight sm:text-[1.9rem]">
                 {mode === "peer" ? t("bookSession.title.peer") : t("bookSession.title.coaching")}
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -480,53 +480,53 @@ export default function BookSession() {
           </Step>
 
           <Step number={2} label={t("bookSession.steps.date")}>
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-1.5 sm:gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
+                className="h-8 w-8 shrink-0 sm:h-10 sm:w-10"
                 onClick={() => setWeekStart(addDays(weekStart, -7))}
                 disabled={weekStart <= startOfDay(new Date())}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <div className="flex-1 overflow-x-auto">
-                <div className="grid min-w-[360px] grid-cols-7 gap-2">
-                  {week.map((d) => {
-                    const ds = dateKey(d);
-                    const has = datesWithSlots.has(ds);
-                    const isPast = d < startOfDay(new Date());
-                    const disabled = !has || isPast;
-                    const isSelected = selectedDate && dateKey(selectedDate) === ds;
-                    return (
-                      <button
-                        key={ds}
-                        type="button"
-                        aria-pressed={!!isSelected}
-                        disabled={disabled}
-                        onClick={() => setSelectedDate(d)}
-                        className={cn(
-                          "rounded-2xl border py-3 text-center transition-colors",
-                          isSelected
-                            ? "border-primary bg-primary text-primary-foreground shadow-glow"
-                            : disabled
-                            ? "border-border bg-muted/30 text-muted-foreground/50"
-                            : "border-border bg-card hover:border-primary/40"
-                        )}
-                      >
-                        <div className="text-[10px] font-bold uppercase tracking-widest opacity-80">
-                          {format(d, "EEE")}
-                        </div>
-                        <div className="text-xl font-semibold">{format(d, "d")}</div>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="grid min-w-0 flex-1 grid-cols-7 gap-1 sm:gap-2">
+                {week.map((d) => {
+                  const ds = dateKey(d);
+                  const has = datesWithSlots.has(ds);
+                  const isPast = d < startOfDay(new Date());
+                  const disabled = !has || isPast;
+                  const isSelected = selectedDate && dateKey(selectedDate) === ds;
+                  return (
+                    <button
+                      key={ds}
+                      type="button"
+                      aria-pressed={!!isSelected}
+                      disabled={disabled}
+                      onClick={() => setSelectedDate(d)}
+                      className={cn(
+                        "rounded-xl border px-0.5 py-2 text-center transition-colors sm:rounded-2xl sm:py-3",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground shadow-glow"
+                          : disabled
+                          ? "border-border bg-muted/30 text-muted-foreground/50"
+                          : "border-border bg-card hover:border-primary/40"
+                      )}
+                    >
+                      <div className="text-[9px] font-bold uppercase tracking-widest opacity-80 sm:text-[10px]">
+                        {format(d, "EEE")}
+                      </div>
+                      <div className="text-sm font-semibold sm:text-xl">{format(d, "d")}</div>
+                    </button>
+                  );
+                })}
               </div>
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
+                className="h-8 w-8 shrink-0 sm:h-10 sm:w-10"
                 onClick={() => setWeekStart(addDays(weekStart, 7))}
               >
                 <ChevronRight className="h-4 w-4" />

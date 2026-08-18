@@ -167,7 +167,7 @@ export function CoacheeEditSheet({
               </div>
 
               <div className="rounded-lg border p-3">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coacheeEditSheet.loginLink")}</p>
                     <p className="mt-2 text-[12px] text-muted-foreground">
