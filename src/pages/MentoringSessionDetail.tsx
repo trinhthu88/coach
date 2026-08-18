@@ -23,6 +23,8 @@ import {
 import { format } from "date-fns";
 import { useMentoringSessionCore } from "@/hooks/mentoring/useMentoringSessionCore";
 import { useMentoringPrepFile } from "@/hooks/mentoring/useMentoringPrepFile";
+import { useMentoringFeedback } from "@/hooks/mentoring/useMentoringFeedback";
+import { MentorFeedbackForm } from "@/components/mentoring/MentorFeedbackForm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -62,6 +64,12 @@ export default function MentoringSessionDetail() {
   const prep = useMentoringPrepFile({ sessionId, onSubmitted: reload });
   const [prepFile, setPrepFile] = useState<File | null>(null);
   const [prepNotes, setPrepNotes] = useState("");
+
+  const feedback = useMentoringFeedback({
+    sessionId,
+    mentorId: session?.mentor_id,
+    menteeId: session?.mentee_id,
+  });
 
   if (loading) {
     return (
@@ -232,6 +240,11 @@ export default function MentoringSessionDetail() {
           </Button>
         )}
       </Card>
+
+      {/* Mentor feedback */}
+      {(isMentor || isMentee) && (
+        <MentorFeedbackForm feedback={feedback} isMentor={isMentor} canSubmit={isMentor && session.status === "completed"} />
+      )}
     </div>
   );
 }
