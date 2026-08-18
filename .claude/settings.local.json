@@ -30,7 +30,8 @@
       "Bash(python3 -c ' *)",
       "Bash(curl -sI https://esm.sh/@supabase/supabase-js@2.45.0 --max-time 5)",
       "Bash(getent hosts *)",
-      "Bash(chromium-cli *)"
+      "Bash(chromium-cli *)",
+      "Bash(python3 *)"
     ]
   }
 }

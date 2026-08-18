@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { Check, X, Loader2, Inbox, Copy, Eye, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { Pill } from "@/pages/admin/_shared";
+import { useConfirm } from "@/hooks/use-confirm";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 interface AccessRequest {
   id: string;
@@ -41,6 +43,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
   const [approved, setApproved] = useState<{
     email: string; full_name: string; request_id: string; email_sent: boolean;
   } | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const targetRole = variant === "coach" ? "coach" : "executive";
 
@@ -52,7 +55,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       .eq("status", "pending")
       .eq("role", targetRole)
       .order("created_at", { ascending: false });
-    if (error) toast.error(error.message);
+    if (error) toast.error(getFriendlyErrorMessage(error, t));
     setRows((data ?? []) as AccessRequest[]);
     setLoading(false);
   }, [targetRole]);
@@ -78,14 +81,20 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       await load();
       onApproved?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("pendingAccessRequests.toast.approvalFailed"));
+      toast.error(getFriendlyErrorMessage(err, t, { fallback: t("pendingAccessRequests.toast.approvalFailed") }));
     } finally {
       setBusyId(null);
     }
   };
 
   const reject = async (req: AccessRequest) => {
-    if (!confirm(t("pendingAccessRequests.confirmReject", { name: req.full_name }))) return;
+    const ok = await confirm({
+      title: t("pendingAccessRequests.reject"),
+      description: t("pendingAccessRequests.confirmReject", { name: req.full_name }),
+      confirmLabel: t("pendingAccessRequests.reject"),
+      destructive: true,
+    });
+    if (!ok) return;
     setBusyId(req.id);
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -101,7 +110,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       toast.success(t("pendingAccessRequests.toast.requestRejected"));
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("pendingAccessRequests.toast.rejectFailed"));
+      toast.error(getFriendlyErrorMessage(err, t, { fallback: t("pendingAccessRequests.toast.rejectFailed") }));
     } finally {
       setBusyId(null);
     }
@@ -122,7 +131,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
       toast.success(result.email_sent ? t("pendingAccessRequests.toast.loginLinkResent") : t("pendingAccessRequests.toast.approvedEmailFailed"));
       onApproved?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("pendingAccessRequests.toast.resendFailed"));
+      toast.error(getFriendlyErrorMessage(err, t, { fallback: t("pendingAccessRequests.toast.resendFailed") }));
     } finally {
       setBusyId(null);
     }
@@ -274,6 +283,7 @@ export default function PendingAccessRequests({ variant, onApproved }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {ConfirmDialog}
     </>
   );
 }

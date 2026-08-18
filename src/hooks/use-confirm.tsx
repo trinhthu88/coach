@@ -10,6 +10,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ConfirmOptions {
   title: string;
@@ -33,6 +35,11 @@ export function useConfirm() {
   const resolver = useRef<(value: boolean) => void>();
 
   const confirm = useCallback((opts: ConfirmOptions) => {
+    // Belt-and-suspenders: the AlertDialog is modal (its overlay covers the full
+    // viewport and captures pointer events), so a second confirm() shouldn't be
+    // reachable while one is already open — but if it ever is, resolve the
+    // orphaned promise instead of silently dropping it.
+    resolver.current?.(false);
     setOptions(opts);
     return new Promise<boolean>((resolve) => {
       resolver.current = resolve;
@@ -57,11 +64,7 @@ export function useConfirm() {
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={() => handle(true)}
-            className={
-              options?.destructive
-                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : undefined
-            }
+            className={options?.destructive ? cn(buttonVariants({ variant: "destructive" })) : undefined}
           >
             {options?.confirmLabel ?? t("actions.confirm")}
           </AlertDialogAction>
