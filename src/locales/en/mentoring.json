@@ -1,0 +1,48 @@
+{
+  "findMentor": {
+    "eyebrow": "Mentoring",
+    "titleLead": "Your",
+    "titleEmphasis": "mentors",
+    "subtitle": "Book a session with a mentor your admin has paired you with.",
+    "retry": "Try again",
+    "empty": "You don't have any mentors assigned yet. Ask your admin to pair you with one.",
+    "mentorLabel": "Mentor",
+    "book": "Book a session"
+  },
+  "bookSession": {
+    "backToMentors": "Back to mentors",
+    "loadError": {
+      "title": "Couldn't load this page",
+      "body": "Something went wrong while loading the mentor's availability. Please try again.",
+      "retry": "Try again"
+    },
+    "mentorNotFound": {
+      "title": "Mentor not found",
+      "back": "Back to mentors"
+    },
+    "mentorLabel": "Mentor",
+    "verifiedMentor": "Verified mentor",
+    "title": "Book a mentoring session",
+    "subtitle": "Select your preferred duration and time to get started.",
+    "ineligible": "You're not currently eligible to book this mentor. Your access may have changed — please contact your admin if this seems wrong.",
+    "steps": {
+      "duration": "Select duration",
+      "durationOption": "{{n}} Minutes",
+      "date": "Select date",
+      "time": "Select time ({{timezone}})"
+    },
+    "pickDatePrompt": "Pick a date above to see times.",
+    "noWindowAvailable": "No {{duration}}-minute window available on this day.",
+    "topicLabel": "What would you like to focus on?",
+    "topicPlaceholder": "Share your goals for this mentoring session",
+    "selectedScheduleLabel": "Selected schedule",
+    "selectATimeSlot": "Select a time slot",
+    "durationBadge": "{{n}} min",
+    "confirmButton": "Confirm Booking",
+    "toast": {
+      "slotTaken": "That time was just booked by someone else. Please pick another slot.",
+      "notEligible": "You're not able to book this mentor right now — your access may have changed. Please refresh and try again.",
+      "success": "Mentoring session requested. Awaiting mentor confirmation."
+    }
+  }
+}

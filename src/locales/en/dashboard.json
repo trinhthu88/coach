@@ -314,6 +314,7 @@
       "label": "Legend",
       "coachingSlot": "Coaching slot",
       "peerSlot": "Peer slot",
+      "mentoringSlot": "Mentoring slot",
       "booked": "Booked"
     },
     "weekdays": {
@@ -332,12 +333,14 @@
     "noSlotsForDay": "No slots yet for this day.",
     "slotTypePeer": "Peer",
     "slotTypeCoaching": "Coaching",
+    "slotTypeMentoring": "Mentoring",
     "bookedBadge": "Booked",
     "addASlot": "Add a slot",
     "enablePeerFirst": "Enable peer coaching above first",
+    "notAMentor": "You're not set up as a mentor yet — ask an admin",
     "add": "Add",
     "slotTypeGroupLabel": "Slot type",
-    "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} peer",
+    "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} peer, {{mentoring}} mentoring",
     "dayLabelEmpty": "{{date}}: no slots"
   },
   "practiceJourney": {

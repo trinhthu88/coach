@@ -305,6 +305,7 @@
       "label": "Chú giải",
       "coachingSlot": "Khung giờ coaching",
       "peerSlot": "Khung giờ đồng nghiệp",
+      "mentoringSlot": "Khung giờ mentoring",
       "booked": "Đã đặt"
     },
     "weekdays": {
@@ -322,12 +323,14 @@
     "noSlotsForDay": "Chưa có khung giờ nào cho ngày này.",
     "slotTypePeer": "Đồng nghiệp",
     "slotTypeCoaching": "Coaching",
+    "slotTypeMentoring": "Mentoring",
     "bookedBadge": "Đã đặt",
     "addASlot": "Thêm khung giờ",
     "enablePeerFirst": "Bật peer coaching ở trên trước",
+    "notAMentor": "Bạn chưa được thiết lập là mentor — hãy liên hệ admin",
     "add": "Thêm",
     "slotTypeGroupLabel": "Loại khung giờ",
-    "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} đồng nghiệp",
+    "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} đồng nghiệp, {{mentoring}} mentoring",
     "dayLabelEmpty": "{{date}}: không có khung giờ"
   },
   "practiceJourney": {

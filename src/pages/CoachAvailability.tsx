@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 
-type SlotType = "coaching" | "peer";
+type SlotType = "coaching" | "peer" | "mentoring";
 
 interface Slot {
   id: string;
@@ -61,6 +61,9 @@ export default function CoachAvailability() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [peerOptIn, setPeerOptIn] = useState(false);
   const [savingOptIn, setSavingOptIn] = useState(false);
+  // Only active mentors (admin-set via mentor_profiles, see AdminMentoring.tsx) may
+  // open mentoring slots — unlike peer coaching, this isn't a self-service opt-in.
+  const [isMentor, setIsMentor] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -97,6 +100,19 @@ export default function CoachAvailability() {
         .eq("id", user.id)
         .maybeSingle();
       setPeerOptIn(!!data?.peer_coaching_opt_in);
+    })();
+  }, [user]);
+
+  // Load mentor status
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("mentor_profiles")
+        .select("is_active")
+        .eq("coach_user_id", user.id)
+        .maybeSingle();
+      setIsMentor(!!data?.is_active);
     })();
   }, [user]);
 
@@ -229,6 +245,9 @@ export default function CoachAvailability() {
           <span className="h-3 w-3 rounded-sm bg-accent" /> {t("availability.legend.peerSlot")}
         </span>
         <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-sm bg-secondary" /> {t("availability.legend.mentoringSlot")}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-sm bg-muted-foreground/30" /> {t("availability.legend.booked")}
         </span>
       </div>
@@ -265,16 +284,20 @@ export default function CoachAvailability() {
                 const count = daySlots.length;
                 const coachingCount = daySlots.filter((s) => s.slot_type === "coaching").length;
                 const peerCount = daySlots.filter((s) => s.slot_type === "peer").length;
+                const mentoringCount = daySlots.filter((s) => s.slot_type === "mentoring").length;
                 const inMonth = isSameMonth(d, month);
                 const isSelected = selectedDate && isSameDay(d, selectedDate);
-                const onlyPeer = peerCount > 0 && coachingCount === 0;
-                const mixed = peerCount > 0 && coachingCount > 0;
+                const typesPresent = [coachingCount, peerCount, mentoringCount].filter((n) => n > 0).length;
+                const onlyPeer = peerCount > 0 && typesPresent === 1;
+                const onlyMentoring = mentoringCount > 0 && typesPresent === 1;
+                const mixed = typesPresent > 1;
                 const dayLabel =
                   count > 0
                     ? t("availability.dayLabelWithSlots", {
                         date: format(d, "MMMM d"),
                         coaching: coachingCount,
                         peer: peerCount,
+                        mentoring: mentoringCount,
                       })
                     : t("availability.dayLabelEmpty", { date: format(d, "MMMM d") });
                 return (
@@ -290,6 +313,8 @@ export default function CoachAvailability() {
                         ? "border-primary bg-primary text-primary-foreground"
                         : onlyPeer
                         ? "border-accent/40 bg-accent/10 hover:bg-accent/15"
+                        : onlyMentoring
+                        ? "border-secondary/40 bg-secondary/10 hover:bg-secondary/15"
                         : count > 0
                         ? "border-primary/40 bg-primary-soft hover:bg-primary-soft/80"
                         : "border-border hover:bg-muted"
@@ -305,6 +330,8 @@ export default function CoachAvailability() {
                               ? "text-primary-foreground/80"
                               : onlyPeer
                               ? "text-accent"
+                              : onlyMentoring
+                              ? "text-secondary"
                               : "text-primary"
                           )}
                         >
@@ -312,8 +339,9 @@ export default function CoachAvailability() {
                         </span>
                         {mixed && !isSelected && (
                           <div className="mt-0.5 flex gap-0.5">
-                            <span className="h-1 w-1.5 rounded-full bg-primary" />
-                            <span className="h-1 w-1.5 rounded-full bg-accent" />
+                            {coachingCount > 0 && <span className="h-1 w-1.5 rounded-full bg-primary" />}
+                            {peerCount > 0 && <span className="h-1 w-1.5 rounded-full bg-accent" />}
+                            {mentoringCount > 0 && <span className="h-1 w-1.5 rounded-full bg-secondary" />}
                           </div>
                         )}
                       </>
@@ -350,6 +378,8 @@ export default function CoachAvailability() {
                       "flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2.5",
                       s.slot_type === "peer"
                         ? "border-accent/40 bg-accent/5"
+                        : s.slot_type === "mentoring"
+                        ? "border-secondary/40 bg-secondary/5"
                         : "border-primary/30 bg-primary-soft/40"
                     )}
                   >
@@ -363,10 +393,16 @@ export default function CoachAvailability() {
                           "text-[10px]",
                           s.slot_type === "peer"
                             ? "bg-accent/20 text-accent-foreground"
+                            : s.slot_type === "mentoring"
+                            ? "bg-secondary/20 text-secondary-foreground"
                             : "bg-primary/15 text-primary"
                         )}
                       >
-                        {s.slot_type === "peer" ? t("availability.slotTypePeer") : t("availability.slotTypeCoaching")}
+                        {s.slot_type === "peer"
+                          ? t("availability.slotTypePeer")
+                          : s.slot_type === "mentoring"
+                          ? t("availability.slotTypeMentoring")
+                          : t("availability.slotTypeCoaching")}
                       </Badge>
                       {s.is_booked && (
                         <Badge variant="secondary" className="text-[10px]">
@@ -421,6 +457,23 @@ export default function CoachAvailability() {
                     title={!peerOptIn ? t("availability.enablePeerFirst") : undefined}
                   >
                     {t("availability.slotTypePeer")}
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={slotType === "mentoring"}
+                    onClick={() => setSlotType("mentoring")}
+                    disabled={!isMentor}
+                    className={cn(
+                      "flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                      slotType === "mentoring"
+                        ? "border-secondary bg-secondary text-secondary-foreground"
+                        : "border-border hover:border-secondary/40",
+                      !isMentor && "cursor-not-allowed opacity-50"
+                    )}
+                    title={!isMentor ? t("availability.notAMentor") : undefined}
+                  >
+                    {t("availability.slotTypeMentoring")}
                   </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

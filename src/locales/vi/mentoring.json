@@ -1,0 +1,48 @@
+{
+  "findMentor": {
+    "eyebrow": "Mentoring",
+    "titleLead": "Mentor",
+    "titleEmphasis": "của bạn",
+    "subtitle": "Đặt lịch với một mentor mà admin đã ghép cặp cho bạn.",
+    "retry": "Thử lại",
+    "empty": "Bạn chưa được gán mentor nào. Hãy liên hệ admin để được ghép cặp.",
+    "mentorLabel": "Mentor",
+    "book": "Đặt lịch"
+  },
+  "bookSession": {
+    "backToMentors": "Về danh sách mentor",
+    "loadError": {
+      "title": "Không thể tải trang này",
+      "body": "Đã xảy ra lỗi khi tải lịch trống của mentor. Vui lòng thử lại.",
+      "retry": "Thử lại"
+    },
+    "mentorNotFound": {
+      "title": "Không tìm thấy mentor",
+      "back": "Về danh sách mentor"
+    },
+    "mentorLabel": "Mentor",
+    "verifiedMentor": "Mentor đã xác minh",
+    "title": "Đặt buổi mentoring",
+    "subtitle": "Chọn thời lượng và thời gian ưa thích của bạn để bắt đầu.",
+    "ineligible": "Bạn hiện không đủ điều kiện để đặt lịch với mentor này. Quyền truy cập của bạn có thể đã thay đổi — vui lòng liên hệ quản trị viên nếu điều này có vẻ không đúng.",
+    "steps": {
+      "duration": "Chọn thời lượng",
+      "durationOption": "{{n}} phút",
+      "date": "Chọn ngày",
+      "time": "Chọn giờ ({{timezone}})"
+    },
+    "pickDatePrompt": "Chọn một ngày ở trên để xem giờ trống.",
+    "noWindowAvailable": "Không có khung giờ {{duration}} phút khả dụng vào ngày này.",
+    "topicLabel": "Bạn muốn tập trung vào điều gì?",
+    "topicPlaceholder": "Chia sẻ mục tiêu của bạn cho buổi mentoring này",
+    "selectedScheduleLabel": "Lịch đã chọn",
+    "selectATimeSlot": "Chọn một khung giờ",
+    "durationBadge": "{{n}} phút",
+    "confirmButton": "Xác nhận đặt lịch",
+    "toast": {
+      "slotTaken": "Khung giờ đó vừa được người khác đặt. Vui lòng chọn khung giờ khác.",
+      "notEligible": "Bạn hiện không thể đặt lịch với mentor này — quyền truy cập của bạn có thể đã thay đổi. Vui lòng làm mới và thử lại.",
+      "success": "Đã yêu cầu buổi mentoring. Đang chờ mentor xác nhận."
+    }
+  }
+}
