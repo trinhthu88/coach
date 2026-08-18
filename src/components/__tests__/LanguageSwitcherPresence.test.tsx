@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, vi } from "vitest";
 
 // Shared mocks covering every dependency touched by the pages under test.
@@ -20,6 +21,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     }),
     channel: () => ({ on: () => ({ subscribe: () => ({}) }) }),
     removeChannel: vi.fn(),
+    rpc: vi.fn(async () => ({ data: false, error: null })),
   },
 }));
 
@@ -60,14 +62,17 @@ describe("LanguageSwitcher is wired into every public page", () => {
   });
 
   it("renders inside the authenticated AppLayout shell", () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
-      <MemoryRouter initialEntries={["/dashboard"]}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<div>content</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/dashboard"]}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<div>content</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
     expect(screen.getAllByRole("group", { name: "Language" }).length).toBeGreaterThan(0);
   });

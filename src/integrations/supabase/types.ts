@@ -1496,6 +1496,38 @@ export type Database = {
           },
         ]
       }
+      user_module_access: {
+        Row: {
+          enabled: boolean
+          module: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          module: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          enabled?: boolean
+          module?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_module_access_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1544,6 +1576,7 @@ export type Database = {
         Returns: boolean
       }
       check_can_book_session: { Args: { p_coach_id: string }; Returns: boolean }
+      check_has_module_access: { Args: { p_module: string }; Returns: boolean }
       coach_has_client: {
         Args: { _coach_id: string; _coachee_id: string }
         Returns: boolean
@@ -1579,6 +1612,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       get_sponsor_org: { Args: { _user_id: string }; Returns: string }
+      has_module_access: {
+        Args: { p_module: string; p_user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

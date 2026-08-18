@@ -2,18 +2,25 @@ import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth, AppRole } from "@/context/AuthContext";
+import { useModuleAccess } from "@/hooks/useModuleAccess";
 import { Loader2 } from "lucide-react";
 import clarivaLogo from "@/assets/clariva-logo.png";
 
 interface Props {
   children: ReactNode;
   role?: AppRole;
+  /** Use when more than one role should pass (e.g. mentoring is coach OR coachee). */
+  roles?: AppRole[];
+  /** Gate on a user_module_access module (e.g. "mentoring") in addition to role. */
+  module?: string;
 }
 
-export function ProtectedRoute({ children, role: requiredRole }: Props) {
+export function ProtectedRoute({ children, role: requiredRole, roles: requiredRoles, module }: Props) {
   const { user, role, profile, isLoading } = useAuth();
   const location = useLocation();
   const { t } = useTranslation("common");
+  // Always called (not after an early return) so hook order stays stable across renders.
+  const { enabled: moduleEnabled, loading: moduleLoading } = useModuleAccess(module ?? "");
 
   if (isLoading) {
     return (
@@ -54,6 +61,16 @@ export function ProtectedRoute({ children, role: requiredRole }: Props) {
   }
 
   if (requiredRole && role !== requiredRole && role !== "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requiredRoles && !(role && requiredRoles.includes(role)) && role !== "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Module gate mirrors the role gate above but checks user_module_access via
+  // has_module_access() instead of user_roles — admin always bypasses, same as role.
+  if (module && role !== "admin" && !moduleLoading && !moduleEnabled) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import "@/i18n/config";
+
+// Controls what check_has_module_access resolves to for the "module" gate tests below.
+let mockModuleAccess = false;
 
 // Mock the supabase client so nothing hits the network.
 vi.mock("@/integrations/supabase/client", () => ({
@@ -17,6 +21,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         eq: () => ({ maybeSingle: async () => ({ data: null }) }),
       }),
     }),
+    rpc: async () => ({ data: mockModuleAccess, error: null }),
   },
 }));
 
@@ -29,24 +34,31 @@ vi.mock("@/context/AuthContext", async () => {
 
 import { ProtectedRoute } from "../ProtectedRoute";
 
-function renderAt(path: string, role?: "admin" | "coach" | "coachee") {
+function renderAt(
+  path: string,
+  role?: "admin" | "coach" | "coachee",
+  opts?: { roles?: ("admin" | "coach" | "coachee")[]; module?: string }
+) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route
-          path={path}
-          element={
-            <ProtectedRoute role={role}>
-              <div>protected content</div>
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/auth" element={<div>auth page</div>} />
-        <Route path="/pending" element={<div>pending page</div>} />
-        <Route path="/set-new-password" element={<div>set password page</div>} />
-        <Route path="/dashboard" element={<div>dashboard page</div>} />
-      </Routes>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path={path}
+            element={
+              <ProtectedRoute role={role} roles={opts?.roles} module={opts?.module}>
+                <div>protected content</div>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/auth" element={<div>auth page</div>} />
+          <Route path="/pending" element={<div>pending page</div>} />
+          <Route path="/set-new-password" element={<div>set password page</div>} />
+          <Route path="/dashboard" element={<div>dashboard page</div>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -62,6 +74,7 @@ const baseProfile = {
 
 beforeEach(() => {
   mockAuth.mockReset();
+  mockModuleAccess = false;
 });
 
 describe("ProtectedRoute", () => {
@@ -170,6 +183,49 @@ describe("ProtectedRoute", () => {
       isLoading: false,
     });
     renderAt("/private", "coach");
+    expect(screen.getByText("protected content")).toBeInTheDocument();
+  });
+
+  // `roles` (plural) lets a route accept more than one role — e.g. mentoring is
+  // available to both coach and coachee, unlike the single-`role` routes above.
+  describe.each([
+    { role: "coachee", matches: true },
+    { role: "coach", matches: true },
+    { role: "admin", matches: true }, // admin always bypasses
+  ] as const)("roles=[coach,coachee], actual role=$role", ({ role, matches }) => {
+    it(matches ? "renders children" : "redirects to /dashboard", () => {
+      mockAuth.mockReturnValue({ user: { id: "u1" }, role, profile: baseProfile, isLoading: false });
+      renderAt("/private", undefined, { roles: ["coach", "coachee"] });
+      expect(screen.getByText(matches ? "protected content" : "dashboard page")).toBeInTheDocument();
+    });
+  });
+
+  it("blocks a roles-array mismatch by redirecting to /dashboard", () => {
+    mockAuth.mockReturnValue({ user: { id: "u1" }, role: "coachee", profile: baseProfile, isLoading: false });
+    renderAt("/private", undefined, { roles: ["coach"] });
+    expect(screen.getByText("dashboard page")).toBeInTheDocument();
+  });
+
+  // `module` gates on user_module_access via check_has_module_access() — mocked
+  // above through mockModuleAccess, which stands in for the RPC result.
+  it("redirects to /dashboard when the module is disabled", async () => {
+    mockModuleAccess = false;
+    mockAuth.mockReturnValue({ user: { id: "u1" }, role: "coachee", profile: baseProfile, isLoading: false });
+    renderAt("/private", undefined, { module: "mentoring" });
+    await waitFor(() => expect(screen.getByText("dashboard page")).toBeInTheDocument());
+  });
+
+  it("renders children when the module is enabled", async () => {
+    mockModuleAccess = true;
+    mockAuth.mockReturnValue({ user: { id: "u1" }, role: "coachee", profile: baseProfile, isLoading: false });
+    renderAt("/private", undefined, { module: "mentoring" });
+    await waitFor(() => expect(screen.getByText("protected content")).toBeInTheDocument());
+  });
+
+  it("lets admins through a disabled module gate", async () => {
+    mockModuleAccess = false;
+    mockAuth.mockReturnValue({ user: { id: "u1" }, role: "admin", profile: baseProfile, isLoading: false });
+    renderAt("/private", undefined, { module: "mentoring" });
     expect(screen.getByText("protected content")).toBeInTheDocument();
   });
 });

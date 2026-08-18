@@ -27,6 +27,7 @@ import {
   FileDown,
   UserCog,
   HelpCircle,
+  Handshake,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -36,6 +37,7 @@ import clarivaLogoDark from "@/assets/clariva-logo-dark.png";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useModuleAccess } from "@/hooks/useModuleAccess";
 
 interface NavItem {
   to: string;
@@ -49,6 +51,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["coach", "coachee"] },
+  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coach", "coachee"] },
   { to: "/sponsor", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["sponsor"], groupKey: "navGroups.sponsor", onboardingId: "nav-sponsor-dashboard" },
   { to: "/sponsor/cohorts", labelKey: "nav.cohorts", icon: Layers, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
   { to: "/sponsor/report", labelKey: "nav.exportReport", icon: FileDown, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
@@ -82,6 +85,7 @@ const NAV: NavItem[] = [
   { to: "/admin/coaches", labelKey: "nav.coaches", icon: Users, roles: ["admin"], groupKey: "navGroups.people" },
   { to: "/admin/coachees", labelKey: "nav.coachees", icon: GraduationCap, roles: ["admin"], groupKey: "navGroups.people" },
   { to: "/admin/organizations", labelKey: "nav.organizations", icon: Building2, roles: ["admin"], groupKey: "navGroups.people" },
+  { to: "/admin/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["admin"], groupKey: "navGroups.people" },
 
   // Admin — Programmes
   { to: "/admin/programmes", labelKey: "nav.programmes", icon: BookOpen, roles: ["admin"], groupKey: "navGroups.programmes" },
@@ -239,7 +243,12 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const items = NAV.filter((n) => role && n.roles.includes(role));
+  // Nav visibility mirrors ProtectedRoute's `module` gate (defense in depth per
+  // RULES.md) — the route guard alone would still let the item render in the sidebar.
+  const { enabled: mentoringEnabled } = useModuleAccess("mentoring");
+  const items = NAV.filter(
+    (n) => role && n.roles.includes(role) && (!n.to.startsWith("/mentoring") || mentoringEnabled || role === "admin")
+  );
   const showsOnboarding = role === "coach" || role === "coachee" || role === "sponsor";
 
   const [manualTourOpen, setManualTourOpen] = useState(false);
