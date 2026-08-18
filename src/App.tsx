@@ -45,6 +45,10 @@ const AdminCoachProgrammes = lazy(() => import("./pages/admin/AdminCoachProgramm
 const AdminCohorts = lazy(() => import("./pages/admin/AdminCohorts"));
 const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
 const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations"));
+const AdminMentoring = lazy(() => import("./pages/admin/AdminMentoring"));
+const MentoringFindMentor = lazy(() => import("./pages/MentoringFindMentor"));
+const MentoringBookSession = lazy(() => import("./pages/MentoringBookSession"));
+const MentoringSessionDetail = lazy(() => import("./pages/MentoringSessionDetail"));
 const SponsorDashboard = lazy(() => import("./pages/sponsor/SponsorDashboard"));
 const SponsorCohorts = lazy(() => import("./pages/sponsor/SponsorCohorts"));
 const SponsorReport = lazy(() => import("./pages/sponsor/SponsorReport"));
@@ -200,6 +204,38 @@ const App = () => (
                     element={
                       <ProtectedRoute role="admin">
                         <AdminSessions />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/mentoring"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="mentoring">
+                        <MentoringFindMentor />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/mentoring/mentors/:mentorId/book"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="mentoring">
+                        <MentoringBookSession />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/mentoring/sessions/:sessionId"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="mentoring">
+                        <MentoringSessionDetail />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/mentoring"
+                    element={
+                      <ProtectedRoute role="admin">
+                        <AdminMentoring />
                       </ProtectedRoute>
                     }
                   />

@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { buildFeedbackAlerts, ScanPeerSessionRow, ScanSessionRow } from "../alertScan";
+import {
+  buildFeedbackAlerts,
+  buildMentoringPrepFileOverdueAlerts,
+  buildMentoringFeedbackOverdueAlerts,
+  ScanPeerSessionRow,
+  ScanSessionRow,
+  ScanMentoringSessionRow,
+} from "../alertScan";
 
 const NOW = new Date("2026-08-10T12:00:00.000Z");
 const PAST = "2026-08-05T10:00:00.000Z";
@@ -191,5 +198,96 @@ describe("buildFeedbackAlerts — mixed", () => {
     expect(alerts.map((a) => a.related_coachee_id).sort()).toEqual(
       ["coachee-1", "peer-coachee-1"].sort()
     );
+  });
+});
+
+function mentoringSession(overrides: Partial<ScanMentoringSessionRow>): ScanMentoringSessionRow {
+  return {
+    id: "ms1",
+    mentee_id: "coachee-1",
+    status: "confirmed",
+    start_time: PAST,
+    prep_file_path: null,
+    feedback_submitted_at: null,
+    ...overrides,
+  };
+}
+
+describe("buildMentoringPrepFileOverdueAlerts", () => {
+  it("flags a blocked confirmed session (started, no prep file) as a warning", () => {
+    const alerts = buildMentoringPrepFileOverdueAlerts({
+      mentoringSessions: [mentoringSession({ status: "confirmed", start_time: PAST, prep_file_path: null })],
+      nameById,
+      emailById,
+      now: NOW,
+    });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].severity).toBe("warning");
+    expect(alerts[0].alert_type).toBe("mentoring_prep_file");
+    expect(alerts[0].related_coachee_id).toBe("coachee-1");
+    expect(alerts[0].title).toContain("preparation file still missing");
+    expect(alerts[0].message).toContain("Jane Coachee");
+  });
+
+  it("does not flag a confirmed session that hasn't started yet", () => {
+    const alerts = buildMentoringPrepFileOverdueAlerts({
+      mentoringSessions: [mentoringSession({ status: "confirmed", start_time: FUTURE, prep_file_path: null })],
+      nameById,
+      emailById,
+      now: NOW,
+    });
+    expect(alerts).toHaveLength(0);
+  });
+
+  it("does not flag a session once a prep file has been submitted", () => {
+    const alerts = buildMentoringPrepFileOverdueAlerts({
+      mentoringSessions: [mentoringSession({ status: "confirmed", start_time: PAST, prep_file_path: "ms1/prep.pdf" })],
+      nameById,
+      emailById,
+      now: NOW,
+    });
+    expect(alerts).toHaveLength(0);
+  });
+
+  it("ignores completed sessions (prep file is now hard-gated, so a completed session already has one)", () => {
+    const alerts = buildMentoringPrepFileOverdueAlerts({
+      mentoringSessions: [mentoringSession({ status: "completed", prep_file_path: null })],
+      nameById,
+      emailById,
+      now: NOW,
+    });
+    expect(alerts).toHaveLength(0);
+  });
+});
+
+describe("buildMentoringFeedbackOverdueAlerts", () => {
+  it("flags a completed session with no mentor feedback as info", () => {
+    const alerts = buildMentoringFeedbackOverdueAlerts({
+      mentoringSessions: [mentoringSession({ status: "completed", feedback_submitted_at: null })],
+      nameById,
+      emailById,
+    });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].severity).toBe("info");
+    expect(alerts[0].alert_type).toBe("mentoring_feedback");
+    expect(alerts[0].title).toContain("mentor feedback missing (completed session)");
+  });
+
+  it("does not flag a completed session once feedback has been submitted", () => {
+    const alerts = buildMentoringFeedbackOverdueAlerts({
+      mentoringSessions: [mentoringSession({ status: "completed", feedback_submitted_at: "2026-08-06T10:00:00.000Z" })],
+      nameById,
+      emailById,
+    });
+    expect(alerts).toHaveLength(0);
+  });
+
+  it("does not flag a confirmed (not yet completed) session even with no feedback", () => {
+    const alerts = buildMentoringFeedbackOverdueAlerts({
+      mentoringSessions: [mentoringSession({ status: "confirmed", feedback_submitted_at: null })],
+      nameById,
+      emailById,
+    });
+    expect(alerts).toHaveLength(0);
   });
 });

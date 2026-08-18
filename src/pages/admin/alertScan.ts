@@ -107,3 +107,87 @@ export function buildFeedbackAlerts(opts: {
 
   return alerts;
 }
+
+export interface ScanMentoringSessionRow {
+  id: string;
+  mentee_id: string;
+  status: string;
+  start_time: string;
+  prep_file_path: string | null;
+  feedback_submitted_at: string | null;
+}
+
+export interface MentoringAlert {
+  severity: "warning" | "info";
+  alert_type: "mentoring_prep_file" | "mentoring_feedback";
+  title: string;
+  message: string;
+  related_coachee_id: string;
+  resolved: false;
+}
+
+/**
+ * Mentoring's equivalent of buildFeedbackAlerts above, for the two inputs
+ * that gate mentoring_sessions specifically: the mentee's preparation file
+ * (hard-gated at the DB level — see enforce_mentoring_prep_file_before_completion(),
+ * 20260818140400_mentoring_sessions.sql) and the mentor's post-session
+ * feedback (which can only be submitted once completed, so unlike the
+ * reflection/competency-feedback alerts above there's no "confirmed and
+ * blocking" case for it — it only ever shows up as an info-level reminder).
+ */
+export function buildMentoringPrepFileOverdueAlerts(opts: {
+  mentoringSessions: ScanMentoringSessionRow[];
+  nameById: Map<string, string | null | undefined>;
+  emailById: Map<string, string | null | undefined>;
+  now: Date;
+}): MentoringAlert[] {
+  const { mentoringSessions, nameById, emailById, now } = opts;
+  const alerts: MentoringAlert[] = [];
+
+  mentoringSessions.forEach((s) => {
+    if (s.prep_file_path) return;
+    if (!(s.status === "confirmed" && new Date(s.start_time) < now)) return;
+    const name = nameById.get(s.mentee_id) || "Mentee";
+    const dateStr = format(new Date(s.start_time), "d MMM yyyy");
+    const email = emailById.get(s.mentee_id);
+    const contact = email ? ` (${email})` : "";
+    alerts.push({
+      severity: "warning",
+      alert_type: "mentoring_prep_file",
+      title: `${name} — preparation file still missing`,
+      message: `${name} hasn't submitted a preparation file for a mentoring session on ${dateStr}${contact}. The mentor can't mark this session complete until it's submitted.`,
+      related_coachee_id: s.mentee_id,
+      resolved: false,
+    });
+  });
+
+  return alerts;
+}
+
+export function buildMentoringFeedbackOverdueAlerts(opts: {
+  mentoringSessions: ScanMentoringSessionRow[];
+  nameById: Map<string, string | null | undefined>;
+  emailById: Map<string, string | null | undefined>;
+}): MentoringAlert[] {
+  const { mentoringSessions, nameById, emailById } = opts;
+  const alerts: MentoringAlert[] = [];
+
+  mentoringSessions.forEach((s) => {
+    if (s.feedback_submitted_at) return;
+    if (s.status !== "completed") return;
+    const name = nameById.get(s.mentee_id) || "Mentee";
+    const dateStr = format(new Date(s.start_time), "d MMM yyyy");
+    const email = emailById.get(s.mentee_id);
+    const contact = email ? ` (${email})` : "";
+    alerts.push({
+      severity: "info",
+      alert_type: "mentoring_feedback",
+      title: `${name} — mentor feedback missing (completed session)`,
+      message: `The mentor hasn't submitted feedback for ${name}'s mentoring session on ${dateStr}${contact}.`,
+      related_coachee_id: s.mentee_id,
+      resolved: false,
+    });
+  });
+
+  return alerts;
+}

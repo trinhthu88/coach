@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Check, RefreshCw, Flag, Users, BarChart3, Calendar as CalendarIcon, PanelsTopLeft, type LucideIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
-import { buildFeedbackAlerts } from "./alertScan";
+import { buildFeedbackAlerts, buildMentoringPrepFileOverdueAlerts, buildMentoringFeedbackOverdueAlerts } from "./alertScan";
 import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -64,6 +64,8 @@ const TYPE_ICON: Record<string, LucideIcon> = {
   feedback_response: BarChart3,
   coach_capacity: CalendarIcon,
   renewal: PanelsTopLeft,
+  mentoring_prep_file: BarChart3,
+  mentoring_feedback: BarChart3,
 };
 
 function scopeFor(a: Alert, t: (key: string) => string) {
@@ -99,6 +101,7 @@ export default function AdminAlerts() {
         { data: peerFeedback },
         { data: profiles },
         { data: enrollments },
+        { data: mentoringSessions },
       ] = await Promise.all([
         supabase
           .from("sessions")
@@ -109,6 +112,9 @@ export default function AdminAlerts() {
         supabase.from("peer_session_competency_feedback").select("peer_session_id"),
         supabase.from("profiles").select("id, full_name, email"),
         supabase.from("programme_enrollments").select("id, coachee_id, status, progress_pct"),
+        supabase
+          .from("mentoring_sessions")
+          .select("id, mentee_id, status, start_time, prep_file_path, feedback_submitted_at"),
       ]);
 
       const profById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.full_name]));
@@ -166,10 +172,31 @@ export default function AdminAlerts() {
         })
       );
 
+      // Missing prep file / mentor feedback — mentoring sessions
+      newAlerts.push(
+        ...buildMentoringPrepFileOverdueAlerts({
+          mentoringSessions: mentoringSessions || [],
+          nameById: profById,
+          emailById,
+          now,
+        }),
+        ...buildMentoringFeedbackOverdueAlerts({
+          mentoringSessions: mentoringSessions || [],
+          nameById: profById,
+          emailById,
+        })
+      );
+
       await supabase
         .from("admin_alerts")
         .delete()
-        .in("alert_type", ["overdue_actions", "programme_at_risk", "feedback_response"])
+        .in("alert_type", [
+          "overdue_actions",
+          "programme_at_risk",
+          "feedback_response",
+          "mentoring_prep_file",
+          "mentoring_feedback",
+        ])
         .eq("resolved", false);
       if (newAlerts.length) await supabase.from("admin_alerts").insert(newAlerts);
 
