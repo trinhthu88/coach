@@ -29,32 +29,16 @@ export default function MentoringFindMentor() {
     if (!user) return;
     setLoading(true);
     setError(null);
-    // RLS-filtered (MentoringAllowlist: mentee view own) — don't re-derive
-    // eligibility client-side, same accepted pattern as CoachFindCoach.tsx.
-    const { data, error: err } = await supabase
-      .from("mentoring_allowlist")
-      .select(
-        "mentor_user_id, mentor_profiles!inner(is_active, bio, expertise_tags, profiles!inner(full_name, avatar_url))"
-      )
-      .eq("mentee_user_id", user.id);
+    // Single source of truth: get_my_mentors() (mentoring_get_my_mentors
+    // migration) does the allowlist + is_active filtering server-side, so
+    // this list can't drift from what can_book_mentoring_session() allows.
+    const { data, error: err } = await supabase.rpc("get_my_mentors");
     if (err) {
       setError(getFriendlyErrorMessage(err, t));
       setLoading(false);
       return;
     }
-    const rows = ((data as unknown as {
-      mentor_user_id: string;
-      mentor_profiles: { is_active: boolean; bio: string | null; expertise_tags: string[] | null; profiles: { full_name: string; avatar_url: string | null } };
-    }[]) || [])
-      .filter((r) => r.mentor_profiles?.is_active)
-      .map((r) => ({
-        mentor_user_id: r.mentor_user_id,
-        bio: r.mentor_profiles.bio,
-        expertise_tags: r.mentor_profiles.expertise_tags,
-        full_name: r.mentor_profiles.profiles.full_name,
-        avatar_url: r.mentor_profiles.profiles.avatar_url,
-      }));
-    setMentors(rows);
+    setMentors((data as MentorRow[]) || []);
     setLoading(false);
   }, [user, t]);
 

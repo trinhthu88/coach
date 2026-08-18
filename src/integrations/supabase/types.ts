@@ -1833,6 +1833,16 @@ export type Database = {
           used_this_month: number
         }[]
       }
+      get_my_mentors: {
+        Args: never
+        Returns: {
+          avatar_url: string | null
+          bio: string | null
+          expertise_tags: string[] | null
+          full_name: string
+          mentor_user_id: string
+        }[]
+      }
       get_own_coach_invite_slots: {
         Args: never
         Returns: {
