@@ -142,8 +142,8 @@ export default function AdminProgrammes() {
         {rows.map((p) => (
           <Card key={p.id} className="p-4">
             <div className="mb-1 flex items-start justify-between gap-2">
-              <h3 className="text-base font-semibold">{p.name}</h3>
-              <Pill tone={p.is_active ? "success" : "muted"}>{p.is_active ? t("programmes.active") : t("programmes.disabled")}</Pill>
+              <h3 className="min-w-0 truncate text-base font-semibold">{p.name}</h3>
+              <Pill tone={p.is_active ? "success" : "muted"} className="shrink-0">{p.is_active ? t("programmes.active") : t("programmes.disabled")}</Pill>
             </div>
             <p className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">{t("programmes.hspGroup")}</p>
             {p.description && <p className="mt-2 text-[12px] text-muted-foreground">{p.description}</p>}

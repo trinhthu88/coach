@@ -105,9 +105,11 @@ export function SectionCard({
 export function Pill({
   children,
   tone = "muted",
+  className,
 }: {
   children: ReactNode;
   tone?: "muted" | "primary" | "success" | "warning" | "destructive" | "accent" | "secondary";
+  className?: string;
 }) {
   const map: Record<string, string> = {
     muted: "bg-muted text-muted-foreground",
@@ -119,7 +121,7 @@ export function Pill({
     secondary: "bg-secondary text-secondary-foreground",
   };
   return (
-    <span className={cn("inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold", map[tone])}>
+    <span className={cn("inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold", map[tone], className)}>
       {children}
     </span>
   );

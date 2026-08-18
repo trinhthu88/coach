@@ -188,8 +188,8 @@ export default function AdminCoachProgrammes() {
         {rows.map((p) => (
           <Card key={p.id} className="p-4">
             <div className="mb-1 flex items-start justify-between gap-2">
-              <h3 className="text-base font-semibold">{p.name}</h3>
-              <Pill tone={p.is_active ? "success" : "muted"}>{p.is_active ? t("coachProgrammes.active") : t("coachProgrammes.disabled")}</Pill>
+              <h3 className="min-w-0 truncate text-base font-semibold">{p.name}</h3>
+              <Pill tone={p.is_active ? "success" : "muted"} className="shrink-0">{p.is_active ? t("coachProgrammes.active") : t("coachProgrammes.disabled")}</Pill>
             </div>
             {p.description && <p className="mt-2 text-[12px] text-muted-foreground">{p.description}</p>}
             <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">

@@ -175,11 +175,11 @@ export default function AdminOrganizations() {
           return (
             <Card key={o.id} className="p-4">
               <div className="mb-2 flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" />
-                  <h3 className="text-base font-semibold">{o.name}</h3>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Building2 className="h-4 w-4 shrink-0 text-primary" />
+                  <h3 className="truncate text-base font-semibold">{o.name}</h3>
                 </div>
-                {o.industry && <Pill tone="secondary">{o.industry}</Pill>}
+                {o.industry && <Pill tone="secondary" className="shrink-0">{o.industry}</Pill>}
               </div>
 
               <p className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">

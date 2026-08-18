@@ -105,9 +105,9 @@ export default function AdminCohorts() {
           const prog = progs.find((p) => p.id === c.programme_id);
           return (
             <Card key={c.id} className="p-4">
-              <div className="mb-2 flex items-start justify-between">
-                <h3 className="text-base font-semibold">{c.name}</h3>
-                {prog && <Pill tone="primary">{prog.name}</Pill>}
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <h3 className="min-w-0 truncate text-base font-semibold">{c.name}</h3>
+                {prog && <Pill tone="primary" className="shrink-0">{prog.name}</Pill>}
               </div>
               {c.description && <p className="text-[12px] text-muted-foreground">{c.description}</p>}
               <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
