@@ -38,7 +38,7 @@ interface DashboardEnrollmentRow {
 }
 
 export default function AdminDashboard() {
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -208,7 +208,7 @@ export default function AdminDashboard() {
           value={stats.sessionsThisMonth}
           icon={Calendar}
           tone="primary"
-          hint={t("dashboard.toDateSuffix", { month: format(new Date(), "MMMM") })}
+          hint={t("dashboard.toDateSuffix", { month: format(new Date(), i18n.language === "vi" ? "M" : "MMMM") })}
         />
         <StatCard
           label={t("dashboard.statCompletionRate")}

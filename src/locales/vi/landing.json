@@ -6,80 +6,80 @@
     "signIn": "Đăng nhập",
     "requestAccess": "Yêu cầu quyền truy cập",
     "requestAccessShort": "Yêu cầu",
-    "howItWorks": "Cách thức hoạt động"
+    "howItWorks": "Tìm hiểu cách hoạt động"
   },
   "hero": {
     "badge": "Riêng tư · Theo lời mời · Coach được thẩm định",
-    "titleLine1": "Thị trường riêng tư",
+    "titleLine1": "Nền tảng riêng tư",
     "titleLine2": "dành cho",
-    "titleEmphasis": "coaching đỉnh cao.",
-    "subtitle": "Coach được thẩm định. Tiến bộ thực sự. Kết quả đo lường được. Một nền tảng riêng tư, theo lời mời kết nối các lãnh đạo hàng đầu với các coach đẳng cấp thế giới — đặt lịch, session và phát triển trong một nơi duy nhất."
+    "titleEmphasis": "những trải nghiệm coaching chuyên biệt.",
+    "subtitle": "Coach được thẩm định. Lộ trình phát triển cá nhân hóa. Kết quả đo lường được. Một nền tảng riêng tư, theo lời mời kết nối các lãnh đạo hàng đầu với các coach xuất sắc — đặt lịch, tham gia và theo dõi hành trình phát triển, tất cả trong một nền tảng."
   },
   "trustStrip": {
-    "icfCertified": "Chỉ coach có chứng chỉ ICF",
-    "encrypted": "Session được mã hóa đầu cuối",
-    "inviteOnly": "Chỉ truy cập theo lời mời",
-    "vetted": "Coach được thẩm định kỹ lưỡng",
-    "competencyTracking": "Theo dõi năng lực ICF tích hợp sẵn"
+    "icfCertified": "Coach được chứng nhận ICF",
+    "encrypted": "Mã hóa đầu cuối cho mọi phiên làm việc",
+    "inviteOnly": "Quyền truy cập theo lời mời",
+    "vetted": "Coach được thẩm định nghiêm ngặt",
+    "competencyTracking": "Tích hợp theo dõi năng lực theo tiêu chuẩn ICF"
   },
   "howItWorks": {
     "eyebrow": "Cách thức hoạt động",
-    "titleLine1": "Từ lời mời",
+    "titleLine1": "Từ lời mời kết nối",
     "titleLine2Lead": "đến",
-    "titleEmphasis": "sự rõ ràng lâu dài",
-    "subtitle": "Clariva được xây dựng xoay quanh hành trình coaching — không chỉ là phần mềm lên lịch. Mọi tính năng đều được thiết kế để bảo vệ công việc và thúc đẩy kết quả.",
+    "titleEmphasis": "những thay đổi bền vững",
+    "subtitle": "Clariva được xây dựng xoay quanh trọn vẹn hành trình coaching, thay vì chỉ là một nền tảng đặt lịch. Mỗi tính năng đều được thiết kế để bảo mật quá trình coaching, duy trì sự tập trung và tạo ra kết quả thực chất.",
     "steps": {
-      "match": { "n": "01", "title": "Được ghép nối", "desc": "Yêu cầu quyền truy cập và nhận các đề xuất coach được tuyển chọn dựa trên mục tiêu, ngành nghề và bối cảnh lãnh đạo của bạn. Mỗi sự kết hợp đều có chủ đích." },
-      "book": { "n": "02", "title": "Đặt lịch và kết nối", "desc": "Lên lịch trực tiếp trong nền tảng. Các session video diễn ra ngay trong Clariva — không có liên kết bên thứ ba, không nhầm lẫn, không mất kết nối." },
-      "track": { "n": "03", "title": "Theo dõi hành trình của bạn", "desc": "Đặt mục tiêu, ghi lại các cột mốc, nắm bắt các hành động cần làm. Hành trình coaching của bạn được ghi lại, hiển thị và luôn tiến triển — qua từng session." }
+      "match": { "n": "01", "title": "Kết nối đúng chuyên gia", "desc": "Gửi yêu cầu tham gia và nhận đề xuất các chuyên gia coaching phù hợp với mục tiêu, lĩnh vực hoạt động và bối cảnh lãnh đạo. Mỗi kết nối đều được lựa chọn dựa trên sự phù hợp thực tế." },
+      "book": { "n": "02", "title": "Đặt lịch và bắt đầu phiên coaching", "desc": "Đặt lịch trực tiếp trên nền tảng. Các phiên coaching được thực hiện ngay trên Clariva — không cần sử dụng liên kết từ nền tảng khác, không phải chuyển đổi giữa nhiều công cụ, không gián đoạn trải nghiệm." },
+      "track": { "n": "03", "title": "Theo dõi tiến trình phát triển", "desc": "Thiết lập mục tiêu, ghi nhận các cột mốc và lưu lại những việc cần thực hiện. Toàn bộ tiến trình coaching được hệ thống hóa, dễ theo dõi và liên tục được cập nhật qua từng phiên." }
     }
   },
   "forBoth": {
-    "eyebrow": "Được xây dựng cho cả hai phía",
-    "titleLine1Lead": "Dành cho các lãnh đạo",
-    "titleLine1Emphasis": "dẫn dắt",
-    "titleLine2Lead": "và những người",
+    "eyebrow": "Thiết kế cho cả hai",
+    "titleLine1Lead": "Dành cho những nhà",
+    "titleLine1Emphasis": "lãnh đạo",
+    "titleLine2Lead": "và những người đồng hành cùng họ trên hành trình",
     "titleLine2Emphasis": "phát triển",
-    "titleLine2Trail": "họ",
+    "titleLine2Trail": "",
     "coachees": {
       "eyebrow": "Dành cho học viên",
-      "titleLead": "Coach",
+      "titleLead": "Người đồng hành giúp bạn",
       "titleEmphasis": "nhìn thấy",
-      "titleTrail": "điều tiếp theo.",
-      "sub": "Các lãnh đạo hàng đầu không tự tìm coach — họ được ghép nối. Mô hình theo lời mời của Clariva kết nối bạn với các coach phù hợp với đúng bối cảnh lãnh đạo của bạn.",
+      "titleTrail": "bước tiến tiếp theo",
+      "sub": "Các nhà lãnh đạo hàng đầu không cần tự mình tìm kiếm chuyên gia coaching — họ được kết nối với coach phù hợp. Mô hình hoạt động theo lời mời của Clariva giúp học viên kết nối với những chuyên gia đã được thẩm định, phù hợp với mục tiêu và bối cảnh lãnh đạo cụ thể.",
       "features": [
-        "Ghép nối coach được tuyển chọn dựa trên mục tiêu, ngành nghề và cấp độ lãnh đạo của bạn",
-        "Đặt lịch trực tiếp với lịch trống theo thời gian thực — không cần trao đổi email qua lại",
-        "Theo dõi mục tiêu, cột mốc và hành động cần làm trong suốt hành trình coaching của bạn",
-        "Nhắn tin an toàn trong nền tảng giữa các session",
-        "Tóm tắt session và suy ngẫm được lưu trữ riêng tư trong nhật ký hành trình của bạn"
+        "Kết nối với chuyên gia phù hợp dựa trên mục tiêu, lĩnh vực hoạt động và cấp độ lãnh đạo",
+        "Đặt lịch trực tiếp theo thời gian còn trống thực tế — không cần trao đổi qua lại bằng email",
+        "Theo dõi mục tiêu, cột mốc và các việc cần thực hiện trong suốt hành trình coaching",
+        "Trao đổi riêng tư, bảo mật với chuyên gia ngay trên nền tảng giữa các phiên",
+        "Lưu lại tóm tắt và ghi nhận sau mỗi phiên trong nhật ký hành trình cá nhân"
       ]
     },
     "coaches": {
-      "eyebrow": "Dành cho coach",
-      "titleLead": "Một hoạt động chuyên nghiệp",
-      "titleEmphasis": "nghiêm túc",
-      "titleTrail": "như chính nghề của bạn.",
-      "sub": "Clariva chỉ nhận coach qua đơn đăng ký. Nếu được chấp nhận, bạn sẽ có cơ sở hạ tầng phù hợp với tiêu chuẩn chuyên môn của mình — và những khách hàng sẵn sàng làm việc.",
+      "eyebrow": "Dành cho chuyên gia coaching",
+      "titleLead": "Một nền tảng được xây dựng",
+      "titleEmphasis": "tương xứng",
+      "titleTrail": "với chuyên môn",
+      "sub": "Clariva tiếp nhận chuyên gia coaching thông qua quy trình đăng ký và xét duyệt. Khi được chấp thuận, bạn có một hệ thống hỗ trợ toàn diện cho hoạt động chuyên môn — cùng những khách hàng thực sự nghiêm túc với quá trình phát triển.",
       "features": [
-        "Hồ sơ coach công khai với chứng chỉ, chuyên môn và đánh giá từ học viên",
-        "Quản lý lịch trống và đồng bộ lịch — không còn hỗn loạn trong việc lên lịch",
-        "Biểu đồ năng lực ICF — xem điểm mạnh và điểm cần phát triển của bạn trong nháy mắt",
-        "Giám sát đồng nghiệp có cấu trúc với các đồng nghiệp có chứng chỉ — hỗ trợ sự phát triển liên tục của bạn",
-        "Bảng phân tích hoạt động — session, đánh giá và xu hướng theo thời gian"
+        "Hồ sơ chuyên gia công khai với chứng chỉ, chuyên môn và đánh giá từ khách hàng",
+        "Quản lý lịch và đồng bộ lịch làm việc — không mất thời gian xử lý lịch hẹn",
+        "Biểu đồ năng lực ICF — nhanh chóng nhận diện thế mạnh và những năng lực cần tiếp tục phát triển",
+        "Giám sát chuyên môn theo cấu trúc cùng các đồng nghiệp — hỗ trợ quá trình nâng cao năng lực nghề nghiệp liên tục",
+        "Bảng phân tích hoạt động coaching — theo dõi số phiên, đánh giá và xu hướng phát triển theo thời gian"
       ]
     }
   },
   "statsStrip": {
-    "credentialed": { "num": "100", "em": "%", "label": "Coach có chứng chỉ ICF" },
-    "rating": { "num": "4", "em": ".8", "label": "Đánh giá trung bình của coach" },
-    "outcomes": { "num": "94", "em": "%", "label": "Lãnh đạo báo cáo kết quả có thể đo lường được" },
-    "speed": { "num": "3", "em": "×", "label": "Tiến độ mục tiêu nhanh hơn so với tự phát triển" }
+    "credentialed": { "num": "100", "em": "%", "label": "Đội ngũ chuyên gia sở hữu chứng nhận ICF" },
+    "rating": { "num": "4,8", "em": "/5", "label": "Điểm đánh giá trung bình từ khách hàng" },
+    "outcomes": { "num": "94", "em": "%", "label": "Nhà lãnh đạo ghi nhận kết quả rõ rệt" },
+    "speed": { "num": "3", "em": "×", "label": "Tiến độ đạt mục tiêu nhanh hơn so với tự phát triển" }
   },
   "testimonials": {
-    "eyebrow": "Mọi người nói gì",
-    "titleLine1": "Sự rõ ràng thực sự.",
-    "titleEmphasis": "Động lực thực sự.",
+    "eyebrow": "Khách hàng nói gì",
+    "titleLine1": "Rõ ràng hơn.",
+    "titleEmphasis": "Tiến xa hơn.",
     "james": {
       "quotePrefix": "\"Tôi đến với một thách thức lãnh đạo phức tạp. Sau ba session, tôi đã có ",
       "quoteEmphasis": "sự rõ ràng tuyệt đối về hướng đi",
@@ -106,12 +106,12 @@
     }
   },
   "ctaBanner": {
-    "eyebrow": "Chỉ dành cho khách mời",
+    "eyebrow": "Theo lời mời",
     "titleLine1": "Những cuộc trò chuyện",
-    "titleLine2Lead": "quan trọng nhất của bạn",
+    "titleLine2Lead": "quan trọng nhất",
     "titleLine2Emphasis": "xứng đáng",
-    "titleLine3": "một nền tảng nghiêm túc.",
-    "subtitle": "Clariva là một thị trường riêng tư, theo lời mời. Quyền truy cập được cấp qua đơn đăng ký. Nếu bạn sẵn sàng làm việc ở cấp độ cao nhất, chúng tôi sẵn sàng cho bạn."
+    "titleLine3": "có một không gian được đầu tư nghiêm túc",
+    "subtitle": "Clariva là nền tảng riêng tư, hoạt động theo hình thức mời tham gia, kết nối những người phù hợp với các chuyên gia coaching đã được tuyển chọn."
   },
   "footer": {
     "tagline": "Thị trường riêng tư dành cho dịch vụ coaching điều hành cao cấp. Coach được thẩm định. Tiến bộ thực sự. Kết quả đo lường được.",
@@ -147,7 +147,7 @@
     "stats": {
       "coach": [
         { "l": "Session đã hoàn thành", "v": "1" },
-        { "l": "Session đồng nghiệp", "v": "1" },
+        { "l": "Session đồng cấp", "v": "1" },
         { "l": "Sắp tới", "v": "2" },
         { "l": "Đánh giá trung bình", "v": "4.0" }
       ],

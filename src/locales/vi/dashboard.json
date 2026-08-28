@@ -61,7 +61,7 @@
       "actionsOpen": "Hành động đang mở",
       "actionsOpenHint": "Trên tất cả session",
       "upcoming": "Sắp tới",
-      "upcomingHint": "Đã đặt"
+      "upcomingHint": "Đã đặt lịch"
     },
     "nextSession": {
       "label": "Session tiếp theo",
@@ -114,7 +114,7 @@
       "coaching": "Coaching",
       "activeClients_other": "{{count}} khách hàng đang hoạt động",
       "peerCoaching": "Peer coaching",
-      "availableForPeers": "Sẵn sàng cho đồng nghiệp",
+      "availableForPeers": "Sẵn sàng cho đồng cấp",
       "notOptedIn": "Chưa tham gia",
       "coachee": "Học viên",
       "openToBeingCoached": "Sẵn sàng được coaching"
@@ -122,8 +122,8 @@
     "stats": {
       "sessionsCompleted": "Session đã hoàn thành",
       "sessionsCompletedHint": "Với vai trò coach",
-      "peerSessions": "Session đồng nghiệp",
-      "peerSessionsHint": "Session đồng nghiệp đã hoàn thành",
+      "peerSessions": "Session đồng cấp",
+      "peerSessionsHint": "Session đồng cấp đã hoàn thành",
       "upcoming": "Sắp tới",
       "upcomingHint": "Đã xác nhận",
       "avgRating": "Đánh giá trung bình",
@@ -142,10 +142,10 @@
       "viewDetails": "Xem chi tiết"
     },
     "peerRequests": {
-      "title": "Yêu cầu đồng nghiệp",
+      "title": "Yêu cầu đồng cấp",
       "noneOptedIn": "Tham gia peer coaching từ Lịch trống của tôi.",
-      "noneAvailable": "Hiện chưa có yêu cầu đồng nghiệp nào.",
-      "defaultPeer": "Đồng nghiệp",
+      "noneAvailable": "Hiện chưa có yêu cầu đồng cấp nào.",
+      "defaultPeer": "Đồng cấp",
       "reviewInSessions": "Xem trong session"
     },
     "bookingRequests": {
@@ -167,14 +167,14 @@
     },
     "kindPill": {
       "coaching": "Coaching",
-      "peerGive": "Đồng nghiệp · cho",
-      "peerReceive": "Đồng nghiệp · nhận"
+      "peerGive": "Đồng cấp · thực hiện",
+      "peerReceive": "Đồng cấp · nhận"
     },
     "practiceJourneyPreview": {
       "title": "Xem trước hành trình thực hành",
       "empty": "Các session peer coaching và session bạn đã coaching sẽ hiển thị ở đây.",
       "sessionsDelivered": "Session đã thực hiện",
-      "peerSessionsCompleted": "Session đồng nghiệp đã hoàn thành",
+      "peerSessionsCompleted": "Session đồng cấp đã hoàn thành",
       "open": "Mở hành trình thực hành"
     }
   },
@@ -279,8 +279,8 @@
       "updateFailedTitle": "Cập nhật không thành công",
       "peerEnabledTitle": "Đã bật peer coaching",
       "peerDisabledTitle": "Đã tắt peer coaching",
-      "peerEnabledDescription": "Các coach khác giờ đây có thể đặt khung giờ đồng nghiệp của bạn.",
-      "peerDisabledDescription": "Khung giờ đồng nghiệp của bạn đã được ẩn khỏi đồng nghiệp.",
+      "peerEnabledDescription": "Các coach khác giờ đây có thể đặt khung giờ đồng cấp của bạn.",
+      "peerDisabledDescription": "Khung giờ đồng cấp của bạn đã được ẩn khỏi các đồng cấp.",
       "invalidTimeTitle": "Thời gian không hợp lệ",
       "invalidTimeDescription": "Giờ kết thúc phải sau giờ bắt đầu.",
       "addFailedTitle": "Thêm không thành công",
@@ -298,15 +298,15 @@
     "peerOptIn": {
       "title": "Sẵn sàng cho peer coaching",
       "bodyPrefix": "Khi bật, các coach khác có thể đặt các khung giờ",
-      "bodyBold": "đồng nghiệp",
+      "bodyBold": "đồng cấp",
       "bodySuffix": "của bạn để được bạn coaching. Các khung giờ coaching của bạn vẫn được dành riêng cho học viên."
     },
     "legend": {
       "label": "Chú giải",
       "coachingSlot": "Khung giờ coaching",
-      "peerSlot": "Khung giờ đồng nghiệp",
+      "peerSlot": "Khung giờ đồng cấp",
       "mentoringSlot": "Khung giờ mentoring",
-      "booked": "Đã đặt"
+      "booked": "Đã đặt lịch"
     },
     "weekdays": {
       "mon": "T2",
@@ -321,16 +321,16 @@
     "pickADay": "Chọn một ngày",
     "selectDayPrompt": "Chọn một ngày trên lịch để quản lý các khung giờ.",
     "noSlotsForDay": "Chưa có khung giờ nào cho ngày này.",
-    "slotTypePeer": "Đồng nghiệp",
+    "slotTypePeer": "Đồng cấp",
     "slotTypeCoaching": "Coaching",
     "slotTypeMentoring": "Mentoring",
-    "bookedBadge": "Đã đặt",
+    "bookedBadge": "Đã đặt lịch",
     "addASlot": "Thêm khung giờ",
     "enablePeerFirst": "Bật peer coaching ở trên trước",
     "notAMentor": "Bạn chưa được thiết lập là mentor — hãy liên hệ admin",
     "add": "Thêm",
     "slotTypeGroupLabel": "Loại khung giờ",
-    "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} đồng nghiệp, {{mentoring}} mentoring",
+    "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} đồng cấp, {{mentoring}} mentoring",
     "dayLabelEmpty": "{{date}}: không có khung giờ"
   },
   "practiceJourney": {
@@ -351,11 +351,11 @@
     "counters": {
       "sessionsReceivedTitle": "Session đã nhận",
       "sessionsReceivedSubtitle": "Từ một coach",
-      "peerGivenTitle": "Session đồng nghiệp đã cho",
-      "peerGivenSubtitle": "Bạn với vai trò coach đồng nghiệp",
-      "peerReceivedTitle": "Session đồng nghiệp đã nhận",
-      "peerReceivedSubtitle": "Bạn với vai trò học viên đồng nghiệp",
-      "booked": "Đã đặt",
+      "peerGivenTitle": "Session đồng cấp đã thực hiện",
+      "peerGivenSubtitle": "Bạn với vai trò coach đồng cấp",
+      "peerReceivedTitle": "Session đồng cấp đã nhận",
+      "peerReceivedSubtitle": "Bạn với vai trò học viên đồng cấp",
+      "booked": "Đã đặt lịch",
       "completed": "Đã hoàn thành"
     },
     "tabs": {
@@ -366,22 +366,22 @@
     },
     "radarTitle": "Năng lực ICF trung bình (0–100)",
     "averageLegend": "Trung bình",
-    "noFeedbackYet": "Chưa có phản hồi nào — đánh giá đầu tiên từ học viên đồng nghiệp của bạn sẽ xuất hiện ở đây.",
+    "noFeedbackYet": "Chưa có phản hồi nào — đánh giá đầu tiên từ học viên đồng cấp của bạn sẽ xuất hiện ở đây.",
     "strengths": "Điểm mạnh",
     "growthEdges": "Điểm cần phát triển",
     "noDataYet": "Chưa có dữ liệu.",
     "trendTitle": "Điểm năng lực theo thời gian",
     "noFeedbackYetShort": "Chưa có phản hồi nào.",
     "fromPrefix": "từ",
-    "defaultPeer": "Đồng nghiệp",
+    "defaultPeer": "Đồng cấp",
     "noWrittenNote": "Chưa có ghi chú bằng văn bản nào được cung cấp.",
     "noWrittenFeedbackYet": "Chưa có phản hồi bằng văn bản nào.",
     "noEntriesYet": "Chưa có mục nào.",
     "withPrefix": "với",
     "kindBadge": {
       "coached": "Coaching",
-      "peerGiven": "Đồng nghiệp · đã cho",
-      "peerReceived": "Đồng nghiệp · đã nhận"
+      "peerGiven": "Đồng cấp · đã thực hiện",
+      "peerReceived": "Đồng cấp · đã nhận"
     },
     "modeBadge": "Sự phát triển năng lực của bạn"
   }

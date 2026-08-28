@@ -80,10 +80,10 @@
       "eyebrow": "Cộng đồng",
       "titleLead": "Peer",
       "titleEmphasis": "coaching",
-      "subtitle": "Các coach đã tham gia peer coaching. Đặt session để được coaching bởi một coach đồng nghiệp."
+      "subtitle": "Các coach đã tham gia peer coaching. Đặt session để được coaching bởi một coach đồng cấp."
     },
-    "empty": "Hiện chưa có coach đồng nghiệp nào khả dụng. Vui lòng quay lại sau.",
-    "defaultTitle": "Coach đồng nghiệp",
+    "empty": "Hiện chưa có coach đồng cấp nào khả dụng. Vui lòng quay lại sau.",
+    "defaultTitle": "Coach đồng cấp",
     "view": "Xem",
     "bookPeer": "Đặt session",
     "retry": "Thử lại"

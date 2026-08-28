@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Loader2, Calendar, MessagesSquare, UserPlus, Star } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
 import { AdminPageHeader } from "./_shared";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +53,7 @@ interface MilestoneActivityRow {
 }
 
 export default function AdminActivity() {
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -156,7 +157,7 @@ export default function AdminActivity() {
                     <p className="text-sm font-medium text-foreground">{it.title}</p>
                     <p className="text-[11px] text-muted-foreground">{it.sub}</p>
                   </div>
-                  <span className="text-[11px] text-muted-foreground">{formatDistanceToNow(it.at, { addSuffix: true })}</span>
+                  <span className="text-[11px] text-muted-foreground">{formatDistanceToNow(it.at, { addSuffix: true, locale: i18n.language === "vi" ? vi : undefined })}</span>
                 </li>
               );
             })}

@@ -9,10 +9,10 @@
   "actionRow": {
     "markAsDone": "Đánh dấu đã hoàn thành",
     "markAsNotDone": "Đánh dấu chưa hoàn thành",
-    "done": "Đã xong",
+    "done": "Đã hoàn thành",
     "overdue": "Quá hạn",
     "due": "Đến hạn",
-    "sourcePeer": "Đồng nghiệp",
+    "sourcePeer": "Đồng cấp",
     "sourceCoaching": "Coaching"
   },
   "programmeCard": {
@@ -22,8 +22,8 @@
     "leadCoach": "Coach chính",
     "specialist": "Chuyên gia",
     "coachTag": "Coach",
-    "peerTag": "Đồng nghiệp",
-    "coachPeerTag": "Coach + Đồng nghiệp",
+    "peerTag": "Đồng cấp",
+    "coachPeerTag": "Coach + Đồng cấp",
     "programme": "Chương trình",
     "weekOf": "Tuần {{current}} / {{total}}",
     "sessionsReceived": "Session đã nhận",
@@ -89,7 +89,7 @@
     "showDetails": "Hiện chi tiết ▾",
     "reflectionNote": "Ghi chú suy ngẫm",
     "actionItemsFromSession": "Hành động cần làm từ session này",
-    "peerCoachPrefix": "Coach đồng nghiệp",
+    "peerCoachPrefix": "Coach đồng cấp",
     "coachPrefix": "Coach"
   },
   "journeyPage": {
@@ -118,7 +118,7 @@
     "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây."
   },
   "coachMyJourney": {
-    "subtitle": "Sự phát triển của bạn với vai trò học viên — qua các session coaching và session đồng nghiệp bạn nhận được.",
+    "subtitle": "Sự phát triển của bạn với vai trò học viên — qua các session coaching và session đồng cấp bạn nhận được.",
     "metrics": {
       "overallProgress": "Tiến độ tổng thể",
       "overallProgressSub_other": "trên {{count}} mục tiêu",

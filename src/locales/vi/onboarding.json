@@ -32,7 +32,7 @@
     "calendar": {
       "days": ["T2", "T3", "T4", "T5", "T6"],
       "open": "Trống",
-      "booked": "Đã đặt"
+      "booked": "Đã đặt lịch"
     },
     "privacy": {
       "insideHeader": "BÊN TRONG SESSION",
@@ -83,9 +83,9 @@
     },
     "peer": {
       "give": { "label": "Peer coaching · cho", "note": "Bạn coaching cho một coach đã chứng nhận khác" },
-      "receive": { "label": "Peer coaching · nhận", "note": "Một đồng nghiệp coaching cho bạn" },
+      "receive": { "label": "Peer coaching · nhận", "note": "Một đồng cấp coaching cho bạn" },
       "findCoach": { "label": "Tìm coach", "note": "Đặt lịch với một coach cho chính mình" },
-      "analytics": { "label": "Phân tích thực hành", "note": "Số giờ, session đồng nghiệp, suy ngẫm" }
+      "analytics": { "label": "Phân tích thực hành", "note": "Số giờ, session đồng cấp, suy ngẫm" }
     },
     "clientsSponsor": {
       "leader07": { "label": "Lãnh đạo 07", "note": "Không có session trong 5 tuần" },

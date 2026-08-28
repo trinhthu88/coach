@@ -40,10 +40,10 @@
       "coaching": "Đặt session của bạn"
     },
     "subtitle": {
-      "peer": "Bạn đang đặt một session đồng nghiệp — để được coaching bởi một coach khác.",
+      "peer": "Bạn đang đặt một session đồng cấp — để được coaching bởi một coach khác.",
       "coaching": "Chọn thời lượng và thời gian ưa thích của bạn để bắt đầu."
     },
-    "peerBadge": "Đồng nghiệp",
+    "peerBadge": "Đồng cấp",
     "freePlanNotice": {
       "prefix": "Bạn đã sử dụng hết {{limit}} session {{modeWord}} miễn phí của mình. Các gói trả phí với nhiều session hơn sắp ra mắt — liên hệ",
       "suffix": "nếu bạn muốn thảo luận về các lựa chọn."
@@ -67,7 +67,7 @@
     "toast": {
       "slotTaken": "Khung giờ đó vừa được người khác đặt. Vui lòng chọn khung giờ khác.",
       "notEligible": "Bạn hiện không thể đặt session này — quyền truy cập của bạn với coach này hoặc giới hạn session của bạn có thể đã thay đổi. Vui lòng làm mới và thử lại.",
-      "successPeer": "Đã yêu cầu session đồng nghiệp. Đang chờ coach đồng nghiệp xác nhận.",
+      "successPeer": "Đã yêu cầu session đồng cấp. Đang chờ coach đồng cấp xác nhận.",
       "successCoaching": "Đã yêu cầu session. Đang chờ coach xác nhận."
     }
   },
@@ -113,7 +113,7 @@
       "backToSessions": "Về danh sách session"
     },
     "allSessions": "Tất cả session",
-    "missingRequirementHintPeer": "Đang chờ phản hồi năng lực từ học viên đồng nghiệp trước khi session này có thể được đánh dấu hoàn thành.",
+    "missingRequirementHintPeer": "Đang chờ phản hồi năng lực từ học viên đồng cấp trước khi session này có thể được đánh dấu hoàn thành.",
     "missingRequirementHintCoaching": "Đang chờ suy ngẫm của học viên trước khi session này có thể được đánh dấu hoàn thành.",
     "toast": {
       "progressSaved": "Đã lưu tiến độ",
@@ -197,7 +197,7 @@
     },
     "peerFeedback": {
       "eyebrow": "Phản hồi năng lực ICF",
-      "heading": "Đánh giá coach đồng nghiệp của bạn",
+      "heading": "Đánh giá coach đồng cấp của bạn",
       "readOnlySuffix": "(chỉ đọc)",
       "subtitle": "Chấm điểm 8 năng lực coaching ICF từ 0 đến 100.",
       "competencies": {
