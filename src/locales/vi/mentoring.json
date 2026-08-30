@@ -7,7 +7,8 @@
     "retry": "Thử lại",
     "empty": "Bạn chưa được gán mentor nào. Hãy liên hệ admin để được ghép cặp.",
     "mentorLabel": "Mentor",
-    "book": "Đặt lịch"
+    "book": "Đặt lịch",
+    "mentorFull": "Hiện không nhận thêm buổi mới"
   },
   "bookSession": {
     "backToMentors": "Về danh sách mentor",
@@ -25,6 +26,14 @@
     "title": "Đặt buổi mentoring",
     "subtitle": "Chọn thời lượng và thời gian ưa thích của bạn để bắt đầu.",
     "ineligible": "Bạn hiện không đủ điều kiện để đặt lịch với mentor này. Quyền truy cập của bạn có thể đã thay đổi — vui lòng liên hệ quản trị viên nếu điều này có vẻ không đúng.",
+    "ineligibleReasons": {
+      "received_limit_reached": "Bạn đã đạt giới hạn số buổi Mentoring theo chương trình của mình.",
+      "given_limit_reached": "Mentor này hiện không nhận thêm buổi mới."
+    },
+    "usage": {
+      "used": "Đã dùng {{used}}/{{limit}} buổi Mentoring",
+      "usedUnlimited": "Đã dùng {{used}} buổi Mentoring"
+    },
     "steps": {
       "duration": "Chọn thời lượng",
       "durationOption": "{{n}} phút",

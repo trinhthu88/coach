@@ -9,6 +9,7 @@ import { Loader2, AlertTriangle, Handshake } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { cn } from "@/lib/utils";
 
 interface MentorRow {
   mentor_user_id: string;
@@ -16,6 +17,7 @@ interface MentorRow {
   expertise_tags: string[] | null;
   full_name: string;
   avatar_url: string | null;
+  atCapacity?: boolean;
 }
 
 export default function MentoringFindMentor() {
@@ -38,8 +40,23 @@ export default function MentoringFindMentor() {
       setLoading(false);
       return;
     }
-    setMentors((data as MentorRow[]) || []);
+    const rows = (data as MentorRow[]) || [];
+    setMentors(rows);
     setLoading(false);
+
+    // Small N (allowlists are curated), cheap to check each mentor's given-side
+    // capacity so a full mentor shows as unavailable before the user picks them.
+    const withCapacity = await Promise.all(
+      rows.map(async (m) => {
+        const { data: usageRows } = await supabase.rpc("check_mentoring_given_usage", {
+          p_mentor_id: m.mentor_user_id,
+        });
+        const usage = (usageRows as { limit_count: number | null; used_count: number }[] | null)?.[0];
+        const atCapacity = !!usage && usage.limit_count !== null && usage.used_count >= usage.limit_count;
+        return { ...m, atCapacity };
+      })
+    );
+    setMentors(withCapacity);
   }, [user, t]);
 
   useEffect(() => {
@@ -76,7 +93,13 @@ export default function MentoringFindMentor() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {mentors.map((m) => (
-            <div key={m.mentor_user_id} className="surface-card hover-lift flex flex-col gap-3 p-5">
+            <div
+              key={m.mentor_user_id}
+              className={cn(
+                "surface-card flex flex-col gap-3 p-5",
+                m.atCapacity ? "opacity-60" : "hover-lift"
+              )}
+            >
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-sm font-bold text-secondary-foreground">
                   {m.avatar_url ? (
@@ -104,9 +127,15 @@ export default function MentoringFindMentor() {
               )}
 
               <div className="mt-auto pt-1">
-                <Button asChild size="sm" className="w-full">
-                  <Link to={`/mentoring/mentors/${m.mentor_user_id}/book`}>{t("findMentor.book")}</Link>
-                </Button>
+                {m.atCapacity ? (
+                  <Button size="sm" className="w-full" disabled>
+                    {t("findMentor.mentorFull")}
+                  </Button>
+                ) : (
+                  <Button asChild size="sm" className="w-full">
+                    <Link to={`/mentoring/mentors/${m.mentor_user_id}/book`}>{t("findMentor.book")}</Link>
+                  </Button>
+                )}
               </div>
             </div>
           ))}

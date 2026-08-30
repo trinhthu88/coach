@@ -68,9 +68,12 @@ export default function MentoringBookSession() {
   const [topic, setTopic] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [bookerBusy, setBookerBusy] = useState<{ start: number; end: number }[]>([]);
-  // Authoritative "can I book this mentor" answer from can_book_mentoring_session(),
-  // the same function the mentoring_sessions INSERT RLS policy calls.
+  // Authoritative "can I book this mentor" answer from
+  // can_book_mentoring_session_reason(), the same function the
+  // mentoring_sessions INSERT RLS policy's boolean wrapper calls.
   const [eligible, setEligible] = useState<boolean | null>(null);
+  const [ineligibleReason, setIneligibleReason] = useState<string | null>(null);
+  const [usage, setUsage] = useState<{ limit_count: number | null; used_count: number } | null>(null);
 
   useEffect(() => {
     if (!mentorId) return;
@@ -136,10 +139,13 @@ export default function MentoringBookSession() {
             });
           setBookerBusy([...toBusy(mySess), ...toBusy(myPeer), ...toBusy(myMentoring)]);
 
-          const { data: canBook } = await supabase.rpc("check_can_book_mentoring_session", {
-            p_mentor_id: mentorId,
-          });
-          setEligible(canBook ?? false);
+          const [{ data: reason }, { data: usageRows }] = await Promise.all([
+            supabase.rpc("check_can_book_mentoring_session_reason", { p_mentor_id: mentorId }),
+            supabase.rpc("check_mentoring_session_usage"),
+          ]);
+          setEligible((reason ?? "forbidden") === "ok");
+          setIneligibleReason(reason ?? null);
+          setUsage((usageRows as { limit_count: number | null; used_count: number }[] | null)?.[0] ?? null);
         }
         setLoading(false);
       } catch (err) {
@@ -283,12 +289,21 @@ export default function MentoringBookSession() {
               {t("bookSession.title")}
             </h1>
             <p className="text-sm text-muted-foreground">{t("bookSession.subtitle")}</p>
+            {usage && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {usage.limit_count === null
+                  ? t("bookSession.usage.usedUnlimited", { used: usage.used_count })
+                  : t("bookSession.usage.used", { used: usage.used_count, limit: usage.limit_count })}
+              </p>
+            )}
           </div>
 
           {eligible === false && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
-              {t("bookSession.ineligible")}
+              {ineligibleReason === "received_limit_reached" || ineligibleReason === "given_limit_reached"
+                ? t(`bookSession.ineligibleReasons.${ineligibleReason}`)
+                : t("bookSession.ineligible")}
             </div>
           )}
 

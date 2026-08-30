@@ -7,7 +7,8 @@
     "retry": "Try again",
     "empty": "You don't have any mentors assigned yet. Ask your admin to pair you with one.",
     "mentorLabel": "Mentor",
-    "book": "Book a session"
+    "book": "Book a session",
+    "mentorFull": "Not accepting new sessions right now"
   },
   "bookSession": {
     "backToMentors": "Back to mentors",
@@ -25,6 +26,14 @@
     "title": "Book a mentoring session",
     "subtitle": "Select your preferred duration and time to get started.",
     "ineligible": "You're not currently eligible to book this mentor. Your access may have changed — please contact your admin if this seems wrong.",
+    "ineligibleReasons": {
+      "received_limit_reached": "You've reached your mentoring session limit for your programme.",
+      "given_limit_reached": "This mentor isn't taking new sessions right now."
+    },
+    "usage": {
+      "used": "{{used}} of {{limit}} mentoring sessions used",
+      "usedUnlimited": "{{used}} mentoring sessions used"
+    },
     "steps": {
       "duration": "Select duration",
       "durationOption": "{{n}} Minutes",
