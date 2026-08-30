@@ -10,14 +10,15 @@ beforeEach(async () => {
 // Mock the supabase client's rpc() so the dashboard renders from
 // controlled fixture data instead of hitting the network. Each sponsor_*
 // function is looked up by name. Also mock the .from("organizations")
-// lookup used for the header's org name.
+// lookup used for the header's org name (maybeSingle, not single — a
+// sponsor not yet linked to an org legitimately gets zero rows here).
 const rpcResponses: Record<string, unknown> = {};
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: (fn: string) => Promise.resolve({ data: rpcResponses[fn], error: null }),
     from: () => ({
       select: () => ({
-        single: async () => ({ data: { name: "Acme Corp" } }),
+        maybeSingle: async () => ({ data: { name: "Acme Corp" } }),
       }),
     }),
   },

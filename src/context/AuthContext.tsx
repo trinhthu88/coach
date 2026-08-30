@@ -71,6 +71,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setRole(null);
     }
+    // Only the load whose results actually apply (seq check above passed) may
+    // clear isLoading — see the initial-session-race regression test. Supabase's
+    // onAuthStateChange can fire an INITIAL_SESSION event before getSession()'s
+    // own callback runs; when it does, currentUserIdRef.current is still null,
+    // so it's misread as a real account transition (wipes role/profile) and
+    // schedules its own deferred loadProfileAndRole. That leaves two concurrent
+    // calls in flight for the same user — the seq mechanism already ensures only
+    // the later one's role/profile apply, but isLoading used to be cleared by
+    // getSession()'s own .finally() regardless of which call actually "won,"
+    // so a render could see isLoading:false with role still null (the discarded
+    // call's wipe, not yet overwritten by the winning call) and bounce a
+    // role-gated route. Clearing isLoading here — in lockstep with the role it
+    // just set — closes that window entirely.
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -116,9 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(existing);
       setUser(existing?.user ?? null);
       if (existing?.user) {
-        loadProfileAndRole(existing.user.id).finally(() => {
-          if (mounted) setIsLoading(false);
-        });
+        // isLoading is cleared inside loadProfileAndRole itself now — only by
+        // whichever call's results actually apply (see the comment there).
+        loadProfileAndRole(existing.user.id);
       } else {
         setIsLoading(false);
       }

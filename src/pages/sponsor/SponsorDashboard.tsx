@@ -46,8 +46,10 @@ export default function SponsorDashboard() {
   useEffect(() => {
     if (!user) return;
     // RLS ("Organizations: sponsor view own") already scopes this to exactly
-    // the caller's own org, so no id lookup is needed first.
-    supabase.from("organizations").select("name").single().then(({ data }) => {
+    // the caller's own org, so no id lookup is needed first. maybeSingle()
+    // (not single()) because a sponsor account not yet linked to an
+    // organization legitimately has zero rows here — single() 406s on that.
+    supabase.from("organizations").select("name").maybeSingle().then(({ data }) => {
       if (data) setOrgName(data.name);
     });
   }, [user]);
