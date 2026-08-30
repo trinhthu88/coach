@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ProgrammeOpt } from "./useAdminCoacheesData";
 import type { Row } from "@/pages/admin/coachees/coacheeDisplay";
+import { upsertCoacheeEnrollment } from "@/lib/enrollmentTransition";
 
 /**
  * Imports a Name/Email/Programme spreadsheet against the coachees list:
@@ -60,7 +61,15 @@ export function useCoacheeProgrammeImport(programmes: ProgrammeOpt[], rows: Row[
           const existing = rows.find((x) => x.email.toLowerCase() === email);
           if (existing) {
             if (existing.enrollment_id) {
-              await supabase.from("programme_enrollments").update({ programme_id: prog.id }).eq("id", existing.enrollment_id);
+              // Transition rather than update-in-place — a bare update would
+              // silently lose history if this person's programme is actually
+              // changing (and would violate ux_programme_enrollments_one_active
+              // if it tried to insert a second active row instead).
+              await upsertCoacheeEnrollment(
+                existing.id,
+                { id: existing.enrollment_id, programme_id: existing.programme_id ?? null },
+                { programme_id: prog.id }
+              );
             } else {
               enrollPayload.push({ coachee_id: existing.id, programme_id: prog.id });
             }

@@ -170,6 +170,14 @@
     "programme": "Programme",
     "cohortPrefix": "Cohort · {{name}}",
     "programmeProgress": "Programme progress",
+    "enrollmentHistory": "Enrollment history",
+    "noEnrollmentsYet": "No enrollments yet.",
+    "enrollmentStatus": {
+      "active": "Active",
+      "completed": "Completed",
+      "paused": "Paused",
+      "at_risk": "At risk"
+    },
     "goalsAndRatings": "Goals & ratings",
     "noActiveGoals": "No active goals.",
     "start": "Start",
@@ -332,11 +340,17 @@
     "tableHeaders": {
       "coach": "Coach",
       "coachProgramme": "Coach programme",
-      "change": "Change"
+      "change": "Change",
+      "history": "History"
     },
     "notEnrolled": "Not enrolled",
     "selectCoachProgrammePlaceholder": "Select a coach programme…",
     "noCoachesYet": "No coaches yet.",
+    "viewHistory_one": "View history ({{count}})",
+    "viewHistory_other": "View history ({{count}})",
+    "hideHistory": "Hide history",
+    "noHistory": "No enrollment history yet.",
+    "completedStatus": "Completed",
     "dialogTitleEdit": "Edit coach programme",
     "dialogTitleNew": "New coach programme",
     "nameLabel": "Name",

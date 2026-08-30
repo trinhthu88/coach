@@ -17,7 +17,7 @@ interface CoacheeProfileSheetProps {
 
 export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) {
   const { t } = useTranslation("admin");
-  const { loading, goals, sessions, profileData } = useCoacheeProfileDetail(row?.id);
+  const { loading, goals, sessions, profileData, enrollments } = useCoacheeProfileDetail(row?.id);
 
   if (!row) return null;
   const pct = programmeCompletionPct(row.enrollment_start_date, row.programme_duration_months);
@@ -84,6 +84,34 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Full enrollment history — a person can have exactly one active
+              enrollment at a time but any number of completed ones over time */}
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Layers className="h-3 w-3" /> {t("coacheeProfileSheet.enrollmentHistory")}
+            </p>
+            <div className="space-y-1.5">
+              {enrollments.length === 0 && (
+                <p className="rounded-lg border border-dashed p-3 text-center text-[12px] text-muted-foreground">{t("coacheeProfileSheet.noEnrollmentsYet")}</p>
+              )}
+              {enrollments.map((e) => (
+                <div key={e.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-[12px]">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{e.programme_name}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {format(new Date(e.start_date), "MMM d, yyyy")}
+                      {e.end_date ? ` – ${format(new Date(e.end_date), "MMM d, yyyy")}` : ""}
+                      {e.cohort_name ? ` · ${e.cohort_name}` : ""}
+                    </p>
+                  </div>
+                  <Pill tone={e.status === "active" ? "success" : e.status === "at_risk" ? "warning" : "muted"}>
+                    {t(`coacheeProfileSheet.enrollmentStatus.${e.status}`)}
+                  </Pill>
+                </div>
+              ))}
             </div>
           </div>
 

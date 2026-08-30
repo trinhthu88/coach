@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Row } from "@/pages/admin/coachees/coacheeDisplay";
+import { upsertCoacheeEnrollment } from "@/lib/enrollmentTransition";
 
 /**
  * Owns the two write actions available from the coachee edit drawer: saving
@@ -45,22 +46,19 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
         await supabase.from("coachee_coach_allowlist").delete().eq("coachee_id", editing.id).eq("coach_id", cid);
       }
 
-      // Programme/cohort/organization
+      // Programme/cohort/organization. A programme change transitions
+      // (closes the old active row as history) rather than overwriting
+      // programme_id in place — see enrollmentTransition.ts.
       if (editing.programme_id) {
-        if (editing.enrollment_id) {
-          await supabase.from("programme_enrollments").update({
-            programme_id: editing.programme_id,
-            cohort_id: editing.cohort_id,
-            organization_id: editing.organization_id,
-          }).eq("id", editing.enrollment_id);
-        } else {
-          await supabase.from("programme_enrollments").insert({
-            coachee_id: editing.id,
-            programme_id: editing.programme_id,
-            cohort_id: editing.cohort_id,
-            organization_id: editing.organization_id,
-          });
-        }
+        const existing = editing.enrollment_id
+          ? { id: editing.enrollment_id, programme_id: original?.programme_id ?? null }
+          : null;
+        const { error } = await upsertCoacheeEnrollment(editing.id, existing, {
+          programme_id: editing.programme_id,
+          cohort_id: editing.cohort_id,
+          organization_id: editing.organization_id,
+        });
+        if (error) throw error;
       } else if (editing.enrollment_id) {
         await supabase.from("programme_enrollments").delete().eq("id", editing.enrollment_id);
       }

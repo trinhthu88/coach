@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { upsertCoachEnrollment } from "@/lib/enrollmentTransition";
 
 interface CoachProgramme {
   id: string;
@@ -35,6 +36,7 @@ interface CoachRow {
   email: string;
   enrollment_id: string | null;
   coach_programme_id: string | null;
+  history: { id: string; coach_programme_id: string; status: string; start_date: string; end_date: string | null }[];
 }
 
 const empty: Partial<CoachProgramme> = {
@@ -62,6 +64,7 @@ export default function AdminCoachProgrammes() {
   const [editing, setEditing] = useState<Partial<CoachProgramme> | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingCoachId, setSavingCoachId] = useState<string | null>(null);
+  const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
   const load = async () => {
@@ -71,24 +74,36 @@ export default function AdminCoachProgrammes() {
         supabase.from("coach_programmes").select("*").order("created_at"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("profiles").select("id, full_name, email"),
-        supabase.from("coach_programme_enrollments").select("id, coach_id, coach_programme_id"),
+        supabase
+          .from("coach_programme_enrollments")
+          .select("id, coach_id, coach_programme_id, status, start_date, end_date")
+          .order("start_date", { ascending: false }),
       ]);
     setRows((programmes || []) as unknown as CoachProgramme[]);
 
     const coachIds = (roles || []).filter((r) => r.role === "coach").map((r) => r.user_id);
     const profileById = new Map((profiles || []).map((p) => [p.id, p]));
-    const enrollByCoach = new Map((enrollments || []).map((e) => [e.coach_id, e]));
+    // A coach can now have multiple rows over time (one active + any number
+    // completed) — group by coach, current assignment is whichever is active.
+    const historyByCoach = new Map<string, NonNullable<typeof enrollments>>();
+    (enrollments || []).forEach((e) => {
+      const arr = historyByCoach.get(e.coach_id) || [];
+      arr.push(e);
+      historyByCoach.set(e.coach_id, arr);
+    });
     const coachRows: CoachRow[] = coachIds
       .map((id): CoachRow | null => {
         const p = profileById.get(id);
         if (!p) return null;
-        const enr = enrollByCoach.get(id);
+        const history = historyByCoach.get(id) || [];
+        const active = history.find((e) => e.status === "active");
         return {
           id,
           full_name: p.full_name,
           email: p.email,
-          enrollment_id: enr?.id ?? null,
-          coach_programme_id: enr?.coach_programme_id ?? null,
+          enrollment_id: active?.id ?? null,
+          coach_programme_id: active?.coach_programme_id ?? null,
+          history,
         };
       })
       .filter((r): r is CoachRow => r !== null);
@@ -154,12 +169,8 @@ export default function AdminCoachProgrammes() {
   const changeEnrollment = async (coach: CoachRow, coachProgrammeId: string) => {
     setSavingCoachId(coach.id);
     try {
-      const { error } = await supabase
-        .from("coach_programme_enrollments")
-        .upsert(
-          { coach_id: coach.id, coach_programme_id: coachProgrammeId, start_date: new Date().toISOString().slice(0, 10) },
-          { onConflict: "coach_id" }
-        );
+      const existing = coach.enrollment_id ? { id: coach.enrollment_id, coach_programme_id: coach.coach_programme_id } : null;
+      const { error } = await upsertCoachEnrollment(coach.id, existing, coachProgrammeId);
       if (error) throw error;
       toast.success(t("coachProgrammes.coachProgrammeUpdated", { name: coach.full_name }));
       load();
@@ -248,41 +259,76 @@ export default function AdminCoachProgrammes() {
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachProgrammes.tableHeaders.coach")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachProgrammes.tableHeaders.coachProgramme")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachProgrammes.tableHeaders.change")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachProgrammes.tableHeaders.history")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {coaches.map((c) => {
                 const prog = c.coach_programme_id ? progById.get(c.coach_programme_id) : null;
+                const expanded = expandedCoachId === c.id;
                 return (
-                  <tr key={c.id} className="hover:bg-muted/30">
-                    <td className="px-3 py-2.5">
-                      <p className="font-medium">{c.full_name}</p>
-                      <p className="text-[10px] text-muted-foreground">{c.email}</p>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {prog ? prog.name : <span className="italic text-muted-foreground">{t("coachProgrammes.notEnrolled")}</span>}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <Select
-                        value={c.coach_programme_id || ""}
-                        onValueChange={(v) => changeEnrollment(c, v)}
-                        disabled={savingCoachId === c.id}
-                      >
-                        <SelectTrigger className="w-56">
-                          <SelectValue placeholder={t("coachProgrammes.selectCoachProgrammePlaceholder")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {rows.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                  </tr>
+                  <Fragment key={c.id}>
+                    <tr className="hover:bg-muted/30">
+                      <td className="px-3 py-2.5">
+                        <p className="font-medium">{c.full_name}</p>
+                        <p className="text-[10px] text-muted-foreground">{c.email}</p>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {prog ? prog.name : <span className="italic text-muted-foreground">{t("coachProgrammes.notEnrolled")}</span>}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <Select
+                          value={c.coach_programme_id || ""}
+                          onValueChange={(v) => changeEnrollment(c, v)}
+                          disabled={savingCoachId === c.id}
+                        >
+                          <SelectTrigger className="w-56">
+                            <SelectValue placeholder={t("coachProgrammes.selectCoachProgrammePlaceholder")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rows.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <Button variant="ghost" size="sm" onClick={() => setExpandedCoachId(expanded ? null : c.id)}>
+                          {expanded ? t("coachProgrammes.hideHistory") : t("coachProgrammes.viewHistory", { count: c.history.length })}
+                        </Button>
+                      </td>
+                    </tr>
+                    {expanded && (
+                      <tr className="bg-muted/20">
+                        <td colSpan={4} className="px-3 py-2.5">
+                          {c.history.length === 0 ? (
+                            <p className="text-[11px] italic text-muted-foreground">{t("coachProgrammes.noHistory")}</p>
+                          ) : (
+                            <div className="space-y-1">
+                              {c.history.map((h) => (
+                                <div key={h.id} className="flex items-center justify-between rounded-md border bg-card px-2.5 py-1.5 text-[11px]">
+                                  <span>
+                                    {progById.get(h.coach_programme_id)?.name || "—"}
+                                    <span className="ml-2 text-muted-foreground">
+                                      {h.start_date}
+                                      {h.end_date ? ` – ${h.end_date}` : ""}
+                                    </span>
+                                  </span>
+                                  <Pill tone={h.status === "active" ? "success" : "muted"}>
+                                    {h.status === "active" ? t("coachProgrammes.active") : t("coachProgrammes.completedStatus")}
+                                  </Pill>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
               {coaches.length === 0 && (
-                <tr><td colSpan={3} className="p-8 text-center text-sm text-muted-foreground">{t("coachProgrammes.noCoachesYet")}</td></tr>
+                <tr><td colSpan={4} className="p-8 text-center text-sm text-muted-foreground">{t("coachProgrammes.noCoachesYet")}</td></tr>
               )}
             </tbody>
           </table>

@@ -166,6 +166,14 @@
     "programme": "Chương trình",
     "cohortPrefix": "Nhóm · {{name}}",
     "programmeProgress": "Tiến độ chương trình",
+    "enrollmentHistory": "Lịch sử ghi danh",
+    "noEnrollmentsYet": "Chưa có lượt ghi danh nào.",
+    "enrollmentStatus": {
+      "active": "Đang hoạt động",
+      "completed": "Đã hoàn thành",
+      "paused": "Tạm dừng",
+      "at_risk": "Có rủi ro"
+    },
     "goalsAndRatings": "Mục tiêu & đánh giá",
     "noActiveGoals": "Chưa có mục tiêu nào đang hoạt động.",
     "start": "Bắt đầu",
@@ -326,11 +334,16 @@
     "tableHeaders": {
       "coach": "Coach",
       "coachProgramme": "Chương trình coach",
-      "change": "Thay đổi"
+      "change": "Thay đổi",
+      "history": "Lịch sử"
     },
     "notEnrolled": "Chưa ghi danh",
     "selectCoachProgrammePlaceholder": "Chọn một chương trình coach…",
     "noCoachesYet": "Chưa có coach nào.",
+    "viewHistory_other": "Xem lịch sử ({{count}})",
+    "hideHistory": "Ẩn lịch sử",
+    "noHistory": "Chưa có lịch sử ghi danh.",
+    "completedStatus": "Đã hoàn thành",
     "dialogTitleEdit": "Sửa chương trình coach",
     "dialogTitleNew": "Chương trình coach mới",
     "nameLabel": "Tên",

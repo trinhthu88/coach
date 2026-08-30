@@ -18,6 +18,7 @@ import {
   Loader2, Search, FileDown, Eye, Star, Users, Pencil, Save,
 } from "lucide-react";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { upsertCoacheeEnrollment } from "@/lib/enrollmentTransition";
 
 function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
   if (!startDate || !durationMonths) return null;
@@ -300,17 +301,19 @@ export default function AdminCoaches() {
       }
 
       // 3. Programme enrollment (mandatory). Coach is treated as coachee here.
-      if (editing.enrollment_id) {
-        await supabase.from("programme_enrollments").update({
-          cohort_id: editing.cohort_id,
-          programme_id: editing.programme_id,
-        }).eq("id", editing.enrollment_id);
-      } else {
-        await supabase.from("programme_enrollments").insert({
-          coachee_id: editing.id,
+      // A programme change transitions (closes the old active row, keeping
+      // it as history) rather than overwriting programme_id in place —
+      // ux_programme_enrollments_one_active only allows one active row per
+      // person, and a bare update-in-place would silently lose history.
+      if (editing.programme_id) {
+        const existing = editing.enrollment_id
+          ? { id: editing.enrollment_id, programme_id: original?.programme_id ?? null }
+          : null;
+        const { error } = await upsertCoacheeEnrollment(editing.id, existing, {
           programme_id: editing.programme_id,
           cohort_id: editing.cohort_id,
         });
+        if (error) throw error;
       }
 
       toast.success(t("coaches.coachUpdated"));
