@@ -87,5 +87,50 @@
     "view": "Xem",
     "bookPeer": "Đặt session",
     "retry": "Thử lại"
+  },
+  "coacheePeerPractice": {
+    "header": {
+      "eyebrow": "Cộng đồng",
+      "titleLead": "Thực hành",
+      "titleEmphasis": "đồng cấp",
+      "subtitle": "Các học viên đã tham gia thực hành đồng cấp. Đặt một buổi để cùng thực hành."
+    },
+    "empty": "Hiện chưa có đối tác thực hành đồng cấp nào khả dụng. Vui lòng quay lại sau.",
+    "defaultTitle": "Đối tác thực hành đồng cấp",
+    "book": "Đặt lịch",
+    "retry": "Thử lại",
+    "bookSession": {
+      "back": "Về danh sách thực hành đồng cấp",
+      "title": "Đặt buổi thực hành đồng cấp",
+      "subtitle": "Chọn thời lượng và thời gian ưa thích của bạn để bắt đầu.",
+      "steps": {
+        "duration": "Chọn thời lượng",
+        "durationOption": "{{n}} phút",
+        "date": "Chọn ngày",
+        "time": "Chọn giờ ({{timezone}})"
+      },
+      "pickDatePrompt": "Chọn một ngày ở trên để xem giờ trống.",
+      "noWindowAvailable": "Không có khung giờ {{duration}} phút nào khả dụng trong ngày này.",
+      "topicLabel": "Bạn muốn tập trung vào điều gì?",
+      "topicPlaceholder": "Chia sẻ mục tiêu của bạn cho buổi thực hành này",
+      "selectedScheduleLabel": "Lịch đã chọn",
+      "selectATimeSlot": "Chọn một khung giờ",
+      "durationBadge": "{{n}} phút",
+      "confirmButton": "Xác nhận đặt lịch",
+      "toast": {
+        "slotTaken": "Khung giờ này vừa được người khác đặt. Vui lòng chọn khung giờ khác.",
+        "notEligible": "Bạn hiện không thể đặt lịch với đối tác này — lịch trống của họ có thể đã thay đổi. Vui lòng làm mới và thử lại.",
+        "success": "Đã gửi yêu cầu buổi thực hành đồng cấp. Đang chờ xác nhận."
+      },
+      "loadError": {
+        "title": "Không thể tải trang này",
+        "body": "Đã xảy ra lỗi khi tải lịch trống của đối tác này. Vui lòng thử lại.",
+        "retry": "Thử lại"
+      },
+      "partnerNotFound": {
+        "title": "Không tìm thấy đối tác",
+        "back": "Về danh sách thực hành đồng cấp"
+      }
+    }
   }
 }

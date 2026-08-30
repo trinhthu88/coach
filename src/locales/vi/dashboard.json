@@ -333,6 +333,17 @@
     "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} đồng cấp, {{mentoring}} mentoring",
     "dayLabelEmpty": "{{date}}: không có khung giờ"
   },
+  "coacheeAvailability": {
+    "eyebrow": "Học viên",
+    "titleLead": "Lịch trống",
+    "titleEmphasis": "của tôi",
+    "subtitle": "Thiết lập các khung giờ mà học viên khác có thể đặt buổi thực hành đồng cấp với bạn.",
+    "peerOptIn": {
+      "title": "Sẵn sàng thực hành đồng cấp",
+      "body": "Khi bật, các học viên khác có thể đặt khung giờ trống của bạn để cùng thực hành."
+    },
+    "dayLabelWithSlots": "{{date}}: {{count}} khung giờ"
+  },
   "practiceJourney": {
     "eyebrow": "Thực hành",
     "titleLead": "Phân tích",

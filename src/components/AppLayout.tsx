@@ -60,6 +60,8 @@ const NAV: NavItem[] = [
   { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches" },
   { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"] },
   { to: "/coachee/journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coachee"] },
+  { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.myPracticeJourney" },
+  { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.myPracticeJourney" },
 
   // Coach — My Coaching Profile
   { to: "/coach/profile", labelKey: "nav.myCoachProfile", icon: IdCard, roles: ["coach"], groupKey: "navGroups.myCoachingProfile" },

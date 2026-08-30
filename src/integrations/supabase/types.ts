@@ -534,6 +534,42 @@ export type Database = {
         }
         Relationships: []
       }
+      coachee_availability: {
+        Row: {
+          coachee_id: string
+          created_at: string
+          end_time: string
+          id: string
+          is_booked: boolean
+          session_id: string | null
+          slot_date: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          coachee_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          is_booked?: boolean
+          session_id?: string | null
+          slot_date: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          coachee_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_booked?: boolean
+          session_id?: string | null
+          slot_date?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coachee_coach_allowlist: {
         Row: {
           coach_id: string
@@ -685,6 +721,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      coachee_peer_sessions: {
+        Row: {
+          action_items: Json
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          meeting_url: string | null
+          peer_provider_id: string
+          peer_receiver_id: string
+          provider_notes: string | null
+          provider_private_notes: string | null
+          receiver_notes: string | null
+          receiver_rated_at: string | null
+          receiver_rating: number | null
+          receiver_rating_comment: string | null
+          slot_id: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["session_status"]
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          action_items?: Json
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          meeting_url?: string | null
+          peer_provider_id: string
+          peer_receiver_id: string
+          provider_notes?: string | null
+          provider_private_notes?: string | null
+          receiver_notes?: string | null
+          receiver_rated_at?: string | null
+          receiver_rating?: number | null
+          receiver_rating_comment?: string | null
+          slot_id?: string | null
+          start_time: string
+          status?: Database["public"]["Enums"]["session_status"]
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          action_items?: Json
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_url?: string | null
+          peer_provider_id?: string
+          peer_receiver_id?: string
+          provider_notes?: string | null
+          provider_private_notes?: string | null
+          receiver_notes?: string | null
+          receiver_rated_at?: string | null
+          receiver_rating?: number | null
+          receiver_rating_comment?: string | null
+          slot_id?: string | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       coachee_profiles: {
         Row: {
@@ -1220,6 +1331,7 @@ export type Database = {
           last_profile_update_at: string
           must_change_password: boolean
           onboarding_completed_at: string | null
+          peer_coaching_opt_in: boolean
           preferred_language: string
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
@@ -1234,6 +1346,7 @@ export type Database = {
           last_profile_update_at?: string
           must_change_password?: boolean
           onboarding_completed_at?: string | null
+          peer_coaching_opt_in?: boolean
           preferred_language?: string
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
@@ -1248,6 +1361,7 @@ export type Database = {
           last_profile_update_at?: string
           must_change_password?: boolean
           onboarding_completed_at?: string | null
+          peer_coaching_opt_in?: boolean
           preferred_language?: string
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string

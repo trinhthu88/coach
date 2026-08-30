@@ -22,6 +22,7 @@ const Coaches = lazy(() => import("./pages/Coaches"));
 const CoachDetail = lazy(() => import("./pages/CoachDetail"));
 const CoachProfileEditor = lazy(() => import("./pages/CoachProfileEditor"));
 const CoachAvailability = lazy(() => import("./pages/CoachAvailability"));
+const CoacheeAvailability = lazy(() => import("./pages/CoacheeAvailability"));
 const CoacheeProfileEditor = lazy(() => import("./pages/CoacheeProfileEditor"));
 const Sessions = lazy(() => import("./pages/Sessions"));
 const SessionDetail = lazy(() => import("./pages/SessionDetail"));
@@ -33,6 +34,8 @@ const CoachClients = lazy(() => import("./pages/CoachClients"));
 const CoacheeJourney = lazy(() => import("./pages/CoacheeJourney"));
 const CoachFindCoach = lazy(() => import("./pages/CoachFindCoach"));
 const CoachPeerCoaching = lazy(() => import("./pages/CoachPeerCoaching"));
+const CoacheePeerPractice = lazy(() => import("./pages/CoacheePeerPractice"));
+const CoacheePeerBookSession = lazy(() => import("./pages/CoacheePeerBookSession"));
 const CoachPracticeJourney = lazy(() => import("./pages/CoachPracticeJourney"));
 const CoachMyJourney = lazy(() => import("./pages/CoachMyJourney"));
 const AdminCoaches = lazy(() => import("./pages/admin/AdminCoaches"));
@@ -180,6 +183,30 @@ const App = () => (
                     element={
                       <ProtectedRoute role="coachee">
                         <CoacheeJourney />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coachee/availability"
+                    element={
+                      <ProtectedRoute role="coachee">
+                        <CoacheeAvailability />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coachee/peer-practice"
+                    element={
+                      <ProtectedRoute role="coachee">
+                        <CoacheePeerPractice />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/coachee/peer-practice/:partnerId/book"
+                    element={
+                      <ProtectedRoute role="coachee">
+                        <CoacheePeerBookSession />
                       </ProtectedRoute>
                     }
                   />

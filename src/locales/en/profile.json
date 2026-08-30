@@ -86,5 +86,50 @@
     "view": "View",
     "bookPeer": "Book peer",
     "retry": "Try again"
+  },
+  "coacheePeerPractice": {
+    "header": {
+      "eyebrow": "Community",
+      "titleLead": "Peer",
+      "titleEmphasis": "practice",
+      "subtitle": "Coachees who have opted in to peer practice. Book a session to practice together."
+    },
+    "empty": "No peer practice partners available right now. Check back soon.",
+    "defaultTitle": "Peer practice partner",
+    "book": "Book a session",
+    "retry": "Try again",
+    "bookSession": {
+      "back": "Back to peer practice",
+      "title": "Book a peer practice session",
+      "subtitle": "Select your preferred duration and time to get started.",
+      "steps": {
+        "duration": "Select duration",
+        "durationOption": "{{n}} Minutes",
+        "date": "Select date",
+        "time": "Select time ({{timezone}})"
+      },
+      "pickDatePrompt": "Pick a date above to see times.",
+      "noWindowAvailable": "No {{duration}}-minute window available on this day.",
+      "topicLabel": "What would you like to focus on?",
+      "topicPlaceholder": "Share your goals for this practice session",
+      "selectedScheduleLabel": "Selected schedule",
+      "selectATimeSlot": "Select a time slot",
+      "durationBadge": "{{n}} min",
+      "confirmButton": "Confirm Booking",
+      "toast": {
+        "slotTaken": "That time was just booked by someone else. Please pick another slot.",
+        "notEligible": "You're not able to book this partner right now — their availability may have changed. Please refresh and try again.",
+        "success": "Peer practice session requested. Awaiting confirmation."
+      },
+      "loadError": {
+        "title": "Couldn't load this page",
+        "body": "Something went wrong while loading this partner's availability. Please try again.",
+        "retry": "Try again"
+      },
+      "partnerNotFound": {
+        "title": "Partner not found",
+        "back": "Back to peer practice"
+      }
+    }
   }
 }

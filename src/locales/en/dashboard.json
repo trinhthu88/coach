@@ -343,6 +343,17 @@
     "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} peer, {{mentoring}} mentoring",
     "dayLabelEmpty": "{{date}}: no slots"
   },
+  "coacheeAvailability": {
+    "eyebrow": "Coachee",
+    "titleLead": "My",
+    "titleEmphasis": "availability",
+    "subtitle": "Set the time slots when other coachees can book peer practice with you.",
+    "peerOptIn": {
+      "title": "Available for peer practice",
+      "body": "When on, other coachees can book your open slots to practice together."
+    },
+    "dayLabelWithSlots": "{{date}}: {{count}} slots"
+  },
   "practiceJourney": {
     "eyebrow": "Practice",
     "titleLead": "Practice",
