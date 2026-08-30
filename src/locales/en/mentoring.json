@@ -58,6 +58,7 @@
     "withCounterpart": "With {{name}}",
     "minutes": "min",
     "joinMeeting": "Join meeting",
+    "joinLockedPrepFile": "Join opens once the preparation file is submitted",
     "confirmSession": "Confirm session",
     "markComplete": "Mark complete",
     "markedComplete": "Marked complete",

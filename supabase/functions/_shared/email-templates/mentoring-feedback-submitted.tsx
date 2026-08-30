@@ -26,6 +26,8 @@ interface MentoringFeedbackSubmittedEmailProps {
   whenFormatted: string
   competencies: Competency[]
   overallNotes?: string | null
+  /** True when this copy goes to the mentor who wrote the feedback, not the mentee it's about. */
+  recipientIsMentor?: boolean
 }
 
 export const MentoringFeedbackSubmittedEmail = ({
@@ -35,16 +37,23 @@ export const MentoringFeedbackSubmittedEmail = ({
   whenFormatted,
   competencies,
   overallNotes,
+  recipientIsMentor,
 }: MentoringFeedbackSubmittedEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>{mentorName} shared feedback on your mentoring session</Preview>
+    <Preview>
+      {recipientIsMentor ? 'A copy of the feedback you submitted for your mentoring session' : `${mentorName} shared feedback on your mentoring session`}
+    </Preview>
     <Body style={main}>
       <Container style={container}>
         <Img src={LOGO_URL} width="132" height="44" alt="Clariva" style={logo} />
         <Heading style={h1}>Mentor feedback is ready</Heading>
         <Text style={text}>
-          Hi {recipientName}, <strong>{mentorName}</strong> shared feedback on your mentoring session.
+          {recipientIsMentor ? (
+            <>Hi {recipientName}, here's a copy of the feedback you submitted for your mentoring session.</>
+          ) : (
+            <>Hi {recipientName}, <strong>{mentorName}</strong> shared feedback on your mentoring session.</>
+          )}
         </Text>
         <Text style={muted}>Topic</Text>
         <Text style={{ ...text, margin: '0 0 16px' }}>{topic}</Text>

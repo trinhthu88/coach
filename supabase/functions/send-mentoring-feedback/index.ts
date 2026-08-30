@@ -6,8 +6,8 @@ import { sendEmail } from "../_shared/send-email.ts";
 import { MentoringFeedbackSubmittedEmail } from "../_shared/email-templates/mentoring-feedback-submitted.tsx";
 
 // Invoked from useMentoringFeedback.ts right after the mentor submits
-// feedback. Mentee-only, per spec — the mentor already knows what they
-// wrote, so no copy is sent back to them.
+// feedback. Sent to both mentor and mentee, per spec — the mentor gets a
+// copy of what they submitted, the mentee gets the feedback itself.
 
 const COMPETENCY_LABELS: Record<string, string> = {
   ethical_practice: "Demonstrates Ethical Practice",
@@ -120,35 +120,37 @@ Deno.serve(async (req) => {
     const byId = new Map((participants ?? []).map((p) => [p.id, p]));
     const mentorProfile = byId.get(session.mentor_id);
     const menteeProfile = byId.get(session.mentee_id);
-    if (!menteeProfile?.email) {
-      return new Response(JSON.stringify({ ok: true, skipped: "mentee has no email" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const competencies = Object.entries(COMPETENCY_LABELS).map(([key, label]) => ({
       label,
       value: (fb as Record<string, unknown>)[key] as string | null ?? "",
     }));
 
-    const props = {
-      recipientName: menteeProfile.full_name || "there",
-      mentorName: mentorProfile?.full_name || "your mentor",
-      topic: session.topic,
-      whenFormatted: formatWhen(session.start_time, session.duration_minutes || 45),
-      competencies,
-      overallNotes: fb.overall_notes,
-    };
-    const html = await renderAsync(React.createElement(MentoringFeedbackSubmittedEmail, props));
-    const text = await renderAsync(React.createElement(MentoringFeedbackSubmittedEmail, props), { plainText: true });
-    const result = await sendEmail({
-      to: menteeProfile.email,
-      subject: "Your mentor shared feedback on your session",
-      html,
-      text,
-    });
-    if (!result.ok) {
-      console.error("Failed to send mentoring-feedback-submitted email", { error: result.error, email: menteeProfile.email });
+    for (const [recipient, recipientIsMentor] of [
+      [menteeProfile, false],
+      [mentorProfile, true],
+    ] as const) {
+      if (!recipient?.email) continue;
+      const props = {
+        recipientName: recipient.full_name || "there",
+        mentorName: mentorProfile?.full_name || "your mentor",
+        topic: session.topic,
+        whenFormatted: formatWhen(session.start_time, session.duration_minutes || 45),
+        competencies,
+        overallNotes: fb.overall_notes,
+        recipientIsMentor,
+      };
+      const html = await renderAsync(React.createElement(MentoringFeedbackSubmittedEmail, props));
+      const text = await renderAsync(React.createElement(MentoringFeedbackSubmittedEmail, props), { plainText: true });
+      const result = await sendEmail({
+        to: recipient.email,
+        subject: recipientIsMentor ? "A copy of your mentoring feedback" : "Your mentor shared feedback on your session",
+        html,
+        text,
+      });
+      if (!result.ok) {
+        console.error("Failed to send mentoring-feedback-submitted email", { error: result.error, email: recipient.email });
+      }
     }
 
     return new Response(JSON.stringify({ ok: true }), {

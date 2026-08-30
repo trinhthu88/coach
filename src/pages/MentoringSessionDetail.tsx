@@ -157,14 +157,23 @@ export default function MentoringSessionDetail() {
             {format(new Date(session.start_time), "EEE, MMM d · h:mm a")} · {session.duration_minutes} {t("sessionDetail.minutes")}
           </span>
           {session.meeting_url && (
-            <a
-              href={session.meeting_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
-            >
-              <Video className="h-4 w-4" /> {t("sessionDetail.joinMeeting")}
-            </a>
+            session.prep_file_path ? (
+              <a
+                href={session.meeting_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
+              >
+                <Video className="h-4 w-4" /> {t("sessionDetail.joinMeeting")}
+              </a>
+            ) : (
+              <span
+                className="inline-flex cursor-not-allowed items-center gap-1.5 font-semibold text-muted-foreground/60"
+                title={t("sessionDetail.joinLockedPrepFile")}
+              >
+                <Video className="h-4 w-4" /> {t("sessionDetail.joinMeeting")}
+              </span>
+            )
           )}
         </div>
 

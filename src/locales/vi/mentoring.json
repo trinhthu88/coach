@@ -58,6 +58,7 @@
     "withCounterpart": "Với {{name}}",
     "minutes": "phút",
     "joinMeeting": "Tham gia buổi họp",
+    "joinLockedPrepFile": "Chỉ có thể tham gia sau khi đã nộp tệp chuẩn bị",
     "confirmSession": "Xác nhận buổi mentoring",
     "markComplete": "Đánh dấu hoàn thành",
     "markedComplete": "Đã đánh dấu hoàn thành",
