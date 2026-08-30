@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   graphql_public: {
     Tables: {
@@ -438,6 +438,8 @@ export type Database = {
           id: string
           is_active: boolean
           mentee_sessions_limit: number | null
+          mentoring_given_limit: number | null
+          mentoring_received_limit: number | null
           name: string
           peer_given_limit: number | null
           peer_received_limit: number | null
@@ -451,6 +453,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           mentee_sessions_limit?: number | null
+          mentoring_given_limit?: number | null
+          mentoring_received_limit?: number | null
           name: string
           peer_given_limit?: number | null
           peer_received_limit?: number | null
@@ -464,6 +468,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           mentee_sessions_limit?: number | null
+          mentoring_given_limit?: number | null
+          mentoring_received_limit?: number | null
           name?: string
           peer_given_limit?: number | null
           peer_received_limit?: number | null
@@ -1325,6 +1331,7 @@ export type Database = {
           duration_months: number
           id: string
           is_active: boolean
+          mentoring_received_limit: number | null
           name: string
           peer_given_limit: number
           peer_session_limit: number
@@ -1339,6 +1346,7 @@ export type Database = {
           duration_months?: number
           id?: string
           is_active?: boolean
+          mentoring_received_limit?: number | null
           name: string
           peer_given_limit?: number
           peer_session_limit?: number
@@ -1353,6 +1361,7 @@ export type Database = {
           duration_months?: number
           id?: string
           is_active?: boolean
+          mentoring_received_limit?: number | null
           name?: string
           peer_given_limit?: number
           peer_session_limit?: number
@@ -1367,7 +1376,8 @@ export type Database = {
           file_size_bytes: number | null
           id: string
           mime_type: string | null
-          session_id: string
+          peer_session_id: string | null
+          session_id: string | null
           storage_path: string
           uploaded_by: string
         }
@@ -1377,7 +1387,8 @@ export type Database = {
           file_size_bytes?: number | null
           id?: string
           mime_type?: string | null
-          session_id: string
+          peer_session_id?: string | null
+          session_id?: string | null
           storage_path: string
           uploaded_by: string
         }
@@ -1387,11 +1398,19 @@ export type Database = {
           file_size_bytes?: number | null
           id?: string
           mime_type?: string | null
-          session_id?: string
+          peer_session_id?: string | null
+          session_id?: string | null
           storage_path?: string
           uploaded_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "session_attachments_peer_session_id_fkey"
+            columns: ["peer_session_id"]
+            isOneToOne: false
+            referencedRelation: "peer_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "session_attachments_session_id_fkey"
             columns: ["session_id"]
@@ -1792,6 +1811,10 @@ export type Database = {
         Args: { p_mentee_id: string; p_mentor_id: string }
         Returns: boolean
       }
+      can_book_mentoring_session_reason: {
+        Args: { p_mentee_id: string; p_mentor_id: string }
+        Returns: string
+      }
       can_book_session: {
         Args: { p_coach_id: string; p_coachee_id: string }
         Returns: boolean
@@ -1808,8 +1831,26 @@ export type Database = {
         Args: { p_mentor_id: string }
         Returns: boolean
       }
+      check_can_book_mentoring_session_reason: {
+        Args: { p_mentor_id: string }
+        Returns: string
+      }
       check_can_book_session: { Args: { p_coach_id: string }; Returns: boolean }
       check_has_module_access: { Args: { p_module: string }; Returns: boolean }
+      check_mentoring_given_usage: {
+        Args: { p_mentor_id: string }
+        Returns: {
+          limit_count: number
+          used_count: number
+        }[]
+      }
+      check_mentoring_session_usage: {
+        Args: never
+        Returns: {
+          limit_count: number
+          used_count: number
+        }[]
+      }
       coach_has_client: {
         Args: { _coach_id: string; _coachee_id: string }
         Returns: boolean
@@ -1833,12 +1874,34 @@ export type Database = {
           used_this_month: number
         }[]
       }
+      get_mentoring_given_limit: {
+        Args: { p_mentor_id: string }
+        Returns: number
+      }
+      get_mentoring_given_usage: {
+        Args: { p_mentor_id: string }
+        Returns: {
+          limit_count: number
+          used_count: number
+        }[]
+      }
+      get_mentoring_received_limit: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
+      get_mentoring_session_usage: {
+        Args: { p_user_id: string }
+        Returns: {
+          limit_count: number
+          used_count: number
+        }[]
+      }
       get_my_mentors: {
         Args: never
         Returns: {
-          avatar_url: string | null
-          bio: string | null
-          expertise_tags: string[] | null
+          avatar_url: string
+          bio: string
+          expertise_tags: string[]
           full_name: string
           mentor_user_id: string
         }[]
