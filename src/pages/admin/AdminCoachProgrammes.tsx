@@ -25,6 +25,8 @@ interface CoachProgramme {
   mentee_sessions_limit: number | null;
   peer_given_limit: number | null;
   peer_received_limit: number | null;
+  mentoring_received_limit: number | null;
+  mentoring_given_limit: number | null;
 }
 
 interface CoachRow {
@@ -44,6 +46,8 @@ const empty: Partial<CoachProgramme> = {
   mentee_sessions_limit: 4,
   peer_given_limit: null,
   peer_received_limit: 4,
+  mentoring_received_limit: null,
+  mentoring_given_limit: null,
 };
 
 function limitLabel(v: number | null, t: (key: string) => string) {
@@ -111,6 +115,8 @@ export default function AdminCoachProgrammes() {
         mentee_sessions_limit: editing.mentee_sessions_limit ?? null,
         peer_given_limit: editing.peer_given_limit ?? null,
         peer_received_limit: editing.peer_received_limit ?? null,
+        mentoring_received_limit: editing.mentoring_received_limit ?? null,
+        mentoring_given_limit: editing.mentoring_given_limit ?? null,
       };
       if (editing.id) {
         const { error } = await supabase.from("coach_programmes").update(payload).eq("id", editing.id);
@@ -208,6 +214,14 @@ export default function AdminCoachProgrammes() {
               <div className="rounded-md bg-accent/10 px-2 py-1.5">
                 <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("coachProgrammes.peerReceived")}</p>
                 <p className="text-sm font-semibold">{limitLabel(p.peer_received_limit, t)}</p>
+              </div>
+              <div className="rounded-md bg-secondary/10 px-2 py-1.5">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("coachProgrammes.mentoringReceived")}</p>
+                <p className="text-sm font-semibold">{limitLabel(p.mentoring_received_limit, t)}</p>
+              </div>
+              <div className="rounded-md bg-secondary/10 px-2 py-1.5">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("coachProgrammes.mentoringGiven")}</p>
+                <p className="text-sm font-semibold">{limitLabel(p.mentoring_given_limit, t)}</p>
               </div>
             </div>
             <div className="mt-3 flex gap-2">
@@ -319,6 +333,22 @@ export default function AdminCoachProgrammes() {
                       type="number" min={0} placeholder={t("coachProgrammes.unlimited")}
                       value={editing.peer_received_limit ?? ""}
                       onChange={(e) => setEditing({ ...editing, peer_received_limit: e.target.value === "" ? null : Number(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">{t("coachProgrammes.mentoringSessionsReceivedLabel")}</Label>
+                    <Input
+                      type="number" min={0} placeholder={t("coachProgrammes.unlimited")}
+                      value={editing.mentoring_received_limit ?? ""}
+                      onChange={(e) => setEditing({ ...editing, mentoring_received_limit: e.target.value === "" ? null : Number(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">{t("coachProgrammes.mentoringSessionsGivenLabel")}</Label>
+                    <Input
+                      type="number" min={0} placeholder={t("coachProgrammes.unlimited")}
+                      value={editing.mentoring_given_limit ?? ""}
+                      onChange={(e) => setEditing({ ...editing, mentoring_given_limit: e.target.value === "" ? null : Number(e.target.value) })}
                     />
                   </div>
                 </div>

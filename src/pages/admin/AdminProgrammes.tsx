@@ -27,6 +27,9 @@ interface Programme {
   coach_session_limit: number;
   peer_session_limit: number;
   peer_given_limit: number;
+  // Unlike the four limits above (NOT NULL, numeric default), this one is
+  // nullable — NULL = unlimited, matching coach_programmes' convention.
+  mentoring_received_limit: number | null;
 }
 
 interface Cohort {
@@ -47,6 +50,7 @@ const empty: Partial<Programme> = {
   coach_session_limit: 8,
   peer_session_limit: 4,
   peer_given_limit: 4,
+  mentoring_received_limit: null,
 };
 
 export default function AdminProgrammes() {
@@ -91,6 +95,7 @@ export default function AdminProgrammes() {
         coach_session_limit: Number(editing.coach_session_limit) || 0,
         peer_session_limit: Number(editing.peer_session_limit) || 0,
         peer_given_limit: Number(editing.peer_given_limit) || 0,
+        mentoring_received_limit: editing.mentoring_received_limit ?? null,
       };
       if (editing.id) {
         const { error } = await supabase.from("programmes").update(payload).eq("id", editing.id);
@@ -167,6 +172,10 @@ export default function AdminProgrammes() {
               <div className="rounded-md bg-accent/10 px-2 py-1.5">
                 <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("programmes.peerGiven")}</p>
                 <p className="text-sm font-semibold">{p.peer_given_limit}</p>
+              </div>
+              <div className="rounded-md bg-secondary/10 px-2 py-1.5">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("programmes.mentoringReceived")}</p>
+                <p className="text-sm font-semibold">{p.mentoring_received_limit === null ? t("coachProgrammes.unlimited") : p.mentoring_received_limit}</p>
               </div>
             </div>
             <div className="mt-3 flex gap-2">
@@ -260,6 +269,14 @@ export default function AdminProgrammes() {
                     <Label className="text-[11px]">{t("programmes.peerSessionsGiven")}</Label>
                     <Input type="number" min={0} value={editing.peer_given_limit ?? 4} onChange={(e) => setEditing({ ...editing, peer_given_limit: Number(e.target.value) })} />
                     <p className="mt-1 text-[10px] text-muted-foreground">{t("programmes.coachesOnly")}</p>
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">{t("programmes.mentoringSessionsReceived")}</Label>
+                    <Input
+                      type="number" min={0} placeholder={t("coachProgrammes.unlimited")}
+                      value={editing.mentoring_received_limit ?? ""}
+                      onChange={(e) => setEditing({ ...editing, mentoring_received_limit: e.target.value === "" ? null : Number(e.target.value) })}
+                    />
                   </div>
                 </div>
               </div>
