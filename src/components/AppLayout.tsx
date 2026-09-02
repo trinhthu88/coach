@@ -25,6 +25,7 @@ import {
   Menu,
   Building2,
   FileDown,
+  FileText,
   HelpCircle,
   Handshake,
 } from "lucide-react";
@@ -36,6 +37,7 @@ import clarivaLogoDark from "@/assets/clariva-logo-dark.png";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useProgrammeModules, ProgrammeModuleType } from "@/hooks/useProgrammeModules";
 
 interface NavItem {
@@ -80,6 +82,9 @@ const NAV: NavItem[] = [
   { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coach", "coachee"], groupKey: "navGroups.communication" },
   { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coach", "coachee"], groupKey: "navGroups.communication" },
 
+  // Learning (shared)
+  { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coach", "coachee"], module: "training", groupKey: "navGroups.learning" },
+
   // Admin — Overview
   { to: "/admin", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["admin"], groupKey: "navGroups.overview" },
   { to: "/admin/alerts", labelKey: "nav.alerts", icon: Bell, roles: ["admin"], groupKey: "navGroups.overview" },
@@ -94,6 +99,7 @@ const NAV: NavItem[] = [
   // Admin — Programmes
   { to: "/admin/programmes", labelKey: "nav.programmes", icon: BookOpen, roles: ["admin"], groupKey: "navGroups.programmes" },
   { to: "/admin/cohorts", labelKey: "nav.cohorts", icon: Network, roles: ["admin"], groupKey: "navGroups.programmes" },
+  { to: "/admin/training-content", labelKey: "nav.trainingContent", icon: FileText, roles: ["admin"], groupKey: "navGroups.programmes" },
 
   // Admin — Operations
   { to: "/admin/sessions", labelKey: "nav.sessions", icon: ClipboardList, roles: ["admin"], groupKey: "navGroups.operations" },
@@ -448,6 +454,8 @@ export default function AppLayout() {
             <Search className="h-[15px] w-[15px]" />
             {t("nav.findCoaches")}
           </NavLink>
+
+          <NotificationBell />
 
           <div className="relative">
             <NavLink

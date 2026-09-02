@@ -23,3 +23,5 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.admin-bulk-invite-users]
     verify_jwt = true
+  [functions.send-daily-prompt]
+    verify_jwt = false

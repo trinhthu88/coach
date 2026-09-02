@@ -9,6 +9,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useCoachDashboardData } from "@/hooks/dashboard/useCoachDashboardData";
 import type { SessionLite } from "@/hooks/dashboard/useCoacheeDashboardData";
+import { ThisWeekSkillCard } from "@/components/training/ThisWeekSkillCard";
+import { DailyPromptCard } from "@/components/training/DailyPromptCard";
 
 export function CoachDashboardView({ userId }: { userId: string }) {
   const { t } = useTranslation("dashboard");
@@ -343,6 +345,12 @@ export function CoachDashboardView({ userId }: { userId: string }) {
             </Button>
           </div>
         </Card>
+      </section>
+
+      {/* Training widgets — each renders nothing when its module isn't enabled */}
+      <section className="grid gap-5 lg:grid-cols-2">
+        <ThisWeekSkillCard />
+        <DailyPromptCard />
       </section>
     </>
   );

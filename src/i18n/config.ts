@@ -15,6 +15,7 @@ import profileEn from "@/locales/en/profile.json";
 import sponsorEn from "@/locales/en/sponsor.json";
 import toolsEn from "@/locales/en/tools.json";
 import mentoringEn from "@/locales/en/mentoring.json";
+import trainingEn from "@/locales/en/training.json";
 
 import commonVi from "@/locales/vi/common.json";
 import authVi from "@/locales/vi/auth.json";
@@ -29,6 +30,7 @@ import profileVi from "@/locales/vi/profile.json";
 import sponsorVi from "@/locales/vi/sponsor.json";
 import toolsVi from "@/locales/vi/tools.json";
 import mentoringVi from "@/locales/vi/mentoring.json";
+import trainingVi from "@/locales/vi/training.json";
 
 export const SUPPORTED_LANGUAGES = ["en", "vi"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -49,6 +51,7 @@ export const NAMESPACES = [
   "sponsor",
   "tools",
   "mentoring",
+  "training",
 ] as const;
 
 i18n
@@ -70,6 +73,7 @@ i18n
         sponsor: sponsorEn,
         tools: toolsEn,
         mentoring: mentoringEn,
+        training: trainingEn,
       },
       vi: {
         common: commonVi,
@@ -85,6 +89,7 @@ i18n
         sponsor: sponsorVi,
         tools: toolsVi,
         mentoring: mentoringVi,
+        training: trainingVi,
       },
     },
     ns: NAMESPACES,

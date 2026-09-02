@@ -138,6 +138,110 @@ export type Database = {
         }
         Relationships: []
       }
+      assignment_submissions: {
+        Row: {
+          answers: Json
+          assignment_id: string
+          correct_count: number | null
+          id: string
+          reflection_text: string | null
+          score_pct: number | null
+          submitted_at: string
+          total_count: number | null
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          assignment_id: string
+          correct_count?: number | null
+          id?: string
+          reflection_text?: string | null
+          score_pct?: number | null
+          submitted_at?: string
+          total_count?: number | null
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          assignment_id?: string
+          correct_count?: number | null
+          id?: string
+          reflection_text?: string | null
+          score_pct?: number | null
+          submitted_at?: string
+          total_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          assignment_type: Database["public"]["Enums"]["assignment_type"]
+          created_at: string
+          due_offset_days: number | null
+          id: string
+          instructions: string | null
+          instructions_vi: string | null
+          is_visible: boolean
+          sort_order: number
+          title: string
+          title_vi: string | null
+          training_week_id: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_type: Database["public"]["Enums"]["assignment_type"]
+          created_at?: string
+          due_offset_days?: number | null
+          id?: string
+          instructions?: string | null
+          instructions_vi?: string | null
+          is_visible?: boolean
+          sort_order?: number
+          title: string
+          title_vi?: string | null
+          training_week_id: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_type?: Database["public"]["Enums"]["assignment_type"]
+          created_at?: string
+          due_offset_days?: number | null
+          id?: string
+          instructions?: string | null
+          instructions_vi?: string | null
+          is_visible?: boolean
+          sort_order?: number
+          title?: string
+          title_vi?: string | null
+          training_week_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bulk_invite_batches: {
         Row: {
           created_at: string
@@ -396,6 +500,7 @@ export type Database = {
           coach_id: string
           coach_programme_id: string
           created_at: string
+          end_date: string | null
           id: string
           start_date: string
           status: Database["public"]["Enums"]["enrollment_status"]
@@ -405,6 +510,7 @@ export type Database = {
           coach_id: string
           coach_programme_id: string
           created_at?: string
+          end_date?: string | null
           id?: string
           start_date?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
@@ -414,6 +520,7 @@ export type Database = {
           coach_id?: string
           coach_programme_id?: string
           created_at?: string
+          end_date?: string | null
           id?: string
           start_date?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
@@ -921,6 +1028,89 @@ export type Database = {
           },
         ]
       }
+      daily_prompt_responses: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          daily_prompt_id: string
+          id: string
+          opened_at: string | null
+          responded_at: string | null
+          response_text: string | null
+          user_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          daily_prompt_id: string
+          id?: string
+          opened_at?: string | null
+          responded_at?: string | null
+          response_text?: string | null
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          daily_prompt_id?: string
+          id?: string
+          opened_at?: string | null
+          responded_at?: string | null
+          response_text?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_prompt_responses_daily_prompt_id_fkey"
+            columns: ["daily_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "daily_prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_prompt_responses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_prompts: {
+        Row: {
+          created_at: string
+          day_number: number
+          id: string
+          prompt_text: string
+          prompt_text_vi: string | null
+          training_week_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_number: number
+          id?: string
+          prompt_text: string
+          prompt_text_vi?: string | null
+          training_week_id: string
+        }
+        Update: {
+          created_at?: string
+          day_number?: number
+          id?: string
+          prompt_text?: string
+          prompt_text_vi?: string | null
+          training_week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_prompts_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_profiles: {
         Row: {
           bio: string | null
@@ -1140,6 +1330,56 @@ export type Database = {
           {
             foreignKeyName: "mentoring_sessions_mentor_id_fkey"
             columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          body_vi: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          notification_type: string
+          read_at: string | null
+          title: string
+          title_vi: string | null
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          body_vi?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          notification_type: string
+          read_at?: string | null
+          title: string
+          title_vi?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          body_vi?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          notification_type?: string
+          read_at?: string | null
+          title?: string
+          title_vi?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1531,6 +1771,50 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_questions: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          explanation: string | null
+          explanation_vi: string | null
+          id: string
+          options: Json
+          question_text: string
+          question_text_vi: string | null
+          sort_order: number
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          explanation?: string | null
+          explanation_vi?: string | null
+          id?: string
+          options?: Json
+          question_text: string
+          question_text_vi?: string | null
+          sort_order?: number
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          explanation?: string | null
+          explanation_vi?: string | null
+          id?: string
+          options?: Json
+          question_text?: string
+          question_text_vi?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_attachments: {
         Row: {
           created_at: string
@@ -1764,6 +2048,50 @@ export type Database = {
           },
         ]
       }
+      skill_card_elements: {
+        Row: {
+          content: string
+          content_vi: string | null
+          created_at: string
+          element_type: string
+          id: string
+          sort_order: number
+          title: string
+          title_vi: string | null
+          training_week_id: string
+        }
+        Insert: {
+          content: string
+          content_vi?: string | null
+          created_at?: string
+          element_type: string
+          id?: string
+          sort_order?: number
+          title: string
+          title_vi?: string | null
+          training_week_id: string
+        }
+        Update: {
+          content?: string
+          content_vi?: string | null
+          created_at?: string
+          element_type?: string
+          id?: string
+          sort_order?: number
+          title?: string
+          title_vi?: string | null
+          training_week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_card_elements_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sponsor_profiles: {
         Row: {
           created_at: string
@@ -1898,6 +2226,116 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          pdf_downloaded_at: string | null
+          training_week_id: string
+          user_id: string
+          viewed_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          pdf_downloaded_at?: string | null
+          training_week_id: string
+          user_id: string
+          viewed_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          pdf_downloaded_at?: string | null
+          training_week_id?: string
+          user_id?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_progress_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_weeks: {
+        Row: {
+          created_at: string
+          id: string
+          is_visible: boolean
+          pdf_storage_path: string | null
+          pdf_storage_path_vi: string | null
+          programme_id: string
+          skill_card_html: string | null
+          skill_card_html_vi: string | null
+          sort_order: number
+          subtitle: string | null
+          subtitle_vi: string | null
+          title: string
+          title_vi: string | null
+          unlock_date: string | null
+          updated_at: string
+          week_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          pdf_storage_path?: string | null
+          pdf_storage_path_vi?: string | null
+          programme_id: string
+          skill_card_html?: string | null
+          skill_card_html_vi?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          subtitle_vi?: string | null
+          title: string
+          title_vi?: string | null
+          unlock_date?: string | null
+          updated_at?: string
+          week_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          pdf_storage_path?: string | null
+          pdf_storage_path_vi?: string | null
+          programme_id?: string
+          skill_card_html?: string | null
+          skill_card_html_vi?: string | null
+          sort_order?: number
+          subtitle?: string | null
+          subtitle_vi?: string | null
+          title?: string
+          title_vi?: string | null
+          unlock_date?: string | null
+          updated_at?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_weeks_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
             referencedColumns: ["id"]
           },
         ]
@@ -2068,13 +2506,6 @@ export type Database = {
           mentor_user_id: string
         }[]
       }
-      get_own_coach_invite_slots: {
-        Args: never
-        Returns: {
-          invite_limit: number
-          used_slots: number
-        }[]
-      }
       get_my_programme_modules: {
         Args: never
         Returns: {
@@ -2083,11 +2514,47 @@ export type Database = {
           module: Database["public"]["Enums"]["programme_module_type"]
         }[]
       }
+      get_my_training_weeks: {
+        Args: never
+        Returns: {
+          completed_at: string
+          id: string
+          locked: boolean
+          subtitle: string
+          subtitle_vi: string
+          title: string
+          title_vi: string
+          unlock_date: string
+          viewed_at: string
+          week_number: number
+        }[]
+      }
+      get_own_coach_invite_slots: {
+        Args: never
+        Returns: {
+          invite_limit: number
+          used_slots: number
+        }[]
+      }
       get_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
       get_sponsor_org: { Args: { _user_id: string }; Returns: string }
+      get_todays_prompt: {
+        Args: never
+        Returns: {
+          already_responded: boolean
+          confidence_score: number
+          prompt_id: string
+          prompt_text: string
+          prompt_text_vi: string
+          response_text: string
+          week_number: number
+          week_title: string
+          week_title_vi: string
+        }[]
+      }
       has_module_access: {
         Args: { p_module: string; p_user_id: string }
         Returns: boolean
@@ -2180,6 +2647,7 @@ export type Database = {
     Enums: {
       alert_severity: "info" | "warning" | "critical"
       app_role: "admin" | "coach" | "coachee" | "sponsor"
+      assignment_type: "quiz" | "reflection"
       availability_slot_type: "coaching" | "peer" | "mentoring"
       enrollment_status: "active" | "completed" | "paused" | "at_risk"
       programme_module_type:
@@ -2219,12 +2687,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2248,11 +2716,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2273,11 +2741,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2298,11 +2766,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2315,11 +2783,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2336,6 +2804,7 @@ export const Constants = {
     Enums: {
       alert_severity: ["info", "warning", "critical"],
       app_role: ["admin", "coach", "coachee", "sponsor"],
+      assignment_type: ["quiz", "reflection"],
       availability_slot_type: ["coaching", "peer", "mentoring"],
       enrollment_status: ["active", "completed", "paused", "at_risk"],
       programme_module_type: [

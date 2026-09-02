@@ -23,6 +23,8 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useCoacheeDashboardData, SessionLite, CoachLite } from "@/hooks/dashboard/useCoacheeDashboardData";
 import { ProgressRing } from "@/components/ui/proto";
 import { Json } from "@/integrations/supabase/types";
+import { ThisWeekSkillCard } from "@/components/training/ThisWeekSkillCard";
+import { DailyPromptCard } from "@/components/training/DailyPromptCard";
 
 export function CoacheeDashboardView() {
   const { t } = useTranslation("dashboard");
@@ -102,10 +104,12 @@ export function CoacheeDashboardView() {
         <StatCard label={t("coachee.stats.upcoming")} value={String(stats.upcoming.length)} hint={t("coachee.stats.upcomingHint")} icon={CalendarCheck} />
       </section>
 
-      {/* Recent sessions log + Action items */}
+      {/* Recent sessions log + Action items + this week's skill card */}
       <section className="grid gap-5 lg:grid-cols-2" data-onboarding="dashboard-session-log">
         <RecentSessionsLog sessions={sessions} coachesById={coachesById} />
         <ActionItemsPanel sessions={sessions} coachesById={coachesById} />
+        <ThisWeekSkillCard />
+        <DailyPromptCard />
       </section>
 
       {/* Curated for you */}

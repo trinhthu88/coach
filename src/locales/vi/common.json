@@ -117,7 +117,9 @@
     "coachProgrammes": "Chương trình coach",
     "analytics": "Phân tích",
     "overview": "Tổng quan",
-    "mentoring": "Mentoring"
+    "mentoring": "Mentoring",
+    "training": "Đào tạo",
+    "trainingContent": "Nội dung đào tạo"
   },
   "navGroups": {
     "sponsor": "Nhà tài trợ",
@@ -127,7 +129,8 @@
     "overview": "Tổng quan",
     "people": "Người dùng",
     "programmes": "Chương trình",
-    "operations": "Vận hành"
+    "operations": "Vận hành",
+    "learning": "Học tập"
   },
   "layout": {
     "howItWorks": "Cách thức hoạt động",
@@ -143,5 +146,13 @@
     "duplicate": "Giá trị này đã tồn tại — vui lòng thử giá trị khác.",
     "permissionDenied": "Bạn không có quyền thực hiện thao tác này.",
     "foreignKeyViolation": "Không thể hoàn tất vì một dữ liệu liên quan không còn tồn tại."
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "unreadCount_one": "{{count}} chưa đọc",
+    "unreadCount_other": "{{count}} chưa đọc",
+    "markAllRead": "Đánh dấu tất cả đã đọc",
+    "empty": "Bạn đã xem hết thông báo.",
+    "openMenu": "Mở thông báo"
   }
 }

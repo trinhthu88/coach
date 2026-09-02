@@ -118,7 +118,9 @@
     "coachProgrammes": "Coach programmes",
     "analytics": "Analytics",
     "overview": "Overview",
-    "mentoring": "Mentoring"
+    "mentoring": "Mentoring",
+    "training": "Training",
+    "trainingContent": "Training content"
   },
   "navGroups": {
     "sponsor": "Sponsor",
@@ -128,7 +130,8 @@
     "overview": "Overview",
     "people": "People",
     "programmes": "Programmes",
-    "operations": "Operations"
+    "operations": "Operations",
+    "learning": "Learning"
   },
   "layout": {
     "howItWorks": "How it works",
@@ -144,5 +147,13 @@
     "duplicate": "That already exists — try a different value.",
     "permissionDenied": "You don't have permission to do that.",
     "foreignKeyViolation": "That can't be completed because something it depends on no longer exists."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unreadCount_one": "{{count}} unread",
+    "unreadCount_other": "{{count}} unread",
+    "markAllRead": "Mark all as read",
+    "empty": "You're all caught up.",
+    "openMenu": "Open notifications"
   }
 }

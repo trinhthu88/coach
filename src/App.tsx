@@ -48,6 +48,11 @@ const AdminCohorts = lazy(() => import("./pages/admin/AdminCohorts"));
 const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
 const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations"));
 const AdminMentoring = lazy(() => import("./pages/admin/AdminMentoring"));
+const AdminTrainingContent = lazy(() => import("./pages/admin/AdminTrainingContent"));
+const TrainingWeeks = lazy(() => import("./pages/TrainingWeeks"));
+const SkillCardView = lazy(() => import("./pages/SkillCardView"));
+const QuizView = lazy(() => import("./pages/QuizView"));
+const ReflectionView = lazy(() => import("./pages/ReflectionView"));
 const MentoringFindMentor = lazy(() => import("./pages/MentoringFindMentor"));
 const MentoringBookSession = lazy(() => import("./pages/MentoringBookSession"));
 const MentoringSessionDetail = lazy(() => import("./pages/MentoringSessionDetail"));
@@ -262,6 +267,46 @@ const App = () => (
                     element={
                       <ProtectedRoute role="admin">
                         <AdminMentoring />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/training"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="training">
+                        <TrainingWeeks />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/training/:weekId"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="training">
+                        <SkillCardView />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/training/:weekId/quiz/:assignmentId"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="quiz">
+                        <QuizView />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/training/:weekId/reflect/:assignmentId"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="quiz">
+                        <ReflectionView />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/training-content"
+                    element={
+                      <ProtectedRoute role="admin">
+                        <AdminTrainingContent />
                       </ProtectedRoute>
                     }
                   />
