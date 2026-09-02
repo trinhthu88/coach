@@ -13,7 +13,7 @@ async function fetchJourneyProgramme(coacheeId: string): Promise<JourneyProgramm
     supabase
       .from("programme_enrollments")
       .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")
-      .eq("coachee_id", coacheeId)
+      .eq("user_id", coacheeId)
       .eq("status", "active")
       .order("start_date", { ascending: false })
       .limit(1),

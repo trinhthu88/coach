@@ -1370,7 +1370,7 @@ export type Database = {
       }
       programme_enrollments: {
         Row: {
-          coachee_id: string
+          coachee_id: string | null
           cohort_id: string | null
           created_at: string
           end_date: string | null
@@ -1382,9 +1382,10 @@ export type Database = {
           start_date: string
           status: Database["public"]["Enums"]["enrollment_status"]
           updated_at: string
+          user_id: string
         }
         Insert: {
-          coachee_id: string
+          coachee_id?: string | null
           cohort_id?: string | null
           created_at?: string
           end_date?: string | null
@@ -1396,9 +1397,10 @@ export type Database = {
           start_date?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
           updated_at?: string
+          user_id: string
         }
         Update: {
-          coachee_id?: string
+          coachee_id?: string | null
           cohort_id?: string | null
           created_at?: string
           end_date?: string | null
@@ -1410,6 +1412,7 @@ export type Database = {
           start_date?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
           updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -1428,6 +1431,51 @@ export type Database = {
           },
           {
             foreignKeyName: "programme_enrollments_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programme_enrollments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      programme_modules: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module?: Database["public"]["Enums"]["programme_module_type"]
+          programme_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programme_modules_programme_id_fkey"
             columns: ["programme_id"]
             isOneToOne: false
             referencedRelation: "programmes"
@@ -2027,6 +2075,14 @@ export type Database = {
           used_slots: number
         }[]
       }
+      get_my_programme_modules: {
+        Args: never
+        Returns: {
+          config: Json
+          enabled: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+        }[]
+      }
       get_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2034,6 +2090,17 @@ export type Database = {
       get_sponsor_org: { Args: { _user_id: string }; Returns: string }
       has_module_access: {
         Args: { p_module: string; p_user_id: string }
+        Returns: boolean
+      }
+      has_programme_module: {
+        Args: { p_module: Database["public"]["Enums"]["programme_module_type"] }
+        Returns: boolean
+      }
+      has_programme_module_direction: {
+        Args: {
+          p_direction: string
+          p_module: Database["public"]["Enums"]["programme_module_type"]
+        }
         Returns: boolean
       }
       has_role: {
@@ -2115,6 +2182,15 @@ export type Database = {
       app_role: "admin" | "coach" | "coachee" | "sponsor"
       availability_slot_type: "coaching" | "peer" | "mentoring"
       enrollment_status: "active" | "completed" | "paused" | "at_risk"
+      programme_module_type:
+        | "coaching"
+        | "peer_coaching"
+        | "mentoring"
+        | "triads"
+        | "training"
+        | "quiz"
+        | "assessment"
+        | "daily_prompt"
       session_status:
         | "pending_coach_approval"
         | "confirmed"
@@ -2262,6 +2338,16 @@ export const Constants = {
       app_role: ["admin", "coach", "coachee", "sponsor"],
       availability_slot_type: ["coaching", "peer", "mentoring"],
       enrollment_status: ["active", "completed", "paused", "at_risk"],
+      programme_module_type: [
+        "coaching",
+        "peer_coaching",
+        "mentoring",
+        "triads",
+        "training",
+        "quiz",
+        "assessment",
+        "daily_prompt",
+      ],
       session_status: [
         "pending_coach_approval",
         "confirmed",

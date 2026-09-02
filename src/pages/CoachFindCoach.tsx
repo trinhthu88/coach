@@ -9,6 +9,7 @@ import { Star, Loader2, Info, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 
 interface CoachRow {
   id: string;
@@ -21,12 +22,15 @@ interface CoachRow {
 export default function CoachFindCoach() {
   const { user } = useAuth();
   const { t } = useTranslation("coaches");
+  const { getConfig, loading: modulesLoading } = useProgrammeModules();
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
-  // null = unlimited, 0 = "not loaded yet" (matches the previous coach_session_limits
-  // fallback sentinel so the hint line below only renders once a real value is known).
-  const [limit, setLimit] = useState<number | null>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Coaching module's receive_limit — null/absent = unlimited. Comes from
+  // the coach's active programme's programme_modules config, not the
+  // deprecated coach_programme_enrollments/coach_programmes tables.
+  const receiveLimit = (getConfig("coaching").receive_limit as number | null | undefined) ?? null;
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -57,17 +61,6 @@ export default function CoachFindCoach() {
     } else {
       setCoaches([]);
     }
-    const { data: enrollment, error: enrollmentError } = await supabase
-      .from("coach_programme_enrollments")
-      .select("coach_programme:coach_programmes(mentee_sessions_limit)")
-      .eq("coach_id", user.id)
-      .maybeSingle();
-    if (enrollmentError) {
-      setError(getFriendlyErrorMessage(enrollmentError, t));
-      setLoading(false);
-      return;
-    }
-    setLimit(enrollment ? enrollment.coach_programme?.mentee_sessions_limit ?? null : 0);
     setLoading(false);
   }, [user, t]);
 
@@ -89,11 +82,11 @@ export default function CoachFindCoach() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         <div>
           {t("findCoach.notice")}
-          {limit === null && (
+          {!modulesLoading && receiveLimit === null && (
             <> {t("findCoach.allowancePrefix")} <strong>{t("findCoach.unlimitedValue")}</strong> {t("findCoach.allowanceSuffix")}</>
           )}
-          {typeof limit === "number" && limit > 0 && (
-            <> {t("findCoach.allowancePrefix")} <strong>{limit}</strong> {t("findCoach.allowanceSuffix")}</>
+          {!modulesLoading && typeof receiveLimit === "number" && (
+            <> {t("findCoach.allowancePrefix")} <strong>{receiveLimit}</strong> {t("findCoach.allowanceSuffix")}</>
           )}
         </div>
       </Card>

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Plus, Pencil, Trash2, ArrowUpRight } from "lucide-react";
 import { format } from "date-fns";
@@ -15,6 +16,8 @@ import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import type { ProgrammeModuleType } from "@/hooks/useProgrammeModules";
+import type { Json } from "@/integrations/supabase/types";
 
 interface Programme {
   id: string;
@@ -53,6 +56,183 @@ const empty: Partial<Programme> = {
   mentoring_received_limit: null,
 };
 
+const MODULE_TYPES: ProgrammeModuleType[] = [
+  "coaching",
+  "peer_coaching",
+  "mentoring",
+  "triads",
+  "training",
+  "quiz",
+  "assessment",
+  "daily_prompt",
+];
+
+interface ModuleRow {
+  enabled: boolean;
+  config: Record<string, unknown>;
+}
+
+type ModuleRows = Record<ProgrammeModuleType, ModuleRow>;
+
+// Default config shape per module type — see the programme_modules.config
+// JSONB shapes documented alongside the 20260903100000 migration.
+function defaultModuleRows(): ModuleRows {
+  return {
+    coaching: { enabled: false, config: { give: false, receive: false, give_limit: null, receive_limit: null } },
+    peer_coaching: { enabled: false, config: { give: false, receive: false, monthly_limit: null } },
+    mentoring: { enabled: false, config: { give: false, receive: false, give_limit: null, receive_limit: null } },
+    triads: { enabled: false, config: { group_size: 3, sessions_per_week: 1 } },
+    training: { enabled: false, config: { weeks: 4 } },
+    quiz: { enabled: false, config: {} },
+    assessment: { enabled: false, config: { include_direct_reports: false } },
+    daily_prompt: { enabled: false, config: { delivery_time: "07:00" } },
+  };
+}
+
+function LimitField({
+  label,
+  value,
+  onChange,
+  t,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+  t: (key: string) => string;
+}) {
+  return (
+    <div>
+      <Label className="text-[10.5px] text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        min={0}
+        placeholder={t("programmes.modules.unlimited")}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+      />
+    </div>
+  );
+}
+
+function ModuleConfigRow({
+  module,
+  row,
+  onToggle,
+  onConfigChange,
+  t,
+}: {
+  module: ProgrammeModuleType;
+  row: ModuleRow;
+  onToggle: (enabled: boolean) => void;
+  onConfigChange: (patch: Record<string, unknown>) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const cfg = row.config;
+  return (
+    <div className="rounded-md border p-2.5">
+      <div className="flex items-center justify-between">
+        <p className="text-[12.5px] font-medium">{t(`programmes.modules.types.${module}`)}</p>
+        <Switch checked={row.enabled} onCheckedChange={onToggle} />
+      </div>
+      {row.enabled && (
+        <div className="mt-2.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          {(module === "coaching" || module === "mentoring") && (
+            <>
+              <label className="flex items-center gap-1.5 text-[11px]">
+                <Checkbox checked={!!cfg.give} onCheckedChange={(v) => onConfigChange({ give: !!v })} />
+                {t("programmes.modules.give")}
+              </label>
+              <LimitField
+                label={t("programmes.modules.giveLimit")}
+                value={(cfg.give_limit as number | null) ?? null}
+                onChange={(v) => onConfigChange({ give_limit: v })}
+                t={t}
+              />
+              <label className="flex items-center gap-1.5 text-[11px]">
+                <Checkbox checked={!!cfg.receive} onCheckedChange={(v) => onConfigChange({ receive: !!v })} />
+                {t("programmes.modules.receive")}
+              </label>
+              <LimitField
+                label={t("programmes.modules.receiveLimit")}
+                value={(cfg.receive_limit as number | null) ?? null}
+                onChange={(v) => onConfigChange({ receive_limit: v })}
+                t={t}
+              />
+            </>
+          )}
+          {module === "peer_coaching" && (
+            <>
+              <label className="flex items-center gap-1.5 text-[11px]">
+                <Checkbox checked={!!cfg.give} onCheckedChange={(v) => onConfigChange({ give: !!v })} />
+                {t("programmes.modules.give")}
+              </label>
+              <label className="flex items-center gap-1.5 text-[11px]">
+                <Checkbox checked={!!cfg.receive} onCheckedChange={(v) => onConfigChange({ receive: !!v })} />
+                {t("programmes.modules.receive")}
+              </label>
+              <LimitField
+                label={t("programmes.modules.monthlyLimit")}
+                value={(cfg.monthly_limit as number | null) ?? null}
+                onChange={(v) => onConfigChange({ monthly_limit: v })}
+                t={t}
+              />
+            </>
+          )}
+          {module === "triads" && (
+            <>
+              <div>
+                <Label className="text-[10.5px] text-muted-foreground">{t("programmes.modules.groupSize")}</Label>
+                <Input
+                  type="number" min={2}
+                  value={(cfg.group_size as number) ?? 3}
+                  onChange={(e) => onConfigChange({ group_size: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label className="text-[10.5px] text-muted-foreground">{t("programmes.modules.sessionsPerWeek")}</Label>
+                <Input
+                  type="number" min={1}
+                  value={(cfg.sessions_per_week as number) ?? 1}
+                  onChange={(e) => onConfigChange({ sessions_per_week: Number(e.target.value) })}
+                />
+              </div>
+            </>
+          )}
+          {module === "training" && (
+            <div>
+              <Label className="text-[10.5px] text-muted-foreground">{t("programmes.modules.weeks")}</Label>
+              <Input
+                type="number" min={1}
+                value={(cfg.weeks as number) ?? 4}
+                onChange={(e) => onConfigChange({ weeks: Number(e.target.value) })}
+              />
+            </div>
+          )}
+          {module === "assessment" && (
+            <label className="flex items-center gap-1.5 text-[11px]">
+              <Checkbox
+                checked={!!cfg.include_direct_reports}
+                onCheckedChange={(v) => onConfigChange({ include_direct_reports: !!v })}
+              />
+              {t("programmes.modules.includeDirectReports")}
+            </label>
+          )}
+          {module === "daily_prompt" && (
+            <div>
+              <Label className="text-[10.5px] text-muted-foreground">{t("programmes.modules.deliveryTime")}</Label>
+              <Input
+                type="time"
+                value={(cfg.delivery_time as string) ?? "07:00"}
+                onChange={(e) => onConfigChange({ delivery_time: e.target.value })}
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminProgrammes() {
   const { t } = useTranslation("admin");
   const [rows, setRows] = useState<Programme[]>([]);
@@ -60,8 +240,35 @@ export default function AdminProgrammes() {
   const [cohortCounts, setCohortCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Programme> | null>(null);
+  const [moduleRows, setModuleRows] = useState<ModuleRows>(defaultModuleRows());
   const [saving, setSaving] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
+
+  const openEditor = async (p: Partial<Programme> | null) => {
+    setEditing(p);
+    if (!p?.id) {
+      setModuleRows(defaultModuleRows());
+      return;
+    }
+    const { data } = await supabase
+      .from("programme_modules")
+      .select("module, enabled, config")
+      .eq("programme_id", p.id);
+    const rows = defaultModuleRows();
+    (data || []).forEach((m) => {
+      rows[m.module] = {
+        enabled: m.enabled,
+        config: { ...rows[m.module].config, ...(m.config as Record<string, unknown>) },
+      };
+    });
+    setModuleRows(rows);
+  };
+
+  const updateModule = (mod: ProgrammeModuleType, patch: Partial<ModuleRow>) =>
+    setModuleRows((prev) => ({ ...prev, [mod]: { ...prev[mod], ...patch } }));
+
+  const updateModuleConfig = (mod: ProgrammeModuleType, patch: Record<string, unknown>) =>
+    setModuleRows((prev) => ({ ...prev, [mod]: { ...prev[mod], config: { ...prev[mod].config, ...patch } } }));
 
   const load = async () => {
     setLoading(true);
@@ -97,13 +304,27 @@ export default function AdminProgrammes() {
         peer_given_limit: Number(editing.peer_given_limit) || 0,
         mentoring_received_limit: editing.mentoring_received_limit ?? null,
       };
-      if (editing.id) {
-        const { error } = await supabase.from("programmes").update(payload).eq("id", editing.id);
+      let programmeId = editing.id;
+      if (programmeId) {
+        const { error } = await supabase.from("programmes").update(payload).eq("id", programmeId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("programmes").insert(payload);
+        const { data, error } = await supabase.from("programmes").insert(payload).select("id").single();
         if (error) throw error;
+        programmeId = data.id;
       }
+
+      const moduleUpserts = MODULE_TYPES.map((module) => ({
+        programme_id: programmeId,
+        module,
+        enabled: moduleRows[module].enabled,
+        config: moduleRows[module].config as Json,
+      }));
+      const { error: moduleError } = await supabase
+        .from("programme_modules")
+        .upsert(moduleUpserts, { onConflict: "programme_id,module" });
+      if (moduleError) throw moduleError;
+
       toast.success(t("programmes.saved"));
       setEditing(null);
       load();
@@ -140,7 +361,7 @@ export default function AdminProgrammes() {
         title={t("programmes.title")}
         trailing=""
         subtitle={t("programmes.subtitle")}
-        right={<Button onClick={() => setEditing(empty)}><Plus className="h-4 w-4" /> {t("programmes.newProgramme")}</Button>}
+        right={<Button onClick={() => openEditor(empty)}><Plus className="h-4 w-4" /> {t("programmes.newProgramme")}</Button>}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -179,7 +400,7 @@ export default function AdminProgrammes() {
               </div>
             </div>
             <div className="mt-3 flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setEditing(p)}><Pencil className="h-3.5 w-3.5" /> {t("programmes.edit")}</Button>
+              <Button variant="outline" size="sm" onClick={() => openEditor(p)}><Pencil className="h-3.5 w-3.5" /> {t("programmes.edit")}</Button>
               <Button variant="ghost" size="sm" onClick={() => remove(p.id)}><Trash2 className="h-3.5 w-3.5" /> {t("programmes.delete")}</Button>
             </div>
           </Card>
@@ -278,6 +499,22 @@ export default function AdminProgrammes() {
                       onChange={(e) => setEditing({ ...editing, mentoring_received_limit: e.target.value === "" ? null : Number(e.target.value) })}
                     />
                   </div>
+                </div>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmes.modules.heading")}</p>
+                <p className="mb-2.5 mt-0.5 text-[11px] text-muted-foreground">{t("programmes.modules.hint")}</p>
+                <div className="space-y-2">
+                  {MODULE_TYPES.map((mod) => (
+                    <ModuleConfigRow
+                      key={mod}
+                      module={mod}
+                      row={moduleRows[mod]}
+                      onToggle={(enabled) => updateModule(mod, { enabled })}
+                      onConfigChange={(patch) => updateModuleConfig(mod, patch)}
+                      t={t}
+                    />
+                  ))}
                 </div>
               </div>
               <div className="flex items-center justify-between rounded-md border p-3">

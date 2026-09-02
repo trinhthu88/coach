@@ -5,8 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import "@/i18n/config";
 
-// Controls what check_has_module_access resolves to for the "module" gate tests below.
-let mockModuleAccess = false;
+// Controls what get_my_programme_modules() resolves to for the "module" gate
+// tests below — the shape useProgrammeModules() (and useModuleAccess, which
+// now delegates to it) expects back from that RPC.
+let mockModuleAccess: { module: string; enabled: boolean; config: Record<string, unknown> }[] = [];
 
 // Mock the supabase client so nothing hits the network.
 vi.mock("@/integrations/supabase/client", () => ({
@@ -74,7 +76,7 @@ const baseProfile = {
 
 beforeEach(() => {
   mockAuth.mockReset();
-  mockModuleAccess = false;
+  mockModuleAccess = [];
 });
 
 describe("ProtectedRoute", () => {
@@ -206,24 +208,24 @@ describe("ProtectedRoute", () => {
     expect(screen.getByText("dashboard page")).toBeInTheDocument();
   });
 
-  // `module` gates on user_module_access via check_has_module_access() — mocked
-  // above through mockModuleAccess, which stands in for the RPC result.
+  // `module` gates on the active programme's modules via get_my_programme_modules()
+  // — mocked above through mockModuleAccess, which stands in for the RPC result.
   it("redirects to /dashboard when the module is disabled", async () => {
-    mockModuleAccess = false;
+    mockModuleAccess = [];
     mockAuth.mockReturnValue({ user: { id: "u1" }, role: "coachee", profile: baseProfile, isLoading: false });
     renderAt("/private", undefined, { module: "mentoring" });
     await waitFor(() => expect(screen.getByText("dashboard page")).toBeInTheDocument());
   });
 
   it("renders children when the module is enabled", async () => {
-    mockModuleAccess = true;
+    mockModuleAccess = [{ module: "mentoring", enabled: true, config: {} }];
     mockAuth.mockReturnValue({ user: { id: "u1" }, role: "coachee", profile: baseProfile, isLoading: false });
     renderAt("/private", undefined, { module: "mentoring" });
     await waitFor(() => expect(screen.getByText("protected content")).toBeInTheDocument());
   });
 
   it("lets admins through a disabled module gate", async () => {
-    mockModuleAccess = false;
+    mockModuleAccess = [];
     mockAuth.mockReturnValue({ user: { id: "u1" }, role: "admin", profile: baseProfile, isLoading: false });
     renderAt("/private", undefined, { module: "mentoring" });
     expect(screen.getByText("protected content")).toBeInTheDocument();

@@ -55,7 +55,7 @@ interface AnalyticsPeerSessionRow {
 }
 
 interface AnalyticsEnrollmentRow {
-  coachee_id: string;
+  user_id: string;
   status: string;
   progress_pct: number | null;
 }
@@ -104,7 +104,7 @@ export default function AdminAnalytics() {
         supabase.from("sessions").select("coach_id, coachee_id, status, duration_minutes, coachee_rating"),
         supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, status, duration_minutes"),
         supabase.from("peer_session_competency_feedback").select("*"),
-        supabase.from("programme_enrollments").select("coachee_id, status, progress_pct"),
+        supabase.from("programme_enrollments").select("user_id, status, progress_pct"),
       ]);
 
       const profById = new Map((profiles || []).map((p: AnalyticsProfileRow) => [p.id, p]));
@@ -131,7 +131,7 @@ export default function AdminAnalytics() {
         if (["pending_coach_approval", "confirmed"].includes(s.status)) coacheeSessBooked.set(s.coachee_id, (coacheeSessBooked.get(s.coachee_id) || 0) + 1);
       });
       const enrByCoachee = new Map<string, AnalyticsEnrollmentRow>();
-      (enr || []).forEach((e: AnalyticsEnrollmentRow) => enrByCoachee.set(e.coachee_id, e));
+      (enr || []).forEach((e: AnalyticsEnrollmentRow) => enrByCoachee.set(e.user_id, e));
       const activeCoachees = coacheeIds.filter(id => profById.get(id)?.status === "active").length;
       const enrolled = coacheeIds.filter(id => enrByCoachee.has(id)).length;
       const progressAvg = (() => {

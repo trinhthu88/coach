@@ -47,7 +47,7 @@ export function useAdminCoacheesData() {
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
       supabase.from("sessions").select("coachee_id, status"),
-      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id, organization_id, start_date"),
+      supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date"),
       supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
       supabase.from("cohorts").select("id, name"),
       supabase.from("organizations").select("id, name").order("name"),
@@ -64,8 +64,8 @@ export function useAdminCoacheesData() {
       const p = profById.get(id);
       if (p) coachNameById.set(id, p.full_name);
     });
-    const enrByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "coachee_id" | "programme_id" | "cohort_id" | "organization_id" | "start_date">>();
-    (enrolls || []).forEach((e) => enrByUser.set(e.coachee_id, e));
+    const enrByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "user_id" | "programme_id" | "cohort_id" | "organization_id" | "start_date">>();
+    (enrolls || []).forEach((e) => enrByUser.set(e.user_id, e));
     const progById = new Map((progs || []).map((p) => [p.id, p]));
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const orgById = new Map((orgsData || []).map((o) => [o.id, o.name]));

@@ -306,7 +306,32 @@
     "activeLabel": "Đang hoạt động",
     "activeHint": "Hiển thị cho các lượt ghi danh mới.",
     "cancel": "Hủy",
-    "save": "Lưu"
+    "save": "Lưu",
+    "modules": {
+      "heading": "Module chương trình",
+      "hint": "Các tính năng chương trình này bao gồm, và cấu hình của chúng. Áp dụng cho bất kỳ ai đang ghi danh hoạt động — coach hoặc coachee.",
+      "give": "Cho",
+      "receive": "Nhận",
+      "giveLimit": "Giới hạn cho",
+      "receiveLimit": "Giới hạn nhận",
+      "monthlyLimit": "Giới hạn hàng tháng",
+      "groupSize": "Số người / nhóm",
+      "sessionsPerWeek": "Session / tuần",
+      "weeks": "Số tuần",
+      "deliveryTime": "Giờ gửi",
+      "includeDirectReports": "Bao gồm cấp dưới trực tiếp",
+      "unlimited": "Không giới hạn",
+      "types": {
+        "coaching": "Coaching",
+        "peer_coaching": "Peer coaching",
+        "mentoring": "Mentoring",
+        "triads": "Triads",
+        "training": "Đào tạo",
+        "quiz": "Quiz",
+        "assessment": "Đánh giá",
+        "daily_prompt": "Nhắc nhở hàng ngày"
+      }
+    }
   },
   "coachProgrammes": {
     "unlimited": "Không giới hạn",

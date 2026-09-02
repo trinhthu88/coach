@@ -25,7 +25,6 @@ import {
   Menu,
   Building2,
   FileDown,
-  UserCog,
   HelpCircle,
   Handshake,
 } from "lucide-react";
@@ -37,7 +36,7 @@ import clarivaLogoDark from "@/assets/clariva-logo-dark.png";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { useModuleAccess } from "@/hooks/useModuleAccess";
+import { useProgrammeModules, ProgrammeModuleType } from "@/hooks/useProgrammeModules";
 
 interface NavItem {
   to: string;
@@ -47,30 +46,33 @@ interface NavItem {
   groupKey?: string;
   /** Stable hook for the onboarding pointer tour — see src/lib/onboarding/content.ts. */
   onboardingId?: string;
+  /** Gate this item on the active programme's modules, in addition to role — see useProgrammeModules. */
+  module?: ProgrammeModuleType;
+  moduleDirection?: "give" | "receive";
 }
 
 const NAV: NavItem[] = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["coach", "coachee"] },
-  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coach", "coachee"] },
+  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coach", "coachee"], module: "mentoring" },
   { to: "/sponsor", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["sponsor"], groupKey: "navGroups.sponsor", onboardingId: "nav-sponsor-dashboard" },
   { to: "/sponsor/cohorts", labelKey: "nav.cohorts", icon: Layers, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
   { to: "/sponsor/report", labelKey: "nav.exportReport", icon: FileDown, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
 
   // Coachee
-  { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches" },
+  { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", module: "coaching", moduleDirection: "receive" },
   { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"] },
-  { to: "/coachee/journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coachee"] },
-  { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.myPracticeJourney" },
+  { to: "/coachee/journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coachee"], module: "coaching", moduleDirection: "receive" },
+  { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.myPracticeJourney", module: "peer_coaching" },
   { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.myPracticeJourney" },
 
   // Coach — My Coaching Profile
   { to: "/coach/profile", labelKey: "nav.myCoachProfile", icon: IdCard, roles: ["coach"], groupKey: "navGroups.myCoachingProfile" },
   { to: "/coach/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coach"], groupKey: "navGroups.myCoachingProfile", onboardingId: "nav-my-availability" },
-  { to: "/coach/clients", labelKey: "nav.myClients", icon: UsersRound, roles: ["coach"], groupKey: "navGroups.myCoachingProfile" },
+  { to: "/coach/clients", labelKey: "nav.myClients", icon: UsersRound, roles: ["coach"], groupKey: "navGroups.myCoachingProfile", module: "coaching", moduleDirection: "give" },
 
   // Coach — My Practice Journey
-  { to: "/coach/peer-coaching", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
-  { to: "/coach/find-coach", labelKey: "nav.findACoach", icon: Search, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
+  { to: "/coach/peer-coaching", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coach"], groupKey: "navGroups.myPracticeJourney", module: "peer_coaching" },
+  { to: "/coach/find-coach", labelKey: "nav.findACoach", icon: Search, roles: ["coach"], groupKey: "navGroups.myPracticeJourney", module: "coaching", moduleDirection: "receive" },
   { to: "/coach/my-journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
   { to: "/coach/practice-journey", labelKey: "nav.practiceAnalytics", icon: Layers, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
 
@@ -92,7 +94,6 @@ const NAV: NavItem[] = [
   // Admin — Programmes
   { to: "/admin/programmes", labelKey: "nav.programmes", icon: BookOpen, roles: ["admin"], groupKey: "navGroups.programmes" },
   { to: "/admin/cohorts", labelKey: "nav.cohorts", icon: Network, roles: ["admin"], groupKey: "navGroups.programmes" },
-  { to: "/admin/coach-programmes", labelKey: "nav.coachProgrammes", icon: UserCog, roles: ["admin"], groupKey: "navGroups.programmes" },
 
   // Admin — Operations
   { to: "/admin/sessions", labelKey: "nav.sessions", icon: ClipboardList, roles: ["admin"], groupKey: "navGroups.operations" },
@@ -247,10 +248,15 @@ export default function AppLayout() {
 
   // Nav visibility mirrors ProtectedRoute's `module` gate (defense in depth per
   // RULES.md) — the route guard alone would still let the item render in the sidebar.
-  const { enabled: mentoringEnabled } = useModuleAccess("mentoring");
-  const items = NAV.filter(
-    (n) => role && n.roles.includes(role) && (!n.to.startsWith("/mentoring") || mentoringEnabled || role === "admin")
-  );
+  const { hasModule, hasDirection } = useProgrammeModules();
+  const items = NAV.filter((n) => {
+    if (!role || !n.roles.includes(role)) return false;
+    if (n.module && role !== "admin" && role !== "sponsor") {
+      if (!hasModule(n.module)) return false;
+      if (n.moduleDirection && !hasDirection(n.module, n.moduleDirection)) return false;
+    }
+    return true;
+  });
   const showsOnboarding = role === "coach" || role === "coachee" || role === "sponsor";
 
   const [manualTourOpen, setManualTourOpen] = useState(false);

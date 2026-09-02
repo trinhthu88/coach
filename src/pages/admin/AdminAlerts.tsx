@@ -29,7 +29,7 @@ interface AlertsScanProfileRow {
 
 interface AlertsScanEnrollmentRow {
   id: string;
-  coachee_id: string;
+  user_id: string;
   status: string;
   progress_pct: number | null;
 }
@@ -111,7 +111,7 @@ export default function AdminAlerts() {
           .select("id, peer_coach_id, peer_coachee_id, status, start_time"),
         supabase.from("peer_session_competency_feedback").select("peer_session_id"),
         supabase.from("profiles").select("id, full_name, email"),
-        supabase.from("programme_enrollments").select("id, coachee_id, status, progress_pct"),
+        supabase.from("programme_enrollments").select("id, user_id, status, progress_pct"),
         supabase
           .from("mentoring_sessions")
           .select("id, mentee_id, status, start_time, prep_file_path, feedback_submitted_at"),
@@ -152,9 +152,9 @@ export default function AdminAlerts() {
           newAlerts.push({
             severity: "critical",
             alert_type: "programme_at_risk",
-            title: `${profById.get(e.coachee_id) || "Coachee"} — programme at risk`,
+            title: `${profById.get(e.user_id) || "Coachee"} — programme at risk`,
             message: `Progress ${e.progress_pct}% · review needed`,
-            related_coachee_id: e.coachee_id,
+            related_coachee_id: e.user_id,
             resolved: false,
           });
         }

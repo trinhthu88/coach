@@ -119,7 +119,7 @@ export default function AdminCoaches() {
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
       supabase.from("cohorts").select("id, name"),
       supabase.from("programmes").select("id, name, coachee_session_limit, peer_session_limit, peer_given_limit, duration_months"),
-      supabase.from("programme_enrollments").select("id, coachee_id, programme_id, cohort_id, start_date"),
+      supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, start_date"),
     ]);
 
     const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
@@ -171,8 +171,8 @@ export default function AdminCoaches() {
       assignedByCoach.set(a.coach_user_id, arr);
     });
 
-    const enrollByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "coachee_id" | "programme_id" | "cohort_id" | "start_date">>();
-    (enrolls || []).forEach((e) => enrollByUser.set(e.coachee_id, e));
+    const enrollByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "user_id" | "programme_id" | "cohort_id" | "start_date">>();
+    (enrolls || []).forEach((e) => enrollByUser.set(e.user_id, e));
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const progById = new Map((progsData || []).map((p) => [p.id, p]));
 

@@ -65,7 +65,7 @@ export function useCoacheeProfileDetail(coacheeId: string | undefined) {
         supabase
           .from("programme_enrollments")
           .select("id, status, start_date, end_date, programmes(name), cohorts(name)")
-          .eq("coachee_id", coacheeId)
+          .eq("user_id", coacheeId)
           .order("start_date", { ascending: false }),
       ]);
       const ratingByGoal = new Map((rs || []).map((r) => [r.goal_id, r]));

@@ -312,7 +312,32 @@
     "activeLabel": "Active",
     "activeHint": "Visible for new enrollments.",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "modules": {
+      "heading": "Programme modules",
+      "hint": "Which features this programme includes, and their configuration. Applies to whoever is actively enrolled — coach or coachee.",
+      "give": "Give",
+      "receive": "Receive",
+      "giveLimit": "Give limit",
+      "receiveLimit": "Receive limit",
+      "monthlyLimit": "Monthly limit",
+      "groupSize": "Group size",
+      "sessionsPerWeek": "Sessions / week",
+      "weeks": "Weeks",
+      "deliveryTime": "Delivery time",
+      "includeDirectReports": "Include direct reports",
+      "unlimited": "Unlimited",
+      "types": {
+        "coaching": "Coaching",
+        "peer_coaching": "Peer coaching",
+        "mentoring": "Mentoring",
+        "triads": "Triads",
+        "training": "Training",
+        "quiz": "Quiz",
+        "assessment": "Assessment",
+        "daily_prompt": "Daily prompt"
+      }
+    }
   },
   "coachProgrammes": {
     "unlimited": "Unlimited",

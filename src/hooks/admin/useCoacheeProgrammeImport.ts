@@ -40,7 +40,7 @@ export function useCoacheeProgrammeImport(programmes: ProgrammeOpt[], rows: Row[
       let stagedNew = 0;
       let skipped = 0;
       const stagedPayload: { email: string; full_name: string; programme_id: string }[] = [];
-      const enrollPayload: { coachee_id: string; programme_id: string }[] = [];
+      const enrollPayload: { user_id: string; programme_id: string }[] = [];
 
       for (const r of data) {
         const email = String(r.Email || r.email || "").trim().toLowerCase();
@@ -71,7 +71,7 @@ export function useCoacheeProgrammeImport(programmes: ProgrammeOpt[], rows: Row[
                 { programme_id: prog.id }
               );
             } else {
-              enrollPayload.push({ coachee_id: existing.id, programme_id: prog.id });
+              enrollPayload.push({ user_id: existing.id, programme_id: prog.id });
             }
             enrolledExisting++;
           }
