@@ -81,11 +81,11 @@ function defaultModuleRows(): ModuleRows {
     coaching: { enabled: false, config: { give: false, receive: false, give_limit: null, receive_limit: null } },
     peer_coaching: { enabled: false, config: { give: false, receive: false, monthly_limit: null } },
     mentoring: { enabled: false, config: { give: false, receive: false, give_limit: null, receive_limit: null } },
-    triads: { enabled: false, config: { group_size: 3, sessions_per_week: 1 } },
+    triads: { enabled: false, config: { group_size: 3, max_triads: null } },
     training: { enabled: false, config: { weeks: 4 } },
     quiz: { enabled: false, config: {} },
     assessment: { enabled: false, config: { include_direct_reports: false } },
-    daily_prompt: { enabled: false, config: { delivery_time: "07:00" } },
+    daily_prompt: { enabled: false, config: {} },
   };
 }
 
@@ -188,14 +188,12 @@ function ModuleConfigRow({
                   onChange={(e) => onConfigChange({ group_size: Number(e.target.value) })}
                 />
               </div>
-              <div>
-                <Label className="text-[10.5px] text-muted-foreground">{t("programmes.modules.sessionsPerWeek")}</Label>
-                <Input
-                  type="number" min={1}
-                  value={(cfg.sessions_per_week as number) ?? 1}
-                  onChange={(e) => onConfigChange({ sessions_per_week: Number(e.target.value) })}
-                />
-              </div>
+              <LimitField
+                label={t("programmes.modules.maxTriads")}
+                value={(cfg.max_triads as number | null) ?? null}
+                onChange={(v) => onConfigChange({ max_triads: v })}
+                t={t}
+              />
             </>
           )}
           {module === "training" && (
@@ -216,16 +214,6 @@ function ModuleConfigRow({
               />
               {t("programmes.modules.includeDirectReports")}
             </label>
-          )}
-          {module === "daily_prompt" && (
-            <div>
-              <Label className="text-[10.5px] text-muted-foreground">{t("programmes.modules.deliveryTime")}</Label>
-              <Input
-                type="time"
-                value={(cfg.delivery_time as string) ?? "07:00"}
-                onChange={(e) => onConfigChange({ delivery_time: e.target.value })}
-              />
-            </div>
           )}
         </div>
       )}
@@ -458,7 +446,7 @@ export default function AdminProgrammes() {
       </Card>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing?.id ? t("programmes.dialogTitleEdit") : t("programmes.dialogTitleNew")}</DialogTitle>
           </DialogHeader>

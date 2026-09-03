@@ -51,6 +51,8 @@ export default function AdminTriads() {
   const [groups, setGroups] = useState<TriadGroupRow[]>([]);
   const [sessionCountByGroup, setSessionCountByGroup] = useState<Map<string, number>>(new Map());
   const [reflectionCountByGroup, setReflectionCountByGroup] = useState<Map<string, number>>(new Map());
+  const [maxTriads, setMaxTriads] = useState<number | null>(null);
+  const [programmeGroupCount, setProgrammeGroupCount] = useState(0);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -72,13 +74,35 @@ export default function AdminTriads() {
       setGroups([]);
       setSessionCountByGroup(new Map());
       setReflectionCountByGroup(new Map());
+      setMaxTriads(null);
+      setProgrammeGroupCount(0);
       return;
     }
     setBusy(true);
-    const [{ data: enrollments }, { data: groupRows }] = await Promise.all([
+    const [{ data: enrollments }, { data: groupRows }, { data: cohortRow }] = await Promise.all([
       supabase.from("programme_enrollments").select("user_id").eq("cohort_id", id).eq("status", "active"),
       supabase.from("triad_groups").select("*").eq("cohort_id", id).order("created_at"),
+      supabase.from("cohorts").select("programme_id").eq("id", id).maybeSingle(),
     ]);
+
+    // The "how many triads can be made" cap lives on the programme's triads
+    // module config (set in AdminProgrammes.tsx), not per-cohort — so it's
+    // checked against every active group across the whole programme, not
+    // just this cohort's.
+    const programmeId = (cohortRow?.programme_id as string | null) ?? null;
+    if (programmeId) {
+      const [{ data: moduleRow }, { count }] = await Promise.all([
+        supabase.from("programme_modules").select("config").eq("programme_id", programmeId).eq("module", "triads").maybeSingle(),
+        supabase.from("triad_groups").select("id", { count: "exact", head: true }).eq("programme_id", programmeId).eq("is_active", true),
+      ]);
+      const cfg = (moduleRow?.config as { max_triads?: number | null } | null) ?? {};
+      setMaxTriads(cfg.max_triads ?? null);
+      setProgrammeGroupCount(count ?? 0);
+    } else {
+      setMaxTriads(null);
+      setProgrammeGroupCount(0);
+    }
+
     const userIds = [...new Set((enrollments || []).map((e) => e.user_id as string))];
     const { data: profileRows } = userIds.length
       ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
@@ -135,8 +159,14 @@ export default function AdminTriads() {
     setCreateOpen(true);
   };
 
+  const atCapacity = maxTriads != null && programmeGroupCount >= maxTriads;
+
   const createTriad = async () => {
     if (!cohort || !m1 || !m2 || !m3 || m1 === m2 || m1 === m3 || m2 === m3) return;
+    if (atCapacity) {
+      toast.error(t("triads.maxTriadsReached", { max: maxTriads }));
+      return;
+    }
     setBusy(true);
     const { error } = await supabase.from("triad_groups").insert({
       cohort_id: cohort.id,
@@ -169,6 +199,15 @@ export default function AdminTriads() {
       setBusy(false);
       toast.info(t("triads.noneToAssign"));
       return;
+    }
+    if (maxTriads != null) {
+      const capacity = Math.max(0, maxTriads - programmeGroupCount);
+      if (capacity === 0) {
+        setBusy(false);
+        toast.error(t("triads.maxTriadsReached", { max: maxTriads }));
+        return;
+      }
+      rows.length = Math.min(rows.length, capacity);
     }
     const { error } = await supabase.from("triad_groups").insert(rows);
     setBusy(false);
@@ -229,12 +268,18 @@ export default function AdminTriads() {
             <Kpi label={t("triads.kpiSessions")} value={totalSessions} icon={Shuffle} tone="secondary" />
           </div>
 
+          {maxTriads != null && (
+            <p className="mb-3 text-[11px] text-muted-foreground">
+              {t("triads.programmeLimit", { count: programmeGroupCount, max: maxTriads })}
+            </p>
+          )}
+
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("triads.title")}</p>
             <div className="flex gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={busy}>
+                  <Button variant="outline" size="sm" disabled={busy || atCapacity}>
                     <Shuffle className="mr-1.5 h-3.5 w-3.5" /> {t("triads.autoAssign")}
                   </Button>
                 </AlertDialogTrigger>
@@ -249,7 +294,7 @@ export default function AdminTriads() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button size="sm" onClick={openCreate} disabled={busy || unassigned.length < 3}>
+              <Button size="sm" onClick={openCreate} disabled={busy || unassigned.length < 3 || atCapacity}>
                 <UserPlus className="mr-1.5 h-3.5 w-3.5" /> {t("triads.createGroup")}
               </Button>
             </div>
