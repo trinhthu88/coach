@@ -38,6 +38,7 @@ import { ActionGroups } from "./journey/ActionGroups";
 import { SessionsBlock } from "./journey/SessionsBlock";
 import { GoalDialog } from "./journey/GoalDialog";
 import { CoacheeProgrammeCard } from "./journey/CoacheeProgrammeCard";
+import { ProgrammeTimeline } from "./journey/ProgrammeTimeline";
 
 export default function CoacheeJourney() {
   const { t } = useTranslation("journey");
@@ -121,6 +122,8 @@ export default function CoacheeJourney() {
           emphasis={t("journeyPage.titleEmphasis")}
           subtitle={t("coacheeJourney.subtitle")}
         />
+
+      <ProgrammeTimeline />
 
       {/* PROGRESS RINGS */}
       <div className="grid gap-4 sm:grid-cols-3">

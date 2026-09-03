@@ -202,5 +202,8 @@
       }
     },
     "footerDisclaimer": "Prepared from aggregate programme data. Session notes, chat messages, reflections and goal wording are excluded from Clariva sponsor reporting and were not available to the requester."
-  }
+  },
+  "downloadPdf": "Download PDF report",
+  "generatingPdf": "Generating PDF…",
+  "pdfError": "Couldn't generate the PDF. Please try again."
 }

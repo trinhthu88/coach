@@ -84,6 +84,7 @@ const NAV: NavItem[] = [
 
   // Learning (shared)
   { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coach", "coachee"], module: "training", groupKey: "navGroups.learning" },
+  { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coach", "coachee"], module: "triads", groupKey: "navGroups.learning" },
 
   // Admin — Overview
   { to: "/admin", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["admin"], groupKey: "navGroups.overview" },
@@ -100,6 +101,7 @@ const NAV: NavItem[] = [
   { to: "/admin/programmes", labelKey: "nav.programmes", icon: BookOpen, roles: ["admin"], groupKey: "navGroups.programmes" },
   { to: "/admin/cohorts", labelKey: "nav.cohorts", icon: Network, roles: ["admin"], groupKey: "navGroups.programmes" },
   { to: "/admin/training-content", labelKey: "nav.trainingContent", icon: FileText, roles: ["admin"], groupKey: "navGroups.programmes" },
+  { to: "/admin/triads", labelKey: "nav.triads", icon: Users, roles: ["admin"], groupKey: "navGroups.programmes" },
 
   // Admin — Operations
   { to: "/admin/sessions", labelKey: "nav.sessions", icon: ClipboardList, roles: ["admin"], groupKey: "navGroups.operations" },

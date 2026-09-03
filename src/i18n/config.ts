@@ -16,6 +16,7 @@ import sponsorEn from "@/locales/en/sponsor.json";
 import toolsEn from "@/locales/en/tools.json";
 import mentoringEn from "@/locales/en/mentoring.json";
 import trainingEn from "@/locales/en/training.json";
+import triadsEn from "@/locales/en/triads.json";
 
 import commonVi from "@/locales/vi/common.json";
 import authVi from "@/locales/vi/auth.json";
@@ -31,6 +32,7 @@ import sponsorVi from "@/locales/vi/sponsor.json";
 import toolsVi from "@/locales/vi/tools.json";
 import mentoringVi from "@/locales/vi/mentoring.json";
 import trainingVi from "@/locales/vi/training.json";
+import triadsVi from "@/locales/vi/triads.json";
 
 export const SUPPORTED_LANGUAGES = ["en", "vi"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -52,6 +54,7 @@ export const NAMESPACES = [
   "tools",
   "mentoring",
   "training",
+  "triads",
 ] as const;
 
 i18n
@@ -74,6 +77,7 @@ i18n
         tools: toolsEn,
         mentoring: mentoringEn,
         training: trainingEn,
+        triads: triadsEn,
       },
       vi: {
         common: commonVi,
@@ -90,6 +94,7 @@ i18n
         tools: toolsVi,
         mentoring: mentoringVi,
         training: trainingVi,
+        triads: triadsVi,
       },
     },
     ns: NAMESPACES,

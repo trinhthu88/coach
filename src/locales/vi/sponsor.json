@@ -202,5 +202,8 @@
       }
     },
     "footerDisclaimer": "Được chuẩn bị từ dữ liệu tổng hợp của chương trình. Ghi chú session, tin nhắn trò chuyện, suy ngẫm và cách diễn đạt mục tiêu bị loại trừ khỏi báo cáo dành cho nhà tài trợ của Clariva và không có sẵn cho người yêu cầu."
-  }
+  },
+  "downloadPdf": "Tải báo cáo PDF",
+  "generatingPdf": "Đang tạo PDF…",
+  "pdfError": "Không thể tạo PDF. Vui lòng thử lại."
 }

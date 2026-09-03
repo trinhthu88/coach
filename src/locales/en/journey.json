@@ -32,6 +32,22 @@
     "assignedCoaches": "Assigned coaches",
     "sponsorDisclaimer": "If your organization sponsors this programme, they can see your participation, progress, and completion status — never your session notes, chat messages, or personal reflections."
   },
+  "programmeTimeline": {
+    "heading": "Programme timeline",
+    "weekN": "Week {{n}}",
+    "locked": "Locked",
+    "current": "Current",
+    "completed": "Completed",
+    "skillCardViewed": "Skill card viewed",
+    "quizScore": "Quiz: {{score}}%",
+    "quizPending": "Quiz pending",
+    "reflectionSubmitted": "Reflection submitted",
+    "reflectionPending": "Reflection pending",
+    "promptStreak": "Prompts {{done}}/{{total}}",
+    "triadCompleted": "Triad completed",
+    "triadScheduled": "Triad scheduled",
+    "triadNotScheduled": "Triad not scheduled"
+  },
   "emptyGoals": {
     "title": "Set your first goal"
   },

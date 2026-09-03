@@ -49,6 +49,10 @@ const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
 const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations"));
 const AdminMentoring = lazy(() => import("./pages/admin/AdminMentoring"));
 const AdminTrainingContent = lazy(() => import("./pages/admin/AdminTrainingContent"));
+const AdminTriads = lazy(() => import("./pages/admin/AdminTriads"));
+const TriadDashboard = lazy(() => import("./pages/TriadDashboard"));
+const TriadBookSession = lazy(() => import("./pages/TriadBookSession"));
+const TriadReflectionForm = lazy(() => import("./pages/TriadReflectionForm"));
 const TrainingWeeks = lazy(() => import("./pages/TrainingWeeks"));
 const SkillCardView = lazy(() => import("./pages/SkillCardView"));
 const QuizView = lazy(() => import("./pages/QuizView"));
@@ -307,6 +311,38 @@ const App = () => (
                     element={
                       <ProtectedRoute role="admin">
                         <AdminTrainingContent />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/triads"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="triads">
+                        <TriadDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/triads/:triadGroupId/book"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="triads">
+                        <TriadBookSession />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/triads/:sessionId/reflect"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="triads">
+                        <TriadReflectionForm />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/triads"
+                    element={
+                      <ProtectedRoute role="admin">
+                        <AdminTriads />
                       </ProtectedRoute>
                     }
                   />

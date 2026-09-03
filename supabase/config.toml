@@ -25,3 +25,9 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.send-daily-prompt]
     verify_jwt = false
+  [functions.send-programme-reminders]
+    verify_jwt = false
+  [functions.send-weekly-admin-summary]
+    verify_jwt = false
+  [functions.generate-report-pdf]
+    verify_jwt = true

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import { FileDown, ShieldCheck, Loader2, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
   active: "success",
@@ -34,6 +36,7 @@ export default function SponsorReport() {
   const [includeRoster, setIncludeRoster] = useState(true);
   const [generated, setGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const cohortNames = Array.from(new Set(roster.map(r => r.cohort_name).filter(Boolean)));
 
@@ -55,8 +58,15 @@ export default function SponsorReport() {
     setTimeout(() => { setGenerating(false); setGenerated(true); }, 800);
   }
 
-  function handlePrint() {
-    window.print();
+  async function handleDownloadPdf() {
+    setPdfLoading(true);
+    const { data, error } = await supabase.functions.invoke<{ url: string }>("generate-report-pdf");
+    setPdfLoading(false);
+    if (error || !data?.url) {
+      toast.error(t("pdfError"));
+      return;
+    }
+    window.open(data.url, "_blank", "noopener,noreferrer");
   }
 
   const scopeLabel = scope === "all" ? t("report.setup.allCohorts") : scope;
@@ -131,8 +141,9 @@ export default function SponsorReport() {
               </Button>
 
               {generated && (
-                <Button variant="outline" onClick={handlePrint} className="w-full gap-2">
-                  <FileDown className="h-4 w-4" /> {t("report.setup.downloadPdf")}
+                <Button variant="outline" onClick={handleDownloadPdf} disabled={pdfLoading} className="w-full gap-2">
+                  {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                  {pdfLoading ? t("generatingPdf") : t("downloadPdf")}
                 </Button>
               )}
             </div>

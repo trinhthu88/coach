@@ -33,6 +33,22 @@
     "assignedCoaches": "Coach được phân công",
     "sponsorDisclaimer": "Nếu tổ chức của bạn tài trợ chương trình này, họ có thể xem sự tham gia, tiến độ và trạng thái hoàn thành của bạn — không bao giờ xem ghi chú buổi session, tin nhắn trò chuyện hoặc suy ngẫm cá nhân của bạn."
   },
+  "programmeTimeline": {
+    "heading": "Dòng thời gian chương trình",
+    "weekN": "Tuần {{n}}",
+    "locked": "Đã khóa",
+    "current": "Hiện tại",
+    "completed": "Đã hoàn thành",
+    "skillCardViewed": "Đã xem skill card",
+    "quizScore": "Quiz: {{score}}%",
+    "quizPending": "Chưa làm quiz",
+    "reflectionSubmitted": "Đã gửi phản hồi",
+    "reflectionPending": "Chưa gửi phản hồi",
+    "promptStreak": "Prompt {{done}}/{{total}}",
+    "triadCompleted": "Đã hoàn thành triad",
+    "triadScheduled": "Đã đặt lịch triad",
+    "triadNotScheduled": "Chưa đặt lịch triad"
+  },
   "emptyGoals": {
     "title": "Đặt mục tiêu đầu tiên của bạn"
   },

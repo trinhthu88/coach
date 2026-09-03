@@ -37,6 +37,7 @@ import { ActionGroups } from "./journey/ActionGroups";
 import { SessionsBlock } from "./journey/SessionsBlock";
 import { GoalDialog } from "./journey/GoalDialog";
 import { CoachProgrammeCard } from "./journey/CoachProgrammeCard";
+import { ProgrammeTimeline } from "./journey/ProgrammeTimeline";
 
 function Metric({
   label,
@@ -143,6 +144,8 @@ export default function CoachMyJourney() {
             </Badge>
           }
         />
+
+      <ProgrammeTimeline />
 
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

@@ -2340,6 +2340,225 @@ export type Database = {
           },
         ]
       }
+      triad_groups: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          member_1_id: string
+          member_2_id: string
+          member_3_id: string
+          name: string | null
+          programme_id: string
+          updated_at: string
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          member_1_id: string
+          member_2_id: string
+          member_3_id: string
+          name?: string | null
+          programme_id: string
+          updated_at?: string
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          member_1_id?: string
+          member_2_id?: string
+          member_3_id?: string
+          name?: string | null
+          programme_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_groups_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_member_1_id_fkey"
+            columns: ["member_1_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_member_2_id_fkey"
+            columns: ["member_2_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_member_3_id_fkey"
+            columns: ["member_3_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      triad_reflections: {
+        Row: {
+          id: string
+          learned_as_coach: string | null
+          learned_as_coachee: string | null
+          learned_as_observer: string | null
+          participant_id: string
+          satisfaction_rating: number | null
+          submitted_at: string
+          triad_session_id: string
+          will_use_as_coach: string | null
+          will_use_as_coachee: string | null
+          will_use_as_observer: string | null
+        }
+        Insert: {
+          id?: string
+          learned_as_coach?: string | null
+          learned_as_coachee?: string | null
+          learned_as_observer?: string | null
+          participant_id: string
+          satisfaction_rating?: number | null
+          submitted_at?: string
+          triad_session_id: string
+          will_use_as_coach?: string | null
+          will_use_as_coachee?: string | null
+          will_use_as_observer?: string | null
+        }
+        Update: {
+          id?: string
+          learned_as_coach?: string | null
+          learned_as_coachee?: string | null
+          learned_as_observer?: string | null
+          participant_id?: string
+          satisfaction_rating?: number | null
+          submitted_at?: string
+          triad_session_id?: string
+          will_use_as_coach?: string | null
+          will_use_as_coachee?: string | null
+          will_use_as_observer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_reflections_triad_session_id_fkey"
+            columns: ["triad_session_id"]
+            isOneToOne: false
+            referencedRelation: "triad_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_reflections_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      triad_sessions: {
+        Row: {
+          coach_role_id: string
+          coachee_role_id: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          meeting_url: string | null
+          notes: string | null
+          observer_role_id: string
+          session_date: string
+          start_time: string | null
+          status: Database["public"]["Enums"]["session_status"]
+          training_week_id: string | null
+          triad_group_id: string
+          updated_at: string
+        }
+        Insert: {
+          coach_role_id: string
+          coachee_role_id: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_url?: string | null
+          notes?: string | null
+          observer_role_id: string
+          session_date: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["session_status"]
+          training_week_id?: string | null
+          triad_group_id: string
+          updated_at?: string
+        }
+        Update: {
+          coach_role_id?: string
+          coachee_role_id?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          meeting_url?: string | null
+          notes?: string | null
+          observer_role_id?: string
+          session_date?: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["session_status"]
+          training_week_id?: string | null
+          triad_group_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_sessions_triad_group_id_fkey"
+            columns: ["triad_group_id"]
+            isOneToOne: false
+            referencedRelation: "triad_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_coach_role_id_fkey"
+            columns: ["coach_role_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_coachee_role_id_fkey"
+            columns: ["coachee_role_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_observer_role_id_fkey"
+            columns: ["observer_role_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_module_access: {
         Row: {
           enabled: boolean
