@@ -29,6 +29,23 @@ interface RosterRow {
   goal_growth: number | null;
 }
 
+interface ProgrammeEngagementRow {
+  week_number: number;
+  week_title: string;
+  skill_card_completion_pct: number | null;
+  quiz_avg_score: number | null;
+  quiz_completion_pct: number | null;
+  triad_completion_pct: number | null;
+  daily_prompt_response_rate: number | null;
+  avg_confidence_score: number | null;
+}
+
+interface TopReflectionRow {
+  anonymized_quote: string;
+  week_number: number;
+  role_played: string;
+}
+
 const PAGE_SIZE: [number, number] = [612, 792]; // US Letter
 const MARGIN = 56;
 
@@ -68,12 +85,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const [kpisRes, growthRes, rosterRes, satisfactionRes, orgRes] = await Promise.all([
+    const [kpisRes, growthRes, rosterRes, satisfactionRes, orgRes, engagementRes, topReflectionsRes] = await Promise.all([
       asUser.rpc("sponsor_kpis"),
       asUser.rpc("sponsor_goal_growth_summary"),
       asUser.rpc("sponsor_roster"),
       asUser.rpc("sponsor_satisfaction_summary"),
       asUser.from("sponsor_profiles").select("organizations(name)").eq("user_id", user.id).maybeSingle(),
+      asUser.rpc("sponsor_programme_engagement"),
+      asUser.rpc("sponsor_top_reflections", { p_limit: 3 }),
     ]);
     if (kpisRes.error) throw kpisRes.error;
 
@@ -82,6 +101,8 @@ Deno.serve(async (req) => {
     const roster = (rosterRes.data ?? []) as RosterRow[];
     const satisfaction = satisfactionRes.data?.[0] ?? null;
     const orgName = (orgRes.data as { organizations: { name: string } | null } | null)?.organizations?.name ?? "Your organization";
+    const engagement = (engagementRes.data ?? []) as ProgrammeEngagementRow[];
+    const topReflections = (topReflectionsRes.data ?? []) as TopReflectionRow[];
 
     // ------------------------------------------------------------------
     // Build the PDF
@@ -164,6 +185,34 @@ Deno.serve(async (req) => {
           x += cols[i].w;
         });
         y -= 14;
+      }
+    }
+
+    // Programme impact — omitted entirely when there's no engagement data
+    // (mirrors SponsorReport.tsx's on-screen preview, which does the same).
+    if (engagement.length > 0) {
+      newPageIfNeeded(20);
+      y -= 10;
+      text("Programme impact", { size: 13, f: bold, gap: 10 });
+
+      const avgOf = (values: (number | null)[]) => {
+        const present = values.filter((v): v is number => v != null);
+        return present.length > 0 ? present.reduce((a, b) => a + b, 0) / present.length : null;
+      };
+      const fmtPct = (v: number | null) => (v != null ? `${Math.round(v)}%` : "—");
+      text(`Skill card completion: ${fmtPct(avgOf(engagement.map((w) => w.skill_card_completion_pct)))}`);
+      text(`Quiz completion: ${fmtPct(avgOf(engagement.map((w) => w.quiz_completion_pct)))}`);
+      text(`Triad completion: ${fmtPct(avgOf(engagement.map((w) => w.triad_completion_pct)))}`);
+      text(`Daily prompt response rate: ${fmtPct(avgOf(engagement.map((w) => w.daily_prompt_response_rate)))}`, { gap: 18 });
+
+      if (topReflections.length > 0) {
+        newPageIfNeeded(20);
+        text("In their own words", { size: 11, f: bold, gap: 8 });
+        for (const q of topReflections) {
+          const quote = q.anonymized_quote.length > 200 ? `${q.anonymized_quote.slice(0, 200)}…` : q.anonymized_quote;
+          text(`"${quote}" — Week ${q.week_number}`, { size: 9, color: muted, gap: 10 });
+        }
+        y -= 8;
       }
     }
 

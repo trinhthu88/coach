@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { FileDown, ShieldCheck, Loader2, RefreshCw } from "lucide-react";
+import { FileDown, ShieldCheck, Loader2, RefreshCw, Quote } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
@@ -12,6 +12,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
+
+type TopReflection = Database["public"]["Functions"]["sponsor_top_reflections"]["Returns"][number];
 
 const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
   active: "success",
@@ -30,15 +34,43 @@ const PERIOD_OPTS = ["all", "90d", "60d", "30d"] as const;
 
 export default function SponsorReport() {
   const { t } = useTranslation("sponsor");
-  const { kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution, loading } = useSponsorDashboardData();
+  const { kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution, programmeEngagement, loading } = useSponsorDashboardData();
   const [period, setPeriod] = useState("all");
   const [scope, setScope] = useState("all");
   const [includeRoster, setIncludeRoster] = useState(true);
   const [generated, setGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [topQuotes, setTopQuotes] = useState<TopReflection[]>([]);
+
+  useEffect(() => {
+    supabase.rpc("sponsor_top_reflections", { p_limit: 3 }).then(({ data }) => setTopQuotes(data ?? []));
+  }, []);
 
   const cohortNames = Array.from(new Set(roster.map(r => r.cohort_name).filter(Boolean)));
+
+  // Overall completion rates across all weeks — averaged ignoring weeks
+  // where that metric is null (module not enabled / no data yet for that
+  // week), same "silent when absent" contract as sponsor_programme_engagement().
+  const avgOf = (values: (number | null)[]) => {
+    const present = values.filter((v): v is number => v != null);
+    return present.length > 0 ? present.reduce((a, b) => a + b, 0) / present.length : null;
+  };
+  const impactAvg = {
+    skillCard: avgOf(programmeEngagement.map(w => w.skill_card_completion_pct)),
+    quiz: avgOf(programmeEngagement.map(w => w.quiz_completion_pct)),
+    triad: avgOf(programmeEngagement.map(w => w.triad_completion_pct)),
+    prompt: avgOf(programmeEngagement.map(w => w.daily_prompt_response_rate)),
+  };
+  const confidenceTrendData = programmeEngagement
+    .filter(w => w.avg_confidence_score != null)
+    .map(w => ({ week: `W${w.week_number}`, confidence: Number(w.avg_confidence_score) }));
+  const completionComparisonData = [
+    { module: t("report.programmeImpact.completionComparison.training"), pct: impactAvg.skillCard },
+    { module: t("report.programmeImpact.completionComparison.quiz"), pct: impactAvg.quiz },
+    { module: t("report.programmeImpact.completionComparison.triads"), pct: impactAvg.triad },
+    { module: t("report.programmeImpact.completionComparison.prompts"), pct: impactAvg.prompt },
+  ].filter(d => d.pct != null) as { module: string; pct: number }[];
 
   const filteredRoster = scope === "all" ? roster : roster.filter(r => r.cohort_name === scope);
 
@@ -262,6 +294,72 @@ export default function SponsorReport() {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                )}
+
+                {/* Programme impact — omitted entirely when there's no
+                    engagement data at all (no training-module programme in
+                    scope), same silent-absence contract as the dashboard. */}
+                {programmeEngagement.length > 0 && (
+                  <div className="rounded-xl border border-border p-4">
+                    <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.programmeImpact.label")}</p>
+
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <MiniKpi label={t("report.programmeImpact.summary.skillCard")} value={impactAvg.skillCard != null ? `${Math.round(impactAvg.skillCard)}%` : "—"} />
+                      <MiniKpi label={t("report.programmeImpact.summary.quiz")} value={impactAvg.quiz != null ? `${Math.round(impactAvg.quiz)}%` : "—"} />
+                      <MiniKpi label={t("report.programmeImpact.summary.triad")} value={impactAvg.triad != null ? `${Math.round(impactAvg.triad)}%` : "—"} />
+                      <MiniKpi label={t("report.programmeImpact.summary.prompt")} value={impactAvg.prompt != null ? `${Math.round(impactAvg.prompt)}%` : "—"} />
+                    </div>
+
+                    {confidenceTrendData.length > 1 && (
+                      <div className="mt-4">
+                        <p className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.programmeImpact.confidenceTrend.label")}</p>
+                        <div className="h-32">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={confidenceTrendData} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
+                              {/* Fixed light-mode grays, not theme tokens — this preview box is a
+                                  fixed-white printable page regardless of the viewer's app theme. */}
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                              <XAxis dataKey="week" tick={{ fill: "#6b7280", fontSize: 9 }} />
+                              <YAxis domain={[0, 10]} tick={{ fill: "#6b7280", fontSize: 9 }} />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="confidence" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 2 }} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+
+                    {completionComparisonData.length > 0 && (
+                      <div className="mt-4">
+                        <p className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.programmeImpact.completionComparison.label")}</p>
+                        <div className="h-32">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={completionComparisonData} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                              <XAxis dataKey="module" tick={{ fill: "#6b7280", fontSize: 9 }} />
+                              <YAxis domain={[0, 100]} tick={{ fill: "#6b7280", fontSize: 9 }} />
+                              <Tooltip />
+                              <Bar dataKey="pct" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+
+                    {topQuotes.length > 0 && (
+                      <div className="mt-4">
+                        <p className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.programmeImpact.topQuotes.label")}</p>
+                        <div className="space-y-2">
+                          {topQuotes.map((q, i) => (
+                            <div key={i} className="flex gap-2 rounded-lg bg-muted/40 p-2.5 text-[11px] italic text-muted-foreground">
+                              <Quote className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+                              <span>&ldquo;{q.anonymized_quote}&rdquo; <span className="not-italic text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/70">— {t("report.programmeImpact.topQuotes.weekPrefix", { n: q.week_number })}</span></span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

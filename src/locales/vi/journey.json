@@ -35,6 +35,7 @@
   },
   "programmeTimeline": {
     "heading": "Dòng thời gian chương trình",
+    "overallProgress": "Đã hoàn thành {{done}}/{{total}} tuần",
     "weekN": "Tuần {{n}}",
     "locked": "Đã khóa",
     "current": "Hiện tại",

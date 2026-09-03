@@ -191,3 +191,144 @@ export function buildMentoringFeedbackOverdueAlerts(opts: {
 
   return alerts;
 }
+
+// ---------------------------------------------------------------------
+// Phase 4 (L&D dashboards), part C: three programme-related alert types
+// for AdminAlerts.tsx's manual "Run scan" button — distinct from, and a
+// faster-turnaround complement to, the daily send-programme-reminders
+// Edge Function (Phase 3), which raises its own 'stale_participant' alerts
+// on a fixed schedule the admin can't trigger on demand.
+// ---------------------------------------------------------------------
+
+export interface ProgrammeAlert {
+  severity: "info" | "warning" | "critical";
+  alert_type: "stale_programme_participant" | "low_quiz_scores" | "triad_not_scheduled";
+  title: string;
+  message: string;
+  related_coachee_id: string | null;
+  resolved: false;
+}
+
+export interface ScanActivityRow {
+  userId: string;
+  timestamp: string | null;
+}
+
+/**
+ * Active enrollees with no recorded activity (training completion, quiz/
+ * reflection submission, triad reflection, or daily prompt response) in the
+ * last 7 days, or ever. Each activity kind is passed pre-flattened to
+ * (userId, timestamp) pairs so this stays agnostic of which table each
+ * signal came from.
+ */
+export function buildStaleProgrammeParticipantAlerts(opts: {
+  activeUserIds: string[];
+  activity: ScanActivityRow[];
+  nameById: Map<string, string | null | undefined>;
+  emailById: Map<string, string | null | undefined>;
+  now: Date;
+}): ProgrammeAlert[] {
+  const { activeUserIds, activity, nameById, emailById, now } = opts;
+  const lastActiveByUser = new Map<string, number>();
+  activity.forEach(({ userId, timestamp }) => {
+    if (!timestamp) return;
+    const t = new Date(timestamp).getTime();
+    if (!lastActiveByUser.has(userId) || t > (lastActiveByUser.get(userId) ?? 0)) lastActiveByUser.set(userId, t);
+  });
+
+  const cutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+  return activeUserIds
+    .filter((id) => !lastActiveByUser.has(id) || (lastActiveByUser.get(id) ?? 0) < cutoff)
+    .map((id) => {
+      const name = nameById.get(id) || "Participant";
+      const email = emailById.get(id);
+      const contact = email ? ` (${email})` : "";
+      const lastActive = lastActiveByUser.get(id);
+      const sinceText = lastActive
+        ? `last activity ${format(new Date(lastActive), "d MMM yyyy")}`
+        : "no activity recorded since enrolling";
+      return {
+        severity: "warning" as const,
+        alert_type: "stale_programme_participant" as const,
+        title: `${name} — no programme activity in 7+ days`,
+        message: `${name}${contact} hasn't completed a training week, quiz, triad reflection, or daily prompt in over a week (${sinceText}).`,
+        related_coachee_id: id,
+        resolved: false,
+      };
+    });
+}
+
+export interface ScanQuizSubmissionRow {
+  userId: string;
+  scorePct: number | null;
+}
+
+/** Enrolled participants whose average quiz score sits below 50%. */
+export function buildLowQuizScoreAlerts(opts: {
+  submissions: ScanQuizSubmissionRow[];
+  nameById: Map<string, string | null | undefined>;
+  emailById: Map<string, string | null | undefined>;
+}): ProgrammeAlert[] {
+  const { submissions, nameById, emailById } = opts;
+  const byUser = new Map<string, number[]>();
+  submissions.forEach(({ userId, scorePct }) => {
+    if (scorePct == null) return;
+    const arr = byUser.get(userId) ?? [];
+    arr.push(scorePct);
+    byUser.set(userId, arr);
+  });
+
+  const alerts: ProgrammeAlert[] = [];
+  byUser.forEach((scores, userId) => {
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    if (avg >= 50) return;
+    const name = nameById.get(userId) || "Participant";
+    const email = emailById.get(userId);
+    const contact = email ? ` (${email})` : "";
+    alerts.push({
+      severity: "warning",
+      alert_type: "low_quiz_scores",
+      title: `${name} — quiz average ${Math.round(avg)}%`,
+      message: `${name}${contact} is averaging ${Math.round(avg)}% across ${scores.length} quiz${scores.length === 1 ? "" : "zes"} — below the 50% threshold.`,
+      related_coachee_id: userId,
+      resolved: false,
+    });
+  });
+  return alerts;
+}
+
+export interface ScanTriadGroupRow {
+  id: string;
+  name: string | null;
+  memberIds: string[];
+}
+
+/** Active triad groups with no session logged in the last 7 days, or ever. */
+export function buildTriadNotScheduledAlerts(opts: {
+  activeGroups: ScanTriadGroupRow[];
+  lastSessionDateByGroup: Map<string, string>;
+  nameById: Map<string, string | null | undefined>;
+  now: Date;
+}): ProgrammeAlert[] {
+  const { activeGroups, lastSessionDateByGroup, nameById, now } = opts;
+  const cutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
+  return activeGroups
+    .filter((g) => {
+      const last = lastSessionDateByGroup.get(g.id);
+      return !last || new Date(last).getTime() < cutoff;
+    })
+    .map((g) => {
+      const memberNames = g.memberIds.map((id) => nameById.get(id) || "—").join(", ");
+      const last = lastSessionDateByGroup.get(g.id);
+      const sinceText = last ? `last session ${format(new Date(last), "d MMM yyyy")}` : "no session logged yet";
+      return {
+        severity: "warning" as const,
+        alert_type: "triad_not_scheduled" as const,
+        title: `${g.name || "Triad group"} — no session in 7+ days`,
+        message: `${memberNames} haven't logged a triad session in over a week (${sinceText}).`,
+        related_coachee_id: null,
+        resolved: false,
+      };
+    });
+}

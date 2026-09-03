@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Check, RefreshCw, Flag, Users, BarChart3, Calendar as CalendarIcon, PanelsTopLeft, type LucideIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
-import { buildFeedbackAlerts, buildMentoringPrepFileOverdueAlerts, buildMentoringFeedbackOverdueAlerts } from "./alertScan";
+import {
+  buildFeedbackAlerts, buildMentoringPrepFileOverdueAlerts, buildMentoringFeedbackOverdueAlerts,
+  buildStaleProgrammeParticipantAlerts, buildLowQuizScoreAlerts, buildTriadNotScheduledAlerts,
+  type ScanActivityRow, type ScanQuizSubmissionRow, type ScanTriadGroupRow,
+} from "./alertScan";
 import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -32,6 +36,7 @@ interface AlertsScanEnrollmentRow {
   user_id: string;
   status: string;
   progress_pct: number | null;
+  start_date: string;
 }
 
 type NewAlert = {
@@ -39,7 +44,7 @@ type NewAlert = {
   alert_type: string;
   title: string;
   message: string;
-  related_coachee_id: string;
+  related_coachee_id: string | null;
   resolved: false;
 };
 
@@ -66,6 +71,9 @@ const TYPE_ICON: Record<string, LucideIcon> = {
   renewal: PanelsTopLeft,
   mentoring_prep_file: BarChart3,
   mentoring_feedback: BarChart3,
+  stale_programme_participant: Users,
+  low_quiz_scores: BarChart3,
+  triad_not_scheduled: CalendarIcon,
 };
 
 function scopeFor(a: Alert, t: (key: string) => string) {
@@ -102,6 +110,13 @@ export default function AdminAlerts() {
         { data: profiles },
         { data: enrollments },
         { data: mentoringSessions },
+        { data: assignments },
+        { data: submissions },
+        { data: promptResponses },
+        { data: reflections },
+        { data: trainingProgress },
+        { data: triadGroups },
+        { data: triadSessions },
       ] = await Promise.all([
         supabase
           .from("sessions")
@@ -111,10 +126,17 @@ export default function AdminAlerts() {
           .select("id, peer_coach_id, peer_coachee_id, status, start_time"),
         supabase.from("peer_session_competency_feedback").select("peer_session_id"),
         supabase.from("profiles").select("id, full_name, email"),
-        supabase.from("programme_enrollments").select("id, user_id, status, progress_pct"),
+        supabase.from("programme_enrollments").select("id, user_id, status, progress_pct, start_date"),
         supabase
           .from("mentoring_sessions")
           .select("id, mentee_id, status, start_time, prep_file_path, feedback_submitted_at"),
+        supabase.from("assignments").select("id, assignment_type"),
+        supabase.from("assignment_submissions").select("user_id, assignment_id, score_pct, submitted_at"),
+        supabase.from("daily_prompt_responses").select("user_id, responded_at"),
+        supabase.from("triad_reflections").select("participant_id, submitted_at"),
+        supabase.from("training_progress").select("user_id, completed_at"),
+        supabase.from("triad_groups").select("id, name, member_1_id, member_2_id, member_3_id, is_active"),
+        supabase.from("triad_sessions").select("triad_group_id, session_date"),
       ]);
 
       const profById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.full_name]));
@@ -187,6 +209,48 @@ export default function AdminAlerts() {
         })
       );
 
+      // Programme engagement (Phase 4) — stale participants, low quiz
+      // scores, triads that haven't met in a week.
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const activeUserIds = [
+        ...new Set(
+          (enrollments || [])
+            .filter((e: AlertsScanEnrollmentRow) => e.status === "active" && new Date(e.start_date) <= weekAgo)
+            .map((e: AlertsScanEnrollmentRow) => e.user_id)
+        ),
+      ];
+      const activity: ScanActivityRow[] = [
+        ...(submissions || []).map((s: { user_id: string; submitted_at: string }) => ({ userId: s.user_id, timestamp: s.submitted_at })),
+        ...(promptResponses || []).map((r: { user_id: string; responded_at: string | null }) => ({ userId: r.user_id, timestamp: r.responded_at })),
+        ...(reflections || []).map((r: { participant_id: string; submitted_at: string }) => ({ userId: r.participant_id, timestamp: r.submitted_at })),
+        ...(trainingProgress || []).map((p: { user_id: string; completed_at: string | null }) => ({ userId: p.user_id, timestamp: p.completed_at })),
+      ];
+      newAlerts.push(
+        ...buildStaleProgrammeParticipantAlerts({ activeUserIds, activity, nameById: profById, emailById, now })
+      );
+
+      const quizAssignmentIds = new Set((assignments || []).filter((a: { id: string; assignment_type: string }) => a.assignment_type === "quiz").map((a) => a.id));
+      const quizSubmissions: ScanQuizSubmissionRow[] = (submissions || [])
+        .filter((s: { assignment_id: string }) => quizAssignmentIds.has(s.assignment_id))
+        .map((s: { user_id: string; score_pct: number | null }) => ({ userId: s.user_id, scorePct: s.score_pct }));
+      newAlerts.push(...buildLowQuizScoreAlerts({ submissions: quizSubmissions, nameById: profById, emailById }));
+
+      const activeGroups: ScanTriadGroupRow[] = (triadGroups || [])
+        .filter((g: { is_active: boolean }) => g.is_active)
+        .map((g: { id: string; name: string | null; member_1_id: string; member_2_id: string; member_3_id: string }) => ({
+          id: g.id,
+          name: g.name,
+          memberIds: [g.member_1_id, g.member_2_id, g.member_3_id],
+        }));
+      const lastSessionDateByGroup = new Map<string, string>();
+      (triadSessions || []).forEach((s: { triad_group_id: string; session_date: string }) => {
+        const cur = lastSessionDateByGroup.get(s.triad_group_id);
+        if (!cur || s.session_date > cur) lastSessionDateByGroup.set(s.triad_group_id, s.session_date);
+      });
+      newAlerts.push(
+        ...buildTriadNotScheduledAlerts({ activeGroups, lastSessionDateByGroup, nameById: profById, now })
+      );
+
       await supabase
         .from("admin_alerts")
         .delete()
@@ -196,6 +260,9 @@ export default function AdminAlerts() {
           "feedback_response",
           "mentoring_prep_file",
           "mentoring_feedback",
+          "stale_programme_participant",
+          "low_quiz_scores",
+          "triad_not_scheduled",
         ])
         .eq("resolved", false);
       if (newAlerts.length) await supabase.from("admin_alerts").insert(newAlerts);

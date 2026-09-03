@@ -398,7 +398,8 @@
       "platform": "Nền tảng",
       "coachees": "Học viên",
       "coaches": "Coach",
-      "peerCoaching": "Peer coaching"
+      "peerCoaching": "Peer coaching",
+      "programmeEngagement": "Mức độ tham gia chương trình"
     },
     "satisfactionDistribution": "Phân bổ mức độ hài lòng",
     "noRatingsYet": "Chưa có đánh giá nào.",
@@ -432,7 +433,32 @@
     "peerCoachingTrainees": "Coach đang thực hành peer coaching — năng lực & hoạt động",
     "noPeerCoachingCoachesYet": "Chưa có coach nào tham gia peer coaching.",
     "given": "Đã thực hiện",
-    "received": "Đã nhận"
+    "received": "Đã nhận",
+    "programmeEngagement": {
+      "selectProgramme": "Chọn một chương trình",
+      "perWeekLabel": "Mức độ tham gia theo tuần",
+      "noData": "Chưa có dữ liệu tham gia cho chương trình này — quay lại khi học viên bắt đầu đào tạo.",
+      "columns": {
+        "week": "Tuần",
+        "skillCard": "Skill card",
+        "quiz": "Quiz",
+        "triad": "Triad",
+        "prompt": "Prompt hàng ngày",
+        "confidence": "Tự tin"
+      },
+      "completionFunnel": "Phễu hoàn thành",
+      "confidenceTrend": "Xu hướng tự tin theo nhóm",
+      "noConfidenceData": "Chưa có dữ liệu tự tin.",
+      "redFlags": "Cảnh báo — không hoạt động 7+ ngày",
+      "noRedFlags": "Hiện không có ai bị tụt lại.",
+      "daysInactive_one": "{{count}} ngày không hoạt động",
+      "daysInactive_other": "{{count}} ngày không hoạt động",
+      "noActivityYet": "Chưa ghi nhận hoạt động nào",
+      "flag": "Gắn cờ",
+      "flaggedLabel": "Đã gắn cờ",
+      "flagged": "Đã tạo cảnh báo",
+      "alreadyFlagged": "Đã gắn cờ và chưa xử lý"
+    }
   },
   "sessions": {
     "sessionUpdated": "Đã cập nhật session",

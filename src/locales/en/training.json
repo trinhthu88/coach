@@ -67,6 +67,18 @@
     "submitted": "Thanks — logged for today.",
     "noPromptToday": "No prompt for today — check back tomorrow."
   },
+  "progressCard": {
+    "eyebrow": "My programme progress",
+    "skillsCompleted": "Skills completed",
+    "reflectionStreak": "Reflection streak",
+    "quizAvg": "Quiz average",
+    "triadSessions": "Triad sessions",
+    "nextTriadOn": "Next: {{date}}",
+    "noTriadScheduled": "None scheduled",
+    "quizScoresPerWeek": "Quiz scores",
+    "weekScorePill": "W{{n}}: {{score}}%",
+    "confidenceTrend": "Confidence trend"
+  },
   "admin": {
     "eyebrow": "Admin",
     "title": "Training content",

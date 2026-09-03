@@ -67,6 +67,18 @@
     "submitted": "Cảm ơn — đã ghi nhận cho hôm nay.",
     "noPromptToday": "Hôm nay chưa có gợi ý — quay lại vào ngày mai nhé."
   },
+  "progressCard": {
+    "eyebrow": "Tiến độ chương trình của tôi",
+    "skillsCompleted": "Skill đã hoàn thành",
+    "reflectionStreak": "Chuỗi phản hồi",
+    "quizAvg": "Điểm quiz trung bình",
+    "triadSessions": "Session triad",
+    "nextTriadOn": "Tiếp theo: {{date}}",
+    "noTriadScheduled": "Chưa có lịch",
+    "quizScoresPerWeek": "Điểm quiz",
+    "weekScorePill": "T{{n}}: {{score}}%",
+    "confidenceTrend": "Xu hướng tự tin"
+  },
   "admin": {
     "eyebrow": "Quản trị",
     "title": "Nội dung đào tạo",

@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Star, TrendingUp, Award, Users, MessagesSquare } from "lucide-react";
+import { Loader2, Star, TrendingUp, Award, Users, MessagesSquare, AlertTriangle, Flag } from "lucide-react";
 import { AdminPageHeader, Kpi, SectionCard, MiniBar, Pill } from "./_shared";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { useAdminProgrammes, useAdminProgrammeEngagement } from "@/hooks/admin/useAdminProgrammeEngagement";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Tables } from "@/integrations/supabase/types";
+
+const COHORT_LINE_COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--accent))", "hsl(var(--warning))", "hsl(var(--destructive))"];
 
 type CompetencyKey =
   | "ethical_practice"
@@ -85,6 +92,53 @@ export default function AdminAnalytics() {
   const { t } = useTranslation("admin");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const programmes = useAdminProgrammes();
+  const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>("");
+  const { weeks: engagementWeeks, redFlags, confidenceTrend, loading: engagementLoading } = useAdminProgrammeEngagement(selectedProgrammeId || null);
+  const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!selectedProgrammeId && programmes.length > 0) setSelectedProgrammeId(programmes[0].id);
+  }, [programmes, selectedProgrammeId]);
+
+  const confidenceByWeek = useMemo(() => {
+    const cohortNames = [...new Set(confidenceTrend.map((p) => p.cohortName))];
+    const byWeek = new Map<number, Record<string, number | string>>();
+    confidenceTrend.forEach((p) => {
+      const row = byWeek.get(p.weekNumber) ?? { weekNumber: `W${p.weekNumber}` };
+      row[p.cohortName] = Math.round(p.avgConfidence * 10) / 10;
+      byWeek.set(p.weekNumber, row);
+    });
+    return { rows: [...byWeek.entries()].sort((a, b) => a[0] - b[0]).map(([, row]) => row), cohortNames };
+  }, [confidenceTrend]);
+
+  const flagParticipant = async (userId: string, fullName: string) => {
+    const { data: existing } = await supabase
+      .from("admin_alerts")
+      .select("id")
+      .eq("alert_type", "stale_programme_participant")
+      .eq("related_coachee_id", userId)
+      .eq("resolved", false)
+      .maybeSingle();
+    if (existing) {
+      toast.info(t("analytics.programmeEngagement.alreadyFlagged"));
+      return;
+    }
+    const { error } = await supabase.from("admin_alerts").insert({
+      severity: "warning",
+      alert_type: "stale_programme_participant",
+      title: `${fullName} — no programme activity in 7+ days`,
+      message: `${fullName} hasn't completed a training week, quiz, triad reflection, or daily prompt in over a week.`,
+      related_coachee_id: userId,
+      resolved: false,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setFlaggedIds((prev) => new Set(prev).add(userId));
+    toast.success(t("analytics.programmeEngagement.flagged"));
+  };
 
   useEffect(() => {
     (async () => {
@@ -243,6 +297,7 @@ export default function AdminAnalytics() {
           <TabsTrigger value="coachee">{t("analytics.tabs.coachees")}</TabsTrigger>
           <TabsTrigger value="coach">{t("analytics.tabs.coaches")}</TabsTrigger>
           <TabsTrigger value="peer">{t("analytics.tabs.peerCoaching")}</TabsTrigger>
+          <TabsTrigger value="programmeEngagement">{t("analytics.tabs.programmeEngagement")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="platform" className="space-y-3 pt-4">
@@ -344,6 +399,132 @@ export default function AdminAnalytics() {
               </div>
             )}
           </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="programmeEngagement" className="space-y-3 pt-4">
+          <div className="max-w-xs">
+            <Select value={selectedProgrammeId} onValueChange={setSelectedProgrammeId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("analytics.programmeEngagement.selectProgramme")} />
+              </SelectTrigger>
+              <SelectContent>
+                {programmes.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {engagementLoading ? (
+            <div className="flex h-48 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : engagementWeeks.length === 0 ? (
+            <SectionCard label={t("analytics.programmeEngagement.perWeekLabel")}>
+              <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.programmeEngagement.noData")}</p>
+            </SectionCard>
+          ) : (
+            <>
+              <SectionCard label={t("analytics.programmeEngagement.perWeekLabel")}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[12px]">
+                    <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.week")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.skillCard")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.quiz")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.triad")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.prompt")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.confidence")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {engagementWeeks.map((w) => (
+                        <tr key={w.weekId}>
+                          <td className="px-2 py-2 font-medium">W{w.weekNumber} · {w.title}</td>
+                          <td className="px-2 py-2 text-muted-foreground">{w.skillCardCompletionPct != null ? `${Math.round(w.skillCardCompletionPct)}%` : "—"}</td>
+                          <td className="px-2 py-2 text-muted-foreground">
+                            {w.quizAvgScore != null ? `${Math.round(w.quizAvgScore)}%` : "—"}
+                            {w.quizCompletionPct != null && <span className="text-muted-foreground/70"> · {Math.round(w.quizCompletionPct)}% done</span>}
+                          </td>
+                          <td className="px-2 py-2 text-muted-foreground">{w.triadCompletionPct != null ? `${Math.round(w.triadCompletionPct)}%` : "—"}</td>
+                          <td className="px-2 py-2 text-muted-foreground">{w.promptResponseRate != null ? `${Math.round(w.promptResponseRate)}%` : "—"}</td>
+                          <td className="px-2 py-2 text-muted-foreground">{w.avgConfidence != null ? w.avgConfidence.toFixed(1) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SectionCard>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <SectionCard label={t("analytics.programmeEngagement.completionFunnel")}>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={engagementWeeks.map((w) => ({ week: `W${w.weekNumber}`, completed: w.completedCount }))}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="week" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                        <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
+                        <Bar dataKey="completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </SectionCard>
+
+                <SectionCard label={t("analytics.programmeEngagement.confidenceTrend")}>
+                  {confidenceByWeek.rows.length === 0 ? (
+                    <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.programmeEngagement.noConfidenceData")}</p>
+                  ) : (
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={confidenceByWeek.rows}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                          <XAxis dataKey="weekNumber" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                          <YAxis domain={[0, 10]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
+                          <Legend wrapperStyle={{ fontSize: 10 }} />
+                          {confidenceByWeek.cohortNames.map((name, i) => (
+                            <Line key={name} type="monotone" dataKey={name} stroke={COHORT_LINE_COLORS[i % COHORT_LINE_COLORS.length]} strokeWidth={2} dot={{ r: 2 }} />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </SectionCard>
+              </div>
+
+              <SectionCard label={t("analytics.programmeEngagement.redFlags")}>
+                {redFlags.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.programmeEngagement.noRedFlags")}</p>
+                ) : (
+                  <div className="divide-y">
+                    {redFlags.map((f) => (
+                      <div key={f.userId} className="flex flex-col gap-1 py-2.5 text-[12px] sm:flex-row sm:items-center sm:justify-between">
+                        <span className="inline-flex items-center gap-2 font-medium">
+                          <AlertTriangle className="h-3.5 w-3.5 text-warning" /> {f.fullName}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-muted-foreground">
+                            {f.daysSinceLastActivity != null
+                              ? t("analytics.programmeEngagement.daysInactive", { count: f.daysSinceLastActivity })
+                              : t("analytics.programmeEngagement.noActivityYet")}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={flaggedIds.has(f.userId)}
+                            onClick={() => flagParticipant(f.userId, f.fullName)}
+                          >
+                            <Flag className="mr-1 h-3.5 w-3.5" />
+                            {flaggedIds.has(f.userId) ? t("analytics.programmeEngagement.flaggedLabel") : t("analytics.programmeEngagement.flag")}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>

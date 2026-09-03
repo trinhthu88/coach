@@ -11,6 +11,7 @@ import { useCoachDashboardData } from "@/hooks/dashboard/useCoachDashboardData";
 import type { SessionLite } from "@/hooks/dashboard/useCoacheeDashboardData";
 import { ThisWeekSkillCard } from "@/components/training/ThisWeekSkillCard";
 import { DailyPromptCard } from "@/components/training/DailyPromptCard";
+import { ProgrammeProgressCard } from "@/components/ProgrammeProgressCard";
 
 export function CoachDashboardView({ userId }: { userId: string }) {
   const { t } = useTranslation("dashboard");
@@ -352,6 +353,7 @@ export function CoachDashboardView({ userId }: { userId: string }) {
         <ThisWeekSkillCard />
         <DailyPromptCard />
       </section>
+      <ProgrammeProgressCard />
     </>
   );
 }

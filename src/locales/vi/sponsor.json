@@ -77,7 +77,24 @@
       "titlePrefix": "Nội dung được bảo mật.",
       "body": "Quyền truy cập của bạn chỉ bao gồm mức độ tham gia và đánh giá. Ghi chú session, tin nhắn trò chuyện, suy ngẫm và cách diễn đạt mục tiêu không bao giờ rời khỏi cặp coaching."
     },
-    "detailsToggle": "Xem chi tiết chương trình"
+    "detailsToggle": "Xem chi tiết chương trình",
+    "programmeEngagement": {
+      "label": "Mức độ tham gia chương trình",
+      "columns": {
+        "week": "Tuần",
+        "skillCard": "Skill card",
+        "quiz": "Quiz",
+        "triad": "Triad",
+        "prompt": "Prompt hàng ngày",
+        "confidence": "Tự tin"
+      }
+    },
+    "redFlags": {
+      "label": "Học viên đang tụt lại",
+      "daysInactive_one": "{{count}} ngày không hoạt động",
+      "daysInactive_other": "{{count}} ngày không hoạt động",
+      "noActivityYet": "Chưa có hoạt động nào"
+    }
   },
   "cohorts": {
     "header": {
@@ -201,7 +218,30 @@
         "growth": "Tăng trưởng"
       }
     },
-    "footerDisclaimer": "Được chuẩn bị từ dữ liệu tổng hợp của chương trình. Ghi chú session, tin nhắn trò chuyện, suy ngẫm và cách diễn đạt mục tiêu bị loại trừ khỏi báo cáo dành cho nhà tài trợ của Clariva và không có sẵn cho người yêu cầu."
+    "footerDisclaimer": "Được chuẩn bị từ dữ liệu tổng hợp của chương trình. Ghi chú session, tin nhắn trò chuyện, suy ngẫm và cách diễn đạt mục tiêu bị loại trừ khỏi báo cáo dành cho nhà tài trợ của Clariva và không có sẵn cho người yêu cầu.",
+    "programmeImpact": {
+      "label": "Tác động chương trình",
+      "summary": {
+        "skillCard": "Hoàn thành skill card",
+        "quiz": "Hoàn thành quiz",
+        "triad": "Hoàn thành triad",
+        "prompt": "Tỷ lệ phản hồi prompt"
+      },
+      "confidenceTrend": {
+        "label": "Xu hướng tự tin"
+      },
+      "completionComparison": {
+        "label": "Tỷ lệ hoàn thành theo module",
+        "training": "Đào tạo",
+        "quiz": "Quiz",
+        "triads": "Triads",
+        "prompts": "Prompt hàng ngày"
+      },
+      "topQuotes": {
+        "label": "Chia sẻ từ học viên",
+        "weekPrefix": "Tuần {{n}}"
+      }
+    }
   },
   "downloadPdf": "Tải báo cáo PDF",
   "generatingPdf": "Đang tạo PDF…",

@@ -77,7 +77,24 @@
       "titlePrefix": "Content-private.",
       "body": "Your access covers participation and ratings only. Session notes, chat messages, reflections, and the wording of goals never leave the coaching pair."
     },
-    "detailsToggle": "See programme details"
+    "detailsToggle": "See programme details",
+    "programmeEngagement": {
+      "label": "Programme engagement",
+      "columns": {
+        "week": "Week",
+        "skillCard": "Skill card",
+        "quiz": "Quiz",
+        "triad": "Triad",
+        "prompt": "Daily prompt",
+        "confidence": "Confidence"
+      }
+    },
+    "redFlags": {
+      "label": "Falling behind",
+      "daysInactive_one": "{{count}} day inactive",
+      "daysInactive_other": "{{count}} days inactive",
+      "noActivityYet": "No activity yet"
+    }
   },
   "cohorts": {
     "header": {
@@ -201,7 +218,30 @@
         "growth": "Growth"
       }
     },
-    "footerDisclaimer": "Prepared from aggregate programme data. Session notes, chat messages, reflections and goal wording are excluded from Clariva sponsor reporting and were not available to the requester."
+    "footerDisclaimer": "Prepared from aggregate programme data. Session notes, chat messages, reflections and goal wording are excluded from Clariva sponsor reporting and were not available to the requester.",
+    "programmeImpact": {
+      "label": "Programme impact",
+      "summary": {
+        "skillCard": "Skill card completion",
+        "quiz": "Quiz completion",
+        "triad": "Triad completion",
+        "prompt": "Prompt response rate"
+      },
+      "confidenceTrend": {
+        "label": "Confidence trend"
+      },
+      "completionComparison": {
+        "label": "Completion by module",
+        "training": "Training",
+        "quiz": "Quiz",
+        "triads": "Triads",
+        "prompts": "Daily prompts"
+      },
+      "topQuotes": {
+        "label": "In their own words",
+        "weekPrefix": "Week {{n}}"
+      }
+    }
   },
   "downloadPdf": "Download PDF report",
   "generatingPdf": "Generating PDF…",

@@ -2810,6 +2810,17 @@ export type Database = {
         Args: { _coachee_id: string }
         Returns: boolean
       }
+      sponsor_engagement_red_flags: {
+        Args: never
+        Returns: {
+          days_since_last_activity: number
+          full_name: string
+          missed_prompts: number
+          missed_quizzes: number
+          missed_triads: number
+          user_id: string
+        }[]
+      }
       sponsor_goal_growth_summary: {
         Args: never
         Returns: {
@@ -2833,6 +2844,19 @@ export type Database = {
         }[]
       }
       sponsor_min_leaders_for_distribution: { Args: never; Returns: number }
+      sponsor_programme_engagement: {
+        Args: never
+        Returns: {
+          avg_confidence_score: number
+          daily_prompt_response_rate: number
+          quiz_avg_score: number
+          quiz_completion_pct: number
+          skill_card_completion_pct: number
+          triad_completion_pct: number
+          week_number: number
+          week_title: string
+        }[]
+      }
       sponsor_roster: {
         Args: never
         Returns: {
@@ -2860,6 +2884,14 @@ export type Database = {
           earliest_start: string
           latest_end: string
           programme_names: string[]
+        }[]
+      }
+      sponsor_top_reflections: {
+        Args: { p_limit?: number }
+        Returns: {
+          anonymized_quote: string
+          role_played: string
+          week_number: number
         }[]
       }
     }

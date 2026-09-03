@@ -5,7 +5,7 @@ import { format, differenceInCalendarDays } from "date-fns";
 import {
   Users, CheckCircle2, AlertTriangle, CalendarCheck, Star,
   CalendarRange, ShieldCheck, Loader2, ArrowRight, Building2,
-  Clock, Filter, ChevronDown, type LucideIcon,
+  Clock, Filter, ChevronDown, GraduationCap, type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
@@ -38,7 +38,7 @@ function initials(name: string) {
 export default function SponsorDashboard() {
   const { t } = useTranslation("sponsor");
   const { user } = useAuth();
-  const { kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution, loading } = useSponsorDashboardData();
+  const { kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution, programmeEngagement, redFlags, loading } = useSponsorDashboardData();
   const [orgName, setOrgName] = useState<string | null>(null);
   const [selectedLeader, setSelectedLeader] = useState<SponsorRosterRow | null>(null);
   const [cohortFilter, setCohortFilter] = useState<string>("all");
@@ -249,6 +249,72 @@ export default function SponsorDashboard() {
                   </div>
                 </SectionCard>
               </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* PROGRAMME ENGAGEMENT — only rendered when the org's programme(s)
+            actually have training/quiz/triads/daily_prompt modules enabled;
+            sponsor_programme_engagement() returns zero rows otherwise, same
+            "silently absent" contract as the rest of this dashboard. */}
+        {!isFirstLogin && programmeEngagement.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-muted/40 [&[data-state=open]>svg]:rotate-180">
+              <span className="inline-flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-primary" /> {t("dashboard.programmeEngagement.label")}
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pt-4">
+              <SectionCard label={t("dashboard.programmeEngagement.label")}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[12px]">
+                    <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.week")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.skillCard")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.quiz")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.triad")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.prompt")}</th>
+                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.confidence")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {programmeEngagement.map((w) => (
+                        <tr key={`${w.week_number}-${w.week_title}`}>
+                          <td className="px-2 py-2 font-medium">W{w.week_number} · {w.week_title}</td>
+                          <td className="px-2 py-2 text-muted-foreground">{w.skill_card_completion_pct != null ? `${Math.round(w.skill_card_completion_pct)}%` : "—"}</td>
+                          <td className="px-2 py-2 text-muted-foreground">
+                            {w.quiz_avg_score != null ? `${Math.round(w.quiz_avg_score)}%` : "—"}
+                            {w.quiz_completion_pct != null && <span className="text-muted-foreground/70"> · {Math.round(w.quiz_completion_pct)}% done</span>}
+                          </td>
+                          <td className="px-2 py-2 text-muted-foreground">{w.triad_completion_pct != null ? `${Math.round(w.triad_completion_pct)}%` : "—"}</td>
+                          <td className="px-2 py-2 text-muted-foreground">{w.daily_prompt_response_rate != null ? `${Math.round(w.daily_prompt_response_rate)}%` : "—"}</td>
+                          <td className="px-2 py-2 text-muted-foreground">{w.avg_confidence_score != null ? Number(w.avg_confidence_score).toFixed(1) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SectionCard>
+
+              {redFlags.length > 0 && (
+                <SectionCard label={t("dashboard.redFlags.label")}>
+                  <ul className="divide-y">
+                    {redFlags.map((r) => (
+                      <li key={r.user_id} className="flex items-center justify-between gap-3 py-2 text-[12px]">
+                        <span className="font-medium">{r.full_name}</span>
+                        <span className="inline-flex items-center gap-1 text-warning">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          {r.days_since_last_activity >= 999
+                            ? t("dashboard.redFlags.noActivityYet")
+                            : t("dashboard.redFlags.daysInactive", { count: r.days_since_last_activity })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </SectionCard>
+              )}
             </CollapsibleContent>
           </Collapsible>
         )}

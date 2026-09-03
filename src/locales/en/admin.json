@@ -405,7 +405,8 @@
       "platform": "Platform",
       "coachees": "Coachees",
       "coaches": "Coaches",
-      "peerCoaching": "Peer coaching"
+      "peerCoaching": "Peer coaching",
+      "programmeEngagement": "Programme engagement"
     },
     "satisfactionDistribution": "Satisfaction distribution",
     "noRatingsYet": "No ratings yet.",
@@ -441,7 +442,32 @@
     "peerCoachingTrainees": "Peer-coaching trainees — competencies & activity",
     "noPeerCoachingCoachesYet": "No peer-coaching coaches yet.",
     "given": "Given",
-    "received": "Received"
+    "received": "Received",
+    "programmeEngagement": {
+      "selectProgramme": "Select a programme",
+      "perWeekLabel": "Per-week engagement",
+      "noData": "No engagement data yet for this programme — check back once participants start training.",
+      "columns": {
+        "week": "Week",
+        "skillCard": "Skill card",
+        "quiz": "Quiz",
+        "triad": "Triad",
+        "prompt": "Daily prompt",
+        "confidence": "Confidence"
+      },
+      "completionFunnel": "Completion funnel",
+      "confidenceTrend": "Confidence trend by cohort",
+      "noConfidenceData": "No confidence data yet.",
+      "redFlags": "Red flags — 7+ days inactive",
+      "noRedFlags": "No one is falling behind right now.",
+      "daysInactive_one": "{{count}} day inactive",
+      "daysInactive_other": "{{count}} days inactive",
+      "noActivityYet": "No activity recorded yet",
+      "flag": "Flag",
+      "flaggedLabel": "Flagged",
+      "flagged": "Alert created",
+      "alreadyFlagged": "Already flagged and unresolved"
+    }
   },
   "sessions": {
     "sessionUpdated": "Session updated",

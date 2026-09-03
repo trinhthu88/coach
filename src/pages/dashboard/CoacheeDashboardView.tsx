@@ -25,6 +25,7 @@ import { ProgressRing } from "@/components/ui/proto";
 import { Json } from "@/integrations/supabase/types";
 import { ThisWeekSkillCard } from "@/components/training/ThisWeekSkillCard";
 import { DailyPromptCard } from "@/components/training/DailyPromptCard";
+import { ProgrammeProgressCard } from "@/components/ProgrammeProgressCard";
 
 export function CoacheeDashboardView() {
   const { t } = useTranslation("dashboard");
@@ -111,6 +112,9 @@ export function CoacheeDashboardView() {
         <ThisWeekSkillCard />
         <DailyPromptCard />
       </section>
+
+      {/* Programme progress — renders nothing without the training module */}
+      <ProgrammeProgressCard />
 
       {/* Curated for you */}
       <section>

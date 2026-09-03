@@ -94,11 +94,22 @@ export function ProgrammeTimeline() {
 
   if (modulesLoading || !hasModule("training") || loading || weeks.length === 0) return null;
 
+  const completedCount = weeks.filter((w) => w.status === "completed").length;
+  const overallPct = Math.round((completedCount / weeks.length) * 100);
+
   return (
     <div>
-      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-        <MessageSquareText className="h-3.5 w-3.5" /> {t("programmeTimeline.heading")}
-      </p>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          <MessageSquareText className="h-3.5 w-3.5" /> {t("programmeTimeline.heading")}
+        </p>
+        <p className="text-[11px] font-semibold text-muted-foreground">
+          {t("programmeTimeline.overallProgress", { done: completedCount, total: weeks.length })}
+        </p>
+      </div>
+      <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${overallPct}%` }} />
+      </div>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {weeks.map((w) => (
           <WeekCard key={w.id} week={w} />
