@@ -1,72 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, Loader2, Info, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
-import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
-
-interface CoachRow {
-  id: string;
-  title: string | null;
-  specialties: string[] | null;
-  rating_avg: number;
-  profiles: { full_name: string; avatar_url: string | null } | null;
-}
+import { useCoachAsCoacheeAllowlist } from "@/hooks/coaches/useAllowedCoaches";
 
 export default function CoachFindCoach() {
-  const { user } = useAuth();
   const { t } = useTranslation("coaches");
   const { getConfig, loading: modulesLoading } = useProgrammeModules();
-  const [coaches, setCoaches] = useState<CoachRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { coaches, loading, error, reload: load } = useCoachAsCoacheeAllowlist();
 
   // Coaching module's receive_limit — null/absent = unlimited. Comes from
   // the coach's active programme's programme_modules config, not the
   // deprecated coach_programme_enrollments/coach_programmes tables.
   const receiveLimit = (getConfig("coaching").receive_limit as number | null | undefined) ?? null;
-
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    const { data: allowlist, error: allowlistError } = await supabase
-      .from("coach_as_coachee_allowlist")
-      .select("selectable_coach_id")
-      .eq("coach_user_id", user.id);
-    if (allowlistError) {
-      setError(getFriendlyErrorMessage(allowlistError, t));
-      setLoading(false);
-      return;
-    }
-    const ids = (allowlist || []).map((r: { selectable_coach_id: string }) => r.selectable_coach_id);
-    if (ids.length) {
-      const { data, error: coachesError } = await supabase
-        .from("coach_profiles")
-        .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
-        .in("id", ids)
-        .eq("approval_status", "active");
-      if (coachesError) {
-        setError(getFriendlyErrorMessage(coachesError, t));
-        setLoading(false);
-        return;
-      }
-      setCoaches((data as unknown as CoachRow[]) || []);
-    } else {
-      setCoaches([]);
-    }
-    setLoading(false);
-  }, [user, t]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   return (
     <div className="space-y-6">

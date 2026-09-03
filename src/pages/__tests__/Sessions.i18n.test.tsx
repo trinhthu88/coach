@@ -22,6 +22,9 @@ vi.mock("@/integrations/supabase/client", () => ({
         eq: () => ({
           order: async () => (table === "sessions" ? { data: [sessionRow] } : { data: [] }),
         }),
+        or: () => ({
+          order: async () => ({ data: [] }),
+        }),
         in: async () => ({ data: [{ id: "coach1", full_name: "Elena Richter", email: "e@x.com", avatar_url: null }] }),
       }),
       update: () => ({ eq: async () => ({ error: null }) }),

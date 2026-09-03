@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -314,6 +315,16 @@ export default function Messages() {
   };
 
   const totalUnread = threads.reduce((acc, t) => acc + t.unread, 0);
+
+  // Admins have a dedicated sessions view — no personal message threads of their own
+  if (role === "admin") {
+    return <Navigate to="/admin/sessions" replace />;
+  }
+
+  // Sponsors don't have personal coaching sessions/messages of their own
+  if (role === "sponsor") {
+    return <Navigate to="/sponsor" replace />;
+  }
 
   if (loading) {
     return (

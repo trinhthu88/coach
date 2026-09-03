@@ -464,8 +464,9 @@ export default function AppLayout() {
               to="/messages"
               className="grid h-[34px] w-[34px] place-items-center rounded-[11px] border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
               aria-label={t("nav.messages")}
+              title={t("nav.messages")}
             >
-              <Bell className="h-[17px] w-[17px]" />
+              <MessageSquare className="h-[17px] w-[17px]" />
             </NavLink>
             {unreadCount > 0 && (
               <>

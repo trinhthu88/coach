@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -33,7 +34,7 @@ type SessionStatus =
   | "cancelled"
   | "rescheduled";
 
-type SessionKind = "coaching" | "peer-give" | "peer-receive";
+type SessionKind = "coaching" | "peer-give" | "peer-receive" | "coachee-peer-give" | "coachee-peer-receive";
 
 interface SessionRow {
   id: string;
@@ -49,6 +50,14 @@ interface SessionRow {
   kind: SessionKind;
   coach: { full_name: string; email: string; avatar_url: string | null } | null;
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
+}
+
+function sessionDetailPath(s: { id: string; kind: SessionKind }): string {
+  if (s.kind === "coaching") return `/sessions/${s.id}`;
+  if (s.kind === "coachee-peer-give" || s.kind === "coachee-peer-receive") {
+    return `/sessions/${s.id}?type=coachee_peer`;
+  }
+  return `/sessions/${s.id}?type=peer`;
 }
 
 function getStatusMeta(t: (key: string) => string): Record<SessionStatus, { label: string; icon: LucideIcon; className: string }> {
@@ -94,6 +103,7 @@ export default function Sessions() {
 
     let sess: Tables<"sessions">[] = [];
     let peer: Tables<"peer_sessions">[] = [];
+    let coacheePeer: Tables<"coachee_peer_sessions">[] = [];
 
     if (role === "coach" || role === "coachee") {
       const col = role === "coach" ? "coach_id" : "coachee_id";
@@ -114,6 +124,15 @@ export default function Sessions() {
       peer = data || [];
     }
 
+    if (role === "coachee") {
+      const { data } = await supabase
+        .from("coachee_peer_sessions")
+        .select("*")
+        .or(`peer_provider_id.eq.${user.id},peer_receiver_id.eq.${user.id}`)
+        .order("start_time", { ascending: false });
+      coacheePeer = data || [];
+    }
+
     const allRows = [
       ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
       ...peer.map((s) => ({
@@ -121,6 +140,16 @@ export default function Sessions() {
         coach_id: s.peer_coach_id,
         coachee_id: s.peer_coachee_id,
         kind: (s.peer_coach_id === user.id ? "peer-give" : "peer-receive") as SessionKind,
+      })),
+      ...coacheePeer.map((s) => ({
+        ...s,
+        coach_id: s.peer_provider_id,
+        coachee_id: s.peer_receiver_id,
+        coach_notes: s.provider_notes,
+        coachee_notes: s.receiver_notes,
+        coachee_rating: s.receiver_rating,
+        coachee_rating_comment: s.receiver_rating_comment,
+        kind: (s.peer_provider_id === user.id ? "coachee-peer-give" : "coachee-peer-receive") as SessionKind,
       })),
     ].sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
@@ -216,13 +245,7 @@ export default function Sessions() {
                   key={`${s.kind}-${s.id}`}
                   session={s}
                   role={role!}
-                  onOpen={() =>
-                    navigate(
-                      s.kind === "coaching"
-                        ? `/sessions/${s.id}`
-                        : `/sessions/${s.id}?type=peer`
-                    )
-                  }
+                  onOpen={() => navigate(sessionDetailPath(s))}
                   onChanged={load}
                 />
               ))
@@ -237,13 +260,7 @@ export default function Sessions() {
                   key={`${s.kind}-${s.id}`}
                   session={s}
                   role={role!}
-                  onOpen={() =>
-                    navigate(
-                      s.kind === "coaching"
-                        ? `/sessions/${s.id}`
-                        : `/sessions/${s.id}?type=peer`
-                    )
-                  }
+                  onOpen={() => navigate(sessionDetailPath(s))}
                   onChanged={load}
                 />
               ))
@@ -292,10 +309,11 @@ function SessionCard({
   const meta = getStatusMeta(t)[session.status];
   const Icon = meta.icon;
   const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
-  // For peer sessions: peer_coach (giver) acts as "coach", peer_coachee (receiver) acts as "coachee"
-  const userIsPeerCoach = session.kind === "peer-give";
-  const counterpart = isPeer
-    ? userIsPeerCoach
+  const isCoacheePeer = session.kind === "coachee-peer-give" || session.kind === "coachee-peer-receive";
+  // For peer sessions: the giver acts as "coach", the receiver acts as "coachee"
+  const userIsGiver = session.kind === "peer-give" || session.kind === "coachee-peer-give";
+  const counterpart = isPeer || isCoacheePeer
+    ? userIsGiver
       ? session.coachee
       : session.coach
     : role === "coach"
@@ -303,20 +321,24 @@ function SessionCard({
     : session.coach;
   const start = new Date(session.start_time);
   const showRating =
-    (!isPeer && role === "coachee" && session.status === "completed") ||
-    (isPeer && !userIsPeerCoach && session.status === "completed");
+    (!isPeer && !isCoacheePeer && role === "coachee" && session.status === "completed") ||
+    ((isPeer || isCoacheePeer) && !userIsGiver && session.status === "completed");
   const canMarkComplete =
-    ((isPeer && userIsPeerCoach) || (!isPeer && role === "coach")) &&
-    session.status === "confirmed" &&
-    start < new Date();
+    ((isPeer || isCoacheePeer) ? userIsGiver : role === "coach") &&
+    start < new Date() &&
+    (session.status === "confirmed" ||
+      // coachee_peer_sessions has no confirm step wired yet — let the provider
+      // complete straight from pending_coach_approval (RULES.md §3 Relationship 5).
+      (isCoacheePeer && session.status === "pending_coach_approval"));
   const [completing, setCompleting] = useState(false);
 
   const markComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setCompleting(true);
-    const table = isPeer ? "peer_sessions" : "sessions";
+    const table = isCoacheePeer ? "coachee_peer_sessions" : isPeer ? "peer_sessions" : "sessions";
     const { error } = await supabase
-      .from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from(table as any)
       .update({ status: "completed" })
       .eq("id", session.id);
     setCompleting(false);
@@ -325,7 +347,24 @@ function SessionCard({
     onChanged();
   };
 
-  const kindLabel = isPeer ? (userIsPeerCoach ? t("dashboard:coach.kindPill.peerGive") : t("dashboard:coach.kindPill.peerReceive")) : role === "coach" ? t("list.kindLabelWith") : t("list.kindLabelCoach");
+  const kindLabel = isCoacheePeer
+    ? t("list.kindLabelPeerPractice")
+    : isPeer
+    ? userIsGiver
+      ? t("dashboard:coach.kindPill.peerGive")
+      : t("dashboard:coach.kindPill.peerReceive")
+    : role === "coach"
+    ? t("list.kindLabelWith")
+    : t("list.kindLabelCoach");
+  const roleBadge = isCoacheePeer
+    ? { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" }
+    : isPeer
+    ? userIsGiver
+      ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
+      : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" }
+    : role === "coach"
+    ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
+    : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" };
   return (
     <Card className="overflow-hidden p-0">
       <SessionRow
@@ -334,14 +373,19 @@ function SessionCard({
         title={session.topic}
         meta={`${kindLabel === "with" || kindLabel === "Coach" ? kindLabel : kindLabel} ${counterpart?.full_name || counterpart?.email || "—"} · ${format(start, "HH:mm")} · ${session.duration_minutes} min`}
         status={
-          <span
-            className={cn(
-              "inline-flex max-w-[92px] items-center gap-1 whitespace-normal rounded-full border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase leading-tight tracking-wide sm:max-w-none sm:shrink-0 sm:whitespace-nowrap sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-widest",
-              meta.className
-            )}
-          >
-            <Icon className="h-3 w-3 shrink-0" /> {meta.label}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span
+              className={cn(
+                "inline-flex max-w-[92px] items-center gap-1 whitespace-normal rounded-full border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase leading-tight tracking-wide sm:max-w-none sm:shrink-0 sm:whitespace-nowrap sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-widest",
+                meta.className
+              )}
+            >
+              <Icon className="h-3 w-3 shrink-0" /> {meta.label}
+            </span>
+            <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-widest", roleBadge.className)}>
+              {roleBadge.label}
+            </Badge>
+          </div>
         }
         onClick={onOpen}
         className="rounded-none border-0 shadow-none hover:border-0"
@@ -375,9 +419,15 @@ function RateSession({ session, onChanged }: { session: SessionRow; onChanged: (
     setSaving(true);
     setRating(value);
     const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
+    const isCoacheePeer = session.kind === "coachee-peer-give" || session.kind === "coachee-peer-receive";
+    const table = isCoacheePeer ? "coachee_peer_sessions" : isPeer ? "peer_sessions" : "sessions";
+    const update = isCoacheePeer
+      ? { receiver_rating: value, receiver_rated_at: new Date().toISOString() }
+      : { coachee_rating: value, coachee_rated_at: new Date().toISOString() };
     const { error } = await supabase
-      .from(isPeer ? "peer_sessions" : "sessions")
-      .update({ coachee_rating: value, coachee_rated_at: new Date().toISOString() })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from(table as any)
+      .update(update)
       .eq("id", session.id);
     setSaving(false);
     if (error) {

@@ -42,3 +42,18 @@ export function getFriendlyErrorMessage(
 
   return options.fallback ?? t("errors.generic", { ns: "common" });
 }
+
+/**
+ * supabase.functions.invoke() does not parse the JSON body into `data` on a non-2xx
+ * response — the structured error an edge function returns only lives on
+ * `error.context` (the raw Response). Without this, every edge-function error
+ * collapses to a generic "Edge Function returned a non-2xx status code".
+ */
+export async function extractFunctionError(error: unknown): Promise<Error> {
+  const context = (error as { context?: Response } | null)?.context;
+  if (context && typeof context.json === "function") {
+    const body = (await context.json().catch(() => null)) as { error?: string } | null;
+    if (body?.error) return new Error(body.error);
+  }
+  return error instanceof Error ? error : new Error("Request failed");
+}

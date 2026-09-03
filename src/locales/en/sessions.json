@@ -90,6 +90,11 @@
     },
     "kindLabelWith": "with",
     "kindLabelCoach": "Coach",
+    "kindLabelPeerPractice": "Peer practice with",
+    "roleBadge": {
+      "coach": "Coach",
+      "coachee": "Coachee"
+    },
     "markComplete": "Mark complete",
     "toast": {
       "markedComplete": "Session marked completed",

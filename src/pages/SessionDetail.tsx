@@ -76,7 +76,13 @@ export default function SessionDetail() {
   const { t } = useTranslation("sessions");
   const { sessionId } = useParams<{ sessionId: string }>();
   const [searchParams] = useSearchParams();
-  const isPeer = searchParams.get("type") === "peer";
+  const sessionType = searchParams.get("type");
+  const isPeer = sessionType === "peer";
+  // Coachee-to-coachee peer practice (`coachee_peer_sessions`) — a third, distinct
+  // relationship from coach-to-coach peer coaching (`isPeer`). See RULES.md §3
+  // Relationship 5: this table has no Zoom-confirm/private-notes/ICF-feedback
+  // support yet, so those pieces stay hidden below rather than half-wired.
+  const isCoacheePeer = sessionType === "coachee_peer";
   const navigate = useNavigate();
   const { user, role } = useAuth();
 
@@ -104,7 +110,7 @@ export default function SessionDetail() {
     confirmSession,
     cancelSession,
     completeSession,
-  } = useSessionCore({ sessionId, isPeer });
+  } = useSessionCore({ sessionId, isPeer, isCoacheePeer });
 
   const {
     coachPrivate,
@@ -149,11 +155,13 @@ export default function SessionDetail() {
     );
   }
 
-  // Peer sessions: both participants have role="coach". Use session position, not global role.
-  const isCoach = isPeer
+  // Peer sessions (both directions): every participant has role="coach"/"coachee"
+  // respectively but neither position maps onto the global role the normal way —
+  // use session position instead.
+  const isCoach = isPeer || isCoacheePeer
     ? session.coach_id === user?.id
     : role === "coach" && session.coach_id === user?.id;
-  const isCoachee = isPeer
+  const isCoachee = isPeer || isCoacheePeer
     ? session.coachee_id === user?.id
     : role === "coachee" && session.coachee_id === user?.id;
   const isAdmin = role === "admin";
@@ -190,7 +198,7 @@ export default function SessionDetail() {
       return;
     }
 
-    if (isCoach || isAdmin) {
+    if ((isCoach || isAdmin) && !isCoacheePeer) {
       const { error: pErr } = await savePrivateNotes();
       if (pErr) return;
     }
@@ -210,13 +218,17 @@ export default function SessionDetail() {
     (n || "?").split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
 
   const counterpart = isCoach ? coachee : coach;
-  const showToolbox = session.status === "confirmed" || session.status === "completed";
+  // SessionToolbox writes against `sessions`/`peer_sessions` foreign keys only —
+  // not wired for coachee_peer_sessions yet (RULES.md §3 Relationship 5).
+  const showToolbox = !isCoacheePeer && (session.status === "confirmed" || session.status === "completed");
   const openItems = items.filter((i) => !i.done);
 
+  // session_attachments.session_id FK's to `sessions` only, so uploads there
+  // fail for peer_sessions too — coachee_peer_sessions shares that limitation.
   const TABS: { key: TabKey; label: string }[] = [
     { key: "notes", label: t("detail.tabs.notes") },
     { key: "actions", label: t("detail.tabs.actions") },
-    { key: "files", label: t("detail.tabs.files") },
+    ...(isCoacheePeer ? [] : [{ key: "files" as TabKey, label: t("detail.tabs.files") }]),
     ...(showToolbox ? [{ key: "toolbox" as TabKey, label: t("detail.tabs.toolbox") }] : []),
   ];
 
@@ -339,7 +351,7 @@ export default function SessionDetail() {
                     />
                   </NoteBlock>
 
-                  {(isCoach || isAdmin) && (
+                  {(isCoach || isAdmin) && !isCoacheePeer && (
                     <NoteBlock label={t("detail.notes.privateNoteLabel")} hint={t("detail.notes.onlyYou")}>
                       <Textarea
                         value={coachPrivate}
@@ -574,7 +586,7 @@ export default function SessionDetail() {
           </Card>
 
           {/* Per-goal rating snapshot (non-peer sessions only) */}
-          {!isPeer && (
+          {!isPeer && !isCoacheePeer && (
             <SessionGoalRatings
               sessionId={session.id}
               coacheeId={session.coachee_id}
@@ -710,12 +722,18 @@ export default function SessionDetail() {
 
           {(isCoach || canCancel) && (
             <Card className="flex flex-wrap gap-2 p-5 sm:p-7">
-              {isCoach && session.status === "pending_coach_approval" && (
+              {isCoach && !isCoacheePeer && session.status === "pending_coach_approval" && (
                 <Button className="rounded-full" onClick={confirmSession} disabled={saving}>
                   <CheckCircle2 className="mr-1 h-4 w-4" /> {t("detail.confirmSession")}
                 </Button>
               )}
-              {isCoach && session.status === "confirmed" && sessionStarted && (
+              {isCoach &&
+                sessionStarted &&
+                (session.status === "confirmed" ||
+                  // coachee_peer_sessions has no Zoom-confirm step wired yet (RULES.md
+                  // §3 Relationship 5) — let the provider complete straight from
+                  // pending_coach_approval instead of getting stuck unconfirmable.
+                  (isCoacheePeer && session.status === "pending_coach_approval")) && (
                 <div className="w-full space-y-2">
                   <Button
                     variant="secondary"
@@ -730,7 +748,7 @@ export default function SessionDetail() {
                   )}
                 </div>
               )}
-              {canCancel && (
+              {canCancel && !isCoacheePeer && (
                 <Button
                   variant="destructive"
                   className="rounded-full"

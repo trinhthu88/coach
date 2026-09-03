@@ -27,6 +27,7 @@ export function NotificationBell() {
         <button
           className="relative grid h-[34px] w-[34px] place-items-center rounded-[11px] border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
           aria-label={t("notifications.openMenu")}
+          title={t("notifications.openMenu")}
         >
           <Bell className="h-[17px] w-[17px]" />
           {unreadCount > 0 && (

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { extractFunctionError } from "@/lib/errors";
 
 export type BulkInviteRole = "coach" | "coachee";
 
@@ -36,21 +37,6 @@ export interface SubmitResult {
 
 export type BulkInviteBatch = Database["public"]["Tables"]["bulk_invite_batches"]["Row"];
 export type BulkInviteRowRecord = Database["public"]["Tables"]["bulk_invite_rows"]["Row"];
-
-/**
- * supabase.functions.invoke() does not parse the JSON body into `data` on a non-2xx
- * response — the structured error this function returns only lives on `error.context`
- * (the raw Response). Without this, every error collapses to a generic
- * "Edge Function returned a non-2xx status code".
- */
-async function extractFunctionError(error: unknown): Promise<Error> {
-  const context = (error as { context?: Response } | null)?.context;
-  if (context && typeof context.json === "function") {
-    const body = (await context.json().catch(() => null)) as { error?: string } | null;
-    if (body?.error) return new Error(body.error);
-  }
-  return error instanceof Error ? error : new Error("Request failed");
-}
 
 /**
  * Owns the admin bulk-invite flow: dry-run preview, real submission (fresh batch or

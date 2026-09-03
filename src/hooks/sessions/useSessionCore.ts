@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { extractFunctionError } from "@/lib/errors";
 import type { Database } from "@/integrations/supabase/types";
 import {
   ActionItem,
@@ -11,11 +12,13 @@ import {
   normalizeItems,
 } from "./types";
 
-type SessionsTable = "sessions" | "peer_sessions";
+type SessionsTable = "sessions" | "peer_sessions" | "coachee_peer_sessions";
 
 interface UseSessionCoreOptions {
   sessionId: string | undefined;
   isPeer: boolean;
+  /** Coachee-to-coachee peer practice (`coachee_peer_sessions`) — a third, distinct table from `peer_sessions` (coach-to-coach). */
+  isCoacheePeer?: boolean;
 }
 
 interface SessionCoreData {
@@ -28,24 +31,31 @@ interface SessionCoreData {
 async function fetchSessionCore(
   sessionId: string,
   tableName: SessionsTable,
-  isPeer: boolean,
   coachField: string,
-  coacheeField: string
+  coacheeField: string,
+  coachNotesField: string,
+  coacheeNotesField: string
 ): Promise<SessionCoreData | null> {
   const { data } = await supabase
-    .from(tableName)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .from(tableName as any)
     .select("*")
     .eq("id", sessionId)
     .maybeSingle();
   if (!data) return null;
 
-  // Normalize peer rows to look like SessionRow
+  // Normalize peer/coachee-peer rows to look like SessionRow — field names differ
+  // per table (peer_coach_id/peer_coachee_id, peer_provider_id/peer_receiver_id,
+  // provider_notes/receiver_notes) but a no-op for `sessions` since the field
+  // names already match.
   const raw = data as Record<string, unknown>;
-  const norm = (
-    isPeer
-      ? { ...raw, coach_id: raw[coachField], coachee_id: raw[coacheeField] }
-      : raw
-  ) as unknown as SessionRow;
+  const norm = {
+    ...raw,
+    coach_id: raw[coachField],
+    coachee_id: raw[coacheeField],
+    coach_notes: raw[coachNotesField],
+    coachee_notes: raw[coacheeNotesField],
+  } as unknown as SessionRow;
 
   const { data: profs } = await supabase
     .from("profiles")
@@ -84,17 +94,19 @@ async function fetchSessionCore(
  * participants and related milestones, plus the mutations that operate on
  * the session row itself (progress notes, status transitions, meeting link).
  */
-export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
-  const tableName: SessionsTable = isPeer ? "peer_sessions" : "sessions";
-  const coachField = isPeer ? "peer_coach_id" : "coach_id";
-  const coacheeField = isPeer ? "peer_coachee_id" : "coachee_id";
+export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionCoreOptions) {
+  const tableName: SessionsTable = isCoacheePeer ? "coachee_peer_sessions" : isPeer ? "peer_sessions" : "sessions";
+  const coachField = isCoacheePeer ? "peer_provider_id" : isPeer ? "peer_coach_id" : "coach_id";
+  const coacheeField = isCoacheePeer ? "peer_receiver_id" : isPeer ? "peer_coachee_id" : "coachee_id";
+  const coachNotesField = isCoacheePeer ? "provider_notes" : "coach_notes";
+  const coacheeNotesField = isCoacheePeer ? "receiver_notes" : "coachee_notes";
 
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ["session-core", tableName, sessionId], [tableName, sessionId]);
 
   const { data, isLoading } = useQuery({
     queryKey,
-    queryFn: () => fetchSessionCore(sessionId as string, tableName, isPeer, coachField, coacheeField),
+    queryFn: () => fetchSessionCore(sessionId as string, tableName, coachField, coacheeField, coachNotesField, coacheeNotesField),
     enabled: !!sessionId,
     staleTime: 30_000,
     // Local state below mirrors `session` and is only meant to resync on an
@@ -134,12 +146,12 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
     }) => {
       if (!session) return { error: null };
       setSaving(true);
-      const update: Partial<Database["public"]["Tables"]["sessions"]["Update"]> = {
+      const update: Record<string, unknown> = {
         action_items: items as unknown as Database["public"]["Tables"]["sessions"]["Update"]["action_items"],
       };
-      if (opts.includeCoachNotes) update.coach_notes = coachNotes;
+      if (opts.includeCoachNotes) update[coachNotesField] = coachNotes;
       if (opts.includeMeetingUrl) update.meeting_url = meetingUrl || null;
-      if (opts.includeCoacheeNotes) update.coachee_notes = coacheeNotes;
+      if (opts.includeCoacheeNotes) update[coacheeNotesField] = coacheeNotes;
       const { error } = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
@@ -148,7 +160,7 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
       setSaving(false);
       return { error };
     },
-    [session, items, coachNotes, coacheeNotes, meetingUrl, tableName]
+    [session, items, coachNotes, coacheeNotes, meetingUrl, tableName, coachNotesField, coacheeNotesField]
   );
 
   const saveActionItems = useCallback(async () => {
@@ -190,29 +202,40 @@ export function useSessionCore({ sessionId, isPeer }: UseSessionCoreOptions) {
 
   const confirmSession = useCallback(async () => {
     if (!session) return;
+    // confirm-session only knows about `sessions`/`peer_sessions` — coachee_peer_sessions
+    // isn't wired into its Zoom-provisioning flow yet (see RULES.md §3 Relationship 5).
+    if (isCoacheePeer) return;
     setSaving(true);
     const { error } = await supabase.functions.invoke("confirm-session", {
       body: { session_id: session.id, is_peer: isPeer },
     });
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      const friendly = await extractFunctionError(error);
+      return toast.error(friendly.message);
+    }
     toast.success("Session confirmed. Zoom meeting is ready.");
     load();
-  }, [session, isPeer, load]);
+  }, [session, isPeer, isCoacheePeer, load]);
 
   const cancelSession = useCallback(
     async (onDone: () => void, reason?: string) => {
       if (!session) return;
+      if (isCoacheePeer) return;
       setSaving(true);
       const { error } = await supabase.functions.invoke("cancel-session", {
         body: { session_id: session.id, is_peer: isPeer, reason },
       });
       setSaving(false);
-      if (error) return toast.error(error.message);
+      if (error) {
+        const friendly = await extractFunctionError(error);
+        toast.error(friendly.message);
+        return;
+      }
       toast.success("Session cancelled");
       onDone();
     },
-    [session, isPeer]
+    [session, isPeer, isCoacheePeer]
   );
 
   const completeSession = useCallback(async () => {

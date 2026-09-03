@@ -91,6 +91,11 @@
     },
     "kindLabelWith": "với",
     "kindLabelCoach": "Coach",
+    "kindLabelPeerPractice": "Thực hành cùng bạn đồng hành",
+    "roleBadge": {
+      "coach": "Coach",
+      "coachee": "Coachee"
+    },
     "markComplete": "Đánh dấu hoàn thành",
     "toast": {
       "markedComplete": "Đã đánh dấu session hoàn thành",

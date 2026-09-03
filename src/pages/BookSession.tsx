@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { addDays, format, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { DEFAULT_SESSION_LIMIT } from "@/lib/constants";
 import { canSubmitBooking, isOverSessionLimit } from "./bookingEligibility";
 import { computeStartOptions } from "./bookingSlots";
 
@@ -167,8 +168,8 @@ export default function BookSession() {
             });
             const row = Array.isArray(u) ? u[0] : u;
             // null = unlimited (coach's programme has no peer_received_limit set) —
-            // only fall back to 4 when the RPC returned no row at all.
-            const peerLimit: number | null = row ? row.peer_monthly_limit : 4;
+            // only fall back to DEFAULT_SESSION_LIMIT when the RPC returned no row at all.
+            const peerLimit: number | null = row ? row.peer_monthly_limit : DEFAULT_SESSION_LIMIT;
             const peerUsed = row?.used_this_month ?? 0;
             setUsage({ monthly_limit: peerLimit, used_this_month: peerUsed });
             // Not covered by can_book_session() (see comment above) — gate on the
@@ -182,7 +183,7 @@ export default function BookSession() {
               // can_book_session() and enforce_coach_as_coachee_limit() use, so the
               // banner can't show a different limit than what's actually enforced.
               // null mentee_sessions_limit = unlimited; no enrollment row at all falls
-              // back to 4, matching the old default.
+              // back to DEFAULT_SESSION_LIMIT, matching the old default.
               const [{ data: enrollment }, coachCount] = await Promise.all([
                 supabase
                   .from("coach_programme_enrollments")
@@ -197,7 +198,7 @@ export default function BookSession() {
               ]);
               const monthlyLimit: number | null = enrollment
                 ? enrollment.coach_programme?.mentee_sessions_limit ?? null
-                : 4;
+                : DEFAULT_SESSION_LIMIT;
               setUsage({
                 monthly_limit: monthlyLimit,
                 used_this_month: coachCount.count || 0,
@@ -211,7 +212,7 @@ export default function BookSession() {
                   .eq("coachee_id", user.id)
                   .eq("status", "completed"),
               ]);
-              const limit = u && u.length ? u[0].monthly_limit : 4;
+              const limit = u && u.length ? u[0].monthly_limit : DEFAULT_SESSION_LIMIT;
               setUsage({ monthly_limit: limit, used_this_month: count || 0 });
             }
 
