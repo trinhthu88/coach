@@ -2386,13 +2386,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "triad_groups_programme_id_fkey"
-            columns: ["programme_id"]
-            isOneToOne: false
-            referencedRelation: "programmes"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "triad_groups_member_1_id_fkey"
             columns: ["member_1_id"]
             isOneToOne: false
@@ -2411,6 +2404,13 @@ export type Database = {
             columns: ["member_3_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
             referencedColumns: ["id"]
           },
         ]
@@ -2457,17 +2457,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "triad_reflections_triad_session_id_fkey"
-            columns: ["triad_session_id"]
-            isOneToOne: false
-            referencedRelation: "triad_sessions"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "triad_reflections_participant_id_fkey"
             columns: ["participant_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_reflections_triad_session_id_fkey"
+            columns: ["triad_session_id"]
+            isOneToOne: false
+            referencedRelation: "triad_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -2523,20 +2523,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "triad_sessions_triad_group_id_fkey"
-            columns: ["triad_group_id"]
-            isOneToOne: false
-            referencedRelation: "triad_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_sessions_training_week_id_fkey"
-            columns: ["training_week_id"]
-            isOneToOne: false
-            referencedRelation: "training_weeks"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "triad_sessions_coach_role_id_fkey"
             columns: ["coach_role_id"]
             isOneToOne: false
@@ -2555,6 +2541,20 @@ export type Database = {
             columns: ["observer_role_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_triad_group_id_fkey"
+            columns: ["triad_group_id"]
+            isOneToOne: false
+            referencedRelation: "triad_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -2758,6 +2758,18 @@ export type Database = {
       get_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_quiz_questions: {
+        Args: { p_assignment_id: string }
+        Returns: {
+          explanation: string
+          explanation_vi: string
+          id: string
+          options: Json
+          question_text: string
+          question_text_vi: string
+          sort_order: number
+        }[]
       }
       get_sponsor_org: { Args: { _user_id: string }; Returns: string }
       get_todays_prompt: {

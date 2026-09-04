@@ -58,11 +58,10 @@ export function useQuiz(assignmentId: string | undefined) {
             .select("id, training_week_id, title, title_vi, instructions, instructions_vi")
             .eq("id", assignmentId as string)
             .maybeSingle(),
-          supabase
-            .from("quiz_questions")
-            .select("id, question_text, question_text_vi, options, explanation, explanation_vi, sort_order")
-            .eq("assignment_id", assignmentId as string)
-            .order("sort_order"),
+          // Server-side masked: is_correct/explanation are only present once
+          // this user already has a submission for this assignment — see
+          // get_quiz_questions() in 20260904100000_quiz_submission_integrity.sql.
+          supabase.rpc("get_quiz_questions", { p_assignment_id: assignmentId as string }),
           supabase
             .from("assignment_submissions")
             .select("answers, score_pct, correct_count, total_count")
