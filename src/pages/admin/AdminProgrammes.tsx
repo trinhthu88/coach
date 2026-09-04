@@ -10,14 +10,30 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, ArrowUpRight } from "lucide-react";
+import {
+  Loader2, Plus, Pencil, Trash2, ArrowUpRight,
+  Users, Repeat, GraduationCap, Triangle, BookOpen, HelpCircle, ClipboardCheck, Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { cn } from "@/lib/utils";
 import type { ProgrammeModuleType } from "@/hooks/useProgrammeModules";
 import type { Json } from "@/integrations/supabase/types";
+
+const MODULE_ICONS: Record<ProgrammeModuleType, LucideIcon> = {
+  coaching: Users,
+  peer_coaching: Repeat,
+  mentoring: GraduationCap,
+  triads: Triangle,
+  training: BookOpen,
+  quiz: HelpCircle,
+  assessment: ClipboardCheck,
+  daily_prompt: Sparkles,
+};
 
 interface Programme {
   id: string;
@@ -128,14 +144,18 @@ function ModuleConfigRow({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const cfg = row.config;
+  const Icon = MODULE_ICONS[module];
   return (
-    <div className="rounded-md border p-2.5">
-      <div className="flex items-center justify-between">
-        <p className="text-[12.5px] font-medium">{t(`programmes.modules.types.${module}`)}</p>
+    <div className={cn("rounded-2xl border p-4 transition-opacity", !row.enabled && "opacity-60")}>
+      <div className="flex items-center gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-primary-soft text-primary">
+          <Icon className="h-4 w-4" />
+        </span>
+        <p className="flex-1 text-[13.5px] font-semibold">{t(`programmes.modules.types.${module}`)}</p>
         <Switch checked={row.enabled} onCheckedChange={onToggle} />
       </div>
       {row.enabled && (
-        <div className="mt-2.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <div className="mt-3.5 grid grid-cols-2 gap-2.5 border-t pt-3.5 sm:grid-cols-4">
           {(module === "coaching" || module === "mentoring") && (
             <>
               <label className="flex items-center gap-1.5 text-[11px]">
@@ -492,7 +512,7 @@ export default function AdminProgrammes() {
               <div className="rounded-lg border p-3">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmes.modules.heading")}</p>
                 <p className="mb-2.5 mt-0.5 text-[11px] text-muted-foreground">{t("programmes.modules.hint")}</p>
-                <div className="space-y-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {MODULE_TYPES.map((mod) => (
                     <ModuleConfigRow
                       key={mod}

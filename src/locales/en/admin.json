@@ -833,6 +833,7 @@
       "actions": "Actions"
     },
     "empty": "No triads yet for this cohort.",
+    "unassignedHeading": "Unassigned participants",
     "cancel": "Cancel",
     "save": "Save",
     "edit": "Edit",

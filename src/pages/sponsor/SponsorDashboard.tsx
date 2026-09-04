@@ -8,7 +8,8 @@ import {
   Clock, Filter, ChevronDown, GraduationCap, type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
+import { Card } from "@/components/ui/card";
+import { SectionCard, Pill, MiniBar, Avatar, EngagementCell } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import { SponsorLeaderDrawer } from "./SponsorLeaderDrawer";
@@ -266,54 +267,46 @@ export default function SponsorDashboard() {
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 pt-4">
-              <SectionCard label={t("dashboard.programmeEngagement.label")}>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-[12px]">
-                    <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <tr>
-                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.week")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.skillCard")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.quiz")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.triad")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.prompt")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("dashboard.programmeEngagement.columns.confidence")}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {programmeEngagement.map((w) => (
-                        <tr key={`${w.week_number}-${w.week_title}`}>
-                          <td className="px-2 py-2 font-medium">W{w.week_number} · {w.week_title}</td>
-                          <td className="px-2 py-2 text-muted-foreground">{w.skill_card_completion_pct != null ? `${Math.round(w.skill_card_completion_pct)}%` : "—"}</td>
-                          <td className="px-2 py-2 text-muted-foreground">
-                            {w.quiz_avg_score != null ? `${Math.round(w.quiz_avg_score)}%` : "—"}
-                            {w.quiz_completion_pct != null && <span className="text-muted-foreground/70"> · {Math.round(w.quiz_completion_pct)}% done</span>}
-                          </td>
-                          <td className="px-2 py-2 text-muted-foreground">{w.triad_completion_pct != null ? `${Math.round(w.triad_completion_pct)}%` : "—"}</td>
-                          <td className="px-2 py-2 text-muted-foreground">{w.daily_prompt_response_rate != null ? `${Math.round(w.daily_prompt_response_rate)}%` : "—"}</td>
-                          <td className="px-2 py-2 text-muted-foreground">{w.avg_confidence_score != null ? Number(w.avg_confidence_score).toFixed(1) : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <Card className="overflow-hidden">
+                <div className="grid grid-cols-[64px_repeat(5,1fr)] gap-0 border-b bg-muted/30 px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span>{t("dashboard.programmeEngagement.columns.week")}</span>
+                  <span>{t("dashboard.programmeEngagement.columns.skillCard")}</span>
+                  <span>{t("dashboard.programmeEngagement.columns.quiz")}</span>
+                  <span>{t("dashboard.programmeEngagement.columns.triad")}</span>
+                  <span>{t("dashboard.programmeEngagement.columns.prompt")}</span>
+                  <span>{t("dashboard.programmeEngagement.columns.confidence")}</span>
                 </div>
-              </SectionCard>
+                <div className="divide-y">
+                  {programmeEngagement.map((w) => (
+                    <div key={`${w.week_number}-${w.week_title}`} className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-0 px-4 py-3 text-[12.5px]">
+                      <span className="font-bold">W{w.week_number}</span>
+                      <EngagementCell pct={w.skill_card_completion_pct} />
+                      <EngagementCell pct={w.quiz_completion_pct} sub={w.quiz_avg_score != null ? `${Math.round(w.quiz_avg_score)}% avg` : undefined} />
+                      <EngagementCell pct={w.triad_completion_pct} />
+                      <EngagementCell pct={w.daily_prompt_response_rate} tone="accent" />
+                      <span className="font-display text-base">{w.avg_confidence_score != null ? Number(w.avg_confidence_score).toFixed(1) : "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
               {redFlags.length > 0 && (
-                <SectionCard label={t("dashboard.redFlags.label")}>
-                  <ul className="divide-y">
+                <Card className="border-l-4 border-l-accent p-5">
+                  <p className="text-2xs font-bold uppercase tracking-[0.2em] text-accent">{t("dashboard.redFlags.label")}</p>
+                  <div className="mt-3.5 flex flex-col gap-2.5">
                     {redFlags.map((r) => (
-                      <li key={r.user_id} className="flex items-center justify-between gap-3 py-2 text-[12px]">
-                        <span className="font-medium">{r.full_name}</span>
-                        <span className="inline-flex items-center gap-1 text-warning">
-                          <AlertTriangle className="h-3.5 w-3.5" />
+                      <div key={r.user_id} className="flex items-center gap-3">
+                        <Avatar name={r.full_name} tone="accent" size={26} />
+                        <span className="flex-1 text-[12.5px]">{r.full_name}</span>
+                        <span className="text-[11px] text-muted-foreground">
                           {r.days_since_last_activity >= 999
                             ? t("dashboard.redFlags.noActivityYet")
                             : t("dashboard.redFlags.daysInactive", { count: r.days_since_last_activity })}
                         </span>
-                      </li>
+                      </div>
                     ))}
-                  </ul>
-                </SectionCard>
+                  </div>
+                </Card>
               )}
             </CollapsibleContent>
           </Collapsible>

@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Star, TrendingUp, Award, Users, MessagesSquare, AlertTriangle, Flag } from "lucide-react";
-import { AdminPageHeader, Kpi, SectionCard, MiniBar, Pill } from "./_shared";
+import { Loader2, Star, TrendingUp, Award, Users, MessagesSquare, Flag } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AdminPageHeader, Kpi, SectionCard, MiniBar, Pill, Avatar, EngagementCell } from "./_shared";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useAdminProgrammes, useAdminProgrammeEngagement } from "@/hooks/admin/useAdminProgrammeEngagement";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Tables } from "@/integrations/supabase/types";
@@ -424,34 +426,27 @@ export default function AdminAnalytics() {
           ) : (
             <>
               <SectionCard label={t("analytics.programmeEngagement.perWeekLabel")}>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-[12px]">
-                    <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <tr>
-                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.week")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.skillCard")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.quiz")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.triad")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.prompt")}</th>
-                        <th className="px-2 py-2 text-left font-semibold">{t("analytics.programmeEngagement.columns.confidence")}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {engagementWeeks.map((w) => (
-                        <tr key={w.weekId}>
-                          <td className="px-2 py-2 font-medium">W{w.weekNumber} · {w.title}</td>
-                          <td className="px-2 py-2 text-muted-foreground">{w.skillCardCompletionPct != null ? `${Math.round(w.skillCardCompletionPct)}%` : "—"}</td>
-                          <td className="px-2 py-2 text-muted-foreground">
-                            {w.quizAvgScore != null ? `${Math.round(w.quizAvgScore)}%` : "—"}
-                            {w.quizCompletionPct != null && <span className="text-muted-foreground/70"> · {Math.round(w.quizCompletionPct)}% done</span>}
-                          </td>
-                          <td className="px-2 py-2 text-muted-foreground">{w.triadCompletionPct != null ? `${Math.round(w.triadCompletionPct)}%` : "—"}</td>
-                          <td className="px-2 py-2 text-muted-foreground">{w.promptResponseRate != null ? `${Math.round(w.promptResponseRate)}%` : "—"}</td>
-                          <td className="px-2 py-2 text-muted-foreground">{w.avgConfidence != null ? w.avgConfidence.toFixed(1) : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="overflow-hidden rounded-xl border">
+                  <div className="grid grid-cols-[64px_repeat(5,1fr)] gap-0 border-b bg-muted/40 px-3 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <span>{t("analytics.programmeEngagement.columns.week")}</span>
+                    <span>{t("analytics.programmeEngagement.columns.skillCard")}</span>
+                    <span>{t("analytics.programmeEngagement.columns.quiz")}</span>
+                    <span>{t("analytics.programmeEngagement.columns.triad")}</span>
+                    <span>{t("analytics.programmeEngagement.columns.prompt")}</span>
+                    <span>{t("analytics.programmeEngagement.columns.confidence")}</span>
+                  </div>
+                  <div className="divide-y">
+                    {engagementWeeks.map((w) => (
+                      <div key={w.weekId} className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-0 px-3 py-3 text-[12.5px]">
+                        <span className="truncate font-bold" title={`W${w.weekNumber} · ${w.title}`}>W{w.weekNumber}</span>
+                        <EngagementCell pct={w.skillCardCompletionPct} />
+                        <EngagementCell pct={w.quizCompletionPct} sub={w.quizAvgScore != null ? `${Math.round(w.quizAvgScore)}% avg` : undefined} />
+                        <EngagementCell pct={w.triadCompletionPct} />
+                        <EngagementCell pct={w.promptResponseRate} tone="accent" />
+                        <span className="font-display text-base">{w.avgConfidence != null ? w.avgConfidence.toFixed(1) : "—"}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </SectionCard>
 
@@ -492,15 +487,16 @@ export default function AdminAnalytics() {
                 </SectionCard>
               </div>
 
-              <SectionCard label={t("analytics.programmeEngagement.redFlags")}>
+              <Card className={cn("p-5", redFlags.length > 0 && "border-l-4 border-l-accent")}>
+                <p className="text-2xs font-bold uppercase tracking-[0.2em] text-accent">{t("analytics.programmeEngagement.redFlags")}</p>
                 {redFlags.length === 0 ? (
                   <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.programmeEngagement.noRedFlags")}</p>
                 ) : (
-                  <div className="divide-y">
+                  <div className="mt-3.5 divide-y">
                     {redFlags.map((f) => (
-                      <div key={f.userId} className="flex flex-col gap-1 py-2.5 text-[12px] sm:flex-row sm:items-center sm:justify-between">
-                        <span className="inline-flex items-center gap-2 font-medium">
-                          <AlertTriangle className="h-3.5 w-3.5 text-warning" /> {f.fullName}
+                      <div key={f.userId} className="flex flex-col gap-2 py-2.5 text-[12px] sm:flex-row sm:items-center sm:justify-between">
+                        <span className="inline-flex items-center gap-2.5 font-medium">
+                          <Avatar name={f.fullName} tone="accent" size={26} /> {f.fullName}
                         </span>
                         <div className="flex items-center gap-3">
                           <span className="text-muted-foreground">
@@ -522,7 +518,7 @@ export default function AdminAnalytics() {
                     ))}
                   </div>
                 )}
-              </SectionCard>
+              </Card>
             </>
           )}
         </TabsContent>

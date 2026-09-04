@@ -29,8 +29,8 @@ describe("Index (landing) page i18n", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "VI" }));
 
-    await waitFor(() => expect(heroHeading.textContent).toContain("Thị trường riêng tư"));
-    expect(heroHeading.textContent).toContain("coaching đỉnh cao.");
+    await waitFor(() => expect(heroHeading.textContent).toContain("Nền tảng riêng tư"));
+    expect(heroHeading.textContent).toContain("chuyên biệt.");
     expect(screen.getByText("© 2026 Clariva. Bảo lưu mọi quyền.")).toBeInTheDocument();
     expect(heroHeading.textContent).not.toContain("The private");
   });

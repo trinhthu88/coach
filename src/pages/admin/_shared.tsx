@@ -127,6 +127,25 @@ export function Pill({
   );
 }
 
+/**
+ * Value + a thin inline progress bar underneath — one cell of a
+ * per-week programme-engagement grid (admin analytics, sponsor dashboard).
+ * Unlike MiniBar below, the bar carries no text of its own; the percentage
+ * is shown as the primary value above it, with an optional secondary stat.
+ */
+export function EngagementCell({ pct, sub, tone = "primary" }: { pct: number | null; sub?: string; tone?: "primary" | "accent" }) {
+  if (pct == null) return <span className="text-muted-foreground">—</span>;
+  return (
+    <div>
+      <span className="font-semibold">{Math.round(pct)}%</span>
+      {sub && <span className="ml-1 text-[10px] text-muted-foreground">{sub}</span>}
+      <div className="mt-1.5 h-1 w-4/5 overflow-hidden rounded-full bg-muted">
+        <div className={cn("h-full rounded-full", tone === "accent" ? "bg-accent" : "bg-primary")} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
 export function MiniBar({ pct, tone = "primary" }: { pct: number; tone?: "primary" | "success" | "warning" | "destructive" | "secondary" }) {
   const fill: Record<string, string> = {
     primary: "bg-primary",

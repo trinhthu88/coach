@@ -300,67 +300,68 @@ export default function AdminTriads() {
             </div>
           </div>
 
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2.5 text-left font-semibold">{t("triads.tableHeaders.group")}</th>
-                    <th className="px-3 py-2.5 text-left font-semibold">{t("triads.tableHeaders.members")}</th>
-                    <th className="px-3 py-2.5 text-left font-semibold">{t("triads.tableHeaders.status")}</th>
-                    <th className="px-3 py-2.5 text-left font-semibold">{t("triads.tableHeaders.sessions")}</th>
-                    <th className="px-3 py-2.5 text-left font-semibold">{t("triads.tableHeaders.reflectionRate")}</th>
-                    <th className="px-3 py-2.5 text-right font-semibold">{t("triads.tableHeaders.actions")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {groups.map((g, i) => {
-                    const sessions = sessionCountByGroup.get(g.id) || 0;
-                    const reflections = reflectionCountByGroup.get(g.id) || 0;
-                    const expected = sessions * 3;
-                    return (
-                      <tr key={g.id} className="hover:bg-muted/30">
-                        <td className="px-3 py-2.5 font-medium">{g.name || `${t("triads.title")} ${i + 1}`}</td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex -space-x-1.5">
-                            {[g.member_1_id, g.member_2_id, g.member_3_id].map((id) => (
-                              <Avatar key={id} name={nameById.get(id) || "?"} />
-                            ))}
-                          </div>
-                          <p className="mt-1 text-[10px] text-muted-foreground">
-                            {[g.member_1_id, g.member_2_id, g.member_3_id].map((id) => nameById.get(id) || "—").join(", ")}
-                          </p>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <Pill tone={g.is_active ? "success" : "muted"}>{g.is_active ? t("triads.active") : t("triads.inactive")}</Pill>
-                        </td>
-                        <td className="px-3 py-2.5">{sessions}</td>
-                        <td className="px-3 py-2.5">{expected > 0 ? t("triads.reflectionsOf", { done: reflections, total: expected }) : "—"}</td>
-                        <td className="px-3 py-2.5 text-right">
-                          <Button variant="ghost" size="sm" disabled={busy} onClick={() => toggleActive(g)}>
-                            {g.is_active ? (
-                              <>
-                                <XCircle className="mr-1 h-3.5 w-3.5" /> {t("triads.deactivate")}
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> {t("triads.reactivate")}
-                              </>
-                            )}
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {groups.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-12 text-center text-sm text-muted-foreground">{t("triads.empty")}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+          {groups.length === 0 ? (
+            <Card className="p-12 text-center text-sm text-muted-foreground">{t("triads.empty")}</Card>
+          ) : (
+            <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+              {groups.map((g, i) => {
+                const sessions = sessionCountByGroup.get(g.id) || 0;
+                const reflections = reflectionCountByGroup.get(g.id) || 0;
+                const expected = sessions * 3;
+                return (
+                  <Card key={g.id} className="p-5">
+                    <div className="flex items-center gap-3">
+                      <p className="flex-1 truncate text-[15px] font-semibold">{g.name || `${t("triads.title")} ${i + 1}`}</p>
+                      <Pill tone={g.is_active ? "success" : "muted"}>{g.is_active ? t("triads.active") : t("triads.inactive")}</Pill>
+                    </div>
+                    <div className="mt-4 flex flex-col gap-2">
+                      {[g.member_1_id, g.member_2_id, g.member_3_id].map((id) => (
+                        <div key={id} className="flex items-center gap-2.5 rounded-xl bg-muted/40 px-2.5 py-2">
+                          <Avatar name={nameById.get(id) || "?"} size={26} />
+                          <span className="flex-1 truncate text-[12.5px]">{nameById.get(id) || "—"}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex gap-5 border-t pt-3.5">
+                      <div>
+                        <p className="font-display text-lg leading-none">{sessions}</p>
+                        <p className="mt-1 text-2xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("triads.tableHeaders.sessions")}</p>
+                      </div>
+                      <div>
+                        <p className="font-display text-lg leading-none">{expected > 0 ? t("triads.reflectionsOf", { done: reflections, total: expected }) : "—"}</p>
+                        <p className="mt-1 text-2xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("triads.tableHeaders.reflectionRate")}</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" disabled={busy} className="mt-3.5 w-full" onClick={() => toggleActive(g)}>
+                      {g.is_active ? (
+                        <>
+                          <XCircle className="mr-1 h-3.5 w-3.5" /> {t("triads.deactivate")}
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> {t("triads.reactivate")}
+                        </>
+                      )}
+                    </Button>
+                  </Card>
+                );
+              })}
             </div>
-          </Card>
+          )}
+
+          {unassigned.length > 0 && (
+            <div>
+              <p className="mb-2 mt-6 text-2xs font-bold uppercase tracking-[0.22em] text-muted-foreground">{t("triads.unassignedHeading")}</p>
+              <Card className="divide-y overflow-hidden">
+                {unassigned.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                    <Avatar name={p.full_name} size={28} />
+                    <span className="flex-1 text-[13px]">{p.full_name}</span>
+                  </div>
+                ))}
+              </Card>
+            </div>
+          )}
         </>
       )}
 

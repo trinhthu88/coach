@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 import { useDailyPrompt } from "@/hooks/training/useDailyPrompt";
 
@@ -33,44 +34,64 @@ export function DailyPromptCard() {
     setSubmitting(false);
   };
 
+  const answered = !!prompt?.already_responded;
+
   return (
-    <Card className="p-5">
+    <Card className={cn("border-l-4 p-5", answered ? "border-l-success" : "border-l-primary")}>
       <div className="mb-3 flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-primary" />
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("dailyPrompt.title")}</p>
+        {answered ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Sparkles className="h-4 w-4 text-primary" />}
+        <p className={cn("text-2xs font-bold uppercase tracking-[0.2em]", answered ? "text-success" : "text-primary")}>
+          {answered ? t("dailyPrompt.titleAnswered") : t("dailyPrompt.title")}
+          {prompt?.week_number ? ` · ${t("dailyPrompt.weekN", { n: prompt.week_number })}` : ""}
+        </p>
       </div>
       {promptLoading ? (
         <div className="h-16 animate-pulse rounded-lg bg-muted/50" />
       ) : !prompt ? (
         <p className="text-sm text-muted-foreground">{t("dailyPrompt.noPromptToday")}</p>
-      ) : prompt.already_responded ? (
+      ) : answered ? (
         <div>
-          <p className="text-sm text-foreground">{promptText}</p>
-          {prompt.response_text && <p className="mt-2 text-sm italic text-muted-foreground">&ldquo;{prompt.response_text}&rdquo;</p>}
+          <p className="text-[15px] leading-relaxed text-foreground">{promptText}</p>
           {prompt.confidence_score != null && (
-            <p className="mt-2 text-xs font-semibold text-primary">
-              {t("dailyPrompt.confidence")}: {prompt.confidence_score}/10
-            </p>
+            <div className="mt-5 flex gap-1">
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                <span
+                  key={n}
+                  className={cn(
+                    "grid h-6 flex-1 place-items-center rounded-md text-2xs font-bold",
+                    n <= prompt.confidence_score! ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {n}
+                </span>
+              ))}
+            </div>
           )}
-          <p className="mt-2 text-[11px] text-muted-foreground">{t("dailyPrompt.submitted")}</p>
+          <div className="mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-success">
+            <CheckCircle2 className="h-4 w-4" />
+            {t("dailyPrompt.confidence")}: {prompt.confidence_score}/10
+          </div>
+          {prompt.response_text && (
+            <p className="mt-3 rounded-xl bg-muted/50 p-3.5 text-[13px] leading-relaxed text-muted-foreground">&ldquo;{prompt.response_text}&rdquo;</p>
+          )}
         </div>
       ) : (
         <div>
-          <p className="text-sm font-medium text-foreground">{promptText}</p>
+          <p className="text-[15px] font-medium leading-relaxed text-foreground">{promptText}</p>
+          <div className="mt-5">
+            <span className="text-[12px] font-semibold text-foreground">{t("dailyPrompt.confidenceLabel")}</span>
+            <div className="mt-2 flex items-center gap-3">
+              <Slider value={[confidence]} min={1} max={10} step={1} onValueChange={(v) => setConfidence(v[0])} className="flex-1" />
+              <span className="font-display w-8 text-right text-2xl text-primary">{confidence}</span>
+            </div>
+          </div>
           <Textarea
-            className="mt-3"
+            className="mt-4"
             rows={3}
             placeholder={t("reflection.placeholder")}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
-          <div className="mt-3">
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-muted-foreground">{t("dailyPrompt.confidenceLabel")}</span>
-              <span className="text-xs font-semibold tabular-nums text-foreground">{confidence}</span>
-            </div>
-            <Slider value={[confidence]} min={1} max={10} step={1} onValueChange={(v) => setConfidence(v[0])} />
-          </div>
           <Button size="sm" className="mt-4" onClick={handleRespond} disabled={submitting}>
             {submitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
             {t("dailyPrompt.respond")}

@@ -814,6 +814,7 @@
       "actions": "Thao tác"
     },
     "empty": "Chưa có triad nào cho nhóm này.",
+    "unassignedHeading": "Học viên chưa được phân triad",
     "cancel": "Hủy",
     "save": "Lưu",
     "edit": "Sửa",

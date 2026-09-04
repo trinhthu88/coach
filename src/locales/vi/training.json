@@ -61,6 +61,8 @@
   },
   "dailyPrompt": {
     "title": "Gợi ý hôm nay",
+    "titleAnswered": "Gợi ý hôm nay · đã trả lời",
+    "weekN": "tuần {{n}}",
     "respond": "Gửi phản hồi",
     "confidence": "Mức độ tự tin",
     "confidenceLabel": "Bạn cảm thấy tự tin đến đâu? (1 = không tự tin, 10 = rất tự tin)",

@@ -348,16 +348,27 @@ export default function SponsorReport() {
                     )}
 
                     {topQuotes.length > 0 && (
-                      <div className="mt-4">
-                        <p className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.programmeImpact.topQuotes.label")}</p>
-                        <div className="space-y-2">
-                          {topQuotes.map((q, i) => (
-                            <div key={i} className="flex gap-2 rounded-lg bg-muted/40 p-2.5 text-[11px] italic text-muted-foreground">
-                              <Quote className="h-3.5 w-3.5 shrink-0 text-primary/60" />
-                              <span>&ldquo;{q.anonymized_quote}&rdquo; <span className="not-italic text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/70">— {t("report.programmeImpact.topQuotes.weekPrefix", { n: q.week_number })}</span></span>
-                            </div>
-                          ))}
-                        </div>
+                      // Fixed light-mode colors, not theme tokens — see the
+                      // chart note above, this preview box is a fixed-white
+                      // printable page regardless of the viewer's app theme.
+                      <div className="mt-4 rounded-xl p-4" style={{ background: "#e4f5fa" }}>
+                        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "#2c8fa8" }}>{t("report.programmeImpact.topQuotes.label")}</p>
+                        <p className="font-display mt-2.5 text-[15px] italic leading-snug" style={{ color: "#0a1c26" }}>
+                          &ldquo;{topQuotes[0].anonymized_quote}&rdquo;
+                        </p>
+                        <p className="mt-1.5 text-[10px]" style={{ color: "#1d5a6b" }}>
+                          {t("report.programmeImpact.topQuotes.weekPrefix", { n: topQuotes[0].week_number })}
+                        </p>
+                        {topQuotes.length > 1 && (
+                          <div className="mt-3 space-y-1.5 border-t pt-3" style={{ borderColor: "rgba(44,143,168,.2)" }}>
+                            {topQuotes.slice(1).map((q, i) => (
+                              <p key={i} className="flex gap-1.5 text-[10.5px] italic" style={{ color: "#1d5a6b" }}>
+                                <Quote className="h-3 w-3 shrink-0" style={{ color: "#2c8fa8" }} />
+                                &ldquo;{q.anonymized_quote}&rdquo;
+                              </p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

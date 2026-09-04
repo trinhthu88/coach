@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Sparkles, HelpCircle, Triangle, type LucideIcon } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 import { useProgrammeProgress } from "@/hooks/dashboard/useProgrammeProgress";
@@ -45,15 +46,35 @@ export function ProgrammeProgressCard() {
         <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("progressCard.eyebrow")}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat label={t("progressCard.skillsCompleted")} value={`${summary.weeksCompleted}/${summary.weeksTotal}`} />
-        {showStreak && <Stat label={t("progressCard.reflectionStreak")} value={String(summary.reflectionStreak)} />}
-        {showQuiz && <Stat label={t("progressCard.quizAvg")} value={summary.quizAvg != null ? `${Math.round(summary.quizAvg)}%` : "—"} />}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat
+          icon={GraduationCap}
+          label={t("progressCard.skillsCompleted")}
+          value={`${summary.weeksCompleted}/${summary.weeksTotal}`}
+          pct={summary.weeksTotal > 0 ? (summary.weeksCompleted / summary.weeksTotal) * 100 : 0}
+        />
+        {showStreak && (
+          <Stat
+            icon={Sparkles}
+            label={t("progressCard.reflectionStreak")}
+            value={String(summary.reflectionStreak)}
+            pct={Math.min(100, (summary.reflectionStreak / 7) * 100)}
+          />
+        )}
+        {showQuiz && (
+          <Stat
+            icon={HelpCircle}
+            label={t("progressCard.quizAvg")}
+            value={summary.quizAvg != null ? `${Math.round(summary.quizAvg)}%` : "—"}
+            pct={summary.quizAvg ?? 0}
+          />
+        )}
         {showTriads && (
           <Stat
+            icon={Triangle}
             label={t("progressCard.triadSessions")}
             value={String(summary.triadCompletedCount)}
-            hint={
+            sub={
               summary.nextTriadDate
                 ? t("progressCard.nextTriadOn", { date: format(new Date(summary.nextTriadDate), "MMM d") })
                 : t("progressCard.noTriadScheduled")
@@ -95,12 +116,34 @@ export function ProgrammeProgressCard() {
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  pct,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  sub?: string;
+  pct?: number;
+}) {
   return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="font-display mt-1 text-2xl font-normal leading-none">{value}</p>
-      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+    <div className="rounded-2xl border bg-muted/30 p-4">
+      <div className="flex items-center gap-2">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] bg-primary-soft text-primary">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <p className="truncate text-2xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+      </div>
+      <p className="font-display mt-3 text-xl font-semibold leading-none">{value}</p>
+      <p className="mt-1 min-h-[15px] text-[11px] text-muted-foreground">{sub}</p>
+      {pct != null && (
+        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className={cn("h-full rounded-full bg-primary")} style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
+        </div>
+      )}
     </div>
   );
 }

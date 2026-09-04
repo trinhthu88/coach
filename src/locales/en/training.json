@@ -60,7 +60,9 @@
     "yourReflection": "Your reflection"
   },
   "dailyPrompt": {
-    "title": "Today's prompt",
+    "title": "Today's nudge",
+    "titleAnswered": "Today's nudge · answered",
+    "weekN": "week {{n}}",
     "respond": "Submit response",
     "confidence": "Confidence",
     "confidenceLabel": "How confident do you feel? (1 = not confident, 10 = very confident)",

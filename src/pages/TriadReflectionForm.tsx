@@ -46,6 +46,12 @@ const FIELDS = [
 
 type FieldKey = (typeof FIELDS)[number][0];
 
+const SECTIONS = [
+  { role: "coach", learned: "learned_as_coach", willUse: "will_use_as_coach" },
+  { role: "coachee", learned: "learned_as_coachee", willUse: "will_use_as_coachee" },
+  { role: "observer", learned: "learned_as_observer", willUse: "will_use_as_observer" },
+] as const satisfies readonly { role: "coach" | "coachee" | "observer"; learned: FieldKey; willUse: FieldKey }[];
+
 export default function TriadReflectionForm() {
   const { t } = useTranslation("triads");
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -108,13 +114,6 @@ export default function TriadReflectionForm() {
 
   const myReflection = reflections.find((r) => r.participant_id === user?.id);
   const nameById = new Map(profiles.map((p) => [p.id, p.full_name]));
-  const myRole = session
-    ? session.coach_role_id === user?.id
-      ? t("roles.coach")
-      : session.coachee_role_id === user?.id
-      ? t("roles.coachee")
-      : t("roles.observer")
-    : "";
 
   const handleSubmit = async () => {
     if (!session || !user) return;
@@ -166,43 +165,71 @@ export default function TriadReflectionForm() {
       <div>
         <h1 className="font-display text-[1.7rem] leading-[1.1] tracking-tight">{t("reflection.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("reflection.subtitle")}</p>
-        <p className="mt-2 text-sm font-semibold text-primary">{t("reflection.yourRole", { role: myRole })}</p>
+        <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1.5 rounded-2xl bg-primary-soft px-4 py-3 text-[12.5px] text-primary">
+          {SECTIONS.map((sec, i) => {
+            const id = session[`${sec.role}_role_id` as const];
+            const isMe = id === user?.id;
+            return (
+              <span key={sec.role} className="inline-flex items-center gap-2">
+                {i > 0 && <span className="opacity-30">|</span>}
+                {isMe ? (
+                  <span>
+                    <strong className="font-bold">{t("reflection.youPlayed")}:</strong> {t(`roles.${sec.role}`)}
+                  </span>
+                ) : (
+                  <span>
+                    {t(`roles.${sec.role}`)}: {nameById.get(id) || "—"}
+                  </span>
+                )}
+              </span>
+            );
+          })}
+        </div>
       </div>
 
       {myReflection && <p className="text-xs italic text-muted-foreground">{t("reflection.alreadySubmitted")}</p>}
 
-      <Card className="space-y-5 p-5">
-        {FIELDS.map(([key, labelKey]) => (
-          <div key={key}>
-            <Label htmlFor={key}>{t(labelKey)}</Label>
+      {SECTIONS.map((sec) => (
+        <Card key={sec.role} className="space-y-5 p-6">
+          <p className="font-display text-xl font-normal tracking-tight">{t(`roles.${sec.role}`)}</p>
+          <div>
+            <Label htmlFor={sec.learned}>{t("reflection.whatDidYouLearn")}</Label>
             <Textarea
-              id={key}
+              id={sec.learned}
               rows={3}
               className="mt-1.5"
-              value={form[key]}
-              onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+              value={form[sec.learned]}
+              onChange={(e) => setForm((f) => ({ ...f, [sec.learned]: e.target.value }))}
             />
           </div>
-        ))}
-
-        <div>
-          <Label>{t("reflection.satisfaction")}</Label>
-          <div className="mt-2 flex gap-1">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} type="button" onClick={() => setRating(n)} aria-label={String(n)}>
-                <Star className={cn("h-6 w-6", n <= rating ? "fill-warning text-warning" : "text-muted-foreground/40")} />
-              </button>
-            ))}
+          <div>
+            <Label htmlFor={sec.willUse}>{t("reflection.howWillYouUse")}</Label>
+            <Textarea
+              id={sec.willUse}
+              rows={3}
+              className="mt-1.5"
+              value={form[sec.willUse]}
+              onChange={(e) => setForm((f) => ({ ...f, [sec.willUse]: e.target.value }))}
+            />
           </div>
-        </div>
+        </Card>
+      ))}
 
-        <div className="flex justify-end border-t pt-4">
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-            {t("reflection.submit")}
-          </Button>
+      <Card className="space-y-4 p-6">
+        <p className="font-display text-xl font-normal tracking-tight">{t("reflection.satisfaction")}</p>
+        <div className="flex gap-1.5">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button key={n} type="button" onClick={() => setRating(n)} aria-label={String(n)} className="transition-transform hover:scale-110">
+              <Star className={cn("h-7 w-7", n <= rating ? "fill-warning text-warning" : "text-muted-foreground/40")} />
+            </button>
+          ))}
         </div>
       </Card>
+
+      <Button onClick={handleSubmit} disabled={submitting} size="lg" className="w-full">
+        {submitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+        {t("reflection.submit")}
+      </Button>
 
       {myReflection && (
         <div>
