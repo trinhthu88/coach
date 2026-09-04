@@ -71,7 +71,10 @@
       "coachingGoalsPlaceholder": "Bạn muốn đạt được điều gì?",
       "timezoneButtonPlaceholder": "Chọn múi giờ của bạn",
       "timezoneSearchPlaceholder": "Tìm múi giờ…",
-      "timezoneNoMatch": "Không tìm thấy múi giờ phù hợp."
+      "timezoneNoMatch": "Không tìm thấy múi giờ phù hợp.",
+      "spokenLanguagesLabel": "Ngôn ngữ sử dụng",
+      "spokenLanguagesVietnamese": "Tiếng Việt",
+      "spokenLanguagesEnglish": "Tiếng Anh"
     },
     "saveChanges": "Lưu thay đổi"
   },

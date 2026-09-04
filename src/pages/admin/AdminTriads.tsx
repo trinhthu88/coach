@@ -26,6 +26,14 @@ interface CohortOption {
 interface Participant {
   id: string;
   full_name: string;
+  spoken_languages: string[];
+}
+
+function languageBadge(langs: string[] | undefined): string {
+  const has = new Set(langs || []);
+  if (has.has("vi") && has.has("en")) return "VI+EN";
+  if (has.has("en")) return "EN";
+  return "VI";
 }
 
 interface TriadGroupRow {
@@ -105,7 +113,7 @@ export default function AdminTriads() {
 
     const userIds = [...new Set((enrollments || []).map((e) => e.user_id as string))];
     const { data: profileRows } = userIds.length
-      ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
+      ? await supabase.from("profiles").select("id, full_name, spoken_languages").in("id", userIds)
       : { data: [] };
     setParticipants(((profileRows || []) as Participant[]).sort((a, b) => a.full_name.localeCompare(b.full_name)));
 
@@ -143,6 +151,7 @@ export default function AdminTriads() {
 
   const cohort = cohorts.find((c) => c.id === cohortId);
   const nameById = useMemo(() => new Map(participants.map((p) => [p.id, p.full_name])), [participants]);
+  const langById = useMemo(() => new Map(participants.map((p) => [p.id, p.spoken_languages])), [participants]);
 
   const groupedMemberIds = useMemo(() => {
     const s = new Set<string>();
@@ -319,6 +328,7 @@ export default function AdminTriads() {
                         <div key={id} className="flex items-center gap-2.5 rounded-xl bg-muted/40 px-2.5 py-2">
                           <Avatar name={nameById.get(id) || "?"} size={26} />
                           <span className="flex-1 truncate text-[12.5px]">{nameById.get(id) || "—"}</span>
+                          <Pill tone="muted">{languageBadge(langById.get(id))}</Pill>
                         </div>
                       ))}
                     </div>
@@ -357,6 +367,7 @@ export default function AdminTriads() {
                   <div key={p.id} className="flex items-center gap-3 px-4 py-3">
                     <Avatar name={p.full_name} size={28} />
                     <span className="flex-1 text-[13px]">{p.full_name}</span>
+                    <Pill tone="muted">{languageBadge(p.spoken_languages)}</Pill>
                   </div>
                 ))}
               </Card>

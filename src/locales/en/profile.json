@@ -70,7 +70,10 @@
       "coachingGoalsPlaceholder": "What do you want to achieve?",
       "timezoneButtonPlaceholder": "Select your timezone",
       "timezoneSearchPlaceholder": "Search timezones…",
-      "timezoneNoMatch": "No matching timezone found."
+      "timezoneNoMatch": "No matching timezone found.",
+      "spokenLanguagesLabel": "Spoken languages",
+      "spokenLanguagesVietnamese": "Vietnamese",
+      "spokenLanguagesEnglish": "English"
     },
     "saveChanges": "Save changes"
   },

@@ -6,9 +6,11 @@ import { sendEmail } from "../_shared/send-email.ts";
 import { ProgrammeReminderEmail } from "../_shared/email-templates/programme-reminder.tsx";
 
 // Phase 3 (programme management completion): the daily 09:00 sweep that
-// covers the 4 reminder/alert kinds the task calls for. Triggered the same
-// way send-daily-prompt is — an external cron (or pg_cron -> pg_net) POST
-// with the CRON_SECRET shared secret, hence verify_jwt = false.
+// covers the reminder/alert kinds the task calls for — overdue assignments,
+// missed/upcoming/unscheduled triad sessions, and stale participants.
+// Triggered the same way send-daily-prompt is — an external cron (or
+// pg_cron -> pg_net) POST with the CRON_SECRET shared secret, hence
+// verify_jwt = false.
 //
 // Every user-facing reminder here goes through `notifyOnce`, which dedupes
 // on (user_id, link) against notifications already sent — required because
@@ -348,8 +350,45 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ------------------------------------------------------------------
+    // 5. Triads that have never booked a session
+    // ------------------------------------------------------------------
+    const { data: activeGroups } = await admin
+      .from("triad_groups")
+      .select("id, member_1_id, member_2_id, member_3_id")
+      .eq("is_active", true);
+
+    let triadUnscheduledSent = 0;
+    if (activeGroups && activeGroups.length > 0) {
+      const groupIds = activeGroups.map((g) => g.id as string);
+      const { data: bookedSessions } = await admin
+        .from("triad_sessions")
+        .select("triad_group_id")
+        .in("triad_group_id", groupIds);
+      const bookedGroupIds = new Set((bookedSessions || []).map((s) => s.triad_group_id as string));
+
+      for (const g of activeGroups) {
+        if (bookedGroupIds.has(g.id as string)) continue;
+        const members = [g.member_1_id, g.member_2_id, g.member_3_id] as string[];
+        for (const userId of members) {
+          const sent = await notifyOnce({
+            userId,
+            link: "/triads",
+            type: "triad_reminder",
+            title: "Schedule your triad session",
+            titleVi: "Đặt lịch session triad của bạn",
+            body: "Your triad group hasn't scheduled a practice session yet. Agree on a time with your group.",
+            bodyVi: "Nhóm triad của bạn chưa đặt lịch session luyện tập nào. Hãy thống nhất thời gian với nhóm.",
+            ctaLabel: "Schedule session",
+            ctaLabelVi: "Đặt lịch session",
+          });
+          if (sent) triadUnscheduledSent++;
+        }
+      }
+    }
+
     return new Response(
-      JSON.stringify({ ok: true, overdueSent, triadReflectionSent, triadUpcomingSent, staleAlerts }),
+      JSON.stringify({ ok: true, overdueSent, triadReflectionSent, triadUpcomingSent, triadUnscheduledSent, staleAlerts }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

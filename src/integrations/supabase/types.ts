@@ -1573,6 +1573,7 @@ export type Database = {
           onboarding_completed_at: string | null
           peer_coaching_opt_in: boolean
           preferred_language: string
+          spoken_languages: string[]
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
         }
@@ -1588,6 +1589,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           peer_coaching_opt_in?: boolean
           preferred_language?: string
+          spoken_languages?: string[]
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }
@@ -1603,6 +1605,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           peer_coaching_opt_in?: boolean
           preferred_language?: string
+          spoken_languages?: string[]
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }

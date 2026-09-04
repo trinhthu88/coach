@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -52,6 +53,7 @@ export default function CoacheeProfileEditor() {
   const [timezone, setTimezone] = useState("");
   const [goals, setGoals] = useState("");
   const [timezoneOpen, setTimezoneOpen] = useState(false);
+  const [spokenLanguages, setSpokenLanguages] = useState<string[]>(["vi"]);
 
   useEffect(() => {
     if (!user) return;
@@ -77,8 +79,16 @@ export default function CoacheeProfileEditor() {
     if (profile) {
       setFullName(profile.full_name || "");
       setBio(profile.bio || "");
+      setSpokenLanguages(profile.spoken_languages?.length ? profile.spoken_languages : ["vi"]);
     }
   }, [profile]);
+
+  const toggleLanguage = (lang: "vi" | "en", checked: boolean) => {
+    setSpokenLanguages((prev) => {
+      const next = checked ? [...new Set([...prev, lang])] : prev.filter((l) => l !== lang);
+      return next.length > 0 ? next : prev; // at least one must stay selected
+    });
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -90,7 +100,7 @@ export default function CoacheeProfileEditor() {
 
     const { error: pErr } = await supabase
       .from("profiles")
-      .update({ full_name: fullName, bio })
+      .update({ full_name: fullName, bio, spoken_languages: spokenLanguages })
       .eq("id", user.id);
 
     const { error: cErr } = await supabase.from("coachee_profiles").upsert({
@@ -190,6 +200,19 @@ export default function CoacheeProfileEditor() {
             </Popover>
           </Field>
         </div>
+
+        <Field label={t("coacheeEditor.fields.spokenLanguagesLabel")} required>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={spokenLanguages.includes("vi")} onCheckedChange={(c) => toggleLanguage("vi", c === true)} />
+              {t("coacheeEditor.fields.spokenLanguagesVietnamese")}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={spokenLanguages.includes("en")} onCheckedChange={(c) => toggleLanguage("en", c === true)} />
+              {t("coacheeEditor.fields.spokenLanguagesEnglish")}
+            </label>
+          </div>
+        </Field>
 
         <Field label={t("coacheeEditor.fields.aboutYouLabel")}>
           <Textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} />
