@@ -75,9 +75,9 @@ Deno.serve(async (req) => {
           .from("assignments")
           .select("id, assignment_type")
           .eq("is_visible", true)
+          .eq("assignment_type", "quiz")
           .in("training_week_id", weekIds);
-        const quizAssignmentIds = (assignments || []).filter((a) => a.assignment_type === "quiz").map((a) => a.id as string);
-        const reflectionAssignmentIds = (assignments || []).filter((a) => a.assignment_type === "reflection").map((a) => a.id as string);
+        const quizAssignmentIds = (assignments || []).map((a) => a.id as string);
 
         if (quizAssignmentIds.length > 0) {
           const { count } = await admin
@@ -87,13 +87,22 @@ Deno.serve(async (req) => {
             .in("user_id", enrolledIds);
           quizCompletionPct = ratio(count || 0, quizAssignmentIds.length * enrolledIds.length);
         }
-        if (reflectionAssignmentIds.length > 0) {
+
+        // Reflections moved to programme_reflections/reflection_submissions —
+        // no longer an assignment_type.
+        const { data: reflections } = await admin
+          .from("programme_reflections")
+          .select("id")
+          .eq("programme_id", programme.id)
+          .eq("is_visible", true);
+        const reflectionIds = (reflections || []).map((r) => r.id as string);
+        if (reflectionIds.length > 0) {
           const { count } = await admin
-            .from("assignment_submissions")
+            .from("reflection_submissions")
             .select("id", { count: "exact", head: true })
-            .in("assignment_id", reflectionAssignmentIds)
+            .in("reflection_id", reflectionIds)
             .in("user_id", enrolledIds);
-          reflectionCompletionPct = ratio(count || 0, reflectionAssignmentIds.length * enrolledIds.length);
+          reflectionCompletionPct = ratio(count || 0, reflectionIds.length * enrolledIds.length);
         }
       }
 
@@ -168,16 +177,17 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // Confidence trend
+    // Confidence trend — sourced from reflection_submissions, not daily
+    // prompts (confidence moved to reflections; confidence_score is
+    // required/NOT NULL there, so no extra null filter is needed).
     // ------------------------------------------------------------------
     const [{ data: thisWeekScores }, { data: lastWeekScores }] = await Promise.all([
-      admin.from("daily_prompt_responses").select("confidence_score").gte("responded_at", weekAgoISO).not("confidence_score", "is", null),
+      admin.from("reflection_submissions").select("confidence_score").gte("submitted_at", weekAgoISO),
       admin
-        .from("daily_prompt_responses")
+        .from("reflection_submissions")
         .select("confidence_score")
-        .gte("responded_at", twoWeeksAgoISO)
-        .lt("responded_at", weekAgoISO)
-        .not("confidence_score", "is", null),
+        .gte("submitted_at", twoWeeksAgoISO)
+        .lt("submitted_at", weekAgoISO),
     ]);
     const avg = (rows: { confidence_score: number | null }[] | null) => {
       const scores = (rows || []).map((r) => r.confidence_score as number).filter((n) => n != null);
@@ -187,20 +197,30 @@ Deno.serve(async (req) => {
     const confidenceLastWeek = avg(lastWeekScores);
 
     // ------------------------------------------------------------------
-    // Top reflection quotes (anonymized — text only, no participant name)
+    // Top reflection quotes (anonymized — text only, no participant name).
+    // Sourced from reflection_submissions/reflection_answers, not
+    // assignment_submissions — reflections moved off the assignments table.
     // ------------------------------------------------------------------
-    const { data: recentReflections } = await admin
-      .from("assignment_submissions")
-      .select("reflection_text")
-      .not("reflection_text", "is", null)
+    const { data: recentSubmissions } = await admin
+      .from("reflection_submissions")
+      .select("id")
       .gte("submitted_at", weekAgoISO)
       .order("submitted_at", { ascending: false })
-      .limit(20);
-    const topQuotes = (recentReflections || [])
-      .map((r) => (r.reflection_text as string)?.trim())
-      .filter((t): t is string => !!t && t.length > 0)
-      .slice(0, 3)
-      .map((t) => (t.length > 220 ? `${t.slice(0, 220)}…` : t));
+      .limit(50);
+    const recentSubmissionIds = (recentSubmissions || []).map((s) => s.id as string);
+    let topQuotes: string[] = [];
+    if (recentSubmissionIds.length > 0) {
+      const { data: recentAnswers } = await admin
+        .from("reflection_answers")
+        .select("answer_text")
+        .in("submission_id", recentSubmissionIds)
+        .not("answer_text", "is", null);
+      topQuotes = (recentAnswers || [])
+        .map((a) => (a.answer_text as string)?.trim())
+        .filter((t): t is string => !!t && t.length > 0)
+        .slice(0, 3)
+        .map((t) => (t.length > 220 ? `${t.slice(0, 220)}…` : t));
+    }
 
     // ------------------------------------------------------------------
     // Send to every admin

@@ -7,7 +7,6 @@ export interface ProgrammeProgressSummary {
   quizScores: { weekNumber: number; scorePct: number }[];
   quizAvg: number | null;
   reflectionStreak: number;
-  confidenceTrend: { label: string; score: number }[];
   triadCompletedCount: number;
   nextTriadDate: string | null;
 }
@@ -25,7 +24,6 @@ const EMPTY: ProgrammeProgressSummary = {
   quizScores: [],
   quizAvg: null,
   reflectionStreak: 0,
-  confidenceTrend: [],
   triadCompletedCount: 0,
   nextTriadDate: null,
 };
@@ -43,7 +41,7 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
 
   const [{ data: assignments }, { data: prompts }, { data: triadSessions }] = await Promise.all([
     supabase.from("assignments").select("id, training_week_id").eq("assignment_type", "quiz").eq("is_visible", true).in("training_week_id", weekIds),
-    supabase.from("daily_prompts").select("id, training_week_id, day_number").in("training_week_id", weekIds),
+    supabase.from("daily_prompts").select("id, training_week_id, day_offset").in("training_week_id", weekIds),
     // RLS ("Triad sessions: members view own") already scopes this to just
     // the caller's own sessions, same pattern TriadDashboard.tsx relies on.
     supabase.from("triad_sessions").select("id, session_date, status"),
@@ -57,8 +55,8 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
       ? supabase.from("assignment_submissions").select("assignment_id, score_pct").eq("user_id", userId).in("assignment_id", assignmentIds)
       : Promise.resolve({ data: [] as { assignment_id: string; score_pct: number | null }[] }),
     promptIds.length
-      ? supabase.from("daily_prompt_responses").select("daily_prompt_id, responded_at, confidence_score").eq("user_id", userId).in("daily_prompt_id", promptIds)
-      : Promise.resolve({ data: [] as { daily_prompt_id: string; responded_at: string | null; confidence_score: number | null }[] }),
+      ? supabase.from("daily_prompt_responses").select("daily_prompt_id, responded_at").eq("user_id", userId).in("daily_prompt_id", promptIds)
+      : Promise.resolve({ data: [] as { daily_prompt_id: string; responded_at: string | null }[] }),
   ]);
 
   // Quiz scores per week
@@ -73,22 +71,23 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
     .sort((a, b) => a.weekNumber - b.weekNumber);
   const quizAvg = quizScores.length > 0 ? quizScores.reduce((s, q) => s + q.scorePct, 0) / quizScores.length : null;
 
-  // Only count prompts that have actually come due (unlock_date + day_number
+  // Only count prompts that have actually come due (unlock_date + day_offset
   // - 1 <= today) — a future day's prompt with no response yet isn't a gap
-  // in the streak, it just hasn't happened.
+  // in the streak, it just hasn't happened. A null day_offset ("any day this
+  // week") is due as soon as the week unlocks, same as day 1.
   const today = new Date().toISOString().slice(0, 10);
   const duePrompts = (prompts || [])
     .filter((p) => {
       const unlock = weekUnlockById.get(p.training_week_id as string);
       if (!unlock) return true;
       const due = new Date(`${unlock}T00:00:00Z`);
-      due.setUTCDate(due.getUTCDate() + (p.day_number - 1));
+      due.setUTCDate(due.getUTCDate() + ((p.day_offset ?? 1) - 1));
       return due.toISOString().slice(0, 10) <= today;
     })
     .sort((a, b) => {
       const wa = weekNumberById.get(a.training_week_id as string) ?? 0;
       const wb = weekNumberById.get(b.training_week_id as string) ?? 0;
-      return wa !== wb ? wa - wb : a.day_number - b.day_number;
+      return wa !== wb ? wa - wb : (a.day_offset ?? 1) - (b.day_offset ?? 1);
     });
   const responseByPrompt = new Map((responses || []).map((r) => [r.daily_prompt_id, r]));
 
@@ -98,15 +97,6 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
     if (r?.responded_at) reflectionStreak++;
     else break;
   }
-
-  const confidenceTrend = duePrompts
-    .map((p) => {
-      const r = responseByPrompt.get(p.id);
-      if (r?.confidence_score == null) return null;
-      const weekNumber = weekNumberById.get(p.training_week_id as string) ?? 0;
-      return { label: `W${weekNumber}D${p.day_number}`, score: r.confidence_score };
-    })
-    .filter((v): v is { label: string; score: number } => v != null);
 
   // Triads
   const now = Date.now();
@@ -123,7 +113,6 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
     quizScores,
     quizAvg,
     reflectionStreak,
-    confidenceTrend,
     triadCompletedCount,
     nextTriadDate,
   };

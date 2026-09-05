@@ -13,14 +13,14 @@ export interface TodaysPrompt {
   week_title_vi: string | null;
   already_responded: boolean;
   response_text: string | null;
-  confidence_score: number | null;
 }
 
 /**
  * Today's daily prompt for the current user (via get_todays_prompt(), which
  * also re-checks the 'daily_prompt' module — see that migration's comment).
  * Marks opened_at on first render of an unopened prompt so DailyPromptCard
- * can be dropped into either dashboard unconditionally.
+ * can be dropped into either dashboard unconditionally. No confidence score
+ * here — that lives on reflection submissions (see useReflections.ts).
  */
 export function useDailyPrompt() {
   const { user } = useAuth();
@@ -53,14 +53,13 @@ export function useDailyPrompt() {
   }, [user?.id, data?.prompt_id, data?.already_responded]);
 
   const respond = useCallback(
-    async (responseText: string, confidenceScore: number) => {
+    async (responseText: string) => {
       if (!user || !data) return;
       const { error } = await supabase.from("daily_prompt_responses").upsert(
         {
           user_id: user.id,
           daily_prompt_id: data.prompt_id,
           response_text: responseText || null,
-          confidence_score: confidenceScore,
           responded_at: new Date().toISOString(),
         },
         { onConflict: "daily_prompt_id,user_id" }

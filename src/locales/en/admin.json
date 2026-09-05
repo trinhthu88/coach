@@ -451,12 +451,9 @@
         "skillCard": "Skill card",
         "quiz": "Quiz",
         "triad": "Triad",
-        "prompt": "Daily prompt",
-        "confidence": "Confidence"
+        "prompt": "Daily prompt"
       },
       "completionFunnel": "Completion funnel",
-      "confidenceTrend": "Confidence trend by cohort",
-      "noConfidenceData": "No confidence data yet.",
       "redFlags": "Red flags — 7+ days inactive",
       "noRedFlags": "No one is falling behind right now.",
       "daysInactive_one": "{{count}} day inactive",

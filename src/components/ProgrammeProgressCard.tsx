@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { GraduationCap, Sparkles, HelpCircle, Triangle, type LucideIcon } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -37,7 +36,6 @@ export function ProgrammeProgressCard() {
   const showQuiz = hasModule("quiz") && summary.quizScores.length > 0;
   const showTriads = hasModule("triads");
   const showStreak = hasModule("daily_prompt");
-  const showConfidence = hasModule("daily_prompt") && summary.confidenceTrend.length > 1;
 
   return (
     <Card className="p-5">
@@ -92,23 +90,6 @@ export function ProgrammeProgressCard() {
                 {t("progressCard.weekScorePill", { n: q.weekNumber, score: Math.round(q.scorePct) })}
               </span>
             ))}
-          </div>
-        </div>
-      )}
-
-      {showConfidence && (
-        <div className="mt-4 border-t pt-4">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t("progressCard.confidenceTrend")}</p>
-          <div className="h-32">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={summary.confidenceTrend} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }} />
-                <YAxis domain={[0, 10]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }} />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
-                <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 2 }} />
-              </LineChart>
-            </ResponsiveContainer>
           </div>
         </div>
       )}

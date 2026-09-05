@@ -11,13 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Loader2, Plus, Pencil, Trash2, Upload, X, ArrowUp, ArrowDown, ListChecks, NotebookPen, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Upload, X, ListChecks, ChevronDown, ChevronUp, CheckCircle2, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
-import type { SkillCardElement, SkillCardElementType } from "@/hooks/training/useSkillCard";
 import type { AssignmentType } from "@/hooks/training/useAssignments";
 import type { QuizOption } from "@/hooks/training/useQuiz";
 
@@ -31,6 +30,7 @@ interface TrainingWeekRow {
   subtitle_vi: string | null;
   skill_card_html: string | null;
   skill_card_html_vi: string | null;
+  video_url: string | null;
   pdf_storage_path: string | null;
   pdf_storage_path_vi: string | null;
   is_visible: boolean;
@@ -47,11 +47,10 @@ const emptyWeek = (programmeId: string, nextWeekNumber: number): Partial<Trainin
   subtitle_vi: "",
   skill_card_html: "",
   skill_card_html_vi: "",
+  video_url: "",
   is_visible: false,
   unlock_date: null,
 });
-
-const ELEMENT_TYPES: SkillCardElementType[] = ["expandable_example", "try_this_prompt", "key_concept", "video_link", "tip"];
 
 interface AssignmentRow {
   id: string;
@@ -80,9 +79,11 @@ interface QuizQuestionRow {
 interface DailyPromptRow {
   id: string;
   training_week_id: string;
-  day_number: number;
+  day_offset: number | null;
   prompt_text: string;
   prompt_text_vi: string | null;
+  is_visible: boolean;
+  sort_order: number;
 }
 
 export default function AdminTrainingContent() {
@@ -96,8 +97,6 @@ export default function AdminTrainingContent() {
   const [editing, setEditing] = useState<Partial<TrainingWeekRow> | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"en" | "vi" | null>(null);
-  const [elements, setElements] = useState<SkillCardElement[]>([]);
-  const [elementsLoading, setElementsLoading] = useState(false);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [dailyPrompts, setDailyPrompts] = useState<DailyPromptRow[]>([]);
@@ -128,23 +127,13 @@ export default function AdminTrainingContent() {
     if (programmeId) loadWeeks(programmeId);
   }, [programmeId]);
 
-  const loadElements = async (weekId: string) => {
-    setElementsLoading(true);
-    const { data } = await supabase
-      .from("skill_card_elements")
-      .select("id, element_type, title, title_vi, content, content_vi, sort_order")
-      .eq("training_week_id", weekId)
-      .order("sort_order");
-    setElements((data || []) as SkillCardElement[]);
-    setElementsLoading(false);
-  };
-
   const loadAssignments = async (weekId: string) => {
     setAssignmentsLoading(true);
     const { data } = await supabase
       .from("assignments")
       .select("id, training_week_id, assignment_type, title, title_vi, instructions, instructions_vi, is_visible, due_offset_days, sort_order")
       .eq("training_week_id", weekId)
+      .eq("assignment_type", "quiz")
       .order("sort_order");
     setAssignments((data || []) as AssignmentRow[]);
     setAssignmentsLoading(false);
@@ -154,9 +143,9 @@ export default function AdminTrainingContent() {
     setDailyPromptsLoading(true);
     const { data } = await supabase
       .from("daily_prompts")
-      .select("id, training_week_id, day_number, prompt_text, prompt_text_vi")
+      .select("id, training_week_id, day_offset, prompt_text, prompt_text_vi, is_visible, sort_order")
       .eq("training_week_id", weekId)
-      .order("day_number");
+      .order("sort_order");
     setDailyPrompts((data || []) as DailyPromptRow[]);
     setDailyPromptsLoading(false);
   };
@@ -166,14 +155,12 @@ export default function AdminTrainingContent() {
   const openNew = () => {
     const nextWeekNumber = (weeks[weeks.length - 1]?.week_number ?? 0) + 1;
     setEditing(emptyWeek(programmeId, nextWeekNumber));
-    setElements([]);
     setAssignments([]);
     setDailyPrompts([]);
   };
 
   const openEdit = (w: TrainingWeekRow) => {
     setEditing(w);
-    loadElements(w.id);
     loadAssignments(w.id);
     loadDailyPrompts(w.id);
   };
@@ -199,6 +186,7 @@ export default function AdminTrainingContent() {
         subtitle_vi: editing.subtitle_vi || null,
         skill_card_html: editing.skill_card_html || null,
         skill_card_html_vi: editing.skill_card_html_vi || null,
+        video_url: editing.video_url || null,
         pdf_storage_path: editing.pdf_storage_path || null,
         pdf_storage_path_vi: editing.pdf_storage_path_vi || null,
         is_visible: !!editing.is_visible,
@@ -384,6 +372,14 @@ export default function AdminTrainingContent() {
                   onChange={(e) => setEditing({ ...editing, skill_card_html_vi: e.target.value })}
                 />
               </div>
+              <div>
+                <Label>{t("admin.videoUrlLabel")}</Label>
+                <Input
+                  value={editing.video_url || ""}
+                  onChange={(e) => setEditing({ ...editing, video_url: e.target.value })}
+                  placeholder="https://www.youtube.com/embed/..."
+                />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <PdfField
                   label={t("admin.pdfLabel")}
@@ -405,13 +401,6 @@ export default function AdminTrainingContent() {
 
               {!isNewWeek && (
                 <>
-                  <SkillCardElementsEditor
-                    weekId={editing.id!}
-                    elements={elements}
-                    loading={elementsLoading}
-                    onChanged={() => loadElements(editing.id!)}
-                    t={t}
-                  />
                   <AssignmentsEditor
                     weekId={editing.id!}
                     assignments={assignments}
@@ -426,6 +415,7 @@ export default function AdminTrainingContent() {
                     onChanged={() => loadDailyPrompts(editing.id!)}
                     t={t}
                   />
+                  <ReflectionEditor programmeId={programmeId} weekNumber={editing.week_number!} t={t} />
                 </>
               )}
             </div>
@@ -495,216 +485,6 @@ function PdfField({
           />
         </label>
       )}
-    </div>
-  );
-}
-
-const emptyElement = (weekId: string, nextSort: number): Partial<SkillCardElement> & { training_week_id: string } => ({
-  training_week_id: weekId,
-  element_type: "tip",
-  title: "",
-  title_vi: "",
-  content: "",
-  content_vi: "",
-  sort_order: nextSort,
-});
-
-function SkillCardElementsEditor({
-  weekId,
-  elements,
-  loading,
-  onChanged,
-  t,
-}: {
-  weekId: string;
-  elements: SkillCardElement[];
-  loading: boolean;
-  onChanged: () => void;
-  t: TFunction;
-}) {
-  const { confirm, ConfirmDialog } = useConfirm();
-  const [editingEl, setEditingEl] = useState<(Partial<SkillCardElement> & { training_week_id: string }) | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const saveElement = async () => {
-    if (!editingEl?.title?.trim() || !editingEl.content?.trim()) {
-      toast.error(t("admin.nameRequired"));
-      return;
-    }
-    setSaving(true);
-    const payload = {
-      ...(editingEl.id ? { id: editingEl.id } : {}),
-      training_week_id: weekId,
-      element_type: editingEl.element_type || "tip",
-      title: editingEl.title,
-      title_vi: editingEl.title_vi || null,
-      content: editingEl.content,
-      content_vi: editingEl.content_vi || null,
-      sort_order: editingEl.sort_order ?? elements.length,
-    };
-    const { error } = await supabase.from("skill_card_elements").upsert(payload);
-    setSaving(false);
-    if (error) {
-      toast.error(getFriendlyErrorMessage(error, t));
-      return;
-    }
-    toast.success(t("admin.elementSaved"));
-    setEditingEl(null);
-    onChanged();
-  };
-
-  const removeElement = async (el: SkillCardElement) => {
-    const ok = await confirm({
-      title: t("admin.delete"),
-      description: t("admin.elementDeleteConfirmBody"),
-      confirmLabel: t("admin.delete"),
-      destructive: true,
-    });
-    if (!ok) return;
-    const { error } = await supabase.from("skill_card_elements").delete().eq("id", el.id);
-    if (error) toast.error(getFriendlyErrorMessage(error, t));
-    else {
-      toast.success(t("admin.elementDeleted"));
-      onChanged();
-    }
-  };
-
-  const move = async (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= elements.length) return;
-    const a = elements[index];
-    const b = elements[target];
-    const [{ error: errA }, { error: errB }] = await Promise.all([
-      supabase.from("skill_card_elements").update({ sort_order: b.sort_order }).eq("id", a.id),
-      supabase.from("skill_card_elements").update({ sort_order: a.sort_order }).eq("id", b.id),
-    ]);
-    const error = errA || errB;
-    if (error) toast.error(getFriendlyErrorMessage(error, t));
-    else onChanged();
-  };
-
-  return (
-    <div className="rounded-lg border p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("admin.elementsHeading")}</p>
-          <p className="text-[10.5px] text-muted-foreground">{t("admin.elementsHint")}</p>
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => setEditingEl(emptyElement(weekId, elements.length))}
-        >
-          <Plus className="h-3.5 w-3.5" /> {t("admin.addElement")}
-        </Button>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-        </div>
-      ) : elements.length === 0 ? (
-        <p className="py-3 text-center text-[11px] text-muted-foreground">{t("admin.noElements")}</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {elements.map((el, idx) => (
-            <li key={el.id} className="flex items-center justify-between gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[11px]">
-              <div className="min-w-0">
-                <Pill tone="secondary" className="mr-2">
-                  {t(`admin.elementTypes.${el.element_type}`)}
-                </Pill>
-                <span className="truncate font-medium">{el.title}</span>
-              </div>
-              <div className="flex shrink-0 items-center gap-0.5">
-                <Button type="button" variant="ghost" size="sm" onClick={() => move(idx, -1)} disabled={idx === 0} title={t("admin.moveUp")}>
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => move(idx, 1)}
-                  disabled={idx === elements.length - 1}
-                  title={t("admin.moveDown")}
-                >
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setEditingEl({ ...el, training_week_id: weekId })}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => removeElement(el)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <Dialog open={!!editingEl} onOpenChange={(o) => !o && setEditingEl(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("admin.addElement")}</DialogTitle>
-          </DialogHeader>
-          {editingEl && (
-            <div className="space-y-3">
-              <div>
-                <Label>{t("admin.elementType")}</Label>
-                <Select
-                  value={editingEl.element_type}
-                  onValueChange={(v) => setEditingEl({ ...editingEl, element_type: v as SkillCardElementType })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ELEMENT_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {t(`admin.elementTypes.${type}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>{t("admin.elementTitle")}</Label>
-                  <Input value={editingEl.title || ""} onChange={(e) => setEditingEl({ ...editingEl, title: e.target.value })} />
-                </div>
-                <div>
-                  <Label>{t("admin.elementTitleVi")}</Label>
-                  <Input value={editingEl.title_vi || ""} onChange={(e) => setEditingEl({ ...editingEl, title_vi: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>{t("admin.elementContent")}</Label>
-                  <Textarea rows={4} value={editingEl.content || ""} onChange={(e) => setEditingEl({ ...editingEl, content: e.target.value })} />
-                </div>
-                <div>
-                  <Label>{t("admin.elementContentVi")}</Label>
-                  <Textarea
-                    rows={4}
-                    value={editingEl.content_vi || ""}
-                    onChange={(e) => setEditingEl({ ...editingEl, content_vi: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingEl(null)}>
-              {t("admin.cancel")}
-            </Button>
-            <Button onClick={saveElement} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {t("admin.save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {ConfirmDialog}
     </div>
   );
 }
@@ -805,22 +585,19 @@ function AssignmentsEditor({
       ) : (
         <ul className="space-y-1.5">
           {assignments.map((a) => {
-            const Icon = a.assignment_type === "quiz" ? ListChecks : NotebookPen;
             const isExpanded = expandedId === a.id;
             return (
               <li key={a.id} className="rounded-md border bg-card">
                 <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-[11px]">
                   <div className="flex min-w-0 items-center gap-2">
-                    <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <ListChecks className="h-3.5 w-3.5 shrink-0 text-primary" />
                     <Pill tone={a.is_visible ? "success" : "muted"}>{a.is_visible ? t("admin.visible") : t("admin.hidden")}</Pill>
                     <span className="truncate font-medium">{a.title}</span>
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
-                    {a.assignment_type === "quiz" && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => setExpandedId(isExpanded ? null : a.id)}>
-                        {t("admin.questions")} {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                      </Button>
-                    )}
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setExpandedId(isExpanded ? null : a.id)}>
+                      {t("admin.questions")} {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </Button>
                     <Button type="button" variant="ghost" size="sm" onClick={() => setEditingA({ ...a, training_week_id: weekId })}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -829,7 +606,7 @@ function AssignmentsEditor({
                     </Button>
                   </div>
                 </div>
-                {isExpanded && a.assignment_type === "quiz" && (
+                {isExpanded && (
                   <div className="border-t p-2.5">
                     <QuizQuestionsEditor assignmentId={a.id} t={t} />
                   </div>
@@ -847,26 +624,9 @@ function AssignmentsEditor({
           </DialogHeader>
           {editingA && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>{t("admin.assignmentType")}</Label>
-                  <Select
-                    value={editingA.assignment_type}
-                    onValueChange={(v) => setEditingA({ ...editingA, assignment_type: v as AssignmentType })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="quiz">{t("admin.assignmentTypes.quiz")}</SelectItem>
-                      <SelectItem value="reflection">{t("admin.assignmentTypes.reflection")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end justify-between gap-2 rounded-md border p-2.5">
-                  <p className="text-sm font-medium">{t("admin.visibleLabel")}</p>
-                  <Switch checked={!!editingA.is_visible} onCheckedChange={(v) => setEditingA({ ...editingA, is_visible: v })} />
-                </div>
+              <div className="flex items-center justify-between gap-2 rounded-md border p-2.5">
+                <p className="text-sm font-medium">{t("admin.visibleLabel")}</p>
+                <Switch checked={!!editingA.is_visible} onCheckedChange={(v) => setEditingA({ ...editingA, is_visible: v })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1161,6 +921,20 @@ function QuizQuestionsEditor({ assignmentId, t }: { assignmentId: string; t: TFu
   );
 }
 
+const emptyDailyPrompt = (weekId: string, nextSort: number): Partial<DailyPromptRow> & { training_week_id: string } => ({
+  training_week_id: weekId,
+  day_offset: null,
+  prompt_text: "",
+  prompt_text_vi: "",
+  is_visible: true,
+  sort_order: nextSort,
+});
+
+/**
+ * 0-7 flexible daily prompts per week, each independently toggleable and
+ * either pinned to a day_offset (1-7) or left null ("any day this week") —
+ * spec explicitly rejects the old fixed-7-slots model.
+ */
 function DailyPromptsEditor({
   weekId,
   prompts,
@@ -1174,82 +948,554 @@ function DailyPromptsEditor({
   onChanged: () => void;
   t: TFunction;
 }) {
-  const [drafts, setDrafts] = useState<Record<number, { text: string; text_vi: string }>>({});
-  const [savingDay, setSavingDay] = useState<number | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
+  const [editingP, setEditingP] = useState<(Partial<DailyPromptRow> & { training_week_id: string }) | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const next: Record<number, { text: string; text_vi: string }> = {};
-    for (let day = 1; day <= 7; day++) {
-      const existing = prompts.find((p) => p.day_number === day);
-      next[day] = { text: existing?.prompt_text || "", text_vi: existing?.prompt_text_vi || "" };
-    }
-    setDrafts(next);
-  }, [prompts]);
-
-  const saveDay = async (day: number) => {
-    const draft = drafts[day];
-    if (!draft?.text.trim()) {
+  const savePrompt = async () => {
+    if (!editingP?.prompt_text?.trim()) {
       toast.error(t("admin.nameRequired"));
       return;
     }
-    setSavingDay(day);
-    const existing = prompts.find((p) => p.day_number === day);
-    const { error } = await supabase.from("daily_prompts").upsert(
-      {
-        ...(existing ? { id: existing.id } : {}),
-        training_week_id: weekId,
-        day_number: day,
-        prompt_text: draft.text,
-        prompt_text_vi: draft.text_vi || null,
-      },
-      { onConflict: "training_week_id,day_number" }
-    );
-    setSavingDay(null);
+    setSaving(true);
+    const payload = {
+      ...(editingP.id ? { id: editingP.id } : {}),
+      training_week_id: weekId,
+      day_offset: editingP.day_offset ?? null,
+      prompt_text: editingP.prompt_text,
+      prompt_text_vi: editingP.prompt_text_vi || null,
+      is_visible: editingP.is_visible ?? true,
+      sort_order: editingP.sort_order ?? prompts.length,
+    };
+    const { error } = await supabase.from("daily_prompts").upsert(payload);
+    setSaving(false);
     if (error) {
       toast.error(getFriendlyErrorMessage(error, t));
       return;
     }
     toast.success(t("admin.promptSaved"));
+    setEditingP(null);
     onChanged();
+  };
+
+  const removePrompt = async (p: DailyPromptRow) => {
+    const ok = await confirm({
+      title: t("admin.delete"),
+      description: t("admin.promptDeleteConfirmBody"),
+      confirmLabel: t("admin.delete"),
+      destructive: true,
+    });
+    if (!ok) return;
+    const { error } = await supabase.from("daily_prompts").delete().eq("id", p.id);
+    if (error) toast.error(getFriendlyErrorMessage(error, t));
+    else {
+      toast.success(t("admin.promptDeleted"));
+      onChanged();
+    }
+  };
+
+  const move = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= prompts.length) return;
+    const a = prompts[index];
+    const b = prompts[target];
+    const [{ error: errA }, { error: errB }] = await Promise.all([
+      supabase.from("daily_prompts").update({ sort_order: b.sort_order }).eq("id", a.id),
+      supabase.from("daily_prompts").update({ sort_order: a.sort_order }).eq("id", b.id),
+    ]);
+    const error = errA || errB;
+    if (error) toast.error(getFriendlyErrorMessage(error, t));
+    else onChanged();
+  };
+
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("admin.dailyPromptsHeading")}</p>
+          <p className="text-[10.5px] text-muted-foreground">{t("admin.dailyPromptsHint")}</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={() => setEditingP(emptyDailyPrompt(weekId, prompts.length))}>
+          <Plus className="h-3.5 w-3.5" /> {t("admin.addPrompt")}
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        </div>
+      ) : prompts.length === 0 ? (
+        <p className="py-3 text-center text-[11px] text-muted-foreground">{t("admin.noPrompts")}</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {prompts.map((p, idx) => (
+            <li key={p.id} className="flex items-center justify-between gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[11px]">
+              <div className="flex min-w-0 items-center gap-2">
+                <Pill tone="secondary">{p.day_offset ? t("admin.dayN", { n: p.day_offset }) : t("admin.anyDay")}</Pill>
+                <Pill tone={p.is_visible ? "success" : "muted"}>{p.is_visible ? t("admin.visible") : t("admin.hidden")}</Pill>
+                <span className="min-w-0 truncate">{p.prompt_text}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5">
+                <Button type="button" variant="ghost" size="sm" onClick={() => move(idx, -1)} disabled={idx === 0} title={t("admin.moveUp")}>
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => move(idx, 1)}
+                  disabled={idx === prompts.length - 1}
+                  title={t("admin.moveDown")}
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditingP({ ...p, training_week_id: weekId })}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => removePrompt(p)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Dialog open={!!editingP} onOpenChange={(o) => !o && setEditingP(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("admin.addPrompt")}</DialogTitle>
+          </DialogHeader>
+          {editingP && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>{t("admin.dayOffsetLabel")}</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={7}
+                    placeholder={t("admin.anyDay")}
+                    value={editingP.day_offset ?? ""}
+                    onChange={(e) =>
+                      setEditingP({ ...editingP, day_offset: e.target.value === "" ? null : Number(e.target.value) })
+                    }
+                  />
+                  <p className="mt-1 text-[10.5px] text-muted-foreground">{t("admin.dayOffsetHint")}</p>
+                </div>
+                <div className="flex items-end justify-between gap-2 rounded-md border p-2.5">
+                  <p className="text-sm font-medium">{t("admin.visibleLabel")}</p>
+                  <Switch checked={editingP.is_visible ?? true} onCheckedChange={(v) => setEditingP({ ...editingP, is_visible: v })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Textarea
+                  rows={3}
+                  placeholder={t("admin.promptTextPlaceholder")}
+                  value={editingP.prompt_text || ""}
+                  onChange={(e) => setEditingP({ ...editingP, prompt_text: e.target.value })}
+                />
+                <Textarea
+                  rows={3}
+                  placeholder={t("admin.promptTextViPlaceholder")}
+                  value={editingP.prompt_text_vi || ""}
+                  onChange={(e) => setEditingP({ ...editingP, prompt_text_vi: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingP(null)}>
+              {t("admin.cancel")}
+            </Button>
+            <Button onClick={savePrompt} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {t("admin.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {ConfirmDialog}
+    </div>
+  );
+}
+
+type ReflectionQuestionType = "open_text" | "scale_1_10";
+
+interface ReflectionRow {
+  id: string;
+  programme_id: string;
+  reflection_number: number;
+  title: string;
+  title_vi: string | null;
+  instructions: string | null;
+  instructions_vi: string | null;
+  appears_at_week: number;
+  is_visible: boolean;
+}
+
+interface ReflectionQuestionRow {
+  id: string;
+  reflection_id: string;
+  question_text: string;
+  question_text_vi: string | null;
+  question_type: ReflectionQuestionType;
+  is_required: boolean;
+  sort_order: number;
+}
+
+const emptyReflectionQuestion = (reflectionId: string, nextSort: number): Partial<ReflectionQuestionRow> & { reflection_id: string } => ({
+  reflection_id: reflectionId,
+  question_text: "",
+  question_text_vi: "",
+  question_type: "open_text",
+  is_required: true,
+  sort_order: nextSort,
+});
+
+/**
+ * The reflection assigned to this training week (programme_reflections,
+ * keyed by programme_id + appears_at_week = this week's week_number), its
+ * admin-authored questions, and the ability to create one if none exists
+ * yet. Confidence score is not a question here — it's a fixed field always
+ * collected on submission, see reflection_submissions.confidence_score.
+ */
+function ReflectionEditor({ programmeId, weekNumber, t }: { programmeId: string; weekNumber: number; t: TFunction }) {
+  const { confirm, ConfirmDialog } = useConfirm();
+  const [reflection, setReflection] = useState<ReflectionRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [questions, setQuestions] = useState<ReflectionQuestionRow[]>([]);
+  const [editingQ, setEditingQ] = useState<(Partial<ReflectionQuestionRow> & { reflection_id: string }) | null>(null);
+  const [savingQ, setSavingQ] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("programme_reflections")
+      .select("id, programme_id, reflection_number, title, title_vi, instructions, instructions_vi, appears_at_week, is_visible")
+      .eq("programme_id", programmeId)
+      .eq("appears_at_week", weekNumber)
+      .maybeSingle();
+    setReflection((data as ReflectionRow | null) ?? null);
+    if (data) {
+      const { data: q } = await supabase
+        .from("reflection_questions")
+        .select("id, reflection_id, question_text, question_text_vi, question_type, is_required, sort_order")
+        .eq("reflection_id", data.id)
+        .order("sort_order");
+      setQuestions((q || []) as ReflectionQuestionRow[]);
+    } else {
+      setQuestions([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programmeId, weekNumber]);
+
+  const createReflection = async () => {
+    setSaving(true);
+    const { error } = await supabase.from("programme_reflections").insert({
+      programme_id: programmeId,
+      reflection_number: weekNumber,
+      title: t("admin.reflection.defaultTitle", { n: weekNumber }),
+      appears_at_week: weekNumber,
+      is_visible: false,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(getFriendlyErrorMessage(error, t));
+      return;
+    }
+    load();
+  };
+
+  const saveReflection = async () => {
+    if (!reflection?.title.trim()) {
+      toast.error(t("admin.nameRequired"));
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("programme_reflections")
+      .update({
+        title: reflection.title,
+        title_vi: reflection.title_vi || null,
+        instructions: reflection.instructions || null,
+        instructions_vi: reflection.instructions_vi || null,
+        is_visible: reflection.is_visible,
+      })
+      .eq("id", reflection.id);
+    setSaving(false);
+    if (error) {
+      toast.error(getFriendlyErrorMessage(error, t));
+      return;
+    }
+    toast.success(t("admin.saved"));
+  };
+
+  const deleteReflection = async () => {
+    if (!reflection) return;
+    const ok = await confirm({
+      title: t("admin.delete"),
+      description: t("admin.reflection.deleteConfirmBody"),
+      confirmLabel: t("admin.delete"),
+      destructive: true,
+    });
+    if (!ok) return;
+    const { error } = await supabase.from("programme_reflections").delete().eq("id", reflection.id);
+    if (error) toast.error(getFriendlyErrorMessage(error, t));
+    else {
+      toast.success(t("admin.deleted"));
+      load();
+    }
+  };
+
+  const saveQuestion = async () => {
+    if (!editingQ?.question_text?.trim()) {
+      toast.error(t("admin.nameRequired"));
+      return;
+    }
+    setSavingQ(true);
+    const payload = {
+      ...(editingQ.id ? { id: editingQ.id } : {}),
+      reflection_id: editingQ.reflection_id,
+      question_text: editingQ.question_text,
+      question_text_vi: editingQ.question_text_vi || null,
+      question_type: editingQ.question_type || "open_text",
+      is_required: editingQ.is_required ?? true,
+      sort_order: editingQ.sort_order ?? questions.length,
+    };
+    const { error } = await supabase.from("reflection_questions").upsert(payload);
+    setSavingQ(false);
+    if (error) {
+      toast.error(getFriendlyErrorMessage(error, t));
+      return;
+    }
+    toast.success(t("admin.questionSaved"));
+    setEditingQ(null);
+    load();
+  };
+
+  const removeQuestion = async (q: ReflectionQuestionRow) => {
+    const ok = await confirm({
+      title: t("admin.delete"),
+      description: t("admin.questionDeleteConfirmBody"),
+      confirmLabel: t("admin.delete"),
+      destructive: true,
+    });
+    if (!ok) return;
+    const { error } = await supabase.from("reflection_questions").delete().eq("id", q.id);
+    if (error) toast.error(getFriendlyErrorMessage(error, t));
+    else {
+      toast.success(t("admin.questionDeleted"));
+      load();
+    }
+  };
+
+  const moveQuestion = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= questions.length) return;
+    const a = questions[index];
+    const b = questions[target];
+    const [{ error: errA }, { error: errB }] = await Promise.all([
+      supabase.from("reflection_questions").update({ sort_order: b.sort_order }).eq("id", a.id),
+      supabase.from("reflection_questions").update({ sort_order: a.sort_order }).eq("id", b.id),
+    ]);
+    const error = errA || errB;
+    if (error) toast.error(getFriendlyErrorMessage(error, t));
+    else load();
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center py-4">
+      <div className="flex justify-center rounded-lg border p-4">
         <Loader2 className="h-4 w-4 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!reflection) {
+    return (
+      <div className="rounded-lg border p-3">
+        <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("admin.reflection.heading")}</p>
+        <p className="mb-3 text-[10.5px] text-muted-foreground">{t("admin.reflection.hint")}</p>
+        <Button type="button" size="sm" variant="outline" onClick={createReflection} disabled={saving}>
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+          {t("admin.reflection.create", { n: weekNumber })}
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="rounded-lg border p-3">
-      <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("admin.dailyPromptsHeading")}</p>
-      <p className="mb-3 text-[10.5px] text-muted-foreground">{t("admin.dailyPromptsHint")}</p>
+      <div className="mb-2 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("admin.reflection.heading")}</p>
+          <p className="text-[10.5px] text-muted-foreground">{t("admin.reflection.hint")}</p>
+        </div>
+        <Button type="button" size="sm" variant="ghost" onClick={deleteReflection}>
+          <Trash2 className="h-3.5 w-3.5" /> {t("admin.delete")}
+        </Button>
+      </div>
+
       <div className="space-y-3">
-        {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-          <div key={day} className="rounded-md border p-2.5">
-            <p className="mb-1.5 text-[10.5px] font-semibold text-muted-foreground">{t("admin.dayN", { n: day })}</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Textarea
-                rows={2}
-                placeholder={t("admin.promptTextPlaceholder")}
-                value={drafts[day]?.text || ""}
-                onChange={(e) => setDrafts((prev) => ({ ...prev, [day]: { ...prev[day], text: e.target.value } }))}
-              />
-              <Textarea
-                rows={2}
-                placeholder={t("admin.promptTextViPlaceholder")}
-                value={drafts[day]?.text_vi || ""}
-                onChange={(e) => setDrafts((prev) => ({ ...prev, [day]: { ...prev[day], text_vi: e.target.value } }))}
-              />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>{t("admin.titleLabel")}</Label>
+            <Input value={reflection.title} onChange={(e) => setReflection({ ...reflection, title: e.target.value })} />
+          </div>
+          <div>
+            <Label>{t("admin.titleViLabel")}</Label>
+            <Input value={reflection.title_vi || ""} onChange={(e) => setReflection({ ...reflection, title_vi: e.target.value })} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>{t("admin.instructionsLabel")}</Label>
+            <Textarea
+              rows={2}
+              value={reflection.instructions || ""}
+              onChange={(e) => setReflection({ ...reflection, instructions: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>{t("admin.instructionsViLabel")}</Label>
+            <Textarea
+              rows={2}
+              value={reflection.instructions_vi || ""}
+              onChange={(e) => setReflection({ ...reflection, instructions_vi: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-2 rounded-md border p-2.5">
+          <p className="text-sm font-medium">{t("admin.visibleLabel")}</p>
+          <Switch checked={reflection.is_visible} onCheckedChange={(v) => setReflection({ ...reflection, is_visible: v })} />
+        </div>
+        <Button type="button" size="sm" onClick={saveReflection} disabled={saving}>
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          {t("admin.save")}
+        </Button>
+      </div>
+
+      <div className="mt-4 border-t pt-3">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[10.5px] font-semibold text-muted-foreground">{t("admin.reflection.questionsHeading")}</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setEditingQ(emptyReflectionQuestion(reflection.id, questions.length))}
+          >
+            <Plus className="h-3.5 w-3.5" /> {t("admin.addQuestion")}
+          </Button>
+        </div>
+        <p className="mb-2 text-[10.5px] italic text-muted-foreground">{t("admin.reflection.confidenceNote")}</p>
+
+        {questions.length === 0 ? (
+          <p className="py-2 text-center text-[11px] text-muted-foreground">{t("admin.noQuestions")}</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {questions.map((q, idx) => (
+              <li key={q.id} className="flex items-center justify-between gap-2 rounded-md border bg-background px-2.5 py-1.5 text-[11px]">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Pill tone="secondary">{t(`admin.reflection.questionTypes.${q.question_type}`)}</Pill>
+                  {q.is_required && <Pill tone="muted">{t("admin.reflection.required")}</Pill>}
+                  <span className="min-w-0 truncate">{q.question_text}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => moveQuestion(idx, -1)} disabled={idx === 0}>
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => moveQuestion(idx, 1)}
+                    disabled={idx === questions.length - 1}
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setEditingQ({ ...q })}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeQuestion(q)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <Dialog open={!!editingQ} onOpenChange={(o) => !o && setEditingQ(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("admin.addQuestion")}</DialogTitle>
+          </DialogHeader>
+          {editingQ && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>{t("admin.questionText")}</Label>
+                  <Textarea
+                    rows={2}
+                    value={editingQ.question_text || ""}
+                    onChange={(e) => setEditingQ({ ...editingQ, question_text: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>{t("admin.questionTextVi")}</Label>
+                  <Textarea
+                    rows={2}
+                    value={editingQ.question_text_vi || ""}
+                    onChange={(e) => setEditingQ({ ...editingQ, question_text_vi: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>{t("admin.reflection.questionType")}</Label>
+                  <Select
+                    value={editingQ.question_type}
+                    onValueChange={(v) => setEditingQ({ ...editingQ, question_type: v as ReflectionQuestionType })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="open_text">{t("admin.reflection.questionTypes.open_text")}</SelectItem>
+                      <SelectItem value="scale_1_10">{t("admin.reflection.questionTypes.scale_1_10")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end justify-between gap-2 rounded-md border p-2.5">
+                  <p className="text-sm font-medium">{t("admin.reflection.required")}</p>
+                  <Switch
+                    checked={editingQ.is_required ?? true}
+                    onCheckedChange={(v) => setEditingQ({ ...editingQ, is_required: v })}
+                  />
+                </div>
+              </div>
             </div>
-            <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => saveDay(day)} disabled={savingDay === day}>
-              {savingDay === day ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingQ(null)}>
+              {t("admin.cancel")}
+            </Button>
+            <Button onClick={saveQuestion} disabled={savingQ}>
+              {savingQ ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {t("admin.save")}
             </Button>
-          </div>
-        ))}
-      </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {ConfirmDialog}
     </div>
   );
 }

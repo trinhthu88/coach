@@ -268,23 +268,21 @@ export default function SponsorDashboard() {
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 pt-4">
               <Card className="overflow-hidden">
-                <div className="grid grid-cols-[64px_repeat(5,1fr)] gap-0 border-b bg-muted/30 px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="grid grid-cols-[64px_repeat(4,1fr)] gap-0 border-b bg-muted/30 px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
                   <span>{t("dashboard.programmeEngagement.columns.week")}</span>
                   <span>{t("dashboard.programmeEngagement.columns.skillCard")}</span>
                   <span>{t("dashboard.programmeEngagement.columns.quiz")}</span>
                   <span>{t("dashboard.programmeEngagement.columns.triad")}</span>
                   <span>{t("dashboard.programmeEngagement.columns.prompt")}</span>
-                  <span>{t("dashboard.programmeEngagement.columns.confidence")}</span>
                 </div>
                 <div className="divide-y">
                   {programmeEngagement.map((w) => (
-                    <div key={`${w.week_number}-${w.week_title}`} className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-0 px-4 py-3 text-[12.5px]">
+                    <div key={`${w.week_number}-${w.week_title}`} className="grid grid-cols-[64px_repeat(4,1fr)] items-center gap-0 px-4 py-3 text-[12.5px]">
                       <span className="font-bold">W{w.week_number}</span>
                       <EngagementCell pct={w.skill_card_completion_pct} />
                       <EngagementCell pct={w.quiz_completion_pct} sub={w.quiz_avg_score != null ? `${Math.round(w.quiz_avg_score)}% avg` : undefined} />
                       <EngagementCell pct={w.triad_completion_pct} />
                       <EngagementCell pct={w.daily_prompt_response_rate} tone="accent" />
-                      <span className="font-display text-base">{w.avg_confidence_score != null ? Number(w.avg_confidence_score).toFixed(1) : "—"}</span>
                     </div>
                   ))}
                 </div>

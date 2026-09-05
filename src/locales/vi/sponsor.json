@@ -85,8 +85,7 @@
         "skillCard": "Skill card",
         "quiz": "Quiz",
         "triad": "Triad",
-        "prompt": "Prompt hàng ngày",
-        "confidence": "Tự tin"
+        "prompt": "Prompt hàng ngày"
       }
     },
     "redFlags": {
@@ -236,10 +235,6 @@
         "quiz": "Quiz",
         "triads": "Triads",
         "prompts": "Prompt hàng ngày"
-      },
-      "topQuotes": {
-        "label": "Chia sẻ từ học viên",
-        "weekPrefix": "Tuần {{n}}"
       }
     }
   },

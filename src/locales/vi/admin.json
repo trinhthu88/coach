@@ -442,12 +442,9 @@
         "skillCard": "Skill card",
         "quiz": "Quiz",
         "triad": "Triad",
-        "prompt": "Prompt hàng ngày",
-        "confidence": "Tự tin"
+        "prompt": "Prompt hàng ngày"
       },
       "completionFunnel": "Phễu hoàn thành",
-      "confidenceTrend": "Xu hướng tự tin theo nhóm",
-      "noConfidenceData": "Chưa có dữ liệu tự tin.",
       "redFlags": "Cảnh báo — không hoạt động 7+ ngày",
       "noRedFlags": "Hiện không có ai bị tụt lại.",
       "daysInactive_one": "{{count}} ngày không hoạt động",

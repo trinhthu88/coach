@@ -299,9 +299,9 @@ const App = () => (
                     }
                   />
                   <Route
-                    path="/training/:weekId/reflect/:assignmentId"
+                    path="/training/:weekId/reflect"
                     element={
-                      <ProtectedRoute roles={["coach", "coachee"]} module="quiz">
+                      <ProtectedRoute roles={["coach", "coachee"]} module="training">
                         <ReflectionView />
                       </ProtectedRoute>
                     }

@@ -1,31 +1,22 @@
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  ArrowLeft,
-  Download,
-  CheckCircle2,
-  Loader2,
-  Lightbulb,
-  MessageSquareQuote,
-  BookMarked,
-  Video,
-  Info,
-  ListChecks,
-  NotebookPen,
-  ArrowUpRight,
-} from "lucide-react";
+import { ArrowLeft, Download, CheckCircle2, Loader2, ListChecks, NotebookPen, ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { useSkillCard, SkillCardElement, SkillCardElementType } from "@/hooks/training/useSkillCard";
+import { useSkillCard } from "@/hooks/training/useSkillCard";
 import { useAssignments, AssignmentListItem } from "@/hooks/training/useAssignments";
+import { useWeekReflection } from "@/hooks/training/useReflections";
 
 export default function SkillCardView() {
   const { weekId } = useParams<{ weekId: string }>();
   const { t, i18n } = useTranslation("training");
   const isVi = i18n.language?.startsWith("vi");
-  const { week, elements, progress, loading, completing, markComplete, downloadPdf } = useSkillCard(weekId);
+  const { week, progress, loading, completing, markComplete, downloadPdf } = useSkillCard(weekId);
   const { assignments, loading: assignmentsLoading } = useAssignments(weekId);
+  const { reflection, submission: reflectionSubmission, loading: reflectionLoading } = useWeekReflection(
+    week?.week_number,
+    week?.programme_id
+  );
 
   if (loading) {
     return (
@@ -76,6 +67,17 @@ export default function SkillCardView() {
         </div>
       </header>
 
+      {week.video_url && (
+        <div className="mb-6 aspect-video w-full overflow-hidden rounded-xl">
+          <iframe
+            src={week.video_url}
+            className="h-full w-full"
+            allowFullScreen
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          />
+        </div>
+      )}
+
       {html && (
         // Skill card HTML is admin-authored only (same trust boundary as an
         // admin already holding full database write access) — never
@@ -88,24 +90,35 @@ export default function SkillCardView() {
         </Card>
       )}
 
-      {elements.length > 0 && (
-        <div className="mt-6 space-y-3">
-          {elements.map((el) => (
-            <SkillCardElementBlock key={el.id} element={el} isVi={isVi} t={t} />
-          ))}
-        </div>
-      )}
-
-      {!assignmentsLoading && assignments.length > 0 && (
+      {(!assignmentsLoading && assignments.length > 0) || (!reflectionLoading && reflection) ? (
         <div className="mt-8">
           <p className="eyebrow mb-3">{t("assignments.heading")}</p>
           <div className="space-y-3">
             {assignments.map((a) => (
               <AssignmentCard key={a.id} weekId={weekId!} assignment={a} isVi={isVi} t={t} />
             ))}
+            {reflection && (
+              <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+                <div className="flex items-center gap-2.5">
+                  <NotebookPen className="h-4 w-4 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{(isVi && reflection.title_vi) || reflection.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {reflectionSubmission ? t("assignments.reflectionSubmitted") : t("assignments.reflectionPending")}
+                    </p>
+                  </div>
+                </div>
+                <Button asChild variant={reflectionSubmission ? "outline" : "default"} size="sm">
+                  <Link to={`/training/${weekId}/reflect`}>
+                    {reflectionSubmission ? t("assignments.viewResults") : t("assignments.writeReflection")}
+                    <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </Card>
+            )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -122,9 +135,8 @@ function AssignmentCard({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const title = (isVi && assignment.title_vi) || assignment.title;
-  const isQuiz = assignment.assignment_type === "quiz";
-  const Icon = isQuiz ? ListChecks : NotebookPen;
-  const href = isQuiz ? `/training/${weekId}/quiz/${assignment.id}` : `/training/${weekId}/reflect/${assignment.id}`;
+  const Icon = ListChecks;
+  const href = `/training/${weekId}/quiz/${assignment.id}`;
 
   return (
     <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
@@ -133,23 +145,13 @@ function AssignmentCard({
         <div>
           <p className="text-sm font-semibold text-foreground">{title}</p>
           <p className="text-xs text-muted-foreground">
-            {assignment.submitted
-              ? isQuiz
-                ? t("assignments.quizScored", { score: assignment.score_pct })
-                : t("assignments.reflectionSubmitted")
-              : isQuiz
-              ? t("assignments.quizPending")
-              : t("assignments.reflectionPending")}
+            {assignment.submitted ? t("assignments.quizScored", { score: assignment.score_pct }) : t("assignments.quizPending")}
           </p>
         </div>
       </div>
       <Button asChild variant={assignment.submitted ? "outline" : "default"} size="sm">
         <Link to={href}>
-          {assignment.submitted
-            ? t("assignments.viewResults")
-            : isQuiz
-            ? t("assignments.takeQuiz")
-            : t("assignments.writeReflection")}
+          {assignment.submitted ? t("assignments.viewResults") : t("assignments.takeQuiz")}
           <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
         </Link>
       </Button>
@@ -162,77 +164,5 @@ function BackLink({ t }: { t: (key: string) => string }) {
     <Link to="/training" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary">
       <ArrowLeft className="h-4 w-4" /> {t("card.back")}
     </Link>
-  );
-}
-
-const ELEMENT_ICON: Record<SkillCardElementType, typeof Lightbulb> = {
-  expandable_example: BookMarked,
-  try_this_prompt: MessageSquareQuote,
-  key_concept: Lightbulb,
-  video_link: Video,
-  tip: Info,
-};
-
-function SkillCardElementBlock({
-  element,
-  isVi,
-  t,
-}: {
-  element: SkillCardElement;
-  isVi: boolean;
-  t: (key: string) => string;
-}) {
-  const title = (isVi && element.title_vi) || element.title;
-  const content = (isVi && element.content_vi) || element.content;
-  const Icon = ELEMENT_ICON[element.element_type];
-
-  if (element.element_type === "expandable_example") {
-    return (
-      <Card className="px-5">
-        <Accordion type="single" collapsible>
-          <AccordionItem value={element.id} className="border-b-0">
-            <AccordionTrigger className="text-sm font-semibold">
-              <span className="inline-flex items-center gap-2">
-                <Icon className="h-4 w-4 text-primary" /> {title}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="whitespace-pre-wrap text-sm text-muted-foreground">{content}</AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </Card>
-    );
-  }
-
-  if (element.element_type === "video_link") {
-    return (
-      <Card className="flex items-center justify-between gap-3 p-5">
-        <div className="flex items-center gap-2.5">
-          <Icon className="h-4 w-4 shrink-0 text-primary" />
-          <p className="text-sm font-semibold">{title}</p>
-        </div>
-        <Button asChild variant="outline" size="sm">
-          <a href={content} target="_blank" rel="noreferrer">
-            {t("card.watchVideo")}
-          </a>
-        </Button>
-      </Card>
-    );
-  }
-
-  const tone =
-    element.element_type === "try_this_prompt"
-      ? "border-primary/30 bg-primary-soft/40"
-      : element.element_type === "key_concept"
-      ? "border-secondary/30 bg-secondary/5"
-      : "border-warning/30 bg-warning/5";
-
-  return (
-    <Card className={`${tone} p-5`}>
-      <div className="mb-1.5 flex items-center gap-2">
-        <Icon className="h-4 w-4 shrink-0 text-primary" />
-        <p className="text-sm font-semibold">{title}</p>
-      </div>
-      <p className="whitespace-pre-wrap text-sm text-muted-foreground">{content}</p>
-    </Card>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,10 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAdminProgrammes, useAdminProgrammeEngagement } from "@/hooks/admin/useAdminProgrammeEngagement";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Tables } from "@/integrations/supabase/types";
-
-const COHORT_LINE_COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--accent))", "hsl(var(--warning))", "hsl(var(--destructive))"];
 
 type CompetencyKey =
   | "ethical_practice"
@@ -96,23 +94,12 @@ export default function AdminAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const programmes = useAdminProgrammes();
   const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>("");
-  const { weeks: engagementWeeks, redFlags, confidenceTrend, loading: engagementLoading } = useAdminProgrammeEngagement(selectedProgrammeId || null);
+  const { weeks: engagementWeeks, redFlags, loading: engagementLoading } = useAdminProgrammeEngagement(selectedProgrammeId || null);
   const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!selectedProgrammeId && programmes.length > 0) setSelectedProgrammeId(programmes[0].id);
   }, [programmes, selectedProgrammeId]);
-
-  const confidenceByWeek = useMemo(() => {
-    const cohortNames = [...new Set(confidenceTrend.map((p) => p.cohortName))];
-    const byWeek = new Map<number, Record<string, number | string>>();
-    confidenceTrend.forEach((p) => {
-      const row = byWeek.get(p.weekNumber) ?? { weekNumber: `W${p.weekNumber}` };
-      row[p.cohortName] = Math.round(p.avgConfidence * 10) / 10;
-      byWeek.set(p.weekNumber, row);
-    });
-    return { rows: [...byWeek.entries()].sort((a, b) => a[0] - b[0]).map(([, row]) => row), cohortNames };
-  }, [confidenceTrend]);
 
   const flagParticipant = async (userId: string, fullName: string) => {
     const { data: existing } = await supabase
@@ -427,65 +414,40 @@ export default function AdminAnalytics() {
             <>
               <SectionCard label={t("analytics.programmeEngagement.perWeekLabel")}>
                 <div className="overflow-hidden rounded-xl border">
-                  <div className="grid grid-cols-[64px_repeat(5,1fr)] gap-0 border-b bg-muted/40 px-3 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <div className="grid grid-cols-[64px_repeat(4,1fr)] gap-0 border-b bg-muted/40 px-3 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
                     <span>{t("analytics.programmeEngagement.columns.week")}</span>
                     <span>{t("analytics.programmeEngagement.columns.skillCard")}</span>
                     <span>{t("analytics.programmeEngagement.columns.quiz")}</span>
                     <span>{t("analytics.programmeEngagement.columns.triad")}</span>
                     <span>{t("analytics.programmeEngagement.columns.prompt")}</span>
-                    <span>{t("analytics.programmeEngagement.columns.confidence")}</span>
                   </div>
                   <div className="divide-y">
                     {engagementWeeks.map((w) => (
-                      <div key={w.weekId} className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-0 px-3 py-3 text-[12.5px]">
+                      <div key={w.weekId} className="grid grid-cols-[64px_repeat(4,1fr)] items-center gap-0 px-3 py-3 text-[12.5px]">
                         <span className="truncate font-bold" title={`W${w.weekNumber} · ${w.title}`}>W{w.weekNumber}</span>
                         <EngagementCell pct={w.skillCardCompletionPct} />
                         <EngagementCell pct={w.quizCompletionPct} sub={w.quizAvgScore != null ? `${Math.round(w.quizAvgScore)}% avg` : undefined} />
                         <EngagementCell pct={w.triadCompletionPct} />
                         <EngagementCell pct={w.promptResponseRate} tone="accent" />
-                        <span className="font-display text-base">{w.avgConfidence != null ? w.avgConfidence.toFixed(1) : "—"}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               </SectionCard>
 
-              <div className="grid gap-3 lg:grid-cols-2">
-                <SectionCard label={t("analytics.programmeEngagement.completionFunnel")}>
-                  <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={engagementWeeks.map((w) => ({ week: `W${w.weekNumber}`, completed: w.completedCount }))}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                        <XAxis dataKey="week" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                        <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                        <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
-                        <Bar dataKey="completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </SectionCard>
-
-                <SectionCard label={t("analytics.programmeEngagement.confidenceTrend")}>
-                  {confidenceByWeek.rows.length === 0 ? (
-                    <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.programmeEngagement.noConfidenceData")}</p>
-                  ) : (
-                    <div className="h-56">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={confidenceByWeek.rows}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                          <XAxis dataKey="weekNumber" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                          <YAxis domain={[0, 10]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
-                          <Legend wrapperStyle={{ fontSize: 10 }} />
-                          {confidenceByWeek.cohortNames.map((name, i) => (
-                            <Line key={name} type="monotone" dataKey={name} stroke={COHORT_LINE_COLORS[i % COHORT_LINE_COLORS.length]} strokeWidth={2} dot={{ r: 2 }} />
-                          ))}
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </SectionCard>
-              </div>
+              <SectionCard label={t("analytics.programmeEngagement.completionFunnel")}>
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={engagementWeeks.map((w) => ({ week: `W${w.weekNumber}`, completed: w.completedCount }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="week" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                      <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
+                      <Bar dataKey="completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </SectionCard>
 
               <Card className={cn("p-5", redFlags.length > 0 && "border-l-4 border-l-accent")}>
                 <p className="text-2xs font-bold uppercase tracking-[0.2em] text-accent">{t("analytics.programmeEngagement.redFlags")}</p>

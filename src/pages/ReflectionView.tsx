@@ -1,25 +1,47 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useReflection } from "@/hooks/training/useReflection";
+import { Slider } from "@/components/ui/slider";
+import { useSkillCard } from "@/hooks/training/useSkillCard";
+import { useWeekReflection, ReflectionAnswerInput } from "@/hooks/training/useReflections";
 
 export default function ReflectionView() {
-  const { weekId, assignmentId } = useParams<{ weekId: string; assignmentId: string }>();
+  const { weekId } = useParams<{ weekId: string }>();
   const { t, i18n } = useTranslation("training");
   const isVi = i18n.language?.startsWith("vi");
-  const { assignment, submission, loading, submitting, submit } = useReflection(assignmentId);
-  const [text, setText] = useState("");
-  const [editing, setEditing] = useState(false);
+  const { week, loading: weekLoading } = useSkillCard(weekId);
+  const { reflection, questions, submission, answers, loading, submitting, submit } = useWeekReflection(
+    week?.week_number,
+    week?.programme_id
+  );
 
-  useEffect(() => {
-    if (submission?.reflection_text) setText(submission.reflection_text);
-  }, [submission?.reflection_text]);
+  const initialTexts = useMemo(() => {
+    const map: Record<string, string> = {};
+    answers.forEach((a) => {
+      if (a.answer_text != null) map[a.question_id] = a.answer_text;
+    });
+    return map;
+  }, [answers]);
+  const initialValues = useMemo(() => {
+    const map: Record<string, number> = {};
+    answers.forEach((a) => {
+      if (a.answer_value != null) map[a.question_id] = a.answer_value;
+    });
+    return map;
+  }, [answers]);
 
-  if (loading) {
+  const [texts, setTexts] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, number>>({});
+  const [confidence, setConfidence] = useState(5);
+
+  const getText = (id: string) => texts[id] ?? initialTexts[id] ?? "";
+  const getValue = (id: string) => values[id] ?? initialValues[id] ?? 5;
+
+  if (weekLoading || loading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -27,7 +49,7 @@ export default function ReflectionView() {
     );
   }
 
-  if (!assignment) {
+  if (!reflection) {
     return (
       <div className="mx-auto max-w-2xl">
         <BackLink weekId={weekId} t={t} />
@@ -36,9 +58,17 @@ export default function ReflectionView() {
     );
   }
 
-  const title = (isVi && assignment.title_vi) || assignment.title;
-  const instructions = (isVi && assignment.instructions_vi) || assignment.instructions;
-  const showForm = !submission || editing;
+  const title = (isVi && reflection.title_vi) || reflection.title;
+  const instructions = (isVi && reflection.instructions_vi) || reflection.instructions;
+
+  const canSubmit = questions.every((q) => !q.is_required || getText(q.id).trim() || getValue(q.id) != null);
+
+  const handleSubmit = async () => {
+    const answerInputs: ReflectionAnswerInput[] = questions.map((q) =>
+      q.question_type === "scale_1_10" ? { questionId: q.id, value: getValue(q.id) } : { questionId: q.id, text: getText(q.id) }
+    );
+    await submit(confidence, answerInputs);
+  };
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -50,32 +80,71 @@ export default function ReflectionView() {
         {instructions && <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{instructions}</p>}
       </header>
 
-      {showForm ? (
-        <Card className="p-5">
-          <Textarea
-            rows={8}
-            placeholder={t("reflection.placeholder")}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <div className="mt-4 flex gap-2">
-            <Button onClick={() => submit(text).then(() => setEditing(false))} disabled={!text.trim() || submitting}>
-              {submitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-              {t("reflection.submit")}
-            </Button>
-            {submission && (
-              <Button variant="outline" onClick={() => setEditing(false)}>
-                {t("card.back")}
-              </Button>
-            )}
-          </div>
-        </Card>
+      {submission ? (
+        <div className="space-y-3">
+          {questions.map((q) => (
+            <Card key={q.id} className="p-5">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                {(isVi && q.question_text_vi) || q.question_text}
+              </p>
+              {q.question_type === "scale_1_10" ? (
+                <p className="font-display text-2xl text-primary">{getValue(q.id)}/10</p>
+              ) : (
+                <p className="whitespace-pre-wrap text-sm text-foreground">{getText(q.id)}</p>
+              )}
+            </Card>
+          ))}
+          <Card className="p-5">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("reflection.confidenceLabel")}</p>
+            <p className="font-display text-2xl text-primary">{submission.confidence_score}/10</p>
+          </Card>
+        </div>
       ) : (
-        <Card className="p-5">
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("reflection.yourReflection")}</p>
-          <p className="whitespace-pre-wrap text-sm text-foreground">{submission!.reflection_text}</p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => setEditing(true)}>
-            <Pencil className="mr-1.5 h-3.5 w-3.5" /> {t("admin.edit")}
+        <Card className="space-y-5 p-5">
+          {questions.map((q) => (
+            <div key={q.id}>
+              <p className="mb-2 text-sm font-semibold text-foreground">
+                {(isVi && q.question_text_vi) || q.question_text}
+                {q.is_required && <span className="ml-1 text-destructive">*</span>}
+              </p>
+              {q.question_type === "scale_1_10" ? (
+                <div className="flex items-center gap-3">
+                  <Slider
+                    value={[getValue(q.id)]}
+                    min={1}
+                    max={10}
+                    step={1}
+                    onValueChange={(v) => setValues((prev) => ({ ...prev, [q.id]: v[0] }))}
+                    className="flex-1"
+                  />
+                  <span className="font-display w-8 text-right text-2xl text-primary">{getValue(q.id)}</span>
+                </div>
+              ) : (
+                <Textarea
+                  rows={4}
+                  placeholder={t("reflection.placeholder")}
+                  value={getText(q.id)}
+                  onChange={(e) => setTexts((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                />
+              )}
+            </div>
+          ))}
+
+          <div className="border-t pt-5">
+            <p className="mb-2 text-sm font-semibold text-foreground">{t("reflection.confidenceLabel")}</p>
+            <div className="flex items-center gap-3">
+              <Slider value={[confidence]} min={1} max={10} step={1} onValueChange={(v) => setConfidence(v[0])} className="flex-1" />
+              <span className="font-display w-8 text-right text-2xl text-primary">{confidence}</span>
+            </div>
+            <div className="mt-1.5 flex justify-between text-[10.5px] text-muted-foreground">
+              <span>{t("reflection.confidenceLow")}</span>
+              <span>{t("reflection.confidenceHigh")}</span>
+            </div>
+          </div>
+
+          <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+            {submitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+            {t("reflection.submit")}
           </Button>
         </Card>
       )}

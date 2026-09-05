@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { FileDown, ShieldCheck, Loader2, RefreshCw, Quote } from "lucide-react";
+import { FileDown, ShieldCheck, Loader2, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
@@ -12,10 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
-
-type TopReflection = Database["public"]["Functions"]["sponsor_top_reflections"]["Returns"][number];
 
 const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
   active: "success",
@@ -41,10 +38,13 @@ export default function SponsorReport() {
   const [generated, setGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
-  const [topQuotes, setTopQuotes] = useState<TopReflection[]>([]);
+  const [confidenceTrend, setConfidenceTrend] = useState<{ reflection_number: number; avg_confidence: number | null }[]>([]);
 
+  // Confidence trend is report-only, sourced from reflections (not daily
+  // prompts) — see sponsor_confidence_trend(). It never appears on the live
+  // dashboard.
   useEffect(() => {
-    supabase.rpc("sponsor_top_reflections", { p_limit: 3 }).then(({ data }) => setTopQuotes(data ?? []));
+    supabase.rpc("sponsor_confidence_trend").then(({ data }) => setConfidenceTrend(data ?? []));
   }, []);
 
   const cohortNames = Array.from(new Set(roster.map(r => r.cohort_name).filter(Boolean)));
@@ -62,9 +62,9 @@ export default function SponsorReport() {
     triad: avgOf(programmeEngagement.map(w => w.triad_completion_pct)),
     prompt: avgOf(programmeEngagement.map(w => w.daily_prompt_response_rate)),
   };
-  const confidenceTrendData = programmeEngagement
-    .filter(w => w.avg_confidence_score != null)
-    .map(w => ({ week: `W${w.week_number}`, confidence: Number(w.avg_confidence_score) }));
+  const confidenceTrendData = confidenceTrend
+    .filter(r => r.avg_confidence != null)
+    .map(r => ({ week: `R${r.reflection_number}`, confidence: Number(r.avg_confidence) }));
   const completionComparisonData = [
     { module: t("report.programmeImpact.completionComparison.training"), pct: impactAvg.skillCard },
     { module: t("report.programmeImpact.completionComparison.quiz"), pct: impactAvg.quiz },
@@ -347,30 +347,6 @@ export default function SponsorReport() {
                       </div>
                     )}
 
-                    {topQuotes.length > 0 && (
-                      // Fixed light-mode colors, not theme tokens — see the
-                      // chart note above, this preview box is a fixed-white
-                      // printable page regardless of the viewer's app theme.
-                      <div className="mt-4 rounded-xl p-4" style={{ background: "#e4f5fa" }}>
-                        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "#2c8fa8" }}>{t("report.programmeImpact.topQuotes.label")}</p>
-                        <p className="font-display mt-2.5 text-[15px] italic leading-snug" style={{ color: "#0a1c26" }}>
-                          &ldquo;{topQuotes[0].anonymized_quote}&rdquo;
-                        </p>
-                        <p className="mt-1.5 text-[10px]" style={{ color: "#1d5a6b" }}>
-                          {t("report.programmeImpact.topQuotes.weekPrefix", { n: topQuotes[0].week_number })}
-                        </p>
-                        {topQuotes.length > 1 && (
-                          <div className="mt-3 space-y-1.5 border-t pt-3" style={{ borderColor: "rgba(44,143,168,.2)" }}>
-                            {topQuotes.slice(1).map((q, i) => (
-                              <p key={i} className="flex gap-1.5 text-[10.5px] italic" style={{ color: "#1d5a6b" }}>
-                                <Quote className="h-3 w-3 shrink-0" style={{ color: "#2c8fa8" }} />
-                                &ldquo;{q.anonymized_quote}&rdquo;
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
 

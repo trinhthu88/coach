@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 
-export type AssignmentType = "quiz" | "reflection";
+export type AssignmentType = "quiz";
 
 export interface AssignmentListItem {
   id: string;
@@ -15,11 +15,12 @@ export interface AssignmentListItem {
 }
 
 /**
- * The visible assignments (quizzes + reflections) for a training week, plus
- * whether the current user has already submitted each one — shown at the
- * bottom of SkillCardView. Renders nothing upstream when the list is empty,
- * which is also what a user without the 'quiz' module sees (assignments RLS
- * withholds rows in that case, same as skill_card_elements does for 'training').
+ * The visible quiz assignments for a training week, plus whether the
+ * current user has already submitted each one — shown at the bottom of
+ * SkillCardView. Reflections are a separate system (see useReflections.ts),
+ * not an assignment_type any more. Renders nothing upstream when the list
+ * is empty, which is also what a user without the 'quiz' module sees
+ * (assignments RLS withholds rows in that case).
  */
 export function useAssignments(weekId: string | undefined) {
   const { user } = useAuth();
@@ -31,6 +32,7 @@ export function useAssignments(weekId: string | undefined) {
         .from("assignments")
         .select("id, assignment_type, title, title_vi, sort_order")
         .eq("training_week_id", weekId as string)
+        .eq("assignment_type", "quiz")
         .order("sort_order");
       if (error) throw error;
 

@@ -37,13 +37,16 @@ interface ProgrammeEngagementRow {
   quiz_completion_pct: number | null;
   triad_completion_pct: number | null;
   daily_prompt_response_rate: number | null;
-  avg_confidence_score: number | null;
 }
 
-interface TopReflectionRow {
-  anonymized_quote: string;
-  week_number: number;
-  role_played: string;
+// Report-only, sourced from reflection_submissions — not the live dashboard.
+// Sponsors never see anonymized reflection quotes (see sponsor_confidence_trend()).
+interface ConfidenceTrendRow {
+  reflection_number: number;
+  reflection_title: string;
+  appears_at_week: number;
+  avg_confidence: number | null;
+  response_count: number;
 }
 
 const PAGE_SIZE: [number, number] = [612, 792]; // US Letter
@@ -85,14 +88,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const [kpisRes, growthRes, rosterRes, satisfactionRes, orgRes, engagementRes, topReflectionsRes] = await Promise.all([
+    const [kpisRes, growthRes, rosterRes, satisfactionRes, orgRes, engagementRes, confidenceTrendRes] = await Promise.all([
       asUser.rpc("sponsor_kpis"),
       asUser.rpc("sponsor_goal_growth_summary"),
       asUser.rpc("sponsor_roster"),
       asUser.rpc("sponsor_satisfaction_summary"),
       asUser.from("sponsor_profiles").select("organizations(name)").eq("user_id", user.id).maybeSingle(),
       asUser.rpc("sponsor_programme_engagement"),
-      asUser.rpc("sponsor_top_reflections", { p_limit: 3 }),
+      asUser.rpc("sponsor_confidence_trend"),
     ]);
     if (kpisRes.error) throw kpisRes.error;
 
@@ -102,7 +105,7 @@ Deno.serve(async (req) => {
     const satisfaction = satisfactionRes.data?.[0] ?? null;
     const orgName = (orgRes.data as { organizations: { name: string } | null } | null)?.organizations?.name ?? "Your organization";
     const engagement = (engagementRes.data ?? []) as ProgrammeEngagementRow[];
-    const topReflections = (topReflectionsRes.data ?? []) as TopReflectionRow[];
+    const confidenceTrend = (confidenceTrendRes.data ?? []) as ConfidenceTrendRow[];
 
     // ------------------------------------------------------------------
     // Build the PDF
@@ -205,12 +208,19 @@ Deno.serve(async (req) => {
       text(`Triad completion: ${fmtPct(avgOf(engagement.map((w) => w.triad_completion_pct)))}`);
       text(`Daily prompt response rate: ${fmtPct(avgOf(engagement.map((w) => w.daily_prompt_response_rate)))}`, { gap: 18 });
 
-      if (topReflections.length > 0) {
+      // Confidence trend is report-only (never the live dashboard), and
+      // sourced from reflections — not the anonymized-quote feature, which
+      // sponsors never see.
+      const scoredTrend = confidenceTrend.filter((c) => c.avg_confidence != null);
+      if (scoredTrend.length > 0) {
         newPageIfNeeded(20);
-        text("In their own words", { size: 11, f: bold, gap: 8 });
-        for (const q of topReflections) {
-          const quote = q.anonymized_quote.length > 200 ? `${q.anonymized_quote.slice(0, 200)}…` : q.anonymized_quote;
-          text(`"${quote}" — Week ${q.week_number}`, { size: 9, color: muted, gap: 10 });
+        text("Confidence trend", { size: 11, f: bold, gap: 8 });
+        for (const c of scoredTrend) {
+          text(`Reflection ${c.reflection_number}: ${Number(c.avg_confidence).toFixed(1)}/10 (${c.response_count} responses)`, {
+            size: 9,
+            color: muted,
+            gap: 6,
+          });
         }
         y -= 8;
       }

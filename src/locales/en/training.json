@@ -16,15 +16,7 @@
     "downloadPdf": "Download PDF",
     "markComplete": "Mark as completed",
     "completed": "Completed",
-    "notFound": "This skill card isn't available — it may still be locked, or you may not have access.",
-    "elementTypes": {
-      "expandable_example": "Example",
-      "try_this_prompt": "Try this",
-      "key_concept": "Key concept",
-      "video_link": "Watch",
-      "tip": "Tip"
-    },
-    "watchVideo": "Watch video"
+    "notFound": "This isn't available — it may still be locked, or you may not have access."
   },
   "dashboardCard": {
     "eyebrow": "This week",
@@ -56,16 +48,15 @@
     "title": "Reflection",
     "submit": "Submit reflection",
     "placeholder": "Write your reflection here…",
-    "alreadySubmitted": "You've already submitted this reflection.",
-    "yourReflection": "Your reflection"
+    "confidenceLabel": "How confident do you feel about applying what you've learned?",
+    "confidenceLow": "Not at all confident",
+    "confidenceHigh": "Very confident"
   },
   "dailyPrompt": {
     "title": "Today's nudge",
     "titleAnswered": "Today's nudge · answered",
     "weekN": "week {{n}}",
-    "respond": "Submit response",
-    "confidence": "Confidence",
-    "confidenceLabel": "How confident do you feel? (1 = not confident, 10 = very confident)",
+    "respond": "Done",
     "submitted": "Thanks — logged for today.",
     "noPromptToday": "No prompt for today — check back tomorrow."
   },
@@ -78,8 +69,7 @@
     "nextTriadOn": "Next: {{date}}",
     "noTriadScheduled": "None scheduled",
     "quizScoresPerWeek": "Quiz scores",
-    "weekScorePill": "W{{n}}: {{score}}%",
-    "confidenceTrend": "Confidence trend"
+    "weekScorePill": "W{{n}}: {{score}}%"
   },
   "admin": {
     "eyebrow": "Admin",
@@ -95,7 +85,7 @@
     "edit": "Edit",
     "delete": "Delete",
     "deleteConfirmTitle": "Delete this training week?",
-    "deleteConfirmBody": "This also removes its skill card elements and progress records. This can't be undone.",
+    "deleteConfirmBody": "This also removes its progress records. This can't be undone.",
     "deleted": "Training week deleted",
     "empty": "No training weeks yet for this programme.",
     "dialogTitleNew": "New training week",
@@ -107,6 +97,7 @@
     "subtitleViLabel": "Subtitle (Vietnamese)",
     "skillCardHtmlLabel": "Skill card content (HTML)",
     "skillCardHtmlViLabel": "Skill card content — Vietnamese (HTML)",
+    "videoUrlLabel": "Video embed URL (YouTube / Vimeo)",
     "visibleLabel": "Visible to enrolled users",
     "visibleHint": "Off keeps this week hidden even after its unlock date.",
     "unlockDateLabel": "Unlock date",
@@ -123,39 +114,13 @@
     "saved": "Training week saved",
     "cancel": "Cancel",
     "save": "Save",
-    "elementsHeading": "Skill card elements",
-    "elementsHint": "Interactive callouts rendered inside the skill card, in order.",
-    "addElement": "Add element",
-    "elementType": "Type",
-    "elementTitle": "Title",
-    "elementTitleVi": "Title (Vietnamese)",
-    "elementContent": "Content",
-    "elementContentVi": "Content (Vietnamese)",
-    "elementSaved": "Element saved",
-    "elementDeleteConfirmBody": "This removes it from the skill card. This can't be undone.",
-    "elementDeleted": "Element deleted",
-    "moveUp": "Move up",
-    "moveDown": "Move down",
-    "noElements": "No elements yet.",
-    "elementTypes": {
-      "expandable_example": "Expandable example",
-      "try_this_prompt": "Try this prompt",
-      "key_concept": "Key concept",
-      "video_link": "Video link",
-      "tip": "Tip"
-    },
-    "assignmentsHeading": "Assignments",
-    "assignmentsHint": "Quizzes and reflections attached to this week's skill card.",
-    "addAssignment": "Add assignment",
-    "noAssignments": "No assignments yet.",
-    "assignmentSaved": "Assignment saved",
-    "assignmentDeleted": "Assignment deleted",
-    "assignmentDeleteConfirmBody": "This also removes its submissions (and questions, for a quiz). This can't be undone.",
-    "assignmentType": "Type",
-    "assignmentTypes": {
-      "quiz": "Quiz",
-      "reflection": "Reflection"
-    },
+    "assignmentsHeading": "Quizzes",
+    "assignmentsHint": "Quizzes attached to this week's skill card.",
+    "addAssignment": "Add quiz",
+    "noAssignments": "No quizzes yet.",
+    "assignmentSaved": "Quiz saved",
+    "assignmentDeleted": "Quiz deleted",
+    "assignmentDeleteConfirmBody": "This also removes its submissions and questions. This can't be undone.",
     "instructionsLabel": "Instructions",
     "instructionsViLabel": "Instructions (Vietnamese)",
     "dueOffsetLabel": "Due (days after unlock)",
@@ -178,10 +143,32 @@
     "explanationLabel": "Explanation (shown after answering)",
     "explanationViLabel": "Explanation (Vietnamese)",
     "dailyPromptsHeading": "Daily prompts",
-    "dailyPromptsHint": "One prompt per day of this training week (7 total).",
+    "dailyPromptsHint": "0–7 prompts for this training week. Pin one to a day, or leave it as any day.",
+    "addPrompt": "Add prompt",
+    "noPrompts": "No prompts yet.",
     "dayN": "Day {{n}}",
+    "anyDay": "Any day",
+    "dayOffsetLabel": "Day",
+    "dayOffsetHint": "1–7 to pin this prompt to a day, or leave blank for any day this week.",
     "promptTextPlaceholder": "Prompt text",
     "promptTextViPlaceholder": "Prompt text (Vietnamese)",
-    "promptSaved": "Prompt saved"
+    "promptSaved": "Prompt saved",
+    "promptDeleted": "Prompt deleted",
+    "promptDeleteConfirmBody": "This removes it from the week. This can't be undone.",
+    "reflection": {
+      "heading": "Reflection",
+      "hint": "Admin-configurable questions participants answer when this week unlocks.",
+      "create": "Create reflection for week {{n}}",
+      "defaultTitle": "Week {{n}} reflection",
+      "deleteConfirmBody": "This also removes its questions and any submitted answers. This can't be undone.",
+      "questionsHeading": "Questions",
+      "questionType": "Type",
+      "questionTypes": {
+        "open_text": "Open text",
+        "scale_1_10": "Scale (1–10)"
+      },
+      "required": "Required",
+      "confidenceNote": "Confidence score (1–10) is always collected automatically — no need to add a question for it."
+    }
   }
 }

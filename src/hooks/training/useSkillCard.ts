@@ -4,18 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-export type SkillCardElementType = "expandable_example" | "try_this_prompt" | "key_concept" | "video_link" | "tip";
-
-export interface SkillCardElement {
-  id: string;
-  element_type: SkillCardElementType;
-  title: string;
-  title_vi: string | null;
-  content: string;
-  content_vi: string | null;
-  sort_order: number;
-}
-
 export interface TrainingWeekDetail {
   id: string;
   programme_id: string;
@@ -26,6 +14,7 @@ export interface TrainingWeekDetail {
   subtitle_vi: string | null;
   skill_card_html: string | null;
   skill_card_html_vi: string | null;
+  video_url: string | null;
   pdf_storage_path: string | null;
   pdf_storage_path_vi: string | null;
 }
@@ -34,9 +23,9 @@ export interface TrainingWeekDetail {
  * A single training week's skill card content + this user's progress on it.
  * Records a view (upsert viewed_at) once the week has loaded, exposes
  * markComplete() and downloadPdf() for the two progress-affecting actions.
- * training_weeks/skill_card_elements RLS (not this hook) is what actually
- * withholds content for a locked week — a direct query here for a week the
- * user can't yet see just comes back null/empty, same as any other RLS miss.
+ * training_weeks RLS (not this hook) is what actually withholds content for
+ * a locked week — a direct query here for a week the user can't yet see
+ * just comes back null, same as any other RLS miss.
  */
 export function useSkillCard(weekId: string | undefined) {
   const { user } = useAuth();
@@ -46,26 +35,15 @@ export function useSkillCard(weekId: string | undefined) {
   const { data, isLoading } = useQuery({
     queryKey: ["skill-card", weekId],
     queryFn: async () => {
-      const [{ data: week, error: weekError }, { data: elements, error: elementsError }] = await Promise.all([
-        supabase
-          .from("training_weeks")
-          .select(
-            "id, programme_id, week_number, title, title_vi, subtitle, subtitle_vi, skill_card_html, skill_card_html_vi, pdf_storage_path, pdf_storage_path_vi"
-          )
-          .eq("id", weekId as string)
-          .maybeSingle(),
-        supabase
-          .from("skill_card_elements")
-          .select("id, element_type, title, title_vi, content, content_vi, sort_order")
-          .eq("training_week_id", weekId as string)
-          .order("sort_order"),
-      ]);
+      const { data: week, error: weekError } = await supabase
+        .from("training_weeks")
+        .select(
+          "id, programme_id, week_number, title, title_vi, subtitle, subtitle_vi, skill_card_html, skill_card_html_vi, video_url, pdf_storage_path, pdf_storage_path_vi"
+        )
+        .eq("id", weekId as string)
+        .maybeSingle();
       if (weekError) throw weekError;
-      if (elementsError) throw elementsError;
-      return {
-        week: (week as TrainingWeekDetail | null) ?? null,
-        elements: (elements ?? []) as SkillCardElement[],
-      };
+      return (week as TrainingWeekDetail | null) ?? null;
     },
     enabled: !!weekId,
   });
@@ -86,7 +64,7 @@ export function useSkillCard(weekId: string | undefined) {
     enabled: !!weekId && !!user,
   });
 
-  const weekLoaded = !!data?.week;
+  const weekLoaded = !!data;
   useEffect(() => {
     if (!weekId || !user || !weekLoaded) return;
     supabase
@@ -144,8 +122,7 @@ export function useSkillCard(weekId: string | undefined) {
   );
 
   return {
-    week: data?.week ?? null,
-    elements: data?.elements ?? [],
+    week: data ?? null,
     progress: progress ?? null,
     loading: isLoading,
     completing,

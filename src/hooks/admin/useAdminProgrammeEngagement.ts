@@ -17,19 +17,12 @@ export interface ProgrammeWeekEngagement {
   quizCompletionPct: number | null;
   triadCompletionPct: number | null;
   promptResponseRate: number | null;
-  avgConfidence: number | null;
 }
 
 export interface ProgrammeRedFlag {
   userId: string;
   fullName: string;
   daysSinceLastActivity: number | null;
-}
-
-export interface ConfidenceTrendPoint {
-  weekNumber: number;
-  cohortName: string;
-  avgConfidence: number;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -52,36 +45,30 @@ export function useAdminProgrammes() {
 export function useAdminProgrammeEngagement(programmeId: string | null) {
   const [weeks, setWeeks] = useState<ProgrammeWeekEngagement[]>([]);
   const [redFlags, setRedFlags] = useState<ProgrammeRedFlag[]>([]);
-  const [confidenceTrend, setConfidenceTrend] = useState<ConfidenceTrendPoint[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!programmeId) {
       setWeeks([]);
       setRedFlags([]);
-      setConfidenceTrend([]);
       return;
     }
     let mounted = true;
     (async () => {
       setLoading(true);
 
-      const [{ data: enrollments }, { data: cohorts }, { data: trainingWeeks }] = await Promise.all([
-        supabase.from("programme_enrollments").select("user_id, cohort_id").eq("programme_id", programmeId).eq("status", "active"),
-        supabase.from("cohorts").select("id, name").eq("programme_id", programmeId),
+      const [{ data: enrollments }, { data: trainingWeeks }] = await Promise.all([
+        supabase.from("programme_enrollments").select("user_id").eq("programme_id", programmeId).eq("status", "active"),
         supabase.from("training_weeks").select("id, week_number, title").eq("programme_id", programmeId).eq("is_visible", true).order("week_number"),
       ]);
       if (!mounted) return;
 
       const enrolledIds = [...new Set((enrollments ?? []).map((e) => e.user_id as string))];
-      const cohortNameById = new Map((cohorts ?? []).map((c) => [c.id as string, c.name as string]));
-      const cohortByUser = new Map((enrollments ?? []).map((e) => [e.user_id as string, e.cohort_id as string | null]));
       const weekIds = (trainingWeeks ?? []).map((w) => w.id as string);
 
       if (enrolledIds.length === 0 || weekIds.length === 0) {
         setWeeks([]);
         setRedFlags([]);
-        setConfidenceTrend([]);
         setLoading(false);
         return;
       }
@@ -117,14 +104,13 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
           ? supabase.from("triad_reflections").select("participant_id, triad_session_id, submitted_at").in("triad_session_id", sessionIds)
           : Promise.resolve({ data: [] as { participant_id: string; triad_session_id: string; submitted_at: string }[] }),
         promptIds.length
-          ? supabase.from("daily_prompt_responses").select("user_id, daily_prompt_id, responded_at, confidence_score").in("daily_prompt_id", promptIds).in("user_id", enrolledIds)
-          : Promise.resolve({ data: [] as { user_id: string; daily_prompt_id: string; responded_at: string | null; confidence_score: number | null }[] }),
+          ? supabase.from("daily_prompt_responses").select("user_id, daily_prompt_id, responded_at").in("daily_prompt_id", promptIds).in("user_id", enrolledIds)
+          : Promise.resolve({ data: [] as { user_id: string; daily_prompt_id: string; responded_at: string | null }[] }),
       ]);
       if (!mounted) return;
 
       const promptToWeek = new Map((prompts ?? []).map((p) => [p.id as string, p.training_week_id as string]));
       const sessionToWeek = new Map((triadSessions ?? []).map((s) => [s.id as string, s.training_week_id as string | null]));
-      const weekNumberById = new Map((trainingWeeks ?? []).map((w) => [w.id as string, w.week_number as number]));
       const enrolledCount = enrolledIds.length;
 
       const weeksOut: ProgrammeWeekEngagement[] = (trainingWeeks ?? []).map((w) => {
@@ -142,7 +128,6 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
         const weekPromptIds = new Set([...promptToWeek.entries()].filter(([, tw]) => tw === weekId).map(([id]) => id));
         const weekResponses = (promptResponses ?? []).filter((r) => weekPromptIds.has(r.daily_prompt_id) && r.responded_at);
         const respondedUsers = new Set(weekResponses.map((r) => r.user_id));
-        const confidenceScores = weekResponses.map((r) => r.confidence_score).filter((n): n is number => n != null);
 
         return {
           weekId,
@@ -155,33 +140,8 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
           quizCompletionPct: weekQuizIds.size > 0 && enrolledCount > 0 ? (quizSubmittedUsers.size * 100) / enrolledCount : null,
           triadCompletionPct: weekSessionIds.size > 0 && enrolledCount > 0 ? (weekReflectedUsers.size * 100) / enrolledCount : null,
           promptResponseRate: weekPromptIds.size > 0 && enrolledCount > 0 ? (respondedUsers.size * 100) / enrolledCount : null,
-          avgConfidence: confidenceScores.length > 0 ? confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length : null,
         };
       });
-
-      // Confidence trend, one line per cohort
-      const cohortWeekScores = new Map<string, number[]>();
-      (promptResponses ?? []).forEach((r) => {
-        if (r.confidence_score == null || !r.responded_at) return;
-        const weekId = promptToWeek.get(r.daily_prompt_id);
-        const weekNumber = weekId ? weekNumberById.get(weekId) : undefined;
-        if (weekNumber == null) return;
-        const cohortId = cohortByUser.get(r.user_id) || "__none__";
-        const key = `${cohortId} ${weekNumber}`;
-        const arr = cohortWeekScores.get(key) ?? [];
-        arr.push(r.confidence_score);
-        cohortWeekScores.set(key, arr);
-      });
-      const trend: ConfidenceTrendPoint[] = [];
-      cohortWeekScores.forEach((scores, key) => {
-        const [cohortId, weekNumberStr] = key.split(" ");
-        trend.push({
-          weekNumber: Number(weekNumberStr),
-          cohortName: cohortId === "__none__" ? "Unassigned" : cohortNameById.get(cohortId) || "Unassigned",
-          avgConfidence: scores.reduce((a, b) => a + b, 0) / scores.length,
-        });
-      });
-      trend.sort((a, b) => a.weekNumber - b.weekNumber);
 
       // Red flags: enrolled participants with no recorded activity in the
       // past 7 days (or ever) — same 4 signals send-programme-reminders
@@ -211,7 +171,6 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
 
       setWeeks(weeksOut);
       setRedFlags(flags);
-      setConfidenceTrend(trend);
       setLoading(false);
     })();
     return () => {
@@ -219,5 +178,5 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
     };
   }, [programmeId]);
 
-  return { weeks, redFlags, confidenceTrend, loading };
+  return { weeks, redFlags, loading };
 }

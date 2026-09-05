@@ -1079,26 +1079,32 @@ export type Database = {
       daily_prompts: {
         Row: {
           created_at: string
-          day_number: number
+          day_offset: number
           id: string
+          is_visible: boolean
           prompt_text: string
           prompt_text_vi: string | null
+          sort_order: number
           training_week_id: string
         }
         Insert: {
           created_at?: string
-          day_number: number
+          day_offset: number
           id?: string
+          is_visible?: boolean
           prompt_text: string
           prompt_text_vi?: string | null
+          sort_order?: number
           training_week_id: string
         }
         Update: {
           created_at?: string
-          day_number?: number
+          day_offset?: number
           id?: string
+          is_visible?: boolean
           prompt_text?: string
           prompt_text_vi?: string | null
+          sort_order?: number
           training_week_id?: string
         }
         Relationships: [
@@ -1726,6 +1732,56 @@ export type Database = {
           },
         ]
       }
+      programme_reflections: {
+        Row: {
+          appears_at_week: number
+          created_at: string
+          id: string
+          instructions: string | null
+          instructions_vi: string | null
+          is_visible: boolean
+          programme_id: string
+          reflection_number: number
+          title: string
+          title_vi: string | null
+          updated_at: string
+        }
+        Insert: {
+          appears_at_week: number
+          created_at?: string
+          id?: string
+          instructions?: string | null
+          instructions_vi?: string | null
+          is_visible?: boolean
+          programme_id: string
+          reflection_number: number
+          title: string
+          title_vi?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appears_at_week?: number
+          created_at?: string
+          id?: string
+          instructions?: string | null
+          instructions_vi?: string | null
+          is_visible?: boolean
+          programme_id?: string
+          reflection_number?: number
+          title?: string
+          title_vi?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programme_reflections_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programmes: {
         Row: {
           coach_session_limit: number
@@ -1814,6 +1870,128 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reflection_answers: {
+        Row: {
+          answer_text: string | null
+          answer_value: number | null
+          created_at: string
+          id: string
+          question_id: string
+          submission_id: string
+        }
+        Insert: {
+          answer_text?: string | null
+          answer_value?: number | null
+          created_at?: string
+          id?: string
+          question_id: string
+          submission_id: string
+        }
+        Update: {
+          answer_text?: string | null
+          answer_value?: number | null
+          created_at?: string
+          id?: string
+          question_id?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reflection_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "reflection_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reflection_answers_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "reflection_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reflection_questions: {
+        Row: {
+          created_at: string
+          id: string
+          is_required: boolean
+          question_text: string
+          question_text_vi: string | null
+          question_type: string
+          reflection_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          question_text: string
+          question_text_vi?: string | null
+          question_type: string
+          reflection_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          question_text?: string
+          question_text_vi?: string | null
+          question_type?: string
+          reflection_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reflection_questions_reflection_id_fkey"
+            columns: ["reflection_id"]
+            isOneToOne: false
+            referencedRelation: "programme_reflections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reflection_submissions: {
+        Row: {
+          confidence_score: number
+          id: string
+          reflection_id: string
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence_score: number
+          id?: string
+          reflection_id: string
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number
+          id?: string
+          reflection_id?: string
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reflection_submissions_reflection_id_fkey"
+            columns: ["reflection_id"]
+            isOneToOne: false
+            referencedRelation: "programme_reflections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reflection_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2051,50 +2229,6 @@ export type Database = {
           },
         ]
       }
-      skill_card_elements: {
-        Row: {
-          content: string
-          content_vi: string | null
-          created_at: string
-          element_type: string
-          id: string
-          sort_order: number
-          title: string
-          title_vi: string | null
-          training_week_id: string
-        }
-        Insert: {
-          content: string
-          content_vi?: string | null
-          created_at?: string
-          element_type: string
-          id?: string
-          sort_order?: number
-          title: string
-          title_vi?: string | null
-          training_week_id: string
-        }
-        Update: {
-          content?: string
-          content_vi?: string | null
-          created_at?: string
-          element_type?: string
-          id?: string
-          sort_order?: number
-          title?: string
-          title_vi?: string | null
-          training_week_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "skill_card_elements_training_week_id_fkey"
-            columns: ["training_week_id"]
-            isOneToOne: false
-            referencedRelation: "training_weeks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       sponsor_profiles: {
         Row: {
           created_at: string
@@ -2295,6 +2429,7 @@ export type Database = {
           title_vi: string | null
           unlock_date: string | null
           updated_at: string
+          video_url: string | null
           week_number: number
         }
         Insert: {
@@ -2313,6 +2448,7 @@ export type Database = {
           title_vi?: string | null
           unlock_date?: string | null
           updated_at?: string
+          video_url?: string | null
           week_number: number
         }
         Update: {
@@ -2331,6 +2467,7 @@ export type Database = {
           title_vi?: string | null
           unlock_date?: string | null
           updated_at?: string
+          video_url?: string | null
           week_number?: number
         }
         Relationships: [
@@ -2779,7 +2916,6 @@ export type Database = {
         Args: never
         Returns: {
           already_responded: boolean
-          confidence_score: number
           prompt_id: string
           prompt_text: string
           prompt_text_vi: string
@@ -2825,6 +2961,16 @@ export type Database = {
         Args: { _coachee_id: string }
         Returns: boolean
       }
+      sponsor_confidence_trend: {
+        Args: never
+        Returns: {
+          appears_at_week: number
+          avg_confidence: number
+          reflection_number: number
+          reflection_title: string
+          response_count: number
+        }[]
+      }
       sponsor_engagement_red_flags: {
         Args: never
         Returns: {
@@ -2862,7 +3008,6 @@ export type Database = {
       sponsor_programme_engagement: {
         Args: never
         Returns: {
-          avg_confidence_score: number
           daily_prompt_response_rate: number
           quiz_avg_score: number
           quiz_completion_pct: number
@@ -2899,14 +3044,6 @@ export type Database = {
           earliest_start: string
           latest_end: string
           programme_names: string[]
-        }[]
-      }
-      sponsor_top_reflections: {
-        Args: { p_limit?: number }
-        Returns: {
-          anonymized_quote: string
-          role_played: string
-          week_number: number
         }[]
       }
     }

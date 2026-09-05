@@ -83,11 +83,19 @@ Deno.serve(async (req) => {
       if (!currentWeek) continue;
 
       const dayNum = dayNumberFor(currentWeek.unlock_date);
+      // day_offset = dayNum is a day-pinned prompt; day_offset = null means
+      // "any day this week" and matches every day — same OR shape as
+      // get_todays_prompt(). Ordered so a day-pinned prompt wins over an
+      // "any day" one on the same day, then by admin's sort_order.
       const { data: prompt } = await admin
         .from("daily_prompts")
         .select("id, prompt_text, prompt_text_vi")
         .eq("training_week_id", currentWeek.id)
-        .eq("day_number", dayNum)
+        .eq("is_visible", true)
+        .or(`day_offset.eq.${dayNum},day_offset.is.null`)
+        .order("day_offset", { ascending: true, nullsFirst: false })
+        .order("sort_order", { ascending: true })
+        .limit(1)
         .maybeSingle();
       if (!prompt) continue;
 
