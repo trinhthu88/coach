@@ -202,7 +202,7 @@ export function buildMentoringFeedbackOverdueAlerts(opts: {
 
 export interface ProgrammeAlert {
   severity: "info" | "warning" | "critical";
-  alert_type: "stale_programme_participant" | "low_quiz_scores" | "triad_not_scheduled";
+  alert_type: "stale_programme_participant" | "low_quiz_scores";
   title: string;
   message: string;
   related_coachee_id: string | null;
@@ -297,38 +297,11 @@ export function buildLowQuizScoreAlerts(opts: {
   return alerts;
 }
 
-export interface ScanTriadGroupRow {
-  id: string;
-  name: string | null;
-  memberIds: string[];
-}
-
-/** Active triad groups with no session logged in the last 7 days, or ever. */
-export function buildTriadNotScheduledAlerts(opts: {
-  activeGroups: ScanTriadGroupRow[];
-  lastSessionDateByGroup: Map<string, string>;
-  nameById: Map<string, string | null | undefined>;
-  now: Date;
-}): ProgrammeAlert[] {
-  const { activeGroups, lastSessionDateByGroup, nameById, now } = opts;
-  const cutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-
-  return activeGroups
-    .filter((g) => {
-      const last = lastSessionDateByGroup.get(g.id);
-      return !last || new Date(last).getTime() < cutoff;
-    })
-    .map((g) => {
-      const memberNames = g.memberIds.map((id) => nameById.get(id) || "—").join(", ");
-      const last = lastSessionDateByGroup.get(g.id);
-      const sinceText = last ? `last session ${format(new Date(last), "d MMM yyyy")}` : "no session logged yet";
-      return {
-        severity: "warning" as const,
-        alert_type: "triad_not_scheduled" as const,
-        title: `${g.name || "Triad group"} — no session in 7+ days`,
-        message: `${memberNames} haven't logged a triad session in over a week (${sinceText}).`,
-        related_coachee_id: null,
-        resolved: false,
-      };
-    });
-}
+// buildTriadNotScheduledAlerts (and its "triad_not_scheduled" alert type)
+// was removed with the Phase 3 triad redesign: triad_sessions no longer has
+// a repeating session_date to measure "hasn't met in 7 days" against
+// (triads are now one deadline-bound session per round, not an open-ended
+// series). Deadline-driven escalation for unconfirmed/overdue triads is now
+// handled by the triad-reminders Edge Function's own 'triad_admin_alert'
+// notifications instead. "triad_not_scheduled" is kept in AdminAlerts.tsx's
+// cleanup delete-list so any pre-existing rows still get cleared.

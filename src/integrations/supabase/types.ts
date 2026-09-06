@@ -2485,39 +2485,48 @@ export type Database = {
       }
       triad_groups: {
         Row: {
-          cohort_id: string
+          assigned_by: string
+          cohort_id: string | null
           created_at: string
+          group_language: string
           id: string
           is_active: boolean
           member_1_id: string
           member_2_id: string
-          member_3_id: string
+          member_3_id: string | null
           name: string | null
           programme_id: string
+          triad_round_id: string | null
           updated_at: string
         }
         Insert: {
-          cohort_id: string
+          assigned_by?: string
+          cohort_id?: string | null
           created_at?: string
+          group_language?: string
           id?: string
           is_active?: boolean
           member_1_id: string
           member_2_id: string
-          member_3_id: string
+          member_3_id?: string | null
           name?: string | null
           programme_id: string
+          triad_round_id?: string | null
           updated_at?: string
         }
         Update: {
-          cohort_id?: string
+          assigned_by?: string
+          cohort_id?: string | null
           created_at?: string
+          group_language?: string
           id?: string
           is_active?: boolean
           member_1_id?: string
           member_2_id?: string
-          member_3_id?: string
+          member_3_id?: string | null
           name?: string | null
           programme_id?: string
+          triad_round_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2554,6 +2563,127 @@ export type Database = {
             columns: ["programme_id"]
             isOneToOne: false
             referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_triad_round_id_fkey"
+            columns: ["triad_round_id"]
+            isOneToOne: false
+            referencedRelation: "triad_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      triad_rounds: {
+        Row: {
+          auto_assign_date: string
+          auto_assign_status: string
+          completion_deadline: string
+          created_at: string
+          id: string
+          is_visible: boolean
+          programme_id: string
+          round_number: number
+          title: string
+          title_vi: string | null
+          training_week_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_assign_date: string
+          auto_assign_status?: string
+          completion_deadline: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          programme_id: string
+          round_number: number
+          title: string
+          title_vi?: string | null
+          training_week_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_assign_date?: string
+          auto_assign_status?: string
+          completion_deadline?: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          programme_id?: string
+          round_number?: number
+          title?: string
+          title_vi?: string | null
+          training_week_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_rounds_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_rounds_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      triad_alternative_proposals: {
+        Row: {
+          created_at: string
+          id: string
+          member_1_response: string
+          member_2_response: string
+          member_3_response: string | null
+          proposed_by: string
+          proposed_end_time: string
+          proposed_start_time: string
+          status: string
+          triad_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_1_response?: string
+          member_2_response?: string
+          member_3_response?: string | null
+          proposed_by: string
+          proposed_end_time: string
+          proposed_start_time: string
+          status?: string
+          triad_session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_1_response?: string
+          member_2_response?: string
+          member_3_response?: string | null
+          proposed_by?: string
+          proposed_end_time?: string
+          proposed_start_time?: string
+          status?: string
+          triad_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_alternative_proposals_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_alternative_proposals_triad_session_id_fkey"
+            columns: ["triad_session_id"]
+            isOneToOne: false
+            referencedRelation: "triad_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -2617,82 +2747,51 @@ export type Database = {
       }
       triad_sessions: {
         Row: {
-          coach_role_id: string
-          coachee_role_id: string
           created_at: string
-          duration_minutes: number
           id: string
           meeting_url: string | null
+          member_1_response: string
+          member_2_response: string
+          member_3_response: string | null
           notes: string | null
-          observer_role_id: string
-          session_date: string
-          start_time: string | null
-          status: Database["public"]["Enums"]["session_status"]
-          training_week_id: string | null
+          proposed_by: string
+          proposed_end_time: string | null
+          proposed_start_time: string | null
+          status: string
           triad_group_id: string
           updated_at: string
         }
         Insert: {
-          coach_role_id: string
-          coachee_role_id: string
           created_at?: string
-          duration_minutes?: number
           id?: string
           meeting_url?: string | null
+          member_1_response?: string
+          member_2_response?: string
+          member_3_response?: string | null
           notes?: string | null
-          observer_role_id: string
-          session_date: string
-          start_time?: string | null
-          status?: Database["public"]["Enums"]["session_status"]
-          training_week_id?: string | null
+          proposed_by?: string
+          proposed_end_time?: string | null
+          proposed_start_time?: string | null
+          status?: string
           triad_group_id: string
           updated_at?: string
         }
         Update: {
-          coach_role_id?: string
-          coachee_role_id?: string
           created_at?: string
-          duration_minutes?: number
           id?: string
           meeting_url?: string | null
+          member_1_response?: string
+          member_2_response?: string
+          member_3_response?: string | null
           notes?: string | null
-          observer_role_id?: string
-          session_date?: string
-          start_time?: string | null
-          status?: Database["public"]["Enums"]["session_status"]
-          training_week_id?: string | null
+          proposed_by?: string
+          proposed_end_time?: string | null
+          proposed_start_time?: string | null
+          status?: string
           triad_group_id?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "triad_sessions_coach_role_id_fkey"
-            columns: ["coach_role_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_sessions_coachee_role_id_fkey"
-            columns: ["coachee_role_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_sessions_observer_role_id_fkey"
-            columns: ["observer_role_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_sessions_training_week_id_fkey"
-            columns: ["training_week_id"]
-            isOneToOne: false
-            referencedRelation: "training_weeks"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "triad_sessions_triad_group_id_fkey"
             columns: ["triad_group_id"]

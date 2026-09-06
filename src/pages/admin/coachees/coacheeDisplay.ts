@@ -45,6 +45,7 @@ export interface Row {
   session_limit: number;
   limit_row_id: string | null;
   access_request_id: string | null;
+  spoken_languages: string[];
 }
 
 export async function exportCoacheesXlsx(rows: Row[], t: TFunction<"admin">): Promise<void> {

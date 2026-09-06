@@ -218,17 +218,27 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 2. Missed triad reflections (sessions in the past 7 days)
+    // 2. Missed triad reflections (sessions that happened in the past 7 days)
     // ------------------------------------------------------------------
     const weekAgo = todayISO(-7);
     const today = todayISO();
     const { data: pastSessions } = await admin
       .from("triad_sessions")
-      .select("id, coach_role_id, coachee_role_id, observer_role_id, session_date")
-      .gte("session_date", weekAgo)
-      .lt("session_date", today);
+      .select("id, triad_group_id, proposed_start_time")
+      .in("status", ["confirmed", "completed"])
+      .gte("proposed_start_time", `${weekAgo}T00:00:00Z`)
+      .lt("proposed_start_time", `${today}T00:00:00Z`);
 
     if (pastSessions && pastSessions.length > 0) {
+      const groupIds = [...new Set(pastSessions.map((s) => s.triad_group_id as string))];
+      const { data: groups } = await admin
+        .from("triad_groups")
+        .select("id, member_1_id, member_2_id, member_3_id")
+        .in("id", groupIds);
+      const membersByGroup = new Map(
+        (groups || []).map((g) => [g.id as string, [g.member_1_id, g.member_2_id, g.member_3_id].filter(Boolean) as string[]]),
+      );
+
       const sessionIds = pastSessions.map((s) => s.id as string);
       const { data: reflections } = await admin
         .from("triad_reflections")
@@ -242,9 +252,9 @@ Deno.serve(async (req) => {
       }
 
       for (const s of pastSessions) {
-        const roleHolders = [s.coach_role_id, s.coachee_role_id, s.observer_role_id] as string[];
+        const members = membersByGroup.get(s.triad_group_id as string) || [];
         const submitted = submittedBySession.get(s.id as string) || new Set<string>();
-        const missing = roleHolders.filter((id) => !submitted.has(id));
+        const missing = members.filter((id) => !submitted.has(id));
         const link = `/triads/${s.id}/reflect`;
         for (const userId of missing) {
           const sent = await notifyOnce({
@@ -267,30 +277,43 @@ Deno.serve(async (req) => {
     // 3. Upcoming triad sessions (tomorrow)
     // ------------------------------------------------------------------
     const tomorrow = todayISO(1);
+    const dayAfterTomorrow = todayISO(2);
     const { data: upcomingSessions } = await admin
       .from("triad_sessions")
-      .select("id, coach_role_id, coachee_role_id, observer_role_id")
-      .eq("session_date", tomorrow)
+      .select("id, triad_group_id")
+      .gte("proposed_start_time", `${tomorrow}T00:00:00Z`)
+      .lt("proposed_start_time", `${dayAfterTomorrow}T00:00:00Z`)
       .neq("status", "cancelled");
 
-    for (const s of upcomingSessions || []) {
-      const roleHolders = [s.coach_role_id, s.coachee_role_id, s.observer_role_id] as string[];
-      // Query-string suffix keeps this dedupe key per-session while still
-      // landing the user on the real /triads route (query is ignored there).
-      const link = `/triads?upcoming=${s.id}`;
-      for (const userId of roleHolders) {
-        const sent = await notifyOnce({
-          userId,
-          link,
-          type: "triad_reminder",
-          title: "Triad session tomorrow",
-          titleVi: "Session triad diễn ra vào ngày mai",
-          body: "You have a triad practice session scheduled for tomorrow.",
-          bodyVi: "Bạn có một session luyện tập triad được đặt lịch vào ngày mai.",
-          ctaLabel: "View triad",
-          ctaLabelVi: "Xem triad",
-        });
-        if (sent) triadUpcomingSent++;
+    if (upcomingSessions && upcomingSessions.length > 0) {
+      const groupIds = [...new Set(upcomingSessions.map((s) => s.triad_group_id as string))];
+      const { data: groups } = await admin
+        .from("triad_groups")
+        .select("id, member_1_id, member_2_id, member_3_id")
+        .in("id", groupIds);
+      const membersByGroup = new Map(
+        (groups || []).map((g) => [g.id as string, [g.member_1_id, g.member_2_id, g.member_3_id].filter(Boolean) as string[]]),
+      );
+
+      for (const s of upcomingSessions) {
+        const members = membersByGroup.get(s.triad_group_id as string) || [];
+        // Query-string suffix keeps this dedupe key per-session while still
+        // landing the user on the real /triads route (query is ignored there).
+        const link = `/triads?upcoming=${s.id}`;
+        for (const userId of members) {
+          const sent = await notifyOnce({
+            userId,
+            link,
+            type: "triad_reminder",
+            title: "Triad session tomorrow",
+            titleVi: "Session triad diễn ra vào ngày mai",
+            body: "You have a triad practice session scheduled for tomorrow.",
+            bodyVi: "Bạn có một session luyện tập triad được đặt lịch vào ngày mai.",
+            ctaLabel: "View triad",
+            ctaLabelVi: "Xem triad",
+          });
+          if (sent) triadUpcomingSent++;
+        }
       }
     }
 
@@ -351,7 +374,9 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 5. Triads that have never booked a session
+    // 5. Triads with no confirmed session time yet (still 'proposed' with
+    //    no proposed_start_time, or no session row at all — e.g. an
+    //    admin-created group auto-assign never ran a slot-pick for)
     // ------------------------------------------------------------------
     const { data: activeGroups } = await admin
       .from("triad_groups")
@@ -361,15 +386,19 @@ Deno.serve(async (req) => {
     let triadUnscheduledSent = 0;
     if (activeGroups && activeGroups.length > 0) {
       const groupIds = activeGroups.map((g) => g.id as string);
-      const { data: bookedSessions } = await admin
+      const { data: sessions } = await admin
         .from("triad_sessions")
-        .select("triad_group_id")
+        .select("triad_group_id, status, proposed_start_time")
         .in("triad_group_id", groupIds);
-      const bookedGroupIds = new Set((bookedSessions || []).map((s) => s.triad_group_id as string));
+      const unscheduledGroupIds = new Set(groupIds);
+      for (const s of sessions || []) {
+        const hasTime = s.status !== "proposed" || s.proposed_start_time !== null;
+        if (hasTime) unscheduledGroupIds.delete(s.triad_group_id as string);
+      }
 
       for (const g of activeGroups) {
-        if (bookedGroupIds.has(g.id as string)) continue;
-        const members = [g.member_1_id, g.member_2_id, g.member_3_id] as string[];
+        if (!unscheduledGroupIds.has(g.id as string)) continue;
+        const members = [g.member_1_id, g.member_2_id, g.member_3_id].filter(Boolean) as string[];
         for (const userId of members) {
           const sent = await notifyOnce({
             userId,

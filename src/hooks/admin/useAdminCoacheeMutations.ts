@@ -18,11 +18,16 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
       toast.error("Programme is required");
       return;
     }
+    if (!editing.spoken_languages.length) {
+      toast.error("At least one spoken language is required");
+      return;
+    }
     setSaving(true);
     try {
       await supabase.from("profiles").update({
         full_name: editing.full_name,
         status: editing.status,
+        spoken_languages: editing.spoken_languages,
       }).eq("id", editing.id);
 
       // session limit override

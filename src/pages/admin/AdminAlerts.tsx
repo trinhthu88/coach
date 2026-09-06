@@ -7,8 +7,8 @@ import { formatDistanceToNow } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import {
   buildFeedbackAlerts, buildMentoringPrepFileOverdueAlerts, buildMentoringFeedbackOverdueAlerts,
-  buildStaleProgrammeParticipantAlerts, buildLowQuizScoreAlerts, buildTriadNotScheduledAlerts,
-  type ScanActivityRow, type ScanQuizSubmissionRow, type ScanTriadGroupRow,
+  buildStaleProgrammeParticipantAlerts, buildLowQuizScoreAlerts,
+  type ScanActivityRow, type ScanQuizSubmissionRow,
 } from "./alertScan";
 import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
@@ -115,8 +115,6 @@ export default function AdminAlerts() {
         { data: promptResponses },
         { data: reflections },
         { data: trainingProgress },
-        { data: triadGroups },
-        { data: triadSessions },
       ] = await Promise.all([
         supabase
           .from("sessions")
@@ -135,8 +133,6 @@ export default function AdminAlerts() {
         supabase.from("daily_prompt_responses").select("user_id, responded_at"),
         supabase.from("triad_reflections").select("participant_id, submitted_at"),
         supabase.from("training_progress").select("user_id, completed_at"),
-        supabase.from("triad_groups").select("id, name, member_1_id, member_2_id, member_3_id, is_active"),
-        supabase.from("triad_sessions").select("triad_group_id, session_date"),
       ]);
 
       const profById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.full_name]));
@@ -209,8 +205,7 @@ export default function AdminAlerts() {
         })
       );
 
-      // Programme engagement (Phase 4) — stale participants, low quiz
-      // scores, triads that haven't met in a week.
+      // Programme engagement (Phase 4) — stale participants, low quiz scores.
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const activeUserIds = [
         ...new Set(
@@ -234,22 +229,6 @@ export default function AdminAlerts() {
         .filter((s: { assignment_id: string }) => quizAssignmentIds.has(s.assignment_id))
         .map((s: { user_id: string; score_pct: number | null }) => ({ userId: s.user_id, scorePct: s.score_pct }));
       newAlerts.push(...buildLowQuizScoreAlerts({ submissions: quizSubmissions, nameById: profById, emailById }));
-
-      const activeGroups: ScanTriadGroupRow[] = (triadGroups || [])
-        .filter((g: { is_active: boolean }) => g.is_active)
-        .map((g: { id: string; name: string | null; member_1_id: string; member_2_id: string; member_3_id: string }) => ({
-          id: g.id,
-          name: g.name,
-          memberIds: [g.member_1_id, g.member_2_id, g.member_3_id],
-        }));
-      const lastSessionDateByGroup = new Map<string, string>();
-      (triadSessions || []).forEach((s: { triad_group_id: string; session_date: string }) => {
-        const cur = lastSessionDateByGroup.get(s.triad_group_id);
-        if (!cur || s.session_date > cur) lastSessionDateByGroup.set(s.triad_group_id, s.session_date);
-      });
-      newAlerts.push(
-        ...buildTriadNotScheduledAlerts({ activeGroups, lastSessionDateByGroup, nameById: profById, now })
-      );
 
       await supabase
         .from("admin_alerts")

@@ -45,7 +45,7 @@ export function useAdminCoacheesData() {
       { data: requests },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
-      supabase.from("profiles").select("id, full_name, email, status, created_at"),
+      supabase.from("profiles").select("id, full_name, email, status, created_at, spoken_languages"),
       supabase.from("sessions").select("coachee_id, status"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date"),
       supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
@@ -121,6 +121,7 @@ export function useAdminCoacheesData() {
           session_limit: lim?.monthly_limit ?? defLimit,
           limit_row_id: lim?.id || null,
           access_request_id: requestIdByEmail.get(String(p.email).toLowerCase()) ?? null,
+          spoken_languages: p.spoken_languages?.length ? p.spoken_languages : ["vi"],
         } as Row;
       })
       .filter(Boolean) as Row[];

@@ -142,6 +142,27 @@ export function CoacheeEditSheet({
                 </p>
               </div>
 
+              <div>
+                <Label>{t("coacheeEditSheet.spokenLanguages")}</Label>
+                <div className="mt-1.5 flex gap-4">
+                  {(["vi", "en"] as const).map((lang) => (
+                    <label key={lang} className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={editing.spoken_languages.includes(lang)}
+                        onCheckedChange={(v) => {
+                          const next = v
+                            ? [...editing.spoken_languages, lang]
+                            : editing.spoken_languages.filter((l) => l !== lang);
+                          setEditing({ ...editing, spoken_languages: next });
+                        }}
+                      />
+                      <span className="text-[13px]">{t(`coacheeEditSheet.spokenLanguages${lang === "vi" ? "Vietnamese" : "English"}`)}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">{t("coacheeEditSheet.spokenLanguagesHint")}</p>
+              </div>
+
               <div className="rounded-lg border p-3">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coacheeEditSheet.selectedCoachesLabel")}</p>
                 <div className="max-h-48 space-y-1 overflow-y-auto">

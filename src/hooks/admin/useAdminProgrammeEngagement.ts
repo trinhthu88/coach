@@ -73,25 +73,30 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
         return;
       }
 
-      const [{ data: progress }, { data: assignments }, { data: groups }, { data: profiles }] = await Promise.all([
+      const [{ data: progress }, { data: assignments }, { data: groups }, { data: profiles }, { data: triadRounds }] = await Promise.all([
         supabase.from("training_progress").select("user_id, training_week_id, completed_at").in("training_week_id", weekIds).in("user_id", enrolledIds),
         supabase.from("assignments").select("id, training_week_id, assignment_type").eq("is_visible", true).in("training_week_id", weekIds),
-        supabase.from("triad_groups").select("id").eq("programme_id", programmeId).eq("is_active", true),
+        supabase.from("triad_groups").select("id, triad_round_id").eq("programme_id", programmeId).eq("is_active", true),
         supabase.from("profiles").select("id, full_name").in("id", enrolledIds),
+        // Triad sessions no longer carry a training_week_id directly — that
+        // link now lives one level up, on the round each group belongs to.
+        supabase.from("triad_rounds").select("id, training_week_id").eq("programme_id", programmeId),
       ]);
       if (!mounted) return;
 
       const quizAssignments = (assignments ?? []).filter((a) => a.assignment_type === "quiz");
       const quizAssignmentIds = quizAssignments.map((a) => a.id as string);
       const groupIds = (groups ?? []).map((g) => g.id as string);
+      const weekByRound = new Map((triadRounds ?? []).map((r) => [r.id as string, r.training_week_id as string | null]));
+      const weekByGroup = new Map((groups ?? []).map((g) => [g.id as string, weekByRound.get(g.triad_round_id as string) ?? null]));
 
       const [{ data: submissions }, { data: triadSessions }, { data: prompts }] = await Promise.all([
         quizAssignmentIds.length
           ? supabase.from("assignment_submissions").select("user_id, assignment_id, score_pct, submitted_at").in("assignment_id", quizAssignmentIds).in("user_id", enrolledIds)
           : Promise.resolve({ data: [] as { user_id: string; assignment_id: string; score_pct: number | null; submitted_at: string }[] }),
         groupIds.length
-          ? supabase.from("triad_sessions").select("id, training_week_id").in("triad_group_id", groupIds)
-          : Promise.resolve({ data: [] as { id: string; training_week_id: string | null }[] }),
+          ? supabase.from("triad_sessions").select("id, triad_group_id").in("triad_group_id", groupIds)
+          : Promise.resolve({ data: [] as { id: string; triad_group_id: string }[] }),
         supabase.from("daily_prompts").select("id, training_week_id").in("training_week_id", weekIds),
       ]);
       if (!mounted) return;
@@ -110,7 +115,7 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
       if (!mounted) return;
 
       const promptToWeek = new Map((prompts ?? []).map((p) => [p.id as string, p.training_week_id as string]));
-      const sessionToWeek = new Map((triadSessions ?? []).map((s) => [s.id as string, s.training_week_id as string | null]));
+      const sessionToWeek = new Map((triadSessions ?? []).map((s) => [s.id as string, weekByGroup.get(s.triad_group_id as string) ?? null]));
       const enrolledCount = enrolledIds.length;
 
       const weeksOut: ProgrammeWeekEngagement[] = (trainingWeeks ?? []).map((w) => {

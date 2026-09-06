@@ -31,3 +31,7 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = false
   [functions.generate-report-pdf]
     verify_jwt = true
+  [functions.triad-auto-assign]
+    verify_jwt = true
+  [functions.triad-reminders]
+    verify_jwt = false

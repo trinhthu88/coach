@@ -42,9 +42,9 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
   const [{ data: assignments }, { data: prompts }, { data: triadSessions }] = await Promise.all([
     supabase.from("assignments").select("id, training_week_id").eq("assignment_type", "quiz").eq("is_visible", true).in("training_week_id", weekIds),
     supabase.from("daily_prompts").select("id, training_week_id, day_offset").in("training_week_id", weekIds),
-    // RLS ("Triad sessions: members view own") already scopes this to just
-    // the caller's own sessions, same pattern TriadDashboard.tsx relies on.
-    supabase.from("triad_sessions").select("id, session_date, status"),
+    // RLS ("Triad sessions: member read") already scopes this to just the
+    // caller's own sessions.
+    supabase.from("triad_sessions").select("id, proposed_start_time, status"),
   ]);
 
   const assignmentIds = (assignments || []).map((a) => a.id as string);
@@ -100,12 +100,12 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
 
   // Triads
   const now = Date.now();
-  const sessions = (triadSessions || []) as { id: string; session_date: string; status: string }[];
-  const triadCompletedCount = sessions.filter((s) => s.status !== "cancelled" && new Date(s.session_date).getTime() < now).length;
+  const sessions = (triadSessions || []) as { id: string; proposed_start_time: string | null; status: string }[];
+  const triadCompletedCount = sessions.filter((s) => s.status === "completed").length;
   const nextTriadDate =
     sessions
-      .filter((s) => s.status !== "cancelled" && new Date(s.session_date).getTime() >= now)
-      .sort((a, b) => new Date(a.session_date).getTime() - new Date(b.session_date).getTime())[0]?.session_date ?? null;
+      .filter((s) => s.status === "confirmed" && s.proposed_start_time && new Date(s.proposed_start_time).getTime() >= now)
+      .sort((a, b) => new Date(a.proposed_start_time!).getTime() - new Date(b.proposed_start_time!).getTime())[0]?.proposed_start_time ?? null;
 
   return {
     weeksCompleted,

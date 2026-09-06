@@ -50,9 +50,8 @@ const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations")
 const AdminMentoring = lazy(() => import("./pages/admin/AdminMentoring"));
 const AdminTrainingContent = lazy(() => import("./pages/admin/AdminTrainingContent"));
 const AdminTriads = lazy(() => import("./pages/admin/AdminTriads"));
-const TriadDashboard = lazy(() => import("./pages/TriadDashboard"));
-const TriadBookSession = lazy(() => import("./pages/TriadBookSession"));
-const TriadReflectionForm = lazy(() => import("./pages/TriadReflectionForm"));
+const TriadsPage = lazy(() => import("./pages/triads/TriadsPage"));
+const TriadReflectionPage = lazy(() => import("./pages/triads/TriadReflectionPage"));
 const TrainingWeeks = lazy(() => import("./pages/TrainingWeeks"));
 const SkillCardView = lazy(() => import("./pages/SkillCardView"));
 const QuizView = lazy(() => import("./pages/QuizView"));
@@ -318,15 +317,7 @@ const App = () => (
                     path="/triads"
                     element={
                       <ProtectedRoute roles={["coach", "coachee"]} module="triads">
-                        <TriadDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/triads/:triadGroupId/book"
-                    element={
-                      <ProtectedRoute roles={["coach", "coachee"]} module="triads">
-                        <TriadBookSession />
+                        <TriadsPage />
                       </ProtectedRoute>
                     }
                   />
@@ -334,7 +325,7 @@ const App = () => (
                     path="/triads/:sessionId/reflect"
                     element={
                       <ProtectedRoute roles={["coach", "coachee"]} module="triads">
-                        <TriadReflectionForm />
+                        <TriadReflectionPage />
                       </ProtectedRoute>
                     }
                   />
