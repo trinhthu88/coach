@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
-import { Sparkles } from "lucide-react";
 
 /**
  * Fires the "onboarding complete" toast once on mount, using the app's existing
