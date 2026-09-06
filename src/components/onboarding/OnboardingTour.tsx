@@ -6,6 +6,7 @@ import { getOnboardingContent } from "@/lib/onboarding/content";
 import { IntroCarousel } from "./IntroCarousel";
 import { PointerTour } from "./PointerTour";
 import { OnboardingDoneToast } from "./OnboardingDoneToast";
+import { trackEvent } from "@/lib/analytics";
 
 type Stage = "intro" | "pointer" | "done" | "closed";
 
@@ -42,23 +43,33 @@ export function OnboardingTour({
     refreshProfile();
   }, [user, refreshProfile]);
 
-  const goToPointerTour = useCallback(() => setStage("pointer"), []);
+  const finishIntro = useCallback(() => {
+    trackEvent("onboarding_intro_completed", { role, step_count: content.steps.length });
+    setStage("pointer");
+  }, [role, content.steps.length]);
+
+  const skipIntro = useCallback(() => {
+    trackEvent("onboarding_intro_skipped", { role });
+    setStage("pointer");
+  }, [role]);
 
   const finishPointerTour = useCallback(() => {
+    trackEvent("onboarding_completed", { role, pointer_count: content.pointers.length });
     setStage("done");
     void markComplete();
-  }, [markComplete]);
+  }, [role, content.pointers.length, markComplete]);
 
   const dismissPointerTour = useCallback(() => {
+    trackEvent("onboarding_pointer_dismissed", { role });
     void markComplete();
     setStage("closed");
     onClose?.();
-  }, [markComplete, onClose]);
+  }, [role, markComplete, onClose]);
 
   const restart = useCallback(() => setStage("intro"), []);
 
   if (stage === "intro") {
-    return <IntroCarousel steps={content.steps} role={role} onFinish={goToPointerTour} onSkip={goToPointerTour} />;
+    return <IntroCarousel steps={content.steps} role={role} onFinish={finishIntro} onSkip={skipIntro} />;
   }
 
   if (stage === "pointer") {

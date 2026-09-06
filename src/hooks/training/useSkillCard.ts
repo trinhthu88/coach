@@ -17,6 +17,7 @@ export interface TrainingWeekDetail {
   video_url: string | null;
   pdf_storage_path: string | null;
   pdf_storage_path_vi: string | null;
+  skill_card_visible: boolean;
 }
 
 /**
@@ -38,7 +39,7 @@ export function useSkillCard(weekId: string | undefined) {
       const { data: week, error: weekError } = await supabase
         .from("training_weeks")
         .select(
-          "id, programme_id, week_number, title, title_vi, subtitle, subtitle_vi, skill_card_html, skill_card_html_vi, video_url, pdf_storage_path, pdf_storage_path_vi"
+          "id, programme_id, week_number, title, title_vi, subtitle, subtitle_vi, skill_card_html, skill_card_html_vi, video_url, pdf_storage_path, pdf_storage_path_vi, skill_card_visible"
         )
         .eq("id", weekId as string)
         .maybeSingle();

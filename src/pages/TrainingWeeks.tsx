@@ -81,6 +81,9 @@ function WeekCard({
         </div>
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
         {subtitle && <p className="flex-1 text-sm text-muted-foreground">{subtitle}</p>}
+        {!week.skill_card_visible && (
+          <p className="text-[10.5px] font-medium text-muted-foreground">{t("list.skillCardHidden")}</p>
+        )}
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs">
           <span className="text-muted-foreground">{t(`list.${status}`)}</span>
           <span className="inline-flex items-center gap-1 font-semibold text-primary">

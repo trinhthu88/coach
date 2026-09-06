@@ -2422,6 +2422,7 @@ export type Database = {
           programme_id: string
           skill_card_html: string | null
           skill_card_html_vi: string | null
+          skill_card_visible: boolean
           sort_order: number
           subtitle: string | null
           subtitle_vi: string | null
@@ -2441,6 +2442,7 @@ export type Database = {
           programme_id: string
           skill_card_html?: string | null
           skill_card_html_vi?: string | null
+          skill_card_visible?: boolean
           sort_order?: number
           subtitle?: string | null
           subtitle_vi?: string | null
@@ -2460,6 +2462,7 @@ export type Database = {
           programme_id?: string
           skill_card_html?: string | null
           skill_card_html_vi?: string | null
+          skill_card_visible?: boolean
           sort_order?: number
           subtitle?: string | null
           subtitle_vi?: string | null
@@ -2879,6 +2882,7 @@ export type Database = {
           completed_at: string
           id: string
           locked: boolean
+          skill_card_visible: boolean
           subtitle: string
           subtitle_vi: string
           title: string
@@ -3011,6 +3015,7 @@ export type Database = {
           daily_prompt_response_rate: number
           quiz_avg_score: number
           quiz_completion_pct: number
+          reflection_completion_pct: number
           skill_card_completion_pct: number
           triad_completion_pct: number
           week_number: number

@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { trackEvent } from "@/lib/analytics";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 
 const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
@@ -59,6 +60,7 @@ export default function SponsorReport() {
   const impactAvg = {
     skillCard: avgOf(programmeEngagement.map(w => w.skill_card_completion_pct)),
     quiz: avgOf(programmeEngagement.map(w => w.quiz_completion_pct)),
+    reflection: avgOf(programmeEngagement.map(w => w.reflection_completion_pct)),
     triad: avgOf(programmeEngagement.map(w => w.triad_completion_pct)),
     prompt: avgOf(programmeEngagement.map(w => w.daily_prompt_response_rate)),
   };
@@ -68,6 +70,7 @@ export default function SponsorReport() {
   const completionComparisonData = [
     { module: t("report.programmeImpact.completionComparison.training"), pct: impactAvg.skillCard },
     { module: t("report.programmeImpact.completionComparison.quiz"), pct: impactAvg.quiz },
+    { module: t("report.programmeImpact.completionComparison.reflection"), pct: impactAvg.reflection },
     { module: t("report.programmeImpact.completionComparison.triads"), pct: impactAvg.triad },
     { module: t("report.programmeImpact.completionComparison.prompts"), pct: impactAvg.prompt },
   ].filter(d => d.pct != null) as { module: string; pct: number }[];
@@ -86,11 +89,22 @@ export default function SponsorReport() {
     : 1;
 
   function handleGenerate() {
+    trackEvent("sponsor_report_generated", {
+      period,
+      scope: scope === "all" ? "all_cohorts" : "single_cohort",
+      roster_size: filteredRoster.length,
+    });
     setGenerating(true);
     setTimeout(() => { setGenerating(false); setGenerated(true); }, 800);
   }
 
   async function handleDownloadPdf() {
+    trackEvent("report_export_initiated", {
+      format: "pdf",
+      period,
+      scope: scope === "all" ? "all_cohorts" : "single_cohort",
+      roster_size: filteredRoster.length,
+    });
     setPdfLoading(true);
     const { data, error } = await supabase.functions.invoke<{ url: string }>("generate-report-pdf");
     setPdfLoading(false);
@@ -99,6 +113,12 @@ export default function SponsorReport() {
       return;
     }
     window.open(data.url, "_blank", "noopener,noreferrer");
+    trackEvent("report_export_completed", {
+      format: "pdf",
+      period,
+      scope: scope === "all" ? "all_cohorts" : "single_cohort",
+      roster_size: filteredRoster.length,
+    });
   }
 
   const scopeLabel = scope === "all" ? t("report.setup.allCohorts") : scope;
@@ -307,6 +327,7 @@ export default function SponsorReport() {
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <MiniKpi label={t("report.programmeImpact.summary.skillCard")} value={impactAvg.skillCard != null ? `${Math.round(impactAvg.skillCard)}%` : "—"} />
                       <MiniKpi label={t("report.programmeImpact.summary.quiz")} value={impactAvg.quiz != null ? `${Math.round(impactAvg.quiz)}%` : "—"} />
+                      <MiniKpi label={t("report.programmeImpact.summary.reflection")} value={impactAvg.reflection != null ? `${Math.round(impactAvg.reflection)}%` : "—"} />
                       <MiniKpi label={t("report.programmeImpact.summary.triad")} value={impactAvg.triad != null ? `${Math.round(impactAvg.triad)}%` : "—"} />
                       <MiniKpi label={t("report.programmeImpact.summary.prompt")} value={impactAvg.prompt != null ? `${Math.round(impactAvg.prompt)}%` : "—"} />
                     </div>

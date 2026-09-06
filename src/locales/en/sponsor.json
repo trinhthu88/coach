@@ -84,9 +84,11 @@
         "week": "Week",
         "skillCard": "Skill card",
         "quiz": "Quiz",
+        "reflection": "Reflection",
         "triad": "Triad",
         "prompt": "Daily prompt"
-      }
+      },
+      "completionFunnel": "Completion funnel"
     },
     "redFlags": {
       "label": "Falling behind",
@@ -223,6 +225,7 @@
       "summary": {
         "skillCard": "Skill card completion",
         "quiz": "Quiz completion",
+        "reflection": "Reflection completion",
         "triad": "Triad completion",
         "prompt": "Prompt response rate"
       },
@@ -233,6 +236,7 @@
         "label": "Completion by module",
         "training": "Training",
         "quiz": "Quiz",
+        "reflection": "Reflections",
         "triads": "Triads",
         "prompts": "Daily prompts"
       }

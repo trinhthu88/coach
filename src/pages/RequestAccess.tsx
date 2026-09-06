@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { trackEvent } from "@/lib/analytics";
 import { ArrowLeft, CheckCircle2, Clock, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import clarivaLogo from "@/assets/clariva-logo-dark.png";
 import { cn } from "@/lib/utils";
@@ -111,6 +112,15 @@ export default function RequestAccess() {
         motivation: form.motivation || null,
       });
       if (error) throw error;
+      trackEvent("access_request_submitted", {
+        role,
+        industry: form.industry,
+        credential: role === "coach" ? form.credential : "not_applicable",
+        has_job_title: Boolean(form.jobTitle),
+        has_company: Boolean(form.company),
+        has_linkedin: Boolean(form.linkedin),
+        has_motivation: Boolean(form.motivation),
+      });
       setDone(true);
     } catch (err) {
       const pgError = err as Partial<PostgrestError> | undefined;

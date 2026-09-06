@@ -11,6 +11,7 @@ export interface TrainingWeekListItem {
   subtitle_vi: string | null;
   unlock_date: string | null;
   locked: boolean;
+  skill_card_visible: boolean;
   viewed_at: string | null;
   completed_at: string | null;
 }

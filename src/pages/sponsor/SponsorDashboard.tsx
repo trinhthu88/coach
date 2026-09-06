@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
   active: "success",
@@ -268,23 +269,54 @@ export default function SponsorDashboard() {
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 pt-4">
               <Card className="overflow-hidden">
-                <div className="grid grid-cols-[64px_repeat(4,1fr)] gap-0 border-b bg-muted/30 px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="grid grid-cols-[64px_repeat(5,1fr)] gap-0 border-b bg-muted/30 px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
                   <span>{t("dashboard.programmeEngagement.columns.week")}</span>
                   <span>{t("dashboard.programmeEngagement.columns.skillCard")}</span>
                   <span>{t("dashboard.programmeEngagement.columns.quiz")}</span>
+                  <span>{t("dashboard.programmeEngagement.columns.reflection")}</span>
                   <span>{t("dashboard.programmeEngagement.columns.triad")}</span>
                   <span>{t("dashboard.programmeEngagement.columns.prompt")}</span>
                 </div>
                 <div className="divide-y">
                   {programmeEngagement.map((w) => (
-                    <div key={`${w.week_number}-${w.week_title}`} className="grid grid-cols-[64px_repeat(4,1fr)] items-center gap-0 px-4 py-3 text-[12.5px]">
+                    <div key={`${w.week_number}-${w.week_title}`} className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-0 px-4 py-3 text-[12.5px]">
                       <span className="font-bold">W{w.week_number}</span>
                       <EngagementCell pct={w.skill_card_completion_pct} />
                       <EngagementCell pct={w.quiz_completion_pct} sub={w.quiz_avg_score != null ? `${Math.round(w.quiz_avg_score)}% avg` : undefined} />
+                      <EngagementCell pct={w.reflection_completion_pct} />
                       <EngagementCell pct={w.triad_completion_pct} />
                       <EngagementCell pct={w.daily_prompt_response_rate} tone="accent" />
                     </div>
                   ))}
+                </div>
+              </Card>
+
+              <Card className="p-5">
+                <p className="mb-3 text-2xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  {t("dashboard.programmeEngagement.completionFunnel")}
+                </p>
+                <div className="h-44">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={programmeEngagement.map((w) => ({
+                        week: `W${w.week_number}`,
+                        pct: w.skill_card_completion_pct ?? 0,
+                      }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="week" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                      <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 11,
+                        }}
+                        formatter={(value: number) => [`${Math.round(value)}%`, "Completed"]}
+                      />
+                      <Bar dataKey="pct" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </Card>
 

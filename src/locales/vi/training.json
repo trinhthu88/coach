@@ -9,14 +9,16 @@
     "unlockDate": "Mở khóa {{date}}",
     "completed": "Đã hoàn thành",
     "viewed": "Đã xem",
-    "notStarted": "Chưa bắt đầu"
+    "notStarted": "Chưa bắt đầu",
+    "skillCardHidden": "Skill card của tuần này chưa khả dụng"
   },
   "card": {
     "back": "Quay lại trang đào tạo",
     "downloadPdf": "Tải PDF",
     "markComplete": "Đánh dấu hoàn thành",
     "completed": "Đã hoàn thành",
-    "notFound": "Nội dung này hiện không khả dụng — có thể vẫn đang khóa, hoặc bạn không có quyền truy cập."
+    "notFound": "Nội dung này hiện không khả dụng — có thể vẫn đang khóa, hoặc bạn không có quyền truy cập.",
+    "skillCardUnavailable": "Skill card của tuần này chưa khả dụng."
   },
   "dashboardCard": {
     "eyebrow": "Tuần này",
@@ -100,6 +102,8 @@
     "videoUrlLabel": "URL nhúng video (YouTube / Vimeo)",
     "visibleLabel": "Hiển thị cho người dùng đã ghi danh",
     "visibleHint": "Tắt sẽ ẩn tuần này ngay cả sau ngày mở khóa.",
+    "skillCardVisibleLabel": "Hiển thị skill card",
+    "skillCardVisibleHint": "Ẩn nội dung skill card trong khi vẫn giữ quiz, phản hồi và prompt khả dụng.",
     "unlockDateLabel": "Ngày mở khóa",
     "unlockDateHint": "Để trống để mở khóa ngay khi hiển thị.",
     "pdfLabel": "PDF (Tiếng Anh)",

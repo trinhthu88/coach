@@ -50,44 +50,52 @@ export default function SkillCardView() {
         <h1 className="font-display text-[clamp(1.9rem,3.8vw,2.7rem)] leading-[1.08] text-foreground">{title}</h1>
         {subtitle && <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">{subtitle}</p>}
 
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          {pdfPath && (
-            <Button variant="outline" onClick={() => downloadPdf(pdfPath)}>
-              <Download className="mr-1.5 h-4 w-4" /> {t("card.downloadPdf")}
-            </Button>
-          )}
-          <Button onClick={markComplete} disabled={completing || isCompleted} variant={isCompleted ? "secondary" : "default"}>
-            {completing ? (
-              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle2 className="mr-1.5 h-4 w-4" />
+        {week.skill_card_visible && (
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {pdfPath && (
+              <Button variant="outline" onClick={() => downloadPdf(pdfPath)}>
+                <Download className="mr-1.5 h-4 w-4" /> {t("card.downloadPdf")}
+              </Button>
             )}
-            {isCompleted ? t("card.completed") : t("card.markComplete")}
-          </Button>
-        </div>
+            <Button onClick={markComplete} disabled={completing || isCompleted} variant={isCompleted ? "secondary" : "default"}>
+              {completing ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-1.5 h-4 w-4" />
+              )}
+              {isCompleted ? t("card.completed") : t("card.markComplete")}
+            </Button>
+          </div>
+        )}
       </header>
 
-      {week.video_url && (
-        <div className="mb-6 aspect-video w-full overflow-hidden rounded-xl">
-          <iframe
-            src={week.video_url}
-            className="h-full w-full"
-            allowFullScreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          />
-        </div>
-      )}
+      {week.skill_card_visible ? (
+        <>
+          {week.video_url && (
+            <div className="mb-6 aspect-video w-full overflow-hidden rounded-xl">
+              <iframe
+                src={week.video_url}
+                className="h-full w-full"
+                allowFullScreen
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              />
+            </div>
+          )}
 
-      {html && (
-        // Skill card HTML is admin-authored only (same trust boundary as an
-        // admin already holding full database write access) — never
-        // user-submitted content.
-        <Card className="p-6 sm:p-8">
-          <div
-            className="max-w-none text-sm leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_h1]:font-display [&_h1]:text-xl [&_h2]:font-display [&_h2]:text-lg [&_h2]:mt-6 [&_h3]:font-semibold [&_h3]:mt-4 [&_li]:ml-4 [&_ol]:list-decimal [&_p]:mb-3 [&_ul]:list-disc"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
-        </Card>
+          {html && (
+            // Skill card HTML is admin-authored only (same trust boundary as an
+            // admin already holding full database write access) — never
+            // user-submitted content.
+            <Card className="p-6 sm:p-8">
+              <div
+                className="max-w-none text-sm leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_h1]:font-display [&_h1]:text-xl [&_h2]:font-display [&_h2]:text-lg [&_h2]:mt-6 [&_h3]:font-semibold [&_h3]:mt-4 [&_li]:ml-4 [&_ol]:list-decimal [&_p]:mb-3 [&_ul]:list-disc"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            </Card>
+          )}
+        </>
+      ) : (
+        <Card className="p-6 text-center text-sm text-muted-foreground">{t("card.skillCardUnavailable")}</Card>
       )}
 
       {(!assignmentsLoading && assignments.length > 0) || (!reflectionLoading && reflection) ? (

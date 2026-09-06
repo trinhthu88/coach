@@ -34,6 +34,7 @@ interface TrainingWeekRow {
   pdf_storage_path: string | null;
   pdf_storage_path_vi: string | null;
   is_visible: boolean;
+  skill_card_visible: boolean;
   unlock_date: string | null;
 }
 
@@ -49,6 +50,7 @@ const emptyWeek = (programmeId: string, nextWeekNumber: number): Partial<Trainin
   skill_card_html_vi: "",
   video_url: "",
   is_visible: false,
+  skill_card_visible: true,
   unlock_date: null,
 });
 
@@ -190,6 +192,7 @@ export default function AdminTrainingContent() {
         pdf_storage_path: editing.pdf_storage_path || null,
         pdf_storage_path_vi: editing.pdf_storage_path_vi || null,
         is_visible: !!editing.is_visible,
+        skill_card_visible: editing.skill_card_visible ?? true,
         unlock_date: editing.unlock_date || null,
       };
       const { error } = await supabase.from("training_weeks").upsert(payload);
@@ -324,6 +327,16 @@ export default function AdminTrainingContent() {
                   </div>
                   <Switch checked={!!editing.is_visible} onCheckedChange={(v) => setEditing({ ...editing, is_visible: v })} />
                 </div>
+              </div>
+              <div className="flex items-end justify-between gap-2 rounded-md border p-2.5">
+                <div>
+                  <p className="text-sm font-medium">{t("admin.skillCardVisibleLabel")}</p>
+                  <p className="text-[10.5px] text-muted-foreground">{t("admin.skillCardVisibleHint")}</p>
+                </div>
+                <Switch
+                  checked={editing.skill_card_visible ?? true}
+                  onCheckedChange={(v) => setEditing({ ...editing, skill_card_visible: v })}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

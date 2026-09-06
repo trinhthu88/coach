@@ -84,9 +84,11 @@
         "week": "Tuần",
         "skillCard": "Skill card",
         "quiz": "Quiz",
+        "reflection": "Phản hồi",
         "triad": "Triad",
         "prompt": "Prompt hàng ngày"
-      }
+      },
+      "completionFunnel": "Tiến trình hoàn thành"
     },
     "redFlags": {
       "label": "Học viên đang tụt lại",
@@ -223,6 +225,7 @@
       "summary": {
         "skillCard": "Hoàn thành skill card",
         "quiz": "Hoàn thành quiz",
+        "reflection": "Hoàn thành phản hồi",
         "triad": "Hoàn thành triad",
         "prompt": "Tỷ lệ phản hồi prompt"
       },
@@ -233,6 +236,7 @@
         "label": "Tỷ lệ hoàn thành theo module",
         "training": "Đào tạo",
         "quiz": "Quiz",
+        "reflection": "Phản hồi",
         "triads": "Triads",
         "prompts": "Prompt hàng ngày"
       }

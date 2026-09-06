@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { addDays, format, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { trackEvent } from "@/lib/analytics";
 import { DEFAULT_SESSION_LIMIT } from "@/lib/constants";
 import { canSubmitBooking, isOverSessionLimit } from "./bookingEligibility";
 import { computeStartOptions } from "./bookingSlots";
@@ -266,6 +267,15 @@ export default function BookSession() {
     setSubmitting(true);
     const ds = dateKey(selectedDate);
     const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
+    const selectedHour = Number(selectedStart.split(":")[0]);
+    const timeBucket = selectedHour < 12 ? "morning" : selectedHour < 17 ? "afternoon" : "evening";
+
+    trackEvent("booking_initiated", {
+      mode,
+      duration_minutes: duration,
+      weekday: selectedDate.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase(),
+      time_bucket: timeBucket,
+    });
 
     let error;
     if (mode === "peer") {
@@ -312,6 +322,13 @@ export default function BookSession() {
         ? t("bookSession.toast.successPeer")
         : t("bookSession.toast.successCoaching")
     );
+    trackEvent("booking_completed", {
+      mode,
+      duration_minutes: duration,
+      weekday: selectedDate.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase(),
+      time_bucket: timeBucket,
+      status: "pending_coach_approval",
+    });
     navigate("/sessions");
   };
 

@@ -12,6 +12,7 @@ import authHero from "@/assets/auth-hero.jpg";
 import clarivaLogo from "@/assets/clariva-logo-dark.png";
 import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { trackEvent } from "@/lib/analytics";
 
 type SignupRole = "coachee" | "coach";
 
@@ -45,6 +46,10 @@ export default function Auth() {
           password: form.password,
         });
         if (error) throw error;
+        trackEvent("sign_in_completed", {
+          method: "password",
+          destination: isSameOriginRelativePath(next) ? new URL(next, window.location.origin).pathname : "/dashboard",
+        });
         toast({ title: t("toast.signInSuccess.title"), description: t("toast.signInSuccess.description") });
         navigate(isSameOriginRelativePath(next) ? next : "/dashboard", { replace: true });
       } else {
@@ -58,6 +63,11 @@ export default function Auth() {
           },
         });
         if (error) throw error;
+        trackEvent("sign_up_completed", {
+          method: "password",
+          role: signupRole,
+          destination: isSameOriginRelativePath(next) ? new URL(next, window.location.origin).pathname : "/dashboard",
+        });
         toast({
           title: t("toast.signUpSuccess.title"),
           description:

@@ -9,14 +9,16 @@
     "unlockDate": "Unlocks {{date}}",
     "completed": "Completed",
     "viewed": "Viewed",
-    "notStarted": "Not started"
+    "notStarted": "Not started",
+    "skillCardHidden": "Skill card not yet available for this week"
   },
   "card": {
     "back": "Back to training",
     "downloadPdf": "Download PDF",
     "markComplete": "Mark as completed",
     "completed": "Completed",
-    "notFound": "This isn't available — it may still be locked, or you may not have access."
+    "notFound": "This isn't available — it may still be locked, or you may not have access.",
+    "skillCardUnavailable": "The skill card for this week isn't available yet."
   },
   "dashboardCard": {
     "eyebrow": "This week",
@@ -100,6 +102,8 @@
     "videoUrlLabel": "Video embed URL (YouTube / Vimeo)",
     "visibleLabel": "Visible to enrolled users",
     "visibleHint": "Off keeps this week hidden even after its unlock date.",
+    "skillCardVisibleLabel": "Skill card visible",
+    "skillCardVisibleHint": "Hide the skill card content while keeping quiz, reflection, and prompts available.",
     "unlockDateLabel": "Unlock date",
     "unlockDateHint": "Leave blank to unlock immediately once visible.",
     "pdfLabel": "PDF (English)",
