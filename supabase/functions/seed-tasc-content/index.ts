@@ -1,14 +1,20 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 
-// Seeds the "TASC - Essential Course" programme content (4 weeks of skill
-// cards, quizzes, daily prompts, reflections, triad rounds) plus a full set
-// of session/feedback test data for trang.tt@hsp.consulting. Content-only —
-// does not create users. Every write upserts on a stable key so this
-// function can be invoked more than once safely.
+// Seeds the "TASC - Essential Course" programme content plus a full set of
+// session/feedback test data for trang.tt@hsp.consulting. Content-only —
+// does not create users.
+//
+// MERGE-AWARE: the target project may already have a "TASC - Essential
+// Course" programme (with placeholder content and real enrollments) from
+// before this function existed. Every container row (programme, cohort,
+// training weeks, quizzes, reflections, triad rounds) is resolved by its
+// natural key at runtime — reusing the existing id and overwriting
+// placeholder text with real content if a row already exists, creating a
+// fresh row only if it doesn't. Leaf/child content (daily prompts, quiz
+// questions, reflection questions) is deleted and reinserted per parent so
+// no placeholder rows linger alongside the real ones.
 
-const PROGRAMME_ID = "a0000000-0000-0000-0000-000000000001";
-const COHORT_ID = "a0000000-0000-0000-0000-000000000002";
 const TRANG_EMAIL = "trang.tt@hsp.consulting";
 
 const PROGRAMME = {
@@ -86,8 +92,6 @@ const COHORT = {
   "color": "#2c8fa8"
 };
 
-// Each week carries its own dailyPrompts[] and quiz{questions[]} — split
-// out per-table at upsert time below.
 const WEEKS = [
   {
     "id": "b0000000-0000-0000-0000-000000000001",
@@ -1051,7 +1055,6 @@ Deno.serve(async (req) => {
     { auth: { persistSession: false } }
   );
 
-  // caller must be an admin
   const token = req.headers.get("Authorization")?.replace("Bearer ", "") ?? "";
   const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const { data: userData } = isServiceRole ? { data: null } : await admin.auth.getUser(token);
@@ -1079,14 +1082,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ---- 1. Programme ----
+    // ---- 1. Programme (resolve by name; update in place if it already exists) ----
     const { data: programmeRow, error: programmeErr } = await admin
       .from("programmes")
       .upsert(PROGRAMME, { onConflict: "name" })
       .select("id")
       .single();
     if (programmeErr) throw programmeErr;
-    const programmeId: string = programmeRow?.id ?? PROGRAMME_ID;
+    const programmeId: string = programmeRow.id;
 
     // ---- 2. Programme modules ----
     for (const m of MODULES) {
@@ -1096,76 +1099,137 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
-    // ---- 3. Cohort ----
-    const { error: cohortErr } = await admin
+    // ---- 3. Cohort (resolve by name within this programme) ----
+    const { data: existingCohort } = await admin
       .from("cohorts")
-      .upsert({ ...COHORT, programme_id: programmeId }, { onConflict: "id" });
-    if (cohortErr) throw cohortErr;
+      .select("id")
+      .eq("programme_id", programmeId)
+      .eq("name", COHORT.name)
+      .maybeSingle();
+    let cohortId: string;
+    if (existingCohort) {
+      cohortId = existingCohort.id;
+      const { error } = await admin.from("cohorts").update({ ...COHORT, id: undefined, programme_id: programmeId }).eq("id", cohortId);
+      if (error) throw error;
+    } else {
+      const { data, error } = await admin.from("cohorts").insert({ ...COHORT, programme_id: programmeId }).select("id").single();
+      if (error) throw error;
+      cohortId = data.id;
+    }
 
     // ---- 4-6. Training weeks + daily prompts + quizzes ----
-    const trainingWeekIds: string[] = [];
+    const weekIds: string[] = [];
+    const quizIds: string[] = [];
     for (const w of WEEKS as any[]) {
-      const { dailyPrompts, quiz, ...weekRow } = w;
-      const { error: weekErr } = await admin
+      const { dailyPrompts, quiz, id: _weekFallbackId, ...weekRow } = w;
+      const { data: existingWeek } = await admin
         .from("training_weeks")
-        .upsert({ ...weekRow, programme_id: programmeId }, { onConflict: "id" });
-      if (weekErr) throw weekErr;
-      trainingWeekIds.push(w.id);
+        .select("id")
+        .eq("programme_id", programmeId)
+        .eq("week_number", w.week_number)
+        .maybeSingle();
+      let weekId: string;
+      if (existingWeek) {
+        weekId = existingWeek.id;
+        const { error } = await admin.from("training_weeks").update({ ...weekRow, programme_id: programmeId }).eq("id", weekId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await admin.from("training_weeks").insert({ ...weekRow, programme_id: programmeId }).select("id").single();
+        if (error) throw error;
+        weekId = data.id;
+      }
+      weekIds.push(weekId);
 
+      // Replace any existing daily prompts for this week with the real ones
+      { const { error } = await admin.from("daily_prompts").delete().eq("training_week_id", weekId); if (error) throw error; }
       for (const dp of dailyPrompts) {
         const { error } = await admin
           .from("daily_prompts")
-          .upsert(
-            { ...dp, id: promptId(w.week_number, dp.day_offset), training_week_id: w.id },
-            { onConflict: "id" },
-          );
+          .insert({ ...dp, id: promptId(w.week_number, dp.day_offset), training_week_id: weekId });
         if (error) throw error;
       }
 
-      const { questions, ...assignmentRow } = quiz;
-      const { error: quizErr } = await admin
+      // Quiz: resolve the existing quiz-type assignment for this week, if any
+      const { questions, id: _quizFallbackId, ...assignmentRow } = quiz;
+      const { data: existingQuiz } = await admin
         .from("assignments")
-        .upsert(
-          { ...assignmentRow, training_week_id: w.id, assignment_type: "quiz" },
-          { onConflict: "id" },
-        );
-      if (quizErr) throw quizErr;
-
+        .select("id")
+        .eq("training_week_id", weekId)
+        .eq("assignment_type", "quiz")
+        .maybeSingle();
+      let quizId: string;
+      if (existingQuiz) {
+        quizId = existingQuiz.id;
+        const { error } = await admin.from("assignments").update({ ...assignmentRow, training_week_id: weekId, assignment_type: "quiz" }).eq("id", quizId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await admin.from("assignments").insert({ ...assignmentRow, training_week_id: weekId, assignment_type: "quiz" }).select("id").single();
+        if (error) throw error;
+        quizId = data.id;
+      }
+      quizIds.push(quizId);
+      { const { error } = await admin.from("quiz_questions").delete().eq("assignment_id", quizId); if (error) throw error; }
       for (const q of questions) {
-        const { error } = await admin
-          .from("quiz_questions")
-          .upsert({ ...q, assignment_id: quiz.id }, { onConflict: "id" });
+        const { error } = await admin.from("quiz_questions").insert({ ...q, assignment_id: quizId });
         if (error) throw error;
       }
     }
 
     // ---- 7. Programme reflections + reflection questions ----
+    const reflectionIds: string[] = [];
     for (const r of REFLECTIONS as any[]) {
-      const { questions, ...reflectionRow } = r;
-      const { error: reflErr } = await admin
+      const { questions, id: _reflFallbackId, ...reflectionRow } = r;
+      const { data: existingRefl } = await admin
         .from("programme_reflections")
-        .upsert({ ...reflectionRow, programme_id: programmeId }, { onConflict: "id" });
-      if (reflErr) throw reflErr;
+        .select("id")
+        .eq("programme_id", programmeId)
+        .eq("reflection_number", r.reflection_number)
+        .maybeSingle();
+      let reflectionId: string;
+      if (existingRefl) {
+        reflectionId = existingRefl.id;
+        const { error } = await admin.from("programme_reflections").update({ ...reflectionRow, programme_id: programmeId }).eq("id", reflectionId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await admin.from("programme_reflections").insert({ ...reflectionRow, programme_id: programmeId }).select("id").single();
+        if (error) throw error;
+        reflectionId = data.id;
+      }
+      reflectionIds.push(reflectionId);
+      { const { error } = await admin.from("reflection_questions").delete().eq("reflection_id", reflectionId); if (error) throw error; }
       for (const q of questions) {
-        const { error } = await admin
-          .from("reflection_questions")
-          .upsert({ ...q, reflection_id: r.id }, { onConflict: "id" });
+        const { error } = await admin.from("reflection_questions").insert({ ...q, reflection_id: reflectionId });
         if (error) throw error;
       }
     }
 
     // ---- 8. Triad rounds ----
+    const roundIds: string[] = [];
     for (const tr of TRIAD_ROUNDS as any[]) {
-      const { error } = await admin
+      const { id: _roundFallbackId, ...roundRow } = tr;
+      const weekIdx = WEEKS.findIndex((w: any) => w.id === tr.training_week_id);
+      const trainingWeekId = weekIdx >= 0 ? weekIds[weekIdx] : null;
+      const { data: existingRound } = await admin
         .from("triad_rounds")
-        .upsert({ ...tr, programme_id: programmeId }, { onConflict: "id" });
-      if (error) throw error;
+        .select("id")
+        .eq("programme_id", programmeId)
+        .eq("round_number", tr.round_number)
+        .maybeSingle();
+      let roundId: string;
+      if (existingRound) {
+        roundId = existingRound.id;
+        const { error } = await admin.from("triad_rounds").update({ ...roundRow, programme_id: programmeId, training_week_id: trainingWeekId }).eq("id", roundId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await admin.from("triad_rounds").insert({ ...roundRow, programme_id: programmeId, training_week_id: trainingWeekId }).select("id").single();
+        if (error) throw error;
+        roundId = data.id;
+      }
+      roundIds.push(roundId);
     }
 
     // ============================================================
     // Session / feedback test data for trang.tt@hsp.consulting.
-    // Resolves user ids by email/role at runtime since they are dynamic.
-    // Skips gracefully if the user or no coaches exist.
     // ============================================================
     let trangSeed: Record<string, unknown> = { skipped: true, reason: "not attempted" };
 
@@ -1180,17 +1244,20 @@ Deno.serve(async (req) => {
     } else {
       const trangId: string = trangProfile.id;
 
+      // Excludes Trang herself: she may carry a 'coach' role on the target
+      // project, so without this exclusion she could be picked as her own coach.
       const { data: coachRows } = await admin
         .from("user_roles")
-        .select("user_id, profiles!inner(id, email, full_name)")
+        .select("user_id")
         .eq("role", "coach")
+        .neq("user_id", trangId)
         .limit(3);
       const coach1Id: string | undefined = coachRows?.[0]?.user_id;
-      const coach2Id: string = coachRows?.[1]?.user_id ?? coach1Id;
+      const coach2Id: string = coachRows?.[1]?.user_id ?? coach1Id!;
 
       const { data: coacheeRows } = await admin
         .from("user_roles")
-        .select("user_id, profiles!inner(id, email, full_name)")
+        .select("user_id")
         .eq("role", "coachee")
         .neq("user_id", trangId)
         .limit(3);
@@ -1198,909 +1265,916 @@ Deno.serve(async (req) => {
       const peer2Id: string = coacheeRows?.[1]?.user_id ?? peer1Id!;
 
       if (!coach1Id) {
-        trangSeed = { skipped: true, reason: "No coach found" };
+        trangSeed = { skipped: true, reason: "No coach found (other than Trang herself)" };
       } else {
-        // 9. Programme enrollment
-        { const { error } = await admin.from("programme_enrollments").upsert(
-        {
-          "id": "b4d29f11-14f9-4ea3-bc79-8511225ef07d",
-          "user_id": trangId,
-          "coachee_id": trangId,
-          "programme_id": "a0000000-0000-0000-0000-000000000001",
-          "cohort_id": "a0000000-0000-0000-0000-000000000002",
-          "status": "active",
-          "start_date": "2026-09-08",
-          "end_date": "2026-10-06",
-          "progress_pct": 55,
-          "notes": "Pilot participant — joined from day 1"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
+    // 9. Programme enrollment (update in place if she's already enrolled)
+    const { data: existingEnrollment } = await admin.from("programme_enrollments").select("id").eq("user_id", trangId).eq("programme_id", programmeId).maybeSingle();
+    if (existingEnrollment) {
+      const { error } = await admin.from("programme_enrollments").update({
+        cohort_id: cohortId,
+        status: "active",
+        start_date: "2026-09-08",
+        end_date: "2026-10-06",
+        progress_pct: 55,
+        notes: "Pilot participant — joined from day 1",
+      }).eq("id", existingEnrollment.id);
+      if (error) throw error;
+    } else {
+      const { error } = await admin.from("programme_enrollments").insert({
+        user_id: trangId, coachee_id: trangId, programme_id: programmeId, cohort_id: cohortId,
+        status: "active", start_date: "2026-09-08",
+        end_date: "2026-10-06", progress_pct: 55, notes: "Pilot participant — joined from day 1",
+      });
+      if (error) throw error;
+    }
 
-        // 10. Coachee goals, ratings, milestones
-        { const { error } = await admin.from("coachee_goals").upsert(
-        {
-          "id": "d0000000-0000-0000-0000-000000000001",
-          "coachee_id": trangId,
-          "title": "Ask powerful questions instead of giving advice",
-          "description": "Break the habit of jumping to solutions in conversations. Practice open-ended questions that help others find their own answers.",
-          "status": "active",
-          "sort_order": 1,
-          "shared_with_sponsor": true,
-          "target_date": "2026-10-06"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("coachee_goal_ratings").upsert(
-        {
-          "goal_id": "d0000000-0000-0000-0000-000000000001",
-          "coachee_id": trangId,
-          "start_rating": 3,
-          "current_rating": 6,
-          "target_rating": 8
-        }
-        , { onConflict: "goal_id" }); if (error) throw error; }
-        { const { error } = await admin.from("coachee_milestones").upsert(
-        {
-          "id": "e1f2af60-c98a-4e2c-8394-11a740e74fb2",
-          "goal_id": "d0000000-0000-0000-0000-000000000001",
-          "coachee_id": trangId,
-          "title": "Complete one full conversation using only questions",
-          "sort_order": 1,
-          "is_done": true,
-          "done_at": "2026-09-12T10:00:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("coachee_milestones").upsert(
-        {
-          "id": "f12c5af2-8688-4906-a4d5-4c493a42d99a",
-          "goal_id": "d0000000-0000-0000-0000-000000000001",
-          "coachee_id": trangId,
-          "title": "Get feedback from peer on questioning quality",
-          "sort_order": 2,
-          "is_done": true,
-          "done_at": "2026-09-19T14:00:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("coachee_milestones").upsert(
-        {
-          "id": "ba80fbdc-747d-48ef-b47c-fade5751f93d",
-          "goal_id": "d0000000-0000-0000-0000-000000000001",
-          "coachee_id": trangId,
-          "title": "Apply powerful questions in a real work meeting",
-          "sort_order": 3,
-          "is_done": false,
-          "done_at": null
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("coachee_goals").upsert(
-        {
-          "id": "d0000000-0000-0000-0000-000000000002",
-          "coachee_id": trangId,
-          "title": "Structure conversations using the SHIFT model",
-          "description": "Be able to guide a complete 30-minute coaching conversation through all five SHIFT stages without losing the client or rushing to action.",
-          "status": "active",
-          "sort_order": 2,
-          "shared_with_sponsor": true,
-          "target_date": "2026-10-06"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("coachee_goal_ratings").upsert(
-        {
-          "goal_id": "d0000000-0000-0000-0000-000000000002",
-          "coachee_id": trangId,
-          "start_rating": 2,
-          "current_rating": 5,
-          "target_rating": 8
-        }
-        , { onConflict: "goal_id" }); if (error) throw error; }
-        { const { error } = await admin.from("coachee_goals").upsert(
-        {
-          "id": "d0000000-0000-0000-0000-000000000003",
-          "coachee_id": trangId,
-          "title": "Hold silence without filling it",
-          "description": "Develop comfort with 5-10 seconds of silence after asking a question, giving the client space to think deeply.",
-          "status": "active",
-          "sort_order": 3,
-          "shared_with_sponsor": false,
-          "target_date": "2026-10-06"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("coachee_goal_ratings").upsert(
-        {
-          "goal_id": "d0000000-0000-0000-0000-000000000003",
-          "coachee_id": trangId,
-          "start_rating": 2,
-          "current_rating": 4,
-          "target_rating": 7
-        }
-        , { onConflict: "goal_id" }); if (error) throw error; }
+      // 10. Coachee goals, ratings, milestones (added alongside any pre-existing goals)
+      { const { error } = await admin.from("coachee_goals").upsert(
+      {
+        "id": "d0000000-0000-0000-0000-000000000001",
+        "coachee_id": trangId,
+        "title": "Ask powerful questions instead of giving advice",
+        "description": "Break the habit of jumping to solutions in conversations. Practice open-ended questions that help others find their own answers.",
+        "status": "active",
+        "sort_order": 1,
+        "shared_with_sponsor": true,
+        "target_date": "2026-10-06"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("coachee_goal_ratings").upsert(
+      {
+        "goal_id": "d0000000-0000-0000-0000-000000000001",
+        "coachee_id": trangId,
+        "start_rating": 3,
+        "current_rating": 6,
+        "target_rating": 8
+      }
+      , { onConflict: "goal_id" }); if (error) throw error; }
+      { const { error } = await admin.from("coachee_milestones").upsert(
+      {
+        "id": "f2d20658-102f-4bf5-b24d-dda1de9b7e30",
+        "goal_id": "d0000000-0000-0000-0000-000000000001",
+        "coachee_id": trangId,
+        "title": "Complete one full conversation using only questions",
+        "sort_order": 1,
+        "is_done": true,
+        "done_at": "2026-09-12T10:00:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("coachee_milestones").upsert(
+      {
+        "id": "6d184b7b-3f8f-4a22-b181-75f49f5622b3",
+        "goal_id": "d0000000-0000-0000-0000-000000000001",
+        "coachee_id": trangId,
+        "title": "Get feedback from peer on questioning quality",
+        "sort_order": 2,
+        "is_done": true,
+        "done_at": "2026-09-19T14:00:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("coachee_milestones").upsert(
+      {
+        "id": "35072318-c0e3-4c55-8270-3f69015e3049",
+        "goal_id": "d0000000-0000-0000-0000-000000000001",
+        "coachee_id": trangId,
+        "title": "Apply powerful questions in a real work meeting",
+        "sort_order": 3,
+        "is_done": false,
+        "done_at": null
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("coachee_goals").upsert(
+      {
+        "id": "d0000000-0000-0000-0000-000000000002",
+        "coachee_id": trangId,
+        "title": "Structure conversations using the SHIFT model",
+        "description": "Be able to guide a complete 30-minute coaching conversation through all five SHIFT stages without losing the client or rushing to action.",
+        "status": "active",
+        "sort_order": 2,
+        "shared_with_sponsor": true,
+        "target_date": "2026-10-06"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("coachee_goal_ratings").upsert(
+      {
+        "goal_id": "d0000000-0000-0000-0000-000000000002",
+        "coachee_id": trangId,
+        "start_rating": 2,
+        "current_rating": 5,
+        "target_rating": 8
+      }
+      , { onConflict: "goal_id" }); if (error) throw error; }
+      { const { error } = await admin.from("coachee_goals").upsert(
+      {
+        "id": "d0000000-0000-0000-0000-000000000003",
+        "coachee_id": trangId,
+        "title": "Hold silence without filling it",
+        "description": "Develop comfort with 5-10 seconds of silence after asking a question, giving the client space to think deeply.",
+        "status": "active",
+        "sort_order": 3,
+        "shared_with_sponsor": false,
+        "target_date": "2026-10-06"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("coachee_goal_ratings").upsert(
+      {
+        "goal_id": "d0000000-0000-0000-0000-000000000003",
+        "coachee_id": trangId,
+        "start_rating": 2,
+        "current_rating": 4,
+        "target_rating": 7
+      }
+      , { onConflict: "goal_id" }); if (error) throw error; }
 
-        // 11. Coaching sessions with coach1
-        { const { error } = await admin.from("sessions").upsert(
-        {
-          "id": "e0000000-0000-0000-0000-000000000001",
-          "coach_id": coach1Id,
-          "coachee_id": trangId,
-          "topic": "Understanding my coaching mindset — where I default to advice-giving",
-          "start_time": "2026-09-10T09:00:00+07:00",
-          "duration_minutes": 60,
-          "status": "completed",
-          "confirmed_at": "2026-09-09T10:00:00Z",
-          "meeting_url": "https://zoom.us/j/1234567890",
-          "coach_notes": "Trang showed strong self-awareness about her advice-giving tendency. We explored the gap between knowing she should ask questions and actually doing it under pressure. She identified that her trigger is when someone looks stressed — she instinctively wants to \"fix\" the situation. We agreed she would practice noticing the trigger without acting on it for one week. Good energy, very coachable.",
-          "coachee_notes": "I realised that my urge to give advice comes from wanting to help quickly, but it actually takes away the other person's chance to find their own solution. The question \"What would you do if you trusted yourself to figure this out?\" really landed for me. I want to use it more.",
-          "action_items": [
-            {
-              "text": "Notice the advice-giving trigger 3 times this week without acting on it",
-              "done": true
-            },
-            {
-              "text": "Write down one powerful question after each team meeting",
-              "done": true
-            },
-            {
-              "text": "Re-read Erickson Principle 2: People already have all the resources they need",
-              "done": false
-            }
-          ],
-          "coachee_rating": 5,
-          "coachee_rated_at": "2026-09-10T10:30:00Z",
-          "coachee_rating_comment": "Very helpful first session. My coach helped me see a pattern I was blind to. Looking forward to the next one."
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("session_goal_ratings").upsert(
-        {
-          "session_id": "e0000000-0000-0000-0000-000000000001",
-          "goal_id": "d0000000-0000-0000-0000-000000000001",
-          "coachee_id": trangId,
-          "rating": 4,
-          "note": "Starting to notice the pattern, not yet changing it"
-        }
-        , { onConflict: "session_id,goal_id" }); if (error) throw error; }
-        { const { error } = await admin.from("session_goal_ratings").upsert(
-        {
-          "session_id": "e0000000-0000-0000-0000-000000000001",
-          "goal_id": "d0000000-0000-0000-0000-000000000002",
-          "coachee_id": trangId,
-          "rating": 3,
-          "note": "Just introduced to SHIFT, haven't practiced yet"
-        }
-        , { onConflict: "session_id,goal_id" }); if (error) throw error; }
-        { const { error } = await admin.from("session_goal_ratings").upsert(
-        {
-          "session_id": "e0000000-0000-0000-0000-000000000001",
-          "goal_id": "d0000000-0000-0000-0000-000000000003",
-          "coachee_id": trangId,
-          "rating": 2,
-          "note": "Silence still feels very uncomfortable"
-        }
-        , { onConflict: "session_id,goal_id" }); if (error) throw error; }
-        { const { error } = await admin.from("coach_session_private_notes").upsert(
-        {
-          "session_id": "e0000000-0000-0000-0000-000000000001",
-          "coach_id": coach1Id,
-          "body": "Strong participant. Emotional intelligence is high — she just needs permission to slow down. Watch for perfectionism as a blocker later in the programme. Consider introducing the \"scaling question\" technique next session."
-        }
-        , { onConflict: "session_id" }); if (error) throw error; }
-        { const { error } = await admin.from("session_messages").upsert(
-        {
-          "id": "5c732912-5429-4f61-a45a-38b04648d221",
-          "session_id": "e0000000-0000-0000-0000-000000000001",
-          "sender_id": trangId,
-          "body": "Hi! Looking forward to our first session. I've been reading the Week 1 skill card and Erickson's 5 principles really resonated with me, especially \"People already have all the resources they need.\" I'd like to explore why I still default to giving advice even when I believe this.",
-          "created_at": "2026-09-09T14:00:00Z",
-          "read_at": null
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("session_messages").upsert(
-        {
-          "id": "56aeaa1d-d19f-44b8-b7ca-1342d74427a5",
-          "session_id": "e0000000-0000-0000-0000-000000000001",
-          "sender_id": coach1Id,
-          "body": "Great topic to start with, Trang. That gap between belief and behaviour is exactly the space coaching works in. Come ready to think about a specific recent example where you noticed yourself advising instead of asking. See you tomorrow!",
-          "created_at": "2026-09-09T15:30:00Z",
-          "read_at": "2026-09-09T16:00:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("sessions").upsert(
-        {
-          "id": "e0000000-0000-0000-0000-000000000002",
-          "coach_id": coach1Id,
-          "coachee_id": trangId,
-          "topic": "Practicing the SHIFT model — where I get stuck between H and I",
-          "start_time": "2026-09-24T09:00:00+07:00",
-          "duration_minutes": 60,
-          "status": "completed",
-          "confirmed_at": "2026-09-23T08:00:00Z",
-          "meeting_url": "https://zoom.us/j/1234567891",
-          "coach_notes": "Clear progress since session 1. Trang's awareness of the advice trigger has improved noticeably — she caught herself twice during our conversation and self-corrected. Main challenge today: she can hold the \"H\" (hear current situation) stage well, but jumps to \"T\" (take action) without fully exploring \"I\" (desired outcome). We did a live practice where I coached her through a real scenario and she mapped it to SHIFT afterward. She saw the gap clearly. Homework: practice \"I\" stage with her triad group.",
-          "coachee_notes": "I can see that I skip over asking people what they actually want and go straight to \"so what will you do about it?\" My coach showed me how spending more time on the vision (I stage) actually makes the action step clearer and more motivating. The question \"What will be different when this is working?\" is now my favourite tool.",
-          "action_items": [
-            {
-              "text": "In triad practice this week, specifically focus on spending 10 minutes in the I stage",
-              "done": false
-            },
-            {
-              "text": "Ask three colleagues: What does success look like for you on this project?",
-              "done": true
-            },
-            {
-              "text": "Journal: What am I noticing about my own growth as a coach?",
-              "done": false
-            }
-          ],
-          "coachee_rating": 5,
-          "coachee_rated_at": "2026-09-24T10:15:00Z",
-          "coachee_rating_comment": "I can feel my coaching improving. The SHIFT model practice was exactly what I needed. My coach is patient and precise."
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("session_goal_ratings").upsert(
-        {
-          "session_id": "e0000000-0000-0000-0000-000000000002",
-          "goal_id": "d0000000-0000-0000-0000-000000000001",
-          "coachee_id": trangId,
-          "rating": 6,
-          "note": "Caught myself twice and chose to ask a question instead"
-        }
-        , { onConflict: "session_id,goal_id" }); if (error) throw error; }
-        { const { error } = await admin.from("session_goal_ratings").upsert(
-        {
-          "session_id": "e0000000-0000-0000-0000-000000000002",
-          "goal_id": "d0000000-0000-0000-0000-000000000002",
-          "coachee_id": trangId,
-          "rating": 5,
-          "note": "Can do S-H-I but still rushing to T"
-        }
-        , { onConflict: "session_id,goal_id" }); if (error) throw error; }
-        { const { error } = await admin.from("session_goal_ratings").upsert(
-        {
-          "session_id": "e0000000-0000-0000-0000-000000000002",
-          "goal_id": "d0000000-0000-0000-0000-000000000003",
-          "coachee_id": trangId,
-          "rating": 4,
-          "note": "Managed 5 seconds of silence in practice — it felt like a minute"
-        }
-        , { onConflict: "session_id,goal_id" }); if (error) throw error; }
-        { const { error } = await admin.from("coach_session_private_notes").upsert(
-        {
-          "session_id": "e0000000-0000-0000-0000-000000000002",
-          "coach_id": coach1Id,
-          "body": "She is ready for a real coaching practicum now. Her self-correction speed has improved dramatically. Consider suggesting she volunteer to coach first in the triad session — she will learn more from doing than watching at this stage."
-        }
-        , { onConflict: "session_id" }); if (error) throw error; }
-
-        // Coach client notes
-        { const { error } = await admin.from("coach_client_notes").upsert(
-        {
-          "id": "627a6b96-7feb-4f7a-835b-ebbdab70533e",
-          "coach_id": coach1Id,
-          "coachee_id": trangId,
-          "body": "Trang is highly motivated and self-aware. Main development edges: (1) trusting silence, (2) staying in the \"I\" stage of SHIFT longer before jumping to action. She responds very well to experiential learning — practice > theory for her. Trigger pattern: advice-giving activates when she sees someone in distress. Possible root: strong caretaker identity. Not therapeutic territory — keep coaching-focused on the behaviour, not the identity."
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-
-        // 12. Peer coaching session (Trang as peer-coachee)
-        { const { error } = await admin.from("peer_sessions").upsert(
-        {
-          "id": "e0000000-0000-0000-0000-000000000010",
-          "peer_coach_id": coach2Id,
-          "peer_coachee_id": trangId,
-          "topic": "Peer practice: Coaching Trang through a real workplace challenge using open questions only",
-          "start_time": "2026-09-17T14:00:00+07:00",
-          "duration_minutes": 45,
-          "status": "completed",
-          "confirmed_at": "2026-09-16T10:00:00Z",
-          "meeting_url": "https://zoom.us/j/9876543210",
-          "coach_notes": "Practiced staying in Level 2 listening throughout. I noticed that when Trang talked about her team lead frustration, I almost gave advice three times but caught myself. The question \"What would your ideal outcome look like?\" opened up the conversation significantly. Need to work on my pacing — I asked follow-up questions too quickly without giving space.",
-          "coachee_notes": "My peer coach asked really good open questions. The one that unlocked things for me was \"If you could redesign this relationship from scratch, what would it look like?\" I hadn't thought about it that way before. Feedback: sometimes the questions came very quickly one after another — a bit more silence would have helped me think.",
-          "action_items": [
-            {
-              "text": "Try the redesign question with my own team member",
-              "done": true
-            },
-            {
-              "text": "Give peer coach written feedback on their questioning technique",
-              "done": true
-            }
-          ],
-          "coachee_rating": 4,
-          "coachee_rated_at": "2026-09-17T15:00:00Z",
-          "coachee_rating_comment": "Good session — I felt genuinely heard. Would benefit from more pauses between questions."
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("peer_session_competency_feedback").upsert(
-        {
-          "id": "5e4bd251-825f-4968-b45c-2ee4d0b6d50d",
-          "peer_session_id": "e0000000-0000-0000-0000-000000000010",
-          "peer_coach_id": coach2Id,
-          "peer_coachee_id": trangId,
-          "ethical_practice": 8,
-          "coaching_mindset": 7,
-          "maintains_agreements": 8,
-          "trust_safety": 9,
-          "maintains_presence": 6,
-          "listens_actively": 7,
-          "evokes_awareness": 8,
-          "facilitates_growth": 7,
-          "feedback_note": "Strong on creating trust and safety — I felt comfortable sharing real challenges. The area for growth is maintaining presence: sometimes the next question came before I finished processing the last one. Overall, a very supportive and growth-oriented session."
-        }
-        , { onConflict: "peer_session_id" }); if (error) throw error; }
-        { const { error } = await admin.from("peer_coach_session_private_notes").upsert(
-        {
-          "peer_session_id": "e0000000-0000-0000-0000-000000000010",
-          "peer_coach_id": coach2Id,
-          "body": "Trang is an excellent practice partner — brings real topics. My main learning: I need to count to 5 after asking a question before speaking again. She gave me feedback about pacing which matches what my mentor told me last week. Pattern confirmed — this is my #1 development area."
-        }
-        , { onConflict: "peer_session_id" }); if (error) throw error; }
-
-        // 13. Mentoring session + feedback
-        { const { error } = await admin.from("mentoring_sessions").upsert(
-        {
-          "id": "e0000000-0000-0000-0000-000000000020",
-          "mentor_id": coach1Id,
-          "mentee_id": trangId,
-          "topic": "Mentoring: Developing my coaching presence and working with silence",
-          "start_time": "2026-09-19T10:00:00+07:00",
-          "duration_minutes": 60,
-          "status": "completed",
-          "confirmed_at": "2026-09-18T09:00:00Z",
-          "meeting_url": "https://zoom.us/j/5555555555",
-          "mentor_notes": "Trang is progressing well. Today we focused specifically on her discomfort with silence. I demonstrated a coaching conversation where I deliberately used 8-10 second pauses. She observed that the client (me role-playing) actually produced deeper insights after the longer pauses. She then practiced: her first pause was 3 seconds, her last was 7 seconds. Significant growth in one session. Recommended: practice the \"pregnant pause\" technique in her triad group.",
-          "mentee_notes": "My mentor showed me that silence is not awkward — it is generous. When they paused for almost 10 seconds after my answer, I found myself going deeper without being prompted. I want to master this. The key insight: silence is a coaching tool, not a gap to fill.",
-          "action_items": [
-            {
-              "text": "Practice 7-second pauses in triad session this week",
-              "done": false
-            },
-            {
-              "text": "Record a practice session and count my average pause length",
-              "done": false
-            },
-            {
-              "text": "Read the ICF competency on Maintains Presence",
-              "done": true
-            }
-          ],
-          "prep_file_path": "mentoring-prep/trang-session-1-prep.pdf",
-          "prep_file_notes": "I want to focus on: (1) why silence feels uncomfortable for me, (2) how to use silence as a tool not just endure it, (3) how my mentor handles silence in their own coaching practice.",
-          "prep_file_submitted_at": "2026-09-18T14:00:00Z",
-          "feedback_submitted_at": "2026-09-19T11:30:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("mentoring_feedback").upsert(
-        {
-          "id": "2f135bdb-eac7-4d8f-a13a-138ab6c44bb1",
-          "mentoring_session_id": "e0000000-0000-0000-0000-000000000020",
-          "mentor_id": coach1Id,
-          "mentee_id": trangId,
-          "submitted_at": "2026-09-19T11:30:00Z",
-          "ethical_practice": "Strong — Trang is clear about boundaries between coaching, advising, and therapy. No concerns.",
-          "coaching_mindset": "Excellent progress. She genuinely believes in client resourcefulness and is actively working to let go of the \"fixer\" identity. This is her biggest growth edge and she is leaning into it.",
-          "maintains_agreements": "Good — she sets clear session topics. Area to develop: explicitly re-contracting mid-session when the topic shifts, rather than just following the energy.",
-          "trust_safety": "Natural strength. Clients and peers report feeling very safe with her. Warm, non-judgmental presence.",
-          "maintains_presence": "This is where the main work is. She is aware of her discomfort with silence and actively working on it. Progress: from 2-3 second pauses to 5-7 seconds in today's session. Recommend continued deliberate practice.",
-          "listens_actively": "Good Level 2 listening. Starting to pick up on what is NOT said, which is Level 3 territory. Encourage her to trust these intuitions and name them: \"I notice you didn't mention X — is that significant?\"",
-          "evokes_awareness": "Strong questioning instincts. Her questions are becoming shorter and more powerful. Favourite today: \"What would you do if you already knew the answer?\" Beautiful.",
-          "facilitates_growth": "Trang consistently moves sessions toward action. Her growth area is spending more time in the visioning/desired-outcome space before jumping to commitment. This maps directly to the SHIFT model I-to-T transition she is working on in her coaching sessions.",
-          "overall_notes": "Trang is one of the strongest participants in this cohort. Her self-awareness and willingness to be uncomfortable are exceptional. If she continues at this pace, she will be ready for ACC-level practice within 3 months. Recommend: (1) increase practice hours, (2) seek more diverse practice clients, (3) consider applying for ICF ACC credential by Q1 2027.",
-          "submitted_by": coach1Id
-        }
-        , { onConflict: "mentoring_session_id" }); if (error) throw error; }
-
-        // 14. Triad group, session, reflections (requires 2 other coachees)
-        if (peer1Id && peer2Id && peer1Id !== peer2Id) {
-          { const { error } = await admin.from("triad_groups").upsert(
+      // 11. Coaching sessions with coach1
+      { const { error } = await admin.from("sessions").upsert(
+      {
+        "id": "e0000000-0000-0000-0000-000000000001",
+        "coach_id": coach1Id,
+        "coachee_id": trangId,
+        "topic": "Understanding my coaching mindset — where I default to advice-giving",
+        "start_time": "2026-09-10T09:00:00+07:00",
+        "duration_minutes": 60,
+        "status": "completed",
+        "confirmed_at": "2026-09-09T10:00:00Z",
+        "meeting_url": "https://zoom.us/j/1234567890",
+        "coach_notes": "Trang showed strong self-awareness about her advice-giving tendency. We explored the gap between knowing she should ask questions and actually doing it under pressure. She identified that her trigger is when someone looks stressed — she instinctively wants to \"fix\" the situation. We agreed she would practice noticing the trigger without acting on it for one week. Good energy, very coachable.",
+        "coachee_notes": "I realised that my urge to give advice comes from wanting to help quickly, but it actually takes away the other person's chance to find their own solution. The question \"What would you do if you trusted yourself to figure this out?\" really landed for me. I want to use it more.",
+        "action_items": [
           {
-            "id": "f0000000-0000-0000-0000-000000000001",
-            "programme_id": "a0000000-0000-0000-0000-000000000001",
-            "triad_round_id": "c6000000-0000-0000-0000-000000000001",
-            "member_1_id": trangId,
-            "member_2_id": peer1Id,
-            "member_3_id": peer2Id,
-            "name": "Triad Alpha",
-            "is_active": true,
-            "assigned_by": "admin",
-            "group_language": "vi"
-          }
-          , { onConflict: "id" }); if (error) throw error; }
-          { const { error } = await admin.from("triad_sessions").upsert(
-          {
-            "id": "e0000000-0000-0000-0000-000000000030",
-            "triad_group_id": "f0000000-0000-0000-0000-000000000001",
-            "proposed_start_time": "2026-09-20T15:00:00+07:00",
-            "proposed_end_time": "2026-09-20T16:30:00+07:00",
-            "proposed_by": trangId,
-            "status": "completed",
-            "meeting_url": "https://zoom.us/j/7777777777",
-            "notes": "Round 1 practice session. Trang coached, Peer1 was coachee, Peer2 observed. Topic: Peer1's challenge with delegating to a new team member. 25-minute coaching conversation followed by 15 minutes of observer feedback and group debrief.",
-            "member_1_response": "accepted",
-            "member_2_response": "accepted",
-            "member_3_response": "accepted"
-          }
-          , { onConflict: "id" }); if (error) throw error; }
-          { const { error } = await admin.from("triad_reflections").upsert(
-          {
-            "id": "55b503e7-421d-4b50-9e26-4ffccc04b0c2",
-            "triad_session_id": "e0000000-0000-0000-0000-000000000030",
-            "participant_id": trangId,
-            "learned_as_coach": "I learned that I can actually hold a 25-minute coaching conversation using SHIFT without running out of things to ask. My biggest learning: when I trusted the silence after asking \"What does successful delegation look like for you?\", my coachee gave a much deeper answer than I expected. I also noticed I skipped the S stage — next time I need to explicitly contract the session at the start.",
-            "will_use_as_coach": "I will explicitly set the foundation (S stage) by asking \"What would make this conversation valuable for you?\" at the very start of every practice session from now on. I will also aim for at least 5-second pauses after every question.",
-            "learned_as_coachee": null,
-            "will_use_as_coachee": null,
-            "learned_as_observer": null,
-            "will_use_as_observer": null,
-            "satisfaction_rating": 5,
-            "submitted_at": "2026-09-20T17:00:00Z"
-          }
-          , { onConflict: "triad_session_id,participant_id" }); if (error) throw error; }
-          { const { error } = await admin.from("triad_reflections").upsert(
-          {
-            "id": "523aa335-e024-49ad-93a5-a3dbc9e2d203",
-            "triad_session_id": "e0000000-0000-0000-0000-000000000030",
-            "participant_id": peer1Id,
-            "learned_as_coach": null,
-            "will_use_as_coach": null,
-            "learned_as_coachee": "Being coached by a peer feels different from being coached by our professional coach — in a good way. Trang asked me \"If you trusted this person to figure it out, what would you do differently?\" and I realised I was micromanaging because I didn't trust my new team member yet. That was a breakthrough. The silence after some questions felt long but productive.",
-            "will_use_as_coachee": "I am going to have an honest conversation with my new team member about what \"good enough\" looks like for their first deliverables, instead of reviewing every detail.",
-            "learned_as_observer": null,
-            "will_use_as_observer": null,
-            "satisfaction_rating": 5,
-            "submitted_at": "2026-09-20T17:15:00Z"
-          }
-          , { onConflict: "triad_session_id,participant_id" }); if (error) throw error; }
-          { const { error } = await admin.from("triad_reflections").upsert(
-          {
-            "id": "347d0c7a-1f98-460f-9276-f06d23c8ae9c",
-            "triad_session_id": "e0000000-0000-0000-0000-000000000030",
-            "participant_id": peer2Id,
-            "learned_as_coach": null,
-            "will_use_as_coach": null,
-            "learned_as_coachee": null,
-            "will_use_as_coachee": null,
-            "learned_as_observer": "Watching from the outside, I could clearly see the SHIFT stages unfolding. Trang spent about 5 minutes in H (hearing the situation), then moved to I (identifying desired outcome) with the question about what delegation success looks like. I noticed she jumped over F (finding resources) and went straight to T (action). When I pointed this out in the debrief, she agreed and said she would work on that. As observer, I also noticed that the moments of silence produced the richest client responses — something I want to remember for my own coaching practice.",
-            "will_use_as_observer": "In my next observation, I want to explicitly track time spent in each SHIFT stage and share that data with the coach as quantitative feedback.",
-            "satisfaction_rating": 4,
-            "submitted_at": "2026-09-20T17:30:00Z"
-          }
-          , { onConflict: "triad_session_id,participant_id" }); if (error) throw error; }
-        } else {
-          console.log("Fewer than 2 other coachees found — skipping triad group/session/reflections seed");
-        }
-
-        // 15. Coachee journal reflections
-        { const { error } = await admin.from("coachee_reflections").upsert(
-        {
-          "id": "2cd76d4a-ce9c-4345-ba0c-c20b6e3d7957",
-          "coachee_id": trangId,
-          "body": "Week 1 reflection: I came into this programme thinking coaching was about asking better questions. Now I realise it starts before the questions — with believing that the person in front of me already has what they need. That shift in belief changes everything about how I show up in conversations. I noticed today that when I stopped trying to \"help\" my colleague and just asked what she wanted to happen, she came up with a solution I would never have thought of. Erickson was right: people are creative, resourceful, and whole.",
-          "mood": "energized",
-          "created_at": "2026-09-12T20:00:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("coachee_reflections").upsert(
-        {
-          "id": "90100efe-fb6d-4d0a-a1ad-efefc6d7c577",
-          "coachee_id": trangId,
-          "body": "Week 3 reflection: The SHIFT model is becoming more intuitive but I still rush through it. Today in practice I spent 15 of my 25 minutes in the H stage (hearing the situation) and only 3 minutes in I (desired outcome). My observer pointed out that I was \"swimming in the problem\" instead of pivoting to what the client wanted. This is my next edge. The good news: my silence is improving. I held a 7-second pause today and my practice client said she appreciated the thinking space. Small wins.",
-          "mood": "reflective",
-          "created_at": "2026-09-25T21:00:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-
-        // 16. Training progress
-        { const { error } = await admin.from("training_progress").upsert(
-        {
-          "id": "1e85f39e-9ed6-4d42-999d-6e710c07910f",
-          "user_id": trangId,
-          "training_week_id": "b0000000-0000-0000-0000-000000000001",
-          "viewed_at": "2026-09-08T08:00:00Z",
-          "completed_at": "2026-09-12T18:00:00Z",
-          "pdf_downloaded_at": "2026-09-08T08:15:00Z"
-        }
-        , { onConflict: "user_id,training_week_id" }); if (error) throw error; }
-        { const { error } = await admin.from("training_progress").upsert(
-        {
-          "id": "156756ed-3670-4a6f-af47-c61e697f7720",
-          "user_id": trangId,
-          "training_week_id": "b0000000-0000-0000-0000-000000000002",
-          "viewed_at": "2026-09-15T08:00:00Z",
-          "completed_at": "2026-09-19T17:00:00Z",
-          "pdf_downloaded_at": "2026-09-15T09:00:00Z"
-        }
-        , { onConflict: "user_id,training_week_id" }); if (error) throw error; }
-        { const { error } = await admin.from("training_progress").upsert(
-        {
-          "id": "55a53937-df3f-45b7-8068-372c86f04789",
-          "user_id": trangId,
-          "training_week_id": "b0000000-0000-0000-0000-000000000003",
-          "viewed_at": "2026-09-22T08:00:00Z",
-          "completed_at": "2026-09-26T16:00:00Z",
-          "pdf_downloaded_at": "2026-09-22T08:30:00Z"
-        }
-        , { onConflict: "user_id,training_week_id" }); if (error) throw error; }
-        { const { error } = await admin.from("training_progress").upsert(
-        {
-          "id": "8b0d23db-02cb-49a1-8547-c6f791f73fb0",
-          "user_id": trangId,
-          "training_week_id": "b0000000-0000-0000-0000-000000000004",
-          "viewed_at": "2026-09-29T08:00:00Z",
-          "completed_at": null,
-          "pdf_downloaded_at": null
-        }
-        , { onConflict: "user_id,training_week_id" }); if (error) throw error; }
-
-        // 17. Daily prompt responses (all 20 prompts across 4 weeks)
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "deddb4e4-30b4-4911-9ab3-0e6badb3794b",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000011",
-          "user_id": trangId,
-          "opened_at": "2026-09-08T08:30:00Z",
-          "response_text": "I had a conversation with my team lead about a project delay. I shifted from listening to advising almost immediately — within 30 seconds. I suggested she restructure the timeline before she even finished explaining the problem. If I had asked \"What do you think would help?\" she might have come up with something better. Lesson: my instinct to advise is fast and automatic.",
-          "responded_at": "2026-09-08T12:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "0286b76c-e9b6-4a07-a82c-79bc59ae758f",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000012",
-          "user_id": trangId,
-          "opened_at": "2026-09-09T08:15:00Z",
-          "response_text": "Principle 2 — \"People already have all the resources they need\" — feels most natural to me intellectually, but the hardest to live. I believe it in theory, but in practice I still jump in to help. Principle 5 — \"Change is inevitable\" — is the one I find most comforting. It reminds me that even when progress feels slow, the fact that I am in this programme means something is already shifting.",
-          "responded_at": "2026-09-09T13:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "8671751c-e48c-4947-a16b-259c3109c153",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000013",
-          "user_id": trangId,
-          "opened_at": "2026-09-10T08:20:00Z",
-          "response_text": "I watched my director in a strategy meeting. She asked \"What are we not seeing?\" and then waited. She literally leaned back in her chair and waited for someone to speak. It took about 8 seconds. Then three people jumped in with ideas that were much more creative than the original direction. She creates space by physically slowing down and staying quiet.",
-          "responded_at": "2026-09-10T18:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "1fc31624-0b68-492d-b33b-e42cd43a0408",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000014",
-          "user_id": trangId,
-          "opened_at": "2026-09-11T08:10:00Z",
-          "response_text": "In a 1:1 with a junior colleague, I assumed she was struggling with the analytics tool because she seemed frustrated. I started explaining the shortcut keys. But she was actually frustrated about something completely different — a miscommunication with another department. My assumption was wrong, and my \"help\" was irrelevant. Lesson: ask before assuming.",
-          "responded_at": "2026-09-11T19:30:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "5ae4bb69-7465-4878-aea6-e8d53291b5b8",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000015",
-          "user_id": trangId,
-          "opened_at": "2026-09-12T08:05:00Z",
-          "response_text": "The hardest part of only asking questions for an hour would be resisting the urge to share my own experience. When someone tells me about a challenge, my brain immediately generates \"I had the same thing happen, and here is what I did…\" Cutting that off would feel unnatural but might let the other person go deeper. I would probably discover that people can solve most of their own problems when given space.",
-          "responded_at": "2026-09-12T17:45:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "92284522-0cc2-412c-aac5-c68f977d51c1",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000021",
-          "user_id": trangId,
-          "opened_at": "2026-09-15T08:10:00Z",
-          "response_text": "A colleague asked me \"What would you do if this project belonged entirely to you?\" It made me stop because I realised I had been treating it as someone else's decision to make, even though I was the one responsible. What made it powerful was that it exposed an assumption I didn't know I was carrying.",
-          "responded_at": "2026-09-15T12:30:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "a1b4eb86-afda-4fd5-9a88-748d5d7b5e7f",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000022",
-          "user_id": trangId,
-          "opened_at": "2026-09-16T08:05:00Z",
-          "response_text": "I practiced Level 2 listening with my husband over dinner. I noticed his pace slowed down when he talked about work stress, and there was a pause before he mentioned his manager's name — I think that pause meant something. I usually would have missed both of those signals because I am normally halfway to a response while he is still talking.",
-          "responded_at": "2026-09-16T20:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "5a3af5c6-3e7b-44c1-9668-11e87d9f10dd",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000023",
-          "user_id": trangId,
-          "opened_at": "2026-09-17T08:00:00Z",
-          "response_text": "1) What would it look like if this already felt manageable? 2) What have you already tried that gave you even a small result? 3) What do you actually want to happen here? I had to rewrite the third one twice — my first draft was \"Have you thought about talking to your manager?\", which is advice, not a question.",
-          "responded_at": "2026-09-17T21:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "fd4f725f-aae0-4fb1-b41d-39bf0342aca3",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000024",
-          "user_id": trangId,
-          "opened_at": "2026-09-18T08:00:00Z",
-          "response_text": "My first instinct was to solve — I immediately started thinking of three possible fixes before my colleague had finished her sentence. That tells me my default mode is still \"fixer,\" not \"asker.\" I caught it this time and asked a question instead, but it took real effort. This is clearly the pattern I need to keep working on.",
-          "responded_at": "2026-09-18T14:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "8af3a3b9-2701-4dfe-a09b-d50f408c147a",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000025",
-          "user_id": trangId,
-          "opened_at": "2026-09-19T08:00:00Z",
-          "response_text": "I would rate myself about a 6 out of 10 this week. I truly listened at Level 2 in maybe half of my conversations. What got in the way was being rushed — when I am checking the clock, I default back to Level 1 and start planning my response too early. Slowing my own pace seems to be the real lever, not just \"trying harder\" to listen.",
-          "responded_at": "2026-09-19T19:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "e3d844b5-5e1b-4677-a072-c61f661c0b3e",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000031",
-          "user_id": trangId,
-          "opened_at": "2026-09-22T08:00:00Z",
-          "response_text": "In a 1:1 with my team member, I noticed she was still deep in \"H\" — describing everything that was going wrong with the client relationship — for almost the whole conversation. I resisted jumping to solutions and instead asked \"What would a good outcome look like from here?\" which finally moved her toward \"I\". Naming the stage in my head helped me stay patient.",
-          "responded_at": "2026-09-22T13:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "30c5a0c0-0923-4efe-a672-7928a6630c9d",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000032",
-          "user_id": trangId,
-          "opened_at": "2026-09-23T08:00:00Z",
-          "response_text": "My goal is to run a full coaching conversation confidently using SHIFT. When I achieve it, I will see myself staying calm and unhurried even during silence, I will hear the client thinking out loud instead of me filling gaps, and I will feel a steady groundedness instead of the urge to \"perform.\" That picture makes the goal feel much more real than just \"get better at coaching.\"",
-          "responded_at": "2026-09-23T18:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "3174438e-dd17-474f-b92a-973cb555fe8e",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000033",
-          "user_id": trangId,
-          "opened_at": "2026-09-24T08:00:00Z",
-          "response_text": "I skipped \"F\" entirely today — I moved straight from the client's desired outcome to \"so what will you do?\" without ever asking what resources or past successes she could draw on. Next time I could ask \"What has helped you handle something like this before?\" before moving to action. Noticing this in the moment is still hard, but I caught it afterward, which is progress.",
-          "responded_at": "2026-09-24T19:30:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "e3dc13c4-4b0c-4745-9ea6-744099033d1a",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000034",
-          "user_id": trangId,
-          "opened_at": "2026-09-25T08:00:00Z",
-          "response_text": "A strength I have that I forget under pressure is that I am genuinely good at building trust quickly — people open up to me fast. When I am stressed I discount this and think I need to \"prove\" my coaching skill through clever questions, when actually my presence alone is already doing a lot of the work.",
-          "responded_at": "2026-09-25T15:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "2b1c3e8b-e8b0-4871-9ff2-a978ca074660",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000035",
-          "user_id": trangId,
-          "opened_at": "2026-09-26T08:00:00Z",
-          "response_text": "I would say a 6 out of 10 now, up from a 2 in week 1. What would help me go further is deliberately counting to five in my head after I ask a question, instead of trusting myself to \"just know\" when to stay quiet. Structure seems to help me more than willpower alone.",
-          "responded_at": "2026-09-26T16:30:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "ce23a060-854a-4564-99a2-76c7ca1adc55",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000041",
-          "user_id": trangId,
-          "opened_at": "2026-09-29T08:00:00Z",
-          "response_text": "My manager once held me accountable by asking \"What did you decide, and how did it go?\" instead of \"Did you do what I told you?\" It felt supportive because the choice was still mine — she was curious about my decision, not checking whether I obeyed her instruction. That distinction is exactly what I want to bring into my own coaching practice.",
-          "responded_at": "2026-09-29T13:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "b059f4ca-db06-4a79-91ae-8884f4597f95",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000042",
-          "user_id": trangId,
-          "opened_at": "2026-09-30T08:00:00Z",
-          "response_text": "Trust and Safety feels strongest for me right now — people consistently tell me they feel comfortable being honest with me. Maintains Presence needs the most development; I still sometimes plan my next question while the other person is still talking, which pulls me out of full presence. I want to practice staying with \"nothing to say yet\" instead of rushing to fill it.",
-          "responded_at": "2026-09-30T17:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "41615a3c-dbab-437b-aff7-2be0870d8e0f",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000043",
-          "user_id": trangId,
-          "opened_at": "2026-10-01T08:00:00Z",
-          "response_text": "Warm, patient, and curious. This style serves my clients because it gives them permission to think slowly instead of performing a quick answer for my benefit. People seem to relax noticeably once they realise I am not going to rush them or judge whatever they say.",
-          "responded_at": "2026-10-01T20:00:00Z"
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "d54cf476-7efc-4b12-b842-6659e145a90b",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000044",
-          "user_id": trangId,
-          "opened_at": "2026-10-02T08:00:00Z",
-          "response_text": null,
-          "responded_at": null
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("daily_prompt_responses").upsert(
-        {
-          "id": "946da698-8add-4b0c-a27e-49ef52db5cfc",
-          "daily_prompt_id": "c1000000-0000-0000-0000-000000000045",
-          "user_id": trangId,
-          "opened_at": "2026-10-03T08:00:00Z",
-          "response_text": null,
-          "responded_at": null
-        }
-        , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
-
-        // 18. Quiz submissions (weeks 1-3; week 4 not yet taken)
-        { const { error } = await admin.from("assignment_submissions").upsert(
-        {
-          "id": "9d407cf0-1c73-45c0-8c1d-83a047145c1d",
-          "assignment_id": "c2000000-0000-0000-0000-000000000001",
-          "user_id": trangId,
-          "answers": {
-            "c3100000-0000-0000-0000-000000000001": "a",
-            "c3100000-0000-0000-0000-000000000002": "c",
-            "c3100000-0000-0000-0000-000000000003": "b",
-            "c3100000-0000-0000-0000-000000000004": "b"
+            "text": "Notice the advice-giving trigger 3 times this week without acting on it",
+            "done": true
           },
-          "reflection_text": "I got question 1 wrong — I said the coach should explain why the choice might not work. Now I understand that the coach should trust the client's choice and help expand options instead.",
-          "submitted_at": "2026-09-12T15:00:00Z"
-        }
-        , { onConflict: "assignment_id,user_id", ignoreDuplicates: true }); if (error) throw error; }
-        { const { error } = await admin.from("assignment_submissions").upsert(
-        {
-          "id": "369a83d4-44bc-4e6b-9c27-2159ca28b459",
-          "assignment_id": "c2000000-0000-0000-0000-000000000002",
-          "user_id": trangId,
-          "answers": {
-            "c3200000-0000-0000-0000-000000000001": "b",
-            "c3200000-0000-0000-0000-000000000002": "c",
-            "c3200000-0000-0000-0000-000000000003": "b",
-            "c3200000-0000-0000-0000-000000000004": "c"
+          {
+            "text": "Write down one powerful question after each team meeting",
+            "done": true
           },
-          "reflection_text": "I feel much more confident about the questioning framework now. The distinction between a leading question and an open question is clear to me.",
-          "submitted_at": "2026-09-19T14:00:00Z"
-        }
-        , { onConflict: "assignment_id,user_id", ignoreDuplicates: true }); if (error) throw error; }
-        { const { error } = await admin.from("assignment_submissions").upsert(
-        {
-          "id": "0eb86ff9-4bed-41c4-9976-fdd55b9bab6a",
-          "assignment_id": "c2000000-0000-0000-0000-000000000003",
-          "user_id": trangId,
-          "answers": {
-            "c3300000-0000-0000-0000-000000000001": "b",
-            "c3300000-0000-0000-0000-000000000002": "b",
-            "c3300000-0000-0000-0000-000000000003": "b",
-            "c3300000-0000-0000-0000-000000000004": "a"
+          {
+            "text": "Re-read Erickson Principle 2: People already have all the resources they need",
+            "done": false
+          }
+        ],
+        "coachee_rating": 5,
+        "coachee_rated_at": "2026-09-10T10:30:00Z",
+        "coachee_rating_comment": "Very helpful first session. My coach helped me see a pattern I was blind to. Looking forward to the next one."
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("session_goal_ratings").upsert(
+      {
+        "session_id": "e0000000-0000-0000-0000-000000000001",
+        "goal_id": "d0000000-0000-0000-0000-000000000001",
+        "coachee_id": trangId,
+        "rating": 4,
+        "note": "Starting to notice the pattern, not yet changing it"
+      }
+      , { onConflict: "session_id,goal_id" }); if (error) throw error; }
+      { const { error } = await admin.from("session_goal_ratings").upsert(
+      {
+        "session_id": "e0000000-0000-0000-0000-000000000001",
+        "goal_id": "d0000000-0000-0000-0000-000000000002",
+        "coachee_id": trangId,
+        "rating": 3,
+        "note": "Just introduced to SHIFT, haven't practiced yet"
+      }
+      , { onConflict: "session_id,goal_id" }); if (error) throw error; }
+      { const { error } = await admin.from("session_goal_ratings").upsert(
+      {
+        "session_id": "e0000000-0000-0000-0000-000000000001",
+        "goal_id": "d0000000-0000-0000-0000-000000000003",
+        "coachee_id": trangId,
+        "rating": 2,
+        "note": "Silence still feels very uncomfortable"
+      }
+      , { onConflict: "session_id,goal_id" }); if (error) throw error; }
+      { const { error } = await admin.from("coach_session_private_notes").upsert(
+      {
+        "session_id": "e0000000-0000-0000-0000-000000000001",
+        "coach_id": coach1Id,
+        "body": "Strong participant. Emotional intelligence is high — she just needs permission to slow down. Watch for perfectionism as a blocker later in the programme. Consider introducing the \"scaling question\" technique next session."
+      }
+      , { onConflict: "session_id" }); if (error) throw error; }
+      { const { error } = await admin.from("session_messages").upsert(
+      {
+        "id": "1decfba7-fa33-4a3b-9c69-b4b84841f1e9",
+        "session_id": "e0000000-0000-0000-0000-000000000001",
+        "sender_id": trangId,
+        "body": "Hi! Looking forward to our first session. I've been reading the Week 1 skill card and Erickson's 5 principles really resonated with me, especially \"People already have all the resources they need.\" I'd like to explore why I still default to giving advice even when I believe this.",
+        "created_at": "2026-09-09T14:00:00Z",
+        "read_at": null
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("session_messages").upsert(
+      {
+        "id": "0069ef2d-df3c-4172-9c6d-415573eaacf6",
+        "session_id": "e0000000-0000-0000-0000-000000000001",
+        "sender_id": coach1Id,
+        "body": "Great topic to start with, Trang. That gap between belief and behaviour is exactly the space coaching works in. Come ready to think about a specific recent example where you noticed yourself advising instead of asking. See you tomorrow!",
+        "created_at": "2026-09-09T15:30:00Z",
+        "read_at": "2026-09-09T16:00:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("sessions").upsert(
+      {
+        "id": "e0000000-0000-0000-0000-000000000002",
+        "coach_id": coach1Id,
+        "coachee_id": trangId,
+        "topic": "Practicing the SHIFT model — where I get stuck between H and I",
+        "start_time": "2026-09-24T09:00:00+07:00",
+        "duration_minutes": 60,
+        "status": "completed",
+        "confirmed_at": "2026-09-23T08:00:00Z",
+        "meeting_url": "https://zoom.us/j/1234567891",
+        "coach_notes": "Clear progress since session 1. Trang's awareness of the advice trigger has improved noticeably — she caught herself twice during our conversation and self-corrected. Main challenge today: she can hold the \"H\" (hear current situation) stage well, but jumps to \"T\" (take action) without fully exploring \"I\" (desired outcome). We did a live practice where I coached her through a real scenario and she mapped it to SHIFT afterward. She saw the gap clearly. Homework: practice \"I\" stage with her triad group.",
+        "coachee_notes": "I can see that I skip over asking people what they actually want and go straight to \"so what will you do about it?\" My coach showed me how spending more time on the vision (I stage) actually makes the action step clearer and more motivating. The question \"What will be different when this is working?\" is now my favourite tool.",
+        "action_items": [
+          {
+            "text": "In triad practice this week, specifically focus on spending 10 minutes in the I stage",
+            "done": false
           },
-          "reflection_text": "I got the question about the F stage wrong. I thought it was about finding NEW resources, but it is actually about surfacing resources the client ALREADY has. That is a crucial distinction.",
-          "submitted_at": "2026-09-26T13:00:00Z"
-        }
-        , { onConflict: "assignment_id,user_id", ignoreDuplicates: true }); if (error) throw error; }
+          {
+            "text": "Ask three colleagues: What does success look like for you on this project?",
+            "done": true
+          },
+          {
+            "text": "Journal: What am I noticing about my own growth as a coach?",
+            "done": false
+          }
+        ],
+        "coachee_rating": 5,
+        "coachee_rated_at": "2026-09-24T10:15:00Z",
+        "coachee_rating_comment": "I can feel my coaching improving. The SHIFT model practice was exactly what I needed. My coach is patient and precise."
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("session_goal_ratings").upsert(
+      {
+        "session_id": "e0000000-0000-0000-0000-000000000002",
+        "goal_id": "d0000000-0000-0000-0000-000000000001",
+        "coachee_id": trangId,
+        "rating": 6,
+        "note": "Caught myself twice and chose to ask a question instead"
+      }
+      , { onConflict: "session_id,goal_id" }); if (error) throw error; }
+      { const { error } = await admin.from("session_goal_ratings").upsert(
+      {
+        "session_id": "e0000000-0000-0000-0000-000000000002",
+        "goal_id": "d0000000-0000-0000-0000-000000000002",
+        "coachee_id": trangId,
+        "rating": 5,
+        "note": "Can do S-H-I but still rushing to T"
+      }
+      , { onConflict: "session_id,goal_id" }); if (error) throw error; }
+      { const { error } = await admin.from("session_goal_ratings").upsert(
+      {
+        "session_id": "e0000000-0000-0000-0000-000000000002",
+        "goal_id": "d0000000-0000-0000-0000-000000000003",
+        "coachee_id": trangId,
+        "rating": 4,
+        "note": "Managed 5 seconds of silence in practice — it felt like a minute"
+      }
+      , { onConflict: "session_id,goal_id" }); if (error) throw error; }
+      { const { error } = await admin.from("coach_session_private_notes").upsert(
+      {
+        "session_id": "e0000000-0000-0000-0000-000000000002",
+        "coach_id": coach1Id,
+        "body": "She is ready for a real coaching practicum now. Her self-correction speed has improved dramatically. Consider suggesting she volunteer to coach first in the triad session — she will learn more from doing than watching at this stage."
+      }
+      , { onConflict: "session_id" }); if (error) throw error; }
 
-        // 19. Reflection submission (mid-programme reflection)
-        { const { error } = await admin.from("reflection_submissions").upsert(
-        {
-          "id": "9b14c5a5-ad51-4f49-b0d3-783724f4a28f",
-          "reflection_id": "c4000000-0000-0000-0000-000000000001",
-          "user_id": trangId,
-          "confidence_score": 6,
-          "submitted_at": "2026-09-19T18:00:00Z"
-        }
-        , { onConflict: "reflection_id,user_id" }); if (error) throw error; }
-        { const { error } = await admin.from("reflection_answers").upsert(
-        {
-          "id": "98cb769a-be65-4088-a96f-f912d7de2413",
-          "submission_id": "9b14c5a5-ad51-4f49-b0d3-783724f4a28f",
-          "question_id": "c5100000-0000-0000-0000-000000000001",
-          "answer_text": "My biggest insight is that coaching is not about having the right answer — it is about asking the right question and then getting out of the way. This sounds simple but it goes against everything I have been trained to do as a manager.",
-          "answer_value": null
-        }
-        , { onConflict: "submission_id,question_id" }); if (error) throw error; }
-        { const { error } = await admin.from("reflection_answers").upsert(
-        {
-          "id": "8833b1c0-e18e-4e17-b0b0-fbf206768c1d",
-          "submission_id": "9b14c5a5-ad51-4f49-b0d3-783724f4a28f",
-          "question_id": "c5100000-0000-0000-0000-000000000002",
-          "answer_text": null,
-          "answer_value": 6
-        }
-        , { onConflict: "submission_id,question_id" }); if (error) throw error; }
-        { const { error } = await admin.from("reflection_answers").upsert(
-        {
-          "id": "96bb8366-130d-4dc6-9f39-fe6c658e8bc1",
-          "submission_id": "9b14c5a5-ad51-4f49-b0d3-783724f4a28f",
-          "question_id": "c5100000-0000-0000-0000-000000000003",
-          "answer_text": "On Wednesday, a team member came to me with a budget problem. Instead of suggesting she cut the training line item (my first instinct), I asked: What would you do if you had full authority to solve this? She paused, then laid out a plan that was better than anything I would have suggested. I felt proud of both of us.",
-          "answer_value": null
-        }
-        , { onConflict: "submission_id,question_id" }); if (error) throw error; }
-        { const { error } = await admin.from("reflection_answers").upsert(
-        {
-          "id": "43a06259-48ea-4a18-b57a-3bcf2bccf552",
-          "submission_id": "9b14c5a5-ad51-4f49-b0d3-783724f4a28f",
-          "question_id": "c5100000-0000-0000-0000-000000000004",
-          "answer_text": null,
-          "answer_value": 5
-        }
-        , { onConflict: "submission_id,question_id" }); if (error) throw error; }
-        { const { error } = await admin.from("reflection_answers").upsert(
-        {
-          "id": "4b5dd3c2-19b1-4aca-a08e-17d82bfa0557",
-          "submission_id": "9b14c5a5-ad51-4f49-b0d3-783724f4a28f",
-          "question_id": "c5100000-0000-0000-0000-000000000005",
-          "answer_text": "I want to focus on the SHIFT model — specifically staying in the I (desired outcome) stage longer instead of rushing to action. I also want to get more comfortable with silence.",
-          "answer_value": null
-        }
-        , { onConflict: "submission_id,question_id" }); if (error) throw error; }
+      // Coach client notes
+      { const { error } = await admin.from("coach_client_notes").upsert(
+      {
+        "id": "69138332-567a-4a94-8be0-4dafc13099be",
+        "coach_id": coach1Id,
+        "coachee_id": trangId,
+        "body": "Trang is highly motivated and self-aware. Main development edges: (1) trusting silence, (2) staying in the \"I\" stage of SHIFT longer before jumping to action. She responds very well to experiential learning — practice > theory for her. Trigger pattern: advice-giving activates when she sees someone in distress. Possible root: strong caretaker identity. Not therapeutic territory — keep coaching-focused on the behaviour, not the identity."
+      }
+      , { onConflict: "id" }); if (error) throw error; }
 
-        // 20. Notifications
-        { const { error } = await admin.from("notifications").upsert(
-        {
-          "id": "7d116632-d884-4597-8f07-c0511a5ef7d6",
-          "user_id": trangId,
-          "notification_type": "session_confirmed",
-          "title": "Session confirmed",
-          "title_vi": "Session đã xác nhận",
-          "body": "Your coaching session on Sep 10 at 9:00 AM has been confirmed.",
-          "body_vi": "Session coaching ngày 10/9 lúc 9:00 sáng đã được xác nhận.",
-          "is_read": true,
-          "read_at": "2026-09-09T10:05:00Z",
-          "link": "/sessions/e0000000-0000-0000-0000-000000000001",
-          "created_at": "2026-09-09T10:00:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("notifications").upsert(
-        {
-          "id": "5855c578-a73d-4db3-b0b6-e021b069c6c1",
-          "user_id": trangId,
-          "notification_type": "new_training_week",
-          "title": "Week 3 is now available",
-          "title_vi": "Tuần 3 đã mở",
-          "body": "The SHIFT Model in Practice — your new training content is ready.",
-          "body_vi": "Mô hình SHIFT trong Thực hành — nội dung đào tạo mới đã sẵn sàng.",
-          "is_read": true,
-          "read_at": "2026-09-22T08:02:00Z",
-          "link": "/training",
-          "created_at": "2026-09-22T08:00:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("notifications").upsert(
-        {
-          "id": "77d064f8-d341-4ad2-b5b4-23cfadfb7e12",
-          "user_id": trangId,
-          "notification_type": "triad_session_booked",
-          "title": "Triad session scheduled",
-          "title_vi": "Session triad đã được lên lịch",
-          "body": "Triad Alpha practice session on Sep 20 at 3:00 PM.",
-          "body_vi": "Session thực hành Triad Alpha ngày 20/9 lúc 3:00 chiều.",
-          "is_read": true,
-          "read_at": "2026-09-19T08:00:00Z",
-          "link": "/triads",
-          "created_at": "2026-09-19T07:00:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
-        { const { error } = await admin.from("notifications").upsert(
-        {
-          "id": "d996b58c-c18e-4ab3-9ebf-c7af3e27b6b5",
-          "user_id": trangId,
-          "notification_type": "daily_prompt",
-          "title": "Your daily coaching prompt",
-          "title_vi": "Câu hỏi coaching hàng ngày",
-          "body": "A new reflection prompt is waiting for you.",
-          "body_vi": "Một câu hỏi phản tư mới đang chờ bạn.",
-          "is_read": false,
-          "read_at": null,
-          "link": "/dashboard",
-          "created_at": "2026-09-29T07:00:00Z"
-        }
-        , { onConflict: "id" }); if (error) throw error; }
+      // 12. Peer coaching session (Trang as peer-coachee)
+      { const { error } = await admin.from("peer_sessions").upsert(
+      {
+        "id": "e0000000-0000-0000-0000-000000000010",
+        "peer_coach_id": coach2Id,
+        "peer_coachee_id": trangId,
+        "topic": "Peer practice: Coaching Trang through a real workplace challenge using open questions only",
+        "start_time": "2026-09-17T14:00:00+07:00",
+        "duration_minutes": 45,
+        "status": "completed",
+        "confirmed_at": "2026-09-16T10:00:00Z",
+        "meeting_url": "https://zoom.us/j/9876543210",
+        "coach_notes": "Practiced staying in Level 2 listening throughout. I noticed that when Trang talked about her team lead frustration, I almost gave advice three times but caught myself. The question \"What would your ideal outcome look like?\" opened up the conversation significantly. Need to work on my pacing — I asked follow-up questions too quickly without giving space.",
+        "coachee_notes": "My peer coach asked really good open questions. The one that unlocked things for me was \"If you could redesign this relationship from scratch, what would it look like?\" I hadn't thought about it that way before. Feedback: sometimes the questions came very quickly one after another — a bit more silence would have helped me think.",
+        "action_items": [
+          {
+            "text": "Try the redesign question with my own team member",
+            "done": true
+          },
+          {
+            "text": "Give peer coach written feedback on their questioning technique",
+            "done": true
+          }
+        ],
+        "coachee_rating": 4,
+        "coachee_rated_at": "2026-09-17T15:00:00Z",
+        "coachee_rating_comment": "Good session — I felt genuinely heard. Would benefit from more pauses between questions."
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("peer_session_competency_feedback").upsert(
+      {
+        "id": "107ca8b3-8b95-4a8d-bb32-7e8144812dab",
+        "peer_session_id": "e0000000-0000-0000-0000-000000000010",
+        "peer_coach_id": coach2Id,
+        "peer_coachee_id": trangId,
+        "ethical_practice": 8,
+        "coaching_mindset": 7,
+        "maintains_agreements": 8,
+        "trust_safety": 9,
+        "maintains_presence": 6,
+        "listens_actively": 7,
+        "evokes_awareness": 8,
+        "facilitates_growth": 7,
+        "feedback_note": "Strong on creating trust and safety — I felt comfortable sharing real challenges. The area for growth is maintaining presence: sometimes the next question came before I finished processing the last one. Overall, a very supportive and growth-oriented session."
+      }
+      , { onConflict: "peer_session_id" }); if (error) throw error; }
+      { const { error } = await admin.from("peer_coach_session_private_notes").upsert(
+      {
+        "peer_session_id": "e0000000-0000-0000-0000-000000000010",
+        "peer_coach_id": coach2Id,
+        "body": "Trang is an excellent practice partner — brings real topics. My main learning: I need to count to 5 after asking a question before speaking again. She gave me feedback about pacing which matches what my mentor told me last week. Pattern confirmed — this is my #1 development area."
+      }
+      , { onConflict: "peer_session_id" }); if (error) throw error; }
 
-        trangSeed = { skipped: false };
+      // 13. Mentoring session + feedback
+      { const { error } = await admin.from("mentoring_sessions").upsert(
+      {
+        "id": "e0000000-0000-0000-0000-000000000020",
+        "mentor_id": coach1Id,
+        "mentee_id": trangId,
+        "topic": "Mentoring: Developing my coaching presence and working with silence",
+        "start_time": "2026-09-19T10:00:00+07:00",
+        "duration_minutes": 60,
+        "status": "completed",
+        "confirmed_at": "2026-09-18T09:00:00Z",
+        "meeting_url": "https://zoom.us/j/5555555555",
+        "mentor_notes": "Trang is progressing well. Today we focused specifically on her discomfort with silence. I demonstrated a coaching conversation where I deliberately used 8-10 second pauses. She observed that the client (me role-playing) actually produced deeper insights after the longer pauses. She then practiced: her first pause was 3 seconds, her last was 7 seconds. Significant growth in one session. Recommended: practice the \"pregnant pause\" technique in her triad group.",
+        "mentee_notes": "My mentor showed me that silence is not awkward — it is generous. When they paused for almost 10 seconds after my answer, I found myself going deeper without being prompted. I want to master this. The key insight: silence is a coaching tool, not a gap to fill.",
+        "action_items": [
+          {
+            "text": "Practice 7-second pauses in triad session this week",
+            "done": false
+          },
+          {
+            "text": "Record a practice session and count my average pause length",
+            "done": false
+          },
+          {
+            "text": "Read the ICF competency on Maintains Presence",
+            "done": true
+          }
+        ],
+        "prep_file_path": "mentoring-prep/trang-session-1-prep.pdf",
+        "prep_file_notes": "I want to focus on: (1) why silence feels uncomfortable for me, (2) how to use silence as a tool not just endure it, (3) how my mentor handles silence in their own coaching practice.",
+        "prep_file_submitted_at": "2026-09-18T14:00:00Z",
+        "feedback_submitted_at": "2026-09-19T11:30:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("mentoring_feedback").upsert(
+      {
+        "id": "c8b34141-b11c-47ba-854e-3cfa052a2ec0",
+        "mentoring_session_id": "e0000000-0000-0000-0000-000000000020",
+        "mentor_id": coach1Id,
+        "mentee_id": trangId,
+        "submitted_at": "2026-09-19T11:30:00Z",
+        "ethical_practice": "Strong — Trang is clear about boundaries between coaching, advising, and therapy. No concerns.",
+        "coaching_mindset": "Excellent progress. She genuinely believes in client resourcefulness and is actively working to let go of the \"fixer\" identity. This is her biggest growth edge and she is leaning into it.",
+        "maintains_agreements": "Good — she sets clear session topics. Area to develop: explicitly re-contracting mid-session when the topic shifts, rather than just following the energy.",
+        "trust_safety": "Natural strength. Clients and peers report feeling very safe with her. Warm, non-judgmental presence.",
+        "maintains_presence": "This is where the main work is. She is aware of her discomfort with silence and actively working on it. Progress: from 2-3 second pauses to 5-7 seconds in today's session. Recommend continued deliberate practice.",
+        "listens_actively": "Good Level 2 listening. Starting to pick up on what is NOT said, which is Level 3 territory. Encourage her to trust these intuitions and name them: \"I notice you didn't mention X — is that significant?\"",
+        "evokes_awareness": "Strong questioning instincts. Her questions are becoming shorter and more powerful. Favourite today: \"What would you do if you already knew the answer?\" Beautiful.",
+        "facilitates_growth": "Trang consistently moves sessions toward action. Her growth area is spending more time in the visioning/desired-outcome space before jumping to commitment. This maps directly to the SHIFT model I-to-T transition she is working on in her coaching sessions.",
+        "overall_notes": "Trang is one of the strongest participants in this cohort. Her self-awareness and willingness to be uncomfortable are exceptional. If she continues at this pace, she will be ready for ACC-level practice within 3 months. Recommend: (1) increase practice hours, (2) seek more diverse practice clients, (3) consider applying for ICF ACC credential by Q1 2027.",
+        "submitted_by": coach1Id
+      }
+      , { onConflict: "mentoring_session_id" }); if (error) throw error; }
+
+      // 14. Triad group, session, reflections (requires 2 other coachees)
+      if (peer1Id && peer2Id && peer1Id !== peer2Id) {
+        { const { error } = await admin.from("triad_groups").upsert(
+        {
+          "id": "f0000000-0000-0000-0000-000000000001",
+          "programme_id": programmeId,
+          "triad_round_id": roundIds[0],
+          "member_1_id": trangId,
+          "member_2_id": peer1Id,
+          "member_3_id": peer2Id,
+          "name": "Triad Alpha",
+          "is_active": true,
+          "assigned_by": "admin",
+          "group_language": "vi"
+        }
+        , { onConflict: "id" }); if (error) throw error; }
+        { const { error } = await admin.from("triad_sessions").upsert(
+        {
+          "id": "e0000000-0000-0000-0000-000000000030",
+          "triad_group_id": "f0000000-0000-0000-0000-000000000001",
+          "proposed_start_time": "2026-09-20T15:00:00+07:00",
+          "proposed_end_time": "2026-09-20T16:30:00+07:00",
+          "proposed_by": trangId,
+          "status": "completed",
+          "meeting_url": "https://zoom.us/j/7777777777",
+          "notes": "Round 1 practice session. Trang coached, Peer1 was coachee, Peer2 observed. Topic: Peer1's challenge with delegating to a new team member. 25-minute coaching conversation followed by 15 minutes of observer feedback and group debrief.",
+          "member_1_response": "accepted",
+          "member_2_response": "accepted",
+          "member_3_response": "accepted"
+        }
+        , { onConflict: "id" }); if (error) throw error; }
+        { const { error } = await admin.from("triad_reflections").upsert(
+        {
+          "id": "f0c9db26-2887-4ceb-addc-39dde0254924",
+          "triad_session_id": "e0000000-0000-0000-0000-000000000030",
+          "participant_id": trangId,
+          "learned_as_coach": "I learned that I can actually hold a 25-minute coaching conversation using SHIFT without running out of things to ask. My biggest learning: when I trusted the silence after asking \"What does successful delegation look like for you?\", my coachee gave a much deeper answer than I expected. I also noticed I skipped the S stage — next time I need to explicitly contract the session at the start.",
+          "will_use_as_coach": "I will explicitly set the foundation (S stage) by asking \"What would make this conversation valuable for you?\" at the very start of every practice session from now on. I will also aim for at least 5-second pauses after every question.",
+          "learned_as_coachee": null,
+          "will_use_as_coachee": null,
+          "learned_as_observer": null,
+          "will_use_as_observer": null,
+          "satisfaction_rating": 5,
+          "submitted_at": "2026-09-20T17:00:00Z"
+        }
+        , { onConflict: "triad_session_id,participant_id" }); if (error) throw error; }
+        { const { error } = await admin.from("triad_reflections").upsert(
+        {
+          "id": "8b3ad01f-8e95-47cb-bed0-3f9ff07f2ca7",
+          "triad_session_id": "e0000000-0000-0000-0000-000000000030",
+          "participant_id": peer1Id,
+          "learned_as_coach": null,
+          "will_use_as_coach": null,
+          "learned_as_coachee": "Being coached by a peer feels different from being coached by our professional coach — in a good way. Trang asked me \"If you trusted this person to figure it out, what would you do differently?\" and I realised I was micromanaging because I didn't trust my new team member yet. That was a breakthrough. The silence after some questions felt long but productive.",
+          "will_use_as_coachee": "I am going to have an honest conversation with my new team member about what \"good enough\" looks like for their first deliverables, instead of reviewing every detail.",
+          "learned_as_observer": null,
+          "will_use_as_observer": null,
+          "satisfaction_rating": 5,
+          "submitted_at": "2026-09-20T17:15:00Z"
+        }
+        , { onConflict: "triad_session_id,participant_id" }); if (error) throw error; }
+        { const { error } = await admin.from("triad_reflections").upsert(
+        {
+          "id": "f2886392-4aa1-49d9-be5f-43d38f81c3fd",
+          "triad_session_id": "e0000000-0000-0000-0000-000000000030",
+          "participant_id": peer2Id,
+          "learned_as_coach": null,
+          "will_use_as_coach": null,
+          "learned_as_coachee": null,
+          "will_use_as_coachee": null,
+          "learned_as_observer": "Watching from the outside, I could clearly see the SHIFT stages unfolding. Trang spent about 5 minutes in H (hearing the situation), then moved to I (identifying desired outcome) with the question about what delegation success looks like. I noticed she jumped over F (finding resources) and went straight to T (action). When I pointed this out in the debrief, she agreed and said she would work on that. As observer, I also noticed that the moments of silence produced the richest client responses — something I want to remember for my own coaching practice.",
+          "will_use_as_observer": "In my next observation, I want to explicitly track time spent in each SHIFT stage and share that data with the coach as quantitative feedback.",
+          "satisfaction_rating": 4,
+          "submitted_at": "2026-09-20T17:30:00Z"
+        }
+        , { onConflict: "triad_session_id,participant_id" }); if (error) throw error; }
+      } else {
+        console.log("Fewer than 2 other coachees found — skipping triad group/session/reflections seed");
+      }
+
+      // 15. Coachee journal reflections
+      { const { error } = await admin.from("coachee_reflections").upsert(
+      {
+        "id": "c04a97f6-e656-4876-ab96-b76f6a95fc99",
+        "coachee_id": trangId,
+        "body": "Week 1 reflection: I came into this programme thinking coaching was about asking better questions. Now I realise it starts before the questions — with believing that the person in front of me already has what they need. That shift in belief changes everything about how I show up in conversations. I noticed today that when I stopped trying to \"help\" my colleague and just asked what she wanted to happen, she came up with a solution I would never have thought of. Erickson was right: people are creative, resourceful, and whole.",
+        "mood": "energized",
+        "created_at": "2026-09-12T20:00:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("coachee_reflections").upsert(
+      {
+        "id": "6d0a6201-48c0-4b82-b105-f221ef824811",
+        "coachee_id": trangId,
+        "body": "Week 3 reflection: The SHIFT model is becoming more intuitive but I still rush through it. Today in practice I spent 15 of my 25 minutes in the H stage (hearing the situation) and only 3 minutes in I (desired outcome). My observer pointed out that I was \"swimming in the problem\" instead of pivoting to what the client wanted. This is my next edge. The good news: my silence is improving. I held a 7-second pause today and my practice client said she appreciated the thinking space. Small wins.",
+        "mood": "reflective",
+        "created_at": "2026-09-25T21:00:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+
+      // 16. Training progress
+      { const { error } = await admin.from("training_progress").upsert(
+      {
+        "id": "305ac1c3-f2fd-43ed-9072-68103042da4d",
+        "user_id": trangId,
+        "training_week_id": weekIds[0],
+        "viewed_at": "2026-09-08T08:00:00Z",
+        "completed_at": "2026-09-12T18:00:00Z",
+        "pdf_downloaded_at": "2026-09-08T08:15:00Z"
+      }
+      , { onConflict: "user_id,training_week_id" }); if (error) throw error; }
+      { const { error } = await admin.from("training_progress").upsert(
+      {
+        "id": "18f0453e-0006-4d85-b67b-ac282342601f",
+        "user_id": trangId,
+        "training_week_id": weekIds[1],
+        "viewed_at": "2026-09-15T08:00:00Z",
+        "completed_at": "2026-09-19T17:00:00Z",
+        "pdf_downloaded_at": "2026-09-15T09:00:00Z"
+      }
+      , { onConflict: "user_id,training_week_id" }); if (error) throw error; }
+      { const { error } = await admin.from("training_progress").upsert(
+      {
+        "id": "f92f29f4-5117-4629-9fd3-603568788814",
+        "user_id": trangId,
+        "training_week_id": weekIds[2],
+        "viewed_at": "2026-09-22T08:00:00Z",
+        "completed_at": "2026-09-26T16:00:00Z",
+        "pdf_downloaded_at": "2026-09-22T08:30:00Z"
+      }
+      , { onConflict: "user_id,training_week_id" }); if (error) throw error; }
+      { const { error } = await admin.from("training_progress").upsert(
+      {
+        "id": "ec853b1b-cd81-4314-bd3d-4f78cce4e662",
+        "user_id": trangId,
+        "training_week_id": weekIds[3],
+        "viewed_at": "2026-09-29T08:00:00Z",
+        "completed_at": null,
+        "pdf_downloaded_at": null
+      }
+      , { onConflict: "user_id,training_week_id" }); if (error) throw error; }
+
+      // 17. Daily prompt responses (all 20 prompts across 4 weeks)
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "ae8b42ef-5399-4812-81d4-b436569ba1c9",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000011",
+        "user_id": trangId,
+        "opened_at": "2026-09-08T08:30:00Z",
+        "response_text": "I had a conversation with my team lead about a project delay. I shifted from listening to advising almost immediately — within 30 seconds. I suggested she restructure the timeline before she even finished explaining the problem. If I had asked \"What do you think would help?\" she might have come up with something better. Lesson: my instinct to advise is fast and automatic.",
+        "responded_at": "2026-09-08T12:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "fdc01c9c-8e92-4782-a44f-e576c27a1f9c",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000012",
+        "user_id": trangId,
+        "opened_at": "2026-09-09T08:15:00Z",
+        "response_text": "Principle 2 — \"People already have all the resources they need\" — feels most natural to me intellectually, but the hardest to live. I believe it in theory, but in practice I still jump in to help. Principle 5 — \"Change is inevitable\" — is the one I find most comforting. It reminds me that even when progress feels slow, the fact that I am in this programme means something is already shifting.",
+        "responded_at": "2026-09-09T13:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "2473cf47-2b44-4b71-a6ee-186a09f590bd",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000013",
+        "user_id": trangId,
+        "opened_at": "2026-09-10T08:20:00Z",
+        "response_text": "I watched my director in a strategy meeting. She asked \"What are we not seeing?\" and then waited. She literally leaned back in her chair and waited for someone to speak. It took about 8 seconds. Then three people jumped in with ideas that were much more creative than the original direction. She creates space by physically slowing down and staying quiet.",
+        "responded_at": "2026-09-10T18:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "b70a4548-3598-4d55-ac1a-b5a6ff6b3837",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000014",
+        "user_id": trangId,
+        "opened_at": "2026-09-11T08:10:00Z",
+        "response_text": "In a 1:1 with a junior colleague, I assumed she was struggling with the analytics tool because she seemed frustrated. I started explaining the shortcut keys. But she was actually frustrated about something completely different — a miscommunication with another department. My assumption was wrong, and my \"help\" was irrelevant. Lesson: ask before assuming.",
+        "responded_at": "2026-09-11T19:30:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "af71b7c0-14d1-497d-b5fe-2d3f8e422445",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000015",
+        "user_id": trangId,
+        "opened_at": "2026-09-12T08:05:00Z",
+        "response_text": "The hardest part of only asking questions for an hour would be resisting the urge to share my own experience. When someone tells me about a challenge, my brain immediately generates \"I had the same thing happen, and here is what I did…\" Cutting that off would feel unnatural but might let the other person go deeper. I would probably discover that people can solve most of their own problems when given space.",
+        "responded_at": "2026-09-12T17:45:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "ec80c374-00ba-4855-84ea-66241aafc164",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000021",
+        "user_id": trangId,
+        "opened_at": "2026-09-15T08:10:00Z",
+        "response_text": "A colleague asked me \"What would you do if this project belonged entirely to you?\" It made me stop because I realised I had been treating it as someone else's decision to make, even though I was the one responsible. What made it powerful was that it exposed an assumption I didn't know I was carrying.",
+        "responded_at": "2026-09-15T12:30:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "cbeff856-c044-4fa5-ac2d-5b6736a230c5",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000022",
+        "user_id": trangId,
+        "opened_at": "2026-09-16T08:05:00Z",
+        "response_text": "I practiced Level 2 listening with my husband over dinner. I noticed his pace slowed down when he talked about work stress, and there was a pause before he mentioned his manager's name — I think that pause meant something. I usually would have missed both of those signals because I am normally halfway to a response while he is still talking.",
+        "responded_at": "2026-09-16T20:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "12a244e7-985c-4655-9844-62a9a3fcc253",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000023",
+        "user_id": trangId,
+        "opened_at": "2026-09-17T08:00:00Z",
+        "response_text": "1) What would it look like if this already felt manageable? 2) What have you already tried that gave you even a small result? 3) What do you actually want to happen here? I had to rewrite the third one twice — my first draft was \"Have you thought about talking to your manager?\", which is advice, not a question.",
+        "responded_at": "2026-09-17T21:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "3bc89be4-1c58-41c4-89c6-2c9b65224eef",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000024",
+        "user_id": trangId,
+        "opened_at": "2026-09-18T08:00:00Z",
+        "response_text": "My first instinct was to solve — I immediately started thinking of three possible fixes before my colleague had finished her sentence. That tells me my default mode is still \"fixer,\" not \"asker.\" I caught it this time and asked a question instead, but it took real effort. This is clearly the pattern I need to keep working on.",
+        "responded_at": "2026-09-18T14:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "ddd7fc78-8c69-4306-a468-a3f52bc9cdaf",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000025",
+        "user_id": trangId,
+        "opened_at": "2026-09-19T08:00:00Z",
+        "response_text": "I would rate myself about a 6 out of 10 this week. I truly listened at Level 2 in maybe half of my conversations. What got in the way was being rushed — when I am checking the clock, I default back to Level 1 and start planning my response too early. Slowing my own pace seems to be the real lever, not just \"trying harder\" to listen.",
+        "responded_at": "2026-09-19T19:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "5fa45906-007f-40e6-ab48-4622627ed427",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000031",
+        "user_id": trangId,
+        "opened_at": "2026-09-22T08:00:00Z",
+        "response_text": "In a 1:1 with my team member, I noticed she was still deep in \"H\" — describing everything that was going wrong with the client relationship — for almost the whole conversation. I resisted jumping to solutions and instead asked \"What would a good outcome look like from here?\" which finally moved her toward \"I\". Naming the stage in my head helped me stay patient.",
+        "responded_at": "2026-09-22T13:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "aef04d3b-0662-437c-9d84-83c54c33b3b5",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000032",
+        "user_id": trangId,
+        "opened_at": "2026-09-23T08:00:00Z",
+        "response_text": "My goal is to run a full coaching conversation confidently using SHIFT. When I achieve it, I will see myself staying calm and unhurried even during silence, I will hear the client thinking out loud instead of me filling gaps, and I will feel a steady groundedness instead of the urge to \"perform.\" That picture makes the goal feel much more real than just \"get better at coaching.\"",
+        "responded_at": "2026-09-23T18:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "60943f7f-95f6-46af-bc8d-0eec55e324b3",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000033",
+        "user_id": trangId,
+        "opened_at": "2026-09-24T08:00:00Z",
+        "response_text": "I skipped \"F\" entirely today — I moved straight from the client's desired outcome to \"so what will you do?\" without ever asking what resources or past successes she could draw on. Next time I could ask \"What has helped you handle something like this before?\" before moving to action. Noticing this in the moment is still hard, but I caught it afterward, which is progress.",
+        "responded_at": "2026-09-24T19:30:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "b64de72e-0a43-46c3-a09f-574b0502ec1f",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000034",
+        "user_id": trangId,
+        "opened_at": "2026-09-25T08:00:00Z",
+        "response_text": "A strength I have that I forget under pressure is that I am genuinely good at building trust quickly — people open up to me fast. When I am stressed I discount this and think I need to \"prove\" my coaching skill through clever questions, when actually my presence alone is already doing a lot of the work.",
+        "responded_at": "2026-09-25T15:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "9dfe678b-1315-42d9-81d0-49c07ef3b505",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000035",
+        "user_id": trangId,
+        "opened_at": "2026-09-26T08:00:00Z",
+        "response_text": "I would say a 6 out of 10 now, up from a 2 in week 1. What would help me go further is deliberately counting to five in my head after I ask a question, instead of trusting myself to \"just know\" when to stay quiet. Structure seems to help me more than willpower alone.",
+        "responded_at": "2026-09-26T16:30:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "d858d161-ad2a-4148-8b00-9441108a491d",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000041",
+        "user_id": trangId,
+        "opened_at": "2026-09-29T08:00:00Z",
+        "response_text": "My manager once held me accountable by asking \"What did you decide, and how did it go?\" instead of \"Did you do what I told you?\" It felt supportive because the choice was still mine — she was curious about my decision, not checking whether I obeyed her instruction. That distinction is exactly what I want to bring into my own coaching practice.",
+        "responded_at": "2026-09-29T13:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "07a303f8-faf4-42e1-9fd9-03664b0f5436",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000042",
+        "user_id": trangId,
+        "opened_at": "2026-09-30T08:00:00Z",
+        "response_text": "Trust and Safety feels strongest for me right now — people consistently tell me they feel comfortable being honest with me. Maintains Presence needs the most development; I still sometimes plan my next question while the other person is still talking, which pulls me out of full presence. I want to practice staying with \"nothing to say yet\" instead of rushing to fill it.",
+        "responded_at": "2026-09-30T17:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "34bae059-0e93-4087-a6dc-b894b1b04205",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000043",
+        "user_id": trangId,
+        "opened_at": "2026-10-01T08:00:00Z",
+        "response_text": "Warm, patient, and curious. This style serves my clients because it gives them permission to think slowly instead of performing a quick answer for my benefit. People seem to relax noticeably once they realise I am not going to rush them or judge whatever they say.",
+        "responded_at": "2026-10-01T20:00:00Z"
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "911b0eba-8ef3-4a75-8ba3-7132bc08f610",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000044",
+        "user_id": trangId,
+        "opened_at": "2026-10-02T08:00:00Z",
+        "response_text": null,
+        "responded_at": null
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("daily_prompt_responses").upsert(
+      {
+        "id": "4d2e58ed-27f5-40b3-b77b-9bb09b2ffba3",
+        "daily_prompt_id": "c1000000-0000-0000-0000-000000000045",
+        "user_id": trangId,
+        "opened_at": "2026-10-03T08:00:00Z",
+        "response_text": null,
+        "responded_at": null
+      }
+      , { onConflict: "daily_prompt_id,user_id" }); if (error) throw error; }
+
+      // 18. Quiz submissions (weeks 1-3; week 4 not yet taken). If Trang
+      // already has a submission for a given quiz (can't be changed once
+      // made), this leaves her existing one in place.
+      { const { error } = await admin.from("assignment_submissions").upsert(
+      {
+        "id": "9024911f-9d40-4bef-bec0-ba5e37127ca8",
+        "assignment_id": quizIds[0],
+        "user_id": trangId,
+        "answers": {
+          "c3100000-0000-0000-0000-000000000001": "a",
+          "c3100000-0000-0000-0000-000000000002": "c",
+          "c3100000-0000-0000-0000-000000000003": "b",
+          "c3100000-0000-0000-0000-000000000004": "b"
+        },
+        "reflection_text": "I got question 1 wrong — I said the coach should explain why the choice might not work. Now I understand that the coach should trust the client's choice and help expand options instead.",
+        "submitted_at": "2026-09-12T15:00:00Z"
+      }
+      , { onConflict: "assignment_id,user_id", ignoreDuplicates: true }); if (error) throw error; }
+      { const { error } = await admin.from("assignment_submissions").upsert(
+      {
+        "id": "54e4e53a-12ba-4e0c-924a-02329aa685d5",
+        "assignment_id": quizIds[1],
+        "user_id": trangId,
+        "answers": {
+          "c3200000-0000-0000-0000-000000000001": "b",
+          "c3200000-0000-0000-0000-000000000002": "c",
+          "c3200000-0000-0000-0000-000000000003": "b",
+          "c3200000-0000-0000-0000-000000000004": "c"
+        },
+        "reflection_text": "I feel much more confident about the questioning framework now. The distinction between a leading question and an open question is clear to me.",
+        "submitted_at": "2026-09-19T14:00:00Z"
+      }
+      , { onConflict: "assignment_id,user_id", ignoreDuplicates: true }); if (error) throw error; }
+      { const { error } = await admin.from("assignment_submissions").upsert(
+      {
+        "id": "9c0ec499-33ce-42e2-8137-c83c7c156d9c",
+        "assignment_id": quizIds[2],
+        "user_id": trangId,
+        "answers": {
+          "c3300000-0000-0000-0000-000000000001": "b",
+          "c3300000-0000-0000-0000-000000000002": "b",
+          "c3300000-0000-0000-0000-000000000003": "b",
+          "c3300000-0000-0000-0000-000000000004": "a"
+        },
+        "reflection_text": "I got the question about the F stage wrong. I thought it was about finding NEW resources, but it is actually about surfacing resources the client ALREADY has. That is a crucial distinction.",
+        "submitted_at": "2026-09-26T13:00:00Z"
+      }
+      , { onConflict: "assignment_id,user_id", ignoreDuplicates: true }); if (error) throw error; }
+
+      // 19. Reflection submission (mid-programme reflection)
+      { const { error } = await admin.from("reflection_submissions").upsert(
+      {
+        "id": "6ecdc548-e756-4236-bd55-00710f987533",
+        "reflection_id": reflectionIds[0],
+        "user_id": trangId,
+        "confidence_score": 6,
+        "submitted_at": "2026-09-19T18:00:00Z"
+      }
+      , { onConflict: "reflection_id,user_id" }); if (error) throw error; }
+      { const { error } = await admin.from("reflection_answers").upsert(
+      {
+        "id": "dc8193c3-4030-4d6d-a52a-be1ecf8cc57e",
+        "submission_id": "6ecdc548-e756-4236-bd55-00710f987533",
+        "question_id": "c5100000-0000-0000-0000-000000000001",
+        "answer_text": "My biggest insight is that coaching is not about having the right answer — it is about asking the right question and then getting out of the way. This sounds simple but it goes against everything I have been trained to do as a manager.",
+        "answer_value": null
+      }
+      , { onConflict: "submission_id,question_id" }); if (error) throw error; }
+      { const { error } = await admin.from("reflection_answers").upsert(
+      {
+        "id": "f462e4f4-3fec-41f4-a96c-0cfefd87a275",
+        "submission_id": "6ecdc548-e756-4236-bd55-00710f987533",
+        "question_id": "c5100000-0000-0000-0000-000000000002",
+        "answer_text": null,
+        "answer_value": 6
+      }
+      , { onConflict: "submission_id,question_id" }); if (error) throw error; }
+      { const { error } = await admin.from("reflection_answers").upsert(
+      {
+        "id": "be1d7aa1-f44b-4a85-bbf1-b3b61321edcc",
+        "submission_id": "6ecdc548-e756-4236-bd55-00710f987533",
+        "question_id": "c5100000-0000-0000-0000-000000000003",
+        "answer_text": "On Wednesday, a team member came to me with a budget problem. Instead of suggesting she cut the training line item (my first instinct), I asked: What would you do if you had full authority to solve this? She paused, then laid out a plan that was better than anything I would have suggested. I felt proud of both of us.",
+        "answer_value": null
+      }
+      , { onConflict: "submission_id,question_id" }); if (error) throw error; }
+      { const { error } = await admin.from("reflection_answers").upsert(
+      {
+        "id": "12eacfa9-a6e4-4c2f-8439-16af61bcb88b",
+        "submission_id": "6ecdc548-e756-4236-bd55-00710f987533",
+        "question_id": "c5100000-0000-0000-0000-000000000004",
+        "answer_text": null,
+        "answer_value": 5
+      }
+      , { onConflict: "submission_id,question_id" }); if (error) throw error; }
+      { const { error } = await admin.from("reflection_answers").upsert(
+      {
+        "id": "a677d27d-15bf-4938-945f-cb16b87c2154",
+        "submission_id": "6ecdc548-e756-4236-bd55-00710f987533",
+        "question_id": "c5100000-0000-0000-0000-000000000005",
+        "answer_text": "I want to focus on the SHIFT model — specifically staying in the I (desired outcome) stage longer instead of rushing to action. I also want to get more comfortable with silence.",
+        "answer_value": null
+      }
+      , { onConflict: "submission_id,question_id" }); if (error) throw error; }
+
+      // 20. Notifications
+      { const { error } = await admin.from("notifications").upsert(
+      {
+        "id": "ab14c074-e869-4a80-9142-fd75ae4dd4b1",
+        "user_id": trangId,
+        "notification_type": "session_confirmed",
+        "title": "Session confirmed",
+        "title_vi": "Session đã xác nhận",
+        "body": "Your coaching session on Sep 10 at 9:00 AM has been confirmed.",
+        "body_vi": "Session coaching ngày 10/9 lúc 9:00 sáng đã được xác nhận.",
+        "is_read": true,
+        "read_at": "2026-09-09T10:05:00Z",
+        "link": "/sessions/e0000000-0000-0000-0000-000000000001",
+        "created_at": "2026-09-09T10:00:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("notifications").upsert(
+      {
+        "id": "f61d112c-b7d5-4d02-8694-ea64490778d7",
+        "user_id": trangId,
+        "notification_type": "new_training_week",
+        "title": "Week 3 is now available",
+        "title_vi": "Tuần 3 đã mở",
+        "body": "The SHIFT Model in Practice — your new training content is ready.",
+        "body_vi": "Mô hình SHIFT trong Thực hành — nội dung đào tạo mới đã sẵn sàng.",
+        "is_read": true,
+        "read_at": "2026-09-22T08:02:00Z",
+        "link": "/training",
+        "created_at": "2026-09-22T08:00:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("notifications").upsert(
+      {
+        "id": "1265a5f7-18d0-40d2-841f-843841835125",
+        "user_id": trangId,
+        "notification_type": "triad_session_booked",
+        "title": "Triad session scheduled",
+        "title_vi": "Session triad đã được lên lịch",
+        "body": "Triad Alpha practice session on Sep 20 at 3:00 PM.",
+        "body_vi": "Session thực hành Triad Alpha ngày 20/9 lúc 3:00 chiều.",
+        "is_read": true,
+        "read_at": "2026-09-19T08:00:00Z",
+        "link": "/triads",
+        "created_at": "2026-09-19T07:00:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("notifications").upsert(
+      {
+        "id": "8b4d2e4c-387c-431d-9077-e48696c6e524",
+        "user_id": trangId,
+        "notification_type": "daily_prompt",
+        "title": "Your daily coaching prompt",
+        "title_vi": "Câu hỏi coaching hàng ngày",
+        "body": "A new reflection prompt is waiting for you.",
+        "body_vi": "Một câu hỏi phản tư mới đang chờ bạn.",
+        "is_read": false,
+        "read_at": null,
+        "link": "/dashboard",
+        "created_at": "2026-09-29T07:00:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+
+      trangSeed = { skipped: false };
       }
     }
 
     return new Response(
-      JSON.stringify({ ok: true, programme_id: programmeId, training_week_ids: trainingWeekIds, trang_seed: trangSeed }),
+      JSON.stringify({ ok: true, programme_id: programmeId, training_week_ids: weekIds, trang_seed: trangSeed }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
