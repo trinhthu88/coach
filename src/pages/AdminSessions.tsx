@@ -76,6 +76,7 @@ export default function AdminSessions() {
   const [saving, setSaving] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [page, setPage] = useState(1);
+  const [coachRoleIds, setCoachRoleIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -106,6 +107,16 @@ export default function AdminSessions() {
         .select("id, full_name, email")
         .in("id", userIds);
       profilesById = Object.fromEntries((profs ?? []).map((p) => [p.id, p]));
+
+      // A coachee who is *also* a coach (booking as a client, not delivering)
+      // is worth flagging in this admin view — badge it rather than leaving
+      // it to look like a data error.
+      const { data: coachRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "coach")
+        .in("user_id", userIds);
+      setCoachRoleIds(new Set((coachRoles ?? []).map((r) => r.user_id)));
     }
     setRows(all.map((s) => ({
       ...s,
@@ -280,7 +291,14 @@ export default function AdminSessions() {
                       <div className="text-xs text-muted-foreground">{s.coach?.email}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">{s.coachee?.full_name ?? "—"}</div>
+                      <div className="flex items-center gap-1.5 text-sm">
+                        {s.coachee?.full_name ?? "—"}
+                        {coachRoleIds.has(s.coachee_id) && (
+                          <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest">
+                            {t("sessions.coacheeIsCoachBadge")}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground">{s.coachee?.email}</div>
                     </TableCell>
                     <TableCell>

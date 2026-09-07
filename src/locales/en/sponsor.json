@@ -13,6 +13,16 @@
       "emphasis": "in aggregate.",
       "subtitle": "Participation, progress, and outcomes — private by design."
     },
+    "contactTeam": {
+      "button": "Contact team",
+      "dialogTitle": "Contact the programme team",
+      "placeholder": "What would you like to ask or share?",
+      "cancel": "Cancel",
+      "send": "Send",
+      "sent": "Message sent to the programme team",
+      "alertTitle": "Sponsor request from {{org}}",
+      "defaultOrg": "your organization"
+    },
     "firstLogin": {
       "startsInDay_one": "Programme starts in {{count}} day",
       "startsInDay_other": "Programme starts in {{count}} days",

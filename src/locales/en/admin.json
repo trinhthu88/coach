@@ -511,6 +511,7 @@
     },
     "kindPeer": "Peer",
     "kindCoaching": "Coaching",
+    "coacheeIsCoachBadge": "Coach",
     "open": "Open",
     "missing": "Missing",
     "edit": "Edit",

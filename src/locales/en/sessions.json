@@ -77,6 +77,13 @@
     "subtitleCoach": "Confirm requests, manage notes and meeting links.",
     "subtitleCoachee": "Track upcoming bookings, notes and action items.",
     "bookASession": "Book a session",
+    "searchPlaceholder": "Search by topic or name…",
+    "kindFilter": {
+      "all": "All",
+      "coaching": "Coaching",
+      "peer": "Peer",
+      "mentoring": "Mentoring"
+    },
     "tabs": {
       "upcoming": "Upcoming ({{count}})",
       "past": "Past ({{count}})"
@@ -209,6 +216,26 @@
     "markComplete": "Mark complete",
     "rescheduleSession": "Reschedule",
     "cancelSession": "Cancel session",
+    "coachFeedback": {
+      "title": "Session feedback",
+      "intro": "Optional and private — never shown to the client.",
+      "qualityRating": "Session quality",
+      "rateStars": "{{count}} star",
+      "rateStars_other": "{{count}} stars",
+      "engagementLevel": "Client engagement",
+      "engagementPlaceholder": "Select a level…",
+      "engagementLevels": {
+        "high": "High",
+        "moderate": "Moderate",
+        "low": "Low",
+        "disengaged": "Disengaged"
+      },
+      "flagLabel": "Flag this session for admin attention",
+      "flagNotesPlaceholder": "What should the programme team know?",
+      "save": "Save feedback",
+      "update": "Update feedback",
+      "saved": "Feedback saved"
+    },
     "help": {
       "title": "Need help with this session?",
       "contact": "Contact platform support"

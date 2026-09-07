@@ -14,6 +14,16 @@
       "emphasis": "ở góc nhìn tổng hợp.",
       "subtitle": "Sự tham gia, tiến độ và kết quả — được bảo mật theo thiết kế."
     },
+    "contactTeam": {
+      "button": "Liên hệ đội ngũ",
+      "dialogTitle": "Liên hệ đội ngũ chương trình",
+      "placeholder": "Bạn muốn hỏi hoặc chia sẻ điều gì?",
+      "cancel": "Hủy",
+      "send": "Gửi",
+      "sent": "Đã gửi tin nhắn đến đội ngũ chương trình",
+      "alertTitle": "Yêu cầu từ nhà tài trợ {{org}}",
+      "defaultOrg": "tổ chức của bạn"
+    },
     "firstLogin": {
       "startsInDay_one": "Chương trình bắt đầu sau {{count}} ngày",
       "startsInDay_other": "Chương trình bắt đầu sau {{count}} ngày",

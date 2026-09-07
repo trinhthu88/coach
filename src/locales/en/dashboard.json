@@ -461,6 +461,11 @@
       "sessionsUsed": "Sessions used",
       "openJourney": "Open my development"
     },
+    "myCoach": {
+      "title": "My coach",
+      "none": "No coach assigned yet — check back soon.",
+      "viewProfile": "View profile"
+    },
     "mentoringGive": {
       "title": "My mentees",
       "noUpcoming": "No upcoming mentoring sessions.",

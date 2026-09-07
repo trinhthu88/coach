@@ -7,7 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import {
   buildFeedbackAlerts, buildMentoringPrepFileOverdueAlerts, buildMentoringFeedbackOverdueAlerts,
-  buildStaleProgrammeParticipantAlerts, buildLowQuizScoreAlerts,
+  buildStaleProgrammeParticipantAlerts, buildLowQuizScoreAlerts, buildFlaggedSessionAlerts,
   type ScanActivityRow, type ScanQuizSubmissionRow,
 } from "./alertScan";
 import { FilterChip } from "@/components/ui/page-header";
@@ -45,6 +45,7 @@ type NewAlert = {
   title: string;
   message: string;
   related_coachee_id: string | null;
+  related_coach_id?: string | null;
   resolved: false;
 };
 
@@ -74,6 +75,7 @@ const TYPE_ICON: Record<string, LucideIcon> = {
   stale_programme_participant: Users,
   low_quiz_scores: BarChart3,
   triad_not_scheduled: CalendarIcon,
+  coach_flagged_session: Flag,
 };
 
 function scopeFor(a: Alert, t: (key: string) => string) {
@@ -115,6 +117,7 @@ export default function AdminAlerts() {
         { data: promptResponses },
         { data: reflections },
         { data: trainingProgress },
+        { data: flaggedFeedback },
       ] = await Promise.all([
         supabase
           .from("sessions")
@@ -133,6 +136,7 @@ export default function AdminAlerts() {
         supabase.from("daily_prompt_responses").select("user_id, responded_at"),
         supabase.from("triad_reflections").select("participant_id, submitted_at"),
         supabase.from("training_progress").select("user_id, completed_at"),
+        supabase.from("coach_session_feedback").select("session_id, coach_id, flag_notes").eq("flag_for_admin", true),
       ]);
 
       const profById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.full_name]));
@@ -230,6 +234,19 @@ export default function AdminAlerts() {
         .map((s: { user_id: string; score_pct: number | null }) => ({ userId: s.user_id, scorePct: s.score_pct }));
       newAlerts.push(...buildLowQuizScoreAlerts({ submissions: quizSubmissions, nameById: profById, emailById }));
 
+      // Coach-flagged sessions (optional coach_session_feedback.flag_for_admin)
+      const sessionById = new Map(
+        (sessions || []).map((s: AlertsScanSessionRow) => [s.id, { coachee_id: s.coachee_id }])
+      );
+      newAlerts.push(
+        ...buildFlaggedSessionAlerts({
+          flagged: flaggedFeedback || [],
+          sessionById,
+          nameById: profById,
+          emailById,
+        })
+      );
+
       await supabase
         .from("admin_alerts")
         .delete()
@@ -242,6 +259,7 @@ export default function AdminAlerts() {
           "stale_programme_participant",
           "low_quiz_scores",
           "triad_not_scheduled",
+          "coach_flagged_session",
         ])
         .eq("resolved", false);
       if (newAlerts.length) await supabase.from("admin_alerts").insert(newAlerts);

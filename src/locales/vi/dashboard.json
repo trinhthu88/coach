@@ -451,6 +451,11 @@
       "sessionsUsed": "Session đã dùng",
       "openJourney": "Mở hành trình phát triển"
     },
+    "myCoach": {
+      "title": "Coach của tôi",
+      "none": "Chưa được chỉ định coach — hãy quay lại sau.",
+      "viewProfile": "Xem hồ sơ"
+    },
     "mentoringGive": {
       "title": "Mentee của tôi",
       "noUpcoming": "Chưa có buổi mentoring nào sắp diễn ra.",

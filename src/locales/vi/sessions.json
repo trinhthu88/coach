@@ -78,6 +78,13 @@
     "subtitleCoach": "Xác nhận yêu cầu, quản lý ghi chú và liên kết cuộc họp.",
     "subtitleCoachee": "Theo dõi các lịch đặt sắp tới, ghi chú và hành động cần làm.",
     "bookASession": "Đặt session",
+    "searchPlaceholder": "Tìm theo chủ đề hoặc tên…",
+    "kindFilter": {
+      "all": "Tất cả",
+      "coaching": "Coaching",
+      "peer": "Đồng cấp",
+      "mentoring": "Mentoring"
+    },
     "tabs": {
       "upcoming": "Sắp tới ({{count}})",
       "past": "Đã qua ({{count}})"
@@ -209,6 +216,25 @@
     "markComplete": "Đánh dấu hoàn thành",
     "rescheduleSession": "Đổi lịch",
     "cancelSession": "Hủy session",
+    "coachFeedback": {
+      "title": "Phản hồi về session",
+      "intro": "Không bắt buộc và riêng tư — không bao giờ hiển thị cho khách hàng.",
+      "qualityRating": "Chất lượng session",
+      "rateStars": "{{count}} sao",
+      "engagementLevel": "Mức độ tham gia của khách hàng",
+      "engagementPlaceholder": "Chọn một mức độ…",
+      "engagementLevels": {
+        "high": "Cao",
+        "moderate": "Trung bình",
+        "low": "Thấp",
+        "disengaged": "Không tham gia"
+      },
+      "flagLabel": "Gắn cờ session này để đội ngũ quản trị chú ý",
+      "flagNotesPlaceholder": "Đội ngũ chương trình nên biết điều gì?",
+      "save": "Lưu phản hồi",
+      "update": "Cập nhật phản hồi",
+      "saved": "Đã lưu phản hồi"
+    },
     "help": {
       "title": "Cần trợ giúp với session này?",
       "contact": "Liên hệ hỗ trợ nền tảng"

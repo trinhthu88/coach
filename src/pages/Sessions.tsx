@@ -3,6 +3,7 @@ import { Link, useNavigate, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SessionRow } from "@/components/ui/proto";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Calendar, Loader2, Star, Check } from "lucide-react";
+import { Calendar, Loader2, Star, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -26,6 +27,17 @@ type SessionKind =
   | "coachee-peer-receive"
   | "mentoring-mentor"
   | "mentoring-mentee";
+
+type KindFilter = "all" | "coaching" | "peer" | "mentoring";
+
+// Collapses the 7 underlying kinds (which distinguish table + give/receive
+// direction) down to the 3 categories a user actually filters by — direction
+// doesn't matter for "show me my peer sessions".
+function kindCategory(kind: SessionKind): KindFilter {
+  if (kind === "coaching") return "coaching";
+  if (kind === "mentoring-mentor" || kind === "mentoring-mentee") return "mentoring";
+  return "peer";
+}
 
 interface SessionRow {
   id: string;
@@ -61,6 +73,8 @@ export default function Sessions() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("upcoming");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -179,12 +193,22 @@ export default function Sessions() {
     return <Navigate to="/sponsor" replace />;
   }
 
+  const q = searchTerm.trim().toLowerCase();
+  const matchesFilters = (s: SessionRow) =>
+    (kindFilter === "all" || kindCategory(s.kind) === kindFilter) &&
+    (!q ||
+      s.topic.toLowerCase().includes(q) ||
+      (s.coach?.full_name ?? "").toLowerCase().includes(q) ||
+      (s.coach?.email ?? "").toLowerCase().includes(q) ||
+      (s.coachee?.full_name ?? "").toLowerCase().includes(q) ||
+      (s.coachee?.email ?? "").toLowerCase().includes(q));
+
   const now = new Date();
   const upcoming = sessions.filter(
-    (s) => s.status !== "cancelled" && s.status !== "completed" && new Date(s.start_time) >= now
+    (s) => s.status !== "cancelled" && s.status !== "completed" && new Date(s.start_time) >= now && matchesFilters(s)
   );
   const past = sessions.filter(
-    (s) => s.status === "completed" || s.status === "cancelled" || new Date(s.start_time) < now
+    (s) => (s.status === "completed" || s.status === "cancelled" || new Date(s.start_time) < now) && matchesFilters(s)
   );
 
   return (
@@ -218,7 +242,32 @@ export default function Sessions() {
           ))}
         </div>
       ) : (
-        <Tabs value={tab} onValueChange={setTab}>
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-64 max-w-xs flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={t("list.searchPlaceholder")}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {(["all", "coaching", "peer", "mentoring"] as const).map((k) => (
+                <Badge
+                  key={k}
+                  variant={kindFilter === k ? "default" : "outline"}
+                  className="cursor-pointer select-none"
+                  onClick={() => setKindFilter(k)}
+                >
+                  {t(`list.kindFilter.${k}`)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="upcoming">{t("list.tabs.upcoming", { count: upcoming.length })}</TabsTrigger>
             <TabsTrigger value="past">{t("list.tabs.past", { count: past.length })}</TabsTrigger>
@@ -256,7 +305,8 @@ export default function Sessions() {
               ))
             )}
           </TabsContent>
-        </Tabs>
+          </Tabs>
+        </>
       )}
     </div>
   );

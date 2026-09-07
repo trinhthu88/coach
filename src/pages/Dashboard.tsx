@@ -10,6 +10,7 @@ import { DashboardStatsBar } from "./dashboard/DashboardStatsBar";
 import { RoleIndicator } from "./dashboard/cards/shared";
 import { CoachingGiveCard } from "./dashboard/cards/CoachingGiveCard";
 import { CoachingReceiveCard } from "./dashboard/cards/CoachingReceiveCard";
+import { MyCoachCard } from "./dashboard/cards/MyCoachCard";
 import { MentoringGiveCard } from "./dashboard/cards/MentoringGiveCard";
 import { MentoringReceiveCard } from "./dashboard/cards/MentoringReceiveCard";
 import { PeerCoachingCard } from "./dashboard/cards/PeerCoachingCard";
@@ -114,6 +115,7 @@ export default function Dashboard() {
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <CoachingGiveCard />
         <CoachingReceiveCard />
+        <MyCoachCard />
         <MentoringGiveCard />
         <MentoringReceiveCard />
         <PeerCoachingCard />

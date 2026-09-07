@@ -297,6 +297,54 @@ export function buildLowQuizScoreAlerts(opts: {
   return alerts;
 }
 
+export interface ScanCoachSessionFeedbackRow {
+  session_id: string;
+  coach_id: string;
+  flag_notes: string | null;
+}
+
+export interface FlaggedSessionAlert {
+  severity: "warning";
+  alert_type: "coach_flagged_session";
+  title: string;
+  message: string;
+  related_coachee_id: string | null;
+  related_coach_id: string;
+  resolved: false;
+}
+
+/**
+ * Surfaces coach_session_feedback rows with flag_for_admin = true as admin
+ * alerts. sessionById resolves each feedback row's coachee (for the
+ * related_coachee_id link) — feedback itself only carries session_id/coach_id.
+ */
+export function buildFlaggedSessionAlerts(opts: {
+  flagged: ScanCoachSessionFeedbackRow[];
+  sessionById: Map<string, { coachee_id: string }>;
+  nameById: Map<string, string | null | undefined>;
+  emailById: Map<string, string | null | undefined>;
+}): FlaggedSessionAlert[] {
+  const { flagged, sessionById, nameById, emailById } = opts;
+  return flagged.map((f) => {
+    const session = sessionById.get(f.session_id);
+    const coachName = nameById.get(f.coach_id) || "A coach";
+    const coacheeName = session ? nameById.get(session.coachee_id) || "a client" : "a client";
+    const coachEmail = emailById.get(f.coach_id);
+    const contact = coachEmail ? ` (${coachEmail})` : "";
+    return {
+      severity: "warning",
+      alert_type: "coach_flagged_session",
+      title: `${coachName} flagged a session with ${coacheeName}`,
+      message: f.flag_notes
+        ? `${coachName}${contact}: ${f.flag_notes}`
+        : `${coachName}${contact} flagged this session for admin attention but didn't add a note.`,
+      related_coachee_id: session?.coachee_id ?? null,
+      related_coach_id: f.coach_id,
+      resolved: false,
+    };
+  });
+}
+
 // buildTriadNotScheduledAlerts (and its "triad_not_scheduled" alert type)
 // was removed with the Phase 3 triad redesign: triad_sessions no longer has
 // a repeating session_date to measure "hasn't met in 7 days" against

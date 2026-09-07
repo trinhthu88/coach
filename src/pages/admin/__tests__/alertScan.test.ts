@@ -3,6 +3,7 @@ import {
   buildFeedbackAlerts,
   buildMentoringPrepFileOverdueAlerts,
   buildMentoringFeedbackOverdueAlerts,
+  buildFlaggedSessionAlerts,
   ScanPeerSessionRow,
   ScanSessionRow,
   ScanMentoringSessionRow,
@@ -289,5 +290,47 @@ describe("buildMentoringFeedbackOverdueAlerts", () => {
       emailById,
     });
     expect(alerts).toHaveLength(0);
+  });
+});
+
+describe("buildFlaggedSessionAlerts", () => {
+  const coachNameById = new Map([...nameById, ["coach-1", "Marta Coach"]]);
+  const coachEmailById = new Map([...emailById, ["coach-1", "marta@example.com"]]);
+  const sessionById = new Map([["s1", { coachee_id: "coachee-1" }]]);
+
+  it("builds one warning alert per flagged row, carrying flag_notes into the message", () => {
+    const alerts = buildFlaggedSessionAlerts({
+      flagged: [{ session_id: "s1", coach_id: "coach-1", flag_notes: "Client seemed distressed." }],
+      sessionById,
+      nameById: coachNameById,
+      emailById: coachEmailById,
+    });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].severity).toBe("warning");
+    expect(alerts[0].alert_type).toBe("coach_flagged_session");
+    expect(alerts[0].related_coach_id).toBe("coach-1");
+    expect(alerts[0].related_coachee_id).toBe("coachee-1");
+    expect(alerts[0].message).toContain("Client seemed distressed.");
+  });
+
+  it("falls back to a generic message when flag_notes is empty", () => {
+    const alerts = buildFlaggedSessionAlerts({
+      flagged: [{ session_id: "s1", coach_id: "coach-1", flag_notes: null }],
+      sessionById,
+      nameById: coachNameById,
+      emailById: coachEmailById,
+    });
+    expect(alerts[0].message).toContain("didn't add a note");
+  });
+
+  it("still produces an alert (with a null related_coachee_id) if the session can't be resolved", () => {
+    const alerts = buildFlaggedSessionAlerts({
+      flagged: [{ session_id: "missing-session", coach_id: "coach-1", flag_notes: "Note" }],
+      sessionById,
+      nameById: coachNameById,
+      emailById: coachEmailById,
+    });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].related_coachee_id).toBeNull();
   });
 });

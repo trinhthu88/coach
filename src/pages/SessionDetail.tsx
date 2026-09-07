@@ -19,9 +19,12 @@ import {
   CheckSquare,
   CheckCircle2,
   HelpCircle,
+  ChevronDown,
 } from "lucide-react";
 import { SessionGoalRatings } from "./session/SessionGoalRatings";
 import { SessionToolbox } from "@/components/tools/SessionToolbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { CoachSessionFeedback } from "@/components/sessions/CoachSessionFeedback";
 
 import { cn } from "@/lib/utils";
 import { format, isAfter, addHours } from "date-fns";
@@ -31,6 +34,7 @@ import {
   useSessionAttachments,
   useSessionPeerFeedback,
 } from "@/hooks/sessions/useSessionDetail";
+import { useCoachSessionFeedback } from "@/hooks/sessions/useCoachSessionFeedback";
 import { PeerFeedbackState } from "@/hooks/sessions/types";
 import { canMarkSessionComplete } from "@/hooks/sessions/completionGate";
 import { getSessionStatusMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
@@ -97,6 +101,9 @@ export default function SessionDetail() {
     peerCoachId: session?.coach_id,
     peerCoacheeId: session?.coachee_id,
   });
+
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const coachFeedback = useCoachSessionFeedback(sessionId, session?.coach_id, !isPeer && !isCoacheePeer);
 
   const [newItem, setNewItem] = useState("");
   const [tab, setTab] = useState<TabKey>("notes");
@@ -570,6 +577,23 @@ export default function SessionDetail() {
             )}
           {isPeer && session.status === "completed" && isCoach && feedback.existed && (
             <PeerCompetencyFeedback existing={feedback} onSave={savePeerFeedback} readOnly />
+          )}
+
+          {/* Optional coach-only session feedback (quality rating, engagement
+              level, admin flag) — regular coaching sessions only, same table
+              scope as coach_session_feedback. Never shown to the coachee. */}
+          {!isPeer && !isCoacheePeer && isCoach && session.status === "completed" && (
+            <Collapsible open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full justify-between rounded-full">
+                  {t("detail.coachFeedback.title")}
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", feedbackOpen && "rotate-180")} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <CoachSessionFeedback feedback={coachFeedback} />
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </div>
 

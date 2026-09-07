@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
 /** Shared shell every module dashboard card renders inside — keeps spacing,
- * header layout, and the loading state identical across all seven cards. */
+ * header layout, and the loading state identical across all eight cards. */
 export function DashboardCardShell({
   icon: Icon,
   title,

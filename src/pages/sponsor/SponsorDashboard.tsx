@@ -5,10 +5,14 @@ import { format, differenceInCalendarDays } from "date-fns";
 import {
   Users, CheckCircle2, AlertTriangle, CalendarCheck, Star,
   CalendarRange, ShieldCheck, Loader2, ArrowRight, Building2,
-  Clock, Filter, ChevronDown, GraduationCap, type LucideIcon,
+  Clock, Filter, ChevronDown, GraduationCap, MessageCircle, type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { SectionCard, Pill, MiniBar, Avatar, EngagementCell } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
@@ -44,6 +48,9 @@ export default function SponsorDashboard() {
   const [orgName, setOrgName] = useState<string | null>(null);
   const [selectedLeader, setSelectedLeader] = useState<SponsorRosterRow | null>(null);
   const [cohortFilter, setCohortFilter] = useState<string>("all");
+  const [contactOpen, setContactOpen] = useState(false);
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactSending, setContactSending] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -55,6 +62,25 @@ export default function SponsorDashboard() {
       if (data) setOrgName(data.name);
     });
   }, [user]);
+
+  const contactAdmin = async () => {
+    if (!contactMessage.trim()) return;
+    setContactSending(true);
+    const { error } = await supabase.from("admin_alerts").insert({
+      alert_type: "sponsor_request",
+      severity: "info",
+      title: t("dashboard.contactTeam.alertTitle", { org: orgName || t("dashboard.contactTeam.defaultOrg") }),
+      message: contactMessage.trim(),
+    });
+    setContactSending(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(t("dashboard.contactTeam.sent"));
+    setContactMessage("");
+    setContactOpen(false);
+  };
 
   if (loading) {
     return (
@@ -102,6 +128,11 @@ export default function SponsorDashboard() {
               title={t("dashboard.header.title")}
               emphasis={t("dashboard.header.emphasis")}
               subtitle={t("dashboard.header.subtitle")}
+              actions={
+                <Button variant="outline" size="sm" onClick={() => setContactOpen(true)}>
+                  <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> {t("dashboard.contactTeam.button")}
+                </Button>
+              }
             />
           </div>
           {cohortNames.length > 1 && (
@@ -430,6 +461,29 @@ export default function SponsorDashboard() {
 
       {/* Leader detail drawer */}
       <SponsorLeaderDrawer leader={selectedLeader} onClose={() => setSelectedLeader(null)} />
+
+      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("dashboard.contactTeam.dialogTitle")}</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            rows={5}
+            value={contactMessage}
+            onChange={(e) => setContactMessage(e.target.value)}
+            placeholder={t("dashboard.contactTeam.placeholder")}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setContactOpen(false)} disabled={contactSending}>
+              {t("dashboard.contactTeam.cancel")}
+            </Button>
+            <Button onClick={contactAdmin} disabled={contactSending || !contactMessage.trim()}>
+              {contactSending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {t("dashboard.contactTeam.send")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
