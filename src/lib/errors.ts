@@ -1,4 +1,5 @@
 import type { TFunction } from "i18next";
+import * as Sentry from "@sentry/react";
 
 type KnownErrorCode = "23505" | "23503" | "42501";
 
@@ -53,7 +54,11 @@ export async function extractFunctionError(error: unknown): Promise<Error> {
   const context = (error as { context?: Response } | null)?.context;
   if (context && typeof context.json === "function") {
     const body = (await context.json().catch(() => null)) as { error?: string } | null;
+    // A structured `{ error }` body is a deliberate, already-friendly message from
+    // the edge function (e.g. a validation failure) — not worth reporting as a bug.
     if (body?.error) return new Error(body.error);
   }
-  return error instanceof Error ? error : new Error("Request failed");
+  const result = error instanceof Error ? error : new Error("Request failed");
+  Sentry.captureException(result);
+  return result;
 }

@@ -1,5 +1,6 @@
 import { Component, ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
+import * as Sentry from "@sentry/react";
 import { Button } from "@/components/ui/button";
 import i18n from "@/i18n/config";
 
@@ -19,9 +20,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
-    // No APM/error-tracking service is wired up yet (e.g. Sentry) — this is the
-    // only record of render crashes until one is added with real credentials.
     console.error("Unhandled render error:", error, info.componentStack);
+    Sentry.captureException(error, { extra: { componentStack: info.componentStack } });
   }
 
   render() {

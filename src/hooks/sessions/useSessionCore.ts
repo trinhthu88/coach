@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { extractFunctionError } from "@/lib/errors";
 import type { Database } from "@/integrations/supabase/types";
+import { getSessionFieldMap, type SessionTableKind } from "@/lib/sessionTableHelper";
 import {
   ActionItem,
   MilestoneLite,
@@ -13,7 +14,7 @@ import {
   normalizeItems,
 } from "./types";
 
-type SessionsTable = "sessions" | "peer_sessions" | "coachee_peer_sessions";
+type SessionsTable = SessionTableKind;
 
 interface UseSessionCoreOptions {
   sessionId: string | undefined;
@@ -97,11 +98,8 @@ async function fetchSessionCore(
  */
 export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionCoreOptions) {
   const { t } = useTranslation("sessions");
-  const tableName: SessionsTable = isCoacheePeer ? "coachee_peer_sessions" : isPeer ? "peer_sessions" : "sessions";
-  const coachField = isCoacheePeer ? "peer_provider_id" : isPeer ? "peer_coach_id" : "coach_id";
-  const coacheeField = isCoacheePeer ? "peer_receiver_id" : isPeer ? "peer_coachee_id" : "coachee_id";
-  const coachNotesField = isCoacheePeer ? "provider_notes" : "coach_notes";
-  const coacheeNotesField = isCoacheePeer ? "receiver_notes" : "coachee_notes";
+  const { table: tableName, coachField, coacheeField, coachNotesField, coacheeNotesField } =
+    getSessionFieldMap(isPeer, isCoacheePeer);
 
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ["session-core", tableName, sessionId], [tableName, sessionId]);
