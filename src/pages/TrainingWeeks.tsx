@@ -1,15 +1,17 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { Loader2, Lock, CheckCircle2, Circle, ArrowRight } from "lucide-react";
+import { Loader2, Lock, Check } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useTrainingWeeks, TrainingWeekListItem } from "@/hooks/training/useTrainingWeeks";
+import { useAuth } from "@/context/AuthContext";
+import { useProgrammeProgress, RawWeek } from "@/hooks/dashboard/useProgrammeProgress";
 
 export default function TrainingWeeks() {
   const { t, i18n } = useTranslation("training");
-  const { weeks, loading } = useTrainingWeeks();
+  const { user } = useAuth();
+  const { summary, loading } = useProgrammeProgress(user?.id);
   const isVi = i18n.language?.startsWith("vi");
 
   if (loading) {
@@ -22,14 +24,30 @@ export default function TrainingWeeks() {
 
   return (
     <div>
-      <PageHeader eyebrow={t("list.eyebrow")} title={t("list.title")} trailing="" subtitle={t("list.subtitle")} />
+      <PageHeader
+        eyebrow={t("list.eyebrow")}
+        title={t("list.titleLead")}
+        emphasis={t("list.titleEmphasis")}
+        trailing={t("list.titleTrailing")}
+        subtitle={t("list.subtitle")}
+      />
 
-      {weeks.length === 0 ? (
+      {summary.weeks.length === 0 ? (
         <Card className="p-12 text-center text-sm text-muted-foreground">{t("list.empty")}</Card>
       ) : (
-        <div className="space-y-3">
-          {weeks.map((w) => (
-            <WeekCard key={w.id} week={w} isVi={isVi} t={t} />
+        <div className="relative pl-[34px]">
+          <div aria-hidden className="absolute bottom-[30px] left-[11px] top-[10px] w-[2px] bg-[#e2dbd0]" />
+          {summary.weeks.map((week) => (
+            <WeekTimelineCard
+              key={week.id}
+              week={week}
+              isCurrent={week.id === summary.currentWeek?.id}
+              isVi={isVi}
+              t={t}
+              quizAssignmentId={week.id === summary.currentWeek?.id ? summary.currentQuizAssignmentId : null}
+              quizScore={summary.quizScores.find((q) => q.weekNumber === week.week_number)}
+              reflectionStreak={summary.reflectionStreak}
+            />
           ))}
         </div>
       )}
@@ -37,60 +55,98 @@ export default function TrainingWeeks() {
   );
 }
 
-function WeekCard({
+function WeekTimelineCard({
   week,
+  isCurrent,
   isVi,
   t,
+  quizAssignmentId,
+  quizScore,
+  reflectionStreak,
 }: {
-  week: TrainingWeekListItem;
+  week: RawWeek;
+  isCurrent: boolean;
   isVi: boolean;
   t: (key: string, opts?: Record<string, unknown>) => string;
+  quizAssignmentId: string | null;
+  quizScore: { weekNumber: number; scorePct: number } | undefined;
+  reflectionStreak: number;
 }) {
   const title = (isVi && week.title_vi) || week.title;
   const subtitle = (isVi && week.subtitle_vi) || week.subtitle;
-
-  if (week.locked) {
-    return (
-      <Card className="flex flex-wrap items-center gap-4 p-5 opacity-65">
-        <div className="flex items-center gap-2">
-          <Lock className="h-4 w-4 text-muted-foreground" />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            {t("list.weekN", { n: week.week_number })}
-          </p>
-        </div>
-        <div className="min-w-[220px] flex-1"><h3 className="text-base font-semibold text-foreground">{title}</h3>
-        {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}</div>
-        <p className="text-xs font-semibold text-muted-foreground">
-          {week.unlock_date ? t("list.unlockDate", { date: format(new Date(week.unlock_date), "MMM d, yyyy") }) : t("list.locked")}
-        </p>
-      </Card>
-    );
-  }
-
-  const status = week.completed_at ? "completed" : week.viewed_at ? "viewed" : "notStarted";
-  const StatusIcon = week.completed_at ? CheckCircle2 : Circle;
+  const status = week.locked ? "locked" : week.completed_at ? "completed" : isCurrent ? "current" : week.viewed_at ? "viewed" : "notStarted";
 
   return (
-    <Link to={`/training/${week.id}`} className="group block h-full">
-      <Card className="flex flex-wrap items-center gap-4 p-5 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
-            {t("list.weekN", { n: week.week_number })}
-          </p>
-          <StatusIcon className={cn("h-4 w-4", week.completed_at ? "text-success" : "text-muted-foreground/50")} />
-        </div>
-        <div className="min-w-[220px] flex-1"><h3 className="text-base font-semibold text-foreground">{title}</h3>
-        {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}</div>
-        {!week.skill_card_visible && (
-          <p className="text-[10.5px] font-medium text-muted-foreground">{t("list.skillCardHidden")}</p>
+    <div className="relative mb-3.5">
+      <span
+        className={cn(
+          "absolute -left-[34px] top-[26px] grid h-6 w-6 place-items-center rounded-full border-[3px] border-background text-[10px] font-bold",
+          status === "completed" && "bg-success text-white",
+          status === "current" && "bg-primary text-secondary",
+          (status === "locked" || status === "notStarted" || status === "viewed") && "bg-[#e2dbd0] text-[#8a847d]"
         )}
-        <div className="flex min-w-[135px] items-center justify-between gap-3 text-xs">
-          <span className="text-muted-foreground">{t(`list.${status}`)}</span>
-          <span className="inline-flex items-center gap-1 font-semibold text-primary">
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+      >
+        {status === "completed" ? <Check className="h-3 w-3" /> : status === "locked" ? <Lock className="h-3 w-3" /> : week.week_number}
+      </span>
+
+      <Card
+        className={cn(
+          "rounded-[20px] border-[#e8e2d8] p-[22px] sm:p-6",
+          isCurrent && "border-l-4 border-l-primary",
+          week.locked && "opacity-60"
+        )}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[9.5px] font-bold uppercase tracking-[.2em] text-muted-foreground">{t("list.weekN", { n: week.week_number })}</p>
+            <h3 className="font-display mt-1.5 text-[20px] font-normal tracking-[-0.02em] sm:text-[22px]">{title}</h3>
+          </div>
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.1em]",
+              status === "completed" && "bg-[#e8f5ef] text-success",
+              status === "current" && "bg-primary text-secondary",
+              (status === "locked" || status === "notStarted" || status === "viewed") && "bg-[#f2eee6] text-[#8a847d]"
+            )}
+          >
+            {t(`list.pill.${status}`)}
           </span>
         </div>
+
+        {week.locked ? (
+          <p className="mt-2 text-xs font-semibold text-muted-foreground">
+            {week.unlock_date ? t("list.unlockDate", { date: format(new Date(week.unlock_date), "MMM d, yyyy") }) : t("list.locked")}
+          </p>
+        ) : (
+          <>
+            {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={cn("rounded-full px-[11px] py-[5px] text-[10.5px] font-semibold", week.completed_at ? "bg-[#e8f5ef] text-success" : "bg-[#f2eee6] text-[#8a847d]")}>
+                {week.completed_at ? t("card.completed") : week.viewed_at ? t("list.viewed") : t("list.notStarted")}
+              </span>
+              {quizScore && (
+                <span className="rounded-full bg-[#e8f5ef] px-[11px] py-[5px] text-[10.5px] font-semibold text-success">
+                  {t("assignments.quizScored", { score: Math.round(quizScore.scorePct) })}
+                </span>
+              )}
+            </div>
+
+            {isCurrent && (
+              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-[#efeae1] pt-4 text-[12.5px]">
+                <Link to={`/training/${week.id}`} className="font-semibold text-[#2c8fa8] hover:underline">
+                  {t("progressCard.viewSkillCard")} &rarr;
+                </Link>
+                {quizAssignmentId && (
+                  <Link to={`/training/${week.id}/quiz/${quizAssignmentId}`} className="text-muted-foreground hover:text-[#2c8fa8]">
+                    {quizScore ? t("assignments.quizScored", { score: Math.round(quizScore.scorePct) }) : t("assignments.quizPending")}
+                  </Link>
+                )}
+                {reflectionStreak > 0 && <span className="text-muted-foreground">{t("list.promptStreak", { count: reflectionStreak })}</span>}
+              </div>
+            )}
+          </>
+        )}
       </Card>
-    </Link>
+    </div>
   );
 }

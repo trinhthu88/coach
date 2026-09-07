@@ -13,22 +13,23 @@ export interface ProgrammeProgressSummary {
    * get_my_training_weeks() already returned, just not previously exposed. */
   weeks: RawWeek[];
   /** Earliest unlocked, not-yet-completed week; falls back to the most
-   * recently unlocked week once everything unlocked is done. Same rule as
-   * useTrainingWeeks()'s currentWeek, computed here too so this hook doesn't
-   * need a second RPC round-trip to get it. */
+   * recently unlocked week once everything unlocked is done. */
   currentWeek: RawWeek | null;
   /** The current week's quiz assignment id, if it has one — for the
    * "Take quiz" action button. Null once no quiz module or no quiz that week. */
   currentQuizAssignmentId: string | null;
 }
 
-interface RawWeek {
+export interface RawWeek {
   id: string;
   week_number: number;
   title: string;
   title_vi: string | null;
+  subtitle: string | null;
+  subtitle_vi: string | null;
   unlock_date: string | null;
   locked: boolean;
+  viewed_at: string | null;
   completed_at: string | null;
 }
 

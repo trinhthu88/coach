@@ -1,7 +1,9 @@
 {
   "list": {
-    "eyebrow": "Your programme",
-    "title": "Training",
+    "eyebrow": "Learning",
+    "titleLead": "Your",
+    "titleEmphasis": "training",
+    "titleTrailing": " journey.",
     "subtitle": "Weekly skill cards built for your programme — new content unlocks as you go.",
     "empty": "No training weeks are available yet.",
     "weekN": "Week {{n}}",
@@ -10,7 +12,14 @@
     "completed": "Completed",
     "viewed": "Viewed",
     "notStarted": "Not started",
-    "skillCardHidden": "Skill card not yet available for this week"
+    "promptStreak": "Prompt streak: {{count}} days",
+    "pill": {
+      "completed": "Completed",
+      "current": "Current",
+      "viewed": "In progress",
+      "notStarted": "Up next",
+      "locked": "Locked"
+    }
   },
   "card": {
     "back": "Back to training",
@@ -45,7 +54,10 @@
     "incorrect": "Incorrect",
     "explanation": "Explanation",
     "alreadySubmitted": "You've already completed this quiz.",
-    "yourScore": "Your score"
+    "yourScore": "Your score",
+    "previous": "Previous",
+    "next": "Next",
+    "jumpToQuestion": "Go to question {{n}}"
   },
   "reflection": {
     "title": "Reflection",

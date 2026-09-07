@@ -1,7 +1,9 @@
 {
   "list": {
-    "eyebrow": "Chương trình của bạn",
-    "title": "Đào tạo",
+    "eyebrow": "Học tập",
+    "titleLead": "Hành trình",
+    "titleEmphasis": "đào tạo",
+    "titleTrailing": " của bạn.",
     "subtitle": "Skill card hàng tuần dành riêng cho chương trình của bạn — nội dung mới sẽ mở khóa dần.",
     "empty": "Chưa có tuần đào tạo nào.",
     "weekN": "Tuần {{n}}",
@@ -10,7 +12,14 @@
     "completed": "Đã hoàn thành",
     "viewed": "Đã xem",
     "notStarted": "Chưa bắt đầu",
-    "skillCardHidden": "Skill card của tuần này chưa khả dụng"
+    "promptStreak": "Chuỗi phản hồi: {{count}} ngày",
+    "pill": {
+      "completed": "Đã hoàn thành",
+      "current": "Đang học",
+      "viewed": "Đang thực hiện",
+      "notStarted": "Sắp tới",
+      "locked": "Đã khóa"
+    }
   },
   "card": {
     "back": "Quay lại trang đào tạo",
@@ -45,7 +54,10 @@
     "incorrect": "Sai",
     "explanation": "Giải thích",
     "alreadySubmitted": "Bạn đã hoàn thành bài trắc nghiệm này.",
-    "yourScore": "Điểm của bạn"
+    "yourScore": "Điểm của bạn",
+    "previous": "Trước",
+    "next": "Tiếp theo",
+    "jumpToQuestion": "Đi tới câu hỏi {{n}}"
   },
   "reflection": {
     "title": "Suy ngẫm",
