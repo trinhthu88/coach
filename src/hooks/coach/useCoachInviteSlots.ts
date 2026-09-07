@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -24,6 +25,7 @@ type InviteResult =
  * invisible to a client-side count.
  */
 export function useCoachInviteSlots(coachId: string | undefined) {
+  const { t } = useTranslation("dashboard");
   const [used, setUsed] = useState(0);
   const [limit, setLimit] = useState(DEFAULT_INVITE_LIMIT);
   const [loading, setLoading] = useState(true);
@@ -89,14 +91,14 @@ export function useCoachInviteSlots(coachId: string | undefined) {
         return false;
       }
       if (!data) {
-        toast.error("Client was already removed");
+        toast.error(t("clients.detail.clientAlreadyRemoved"));
         return false;
       }
-      toast.success("Client removed");
+      toast.success(t("clients.detail.clientRemoved"));
       await load();
       return true;
     },
-    [load]
+    [load, t]
   );
 
   return { used, limit, loading, reload: load, invite, removeClient };

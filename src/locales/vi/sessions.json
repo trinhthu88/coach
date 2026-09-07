@@ -125,7 +125,16 @@
     "missingRequirementHintCoaching": "Đang chờ suy ngẫm của học viên trước khi session này có thể được đánh dấu hoàn thành.",
     "toast": {
       "progressSaved": "Đã lưu tiến độ",
-      "meetingLinkInvalid": "Liên kết cuộc họp phải bắt đầu bằng http:// hoặc https://"
+      "meetingLinkInvalid": "Liên kết cuộc họp phải bắt đầu bằng http:// hoặc https://",
+      "actionItemsSaved": "Đã lưu danh sách hành động cần làm",
+      "meetingLinkSaved": "Đã lưu liên kết cuộc họp",
+      "sessionConfirmed": "Session đã được xác nhận. Zoom meeting đã sẵn sàng.",
+      "sessionCancelled": "Đã hủy session",
+      "markedComplete": "Đã đánh dấu hoàn thành",
+      "fileTypeError": "Chỉ chấp nhận file PDF, JPG, MP3 hoặc MP4",
+      "fileUploaded": "Đã tải file lên",
+      "linkError": "Không thể tạo liên kết",
+      "feedbackSaved": "Đã lưu phản hồi"
     },
     "counterpartRole": {
       "coachee": "Học viên",
@@ -198,6 +207,7 @@
     "participants": "Người tham gia",
     "confirmSession": "Xác nhận session",
     "markComplete": "Đánh dấu hoàn thành",
+    "rescheduleSession": "Đổi lịch",
     "cancelSession": "Hủy session",
     "help": {
       "title": "Cần trợ giúp với session này?",

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -29,6 +30,7 @@ export interface TrainingWeekDetail {
  * just comes back null, same as any other RLS miss.
  */
 export function useSkillCard(weekId: string | undefined) {
+  const { t } = useTranslation("training");
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [completing, setCompleting] = useState(false);
@@ -103,7 +105,7 @@ export function useSkillCard(weekId: string | undefined) {
     async (path: string) => {
       const { data: signed, error } = await supabase.storage.from("training-pdfs").createSignedUrl(path, 60 * 10);
       if (error || !signed) {
-        toast.error("Could not generate link");
+        toast.error(t("card.linkError"));
         return;
       }
       window.open(signed.signedUrl, "_blank");
@@ -119,7 +121,7 @@ export function useSkillCard(weekId: string | undefined) {
           });
       }
     },
-    [weekId, user]
+    [weekId, user, t]
   );
 
   return {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,25 +53,16 @@ interface Slot {
   end_time: string;
 }
 
-const DURATIONS = [30, 45, 60] as const;
 const CONTACT_EMAIL = "contact@clariva.club";
-
-function fmtTime(t: string) {
-  const [h, m] = t.split(":");
-  const hh = Number(h);
-  const ampm = hh >= 12 ? "PM" : "AM";
-  const display = hh % 12 || 12;
-  return `${display}:${m} ${ampm}`;
-}
-function dateKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export default function BookSession() {
   const { t } = useTranslation("sessions");
   const { coachId } = useParams<{ coachId: string }>();
   const [searchParams] = useSearchParams();
   const mode = (searchParams.get("mode") === "peer" ? "peer" : "coaching") as "peer" | "coaching";
+  const rescheduleId = searchParams.get("reschedule");
+  const location = useLocation();
+  const rescheduleTopic = (location.state as { topic?: string } | null)?.topic;
   const { user, role } = useAuth();
   const navigate = useNavigate();
 
@@ -84,7 +76,7 @@ export default function BookSession() {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfDay(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(rescheduleTopic || "");
   const [submitting, setSubmitting] = useState(false);
   const [usage, setUsage] = useState<{ monthly_limit: number | null; used_this_month: number } | null>(
     null
@@ -316,6 +308,15 @@ export default function BookSession() {
         return;
       }
       return toast.error(getFriendlyErrorMessage(error, t));
+    }
+    // Reschedule: the new booking above is what actually needs coach
+    // re-confirmation (it's a new slot); this just closes out the old one so
+    // it stops showing as upcoming. Best-effort — if this update fails the
+    // new session still stands, just with an orphaned old one to clean up
+    // manually, which is far better than blocking/rolling back a booking
+    // that already succeeded.
+    if (rescheduleId) {
+      await supabase.from("sessions").update({ status: "rescheduled" }).eq("id", rescheduleId);
     }
     toast.success(
       mode === "peer"

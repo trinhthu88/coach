@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,18 +37,6 @@ interface Slot {
   end_time: string;
 }
 
-const DURATIONS = [30, 45, 60] as const;
-
-function fmtTime(t: string) {
-  const [h, m] = t.split(":");
-  const hh = Number(h);
-  const ampm = hh >= 12 ? "PM" : "AM";
-  const display = hh % 12 || 12;
-  return `${display}:${m} ${ampm}`;
-}
-function dateKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export default function MentoringBookSession() {
   const { t } = useTranslation("mentoring");

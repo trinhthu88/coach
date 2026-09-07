@@ -16,9 +16,6 @@ import {
   Upload,
   FileText,
   CheckCircle2,
-  XCircle,
-  AlertCircle,
-  LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useMentoringSessionCore } from "@/hooks/mentoring/useMentoringSessionCore";
@@ -26,19 +23,7 @@ import { useMentoringPrepFile } from "@/hooks/mentoring/useMentoringPrepFile";
 import { useMentoringFeedback } from "@/hooks/mentoring/useMentoringFeedback";
 import { MentorFeedbackForm } from "@/components/mentoring/MentorFeedbackForm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
-import type { Database } from "@/integrations/supabase/types";
-
-type MentoringStatus = Database["public"]["Enums"]["session_status"];
-
-function getStatusMeta(t: (key: string) => string): Record<MentoringStatus, { label: string; className: string; icon: LucideIcon }> {
-  return {
-    pending_coach_approval: { label: t("status.pending_coach_approval"), className: "bg-warning/12 text-warning", icon: AlertCircle },
-    confirmed: { label: t("status.confirmed"), className: "bg-primary-soft text-primary", icon: CheckCircle2 },
-    completed: { label: t("status.completed"), className: "bg-success/12 text-success", icon: CheckCircle2 },
-    cancelled: { label: t("status.cancelled"), className: "bg-destructive/10 text-destructive", icon: XCircle },
-    rescheduled: { label: t("status.rescheduled"), className: "bg-muted text-muted-foreground", icon: Clock },
-  };
-}
+import { getSessionStatusMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
 
 export default function MentoringSessionDetail() {
   const { t } = useTranslation("mentoring");

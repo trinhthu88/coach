@@ -218,6 +218,15 @@
     "email": "Email",
     "copied": "Đã sao chép",
     "copy": "Sao chép",
+    "toast": {
+      "programmeRequired": "Cần chọn chương trình",
+      "spokenLanguageRequired": "Cần ít nhất một ngôn ngữ sử dụng",
+      "coacheeUpdated": "Đã cập nhật học viên",
+      "saveFailed": "Lưu không thành công",
+      "loginLinkEmailed": "Đã gửi email liên kết đăng nhập",
+      "emailFailedToSend": "Gửi email không thành công",
+      "resendLinkError": "Không thể gửi lại liên kết đăng nhập"
+    },
     "done": "Xong"
   },
   "organizations": {
@@ -303,6 +312,8 @@
     "descriptionLabel": "Mô tả",
     "durationMonthsLabel": "Thời lượng (tháng)",
     "sessionLimitsHeading": "Giới hạn session (áp dụng mặc định khi ghi danh)",
+    "deadLimitsWarning": "Giới hạn session của coach, session đồng cấp đã nhận, và session đồng cấp đã thực hiện bên dưới không còn được áp dụng — các giới hạn này giờ được thiết lập riêng cho từng coach tại trang",
+    "deadLimitsWarningLink": "Danh sách coach",
     "peerSessionsReceived": "Session đồng cấp — đã nhận",
     "peerSessionsGiven": "Session đồng cấp — đã thực hiện",
     "mentoringSessionsReceived": "Session Mentoring — đã nhận",

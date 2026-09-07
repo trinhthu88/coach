@@ -244,6 +244,8 @@
       "removeConfirmBody": "Họ sẽ mất quyền truy cập để đặt session mới hoặc nhắn tin cho bạn. Các session, ghi chú và lịch sử trước đây vẫn được giữ lại — đây không phải là xóa vĩnh viễn, và bạn có thể được phân công lại cho họ sau này nếu cần.",
       "cancel": "Hủy",
       "removing": "Đang xóa…",
+      "clientAlreadyRemoved": "Khách hàng này đã được gỡ trước đó",
+      "clientRemoved": "Đã gỡ khách hàng",
       "statedGoals": "Mục tiêu đã nêu:",
       "miniMetrics": {
         "overall": "Tổng thể",

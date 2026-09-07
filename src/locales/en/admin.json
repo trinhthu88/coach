@@ -222,6 +222,15 @@
     "email": "Email",
     "copied": "Copied",
     "copy": "Copy",
+    "toast": {
+      "programmeRequired": "Programme is required",
+      "spokenLanguageRequired": "At least one spoken language is required",
+      "coacheeUpdated": "Coachee updated",
+      "saveFailed": "Save failed",
+      "loginLinkEmailed": "Login link emailed",
+      "emailFailedToSend": "Email failed to send",
+      "resendLinkError": "Could not resend login link"
+    },
     "done": "Done"
   },
   "organizations": {
@@ -309,6 +318,8 @@
     "descriptionLabel": "Description",
     "durationMonthsLabel": "Duration (months)",
     "sessionLimitsHeading": "Session limits (default applied at enrollment)",
+    "deadLimitsWarning": "Coach session limit, peer sessions received, and peer sessions given below are no longer enforced — those are now set per coach on the",
+    "deadLimitsWarningLink": "Coaches page",
     "peerSessionsReceived": "Peer sessions — received",
     "peerSessionsGiven": "Peer sessions — given",
     "mentoringSessionsReceived": "Mentoring sessions — received",

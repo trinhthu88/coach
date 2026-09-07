@@ -125,7 +125,16 @@
     "missingRequirementHintCoaching": "Waiting on the coachee's reflection before this session can be marked complete.",
     "toast": {
       "progressSaved": "Progress saved",
-      "meetingLinkInvalid": "Meeting link must start with http:// or https://"
+      "meetingLinkInvalid": "Meeting link must start with http:// or https://",
+      "actionItemsSaved": "Action items saved",
+      "meetingLinkSaved": "Meeting link saved",
+      "sessionConfirmed": "Session confirmed. Zoom meeting is ready.",
+      "sessionCancelled": "Session cancelled",
+      "markedComplete": "Marked complete",
+      "fileTypeError": "Only PDF, JPG, MP3 or MP4 files are allowed",
+      "fileUploaded": "File uploaded",
+      "linkError": "Could not generate link",
+      "feedbackSaved": "Feedback saved"
     },
     "counterpartRole": {
       "coachee": "Coachee",
@@ -198,6 +207,7 @@
     "participants": "Participants",
     "confirmSession": "Confirm session",
     "markComplete": "Mark complete",
+    "rescheduleSession": "Reschedule",
     "cancelSession": "Cancel session",
     "help": {
       "title": "Need help with this session?",

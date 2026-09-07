@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Loader2, Plus, Pencil, Trash2, ArrowUpRight,
+  Loader2, Plus, Pencil, Trash2, ArrowUpRight, AlertCircle,
   Users, Repeat, GraduationCap, Triangle, BookOpen, HelpCircle, ClipboardCheck, Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -480,6 +480,16 @@ export default function AdminProgrammes() {
               </div>
               <div className="rounded-lg border p-3">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmes.sessionLimitsHeading")}</p>
+                <div className="mb-3 flex gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    {t("programmes.deadLimitsWarning")}{" "}
+                    <Link to="/admin/coaches" className="font-semibold underline underline-offset-2">
+                      {t("programmes.deadLimitsWarningLink")}
+                    </Link>
+                    .
+                  </span>
+                </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label className="text-[11px]">{t("programmes.coachingReceivedCoachee")}</Label>

@@ -18,10 +18,7 @@ import {
   X,
   CheckSquare,
   CheckCircle2,
-  XCircle,
-  AlertCircle,
   HelpCircle,
-  LucideIcon,
 } from "lucide-react";
 import { SessionGoalRatings } from "./session/SessionGoalRatings";
 import { SessionToolbox } from "@/components/tools/SessionToolbox";
@@ -34,41 +31,9 @@ import {
   useSessionAttachments,
   useSessionPeerFeedback,
 } from "@/hooks/sessions/useSessionDetail";
-import { PeerFeedbackState, SessionStatus } from "@/hooks/sessions/types";
+import { PeerFeedbackState } from "@/hooks/sessions/types";
 import { canMarkSessionComplete } from "@/hooks/sessions/completionGate";
-
-function getStatusMeta(t: (key: string) => string): Record<
-  SessionStatus,
-  { label: string; className: string; icon: LucideIcon }
-> {
-  return {
-    pending_coach_approval: {
-      label: t("status.pending_coach_approval"),
-      className: "bg-warning/12 text-warning",
-      icon: AlertCircle,
-    },
-    confirmed: {
-      label: t("status.confirmed"),
-      className: "bg-primary-soft text-primary",
-      icon: CheckCircle2,
-    },
-    completed: {
-      label: t("status.completed"),
-      className: "bg-success/12 text-success",
-      icon: CheckCircle2,
-    },
-    cancelled: {
-      label: t("status.cancelled"),
-      className: "bg-destructive/10 text-destructive",
-      icon: XCircle,
-    },
-    rescheduled: {
-      label: t("status.rescheduled"),
-      className: "bg-muted text-muted-foreground",
-      icon: Clock,
-    },
-  };
-}
+import { getSessionStatusMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
 
 type TabKey = "notes" | "actions" | "files" | "toolbox";
 
@@ -747,6 +712,19 @@ export default function SessionDetail() {
                     <p className="text-xs text-muted-foreground">{missingRequirementHint}</p>
                   )}
                 </div>
+              )}
+              {canCancel && !isPeer && !isCoacheePeer && session.status === "confirmed" && (
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() =>
+                    navigate(`/coaches/${session.coach_id}/book?reschedule=${session.id}`, {
+                      state: { topic: session.topic },
+                    })
+                  }
+                >
+                  {t("detail.rescheduleSession")}
+                </Button>
               )}
               {canCancel && !isCoacheePeer && (
                 <Button

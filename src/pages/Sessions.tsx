@@ -11,28 +11,12 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SessionRow } from "@/components/ui/proto";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  Calendar,
-  Clock,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Star,
-  Check,
-} from "lucide-react";
+import { Calendar, Loader2, Star, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
-import type { LucideIcon } from "lucide-react";
-
-type SessionStatus =
-  | "pending_coach_approval"
-  | "confirmed"
-  | "completed"
-  | "cancelled"
-  | "rescheduled";
+import { getSessionStatusPillMeta as getStatusMeta, type SessionStatus } from "@/lib/sessionStatusMeta";
 
 type SessionKind =
   | "coaching"
@@ -68,36 +52,6 @@ function sessionDetailPath(s: { id: string; kind: SessionKind }): string {
     return `/mentoring/sessions/${s.id}`;
   }
   return `/sessions/${s.id}?type=peer`;
-}
-
-function getStatusMeta(t: (key: string) => string): Record<SessionStatus, { label: string; icon: LucideIcon; className: string }> {
-  return {
-    pending_coach_approval: {
-      label: t("status.pending_coach_approval"),
-      icon: AlertCircle,
-      className: "bg-warning/10 text-warning border-warning/20",
-    },
-    confirmed: {
-      label: t("status.confirmed"),
-      icon: CheckCircle2,
-      className: "bg-primary/10 text-primary border-primary/20",
-    },
-    completed: {
-      label: t("status.completed"),
-      icon: CheckCircle2,
-      className: "bg-success/10 text-success border-success/20",
-    },
-    cancelled: {
-      label: t("status.cancelled"),
-      icon: XCircle,
-      className: "bg-destructive/10 text-destructive border-destructive/20",
-    },
-    rescheduled: {
-      label: t("status.rescheduled"),
-      icon: Clock,
-      className: "bg-secondary text-secondary-foreground border-border",
-    },
-  };
 }
 
 export default function Sessions() {

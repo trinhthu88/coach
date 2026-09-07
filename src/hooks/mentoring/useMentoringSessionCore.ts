@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MentoringSessionRow, ProfileLite } from "./types";
@@ -39,6 +40,7 @@ async function fetchMentoringSessionCore(sessionId: string): Promise<MentoringSe
  * flows (see useMentoringPrepFile.ts / useMentoringFeedback.ts).
  */
 export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOptions) {
+  const { t } = useTranslation("mentoring");
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ["mentoring-session-core", sessionId], [sessionId]);
 
@@ -88,10 +90,10 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
     });
     setSaving(false);
     if (error) return { error };
-    toast.success("Session confirmed. Zoom meeting is ready.");
+    toast.success(t("sessionDetail.sessionConfirmed"));
     load();
     return { error: null };
-  }, [session, load]);
+  }, [session, load, t]);
 
   const completeSession = useCallback(async () => {
     if (!session) return { error: null };

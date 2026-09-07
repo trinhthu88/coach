@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -23,6 +24,7 @@ interface UseMentoringPrepFileOptions {
  * policy's filename-suffix check is the real backstop.
  */
 export function useMentoringPrepFile({ sessionId, onSubmitted }: UseMentoringPrepFileOptions) {
+  const { t } = useTranslation("mentoring");
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
 
@@ -30,7 +32,7 @@ export function useMentoringPrepFile({ sessionId, onSubmitted }: UseMentoringPre
     if (!sessionId) return;
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!ALLOWED_EXT.includes(ext) || (file.type && !ALLOWED_MIME.includes(file.type))) {
-      toast.error("Only .docx or .pdf files are allowed");
+      toast.error(t("sessionDetail.prepFileTypeError"));
       return;
     }
     setUploading(true);
@@ -54,7 +56,7 @@ export function useMentoringPrepFile({ sessionId, onSubmitted }: UseMentoringPre
       toast.error(updateErr.message);
       return;
     }
-    toast.success("Preparation file submitted");
+    toast.success(t("sessionDetail.prepFileSubmitted"));
     queryClient.invalidateQueries({ queryKey: ["mentoring-session-core", sessionId] });
     onSubmitted();
 
@@ -70,7 +72,7 @@ export function useMentoringPrepFile({ sessionId, onSubmitted }: UseMentoringPre
       .from("mentoring-prep-files")
       .createSignedUrl(path, 60 * 10);
     if (error || !signed) {
-      toast.error("Could not generate link");
+      toast.error(t("sessionDetail.linkError"));
       return;
     }
     window.open(signed.signedUrl, "_blank");

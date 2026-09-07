@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { extractFunctionError } from "@/lib/errors";
@@ -95,6 +96,7 @@ async function fetchSessionCore(
  * the session row itself (progress notes, status transitions, meeting link).
  */
 export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionCoreOptions) {
+  const { t } = useTranslation("sessions");
   const tableName: SessionsTable = isCoacheePeer ? "coachee_peer_sessions" : isPeer ? "peer_sessions" : "sessions";
   const coachField = isCoacheePeer ? "peer_provider_id" : isPeer ? "peer_coach_id" : "coach_id";
   const coacheeField = isCoacheePeer ? "peer_receiver_id" : isPeer ? "peer_coachee_id" : "coachee_id";
@@ -176,9 +178,9 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
       toast.error(error.message);
       return;
     }
-    toast.success("Action items saved");
+    toast.success(t("detail.toast.actionItemsSaved"));
     load();
-  }, [session, items, tableName, load]);
+  }, [session, items, tableName, load, t]);
 
   const saveMeetingUrl = useCallback(
     async (trimmed: string) => {
@@ -194,10 +196,10 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
         toast.error(error.message);
         return;
       }
-      toast.success("Meeting link saved");
+      toast.success(t("detail.toast.meetingLinkSaved"));
       load();
     },
-    [session, tableName, load]
+    [session, tableName, load, t]
   );
 
   const confirmSession = useCallback(async () => {
@@ -214,9 +216,9 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
       const friendly = await extractFunctionError(error);
       return toast.error(friendly.message);
     }
-    toast.success("Session confirmed. Zoom meeting is ready.");
+    toast.success(t("detail.toast.sessionConfirmed"));
     load();
-  }, [session, isPeer, isCoacheePeer, load]);
+  }, [session, isPeer, isCoacheePeer, load, t]);
 
   const cancelSession = useCallback(
     async (onDone: () => void, reason?: string) => {
@@ -232,10 +234,10 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
         toast.error(friendly.message);
         return;
       }
-      toast.success("Session cancelled");
+      toast.success(t("detail.toast.sessionCancelled"));
       onDone();
     },
-    [session, isPeer, isCoacheePeer]
+    [session, isPeer, isCoacheePeer, t]
   );
 
   const completeSession = useCallback(async () => {
@@ -248,9 +250,9 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
       .eq("id", session.id);
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Marked complete");
+    toast.success(t("detail.toast.markedComplete"));
     load();
-  }, [session, tableName, load]);
+  }, [session, tableName, load, t]);
 
   const updateItem = useCallback((idx: number, patch: Partial<ActionItem>) => {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));

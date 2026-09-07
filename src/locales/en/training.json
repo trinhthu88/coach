@@ -18,7 +18,8 @@
     "markComplete": "Mark as completed",
     "completed": "Completed",
     "notFound": "This isn't available — it may still be locked, or you may not have access.",
-    "skillCardUnavailable": "The skill card for this week isn't available yet."
+    "skillCardUnavailable": "The skill card for this week isn't available yet.",
+    "linkError": "Could not generate link"
   },
   "dashboardCard": {
     "eyebrow": "This week",

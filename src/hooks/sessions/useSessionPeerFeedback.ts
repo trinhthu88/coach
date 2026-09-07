@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PeerFeedbackState } from "./types";
@@ -55,6 +56,7 @@ export function useSessionPeerFeedback({
   peerCoachId,
   peerCoacheeId,
 }: UseSessionPeerFeedbackOptions) {
+  const { t } = useTranslation("sessions");
   const queryClient = useQueryClient();
   const queryKey = ["session-peer-feedback", sessionId];
   const enabled = isPeer && !!sessionId;
@@ -109,7 +111,7 @@ export function useSessionPeerFeedback({
     if (!sessionId || !peerCoachId || !peerCoacheeId) return { error: null };
     try {
       await saveMutation.mutateAsync(state);
-      toast.success("Feedback saved");
+      toast.success(t("detail.toast.feedbackSaved"));
       setFeedback((p) => ({ ...p, existed: true }));
       queryClient.invalidateQueries({ queryKey });
       return { error: null };

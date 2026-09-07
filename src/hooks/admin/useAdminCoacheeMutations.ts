@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Row } from "@/pages/admin/coachees/coacheeDisplay";
@@ -9,17 +10,18 @@ import { upsertCoacheeEnrollment } from "@/lib/enrollmentTransition";
  * the full edit form, and resending the passwordless login link.
  */
 export function useAdminCoacheeMutations(onChanged: () => void) {
+  const { t } = useTranslation("admin");
   const [saving, setSaving] = useState(false);
   const [resendingLink, setResendingLink] = useState(false);
   const [resentLink, setResentLink] = useState<{ email: string; full_name: string; email_sent: boolean } | null>(null);
 
   const saveEdit = async (editing: Row, original: Row | undefined) => {
     if (!editing.programme_id) {
-      toast.error("Programme is required");
+      toast.error(t("coacheeEditSheet.toast.programmeRequired"));
       return;
     }
     if (!editing.spoken_languages.length) {
-      toast.error("At least one spoken language is required");
+      toast.error(t("coacheeEditSheet.toast.spokenLanguageRequired"));
       return;
     }
     setSaving(true);
@@ -68,11 +70,11 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
         await supabase.from("programme_enrollments").delete().eq("id", editing.enrollment_id);
       }
 
-      toast.success("Coachee updated");
+      toast.success(t("coacheeEditSheet.toast.coacheeUpdated"));
       onChanged();
       return true;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(e instanceof Error ? e.message : t("coacheeEditSheet.toast.saveFailed"));
       return false;
     } finally {
       setSaving(false);
@@ -95,10 +97,10 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
         full_name: editing.full_name,
         email_sent: !!result.email_sent,
       });
-      toast.success(result.email_sent ? "Login link emailed" : "Email failed to send");
+      toast.success(result.email_sent ? t("coacheeEditSheet.toast.loginLinkEmailed") : t("coacheeEditSheet.toast.emailFailedToSend"));
       onChanged();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not resend login link");
+      toast.error(err instanceof Error ? err.message : t("coacheeEditSheet.toast.resendLinkError"));
     } finally {
       setResendingLink(false);
     }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Attachment } from "./types";
@@ -31,6 +32,7 @@ export function useSessionAttachments({
   isPeer,
   userId,
 }: UseSessionAttachmentsOptions) {
+  const { t } = useTranslation("sessions");
   const queryClient = useQueryClient();
   const queryKey = ["session-attachments", sessionId];
   const enabled = !isPeer && !!sessionId;
@@ -65,7 +67,7 @@ export function useSessionAttachments({
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!ALLOWED_EXT.includes(ext)) {
       e.target.value = "";
-      toast.error("Only PDF, JPG, MP3 or MP4 files are allowed");
+      toast.error(t("detail.toast.fileTypeError"));
       return;
     }
     setUploading(true);
@@ -97,7 +99,7 @@ export function useSessionAttachments({
       return;
     }
     queryClient.setQueryData(queryKey, (prev: Attachment[] | undefined) => [inserted, ...(prev ?? [])]);
-    toast.success("File uploaded");
+    toast.success(t("detail.toast.fileUploaded"));
   };
 
   const download = async (a: Attachment) => {
@@ -105,7 +107,7 @@ export function useSessionAttachments({
       .from("session-attachments")
       .createSignedUrl(a.storage_path, 60);
     if (error || !signed) {
-      toast.error("Could not generate link");
+      toast.error(t("detail.toast.linkError"));
       return;
     }
     window.open(signed.signedUrl, "_blank");

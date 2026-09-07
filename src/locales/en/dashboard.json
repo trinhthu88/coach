@@ -253,6 +253,8 @@
       "removeConfirmBody": "They'll lose access to book new sessions or message you. Past sessions, notes, and history are kept — this isn't a delete, and you can be re-assigned to them again later if needed.",
       "cancel": "Cancel",
       "removing": "Removing…",
+      "clientAlreadyRemoved": "Client was already removed",
+      "clientRemoved": "Client removed",
       "statedGoals": "Stated goals:",
       "miniMetrics": {
         "overall": "Overall",
