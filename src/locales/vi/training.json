@@ -65,6 +65,9 @@
   },
   "progressCard": {
     "eyebrow": "Tiến độ chương trình của tôi",
+    "defaultProgrammeName": "Chương trình của tôi",
+    "weekOfTotal": "Tuần {{week}} / {{total}}",
+    "endsOn": "kết thúc {{date}}",
     "skillsCompleted": "Skill đã hoàn thành",
     "reflectionStreak": "Chuỗi phản hồi",
     "quizAvg": "Điểm quiz trung bình",
@@ -72,7 +75,13 @@
     "nextTriadOn": "Tiếp theo: {{date}}",
     "noTriadScheduled": "Chưa có lịch",
     "quizScoresPerWeek": "Điểm quiz",
-    "weekScorePill": "T{{n}}: {{score}}%"
+    "weekScorePill": "T{{n}}: {{score}}%",
+    "viewSkillCard": "Xem skill card",
+    "takeQuiz": "Làm quiz",
+    "triadReflectionAction": "Phản tư triad",
+    "goalsLabel": "Mục tiêu",
+    "goalsSummary_other": "{{count}} mục tiêu đang hoạt động",
+    "goalsSummaryEmpty": "Chưa có mục tiêu nào — hãy đặt một mục tiêu từ trang Phát triển của tôi."
   },
   "admin": {
     "eyebrow": "Quản trị",

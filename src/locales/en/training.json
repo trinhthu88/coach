@@ -65,6 +65,9 @@
   },
   "progressCard": {
     "eyebrow": "My programme progress",
+    "defaultProgrammeName": "My programme",
+    "weekOfTotal": "Week {{week}} of {{total}}",
+    "endsOn": "ends {{date}}",
     "skillsCompleted": "Skills completed",
     "reflectionStreak": "Reflection streak",
     "quizAvg": "Quiz average",
@@ -72,7 +75,14 @@
     "nextTriadOn": "Next: {{date}}",
     "noTriadScheduled": "None scheduled",
     "quizScoresPerWeek": "Quiz scores",
-    "weekScorePill": "W{{n}}: {{score}}%"
+    "weekScorePill": "W{{n}}: {{score}}%",
+    "viewSkillCard": "View skill card",
+    "takeQuiz": "Take quiz",
+    "triadReflectionAction": "Triad reflection",
+    "goalsLabel": "Goals",
+    "goalsSummary_one": "{{count}} active goal",
+    "goalsSummary_other": "{{count}} active goals",
+    "goalsSummaryEmpty": "No active goals yet — set one from My development."
   },
   "admin": {
     "eyebrow": "Admin",

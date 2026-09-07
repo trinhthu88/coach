@@ -36,6 +36,9 @@ const MODULES = [
     "module": "coaching",
     "enabled": true,
     "config": {
+      "give": false,
+      "receive": true,
+      "give_limit": null,
       "receive_limit": 4,
       "session_length_minutes": 60
     }
@@ -51,6 +54,8 @@ const MODULES = [
     "module": "mentoring",
     "enabled": true,
     "config": {
+      "give": true,
+      "receive": true,
       "receive_limit": 2,
       "give_limit": 4
     }

@@ -9,12 +9,26 @@ export interface ProgrammeProgressSummary {
   reflectionStreak: number;
   triadCompletedCount: number;
   nextTriadDate: string | null;
+  /** Full week list (in order), for the timeline/segment display — same rows
+   * get_my_training_weeks() already returned, just not previously exposed. */
+  weeks: RawWeek[];
+  /** Earliest unlocked, not-yet-completed week; falls back to the most
+   * recently unlocked week once everything unlocked is done. Same rule as
+   * useTrainingWeeks()'s currentWeek, computed here too so this hook doesn't
+   * need a second RPC round-trip to get it. */
+  currentWeek: RawWeek | null;
+  /** The current week's quiz assignment id, if it has one — for the
+   * "Take quiz" action button. Null once no quiz module or no quiz that week. */
+  currentQuizAssignmentId: string | null;
 }
 
 interface RawWeek {
   id: string;
   week_number: number;
+  title: string;
+  title_vi: string | null;
   unlock_date: string | null;
+  locked: boolean;
   completed_at: string | null;
 }
 
@@ -26,6 +40,9 @@ const EMPTY: ProgrammeProgressSummary = {
   reflectionStreak: 0,
   triadCompletedCount: 0,
   nextTriadDate: null,
+  weeks: [],
+  currentWeek: null,
+  currentQuizAssignmentId: null,
 };
 
 async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> {
@@ -107,6 +124,11 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
       .filter((s) => s.status === "confirmed" && s.proposed_start_time && new Date(s.proposed_start_time).getTime() >= now)
       .sort((a, b) => new Date(a.proposed_start_time!).getTime() - new Date(b.proposed_start_time!).getTime())[0]?.proposed_start_time ?? null;
 
+  const currentWeek =
+    weeks.find((w) => !w.locked && !w.completed_at) ?? [...weeks].reverse().find((w) => !w.locked) ?? null;
+  const currentQuizAssignmentId =
+    (currentWeek && (assignments || []).find((a) => a.training_week_id === currentWeek.id)?.id) || null;
+
   return {
     weeksCompleted,
     weeksTotal: weeks.length,
@@ -115,13 +137,16 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
     reflectionStreak,
     triadCompletedCount,
     nextTriadDate,
+    weeks,
+    currentWeek,
+    currentQuizAssignmentId,
   };
 }
 
 /**
  * Backs ProgrammeProgressCard on the coach/coachee dashboards. Callers gate
  * on hasModule('training') themselves (same convention as
- * useProgrammeTimeline / ThisWeekSkillCard) since get_my_training_weeks()
+ * useProgrammeTimeline) since get_my_training_weeks()
  * already returns nothing when that module is off — quiz/triad/daily_prompt
  * data is naturally empty too in that case since it all hangs off training
  * weeks the caller can't see.

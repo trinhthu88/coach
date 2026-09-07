@@ -1,11 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Link, Navigate } from "react-router-dom";
-import { Calendar, Sparkles, Loader2, ArrowUpRight } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { useProgrammeModules, ProgrammeModuleType } from "@/hooks/useProgrammeModules";
 import { ProgrammeProgressCard } from "@/components/ProgrammeProgressCard";
-import { DashboardStatsBar } from "./dashboard/DashboardStatsBar";
 import { RoleIndicator } from "./dashboard/cards/shared";
 import { CoachingGiveCard } from "./dashboard/cards/CoachingGiveCard";
 import { CoachingReceiveCard } from "./dashboard/cards/CoachingReceiveCard";
@@ -14,7 +12,6 @@ import { MentoringGiveCard } from "./dashboard/cards/MentoringGiveCard";
 import { MentoringReceiveCard } from "./dashboard/cards/MentoringReceiveCard";
 import { PeerCoachingCard } from "./dashboard/cards/PeerCoachingCard";
 import { TriadsCard } from "./dashboard/cards/TriadsCard";
-import { TrainingCard } from "./dashboard/cards/TrainingCard";
 
 // Module → role-indicator badge, in a stable display order. Keeping this as a
 // static lookup (rather than deriving labels from the raw module enum) keeps
@@ -81,47 +78,39 @@ export default function Dashboard() {
     );
   }
 
+  const now = new Date();
+  const hour = now.getHours();
+  const greetingKey = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+  const dateLabel = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" })
+    .format(now)
+    .toUpperCase();
+
   return (
     <div className="animate-rise space-y-5">
       <header>
-        <p className="eyebrow">{t("hero.workspaceBadge")}</p>
-        <h1 className="font-display mt-3 text-[clamp(2.1rem,4vw,2.9rem)] leading-[1.04]">
-          {t("hero.welcomeBack")} <em>{firstName}</em>.
+        <p className="text-[10px] font-bold uppercase tracking-[.28em] text-primary">{dateLabel}</p>
+        <h1 className="font-display mt-3 text-[clamp(1.9rem,3.4vw,2.9rem)] leading-[1.04] tracking-[-0.03em]">
+          {t(`coachee.greeting.${greetingKey}`)}, <em>{firstName}</em>.
         </h1>
       </header>
 
-      <section className="relative overflow-hidden rounded-[24px] gradient-hero p-7 text-secondary-foreground shadow-lg sm:p-8">
-        <div aria-hidden className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/.28),transparent_70%)]" />
-        <div className="relative flex flex-wrap items-center gap-7">
-          <div className="min-w-[240px] flex-1">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.2em] text-primary-glow">
-              <Sparkles className="h-3 w-3" /> {t("hero.workspaceBadge")}
-            </div>
-            <h2 className="font-display mt-4 max-w-[24ch] text-[clamp(1.7rem,3vw,2.25rem)] leading-[1.12]">{t(`greetingByRole.${role}`)}</h2>
-            <p className="mt-3 text-[12.5px] text-white/65">{t("hero.viewSessionsButton")}</p>
-          </div>
-          <Button asChild className="rounded-[13px] bg-primary px-5 text-secondary hover:bg-primary-glow">
-            <Link to="/sessions"><Calendar className="mr-2 h-4 w-4" /> {t("hero.viewSessionsButton")} <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
-          </Button>
-        </div>
-      </section>
+      {/* flex, not grid: either hero can independently render nothing (module
+          not enabled that direction), and a lone survivor should stretch to
+          full width rather than being stuck in a half-empty grid column. */}
+      <div className="flex flex-col gap-4 lg:flex-row [&>*]:min-w-0 [&>*]:flex-1">
+        <CoachingReceiveCard />
+        <CoachingGiveCard />
+      </div>
 
       <DashboardRoleIndicators />
-      <DashboardStatsBar />
       <ProgrammeProgressCard />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <CoachingGiveCard />
-        <CoachingReceiveCard />
         <MyCoachCard />
         <MentoringGiveCard />
         <MentoringReceiveCard />
         <PeerCoachingCard />
         <TriadsCard />
-      </section>
-
-      <section className="grid gap-5 lg:grid-cols-2">
-        <TrainingCard />
       </section>
     </div>
   );

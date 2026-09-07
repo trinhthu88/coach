@@ -1,15 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
-import { format } from "date-fns";
-import { Users, Clock, CheckCircle2, ArrowUpRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Users, Clock, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 import { useCoachDashboardData } from "@/hooks/dashboard/useCoachDashboardData";
-import { DashboardCardShell, CardMetricRow, CardFooterLink, CardEmptyHint } from "./shared";
+import { NextSessionHero, HeroMetricRow, HeroFooterLink, HeroSkeleton } from "./NextSessionHero";
 
-/** "My clients" card — active client count, next session, pending approvals,
+/** "My clients" hero — active client count, next session, pending approvals,
  * sessions delivered. Data comes from the same hook CoachDashboardView used. */
 export function CoachingGiveCard() {
   const { t } = useTranslation("dashboard");
@@ -19,6 +15,7 @@ export function CoachingGiveCard() {
   const { sessions, profilesById, loading } = useCoachDashboardData(user?.id ?? "");
 
   if (!modulesLoading && !enabled) return null;
+  if (modulesLoading || loading) return <HeroSkeleton />;
 
   const now = new Date();
   const upcoming = sessions
@@ -32,62 +29,54 @@ export function CoachingGiveCard() {
   ).size;
 
   return (
-    <DashboardCardShell
-      icon={Users}
-      title={t("cards.coachingGive.title")}
-      loading={loading || modulesLoading}
-      dataOnboarding="dashboard-next-session"
-      badge={
-        pending.length > 0 ? (
-          <Badge className="bg-warning/15 text-warning hover:bg-warning/15">
-            {t("cards.coachingGive.pendingBadge", { count: pending.length })}
-          </Badge>
-        ) : undefined
-      }
-    >
-      {nextSession ? (
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            {t("cards.coachingGive.nextSession")}
-          </p>
-          <p className="mt-1 truncate text-sm font-semibold">
-            {profilesById[nextSession.coachee_id]?.full_name || t("cards.coachingGive.defaultClient")}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {nextSession.topic} · {format(new Date(nextSession.start_time), "MMM d · p")}
-          </p>
+    <div data-onboarding="dashboard-next-session">
+      <NextSessionHero
+        icon={Users}
+        eyebrowLabel={t("cards.coachingGive.title")}
+        badge={
+          pending.length > 0 ? (
+            <span className="rounded-full bg-warning/20 px-2.5 py-1 text-[10px] font-bold text-warning">
+              {t("cards.coachingGive.pendingBadge", { count: pending.length })}
+            </span>
+          ) : undefined
+        }
+        nextSession={
+          nextSession
+            ? {
+                topic: nextSession.topic,
+                startTime: nextSession.start_time,
+                counterpartName: profilesById[nextSession.coachee_id]?.full_name || t("cards.coachingGive.defaultClient"),
+              }
+            : null
+        }
+        ctaLabel={t("coachee.nextSession.joinAndPrepare")}
+        ctaHref={nextSession ? `/sessions/${nextSession.id}` : "/coach/clients"}
+        emptyTitle={t("coach.nextSession.noneTitle")}
+        emptyBody={t("cards.coachingGive.noUpcoming")}
+      >
+        <div data-onboarding="dashboard-booking-requests">
+          <HeroMetricRow label={t("cards.coachingGive.activeClients")} value={activeClients} />
+          <HeroMetricRow label={t("cards.coachingGive.sessionsDelivered")} value={completed.length} />
+          <HeroMetricRow
+            label={t("cards.coachingGive.pendingApprovals")}
+            value={
+              pending.length > 0 ? (
+                <span className="inline-flex items-center gap-1 text-warning">
+                  <Clock className="h-3.5 w-3.5" /> {pending.length}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-success">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> 0
+                </span>
+              )
+            }
+          />
+          <div className="mt-2 flex flex-wrap gap-4">
+            <HeroFooterLink to="/coach/clients">{t("cards.coachingGive.viewClients")}</HeroFooterLink>
+            <HeroFooterLink to="/sessions">{t("cards.coachingGive.viewSessions")}</HeroFooterLink>
+          </div>
         </div>
-      ) : (
-        <CardEmptyHint text={t("cards.coachingGive.noUpcoming")} />
-      )}
-
-      <div className="mt-3" data-onboarding="dashboard-booking-requests">
-        <CardMetricRow label={t("cards.coachingGive.activeClients")} value={activeClients} />
-        <CardMetricRow label={t("cards.coachingGive.sessionsDelivered")} value={completed.length} />
-        <CardMetricRow
-          label={t("cards.coachingGive.pendingApprovals")}
-          value={
-            pending.length > 0 ? (
-              <span className="inline-flex items-center gap-1 text-warning">
-                <Clock className="h-3.5 w-3.5" /> {pending.length}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-success">
-                <CheckCircle2 className="h-3.5 w-3.5" /> 0
-              </span>
-            )
-          }
-        />
-      </div>
-
-      <div className="mt-auto flex flex-wrap gap-3 pt-3">
-        <CardFooterLink to="/coach/clients">
-          {t("cards.coachingGive.viewClients")} <ArrowUpRight className="h-3 w-3" />
-        </CardFooterLink>
-        <CardFooterLink to="/sessions">
-          {t("cards.coachingGive.viewSessions")} <ArrowUpRight className="h-3 w-3" />
-        </CardFooterLink>
-      </div>
-    </DashboardCardShell>
+      </NextSessionHero>
+    </div>
   );
 }

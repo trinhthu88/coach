@@ -1,13 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
-import { Compass, ArrowUpRight, ListChecks } from "lucide-react";
+import { Compass, ListChecks } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 import { useCoachingReceiveCardData } from "@/hooks/dashboard/useCoachingReceiveCardData";
-import { ProgressRing } from "@/components/ui/proto";
-import { DashboardCardShell, CardMetricRow, CardFooterLink, CardEmptyHint } from "./shared";
+import { NextSessionHero, HeroMetricRow, HeroFooterLink, HeroSkeleton } from "./NextSessionHero";
 
-/** "My coaching" card — the receiving-coaching experience, shown for both
+/** "My coaching" hero — the receiving-coaching experience, shown for both
  * coach (coach-as-coachee) and coachee roles depending on programme config. */
 export function CoachingReceiveCard() {
   const { t } = useTranslation("dashboard");
@@ -17,57 +15,48 @@ export function CoachingReceiveCard() {
   const { data, loading } = useCoachingReceiveCardData(user?.id, role, enabled);
 
   if (!modulesLoading && !enabled) return null;
+  if (modulesLoading || loading) return <HeroSkeleton />;
 
   const journeyPath = role === "coach" ? "/coach/my-journey" : "/coachee/journey";
 
   return (
-    <DashboardCardShell icon={Compass} title={t("cards.coachingReceive.title")} loading={loading || modulesLoading}>
-      <div data-onboarding="dashboard-next-session" className="flex items-center gap-4">
-        <div className="min-w-0 flex-1">
-          {data.nextSession ? (
-            <div className="rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                {t("cards.coachingReceive.nextSession")}
-              </p>
-              <p className="mt-1 truncate text-sm font-semibold">
-                {data.nextSession.coach?.full_name || t("cards.coachingReceive.defaultCoach")}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {data.nextSession.topic} · {format(new Date(data.nextSession.start_time), "MMM d · p")}
-              </p>
-            </div>
-          ) : (
-            <CardEmptyHint text={t("cards.coachingReceive.noUpcoming")} />
-          )}
+    <div data-onboarding="dashboard-next-session">
+      <NextSessionHero
+        icon={Compass}
+        eyebrowLabel={t("cards.coachingReceive.title")}
+        nextSession={
+          data.nextSession
+            ? {
+                topic: data.nextSession.topic,
+                startTime: data.nextSession.start_time,
+                counterpartName: data.nextSession.coach?.full_name || t("cards.coachingReceive.defaultCoach"),
+              }
+            : null
+        }
+        ctaLabel={t("coachee.nextSession.joinAndPrepare")}
+        ctaHref={data.nextSession ? `/sessions/${data.nextSession.id}` : journeyPath}
+        emptyTitle={t("coachee.nextSession.noneTitle")}
+        emptyBody={t("cards.coachingReceive.noUpcoming")}
+      >
+        <div data-onboarding="dashboard-session-log">
+          <HeroMetricRow
+            label={t("cards.coachingReceive.actionItemsDue")}
+            value={
+              <span className="inline-flex items-center gap-1">
+                <ListChecks className="h-3.5 w-3.5" /> {data.actionItemsOpen}
+              </span>
+            }
+          />
+          <HeroMetricRow
+            label={t("cards.coachingReceive.sessionsUsed")}
+            value={data.sessionLimit != null ? `${data.sessionsUsed} / ${data.sessionLimit}` : data.sessionsUsed}
+          />
+          <HeroMetricRow label={t("cards.coachingReceive.goalsLabel")} value={`${data.goalProgressPct}%`} />
+          <HeroFooterLink to={journeyPath} className="mt-2">
+            {t("cards.coachingReceive.openJourney")}
+          </HeroFooterLink>
         </div>
-        <ProgressRing
-          value={data.goalProgressPct}
-          tone="primary"
-          size={64}
-          label={<span className="text-[7px] tracking-widest">{t("cards.coachingReceive.goalsLabel")}</span>}
-        />
-      </div>
-
-      <div className="mt-3">
-        <CardMetricRow
-          label={t("cards.coachingReceive.actionItemsDue")}
-          value={
-            <span className="inline-flex items-center gap-1">
-              <ListChecks className="h-3.5 w-3.5" /> {data.actionItemsOpen}
-            </span>
-          }
-        />
-        <CardMetricRow
-          label={t("cards.coachingReceive.sessionsUsed")}
-          value={data.sessionLimit != null ? `${data.sessionsUsed} / ${data.sessionLimit}` : data.sessionsUsed}
-        />
-      </div>
-
-      <div className="mt-auto pt-3" data-onboarding="dashboard-session-log">
-        <CardFooterLink to={journeyPath}>
-          {t("cards.coachingReceive.openJourney")} <ArrowUpRight className="h-3 w-3" />
-        </CardFooterLink>
-      </div>
-    </DashboardCardShell>
+      </NextSessionHero>
+    </div>
   );
 }

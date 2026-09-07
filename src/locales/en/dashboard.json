@@ -1,4 +1,10 @@
 {
+  "nextSessionCountdown": {
+    "soon": "Starting soon",
+    "today": "Today",
+    "inOneDay": "In 1 day",
+    "inDays": "In {{count}} days"
+  },
   "greetingByRole": {
     "coachee": "Find your next coach and keep momentum going.",
     "coach": "Review session requests and inspire your coachees today.",

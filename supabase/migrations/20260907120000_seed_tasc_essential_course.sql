@@ -52,13 +52,13 @@ BEGIN
 
   -- 2. Programme modules
   INSERT INTO public.programme_modules (programme_id, module, enabled, config)
-  VALUES (v_programme_id, 'coaching', true, '{"receive_limit":4,"session_length_minutes":60}'::jsonb)
+  VALUES (v_programme_id, 'coaching', true, '{"give":false,"receive":true,"give_limit":null,"receive_limit":4,"session_length_minutes":60}'::jsonb)
   ON CONFLICT (programme_id, module) DO UPDATE SET enabled = true, config = EXCLUDED.config;
   INSERT INTO public.programme_modules (programme_id, module, enabled, config)
   VALUES (v_programme_id, 'peer_coaching', true, '{"monthly_limit":2}'::jsonb)
   ON CONFLICT (programme_id, module) DO UPDATE SET enabled = true, config = EXCLUDED.config;
   INSERT INTO public.programme_modules (programme_id, module, enabled, config)
-  VALUES (v_programme_id, 'mentoring', true, '{"receive_limit":2,"give_limit":4}'::jsonb)
+  VALUES (v_programme_id, 'mentoring', true, '{"give":true,"receive":true,"receive_limit":2,"give_limit":4}'::jsonb)
   ON CONFLICT (programme_id, module) DO UPDATE SET enabled = true, config = EXCLUDED.config;
   INSERT INTO public.programme_modules (programme_id, module, enabled, config)
   VALUES (v_programme_id, 'triads', true, '{}'::jsonb)
