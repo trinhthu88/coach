@@ -54,7 +54,7 @@
     --input: 35 18% 80%;
     --ring: 192 60% 53%;
 
-    --radius: 1rem;
+    --radius: 0.85rem;
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(192 60% 53%), hsl(192 60% 70%));
@@ -64,8 +64,8 @@
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 hsl(200 59% 8% / 0.05);
-    --shadow-md: 0 4px 12px -2px hsl(200 59% 8% / 0.08);
-    --shadow-lg: 0 12px 32px -8px hsl(200 59% 8% / 0.12);
+    --shadow-md: 0 14px 40px -30px hsl(200 59% 8% / 0.50);
+    --shadow-lg: 0 24px 56px -32px hsl(200 59% 8% / 0.70);
     --shadow-glow: 0 12px 32px -8px hsl(192 60% 53% / 0.35);
 
     /* Sidebar — light paper with navy text */
@@ -224,7 +224,7 @@
 
   /* ── Surface language ─────────────────────────── */
   .surface-card {
-    @apply rounded-[22px] border border-border/70 bg-card;
+    @apply rounded-[20px] border border-border/70 bg-card;
     box-shadow: var(--shadow-md);
   }
   .hover-lift {
@@ -234,6 +234,15 @@
     transform: translateY(-3px);
     box-shadow: var(--shadow-lg);
     @apply border-primary/35;
+  }
+
+  .clariva-shell-card {
+    @apply rounded-[20px] border border-border bg-card;
+    box-shadow: var(--shadow-md);
+  }
+
+  .clariva-nudge {
+    @apply rounded-[18px] bg-primary-soft;
   }
 
   /* ── Motion ───────────────────────────────────── */

@@ -1,9 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { HeroPanel } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Link, Navigate } from "react-router-dom";
-import { Calendar, Sparkles, Loader2 } from "lucide-react";
+import { Calendar, Sparkles, Loader2, ArrowUpRight } from "lucide-react";
 import { useProgrammeModules, ProgrammeModuleType } from "@/hooks/useProgrammeModules";
 import { ProgrammeProgressCard } from "@/components/ProgrammeProgressCard";
 import { DashboardStatsBar } from "./dashboard/DashboardStatsBar";
@@ -83,30 +82,29 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8">
-      <HeroPanel>
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[9.5px] font-bold uppercase tracking-[0.2em] backdrop-blur-sm">
-            <Sparkles className="h-3 w-3" /> {t("hero.workspaceBadge")}
+    <div className="animate-rise space-y-5">
+      <header>
+        <p className="eyebrow">{t("hero.workspaceBadge")}</p>
+        <h1 className="font-display mt-3 text-[clamp(2.1rem,4vw,2.9rem)] leading-[1.04]">
+          {t("hero.welcomeBack")} <em>{firstName}</em>.
+        </h1>
+      </header>
+
+      <section className="relative overflow-hidden rounded-[24px] gradient-hero p-7 text-secondary-foreground shadow-lg sm:p-8">
+        <div aria-hidden className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/.28),transparent_70%)]" />
+        <div className="relative flex flex-wrap items-center gap-7">
+          <div className="min-w-[240px] flex-1">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.2em] text-primary-glow">
+              <Sparkles className="h-3 w-3" /> {t("hero.workspaceBadge")}
+            </div>
+            <h2 className="font-display mt-4 max-w-[24ch] text-[clamp(1.7rem,3vw,2.25rem)] leading-[1.12]">{t(`greetingByRole.${role}`)}</h2>
+            <p className="mt-3 text-[12.5px] text-white/65">{t("hero.viewSessionsButton")}</p>
           </div>
-          <h1 className="font-display mt-5 text-[clamp(2.2rem,4.6vw,3.4rem)] leading-[1.05]">
-            {t("hero.welcomeBack")} <em className="italic text-primary-glow">{firstName}</em>.
-          </h1>
-          <p className="mt-3 text-base text-white/70">{t(`greetingByRole.${role}`)}</p>
-          <div className="flex flex-wrap gap-3 pt-6">
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            >
-              <Link to="/sessions">
-                <Calendar className="mr-1 h-4 w-4" /> {t("hero.viewSessionsButton")}
-              </Link>
-            </Button>
-          </div>
+          <Button asChild className="rounded-[13px] bg-primary px-5 text-secondary hover:bg-primary-glow">
+            <Link to="/sessions"><Calendar className="mr-2 h-4 w-4" /> {t("hero.viewSessionsButton")} <ArrowUpRight className="ml-1 h-3.5 w-3.5" /></Link>
+          </Button>
         </div>
-      </HeroPanel>
+      </section>
 
       <DashboardRoleIndicators />
       <DashboardStatsBar />

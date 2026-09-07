@@ -540,7 +540,7 @@ export default function AppLayout() {
 
       {/* ══ MAIN ══ */}
       <main className="flex min-h-[100dvh] flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-20 flex h-[68px] shrink-0 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl sm:px-8">
+        <header className="sticky top-0 z-20 flex h-[72px] shrink-0 items-center gap-4 border-b border-border bg-background/90 px-4 backdrop-blur-xl sm:px-8">
           <button
             onClick={() => setMobileNavOpen(true)}
             className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary lg:hidden"
@@ -607,7 +607,7 @@ export default function AppLayout() {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[1320px] px-6 pb-20 pt-9 sm:px-8">
+          <div className="mx-auto w-full max-w-[1240px] px-6 pb-20 pt-9 sm:px-[30px]">
             <Outlet />
           </div>
         </div>
