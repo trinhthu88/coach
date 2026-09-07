@@ -110,6 +110,13 @@ export function useMyTriads() {
       const reflectedSessionIds = new Set((reflections ?? []).map((r) => r.triad_session_id as string));
 
       return rows
+        // Pre-redesign (v1) groups had no round at all — triad_round_id was
+        // added nullable so those historical rows weren't force-migrated,
+        // but they don't fit the round-based UI (no round_number, no
+        // deadline). Their embedded triad_rounds comes back null since
+        // there's no row to join to, not an empty object, so skip them here
+        // rather than crash on `.round.round_number` below.
+        .filter((g) => g.triad_rounds != null)
         .map((g) => {
           const memberIdList = [g.member_1_id, g.member_2_id, g.member_3_id].filter(Boolean) as string[];
           const session = latestSessionByGroup.get(g.id) ?? null;
