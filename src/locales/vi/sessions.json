@@ -92,9 +92,12 @@
     "kindLabelWith": "với",
     "kindLabelCoach": "Coach",
     "kindLabelPeerPractice": "Thực hành cùng bạn đồng hành",
+    "kindLabelMentoring": "Mentoring cùng",
     "roleBadge": {
       "coach": "Coach",
-      "coachee": "Coachee"
+      "coachee": "Coachee",
+      "mentor": "Mentor",
+      "mentee": "Mentee"
     },
     "markComplete": "Đánh dấu hoàn thành",
     "toast": {

@@ -34,7 +34,14 @@ type SessionStatus =
   | "cancelled"
   | "rescheduled";
 
-type SessionKind = "coaching" | "peer-give" | "peer-receive" | "coachee-peer-give" | "coachee-peer-receive";
+type SessionKind =
+  | "coaching"
+  | "peer-give"
+  | "peer-receive"
+  | "coachee-peer-give"
+  | "coachee-peer-receive"
+  | "mentoring-mentor"
+  | "mentoring-mentee";
 
 interface SessionRow {
   id: string;
@@ -56,6 +63,9 @@ function sessionDetailPath(s: { id: string; kind: SessionKind }): string {
   if (s.kind === "coaching") return `/sessions/${s.id}`;
   if (s.kind === "coachee-peer-give" || s.kind === "coachee-peer-receive") {
     return `/sessions/${s.id}?type=coachee_peer`;
+  }
+  if (s.kind === "mentoring-mentor" || s.kind === "mentoring-mentee") {
+    return `/mentoring/sessions/${s.id}`;
   }
   return `/sessions/${s.id}?type=peer`;
 }
@@ -133,6 +143,20 @@ export default function Sessions() {
       coacheePeer = data || [];
     }
 
+    // Mentoring: a mentee can be either role (coach or coachee, RULES.md §3
+    // Relationship 4), and a coach can also be a mentor giving sessions —
+    // so this queries both mentor_id and mentee_id rather than switching
+    // column by role the way the blocks above do.
+    let mentoring: Tables<"mentoring_sessions">[] = [];
+    if (role === "coach" || role === "coachee") {
+      const { data } = await supabase
+        .from("mentoring_sessions")
+        .select("*")
+        .or(`mentor_id.eq.${user.id},mentee_id.eq.${user.id}`)
+        .order("start_time", { ascending: false });
+      mentoring = data || [];
+    }
+
     const allRows = [
       ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
       ...peer.map((s) => ({
@@ -150,6 +174,18 @@ export default function Sessions() {
         coachee_rating: s.receiver_rating,
         coachee_rating_comment: s.receiver_rating_comment,
         kind: (s.peer_provider_id === user.id ? "coachee-peer-give" : "coachee-peer-receive") as SessionKind,
+      })),
+      // mentoring_sessions has no rating column (mentors give written ICF
+      // feedback instead, via mentoring_feedback — see MentoringSessionDetail).
+      ...mentoring.map((s) => ({
+        ...s,
+        coach_id: s.mentor_id,
+        coachee_id: s.mentee_id,
+        coach_notes: s.mentor_notes,
+        coachee_notes: s.mentee_notes,
+        coachee_rating: null,
+        coachee_rating_comment: null,
+        kind: (s.mentor_id === user.id ? "mentoring-mentor" : "mentoring-mentee") as SessionKind,
       })),
     ].sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
@@ -310,9 +346,11 @@ function SessionCard({
   const Icon = meta.icon;
   const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
   const isCoacheePeer = session.kind === "coachee-peer-give" || session.kind === "coachee-peer-receive";
-  // For peer sessions: the giver acts as "coach", the receiver acts as "coachee"
-  const userIsGiver = session.kind === "peer-give" || session.kind === "coachee-peer-give";
-  const counterpart = isPeer || isCoacheePeer
+  const isMentoring = session.kind === "mentoring-mentor" || session.kind === "mentoring-mentee";
+  // For peer/mentoring sessions: the giver (peer-giver / mentor) acts as
+  // "coach", the receiver (peer-receiver / mentee) acts as "coachee".
+  const userIsGiver = session.kind === "peer-give" || session.kind === "coachee-peer-give" || session.kind === "mentoring-mentor";
+  const counterpart = isPeer || isCoacheePeer || isMentoring
     ? userIsGiver
       ? session.coachee
       : session.coach
@@ -320,10 +358,19 @@ function SessionCard({
     ? session.coachee
     : session.coach;
   const start = new Date(session.start_time);
+  // mentoring_sessions has no rating column at all (mentors give written ICF
+  // feedback instead, via mentoring_feedback on the dedicated detail page).
   const showRating =
-    (!isPeer && !isCoacheePeer && role === "coachee" && session.status === "completed") ||
-    ((isPeer || isCoacheePeer) && !userIsGiver && session.status === "completed");
+    !isMentoring &&
+    ((!isPeer && !isCoacheePeer && role === "coachee" && session.status === "completed") ||
+      ((isPeer || isCoacheePeer) && !userIsGiver && session.status === "completed"));
+  // Mentoring completion is hard-gated at the DB level on a submitted prep
+  // file (enforce_mentoring_prep_file_before_completion) — the dedicated
+  // /mentoring/sessions/:id page already has friendly handling for that
+  // (P0001 → "prep file required" toast); this list's generic quick-action
+  // doesn't, so mentoring sessions are completed from there instead.
   const canMarkComplete =
+    !isMentoring &&
     ((isPeer || isCoacheePeer) ? userIsGiver : role === "coach") &&
     start < new Date() &&
     (session.status === "confirmed" ||
@@ -347,7 +394,9 @@ function SessionCard({
     onChanged();
   };
 
-  const kindLabel = isCoacheePeer
+  const kindLabel = isMentoring
+    ? t("list.kindLabelMentoring")
+    : isCoacheePeer
     ? t("list.kindLabelPeerPractice")
     : isPeer
     ? userIsGiver
@@ -356,7 +405,11 @@ function SessionCard({
     : role === "coach"
     ? t("list.kindLabelWith")
     : t("list.kindLabelCoach");
-  const roleBadge = isCoacheePeer
+  const roleBadge = isMentoring
+    ? userIsGiver
+      ? { label: t("list.roleBadge.mentor"), className: "bg-success/10 text-success border-success/20" }
+      : { label: t("list.roleBadge.mentee"), className: "bg-primary/10 text-primary border-primary/20" }
+    : isCoacheePeer
     ? { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" }
     : isPeer
     ? userIsGiver

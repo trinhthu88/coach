@@ -91,9 +91,12 @@
     "kindLabelWith": "with",
     "kindLabelCoach": "Coach",
     "kindLabelPeerPractice": "Peer practice with",
+    "kindLabelMentoring": "Mentoring with",
     "roleBadge": {
       "coach": "Coach",
-      "coachee": "Coachee"
+      "coachee": "Coachee",
+      "mentor": "Mentor",
+      "mentee": "Mentee"
     },
     "markComplete": "Mark complete",
     "toast": {
