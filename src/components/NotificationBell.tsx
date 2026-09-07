@@ -31,13 +31,13 @@ export function NotificationBell() {
         >
           <Bell className="h-[17px] w-[17px]" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-accent-foreground">
+            <span className="absolute -right-1.5 -top-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full border-2 border-background bg-[#d9483b] px-1 text-[9.5px] font-bold text-white">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[340px] p-0">
+      <PopoverContent align="end" className="w-[348px] overflow-hidden rounded-[18px] p-0 shadow-[0_30px_70px_-28px_rgba(6,47,62,.45)]">
         <div className="flex items-center justify-between border-b px-3.5 py-2.5">
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("notifications.title")}</p>
           {unreadCount > 0 && (

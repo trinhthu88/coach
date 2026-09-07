@@ -168,8 +168,8 @@ function NavItemLink({
         cn(
           "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm2 font-medium transition-all duration-200",
           isActive
-            ? "bg-white/[0.09] text-white"
-            : "text-secondary-foreground/75 hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white"
+            ? "bg-primary/[0.14] text-white"
+            : "text-secondary-foreground/75 hover:translate-x-[3px] hover:bg-white/[0.08] hover:text-white"
         )
       }
     >
@@ -540,7 +540,7 @@ export default function AppLayout() {
 
       {/* ══ MAIN ══ */}
       <main className="flex min-h-[100dvh] flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-20 flex h-[72px] shrink-0 items-center gap-4 border-b border-border bg-background/90 px-4 backdrop-blur-xl sm:px-8">
+        <header className="sticky top-0 z-20 flex h-[68px] shrink-0 items-center gap-4 border-b border-[#e2dbd0] bg-background/[.86] px-4 backdrop-blur-xl sm:px-8">
           <button
             onClick={() => setMobileNavOpen(true)}
             className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary lg:hidden"
