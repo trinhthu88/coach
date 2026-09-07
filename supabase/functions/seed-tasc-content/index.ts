@@ -1083,13 +1083,24 @@ Deno.serve(async (req) => {
 
   try {
     // ---- 1. Programme (resolve by name; update in place if it already exists) ----
-    const { data: programmeRow, error: programmeErr } = await admin
+    // Never upsert PROGRAMME.id directly: a plain upsert would include "id" in
+    // the ON CONFLICT DO UPDATE SET clause, which tries to change the primary
+    // key of a pre-existing row and breaks the FK from cohorts.programme_id.
+    const { data: existingProgramme } = await admin
       .from("programmes")
-      .upsert(PROGRAMME, { onConflict: "name" })
       .select("id")
-      .single();
-    if (programmeErr) throw programmeErr;
-    const programmeId: string = programmeRow.id;
+      .eq("name", PROGRAMME.name)
+      .maybeSingle();
+    let programmeId: string;
+    if (existingProgramme) {
+      programmeId = existingProgramme.id;
+      const { error } = await admin.from("programmes").update({ ...PROGRAMME, id: undefined }).eq("id", programmeId);
+      if (error) throw error;
+    } else {
+      const { data, error } = await admin.from("programmes").insert(PROGRAMME).select("id").single();
+      if (error) throw error;
+      programmeId = data.id;
+    }
 
     // ---- 2. Programme modules ----
     for (const m of MODULES) {
