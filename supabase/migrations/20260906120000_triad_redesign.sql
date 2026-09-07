@@ -165,6 +165,15 @@ ALTER TABLE public.triad_sessions ALTER COLUMN status SET DEFAULT 'proposed';
 ALTER TABLE public.triad_sessions ADD CONSTRAINT triad_sessions_status_check
   CHECK (status IN ('proposed', 'confirmed', 'completed', 'cancelled'));
 
+-- These policies (and "Triad reflections: triad members view" below) read
+-- coach_role_id/coachee_role_id/observer_role_id, so they must be dropped
+-- before those columns are — Postgres refuses to drop a column that a
+-- policy still depends on (SQLSTATE 2BP01).
+DROP POLICY IF EXISTS "Triad sessions: members view own" ON public.triad_sessions;
+DROP POLICY IF EXISTS "Triad sessions: members update own" ON public.triad_sessions;
+DROP POLICY IF EXISTS "Triad sessions: members create" ON public.triad_sessions;
+DROP POLICY IF EXISTS "Triad reflections: triad members view" ON public.triad_reflections;
+
 ALTER TABLE public.triad_sessions DROP CONSTRAINT triad_session_roles_distinct;
 ALTER TABLE public.triad_sessions DROP COLUMN coach_role_id;
 ALTER TABLE public.triad_sessions DROP COLUMN coachee_role_id;
@@ -172,10 +181,6 @@ ALTER TABLE public.triad_sessions DROP COLUMN observer_role_id;
 ALTER TABLE public.triad_sessions DROP COLUMN session_date;
 ALTER TABLE public.triad_sessions DROP COLUMN duration_minutes;
 ALTER TABLE public.triad_sessions DROP COLUMN training_week_id;
-
-DROP POLICY IF EXISTS "Triad sessions: members view own" ON public.triad_sessions;
-DROP POLICY IF EXISTS "Triad sessions: members update own" ON public.triad_sessions;
-DROP POLICY IF EXISTS "Triad sessions: members create" ON public.triad_sessions;
 
 CREATE POLICY "Triad sessions: member read" ON public.triad_sessions
   FOR SELECT TO authenticated
@@ -317,8 +322,10 @@ CREATE TRIGGER trg_auto_accept_alt_proposal
 --    (Table shape itself is unchanged — already matched the fixed
 --    6-question + satisfaction-rating design.)
 -- ============================================================
+-- "Triad reflections: triad members view" was already dropped earlier in
+-- this file (see section 4), before triad_sessions' role columns were
+-- dropped, since that policy depended on them.
 DROP POLICY IF EXISTS "Triad reflections: user manage own" ON public.triad_reflections;
-DROP POLICY IF EXISTS "Triad reflections: triad members view" ON public.triad_reflections;
 
 CREATE POLICY "Triad reflections: own insert" ON public.triad_reflections
   FOR INSERT TO authenticated
