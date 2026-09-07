@@ -5,11 +5,11 @@
     "admin": "Manage approvals, coaches, and platform health."
   },
   "hero": {
-    "coachWorkspaceBadge": "coach workspace",
     "adminWorkspaceBadge": "admin workspace",
     "welcomeBack": "Welcome back,",
     "adminDashboardButton": "Admin dashboard",
-    "viewSessionsButton": "View sessions"
+    "viewSessionsButton": "View sessions",
+    "workspaceBadge": "your workspace"
   },
   "admin": {
     "stats": {
@@ -405,5 +405,96 @@
       "peerReceived": "Peer · received"
     },
     "modeBadge": "Your practitioner growth"
+  },
+  "roleIndicators": {
+    "coachingGive": "Coaching",
+    "coachingGiveDesc": "Clients you coach",
+    "coachingReceive": "Coachee",
+    "coachingReceiveDesc": "Being coached",
+    "mentoringGive": "Mentor",
+    "mentoringGiveDesc": "Mentees you guide",
+    "mentoringReceive": "Mentee",
+    "mentoringReceiveDesc": "Being mentored",
+    "peerCoaching": "Peer coaching",
+    "peerCoachingDesc": "Practice with peers",
+    "triads": "Triads",
+    "triadsDesc": "Small-group practice",
+    "training": "Training",
+    "trainingDesc": "Weekly skills & prompts"
+  },
+  "stats": {
+    "sessionsDelivered": "Sessions delivered",
+    "sessionsDeliveredHint": "Completed with your clients",
+    "activeClients": "Active clients",
+    "activeClientsHint": "Confirmed or completed together",
+    "sessionsAttended": "Sessions attended",
+    "sessionsAttendedHint": "Sessions you've used",
+    "goalProgress": "Goal progress",
+    "goalProgressHint": "Milestones completed",
+    "peerSessionsCompleted": "Peer sessions completed",
+    "peerSessionsCompletedHint": "Given and received",
+    "upcoming": "Upcoming",
+    "upcomingHint": "Across all session types"
+  },
+  "cards": {
+    "coachingGive": {
+      "title": "My clients",
+      "pendingBadge": "{{count}} pending",
+      "nextSession": "Next session",
+      "defaultClient": "Client",
+      "noUpcoming": "No upcoming client sessions.",
+      "activeClients": "Active clients",
+      "sessionsDelivered": "Sessions delivered",
+      "pendingApprovals": "Pending approvals",
+      "viewClients": "View clients",
+      "viewSessions": "View sessions"
+    },
+    "coachingReceive": {
+      "title": "My coaching",
+      "nextSession": "Next session",
+      "defaultCoach": "Your coach",
+      "noUpcoming": "No upcoming session booked yet.",
+      "goalsLabel": "goals",
+      "actionItemsDue": "Action items due",
+      "sessionsUsed": "Sessions used",
+      "openJourney": "Open my development"
+    },
+    "mentoringGive": {
+      "title": "My mentees",
+      "noUpcoming": "No upcoming mentoring sessions.",
+      "defaultMentee": "Mentee",
+      "menteeCount": "Mentees",
+      "sessionsDelivered": "Sessions delivered",
+      "openMentoring": "Open mentoring"
+    },
+    "mentoringReceive": {
+      "title": "My mentor",
+      "nextSession": "Next session",
+      "defaultMentor": "Your mentor",
+      "noUpcoming": "No upcoming mentoring session.",
+      "prepUploaded": "Prep file uploaded",
+      "prepMissing": "Prep file needed",
+      "openMentoring": "Open mentoring"
+    },
+    "peerCoaching": {
+      "title": "Peer practice",
+      "pendingBadge": "{{count}} pending",
+      "giving": "Giving",
+      "receiving": "Receiving",
+      "defaultPeer": "Peer",
+      "noUpcoming": "No upcoming peer sessions.",
+      "openPeerPractice": "Open peer practice"
+    },
+    "triads": {
+      "title": "Triads",
+      "reflectionsBadge": "{{count}} reflections due",
+      "noUpcoming": "No triad session scheduled yet.",
+      "confirmed": "Confirmed",
+      "proposed": "Proposed",
+      "timeTbd": "Time to be confirmed",
+      "awaitingYourResponse": "Awaiting your response",
+      "reflectionsPending": "{{count}} reflection(s) pending",
+      "openTriads": "Open triads"
+    }
   }
 }

@@ -51,6 +51,10 @@ interface NavItem {
   /** Gate this item on the active programme's modules, in addition to role — see useProgrammeModules. */
   module?: ProgrammeModuleType;
   moduleDirection?: "give" | "receive";
+  /** OR-gate: item shows if the user has ANY of these module(+direction) combos.
+   * Used instead of `module`/`moduleDirection` when a single item is reachable
+   * through more than one module (e.g. Practice journey). */
+  anyModule?: { module: ProgrammeModuleType; direction?: "give" | "receive" }[];
 }
 
 const NAV: NavItem[] = [
@@ -63,20 +67,40 @@ const NAV: NavItem[] = [
   // Coachee
   { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", module: "coaching", moduleDirection: "receive" },
   { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"] },
-  { to: "/coachee/journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coachee"], module: "coaching", moduleDirection: "receive" },
-  { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.myPracticeJourney", module: "peer_coaching" },
-  { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.myPracticeJourney" },
+  { to: "/coachee/journey", labelKey: "nav.myDevelopment", icon: Compass, roles: ["coachee"], module: "coaching", moduleDirection: "receive" },
+  { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.myDevelopment", module: "peer_coaching" },
+  { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.myDevelopment" },
+  {
+    to: "/practice-journey",
+    labelKey: "nav.practiceJourney",
+    icon: Layers,
+    roles: ["coachee"],
+    groupKey: "navGroups.myDevelopment",
+    anyModule: [{ module: "peer_coaching" }, { module: "triads" }],
+  },
 
   // Coach — My Coaching Profile
   { to: "/coach/profile", labelKey: "nav.myCoachProfile", icon: IdCard, roles: ["coach"], groupKey: "navGroups.myCoachingProfile" },
   { to: "/coach/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coach"], groupKey: "navGroups.myCoachingProfile", onboardingId: "nav-my-availability" },
   { to: "/coach/clients", labelKey: "nav.myClients", icon: UsersRound, roles: ["coach"], groupKey: "navGroups.myCoachingProfile", module: "coaching", moduleDirection: "give" },
 
-  // Coach — My Practice Journey
-  { to: "/coach/peer-coaching", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coach"], groupKey: "navGroups.myPracticeJourney", module: "peer_coaching" },
-  { to: "/coach/find-coach", labelKey: "nav.findACoach", icon: Search, roles: ["coach"], groupKey: "navGroups.myPracticeJourney", module: "coaching", moduleDirection: "receive" },
-  { to: "/coach/my-journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
-  { to: "/coach/practice-journey", labelKey: "nav.practiceAnalytics", icon: Layers, roles: ["coach"], groupKey: "navGroups.myPracticeJourney" },
+  // Coach — My Development
+  { to: "/coach/find-coach", labelKey: "nav.findACoach", icon: Search, roles: ["coach"], groupKey: "navGroups.myDevelopment", module: "coaching", moduleDirection: "receive" },
+  { to: "/coach/my-journey", labelKey: "nav.myDevelopment", icon: Compass, roles: ["coach"], groupKey: "navGroups.myDevelopment", module: "coaching", moduleDirection: "receive" },
+  { to: "/coach/peer-coaching", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coach"], groupKey: "navGroups.myDevelopment", module: "peer_coaching" },
+  {
+    to: "/practice-journey",
+    labelKey: "nav.practiceJourney",
+    icon: Layers,
+    roles: ["coach"],
+    groupKey: "navGroups.myDevelopment",
+    anyModule: [
+      { module: "coaching", direction: "give" },
+      { module: "peer_coaching" },
+      { module: "mentoring", direction: "give" },
+      { module: "triads" },
+    ],
+  },
 
   // Communication (shared)
   { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coach", "coachee"], groupKey: "navGroups.communication" },
@@ -259,9 +283,17 @@ export default function AppLayout() {
   const { hasModule, hasDirection } = useProgrammeModules();
   const items = NAV.filter((n) => {
     if (!role || !n.roles.includes(role)) return false;
-    if (n.module && role !== "admin" && role !== "sponsor") {
-      if (!hasModule(n.module)) return false;
-      if (n.moduleDirection && !hasDirection(n.module, n.moduleDirection)) return false;
+    if (role !== "admin" && role !== "sponsor") {
+      if (n.module) {
+        if (!hasModule(n.module)) return false;
+        if (n.moduleDirection && !hasDirection(n.module, n.moduleDirection)) return false;
+      }
+      if (n.anyModule) {
+        const ok = n.anyModule.some(({ module, direction }) =>
+          direction ? hasDirection(module, direction) : hasModule(module)
+        );
+        if (!ok) return false;
+      }
     }
     return true;
   });

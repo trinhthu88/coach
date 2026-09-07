@@ -6,11 +6,11 @@
     "admin": "Quản lý phê duyệt, coach và tình trạng nền tảng."
   },
   "hero": {
-    "coachWorkspaceBadge": "không gian làm việc coach",
     "adminWorkspaceBadge": "không gian làm việc quản trị viên",
     "welcomeBack": "Chào mừng trở lại,",
     "adminDashboardButton": "Trang tổng quan quản trị",
-    "viewSessionsButton": "Xem session"
+    "viewSessionsButton": "Xem session",
+    "workspaceBadge": "không gian làm việc của bạn"
   },
   "admin": {
     "stats": {
@@ -395,5 +395,96 @@
       "peerReceived": "Đồng cấp · đã nhận"
     },
     "modeBadge": "Sự phát triển năng lực của bạn"
+  },
+  "roleIndicators": {
+    "coachingGive": "Coaching",
+    "coachingGiveDesc": "Coachee bạn đang coach",
+    "coachingReceive": "Coachee",
+    "coachingReceiveDesc": "Đang được coach",
+    "mentoringGive": "Mentor",
+    "mentoringGiveDesc": "Mentee bạn đang hướng dẫn",
+    "mentoringReceive": "Mentee",
+    "mentoringReceiveDesc": "Đang được mentor hướng dẫn",
+    "peerCoaching": "Peer coaching",
+    "peerCoachingDesc": "Thực hành cùng đồng nghiệp",
+    "triads": "Triads",
+    "triadsDesc": "Thực hành theo nhóm nhỏ",
+    "training": "Training",
+    "trainingDesc": "Kỹ năng và câu hỏi hằng tuần"
+  },
+  "stats": {
+    "sessionsDelivered": "Session đã hoàn thành",
+    "sessionsDeliveredHint": "Đã hoàn thành cùng coachee của bạn",
+    "activeClients": "Coachee đang hoạt động",
+    "activeClientsHint": "Đã xác nhận hoặc hoàn thành cùng nhau",
+    "sessionsAttended": "Session đã tham dự",
+    "sessionsAttendedHint": "Số session bạn đã sử dụng",
+    "goalProgress": "Tiến độ mục tiêu",
+    "goalProgressHint": "Số cột mốc đã hoàn thành",
+    "peerSessionsCompleted": "Peer coaching đã hoàn thành",
+    "peerSessionsCompletedHint": "Cả cho và nhận",
+    "upcoming": "Sắp diễn ra",
+    "upcomingHint": "Trên tất cả loại session"
+  },
+  "cards": {
+    "coachingGive": {
+      "title": "Coachee của tôi",
+      "pendingBadge": "{{count}} chờ duyệt",
+      "nextSession": "Session tiếp theo",
+      "defaultClient": "Coachee",
+      "noUpcoming": "Chưa có session nào sắp diễn ra với coachee.",
+      "activeClients": "Coachee đang hoạt động",
+      "sessionsDelivered": "Session đã hoàn thành",
+      "pendingApprovals": "Yêu cầu chờ duyệt",
+      "viewClients": "Xem danh sách coachee",
+      "viewSessions": "Xem session"
+    },
+    "coachingReceive": {
+      "title": "Coaching của tôi",
+      "nextSession": "Session tiếp theo",
+      "defaultCoach": "Coach của bạn",
+      "noUpcoming": "Chưa có session nào được đặt lịch.",
+      "goalsLabel": "mục tiêu",
+      "actionItemsDue": "Việc cần làm còn mở",
+      "sessionsUsed": "Session đã dùng",
+      "openJourney": "Mở hành trình phát triển"
+    },
+    "mentoringGive": {
+      "title": "Mentee của tôi",
+      "noUpcoming": "Chưa có buổi mentoring nào sắp diễn ra.",
+      "defaultMentee": "Mentee",
+      "menteeCount": "Số mentee",
+      "sessionsDelivered": "Buổi đã hoàn thành",
+      "openMentoring": "Mở mentoring"
+    },
+    "mentoringReceive": {
+      "title": "Mentor của tôi",
+      "nextSession": "Buổi tiếp theo",
+      "defaultMentor": "Mentor của bạn",
+      "noUpcoming": "Chưa có buổi mentoring nào sắp diễn ra.",
+      "prepUploaded": "Đã tải file chuẩn bị",
+      "prepMissing": "Cần tải file chuẩn bị",
+      "openMentoring": "Mở mentoring"
+    },
+    "peerCoaching": {
+      "title": "Peer practice",
+      "pendingBadge": "{{count}} chờ duyệt",
+      "giving": "Đang coach",
+      "receiving": "Đang được coach",
+      "defaultPeer": "Đồng nghiệp",
+      "noUpcoming": "Chưa có peer session nào sắp diễn ra.",
+      "openPeerPractice": "Mở peer practice"
+    },
+    "triads": {
+      "title": "Triads",
+      "reflectionsBadge": "{{count}} reflection cần nộp",
+      "noUpcoming": "Chưa có buổi triad nào được lên lịch.",
+      "confirmed": "Đã xác nhận",
+      "proposed": "Đã đề xuất",
+      "timeTbd": "Giờ chưa xác định",
+      "awaitingYourResponse": "Đang chờ phản hồi của bạn",
+      "reflectionsPending": "{{count}} reflection đang chờ",
+      "openTriads": "Mở triads"
+    }
   }
 }

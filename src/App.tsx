@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -169,10 +169,13 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  {/* Kept as an alias — nav now links to the shared /practice-journey route
+                      (works for coach and coachee), but old bookmarks/links should still land. */}
+                  <Route path="/coach/practice-journey" element={<Navigate to="/practice-journey" replace />} />
                   <Route
-                    path="/coach/practice-journey"
+                    path="/practice-journey"
                     element={
-                      <ProtectedRoute role="coach">
+                      <ProtectedRoute roles={["coach", "coachee"]}>
                         <CoachPracticeJourney />
                       </ProtectedRoute>
                     }
