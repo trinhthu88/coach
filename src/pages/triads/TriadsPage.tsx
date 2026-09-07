@@ -3,13 +3,10 @@ import { AlertTriangle, Loader2, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
-import { format } from "date-fns";
 import { useMyTriads } from "@/hooks/triads/useMyTriads";
+import { TriadGroupHero } from "./components/TriadGroupHero";
 import { TriadSessionCard } from "./components/TriadSessionCard";
-
-function initials(name: string) {
-  return (name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-}
+import { TriadPastSessionsTable } from "./components/TriadPastSessionsTable";
 
 export default function TriadsPage() {
   const { t } = useTranslation("triads");
@@ -23,9 +20,12 @@ export default function TriadsPage() {
     );
   }
 
+  const activeRounds = rounds.filter((r) => !r.session || r.session.status === "proposed" || r.session.status === "confirmed");
+  const pastRounds = rounds.filter((r) => r.session && (r.session.status === "completed" || r.session.status === "cancelled"));
+
   return (
-    <div className="space-y-6">
-      <PageHeader eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
+    <div className="space-y-8">
+      <PageHeader eyebrow={t("eyebrow")} title={t("titleLead")} emphasis={t("titleEmphasis")} subtitle={t("subtitle")} />
 
       {error ? (
         <Card className="flex flex-col items-center gap-3 border-destructive/30 bg-destructive/5 p-12 text-center text-sm">
@@ -42,39 +42,27 @@ export default function TriadsPage() {
           <p className="text-sm text-muted-foreground">{t("noRoundsBody")}</p>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {rounds.map((entry) => (
-            <div key={entry.group.id} className="space-y-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <p className="font-display text-xl font-normal tracking-tight">
-                    {t("roundLabel", { n: entry.round.round_number })} — {entry.round.title}
-                  </p>
-                  {entry.round.training_weeks && (
-                    <p className="text-xs text-muted-foreground">{entry.round.training_weeks.title}</p>
-                  )}
+        <>
+          {activeRounds.length > 0 && (
+            <div className="space-y-6">
+              {activeRounds.map((entry) => (
+                <div key={entry.group.id} className="animate-rise grid gap-4 lg:grid-cols-2">
+                  <TriadGroupHero entry={entry} />
+                  <TriadSessionCard entry={entry} />
                 </div>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  {t("deadlineLabel")}: {format(new Date(`${entry.round.completion_deadline}T00:00:00`), "MMM d, yyyy")}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {entry.members.map((m) => (
-                  <span key={m.id} className="inline-flex items-center gap-2 rounded-full bg-muted/50 px-3 py-1.5 text-[12.5px]">
-                    <span className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full bg-primary-soft text-[10px] font-bold text-primary">
-                      {m.avatar_url ? <img src={m.avatar_url} alt={m.full_name} className="h-full w-full object-cover" /> : initials(m.full_name)}
-                    </span>
-                    {m.full_name}
-                  </span>
-                ))}
-              </div>
-              {!entry.group.member_3_id && <p className="text-xs italic text-muted-foreground">{t("dyadNote")}</p>}
-
-              <TriadSessionCard entry={entry} />
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+
+          {pastRounds.length > 0 && (
+            <div>
+              <p className="mb-3 text-[9.5px] font-bold uppercase tracking-[.24em] text-muted-foreground">
+                {t("pastSessions.heading")}
+              </p>
+              <TriadPastSessionsTable rounds={pastRounds} />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,8 +1,13 @@
 {
-  "eyebrow": "Thực hành",
+  "eyebrow": "Triads",
   "title": "Triads",
+  "titleLead": "Luyện tập theo",
+  "titleEmphasis": "nhóm ba",
   "subtitle": "Luyện tập coaching theo nhóm nhỏ — chấp nhận thời gian được đề xuất hoặc đề xuất thời gian khác, sau đó viết phản hồi.",
   "you": "Bạn",
+  "myGroup": {
+    "label": "Nhóm của tôi"
+  },
   "loadError": "Không thể tải triad của bạn. Vui lòng thử lại.",
   "retry": "Thử lại",
   "noRoundsTitle": "Chưa có vòng triad nào",
@@ -22,6 +27,8 @@
     "proposedTime": "Thời gian đề xuất",
     "confirmedTime": "Thời gian đã xác nhận",
     "noTimeYet": "Chưa tìm được thời gian chung. Hãy đề xuất một thời gian bên dưới.",
+    "upcomingLabel": "Session sắp tới",
+    "needsSchedulingLabel": "Cần sắp xếp lịch",
     "accept": "Chấp nhận",
     "accepted": "Đã chấp nhận",
     "declined": "Đã từ chối",
@@ -55,10 +62,17 @@
     "acceptError": "Không thể chấp nhận thời gian đề xuất",
     "dateRequired": "Hãy chọn ngày giờ trước"
   },
+  "pastSessions": {
+    "heading": "Session đã qua",
+    "submitted": "Đã gửi",
+    "pending": "Đang chờ",
+    "satisfaction": "Mức độ hài lòng"
+  },
   "reflection": {
     "back": "Quay lại Triads",
     "title": "Phản hồi sau session",
     "subtitle": "Dành vài phút để ghi lại những gì bạn học được ở mỗi vai trò trong session này.",
+    "membersBannerLabel": "Cùng với:",
     "sections": {
       "coach": "Với vai trò Coach",
       "coachee": "Với vai trò Coachee",

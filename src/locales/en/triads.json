@@ -1,8 +1,13 @@
 {
-  "eyebrow": "Practice",
+  "eyebrow": "Triads",
   "title": "Triads",
+  "titleLead": "Practice in",
+  "titleEmphasis": "threes",
   "subtitle": "Practice coaching in small groups — accept a proposed time or suggest another, then reflect afterwards.",
   "you": "You",
+  "myGroup": {
+    "label": "My group"
+  },
   "loadError": "Couldn't load your triads. Please try again.",
   "retry": "Retry",
   "noRoundsTitle": "No triad rounds yet",
@@ -22,6 +27,8 @@
     "proposedTime": "Proposed time",
     "confirmedTime": "Confirmed time",
     "noTimeYet": "No common time was found yet. Propose one below.",
+    "upcomingLabel": "Upcoming session",
+    "needsSchedulingLabel": "Needs scheduling",
     "accept": "Accept",
     "accepted": "Accepted",
     "declined": "Declined",
@@ -55,10 +62,17 @@
     "acceptError": "Couldn't accept the alternative time",
     "dateRequired": "Pick a date and time first"
   },
+  "pastSessions": {
+    "heading": "Past sessions",
+    "submitted": "Submitted",
+    "pending": "Pending",
+    "satisfaction": "Satisfaction"
+  },
   "reflection": {
     "back": "Back to triads",
     "title": "Session reflection",
     "subtitle": "A few minutes to capture what you learned in each role during this session.",
+    "membersBannerLabel": "With:",
     "sections": {
       "coach": "As Coach",
       "coachee": "As Coachee",

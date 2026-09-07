@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -83,8 +82,8 @@ export function TriadAlternativeProposal({
   };
 
   return (
-    <div className="space-y-4 rounded-2xl border bg-muted/20 p-4">
-      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("alternative.title")}</p>
+    <div className="mt-4 space-y-4 rounded-[16px] border border-[#efeae1] bg-[#faf8f4] p-4">
+      <p className="text-[10.5px] font-bold uppercase tracking-[.2em] text-muted-foreground">{t("alternative.title")}</p>
 
       {mySlots.length > 0 && (
         <div>
@@ -99,7 +98,7 @@ export function TriadAlternativeProposal({
                   setTime(s.start_time.slice(0, 5));
                 }}
                 className={cn(
-                  "rounded-full border px-2.5 py-1 text-[11px] transition-colors hover:border-primary hover:text-primary",
+                  "rounded-full border border-[#dcd5c9] bg-card px-2.5 py-1 text-[11px] transition-colors hover:border-primary hover:text-primary",
                   date === s.slot_date && time === s.start_time.slice(0, 5) && "border-primary bg-primary-soft text-primary",
                 )}
               >
@@ -111,27 +110,37 @@ export function TriadAlternativeProposal({
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label={t("alternative.pickDate")} />
-        <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={t("alternative.pickTime")} />
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label={t("alternative.pickDate")} className="border-[#dcd5c9] bg-card" />
+        <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={t("alternative.pickTime")} className="border-[#dcd5c9] bg-card" />
       </div>
-      <Button size="sm" onClick={handlePropose} disabled={isPending}>
-        {isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+      <button
+        type="button"
+        onClick={handlePropose}
+        disabled={isPending}
+        className="inline-flex items-center gap-1.5 rounded-xl bg-secondary px-[18px] py-[11px] text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+      >
+        {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
         {t("alternative.submit")}
-      </Button>
+      </button>
 
       {proposals.length > 0 && (
-        <div className="space-y-2 border-t pt-3">
+        <div className="space-y-2 border-t border-[#efeae1] pt-3">
           <p className="text-[11px] font-semibold text-muted-foreground">{t("alternative.pendingHeading")}</p>
           {proposals.map((p) => (
-            <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-background px-3 py-2 text-sm">
+            <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-card px-3 py-2 text-sm">
               <div>
                 <p className="font-semibold">{format(new Date(p.proposed_start_time), "EEE, MMM d 'at' p")}</p>
                 <p className="text-xs text-muted-foreground">{t("alternative.proposedBy", { name: nameById.get(p.proposed_by) || "—" })}</p>
               </div>
               {p.proposed_by !== user?.id && (
-                <Button size="sm" variant="outline" onClick={() => handleAccept(p.id)} disabled={isPending}>
+                <button
+                  type="button"
+                  onClick={() => handleAccept(p.id)}
+                  disabled={isPending}
+                  className="rounded-xl border border-border bg-card px-[14px] py-2 text-xs font-semibold transition-colors hover:border-primary hover:text-[#2c8fa8] disabled:opacity-50"
+                >
                   {t("alternative.accept")}
-                </Button>
+                </button>
               )}
             </div>
           ))}

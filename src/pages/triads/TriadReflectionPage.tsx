@@ -94,7 +94,7 @@ export default function TriadReflectionPage() {
 
   if (!sessionExists) {
     return (
-      <Card className="mx-auto max-w-xl p-12 text-center">
+      <Card className="mx-auto max-w-xl rounded-[20px] border-[#e8e2d8] p-12 text-center">
         <p className="text-sm text-muted-foreground">{t("reflection.notFound")}</p>
         <Button asChild variant="outline" className="mt-6">
           <Link to="/triads">{t("reflection.back")}</Link>
@@ -103,23 +103,32 @@ export default function TriadReflectionPage() {
     );
   }
 
+  const memberNames = profiles.map((p) => p.full_name).join(" | ");
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <Link to="/triads" className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+    <div className="mx-auto max-w-[760px] space-y-6">
+      <Link to="/triads" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-[#2c8fa8]">
         <ChevronLeft className="h-4 w-4" /> {t("reflection.back")}
       </Link>
 
       <div>
-        <h1 className="font-display text-[1.7rem] leading-[1.1] tracking-tight">{t("reflection.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("reflection.subtitle")}</p>
+        <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-primary">{t("eyebrow")}</p>
+        <h1 className="font-display mt-2 text-[1.9rem] leading-[1.08] tracking-[-0.02em]">{t("reflection.title")}</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">{t("reflection.subtitle")}</p>
       </div>
+
+      {memberNames && (
+        <div className="rounded-[14px] bg-primary-soft px-[18px] py-[14px] text-[12.5px] text-[#1d5a6b]">
+          <span className="font-bold">{t("reflection.membersBannerLabel")}</span> {memberNames}
+        </div>
+      )}
 
       {myReflection ? (
         <>
           <p className="text-xs italic text-muted-foreground">{t("reflection.alreadySubmitted")}</p>
           {SECTIONS.map((sec) => (
-            <Card key={sec.key} className="space-y-3 p-6">
-              <p className="font-display text-xl font-normal tracking-tight">{t(`reflection.sections.${sec.key}`)}</p>
+            <div key={sec.key} className="space-y-3 rounded-[20px] border border-[#e8e2d8] bg-card p-6">
+              <p className="font-display text-[21px] font-normal tracking-[-0.01em]">{t(`reflection.sections.${sec.key}`)}</p>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>
                   <span className="font-semibold text-foreground">{t(`reflection.learnedAs${sec.key === "coach" ? "Coach" : sec.key === "coachee" ? "Coachee" : "Observer"}`)}:</span>{" "}
@@ -130,39 +139,43 @@ export default function TriadReflectionPage() {
                   {myReflection[sec.willUse] || "—"}
                 </p>
               </div>
-            </Card>
+            </div>
           ))}
         </>
       ) : (
         <>
           {SECTIONS.map((sec) => (
-            <Card key={sec.key} className="space-y-5 p-6">
-              <p className="font-display text-xl font-normal tracking-tight">{t(`reflection.sections.${sec.key}`)}</p>
+            <div key={sec.key} className="space-y-5 rounded-[20px] border border-[#e8e2d8] bg-card p-6">
+              <p className="font-display text-[21px] font-normal tracking-[-0.01em]">{t(`reflection.sections.${sec.key}`)}</p>
               <div>
-                <Label htmlFor={sec.learned}>{t(`reflection.learnedAs${sec.key === "coach" ? "Coach" : sec.key === "coachee" ? "Coachee" : "Observer"}`)}</Label>
+                <Label htmlFor={sec.learned} className="text-xs font-semibold text-[#4a463f]">
+                  {t(`reflection.learnedAs${sec.key === "coach" ? "Coach" : sec.key === "coachee" ? "Coachee" : "Observer"}`)}
+                </Label>
                 <Textarea
                   id={sec.learned}
                   rows={3}
-                  className="mt-1.5"
+                  className="mt-1.5 rounded-[14px] border-[#dcd5c9] bg-[#faf8f4] text-[13.5px]"
                   value={form[sec.learned] as string}
                   onChange={(e) => setForm((f) => ({ ...f, [sec.learned]: e.target.value }))}
                 />
               </div>
               <div>
-                <Label htmlFor={sec.willUse}>{t(`reflection.willUseAs${sec.key === "coach" ? "Coach" : sec.key === "coachee" ? "Coachee" : "Observer"}`)}</Label>
+                <Label htmlFor={sec.willUse} className="text-xs font-semibold text-[#4a463f]">
+                  {t(`reflection.willUseAs${sec.key === "coach" ? "Coach" : sec.key === "coachee" ? "Coachee" : "Observer"}`)}
+                </Label>
                 <Textarea
                   id={sec.willUse}
                   rows={3}
-                  className="mt-1.5"
+                  className="mt-1.5 rounded-[14px] border-[#dcd5c9] bg-[#faf8f4] text-[13.5px]"
                   value={form[sec.willUse] as string}
                   onChange={(e) => setForm((f) => ({ ...f, [sec.willUse]: e.target.value }))}
                 />
               </div>
-            </Card>
+            </div>
           ))}
 
-          <Card className="space-y-4 p-6">
-            <p className="font-display text-xl font-normal tracking-tight">{t("reflection.satisfaction")}</p>
+          <div className="space-y-4 rounded-[20px] border border-[#e8e2d8] bg-card p-6">
+            <p className="font-display text-[21px] font-normal tracking-[-0.01em]">{t("reflection.satisfaction")}</p>
             <div className="flex gap-1.5">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -170,33 +183,42 @@ export default function TriadReflectionPage() {
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, satisfaction_rating: n }))}
                   aria-label={String(n)}
-                  className="transition-transform hover:scale-110"
+                  className="transition-transform hover:scale-[1.12]"
                 >
-                  <Star className={cn("h-7 w-7", n <= form.satisfaction_rating ? "fill-warning text-warning" : "text-muted-foreground/40")} />
+                  <Star
+                    className={cn(
+                      "h-[30px] w-[30px]",
+                      n <= form.satisfaction_rating ? "fill-[#e8a33d] text-[#e8a33d]" : "fill-none text-[#d6cfc4]"
+                    )}
+                  />
                 </button>
               ))}
             </div>
-          </Card>
+          </div>
 
-          <Button onClick={handleSubmit} disabled={submitting} size="lg" className="w-full">
-            {submitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="w-full rounded-[14px] bg-primary px-6 py-[15px] text-[13px] font-semibold text-secondary shadow-[0_14px_30px_-16px_rgba(61,180,208,.9)] transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+          >
+            {submitting && <Loader2 className="mr-1.5 inline h-4 w-4 animate-spin" />}
             {t("reflection.submit")}
-          </Button>
+          </button>
         </>
       )}
 
       <div>
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("reflection.othersHeading")}</p>
+        <p className="mb-2 text-[9.5px] font-bold uppercase tracking-[.24em] text-muted-foreground">{t("reflection.othersHeading")}</p>
         {groupReflections.length === 0 ? (
-          <Card className="p-4 text-center text-xs italic text-muted-foreground">
+          <div className="rounded-[16px] border border-[#efeae1] bg-[#faf8f4] p-4 text-center text-xs italic text-muted-foreground">
             {myReflection ? t("reflection.othersLocked") : t("reflection.othersPending")}
-          </Card>
+          </div>
         ) : (
           <div className="space-y-2">
             {groupReflections
               .filter((r) => r.participant_id !== user?.id)
               .map((r) => (
-                <Card key={r.id} className="space-y-2 p-4 text-xs text-muted-foreground">
+                <div key={r.id} className="space-y-2 rounded-[16px] border border-[#efeae1] bg-[#faf8f4] p-4 text-xs text-muted-foreground">
                   <p className="mb-1 text-sm font-semibold text-foreground">{nameById.get(r.participant_id) || "—"}</p>
                   {SECTIONS.flatMap((sec) => [r[sec.learned], r[sec.willUse]]).some(Boolean) &&
                     SECTIONS.map((sec) => (
@@ -208,11 +230,14 @@ export default function TriadReflectionPage() {
                   {r.satisfaction_rating != null && (
                     <p className="flex items-center gap-1">
                       {Array.from({ length: 5 }).map((_, i) => (
-                        <Star key={i} className={cn("h-3.5 w-3.5", i < r.satisfaction_rating! ? "fill-warning text-warning" : "text-muted-foreground/30")} />
+                        <Star
+                          key={i}
+                          className={cn("h-3.5 w-3.5", i < r.satisfaction_rating! ? "fill-[#e8a33d] text-[#e8a33d]" : "fill-none text-[#d6cfc4]")}
+                        />
                       ))}
                     </p>
                   )}
-                </Card>
+                </div>
               ))}
           </div>
         )}
