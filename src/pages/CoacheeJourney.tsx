@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
 import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
@@ -23,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Trash2, Sparkles, BookOpen, Bell } from "lucide-react";
+import { Trash2, Sparkles, BookOpen, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { WheelHistory } from "@/components/tools/WheelHistory";
@@ -106,11 +107,7 @@ export default function CoacheeJourney() {
   const toggleAction = (a: FlatAction) => toggleActionRaw(a.sessionId, a.idx, "coaching");
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
@@ -127,7 +124,7 @@ export default function CoacheeJourney() {
 
       {/* PROGRESS RINGS */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="flex flex-col items-center gap-2 p-6">
+         <Card className="surface-card hover-lift flex flex-col items-center gap-2 p-6">
           <ProgressRing
             value={usage?.monthly_limit ? (sessionsCompletedCount / usage.monthly_limit) * 100 : overallPct}
             tone="primary"
@@ -137,14 +134,14 @@ export default function CoacheeJourney() {
             {t("coacheeJourney.progressRings.programmeSub", { completed: sessionsCompletedCount, limit: usage?.monthly_limit ?? programme?.sessionsAllowed ?? "—" })}
           </p>
         </Card>
-        <Card className="flex flex-col items-center gap-2 p-6">
+         <Card className="surface-card hover-lift flex flex-col items-center gap-2 p-6">
           <ProgressRing value={avgGoalProgress} tone="warning" />
           <p className="text-sm font-semibold">{t("coacheeJourney.progressRings.goalsOnTrack")}</p>
           <p className="text-xs text-muted-foreground">
             {t("coacheeJourney.progressRings.goalsOnTrackSub", { count: goals.filter((g) => goalProgress(g.id) >= 50).length, total: goals.length })}
           </p>
         </Card>
-        <Card className="flex flex-col items-center gap-2 p-6">
+         <Card className="surface-card hover-lift flex flex-col items-center gap-2 p-6">
           <ProgressRing value={aiTotal ? Math.round((aiDone / aiTotal) * 100) : 0} tone="success" />
           <p className="text-sm font-semibold">{t("coacheeJourney.progressRings.actionsClosed")}</p>
           <p className="text-xs text-muted-foreground">
@@ -155,7 +152,7 @@ export default function CoacheeJourney() {
 
       {/* MILESTONE TIMELINE */}
       {milestones.length > 0 && (
-        <Card className="p-6">
+        <Card className="surface-card p-6">
           <p className="eyebrow mb-5">{t("coacheeJourney.milestonesEyebrow")}</p>
           <TimelineList
             items={milestones

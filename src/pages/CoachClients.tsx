@@ -115,7 +115,7 @@ export default function CoachClients() {
       </div>
 
       {loading ? (
-        <div className="surface-card overflow-hidden p-0">
+        <div className="surface-card overflow-hidden p-0 shadow-[0_18px_46px_-34px_hsl(var(--secondary)/.5)]">
           <div className="hidden grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] gap-4 border-b border-border px-5 py-3 text-micro font-bold uppercase tracking-[0.2em] text-muted-foreground md:grid">
             <span>{t("clients.tableHeaders.client")}</span>
             <span>{t("clients.tableHeaders.programme")}</span>
@@ -144,7 +144,7 @@ export default function CoachClients() {
           </p>
         </Card>
       ) : (
-        <div className="surface-card overflow-hidden p-0">
+        <div className="surface-card overflow-hidden p-0 shadow-[0_18px_46px_-34px_hsl(var(--secondary)/.5)]">
           <div className="hidden grid-cols-[1.6fr_0.9fr_1.3fr_0.9fr] gap-4 border-b border-border px-5 py-3 text-micro font-bold uppercase tracking-[0.2em] text-muted-foreground md:grid">
             <span>{t("clients.tableHeaders.client")}</span>
             <span>{t("clients.tableHeaders.programme")}</span>

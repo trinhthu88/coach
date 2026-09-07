@@ -28,8 +28,10 @@ import {
   FileText,
   HelpCircle,
   Handshake,
+  ChevronDown,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -68,32 +70,32 @@ const NAV: NavItem[] = [
   { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", module: "coaching", moduleDirection: "receive" },
   { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"] },
   { to: "/coachee/journey", labelKey: "nav.myDevelopment", icon: Compass, roles: ["coachee"], module: "coaching", moduleDirection: "receive" },
-  { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.myDevelopment", module: "peer_coaching" },
-  { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.myDevelopment" },
+  { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "peer_coaching" },
+  { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.developMyself" },
   {
     to: "/practice-journey",
     labelKey: "nav.practiceJourney",
     icon: Layers,
     roles: ["coachee"],
-    groupKey: "navGroups.myDevelopment",
+    groupKey: "navGroups.developMyself",
     anyModule: [{ module: "peer_coaching" }, { module: "triads" }],
   },
 
   // Coach — My Coaching Profile
-  { to: "/coach/profile", labelKey: "nav.myCoachProfile", icon: IdCard, roles: ["coach"], groupKey: "navGroups.myCoachingProfile" },
-  { to: "/coach/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coach"], groupKey: "navGroups.myCoachingProfile", onboardingId: "nav-my-availability" },
-  { to: "/coach/clients", labelKey: "nav.myClients", icon: UsersRound, roles: ["coach"], groupKey: "navGroups.myCoachingProfile", module: "coaching", moduleDirection: "give" },
+  { to: "/coach/profile", labelKey: "nav.myCoachProfile", icon: IdCard, roles: ["coach"], groupKey: "navGroups.deliverCoaching" },
+  { to: "/coach/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coach"], groupKey: "navGroups.deliverCoaching", onboardingId: "nav-my-availability" },
+  { to: "/coach/clients", labelKey: "nav.myClients", icon: UsersRound, roles: ["coach"], groupKey: "navGroups.deliverCoaching", module: "coaching", moduleDirection: "give" },
 
   // Coach — My Development
-  { to: "/coach/find-coach", labelKey: "nav.findACoach", icon: Search, roles: ["coach"], groupKey: "navGroups.myDevelopment", module: "coaching", moduleDirection: "receive" },
-  { to: "/coach/my-journey", labelKey: "nav.myDevelopment", icon: Compass, roles: ["coach"], groupKey: "navGroups.myDevelopment", module: "coaching", moduleDirection: "receive" },
-  { to: "/coach/peer-coaching", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coach"], groupKey: "navGroups.myDevelopment", module: "peer_coaching" },
+  { to: "/coach/find-coach", labelKey: "nav.findACoach", icon: Search, roles: ["coach"], groupKey: "navGroups.developMyself", module: "coaching", moduleDirection: "receive" },
+  { to: "/coach/my-journey", labelKey: "nav.myDevelopment", icon: Compass, roles: ["coach"], groupKey: "navGroups.developMyself", module: "coaching", moduleDirection: "receive" },
+  { to: "/coach/peer-coaching", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coach"], groupKey: "navGroups.developMyself", module: "peer_coaching" },
   {
     to: "/practice-journey",
     labelKey: "nav.practiceJourney",
     icon: Layers,
     roles: ["coach"],
-    groupKey: "navGroups.myDevelopment",
+    groupKey: "navGroups.developMyself",
     anyModule: [
       { module: "coaching", direction: "give" },
       { module: "peer_coaching" },
@@ -132,6 +134,73 @@ const NAV: NavItem[] = [
   { to: "/admin/analytics", labelKey: "nav.analytics", icon: BarChart3, roles: ["admin"], groupKey: "navGroups.operations" },
 ];
 
+// Groups collapsed by default (until manually toggled, or until the current
+// route lands inside one — see isGroupOpen below) — everything else stays
+// open by default, unchanged from before groups were collapsible at all.
+const DEFAULT_COLLAPSED_GROUPS = new Set(["navGroups.deliverCoaching", "navGroups.developMyself"]);
+
+function NavItemLink({
+  item,
+  collapsed,
+  unreadCount,
+  isCurrent,
+  label,
+  onNavigate,
+}: {
+  item: NavItem;
+  collapsed: boolean;
+  unreadCount: number;
+  isCurrent: boolean;
+  label: string;
+  onNavigate?: () => void;
+}) {
+  const showBadge = item.to === "/messages" && unreadCount > 0;
+  const end = item.to === "/admin";
+  return (
+    <NavLink
+      to={item.to}
+      end={end}
+      title={collapsed ? label : undefined}
+      onClick={onNavigate}
+      aria-current={isCurrent ? "page" : undefined}
+      data-onboarding={item.onboardingId}
+      className={({ isActive }) =>
+        cn(
+          "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm2 font-medium transition-all duration-200",
+          isActive
+            ? "bg-white/[0.09] text-white"
+            : "text-secondary-foreground/75 hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white"
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <span
+            className={cn(
+              "absolute left-0 top-1/2 w-[3px] rounded-r-[3px] bg-primary transition-all duration-300",
+              isActive ? "-mt-3 h-6" : "mt-0 h-0"
+            )}
+          />
+          <span className="relative shrink-0 opacity-90">
+            <item.icon className="h-5 w-5" />
+            {showBadge && collapsed && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-micro font-bold text-accent-foreground">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </span>
+          {!collapsed && <span className="truncate tracking-[-0.005em]">{label}</span>}
+          {showBadge && !collapsed && (
+            <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 text-2xs font-bold text-accent-foreground">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
 function SidebarNav({
   items,
   collapsed,
@@ -147,65 +216,76 @@ function SidebarNav({
 }) {
   const { t } = useTranslation("common");
   const location = useLocation();
-  let lastGroup: string | undefined = undefined;
+  const isItemCurrent = (item: NavItem) =>
+    item.to === "/admin" ? location.pathname === item.to : location.pathname.startsWith(item.to);
+
+  // Consecutive items sharing a groupKey become one collapsible group;
+  // items with no groupKey stay standalone (never wrapped/collapsible).
+  const groups = useMemo(() => {
+    const list: { key: string | undefined; items: NavItem[] }[] = [];
+    for (const item of items) {
+      const last = list[list.length - 1];
+      if (last && last.key === item.groupKey && item.groupKey) {
+        last.items.push(item);
+      } else {
+        list.push({ key: item.groupKey, items: [item] });
+      }
+    }
+    return list;
+  }, [items]);
+
+  const [openOverrides, setOpenOverrides] = useState<Record<string, boolean>>({});
+  const isGroupOpen = (group: { key: string | undefined; items: NavItem[] }) => {
+    if (!group.key) return true;
+    if (group.key in openOverrides) return openOverrides[group.key];
+    // Not yet manually toggled: open if the current route is inside this
+    // group (so navigating in never hides your own active page), else fall
+    // back to the group's default.
+    return group.items.some(isItemCurrent) || !DEFAULT_COLLAPSED_GROUPS.has(group.key);
+  };
+
   return (
-    <nav className="relative flex flex-1 flex-col gap-[3px] overflow-y-auto px-3 pb-3">
-      {items.map((item) => {
-        const showBadge = item.to === "/messages" && unreadCount > 0;
-        const showHeader = !collapsed && item.groupKey && item.groupKey !== lastGroup;
-        if (item.groupKey) lastGroup = item.groupKey;
-        const end = item.to === "/admin";
-        const isCurrent = end ? location.pathname === item.to : location.pathname.startsWith(item.to);
-        const label = t(item.labelKey);
+    <nav
+      className="relative flex flex-1 flex-col gap-[3px] overflow-y-auto px-3 pb-3"
+      aria-label={t("layout.mainNavigation")}
+    >
+      {groups.map((group) => {
+        const links = group.items.map((item) => (
+          <NavItemLink
+            key={item.to}
+            item={item}
+            collapsed={collapsed}
+            unreadCount={unreadCount}
+            isCurrent={isItemCurrent(item)}
+            label={t(item.labelKey)}
+            onNavigate={onNavigate}
+          />
+        ));
+
+        // Sidebar minimized to icons-only, or an ungrouped item: no header,
+        // no collapsible wrapper — render the links directly, unchanged.
+        if (collapsed || !group.key) {
+          return <div key={group.key ?? group.items[0].to} className="space-y-[3px]">{links}</div>;
+        }
+
+        const open = isGroupOpen(group);
         return (
-          <div key={item.to}>
-            {showHeader && (
-              <p className="truncate px-3 pb-1.5 pt-4 text-micro font-bold uppercase tracking-[0.15em] text-secondary-foreground/40">
-                {t(item.groupKey!)}
-              </p>
-            )}
-            <NavLink
-              to={item.to}
-              end={end}
-              title={collapsed ? label : undefined}
-              onClick={onNavigate}
-              aria-current={isCurrent ? "page" : undefined}
-              data-onboarding={item.onboardingId}
-              className={({ isActive }) =>
-                cn(
-                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm2 font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-white/[0.09] text-white"
-                    : "text-secondary-foreground/75 hover:translate-x-[3px] hover:bg-white/[0.06] hover:text-white"
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <span
-                    className={cn(
-                      "absolute left-0 top-1/2 w-[3px] rounded-r-[3px] bg-primary transition-all duration-300",
-                      isActive ? "-mt-3 h-6" : "mt-0 h-0"
-                    )}
-                  />
-                  <span className="relative shrink-0 opacity-90">
-                    <item.icon className="h-5 w-5" />
-                    {showBadge && collapsed && (
-                      <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-micro font-bold text-accent-foreground">
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    )}
-                  </span>
-                  {!collapsed && <span className="truncate tracking-[-0.005em]">{label}</span>}
-                  {showBadge && !collapsed && (
-                    <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 text-2xs font-bold text-accent-foreground">
-                      {unreadCount > 99 ? "99+" : unreadCount}
-                    </span>
-                  )}
-                </>
-              )}
-            </NavLink>
-          </div>
+          <Collapsible
+            key={group.key}
+            open={open}
+            onOpenChange={(next) => setOpenOverrides((prev) => ({ ...prev, [group.key as string]: next }))}
+          >
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between truncate px-3 pb-1.5 pt-4 text-left text-micro font-bold uppercase tracking-[0.15em] text-secondary-foreground/40 hover:text-secondary-foreground/70"
+              >
+                {t(group.key)}
+                <ChevronDown className={cn("h-3 w-3 shrink-0 transition-transform", open && "rotate-180")} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-[3px]">{links}</CollapsibleContent>
+          </Collapsible>
         );
       })}
       {onHowItWorks && (
@@ -385,11 +465,11 @@ export default function AppLayout() {
   const activeLabel = activeItem ? t(activeItem.labelKey) : t("nav.overview");
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
+    <div className="flex min-h-[100dvh] bg-background text-foreground">
       {/* ══ RAIL (desktop) ══ */}
       <aside
         className={cn(
-          "relative hidden h-full shrink-0 flex-col overflow-hidden bg-secondary text-secondary-foreground transition-[width] duration-300 lg:flex",
+          "relative hidden min-h-[100dvh] shrink-0 flex-col overflow-hidden bg-secondary text-secondary-foreground transition-[width] duration-300 lg:flex",
           collapsed ? "w-[76px]" : "w-[264px]"
         )}
       >
@@ -459,7 +539,7 @@ export default function AppLayout() {
       </Sheet>
 
       {/* ══ MAIN ══ */}
-      <main className="flex flex-1 flex-col overflow-hidden">
+      <main className="flex min-h-[100dvh] flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-20 flex h-[68px] shrink-0 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl sm:px-8">
           <button
             onClick={() => setMobileNavOpen(true)}

@@ -384,6 +384,10 @@ export default function MentoringBookSession() {
                     key={`${o.slotId}-${o.start}`}
                     type="button"
                     aria-pressed={selectedStart === o.start}
+                    aria-label={t("bookSession.slotAriaLabel", {
+                      date: format(selectedDate, "EEEE, MMMM d"),
+                      time: fmtTime(o.start),
+                    })}
                     onClick={() => setSelectedStart(o.start)}
                     className={cn(
                       "rounded-2xl border py-3 text-sm font-semibold transition-colors",

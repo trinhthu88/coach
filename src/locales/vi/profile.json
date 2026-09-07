@@ -114,6 +114,7 @@
       },
       "pickDatePrompt": "Chọn một ngày ở trên để xem giờ trống.",
       "noWindowAvailable": "Không có khung giờ {{duration}} phút nào khả dụng trong ngày này.",
+      "slotAriaLabel": "Đặt lịch {{date}} lúc {{time}}",
       "topicLabel": "Bạn muốn tập trung vào điều gì?",
       "topicPlaceholder": "Chia sẻ mục tiêu của bạn cho buổi thực hành này",
       "selectedScheduleLabel": "Lịch đã chọn",

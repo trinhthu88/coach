@@ -125,8 +125,8 @@
   },
   "navGroups": {
     "sponsor": "Sponsor",
-    "myCoachingProfile": "My Coaching Profile",
-    "myDevelopment": "My Development",
+    "deliverCoaching": "Deliver Coaching",
+    "developMyself": "Develop Myself",
     "communication": "Communication",
     "overview": "Overview",
     "people": "People",
@@ -136,6 +136,7 @@
   },
   "layout": {
     "howItWorks": "How it works",
+    "mainNavigation": "Main navigation",
     "signedInAs": "Signed in as",
     "toggleSidebar": "Toggle sidebar",
     "navigation": "Navigation",

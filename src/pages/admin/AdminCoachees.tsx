@@ -8,9 +8,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Search, FileDown, FileUp, Eye, Users, Pencil } from "lucide-react";
+import { Search, FileDown, FileUp, Eye, Users, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Kpi, Pill, Avatar, TablePager } from "./_shared";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import PendingAccessRequests from "@/components/PendingAccessRequests";
 import { useAdminCoacheesData } from "@/hooks/admin/useAdminCoacheesData";
 import { CoacheeProfileSheet } from "./coachees/CoacheeProfileSheet";
@@ -47,7 +48,7 @@ export default function AdminCoachees() {
     toast.success(t("coachees.exported"));
   };
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  if (loading) return <PageSkeleton />;
 
   const active = rows.filter(r => r.status === "active").length;
   const pending = rows.filter(r => r.status === "pending_approval").length;

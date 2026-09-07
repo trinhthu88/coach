@@ -382,7 +382,7 @@ export default function BookSession() {
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         {/* Coach summary card */}
-        <Card className="h-fit space-y-5 p-4 sm:p-6">
+        <Card className="surface-card h-fit space-y-5 p-4 sm:p-6">
           <div className="flex h-44 items-center justify-center overflow-hidden rounded-2xl bg-primary-soft text-6xl font-bold text-primary">
             {coach.profiles?.avatar_url ? (
               <img
@@ -433,7 +433,7 @@ export default function BookSession() {
         </Card>
 
         {/* Booking panel */}
-        <Card className="space-y-6 p-4 sm:p-6">
+        <Card className="surface-card space-y-6 p-4 sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="font-display text-[1.5rem] leading-[1.1] tracking-tight sm:text-[1.9rem]">
@@ -486,10 +486,10 @@ export default function BookSession() {
                   aria-pressed={duration === d}
                   onClick={() => setDuration(d)}
                   className={cn(
-                    "rounded-2xl border px-4 py-3.5 text-sm font-semibold transition-colors",
+                    "rounded-[14px] border px-4 py-3.5 text-sm font-semibold transition-all",
                     duration === d
                       ? "border-primary bg-primary text-primary-foreground shadow-glow"
-                      : "border-border bg-card hover:border-primary/40"
+                       : "border-border bg-card hover:-translate-y-0.5 hover:border-primary/55 hover:shadow-sm"
                   )}
                 >
                   {t("bookSession.steps.durationOption", { n: d })}
@@ -530,7 +530,7 @@ export default function BookSession() {
                           ? "border-primary bg-primary text-primary-foreground shadow-glow"
                           : disabled
                           ? "border-border bg-muted/30 text-muted-foreground/50"
-                          : "border-border bg-card hover:border-primary/40"
+                           : "border-border bg-card hover:border-primary/55 hover:shadow-sm"
                       )}
                     >
                       <div className="text-[9px] font-bold uppercase tracking-widest opacity-80 sm:text-[10px]">
@@ -570,12 +570,16 @@ export default function BookSession() {
                     key={`${o.slotId}-${o.start}`}
                     type="button"
                     aria-pressed={selectedStart === o.start}
+                    aria-label={t("bookSession.slotAriaLabel", {
+                      date: format(selectedDate, "EEEE, MMMM d"),
+                      time: fmtTime(o.start),
+                    })}
                     onClick={() => setSelectedStart(o.start)}
                     className={cn(
                       "rounded-2xl border py-3 text-sm font-semibold transition-colors",
                       selectedStart === o.start
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card hover:border-primary/40"
+                         : "border-border bg-card hover:border-primary/55 hover:shadow-sm"
                     )}
                   >
                     {fmtTime(o.start)}

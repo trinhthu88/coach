@@ -58,6 +58,7 @@
     },
     "pickDatePrompt": "Chọn một ngày ở trên để xem giờ trống.",
     "noWindowAvailable": "Không có khung giờ {{duration}} phút khả dụng vào ngày này.",
+    "slotAriaLabel": "Đặt lịch {{date}} lúc {{time}}",
     "topicLabel": "Chủ đề coaching",
     "topicPlaceholder": "Bạn muốn tập trung vào điều gì trong session này?",
     "selectedScheduleLabel": "Lịch đã chọn",

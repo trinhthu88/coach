@@ -423,7 +423,7 @@ function SessionCard({
     ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
     : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" };
   return (
-    <Card className="overflow-hidden p-0">
+    <Card className="surface-card overflow-hidden p-0">
       <SessionRow
         month={format(start, "MMM").toUpperCase()}
         day={format(start, "d")}
@@ -500,13 +500,15 @@ function RateSession({ session, onChanged }: { session: SessionRow; onChanged: (
       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         {isRated ? t("list.rating.yourRating") : t("list.rating.rateThisSession")}
       </span>
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-0.5" role="radiogroup" aria-label={t("list.rating.rateThisSession")}>
         {[1, 2, 3, 4, 5].map((n) => {
           const active = (hover || rating) >= n;
           return (
             <button
               key={n}
               type="button"
+              role="radio"
+              aria-checked={rating === n}
               disabled={saving}
               onMouseEnter={() => setHover(n)}
               onMouseLeave={() => setHover(0)}

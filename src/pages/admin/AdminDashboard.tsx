@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { AdminPageHeader } from "./_shared";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { StatCard } from "@/components/ui/page-header";
 import { MiniBarChart, AttentionPanel } from "@/components/ui/proto";
 import { Users, UserCheck, Calendar, CheckCircle2 } from "lucide-react";
@@ -165,11 +165,7 @@ export default function AdminDashboard() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (

@@ -4,11 +4,12 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { PageHeader, FilterChip } from "@/components/ui/page-header";
+import { PageSkeleton } from "@/components/PageSkeleton";
 
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Star, Loader2, Heart, AlertTriangle } from "lucide-react";
+import { Search, Star, Heart, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "@/hooks/useFavorites";
 
@@ -86,7 +87,7 @@ export default function Coaches() {
   }, [coaches, query, activeSpec]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-9">
       <PageHeader
         eyebrow={t("list.eyebrow")}
         title={t("list.titleLead")}
@@ -95,13 +96,13 @@ export default function Coaches() {
       />
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <div className="relative min-w-0 flex-1 sm:min-w-[260px]">
+          <div className="relative min-w-0 flex-1 sm:min-w-[260px]">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={t("list.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-11 rounded-full pl-11"
+            className="h-11 rounded-[13px] border-border bg-card pl-11 shadow-sm transition-shadow focus-visible:shadow-md"
           />
         </div>
 
@@ -114,9 +115,7 @@ export default function Coaches() {
 
 
       {loading ? (
-        <div className="flex items-center justify-center py-24 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
+        <PageSkeleton showHeader={false} rows={5} />
       ) : loadError ? (
         <ErrorState onRetry={() => setRetryKey((k) => k + 1)} />
       ) : filtered.length === 0 ? (
@@ -144,11 +143,11 @@ function CoachCard({ coach }: { coach: CoachRow }) {
     .toUpperCase();
 
   return (
-    <Card className="relative h-full overflow-hidden p-6 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+    <Card className="surface-card hover-lift relative h-full overflow-hidden p-6">
       {/* Top-right: rating chip + favorite */}
       <div className="absolute right-4 top-4 flex items-center gap-2">
         {coach.is_featured && (
-          <span className="rounded-full bg-gradient-primary px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary-foreground shadow-glow">
+          <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary">
             {t("list.featuredBadge")}
           </span>
         )}
@@ -174,7 +173,7 @@ function CoachCard({ coach }: { coach: CoachRow }) {
 
       <Link to={`/coaches/${coach.id}`} className="block">
         <div className="flex items-start gap-4 pr-24">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary-soft text-base font-bold text-primary">
+           <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[15px] bg-primary-soft text-base font-bold text-primary ring-1 ring-primary/10">
             {coach.profiles?.avatar_url ? (
               <img src={coach.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
             ) : (

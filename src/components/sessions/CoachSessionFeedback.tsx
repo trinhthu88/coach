@@ -52,13 +52,19 @@ export function CoachSessionFeedback({ feedback }: Props) {
 
       <div className="space-y-1.5">
         <p className="text-sm font-medium">{t("detail.coachFeedback.qualityRating")}</p>
-        <div className="flex items-center gap-0.5">
+        <div
+          className="flex items-center gap-0.5"
+          role="radiogroup"
+          aria-label={t("detail.coachFeedback.qualityRating")}
+        >
           {[1, 2, 3, 4, 5].map((n) => {
             const active = (hover || rating || 0) >= n;
             return (
               <button
                 key={n}
                 type="button"
+                role="radio"
+                aria-checked={rating === n}
                 onMouseEnter={() => setHover(n)}
                 onMouseLeave={() => setHover(0)}
                 onClick={() => setRating(n)}

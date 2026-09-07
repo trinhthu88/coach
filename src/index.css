@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Montserrat:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -137,6 +139,8 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
     font-feature-settings: "cv11", "ss01";
+    min-height: 100dvh;
+    background-image: radial-gradient(circle at 88% 4%, hsl(var(--primary) / .055), transparent 24rem);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -165,6 +169,16 @@
     text-transform: uppercase;
     font-weight: 600;
     color: hsl(var(--primary));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--accent));
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / .22);
+    color: hsl(var(--secondary));
   }
 
   /* Onboarding pointer tour: highlight ring around the DOM element a pointer step

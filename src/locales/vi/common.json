@@ -124,8 +124,8 @@
   },
   "navGroups": {
     "sponsor": "Nhà tài trợ",
-    "myCoachingProfile": "Hồ sơ coaching của tôi",
-    "myDevelopment": "Phát triển của tôi",
+    "deliverCoaching": "Thực hiện Coaching",
+    "developMyself": "Phát triển Bản thân",
     "communication": "Liên lạc",
     "overview": "Tổng quan",
     "people": "Người dùng",
@@ -135,6 +135,7 @@
   },
   "layout": {
     "howItWorks": "Cách thức hoạt động",
+    "mainNavigation": "Điều hướng chính",
     "signedInAs": "Đăng nhập với vai trò",
     "toggleSidebar": "Thu gọn/mở rộng thanh bên",
     "navigation": "Điều hướng",

@@ -29,7 +29,7 @@ export function PageHeader({
     <header className={cn("animate-rise mb-8 flex flex-wrap items-end justify-between gap-4", className)}>
       <div className="min-w-0">
         {eyebrow && <p className="eyebrow mb-2.5">{eyebrow}</p>}
-        <h1 className="font-display text-[clamp(2.1rem,4.4vw,3.1rem)] leading-[1.05] text-foreground">
+        <h1 className="font-display text-[clamp(2.25rem,4.4vw,3.35rem)] leading-[1.02] text-foreground">
           {title}
           {emphasis && (
             <>
@@ -112,6 +112,11 @@ export function HeroPanel({
         aria-hidden
         className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full"
         style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.3), transparent 70%)" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-40 right-[18%] h-72 w-72 rounded-full"
+        style={{ background: "radial-gradient(circle, hsl(var(--accent) / 0.2), transparent 70%)" }}
       />
       <div className="relative">{children}</div>
     </section>

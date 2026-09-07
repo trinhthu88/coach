@@ -113,6 +113,7 @@
       },
       "pickDatePrompt": "Pick a date above to see times.",
       "noWindowAvailable": "No {{duration}}-minute window available on this day.",
+      "slotAriaLabel": "Book {{date}} at {{time}}",
       "topicLabel": "What would you like to focus on?",
       "topicPlaceholder": "Share your goals for this practice session",
       "selectedScheduleLabel": "Selected schedule",

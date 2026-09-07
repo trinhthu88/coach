@@ -31,6 +31,7 @@ function programmeCompletionPct(startDate: string | null, durationMonths: number
 }
 import { format } from "date-fns";
 import { AdminPageHeader, Kpi, Pill, Avatar, TablePager } from "./_shared";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import PendingAccessRequests from "@/components/PendingAccessRequests";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -327,7 +328,7 @@ export default function AdminCoaches() {
   };
 
   if (loading) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+    return <PageSkeleton />;
   }
 
   const active = rows.filter(r => r.status === "active").length;
