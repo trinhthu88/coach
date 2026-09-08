@@ -237,11 +237,10 @@ export default function SponsorReport() {
                 <div className="rounded-xl border border-border p-4">
                   <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.goalGrowth.label")}</p>
                   <p className="font-display text-2xl font-normal">
-                    {goalGrowth?.avg_growth != null ? `+${Math.round(goalGrowth.avg_growth)}` : "—"}
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">{t("report.goalGrowth.avgGrowthSuffix")}</span>
+                    {goalGrowth?.pct_progressing != null ? `${Math.round(goalGrowth.pct_progressing)}%` : "—"}
                   </p>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    {goalGrowth?.pct_progressing != null ? t("report.goalGrowth.pctProgressing", { pct: Math.round(goalGrowth.pct_progressing) }) : t("report.goalGrowth.noRatingsYet")}
+                    {goalGrowth?.pct_progressing != null ? t("report.goalGrowth.pctProgressing") : t("report.goalGrowth.noRatingsYet")}
                   </p>
                   {distributionShown ? (
                     <div className="mt-3 space-y-1.5">
@@ -298,7 +297,7 @@ export default function SponsorReport() {
                             <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.cohort")}</th>
                             <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.status")}</th>
                             <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.progress")}</th>
-                            <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.growth")}</th>
+                            <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.goalProgress")}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y">
@@ -308,7 +307,7 @@ export default function SponsorReport() {
                               <td className="py-1.5 text-muted-foreground">{r.cohort_name || "—"}</td>
                               <td className="py-1.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{t(`status.${STATUS_LABEL_KEY[r.enrollment_status]}`)}</Pill></td>
                               <td className="py-1.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
-                              <td className="py-1.5">{r.goal_growth != null ? t("cohorts.growthPts", { n: Math.round(r.goal_growth) }) : "—"}</td>
+                              <td className="py-1.5">{r.goal_growth != null ? `${Math.round(r.goal_growth)}%` : "—"}</td>
                             </tr>
                           ))}
                         </tbody>

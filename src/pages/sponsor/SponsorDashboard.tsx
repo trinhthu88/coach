@@ -420,12 +420,11 @@ export default function SponsorDashboard() {
                   <div>
                     <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("dashboard.goalGrowth.averageGrowth")}</p>
                     <p className="font-display mt-1 text-[2rem] font-normal leading-none">
-                      {goalGrowth?.avg_growth != null ? `+${Math.round(goalGrowth.avg_growth)}` : "—"}
-                      <span className="ml-1 text-sm font-normal text-muted-foreground">{t("dashboard.goalGrowth.pts")}</span>
+                      {goalGrowth?.pct_progressing != null ? `${Math.round(goalGrowth.pct_progressing)}%` : "—"}
                     </p>
                     <p className="mt-2 text-[11px] text-muted-foreground">
                       {goalGrowth?.pct_progressing != null
-                        ? t("dashboard.goalGrowth.pctProgressing", { pct: Math.round(goalGrowth.pct_progressing) })
+                        ? t("dashboard.goalGrowth.pctProgressing")
                         : t("dashboard.goalGrowth.noRatingsYet")}
                     </p>
                   </div>
@@ -634,7 +633,7 @@ export default function SponsorDashboard() {
                   <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.status")}</th>
                   <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.roster.columns.progress")}</th>
                   <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.sessions")}</th>
-                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.roster.columns.growth")}</th>
+                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.roster.columns.goalProgress")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -659,7 +658,7 @@ export default function SponsorDashboard() {
                     </td>
                     <td className="px-2 py-2.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
                     <td className="px-2 py-2.5 hidden sm:table-cell">
-                      {r.goal_growth != null ? t("cohorts.growthPts", { n: Math.round(r.goal_growth) }) : <span className="italic text-muted-foreground">—</span>}
+                      {r.goal_growth != null ? <GoalProgressBar pct={r.goal_growth} /> : <span className="italic text-muted-foreground">—</span>}
                     </td>
                   </tr>
                 ))}
@@ -828,6 +827,19 @@ function SatisfactionTrendChart({ data }: { data: SponsorSatisfactionTrendRow[] 
           <span key={p.month}>{format(new Date(p.month), "MMM")}</span>
         ))}
       </div>
+    </div>
+  );
+}
+
+function GoalProgressBar({ pct }: { pct: number }) {
+  const clamped = Math.max(0, Math.min(100, pct));
+  const tone = clamped >= 50 ? "bg-success" : clamped >= 20 ? "bg-warning" : "bg-muted-foreground/40";
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1 w-16 overflow-hidden rounded-full bg-muted">
+        <div className={cn("h-full rounded-full", tone)} style={{ width: `${clamped}%` }} />
+      </div>
+      <span className="w-8 text-right text-[10px] font-medium text-muted-foreground">{Math.round(pct)}%</span>
     </div>
   );
 }

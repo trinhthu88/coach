@@ -85,7 +85,7 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
               <StatCard
                 icon={TrendingUp}
                 label={t("leaderDrawer.selfRatedGrowth")}
-                value={leader.goal_growth != null ? t("leaderDrawer.growthPts", { n: Math.round(leader.goal_growth) }) : "—"}
+                value={leader.goal_growth != null ? t("leaderDrawer.growthPct", { n: Math.round(leader.goal_growth) }) : "—"}
                 sub={leader.goal_growth != null ? t("leaderDrawer.sinceBaseline") : t("leaderDrawer.noRatingsYet")}
               />
             </div>

@@ -123,13 +123,12 @@
       "label": "Tiến bộ mục tiêu",
       "scaleNote": "Tự đánh giá · thang điểm 0–10",
       "averageGrowth": "Mức tăng trưởng trung bình",
-      "pts": "điểm",
-      "pctProgressing": "{{pct}}% lãnh đạo đã thu hẹp ít nhất một nửa khoảng cách đến mục tiêu của họ",
+      "pctProgressing": "lãnh đạo đang tiến triển hướng tới mục tiêu",
       "noRatingsYet": "Chưa có đánh giá mục tiêu nào",
-      "hitTarget": "Đạt mục tiêu",
-      "meaningfulProgress": "Tiến bộ đáng kể",
-      "justStarted": "Mới bắt đầu",
-      "flatDeclined": "Không đổi / giảm",
+      "hitTarget": "Đã đạt mục tiêu",
+      "meaningfulProgress": "Đúng tiến độ",
+      "justStarted": "Giai đoạn đầu",
+      "flatDeclined": "Cần chú ý",
       "distributionHidden": "Phân bổ được ẩn — chỉ hiển thị khi tổ chức của bạn có ít nhất {{min}} lãnh đạo đã đăng ký, để không có cá nhân nào bị chỉ ra riêng lẻ.",
       "footnote": "Tiêu đề và mô tả mục tiêu không bao giờ được chia sẻ — chỉ có mức tăng trưởng tổng thể trong tiến độ tự đánh giá."
     },
@@ -157,7 +156,7 @@
         "status": "Trạng thái",
         "progress": "Tiến độ",
         "sessions": "Session",
-        "growth": "Tăng trưởng"
+        "goalProgress": "Tiến độ mục tiêu"
       },
       "empty": "Chưa có lãnh đạo nào đăng ký.",
       "footnote": "Tiêu đề mục tiêu, ghi chú session và tin nhắn không nằm trong bảng này — theo thiết kế, không phải theo cấp quyền."
@@ -208,7 +207,7 @@
     "statusMix": "Phân bổ trạng thái",
     "sessions": "Session",
     "avgGrowth": "Tăng trưởng TB",
-    "growthPts": "+{{n}} điểm",
+    "growthPct": "{{n}}% đang tiến triển",
     "suppressed": "Đã ẩn <{{min}}",
     "noRatingsYet": "Chưa có đánh giá nào",
     "suppressedNote": "Phân tích chi tiết bị ẩn — dưới {{min}} lãnh đạo. Xem tổng hợp trên tất cả các nhóm ở trên.",
@@ -229,7 +228,7 @@
     "sessionsUsed": "Session đã dùng",
     "ofAllocation": "{{pct}}% phân bổ",
     "selfRatedGrowth": "Tăng trưởng tự đánh giá",
-    "growthPts": "+{{n}} điểm",
+    "growthPct": "{{n}}%",
     "sinceBaseline": "kể từ mốc ban đầu",
     "noRatingsYet": "chưa có đánh giá nào",
     "programmeProgress": "Tiến độ chương trình",
@@ -280,13 +279,12 @@
     },
     "goalGrowth": {
       "label": "Tiến bộ mục tiêu",
-      "avgGrowthSuffix": "tăng trưởng TB",
-      "pctProgressing": "{{pct}}% đang tiến triển",
+      "pctProgressing": "lãnh đạo đang tiến triển hướng tới mục tiêu",
       "noRatingsYet": "Chưa có đánh giá nào",
-      "hitTarget": "Đạt mục tiêu",
-      "meaningfulProgress": "Tiến bộ đáng kể",
-      "justStarted": "Mới bắt đầu",
-      "flatDeclined": "Không đổi / giảm",
+      "hitTarget": "Đã đạt mục tiêu",
+      "meaningfulProgress": "Đúng tiến độ",
+      "justStarted": "Giai đoạn đầu",
+      "flatDeclined": "Cần chú ý",
       "distributionWithheld": "Phân bổ bị ẩn — nhóm dưới {{min}} lãnh đạo."
     },
     "programmeSatisfaction": {
@@ -305,7 +303,7 @@
         "cohort": "Nhóm",
         "status": "Trạng thái",
         "progress": "T.độ",
-        "growth": "Tăng trưởng"
+        "goalProgress": "Mục tiêu %"
       }
     },
     "footerDisclaimer": "Được chuẩn bị từ dữ liệu tổng hợp của chương trình. Ghi chú session, tin nhắn trò chuyện, suy ngẫm và cách diễn đạt mục tiêu bị loại trừ khỏi báo cáo dành cho nhà tài trợ của Clariva và không có sẵn cho người yêu cầu.",

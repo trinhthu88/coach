@@ -85,7 +85,7 @@ export default function SponsorCohorts() {
             tone="secondary"
           />
           {avgGrowthAll != null && (
-            <Kpi label={t("cohorts.kpis.avgGoalGrowth")} value={t("cohorts.growthPts", { n: Math.round(avgGrowthAll) })} tone="accent" />
+            <Kpi label={t("cohorts.kpis.avgGoalGrowth")} value={t("cohorts.growthPct", { n: Math.round(avgGrowthAll) })} tone="accent" />
           )}
         </div>
       </SectionCard>
@@ -140,7 +140,7 @@ export default function SponsorCohorts() {
                   {suppressed ? (
                     <p className="text-[11px] italic text-muted-foreground">{t("cohorts.suppressed", { min: minLeadersForDistribution })}</p>
                   ) : avgGrowth != null ? (
-                    <p className="text-sm font-medium">{t("cohorts.growthPts", { n: Math.round(avgGrowth) })}</p>
+                    <p className="text-sm font-medium">{t("cohorts.growthPct", { n: Math.round(avgGrowth) })}</p>
                   ) : (
                     <p className="text-[11px] italic text-muted-foreground">{t("cohorts.noRatingsYet")}</p>
                   )}
