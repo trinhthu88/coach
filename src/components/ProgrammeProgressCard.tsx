@@ -27,7 +27,9 @@ export function ProgrammeProgressCard() {
   const { summary, loading } = useProgrammeProgress(user?.id);
   const receiveEnabled = hasDirection("coaching", "receive");
   const { programme } = useJourneyProgramme(user?.id);
-  const { goals } = useJourneyGoals(receiveEnabled ? user?.id : undefined);
+  // Fires independently of the programme-modules RPC, same as the dashboard
+  // hero cards — receiveEnabled below still gates whether goals render.
+  const { goals } = useJourneyGoals(user?.id);
 
   if (modulesLoading || !hasModule("training")) return null;
 

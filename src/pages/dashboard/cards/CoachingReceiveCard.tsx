@@ -12,7 +12,11 @@ export function CoachingReceiveCard() {
   const { user, role } = useAuth();
   const { hasDirection, loading: modulesLoading } = useProgrammeModules();
   const enabled = hasDirection("coaching", "receive");
-  const { data, loading } = useCoachingReceiveCardData(user?.id, role, enabled);
+  // Fetch runs as soon as we know who's asking — it doesn't need to wait on
+  // the programme-modules RPC too. `enabled` above still gates whether the
+  // card renders at all; this just stops that check from serializing behind
+  // it (see 2026-09-08 dashboard-load-latency investigation).
+  const { data, loading } = useCoachingReceiveCardData(user?.id, role, true);
 
   if (!modulesLoading && !enabled) return null;
   if (modulesLoading || loading) return <HeroSkeleton />;

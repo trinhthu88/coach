@@ -13,7 +13,9 @@ export function TriadsCard() {
   const { user } = useAuth();
   const { hasModule, loading: modulesLoading } = useProgrammeModules();
   const enabled = hasModule("triads");
-  const { data, loading } = useTriadsCardData(user?.id, enabled);
+  // Fetch fires independently of the programme-modules RPC; `enabled` only
+  // gates rendering below (see CoachingReceiveCard for the full rationale).
+  const { data, loading } = useTriadsCardData(user?.id, true);
 
   if (!modulesLoading && !enabled) return null;
 

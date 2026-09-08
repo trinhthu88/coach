@@ -12,7 +12,9 @@ export function MentoringReceiveCard() {
   const { user } = useAuth();
   const { hasDirection, loading: modulesLoading } = useProgrammeModules();
   const enabled = hasDirection("mentoring", "receive");
-  const { data, loading } = useMentoringReceiveCardData(user?.id, enabled);
+  // Fetch fires independently of the programme-modules RPC; `enabled` only
+  // gates rendering below (see CoachingReceiveCard for the full rationale).
+  const { data, loading } = useMentoringReceiveCardData(user?.id, true);
 
   if (!modulesLoading && !enabled) return null;
 

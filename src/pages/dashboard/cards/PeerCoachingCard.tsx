@@ -14,7 +14,9 @@ export function PeerCoachingCard() {
   const { user, role } = useAuth();
   const { hasModule, loading: modulesLoading } = useProgrammeModules();
   const enabled = hasModule("peer_coaching");
-  const { data, loading } = usePeerCoachingCardData(user?.id, role, enabled);
+  // Fetch fires independently of the programme-modules RPC; `enabled` only
+  // gates rendering below (see CoachingReceiveCard for the full rationale).
+  const { data, loading } = usePeerCoachingCardData(user?.id, role, true);
 
   if (!modulesLoading && !enabled) return null;
 
