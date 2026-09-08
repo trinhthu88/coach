@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { Link, useNavigate, Navigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, Navigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,16 +17,9 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
-import { getSessionStatusPillMeta as getStatusMeta, type SessionStatus } from "@/lib/sessionStatusMeta";
-
-type SessionKind =
-  | "coaching"
-  | "peer-give"
-  | "peer-receive"
-  | "coachee-peer-give"
-  | "coachee-peer-receive"
-  | "mentoring-mentor"
-  | "mentoring-mentee";
+import { getSessionStatusPillMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
+import { useSessionsData } from "@/hooks/sessions/useSessionsData";
+import type { SessionRow as SessionRowData, SessionKind } from "@/hooks/sessions/useSessionsData";
 
 type KindFilter = "all" | "coaching" | "peer" | "mentoring";
 
@@ -37,22 +30,6 @@ function kindCategory(kind: SessionKind): KindFilter {
   if (kind === "coaching") return "coaching";
   if (kind === "mentoring-mentor" || kind === "mentoring-mentee") return "mentoring";
   return "peer";
-}
-
-interface SessionRow {
-  id: string;
-  coach_id: string;
-  coachee_id: string;
-  topic: string;
-  start_time: string;
-  duration_minutes: number;
-  status: SessionStatus;
-  action_items: Tables<"sessions">["action_items"];
-  coachee_rating: number | null;
-  coachee_rating_comment: string | null;
-  kind: SessionKind;
-  coach: { full_name: string; email: string; avatar_url: string | null } | null;
-  coachee: { full_name: string; email: string; avatar_url: string | null } | null;
 }
 
 function sessionDetailPath(s: { id: string; kind: SessionKind }): string {
@@ -70,118 +47,16 @@ export default function Sessions() {
   const { t } = useTranslation("sessions");
   const { user, role } = useAuth();
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState<SessionRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("upcoming");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") || "upcoming";
+  const searchTerm = searchParams.get("q") || "";
+  const kindFilter = (searchParams.get("kind") as KindFilter) || "all";
 
-  const load = useCallback(async () => {
-    if (!user) return;
+  const { sessions, loading, reload: load } = useSessionsData(user?.id, role);
 
-    let sess: Tables<"sessions">[] = [];
-    let peer: Tables<"peer_sessions">[] = [];
-    let coacheePeer: Tables<"coachee_peer_sessions">[] = [];
-
-    if (role === "coach" || role === "coachee") {
-      const col = role === "coach" ? "coach_id" : "coachee_id";
-      const { data } = await supabase
-        .from("sessions")
-        .select("*")
-        .eq(col, user.id)
-        .order("start_time", { ascending: false });
-      sess = data || [];
-    }
-
-    if (role === "coach") {
-      const { data } = await supabase
-        .from("peer_sessions")
-        .select("*")
-        .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
-        .order("start_time", { ascending: false });
-      peer = data || [];
-    }
-
-    if (role === "coachee") {
-      const { data } = await supabase
-        .from("coachee_peer_sessions")
-        .select("*")
-        .or(`peer_provider_id.eq.${user.id},peer_receiver_id.eq.${user.id}`)
-        .order("start_time", { ascending: false });
-      coacheePeer = data || [];
-    }
-
-    // Mentoring: a mentee can be either role (coach or coachee, RULES.md §3
-    // Relationship 4), and a coach can also be a mentor giving sessions —
-    // so this queries both mentor_id and mentee_id rather than switching
-    // column by role the way the blocks above do.
-    let mentoring: Tables<"mentoring_sessions">[] = [];
-    if (role === "coach" || role === "coachee") {
-      const { data } = await supabase
-        .from("mentoring_sessions")
-        .select("*")
-        .or(`mentor_id.eq.${user.id},mentee_id.eq.${user.id}`)
-        .order("start_time", { ascending: false });
-      mentoring = data || [];
-    }
-
-    const allRows = [
-      ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
-      ...peer.map((s) => ({
-        ...s,
-        coach_id: s.peer_coach_id,
-        coachee_id: s.peer_coachee_id,
-        kind: (s.peer_coach_id === user.id ? "peer-give" : "peer-receive") as SessionKind,
-      })),
-      ...coacheePeer.map((s) => ({
-        ...s,
-        coach_id: s.peer_provider_id,
-        coachee_id: s.peer_receiver_id,
-        coach_notes: s.provider_notes,
-        coachee_notes: s.receiver_notes,
-        coachee_rating: s.receiver_rating,
-        coachee_rating_comment: s.receiver_rating_comment,
-        kind: (s.peer_provider_id === user.id ? "coachee-peer-give" : "coachee-peer-receive") as SessionKind,
-      })),
-      // mentoring_sessions has no rating column (mentors give written ICF
-      // feedback instead, via mentoring_feedback — see MentoringSessionDetail).
-      ...mentoring.map((s) => ({
-        ...s,
-        coach_id: s.mentor_id,
-        coachee_id: s.mentee_id,
-        coach_notes: s.mentor_notes,
-        coachee_notes: s.mentee_notes,
-        coachee_rating: null,
-        coachee_rating_comment: null,
-        kind: (s.mentor_id === user.id ? "mentoring-mentor" : "mentoring-mentee") as SessionKind,
-      })),
-    ].sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
-
-    const ids = Array.from(
-      new Set(allRows.flatMap((s) => [s.coach_id, s.coachee_id]))
-    );
-    let byId = new Map<string, Pick<Tables<"profiles">, "id" | "full_name" | "email" | "avatar_url">>();
-    if (ids.length) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, avatar_url")
-        .in("id", ids);
-      byId = new Map((profs || []).map((p) => [p.id, p]));
-    }
-
-    setSessions(
-      allRows.map((s) => ({
-        ...s,
-        coach: byId.get(s.coach_id) || null,
-        coachee: byId.get(s.coachee_id) || null,
-      })) as SessionRow[]
-    );
-    setLoading(false);
-  }, [user, role]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const setTab = (v: string) => setSearchParams({ tab: v, q: searchTerm, kind: kindFilter }, { replace: true });
+  const setSearchTerm = (v: string) => setSearchParams({ tab, q: v, kind: kindFilter }, { replace: true });
+  const setKindFilter = (v: KindFilter) => setSearchParams({ tab, q: searchTerm, kind: v }, { replace: true });
 
   // Admins have a dedicated sessions view — redirect after hooks are called
   if (role === "admin") {
@@ -194,7 +69,7 @@ export default function Sessions() {
   }
 
   const q = searchTerm.trim().toLowerCase();
-  const matchesFilters = (s: SessionRow) =>
+  const matchesFilters = (s: SessionRowData) =>
     (kindFilter === "all" || kindCategory(s.kind) === kindFilter) &&
     (!q ||
       s.topic.toLowerCase().includes(q) ||
@@ -340,7 +215,7 @@ function SessionCard({
   onOpen,
   onChanged,
 }: {
-  session: SessionRow;
+  session: SessionRowData;
   role: "coach" | "coachee" | "admin";
   onOpen: () => void;
   onChanged: () => void;
@@ -465,7 +340,7 @@ function SessionCard({
   );
 }
 
-function RateSession({ session, onChanged }: { session: SessionRow; onChanged: () => void }) {
+function RateSession({ session, onChanged }: { session: SessionRowData; onChanged: () => void }) {
   const { t } = useTranslation("sessions");
   const [rating, setRating] = useState<number>(session.coachee_rating || 0);
   const [hover, setHover] = useState(0);

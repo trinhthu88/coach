@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const sessionRow = {
   id: "sess1",
@@ -48,11 +49,14 @@ beforeEach(async () => {
 
 describe("Sessions list page i18n", () => {
   it("switches the status badge and page header to Vietnamese", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
-      <MemoryRouter>
-        <LanguageSwitcher />
-        <Sessions />
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <LanguageSwitcher />
+          <Sessions />
+        </MemoryRouter>
+      </QueryClientProvider>
     );
 
     await waitFor(() => expect(screen.getByText("Confirmed")).toBeInTheDocument());
