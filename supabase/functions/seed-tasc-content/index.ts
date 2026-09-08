@@ -2199,7 +2199,7 @@ Deno.serve(async (req) => {
           "peer_coachee_id": peer1Id,
           "topic": "Practice: Helping peer explore a career transition using open questions",
           "start_time": "2026-09-16T10:00:00+07:00",
-          "duration_minutes": 40,
+          "duration_minutes": 45,
           "status": "completed",
           "coach_notes": "I focused on using only open questions. Caught myself twice about to give advice and redirected to \"What matters most to you in this decision?\" I kept pauses at about 4-5 seconds. My peer said they felt really heard.",
           "coachee_notes": "Trang was very patient. I appreciated how she didn't rush to solutions. The question about what I would lose and gain in each scenario was particularly clarifying.",
