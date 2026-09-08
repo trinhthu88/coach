@@ -8,6 +8,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PageSkeleton } from "@/components/PageSkeleton";
 
 // Page-level lazy imports — each becomes a separate chunk
 const Index = lazy(() => import("./pages/Index"));
@@ -65,7 +66,16 @@ const SponsorReport = lazy(() => import("./pages/sponsor/SponsorReport"));
 const SponsorSettings = lazy(() => import("./pages/sponsor/SponsorSettings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <ErrorBoundary>
@@ -75,7 +85,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Suspense fallback={null}>
+            <Suspense fallback={<div className="p-8"><PageSkeleton rows={5} /></div>}>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
