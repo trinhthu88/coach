@@ -992,6 +992,7 @@ export type Database = {
           end_date: string | null
           id: string
           name: string
+          organization_id: string | null
           programme_id: string | null
           start_date: string | null
           updated_at: string
@@ -1003,6 +1004,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           name: string
+          organization_id?: string | null
           programme_id?: string | null
           start_date?: string | null
           updated_at?: string
@@ -1014,11 +1016,19 @@ export type Database = {
           end_date?: string | null
           id?: string
           name?: string
+          organization_id?: string | null
           programme_id?: string | null
           start_date?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "cohorts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cohorts_programme_id_fkey"
             columns: ["programme_id"]
