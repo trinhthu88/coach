@@ -2185,6 +2185,151 @@ Deno.serve(async (req) => {
       }
       , { onConflict: "id" }); if (error) throw error; }
 
+      // 21. Additional peer-coach sessions (Trang giving coaching this time)
+      // so the Practice Journey radar/trend has more than one data point.
+      // CoachPracticeJourney.tsx only shows feedback where
+      // peer_coach_id = the viewer, so section 12's feedback (rating coach2's
+      // coaching of Trang) never appears on her own chart — these are the
+      // rows that actually populate it.
+      if (peer1Id) {
+        { const { error } = await admin.from("peer_sessions").upsert(
+        {
+          "id": "e0000000-0000-0000-0000-000000000011",
+          "peer_coach_id": trangId,
+          "peer_coachee_id": peer1Id,
+          "topic": "Practice: Helping peer explore a career transition using open questions",
+          "start_time": "2026-09-16T10:00:00+07:00",
+          "duration_minutes": 40,
+          "status": "completed",
+          "coach_notes": "I focused on using only open questions. Caught myself twice about to give advice and redirected to \"What matters most to you in this decision?\" I kept pauses at about 4-5 seconds. My peer said they felt really heard.",
+          "coachee_notes": "Trang was very patient. I appreciated how she didn't rush to solutions. The question about what I would lose and gain in each scenario was particularly clarifying.",
+          "action_items": [{ "text": "Review question types from Week 2 skill card", "done": true }],
+          "coachee_rating": 4
+        }
+        , { onConflict: "id" }); if (error) throw error; }
+        { const { error } = await admin.from("peer_session_competency_feedback").upsert(
+        {
+          "id": "f1a00000-0000-0000-0000-000000000001",
+          "created_at": "2026-09-16T11:00:00Z",
+          "peer_session_id": "e0000000-0000-0000-0000-000000000011",
+          "peer_coach_id": trangId,
+          "peer_coachee_id": peer1Id,
+          "ethical_practice": 70,
+          "coaching_mindset": 65,
+          "maintains_agreements": 60,
+          "trust_safety": 80,
+          "maintains_presence": 55,
+          "listens_actively": 70,
+          "evokes_awareness": 65,
+          "facilitates_growth": 60,
+          "feedback_note": "Good first practice coaching session from Trang. She created a very safe space and I felt comfortable sharing real concerns. Her questions were mostly open but a few were slightly leading. She could work on sitting with silence a bit longer."
+        }
+        , { onConflict: "peer_session_id" }); if (error) throw error; }
+
+        { const { error } = await admin.from("peer_sessions").upsert(
+        {
+          "id": "e0000000-0000-0000-0000-000000000012",
+          "peer_coach_id": trangId,
+          "peer_coachee_id": peer2Id,
+          "topic": "SHIFT practice: Coaching through a team conflict using full SHIFT structure",
+          "start_time": "2026-09-23T14:00:00+07:00",
+          "duration_minutes": 45,
+          "status": "completed",
+          "coach_notes": "First time I consciously followed SHIFT all the way through. I spent 5 minutes on S (setting the foundation), 8 minutes on H, 12 minutes on I (best I have done), 10 minutes on F, and 10 minutes on T. My peer said the I stage was where they had their breakthrough. The silence at 7 seconds felt natural this time.",
+          "coachee_notes": "Trang is visibly improving. She structured the conversation well using SHIFT. The question \"When this conflict is resolved, what will the team meetings look like?\" really helped me see what I actually wanted.",
+          "action_items": [
+            { "text": "Keep tracking time per SHIFT stage", "done": true },
+            { "text": "Practice F stage — surfacing existing resources", "done": false }
+          ],
+          "coachee_rating": 5
+        }
+        , { onConflict: "id" }); if (error) throw error; }
+        { const { error } = await admin.from("peer_session_competency_feedback").upsert(
+        {
+          "id": "f1a00000-0000-0000-0000-000000000002",
+          "created_at": "2026-09-23T15:00:00Z",
+          "peer_session_id": "e0000000-0000-0000-0000-000000000012",
+          "peer_coach_id": trangId,
+          "peer_coachee_id": peer2Id,
+          "ethical_practice": 78,
+          "coaching_mindset": 75,
+          "maintains_agreements": 72,
+          "trust_safety": 85,
+          "maintains_presence": 68,
+          "listens_actively": 78,
+          "evokes_awareness": 76,
+          "facilitates_growth": 70,
+          "feedback_note": "Clear improvement from Trang. Her SHIFT structure was visible and well-paced. She held a 7-second pause that led to my breakthrough moment. Still could probe deeper during the F stage — she found my resources but could have explored them more. Strongest area: trust and safety."
+        }
+        , { onConflict: "peer_session_id" }); if (error) throw error; }
+
+        { const { error } = await admin.from("peer_sessions").upsert(
+        {
+          "id": "e0000000-0000-0000-0000-000000000013",
+          "peer_coach_id": trangId,
+          "peer_coachee_id": peer1Id,
+          "topic": "Full SHIFT session: Coaching on setting boundaries with a demanding stakeholder",
+          "start_time": "2026-09-30T10:00:00+07:00",
+          "duration_minutes": 45,
+          "status": "completed",
+          "coach_notes": "My strongest session yet. I followed SHIFT cleanly: S (3 min), H (7 min), I (15 min — my best), F (12 min), T (8 min). The \"I\" stage was where the real work happened. My peer discovered they actually knew what boundaries to set but were afraid of the reaction. I used a scaling question for the first time: \"On a scale of 1-10, how ready are you to have that conversation?\" They said 7. I asked \"What would make it an 8?\" That unlocked specific preparation steps. Silence: averaging 6-8 seconds now and it feels generative, not awkward.",
+          "coachee_notes": "This was a genuinely helpful coaching session. Trang was confident, patient, and her questions kept going deeper. The scaling question was brilliant — it made my readiness feel tangible and specific instead of vague. I walked away with three concrete actions and genuine confidence.",
+          "action_items": [
+            { "text": "Have the boundary conversation by Friday", "done": false },
+            { "text": "Write down the 3 key phrases to use", "done": true }
+          ],
+          "coachee_rating": 5,
+          "coachee_rating_comment": "Trang has grown enormously as a coach. This session felt genuinely professional. Her questioning and silence are now strengths, not weaknesses."
+        }
+        , { onConflict: "id" }); if (error) throw error; }
+        { const { error } = await admin.from("peer_session_competency_feedback").upsert(
+        {
+          "id": "f1a00000-0000-0000-0000-000000000003",
+          "created_at": "2026-09-30T11:00:00Z",
+          "peer_session_id": "e0000000-0000-0000-0000-000000000013",
+          "peer_coach_id": trangId,
+          "peer_coachee_id": peer1Id,
+          "ethical_practice": 85,
+          "coaching_mindset": 83,
+          "maintains_agreements": 80,
+          "trust_safety": 90,
+          "maintains_presence": 78,
+          "listens_actively": 85,
+          "evokes_awareness": 84,
+          "facilitates_growth": 80,
+          "feedback_note": "Remarkable growth trajectory. Trang's coaching feels natural and confident now. She used a scaling question for the first time and it was perfectly timed. Her silence is now a tool, not a gap. Trust and safety remain her standout strength — I would genuinely recommend her as a coach. Growth edge: continues to be facilitating the client's own resource-finding (F stage) rather than subtly suggesting resources."
+        }
+        , { onConflict: "peer_session_id" }); if (error) throw error; }
+      }
+
+      // 22. Wheel of Life tool entries on Trang's two coaching sessions
+      { const { error } = await admin.from("tool_sessions").upsert(
+      {
+        "id": "f2b00000-0000-0000-0000-000000000001",
+        "session_id": "e0000000-0000-0000-0000-000000000001",
+        "tool_type": "wheel_of_life",
+        "filled_by": trangId,
+        "responses": {
+          "career": 7, "finance": 5, "health": 8, "relationships": 7,
+          "fun": 4, "personal_growth": 8, "physical_environment": 6, "contribution": 7
+        },
+        "created_at": "2026-09-10T09:30:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+      { const { error } = await admin.from("tool_sessions").upsert(
+      {
+        "id": "f2b00000-0000-0000-0000-000000000002",
+        "session_id": "e0000000-0000-0000-0000-000000000002",
+        "tool_type": "wheel_of_life",
+        "filled_by": trangId,
+        "responses": {
+          "career": 8, "finance": 6, "health": 8, "relationships": 8,
+          "fun": 5, "personal_growth": 9, "physical_environment": 6, "contribution": 8
+        },
+        "created_at": "2026-09-24T09:30:00Z"
+      }
+      , { onConflict: "id" }); if (error) throw error; }
+
       trangSeed = { skipped: false };
       }
     }

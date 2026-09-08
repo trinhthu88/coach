@@ -61,7 +61,6 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["coach", "coachee"] },
-  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coach", "coachee"], module: "mentoring" },
   { to: "/sponsor", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["sponsor"], groupKey: "navGroups.sponsor", onboardingId: "nav-sponsor-dashboard" },
   { to: "/sponsor/cohorts", labelKey: "nav.cohorts", icon: Layers, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
   { to: "/sponsor/report", labelKey: "nav.exportReport", icon: FileDown, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
@@ -70,6 +69,7 @@ const NAV: NavItem[] = [
   { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", module: "coaching", moduleDirection: "receive" },
   { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"] },
   { to: "/coachee/journey", labelKey: "nav.myDevelopment", icon: Compass, roles: ["coachee"], module: "coaching", moduleDirection: "receive" },
+  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "mentoring" },
   { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "peer_coaching" },
   { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.developMyself" },
   {
@@ -87,6 +87,7 @@ const NAV: NavItem[] = [
   { to: "/coach/clients", labelKey: "nav.myClients", icon: UsersRound, roles: ["coach"], groupKey: "navGroups.deliverCoaching", module: "coaching", moduleDirection: "give" },
 
   // Coach — My Development
+  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coach"], groupKey: "navGroups.developMyself", module: "mentoring" },
   { to: "/coach/find-coach", labelKey: "nav.findACoach", icon: Search, roles: ["coach"], groupKey: "navGroups.developMyself", module: "coaching", moduleDirection: "receive" },
   { to: "/coach/my-journey", labelKey: "nav.myDevelopment", icon: Compass, roles: ["coach"], groupKey: "navGroups.developMyself", module: "coaching", moduleDirection: "receive" },
   { to: "/coach/peer-coaching", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coach"], groupKey: "navGroups.developMyself", module: "peer_coaching" },
@@ -137,7 +138,7 @@ const NAV: NavItem[] = [
 // Groups collapsed by default (until manually toggled, or until the current
 // route lands inside one — see isGroupOpen below) — everything else stays
 // open by default, unchanged from before groups were collapsible at all.
-const DEFAULT_COLLAPSED_GROUPS = new Set(["navGroups.deliverCoaching", "navGroups.developMyself"]);
+const DEFAULT_COLLAPSED_GROUPS = new Set(["navGroups.developMyself"]);
 
 function NavItemLink({
   item,
