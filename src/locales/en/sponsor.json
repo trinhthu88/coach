@@ -5,6 +5,54 @@
     "paused": "Paused",
     "atRisk": "At risk"
   },
+  "settings": {
+    "eyebrow": "Account",
+    "title": "Your settings,",
+    "titleEmphasis": "your way.",
+    "subtitle": "Manage your profile, view your organisation, and set notification preferences.",
+    "tabs": {
+      "profile": "My Profile",
+      "organisation": "Organisation",
+      "notifications": "Notifications"
+    },
+    "profile": {
+      "changeAvatar": "Change avatar",
+      "avatarUpdated": "Avatar updated",
+      "fullNameLabel": "Full name",
+      "nameRequired": "Name is required",
+      "titleLabel": "Job title",
+      "departmentLabel": "Department",
+      "phoneLabel": "Phone / WhatsApp",
+      "languageLabel": "Preferred language",
+      "save": "Save profile",
+      "saved": "Profile saved"
+    },
+    "organisation": {
+      "loadError": "Could not load your organisation.",
+      "noOrg": "You're not yet linked to an organisation.",
+      "tiers": {
+        "essentials": "Essentials",
+        "growth": "Growth",
+        "enterprise": "Enterprise"
+      },
+      "contractLabel": "Contract",
+      "daysRemaining_one": "{{count}} day remaining",
+      "daysRemaining_other": "{{count}} days remaining",
+      "budgetLabel": "Coaching budget",
+      "objectivesLabel": "Programme objectives",
+      "competenciesLabel": "Focus competencies",
+      "accountManagerLabel": "Account manager"
+    },
+    "notifications": {
+      "label": "Email notifications",
+      "weeklyDigest": "Weekly digest",
+      "atRiskAlerts": "At-risk leader alerts",
+      "sessionMilestones": "Session milestone alerts (50% / 90% usage)",
+      "monthlyAutoReport": "Monthly auto-report email",
+      "save": "Save preferences",
+      "saved": "Preferences saved"
+    }
+  },
   "dashboard": {
     "compareAllCohorts": "Compare all cohorts",
     "header": {
@@ -38,7 +86,40 @@
       "atRisk": "At risk",
       "sessionsUsed": "Sessions used",
       "atRiskInline_other": "{{count}} leaders at risk and may need attention",
-      "atRiskInline_one": "{{count}} leader at risk and may need attention"
+      "atRiskInline_one": "{{count}} leader at risk and may need attention",
+      "budgetUsed": "Budget used",
+      "budgetSubline": "{{spent}} of {{total}}",
+      "budgetRunsOut": "at this pace, budget runs out {{date}}"
+    },
+    "orgBanner": {
+      "tiers": {
+        "essentials": "Essentials",
+        "growth": "Growth",
+        "enterprise": "Enterprise"
+      },
+      "accountManager": "Account manager: {{name}}",
+      "daysRemaining_one": "{{count}} day remaining",
+      "daysRemaining_other": "{{count}} days remaining",
+      "status": {
+        "active": "Active",
+        "expiring": "Expiring soon",
+        "expired": "Expired"
+      }
+    },
+    "alerts": {
+      "label": "Smart alerts",
+      "empty": "No alerts right now — everything looks on track.",
+      "view": "View",
+      "atRiskInactive": "{{name}} has not logged in for {{count}} days",
+      "sessionThreshold": "Cohort {{name}} has used 90% of sessions — consider renewal",
+      "contractExpiry": "Contract ends in {{count}} days — renewal conversation recommended"
+    },
+    "coachUtilisation": {
+      "label": "Coach utilisation"
+    },
+    "quickActions": {
+      "downloadReport": "Download report",
+      "compareCohorts": "Compare cohorts"
     },
     "goalGrowth": {
       "label": "Goal growth",

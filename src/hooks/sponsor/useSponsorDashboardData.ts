@@ -9,6 +9,8 @@ export type SponsorSatisfaction = Database["public"]["Functions"]["sponsor_satis
 export type SponsorTimeline = Database["public"]["Functions"]["sponsor_timeline"]["Returns"][number];
 export type SponsorProgrammeEngagementRow = Database["public"]["Functions"]["sponsor_programme_engagement"]["Returns"][number];
 export type SponsorRedFlagRow = Database["public"]["Functions"]["sponsor_engagement_red_flags"]["Returns"][number];
+export type SponsorSatisfactionTrendRow = Database["public"]["Functions"]["sponsor_satisfaction_trend"]["Returns"][number];
+export type SponsorCoachUtilisationRow = Database["public"]["Functions"]["sponsor_coach_utilisation"]["Returns"][number];
 
 interface SponsorDashboardData {
   kpis: SponsorKpis | null;
@@ -19,6 +21,8 @@ interface SponsorDashboardData {
   minLeadersForDistribution: number;
   programmeEngagement: SponsorProgrammeEngagementRow[];
   redFlags: SponsorRedFlagRow[];
+  satisfactionTrend: SponsorSatisfactionTrendRow[];
+  coachUtilisation: SponsorCoachUtilisationRow[];
   loading: boolean;
 }
 
@@ -37,12 +41,17 @@ export function useSponsorDashboardData(): SponsorDashboardData {
   const [minLeadersForDistribution, setMinLeadersForDistribution] = useState(5);
   const [programmeEngagement, setProgrammeEngagement] = useState<SponsorProgrammeEngagementRow[]>([]);
   const [redFlags, setRedFlags] = useState<SponsorRedFlagRow[]>([]);
+  const [satisfactionTrend, setSatisfactionTrend] = useState<SponsorSatisfactionTrendRow[]>([]);
+  const [coachUtilisation, setCoachUtilisation] = useState<SponsorCoachUtilisationRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [kpisRes, growthRes, rosterRes, satisfactionRes, timelineRes, minLeadersRes, engagementRes, redFlagsRes] = await Promise.all([
+      const [
+        kpisRes, growthRes, rosterRes, satisfactionRes, timelineRes, minLeadersRes,
+        engagementRes, redFlagsRes, trendRes, utilisationRes,
+      ] = await Promise.all([
         supabase.rpc("sponsor_kpis"),
         supabase.rpc("sponsor_goal_growth_summary"),
         supabase.rpc("sponsor_roster"),
@@ -51,6 +60,8 @@ export function useSponsorDashboardData(): SponsorDashboardData {
         supabase.rpc("sponsor_min_leaders_for_distribution"),
         supabase.rpc("sponsor_programme_engagement"),
         supabase.rpc("sponsor_engagement_red_flags"),
+        supabase.rpc("sponsor_satisfaction_trend"),
+        supabase.rpc("sponsor_coach_utilisation"),
       ]);
       if (!mounted) return;
       setKpis(kpisRes.data?.[0] ?? null);
@@ -61,6 +72,8 @@ export function useSponsorDashboardData(): SponsorDashboardData {
       if (typeof minLeadersRes.data === "number") setMinLeadersForDistribution(minLeadersRes.data);
       setProgrammeEngagement(engagementRes.data ?? []);
       setRedFlags(redFlagsRes.data ?? []);
+      setSatisfactionTrend(trendRes.data ?? []);
+      setCoachUtilisation(utilisationRes.data ?? []);
       setLoading(false);
     })();
     return () => {
@@ -68,5 +81,8 @@ export function useSponsorDashboardData(): SponsorDashboardData {
     };
   }, []);
 
-  return { kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution, programmeEngagement, redFlags, loading };
+  return {
+    kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution,
+    programmeEngagement, redFlags, satisfactionTrend, coachUtilisation, loading,
+  };
 }

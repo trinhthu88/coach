@@ -64,6 +64,7 @@ const NAV: NavItem[] = [
   { to: "/sponsor", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["sponsor"], groupKey: "navGroups.sponsor", onboardingId: "nav-sponsor-dashboard" },
   { to: "/sponsor/cohorts", labelKey: "nav.cohorts", icon: Layers, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
   { to: "/sponsor/report", labelKey: "nav.exportReport", icon: FileDown, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
+  { to: "/sponsor/settings", labelKey: "nav.myProfile", icon: IdCard, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
 
   // Coachee
   { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", module: "coaching", moduleDirection: "receive" },

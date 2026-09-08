@@ -241,6 +241,36 @@
     "done": "Done"
   },
   "organizations": {
+    "sections": {
+      "identity": "Identity",
+      "contract": "Contract & Commercial",
+      "contacts": "Contacts",
+      "programme": "Programme"
+    },
+    "noneOption": "— None —",
+    "logoUrlLabel": "Logo URL",
+    "websiteLabel": "Website",
+    "companySizeLabel": "Company size",
+    "hqCountryLabel": "HQ country",
+    "timezoneLabel": "Timezone",
+    "contractStartLabel": "Contract start",
+    "contractEndLabel": "Contract end",
+    "coachingBudgetLabel": "Coaching budget",
+    "subscriptionTierLabel": "Subscription tier",
+    "tiers": {
+      "essentials": "Essentials",
+      "growth": "Growth",
+      "enterprise": "Enterprise"
+    },
+    "accountManagerLabel": "Account manager",
+    "billingContactLabel": "Billing contact",
+    "secondaryContactLabel": "Secondary contact",
+    "contactNamePlaceholder": "Name",
+    "contactEmailPlaceholder": "Email",
+    "programmeObjectivesLabel": "Programme objectives",
+    "focusCompetenciesLabel": "Focus competencies",
+    "tagInputPlaceholder": "Type and press Enter",
+    "adminNotesLabel": "Admin notes",
     "nameRequired": "Name is required",
     "orgSaved": "Organization saved",
     "deleteConfirm": "Delete organization? Any linked enrollments keep their programme but lose the org link.",

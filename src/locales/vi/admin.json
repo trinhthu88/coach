@@ -237,6 +237,36 @@
     "done": "Xong"
   },
   "organizations": {
+    "sections": {
+      "identity": "Thông tin chung",
+      "contract": "Hợp đồng & Thương mại",
+      "contacts": "Liên hệ",
+      "programme": "Chương trình"
+    },
+    "noneOption": "— Không có —",
+    "logoUrlLabel": "URL logo",
+    "websiteLabel": "Website",
+    "companySizeLabel": "Quy mô công ty",
+    "hqCountryLabel": "Quốc gia trụ sở",
+    "timezoneLabel": "Múi giờ",
+    "contractStartLabel": "Bắt đầu hợp đồng",
+    "contractEndLabel": "Kết thúc hợp đồng",
+    "coachingBudgetLabel": "Ngân sách coaching",
+    "subscriptionTierLabel": "Gói đăng ký",
+    "tiers": {
+      "essentials": "Essentials",
+      "growth": "Growth",
+      "enterprise": "Enterprise"
+    },
+    "accountManagerLabel": "Quản lý tài khoản",
+    "billingContactLabel": "Liên hệ thanh toán",
+    "secondaryContactLabel": "Liên hệ phụ",
+    "contactNamePlaceholder": "Tên",
+    "contactEmailPlaceholder": "Email",
+    "programmeObjectivesLabel": "Mục tiêu chương trình",
+    "focusCompetenciesLabel": "Năng lực trọng tâm",
+    "tagInputPlaceholder": "Nhập rồi nhấn Enter",
+    "adminNotesLabel": "Ghi chú nội bộ",
     "nameRequired": "Cần có tên",
     "orgSaved": "Đã lưu tổ chức",
     "deleteConfirm": "Xóa tổ chức? Các lượt ghi danh liên kết vẫn giữ chương trình nhưng mất liên kết với tổ chức.",

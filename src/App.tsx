@@ -62,6 +62,7 @@ const MentoringSessionDetail = lazy(() => import("./pages/MentoringSessionDetail
 const SponsorDashboard = lazy(() => import("./pages/sponsor/SponsorDashboard"));
 const SponsorCohorts = lazy(() => import("./pages/sponsor/SponsorCohorts"));
 const SponsorReport = lazy(() => import("./pages/sponsor/SponsorReport"));
+const SponsorSettings = lazy(() => import("./pages/sponsor/SponsorSettings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -351,6 +352,7 @@ const App = () => (
                   <Route path="/sponsor" element={<ProtectedRoute role="sponsor"><SponsorDashboard /></ProtectedRoute>} />
                   <Route path="/sponsor/cohorts" element={<ProtectedRoute role="sponsor"><SponsorCohorts /></ProtectedRoute>} />
                   <Route path="/sponsor/report" element={<ProtectedRoute role="sponsor"><SponsorReport /></ProtectedRoute>} />
+                  <Route path="/sponsor/settings" element={<ProtectedRoute role="sponsor"><SponsorSettings /></ProtectedRoute>} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />

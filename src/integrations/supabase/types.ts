@@ -3117,6 +3117,13 @@ export type Database = {
           sessions_used: number
         }[]
       }
+      sponsor_coach_utilisation: {
+        Args: never
+        Returns: {
+          coach_name: string
+          completed_sessions: number
+        }[]
+      }
       sponsor_min_leaders_for_distribution: { Args: never; Returns: number }
       sponsor_programme_engagement: {
         Args: never
@@ -3149,6 +3156,14 @@ export type Database = {
         Args: never
         Returns: {
           avg_rating: number
+          rated_session_count: number
+        }[]
+      }
+      sponsor_satisfaction_trend: {
+        Args: never
+        Returns: {
+          avg_rating: number
+          month_start: string
           rated_session_count: number
         }[]
       }

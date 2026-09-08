@@ -6,6 +6,53 @@
     "paused": "Tạm dừng",
     "atRisk": "Có nguy cơ"
   },
+  "settings": {
+    "eyebrow": "Tài khoản",
+    "title": "Cài đặt của bạn,",
+    "titleEmphasis": "theo cách của bạn.",
+    "subtitle": "Quản lý hồ sơ, xem tổ chức của bạn và thiết lập tùy chọn thông báo.",
+    "tabs": {
+      "profile": "Hồ sơ của tôi",
+      "organisation": "Tổ chức",
+      "notifications": "Thông báo"
+    },
+    "profile": {
+      "changeAvatar": "Đổi ảnh đại diện",
+      "avatarUpdated": "Đã cập nhật ảnh đại diện",
+      "fullNameLabel": "Họ tên",
+      "nameRequired": "Cần có tên",
+      "titleLabel": "Chức danh",
+      "departmentLabel": "Phòng ban",
+      "phoneLabel": "Điện thoại / WhatsApp",
+      "languageLabel": "Ngôn ngữ ưa thích",
+      "save": "Lưu hồ sơ",
+      "saved": "Đã lưu hồ sơ"
+    },
+    "organisation": {
+      "loadError": "Không thể tải thông tin tổ chức.",
+      "noOrg": "Bạn chưa được liên kết với tổ chức nào.",
+      "tiers": {
+        "essentials": "Essentials",
+        "growth": "Growth",
+        "enterprise": "Enterprise"
+      },
+      "contractLabel": "Hợp đồng",
+      "daysRemaining_other": "Còn {{count}} ngày",
+      "budgetLabel": "Ngân sách coaching",
+      "objectivesLabel": "Mục tiêu chương trình",
+      "competenciesLabel": "Năng lực trọng tâm",
+      "accountManagerLabel": "Quản lý tài khoản"
+    },
+    "notifications": {
+      "label": "Thông báo qua email",
+      "weeklyDigest": "Bản tin hàng tuần",
+      "atRiskAlerts": "Cảnh báo học viên có nguy cơ",
+      "sessionMilestones": "Cảnh báo mốc session (50% / 90% sử dụng)",
+      "monthlyAutoReport": "Email báo cáo tự động hàng tháng",
+      "save": "Lưu tùy chọn",
+      "saved": "Đã lưu tùy chọn"
+    }
+  },
   "dashboard": {
     "compareAllCohorts": "So sánh tất cả các nhóm",
     "header": {
@@ -38,7 +85,39 @@
       "onTrack": "Đúng tiến độ",
       "atRisk": "Có nguy cơ",
       "sessionsUsed": "Session đã dùng",
-      "atRiskInline_other": "{{count}} người có rủi ro cần được chú ý"
+      "atRiskInline_other": "{{count}} người có rủi ro cần được chú ý",
+      "budgetUsed": "Ngân sách đã dùng",
+      "budgetSubline": "{{spent}} trong {{total}}",
+      "budgetRunsOut": "với tốc độ này, ngân sách sẽ hết vào {{date}}"
+    },
+    "orgBanner": {
+      "tiers": {
+        "essentials": "Essentials",
+        "growth": "Growth",
+        "enterprise": "Enterprise"
+      },
+      "accountManager": "Quản lý tài khoản: {{name}}",
+      "daysRemaining_other": "Còn {{count}} ngày",
+      "status": {
+        "active": "Đang hoạt động",
+        "expiring": "Sắp hết hạn",
+        "expired": "Đã hết hạn"
+      }
+    },
+    "alerts": {
+      "label": "Cảnh báo thông minh",
+      "empty": "Hiện không có cảnh báo nào — mọi thứ đều ổn.",
+      "view": "Xem",
+      "atRiskInactive": "{{name}} chưa đăng nhập trong {{count}} ngày",
+      "sessionThreshold": "Nhóm {{name}} đã dùng 90% session — nên cân nhắc gia hạn",
+      "contractExpiry": "Hợp đồng kết thúc sau {{count}} ngày — nên trao đổi về gia hạn"
+    },
+    "coachUtilisation": {
+      "label": "Mức sử dụng theo coach"
+    },
+    "quickActions": {
+      "downloadReport": "Tải báo cáo",
+      "compareCohorts": "So sánh các nhóm"
     },
     "goalGrowth": {
       "label": "Tiến bộ mục tiêu",
