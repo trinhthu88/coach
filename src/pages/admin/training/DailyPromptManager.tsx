@@ -11,6 +11,7 @@ import { Loader2, Plus, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react"
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import type { Database } from "@/integrations/supabase/types";
 import { Pill } from "../_shared";
 import { DailyPromptRow, emptyDailyPrompt } from "./types";
 
@@ -51,7 +52,13 @@ export function DailyPromptManager({
       is_visible: editingP.is_visible ?? true,
       sort_order: editingP.sort_order ?? prompts.length,
     };
-    const { error } = await supabase.from("daily_prompts").upsert(payload);
+    // day_offset genuinely allows NULL at the DB level ("any day this week"
+    // — see daily_prompts_day_offset_check), but the generated Insert type
+    // says `number`; cast past that mismatch rather than the column's real
+    // constraint.
+    const { error } = await supabase
+      .from("daily_prompts")
+      .upsert(payload as unknown as Database["public"]["Tables"]["daily_prompts"]["Insert"]);
     setSaving(false);
     if (error) {
       toast.error(getFriendlyErrorMessage(error, t));

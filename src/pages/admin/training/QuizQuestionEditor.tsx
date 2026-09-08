@@ -53,7 +53,11 @@ export function QuizQuestionEditor({ assignmentId, t }: { assignmentId: string; 
       assignment_id: assignmentId,
       question_text: editingQ.question_text,
       question_text_vi: editingQ.question_text_vi || null,
-      options,
+      // Spread each option into a fresh object literal — QuizOption (a
+      // named interface with no index signature) doesn't structurally
+      // satisfy Json otherwise, same fix as SponsorSettings.tsx's
+      // notification_prefs.
+      options: options.map((o) => ({ ...o })),
       explanation: editingQ.explanation || null,
       explanation_vi: editingQ.explanation_vi || null,
       sort_order: editingQ.sort_order ?? questions.length,

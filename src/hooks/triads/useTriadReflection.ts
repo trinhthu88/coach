@@ -12,11 +12,22 @@ export interface TriadReflectionInput {
   satisfaction_rating: number;
 }
 
-export interface TriadReflectionRow extends TriadReflectionInput {
+// Not `extends TriadReflectionInput`: the DB columns are all nullable
+// (no NOT NULL constraint — see 20260903130200_triad_reflections.sql), so a
+// row read back can genuinely have nulls even though submitReflection()
+// always writes full non-null text via TriadReflectionInput.
+export interface TriadReflectionRow {
   id: string;
   triad_session_id: string;
   participant_id: string;
   submitted_at: string;
+  learned_as_coach: string | null;
+  will_use_as_coach: string | null;
+  learned_as_coachee: string | null;
+  will_use_as_coachee: string | null;
+  learned_as_observer: string | null;
+  will_use_as_observer: string | null;
+  satisfaction_rating: number | null;
 }
 
 /** The current user's own reflection for a session — locked (insert-only) once submitted. */

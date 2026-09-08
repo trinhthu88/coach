@@ -50,7 +50,7 @@ async function fetchSessionCore(
   // per table (peer_coach_id/peer_coachee_id, peer_provider_id/peer_receiver_id,
   // provider_notes/receiver_notes) but a no-op for `sessions` since the field
   // names already match.
-  const raw = data as Record<string, unknown>;
+  const raw = data as unknown as Record<string, unknown>;
   const norm = {
     ...raw,
     coach_id: raw[coachField],

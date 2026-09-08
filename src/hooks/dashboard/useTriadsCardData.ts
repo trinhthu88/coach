@@ -48,9 +48,9 @@ async function fetchTriadsData(userId: string): Promise<TriadsData> {
   let myResponse: "pending" | "accepted" | "declined" | null = null;
   if (upcoming) {
     const g = groupById[upcoming.triad_group_id];
-    if (g?.member_1_id === userId) myResponse = upcoming.member_1_response as typeof myResponse;
-    else if (g?.member_2_id === userId) myResponse = upcoming.member_2_response as typeof myResponse;
-    else if (g?.member_3_id === userId) myResponse = upcoming.member_3_response as typeof myResponse;
+    if (g?.member_1_id === userId) myResponse = upcoming.member_1_response as unknown as typeof myResponse;
+    else if (g?.member_2_id === userId) myResponse = upcoming.member_2_response as unknown as typeof myResponse;
+    else if (g?.member_3_id === userId) myResponse = upcoming.member_3_response as unknown as typeof myResponse;
   }
 
   const completedIds = list.filter((s) => s.status === "completed").map((s) => s.id);

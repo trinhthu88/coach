@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import type { Database } from "@/integrations/supabase/types";
 import type { TriadGroupMembers } from "./useMyTriads";
 
 function slotFor(group: TriadGroupMembers, userId: string): 1 | 2 | 3 | null {
@@ -35,7 +36,11 @@ export function useTriadAlternativeProposals(sessionId: string | undefined) {
         .eq("status", "pending")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      // status/member_*_response are TEXT + CHECK constraints in Postgres
+      // (see 20260906120000_triad_redesign.sql), not real enum types, so
+      // codegen widens them to plain `string` — narrow back to the
+      // literals the CHECK constraint actually enforces.
+      return (data ?? []) as TriadAlternativeProposalRow[];
     },
     enabled: !!sessionId,
   });
@@ -56,9 +61,12 @@ export function useTriadSession() {
     mutationFn: async ({ sessionId, group }: { sessionId: string; group: TriadGroupMembers }) => {
       const slot = slotFor(group, user!.id);
       if (!slot) throw new Error("Not a member of this triad");
+      // A computed property name widens to an index-signature object
+      // ({[x: string]: string}), which Supabase's generated Update type
+      // rejects even though the key itself is a valid literal — cast past it.
       const { error } = await supabase
         .from("triad_sessions")
-        .update({ [RESPONSE_COLUMNS[slot]]: "accepted" })
+        .update({ [RESPONSE_COLUMNS[slot]]: "accepted" } as Database["public"]["Tables"]["triad_sessions"]["Update"])
         .eq("id", sessionId);
       if (error) throw error;
     },
@@ -99,7 +107,7 @@ export function useTriadSession() {
       if (!slot) throw new Error("Not a member of this triad");
       const { error } = await supabase
         .from("triad_alternative_proposals")
-        .update({ [RESPONSE_COLUMNS[slot]]: "accepted" })
+        .update({ [RESPONSE_COLUMNS[slot]]: "accepted" } as Database["public"]["Tables"]["triad_alternative_proposals"]["Update"])
         .eq("id", proposalId);
       if (error) throw error;
     },

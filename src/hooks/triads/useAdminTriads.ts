@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 export interface TriadRoundRow {
   id: string;
@@ -249,7 +250,13 @@ export function useAdminTriadMutations() {
       newMemberId: string;
     }) => {
       const column = `member_${slot}_id`;
-      const { error } = await supabase.from("triad_groups").update({ [column]: newMemberId }).eq("id", groupId);
+      // A computed property name widens to an index-signature object, which
+      // Supabase's generated Update type rejects even though the key is a
+      // valid literal — cast past it (see useTriadSession.ts for the same).
+      const { error } = await supabase
+        .from("triad_groups")
+        .update({ [column]: newMemberId } as Database["public"]["Tables"]["triad_groups"]["Update"])
+        .eq("id", groupId);
       if (error) throw error;
     },
     onSuccess: (_r, vars) => invalidateGroups(vars.roundId),

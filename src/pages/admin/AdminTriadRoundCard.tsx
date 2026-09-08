@@ -292,8 +292,8 @@ export function AdminTriadRoundCard({ round }: { round: TriadRoundRow }) {
                 }
                 return (
                   <div key={slot} className="flex items-center gap-2">
-                    <Avatar name={nameById.get(currentId) || "?"} size={24} />
-                    <p className="flex-1 truncate text-sm">{nameById.get(currentId) || "—"}</p>
+                    <Avatar name={nameById.get(currentId || "") || "?"} size={24} />
+                    <p className="flex-1 truncate text-sm">{nameById.get(currentId || "") || "—"}</p>
                     {replaceSlot === slot ? (
                       <MemberSelect label="" value={replaceWith} onChange={setReplaceWith} options={availableForNewGroup} compact />
                     ) : (
