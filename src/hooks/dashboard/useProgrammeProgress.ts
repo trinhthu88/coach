@@ -47,7 +47,16 @@ const EMPTY: ProgrammeProgressSummary = {
 };
 
 async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> {
-  const { data: weeksData, error } = await supabase.rpc("get_my_training_weeks");
+  // triad_sessions doesn't depend on weekIds at all (RLS — "Triad sessions:
+  // member read" — already scopes it to the caller's own sessions), so fire
+  // it alongside the weeks RPC instead of waiting for weekIds first. Worst
+  // case (no training weeks) the result goes unused, but that's cheap next
+  // to shaving a full round trip off the common case (see 2026-09-08
+  // dashboard-load-latency investigation).
+  const [{ data: weeksData, error }, { data: triadSessions }] = await Promise.all([
+    supabase.rpc("get_my_training_weeks"),
+    supabase.from("triad_sessions").select("id, proposed_start_time, status"),
+  ]);
   if (error) throw error;
   const weeks = (weeksData || []) as RawWeek[];
   if (weeks.length === 0) return EMPTY;
@@ -57,12 +66,9 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
   const weekUnlockById = new Map(weeks.map((w) => [w.id, w.unlock_date]));
   const weeksCompleted = weeks.filter((w) => w.completed_at).length;
 
-  const [{ data: assignments }, { data: prompts }, { data: triadSessions }] = await Promise.all([
+  const [{ data: assignments }, { data: prompts }] = await Promise.all([
     supabase.from("assignments").select("id, training_week_id").eq("assignment_type", "quiz").eq("is_visible", true).in("training_week_id", weekIds),
     supabase.from("daily_prompts").select("id, training_week_id, day_offset").in("training_week_id", weekIds),
-    // RLS ("Triad sessions: member read") already scopes this to just the
-    // caller's own sessions.
-    supabase.from("triad_sessions").select("id, proposed_start_time, status"),
   ]);
 
   const assignmentIds = (assignments || []).map((a) => a.id as string);

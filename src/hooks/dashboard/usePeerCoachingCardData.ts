@@ -36,11 +36,22 @@ const COMPETENCY_KEYS = [
 ] as const;
 
 async function fetchCoachPeer(userId: string): Promise<PeerCoachingData> {
-  const { data } = await supabase
-    .from("peer_sessions")
-    .select("id, topic, start_time, status, peer_coach_id, peer_coachee_id")
-    .or(`peer_coach_id.eq.${userId},peer_coachee_id.eq.${userId}`)
-    .order("start_time", { ascending: false });
+  // Sessions and competency feedback are independent — fetch them together.
+  // The counterpart profile lookup genuinely depends on the sessions result
+  // (needs the upcoming session's counterpart id), so it stays a second wave.
+  const [{ data }, { data: fb }] = await Promise.all([
+    supabase
+      .from("peer_sessions")
+      .select("id, topic, start_time, status, peer_coach_id, peer_coachee_id")
+      .or(`peer_coach_id.eq.${userId},peer_coachee_id.eq.${userId}`)
+      .order("start_time", { ascending: false }),
+    supabase
+      .from("peer_session_competency_feedback")
+      .select("*")
+      .eq("peer_coach_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(5),
+  ]);
   const list = data || [];
   const now = new Date();
   const allUpcoming = list
@@ -58,12 +69,6 @@ async function fetchCoachPeer(userId: string): Promise<PeerCoachingData> {
     counterpart = p?.full_name ?? null;
   }
 
-  const { data: fb } = await supabase
-    .from("peer_session_competency_feedback")
-    .select("*")
-    .eq("peer_coach_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(5);
   let competencySnapshot: { label: string; score: number }[] | null = null;
   if (fb && fb.length > 0) {
     competencySnapshot = COMPETENCY_KEYS.map((key) => {

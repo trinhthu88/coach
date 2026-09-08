@@ -27,11 +27,22 @@ const empty: CoachingReceiveData = {
 };
 
 async function fetchData(userId: string, role: AppRole): Promise<CoachingReceiveData> {
-  const { data: sessions } = await supabase
-    .from("sessions")
-    .select("id, topic, start_time, status, coach_id, action_items")
-    .eq("coachee_id", userId)
-    .order("start_time", { ascending: false });
+  // Sessions, milestones, and the usage RPC don't depend on one another —
+  // fire them together instead of one-at-a-time so the round trips overlap
+  // instead of stacking (each hop costs real latency; see 2026-09-08
+  // dashboard-load-latency investigation). Only the coach profile lookup
+  // genuinely depends on a prior result (next session's coach_id).
+  const [{ data: sessions }, { data: milestones }, usageResult] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("id, topic, start_time, status, coach_id, action_items")
+      .eq("coachee_id", userId)
+      .order("start_time", { ascending: false }),
+    supabase.from("coachee_milestones").select("is_done").eq("coachee_id", userId),
+    role === "coachee"
+      ? supabase.rpc("get_coachee_session_usage", { _coachee_id: userId })
+      : Promise.resolve({ data: null }),
+  ]);
   const list = sessions || [];
 
   const now = new Date();
@@ -55,22 +66,16 @@ async function fetchData(userId: string, role: AppRole): Promise<CoachingReceive
     return acc + arr.filter((it: Json) => (typeof it === "string" ? true : !(it as { done?: boolean })?.done)).length;
   }, 0);
 
-  const { data: milestones } = await supabase
-    .from("coachee_milestones")
-    .select("is_done")
-    .eq("coachee_id", userId);
   const totalMs = milestones?.length ?? 0;
   const doneMs = milestones?.filter((m) => m.is_done).length ?? 0;
   const goalProgressPct = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
 
   let sessionsUsed = list.filter((s) => ["pending_coach_approval", "confirmed", "completed"].includes(s.status)).length;
   let sessionLimit: number | null = null;
-  if (role === "coachee") {
-    const { data: usage } = await supabase.rpc("get_coachee_session_usage", { _coachee_id: userId });
-    if (usage && usage.length > 0) {
-      sessionLimit = usage[0].monthly_limit ?? null;
-      sessionsUsed = usage[0].used_this_month ?? sessionsUsed;
-    }
+  const usage = usageResult.data;
+  if (role === "coachee" && usage && usage.length > 0) {
+    sessionLimit = usage[0].monthly_limit ?? null;
+    sessionsUsed = usage[0].used_this_month ?? sessionsUsed;
   }
 
   return {
