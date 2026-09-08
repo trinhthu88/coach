@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -44,20 +44,10 @@ export function useNotifications() {
     staleTime: 15_000,
   });
 
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const refreshUnreadCount = useCallback(async () => {
-    if (!user) return;
-    const { count } = await supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("is_read", false);
-    setUnreadCount(count || 0);
-  }, [user]);
-
-  useEffect(() => {
-    refreshUnreadCount();
-  }, [refreshUnreadCount, data]);
+  const unreadCount = useMemo(
+    () => (data ?? []).filter((n) => !n.is_read).length,
+    [data]
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -68,7 +58,6 @@ export function useNotifications() {
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         () => {
           queryClient.invalidateQueries({ queryKey });
-          refreshUnreadCount();
         }
       )
       .subscribe();
@@ -86,10 +75,9 @@ export function useNotifications() {
         .eq("id", id);
       if (!error) {
         queryClient.invalidateQueries({ queryKey });
-        refreshUnreadCount();
       }
     },
-    [queryClient, queryKey, refreshUnreadCount]
+    [queryClient, queryKey]
   );
 
   const markAllRead = useCallback(async () => {
@@ -101,9 +89,8 @@ export function useNotifications() {
       .eq("is_read", false);
     if (!error) {
       queryClient.invalidateQueries({ queryKey });
-      refreshUnreadCount();
     }
-  }, [user, queryClient, queryKey, refreshUnreadCount]);
+  }, [user, queryClient, queryKey]);
 
   return {
     notifications: data ?? [],
