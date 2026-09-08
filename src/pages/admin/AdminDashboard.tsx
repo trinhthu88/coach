@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,134 +38,170 @@ interface DashboardEnrollmentRow {
   progress_pct: number | null;
 }
 
+interface DashboardStats {
+  coachees: number;
+  coaches: number;
+  pendingApproval: number;
+  newCoachApplications: number;
+  newCoacheeApplications: number;
+  sessionsThisMonth: number;
+  completionRate: number;
+}
+
+interface AlertItem {
+  id: string;
+  title: string;
+  note?: string;
+  severity: "critical" | "warning" | "info";
+}
+
+interface DashboardQueryData {
+  stats: DashboardStats;
+  monthly: Bucket[];
+  pendingLinkSessions: number;
+  alertItems: AlertItem[];
+}
+
+const EMPTY_STATS: DashboardStats = {
+  coachees: 0,
+  coaches: 0,
+  pendingApproval: 0,
+  newCoachApplications: 0,
+  newCoacheeApplications: 0,
+  sessionsThisMonth: 0,
+  completionRate: 0,
+};
+
+// Translated strings (sessions-needing-link / new-application banners) are
+// built at render time from the raw counts here, not baked into the cached
+// query data — a language switch shouldn't require a refetch just to
+// relabel the same numbers. admin_alerts rows carry their own title/message
+// text already, so those are fine to map directly.
+async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
+  const monthStart = startOfMonth(new Date()).toISOString();
+
+  const [
+    { data: roles },
+    { data: profiles },
+    { data: cps },
+    { data: sessions },
+    { data: peerSessions },
+    { data: enrollments },
+    { data: alertRows },
+    { count: newCoachApplications },
+    { count: newCoacheeApplications },
+  ] = await Promise.all([
+    supabase.from("user_roles").select("user_id, role"),
+    supabase.from("profiles").select("id, full_name, status, created_at"),
+    supabase.from("coach_profiles").select("id, approval_status"),
+    supabase.from("sessions").select("id, coach_id, start_time, status, meeting_url"),
+    supabase.from("peer_sessions").select("id, start_time, status"),
+    supabase.from("programme_enrollments").select("id, status, progress_pct"),
+    supabase.from("admin_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(6),
+    supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "coach"),
+    supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "executive"),
+  ]);
+
+  const coacheeIds = new Set((roles || []).filter((r) => r.role === "coachee").map((r) => r.user_id));
+  const coachIds = new Set((roles || []).filter((r) => r.role === "coach").map((r) => r.user_id));
+  const profById = new Map((profiles || []).map((p: DashboardProfileRow) => [p.id, p]));
+
+  const sessionsThisMonth = (sessions || []).filter((s: DashboardSessionRow) => new Date(s.start_time) >= new Date(monthStart)).length
+    + (peerSessions || []).filter((s: DashboardSessionRow) => new Date(s.start_time) >= new Date(monthStart)).length;
+
+  const pending = Array.from(coachIds).filter((id) => (cps || []).find((c: DashboardCoachProfileRow) => c.id === id)?.approval_status === "pending_approval").length;
+
+  const pendingLinkSessions = (sessions || []).filter(
+    (s: DashboardSessionRow) =>
+      ["confirmed", "pending_coach_approval"].includes(s.status ?? "") && !s.meeting_url
+  ).length;
+
+  const avgProgress = (enrollments || []).length
+    ? (enrollments || []).reduce((acc: number, e: DashboardEnrollmentRow) => acc + (e.progress_pct || 0), 0) / (enrollments || []).length
+    : 0;
+
+  const stats: DashboardStats = {
+    coachees: Array.from(coacheeIds).filter((id) => profById.get(id)?.status === "active").length,
+    coaches: Array.from(coachIds).filter((id) => profById.get(id)?.status === "active").length,
+    pendingApproval: pending,
+    newCoachApplications: newCoachApplications || 0,
+    newCoacheeApplications: newCoacheeApplications || 0,
+    sessionsThisMonth,
+    completionRate: avgProgress,
+  };
+
+  // Monthly bars — last 8 months
+  const monthly: Bucket[] = [];
+  for (let i = 7; i >= 0; i--) {
+    const from = startOfMonth(subMonths(new Date(), i));
+    const to = startOfMonth(subMonths(new Date(), i - 1));
+    const cnt =
+      (sessions || []).filter((s: DashboardSessionRow) => {
+        const d = new Date(s.start_time);
+        return d >= from && d < to;
+      }).length +
+      (peerSessions || []).filter((s: DashboardSessionRow) => {
+        const d = new Date(s.start_time);
+        return d >= from && d < to;
+      }).length;
+    monthly.push({ label: format(from, "MMM").toUpperCase(), value: cnt });
+  }
+
+  const alertItems: AlertItem[] = (alertRows || []).map((a: Tables<"admin_alerts">) => ({
+    id: a.id,
+    title: a.title,
+    note: a.message ?? undefined,
+    severity: (a.severity === "critical" ? "critical" : a.severity === "warning" ? "warning" : "info") as "critical" | "warning" | "info",
+  }));
+
+  return { stats, monthly, pendingLinkSessions, alertItems };
+}
+
 export default function AdminDashboard() {
   const { t, i18n } = useTranslation("admin");
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    coachees: 0,
-    coaches: 0,
-    pendingApproval: 0,
-    newCoachApplications: 0,
-    newCoacheeApplications: 0,
-    sessionsThisMonth: 0,
-    completionRate: 0,
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-dashboard"],
+    queryFn: fetchAdminDashboardData,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
-  const [monthly, setMonthly] = useState<Bucket[]>([]);
-  const [attention, setAttention] = useState<{ id: string; title: string; note?: string; severity: "critical" | "warning" | "info" }[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const monthStart = startOfMonth(new Date()).toISOString();
+  const stats = data?.stats ?? EMPTY_STATS;
+  const monthly = data?.monthly ?? [];
 
-      const [
-        { data: roles },
-        { data: profiles },
-        { data: cps },
-        { data: sessions },
-        { data: peerSessions },
-        { data: enrollments },
-        { data: alertRows },
-        { count: newCoachApplications },
-        { count: newCoacheeApplications },
-      ] = await Promise.all([
-        supabase.from("user_roles").select("user_id, role"),
-        supabase.from("profiles").select("id, full_name, status, created_at"),
-        supabase.from("coach_profiles").select("id, approval_status"),
-        supabase.from("sessions").select("id, coach_id, start_time, status, meeting_url"),
-        supabase.from("peer_sessions").select("id, start_time, status"),
-        supabase.from("programme_enrollments").select("id, status, progress_pct"),
-        supabase.from("admin_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(6),
-        supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "coach"),
-        supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "executive"),
-      ]);
-
-      const coacheeIds = new Set((roles || []).filter((r) => r.role === "coachee").map((r) => r.user_id));
-      const coachIds = new Set((roles || []).filter((r) => r.role === "coach").map((r) => r.user_id));
-      const profById = new Map((profiles || []).map((p: DashboardProfileRow) => [p.id, p]));
-
-      const sessionsThisMonth = (sessions || []).filter((s: DashboardSessionRow) => new Date(s.start_time) >= new Date(monthStart)).length
-        + (peerSessions || []).filter((s: DashboardSessionRow) => new Date(s.start_time) >= new Date(monthStart)).length;
-
-      const pending = Array.from(coachIds).filter((id) => (cps || []).find((c: DashboardCoachProfileRow) => c.id === id)?.approval_status === "pending_approval").length;
-
-      const pendingLinkSessions = (sessions || []).filter(
-        (s: DashboardSessionRow) =>
-          ["confirmed", "pending_coach_approval"].includes(s.status ?? "") && !s.meeting_url
-      ).length;
-
-      const avgProgress = (enrollments || []).length
-        ? (enrollments || []).reduce((acc: number, e: DashboardEnrollmentRow) => acc + (e.progress_pct || 0), 0) / (enrollments || []).length
-        : 0;
-
-      setStats({
-        coachees: Array.from(coacheeIds).filter((id) => profById.get(id)?.status === "active").length,
-        coaches: Array.from(coachIds).filter((id) => profById.get(id)?.status === "active").length,
-        pendingApproval: pending,
-        newCoachApplications: newCoachApplications || 0,
-        newCoacheeApplications: newCoacheeApplications || 0,
-        sessionsThisMonth,
-        completionRate: avgProgress,
+  const attention = useMemo<AlertItem[]>(() => {
+    if (!data) return [];
+    const applicationItems: AlertItem[] = [];
+    if (data.pendingLinkSessions) {
+      applicationItems.push({
+        id: "sessions-needing-link",
+        title: t("dashboard.sessionsNeedingLink", { count: data.pendingLinkSessions }),
+        note: t("dashboard.awaitingMeetingLink"),
+        severity: "warning",
       });
+    }
+    if (data.stats.newCoachApplications) {
+      applicationItems.push({
+        id: "new-coach-applications",
+        title: t("dashboard.newCoachApplications", { count: data.stats.newCoachApplications }),
+        note: t("dashboard.awaitingFirstReview"),
+        severity: "info",
+      });
+    }
+    if (data.stats.newCoacheeApplications) {
+      applicationItems.push({
+        id: "new-coachee-applications",
+        title: t("dashboard.newCoacheeApplications", { count: data.stats.newCoacheeApplications }),
+        note: t("dashboard.awaitingFirstReview"),
+        severity: "info",
+      });
+    }
+    return [...applicationItems, ...data.alertItems];
+  }, [data, t]);
 
-      // Monthly bars — last 8 months
-      const months: Bucket[] = [];
-      for (let i = 7; i >= 0; i--) {
-        const from = startOfMonth(subMonths(new Date(), i));
-        const to = startOfMonth(subMonths(new Date(), i - 1));
-        const cnt =
-          (sessions || []).filter((s: DashboardSessionRow) => {
-            const d = new Date(s.start_time);
-            return d >= from && d < to;
-          }).length +
-          (peerSessions || []).filter((s: DashboardSessionRow) => {
-            const d = new Date(s.start_time);
-            return d >= from && d < to;
-          }).length;
-        months.push({ label: format(from, "MMM").toUpperCase(), value: cnt });
-      }
-      setMonthly(months);
-
-      const applicationItems: typeof attention = [];
-      if (pendingLinkSessions) {
-        applicationItems.push({
-          id: "sessions-needing-link",
-          title: t("dashboard.sessionsNeedingLink", { count: pendingLinkSessions }),
-          note: t("dashboard.awaitingMeetingLink"),
-          severity: "warning",
-        });
-      }
-      if (newCoachApplications) {
-        applicationItems.push({
-          id: "new-coach-applications",
-          title: t("dashboard.newCoachApplications", { count: newCoachApplications }),
-          note: t("dashboard.awaitingFirstReview"),
-          severity: "info",
-        });
-      }
-      if (newCoacheeApplications) {
-        applicationItems.push({
-          id: "new-coachee-applications",
-          title: t("dashboard.newCoacheeApplications", { count: newCoacheeApplications }),
-          note: t("dashboard.awaitingFirstReview"),
-          severity: "info",
-        });
-      }
-
-      const items = (alertRows || []).map((a: Tables<"admin_alerts">) => ({
-        id: a.id,
-        title: a.title,
-        note: a.message ?? undefined,
-        severity: (a.severity === "critical" ? "critical" : a.severity === "warning" ? "warning" : "info") as "critical" | "warning" | "info",
-      }));
-      setAttention([...applicationItems, ...items]);
-
-      setLoading(false);
-    })();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return <PageSkeleton />;
   }
 
