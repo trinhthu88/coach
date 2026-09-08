@@ -15,6 +15,14 @@
 -- enrollment's cohort's organization_id otherwise. No data migration
 -- needed: this makes the existing cohort tag effective going forward
 -- without touching programme_enrollments rows.
+--
+-- This migration was blocked on a second, unrelated bug it surfaced along
+-- the way: sponsor_programme_engagement()'s triad_completion_pct was keyed
+-- by a training_week_id column that no longer exists on triad_sessions
+-- (triads were redesigned to not be week-scoped). Decision (2026-09-08):
+-- replace it with an all-time completion ratio plus a new
+-- triad_satisfaction_avg column — see the triad_metrics CTE inside
+-- sponsor_programme_engagement() below for the fix itself.
 
 CREATE OR REPLACE FUNCTION public.sponsor_can_view_coachee(_coachee_id uuid)
 RETURNS boolean
@@ -236,8 +244,13 @@ AS $function$
     (SELECT COALESCE(SUM(coachee_session_limit), 0)::int FROM org_enrollments WHERE status = 'active');
 $function$;
 
-CREATE OR REPLACE FUNCTION public.sponsor_programme_engagement()
-RETURNS TABLE(week_number integer, week_title text, skill_card_completion_pct numeric, quiz_avg_score numeric, quiz_completion_pct numeric, reflection_completion_pct numeric, triad_completion_pct numeric, daily_prompt_response_rate numeric)
+-- CREATE OR REPLACE can't add a RETURNS TABLE column (SQLSTATE 42P13,
+-- same reason 20260905200000_sponsor_reflection_completion.sql had to drop
+-- first) — triad_satisfaction_avg is new below.
+DROP FUNCTION IF EXISTS public.sponsor_programme_engagement();
+
+CREATE FUNCTION public.sponsor_programme_engagement()
+RETURNS TABLE(week_number integer, week_title text, skill_card_completion_pct numeric, quiz_avg_score numeric, quiz_completion_pct numeric, reflection_completion_pct numeric, triad_completion_pct numeric, triad_satisfaction_avg numeric, daily_prompt_response_rate numeric)
 LANGUAGE sql
 STABLE SECURITY DEFINER
 SET search_path TO 'public'
@@ -298,13 +311,24 @@ AS $function$
       AND pr.is_visible = true
     GROUP BY pr.appears_at_week
   ),
-  triad_agg AS (
-    SELECT ts.training_week_id AS week_id, COUNT(DISTINCT tr.participant_id) AS n_reflected
-    FROM public.triad_sessions ts
-    JOIN public.triad_reflections tr ON tr.triad_session_id = ts.id
-    JOIN org_users ou ON ou.user_id = tr.participant_id
-    WHERE ts.training_week_id IN (SELECT week_id FROM org_weeks)
-    GROUP BY ts.training_week_id
+  -- Decision (2026-09-08, triads-metrics fix): triad_completion_pct was
+  -- keyed by triad_sessions.training_week_id, which doesn't exist — triads
+  -- were redesigned to no longer be week-scoped at all (same underlying
+  -- schema change as the missed_triads rewrite in
+  -- sponsor_engagement_red_flags() above). Recomputed as an all-time ratio
+  -- (completed / total triad sessions for this org's members) instead of
+  -- per-week, and broadcast onto every week row below via CROSS JOIN — same
+  -- non-week-scoped-aggregate pattern sponsor_roster()/sponsor_kpis()
+  -- already use. triad_satisfaction_avg is new: average
+  -- triad_reflections.satisfaction_rating (1-5, NULL until anyone's rated).
+  triad_metrics AS (
+    SELECT
+      ROUND(COUNT(*) FILTER (WHERE ts.status = 'completed')::numeric * 100.0 / NULLIF(COUNT(ts.id), 0), 1) AS completion_pct,
+      AVG(tr.satisfaction_rating) FILTER (WHERE tr.satisfaction_rating IS NOT NULL) AS satisfaction_avg
+    FROM public.triad_groups tg
+    JOIN org_users ou ON ou.user_id IN (tg.member_1_id, tg.member_2_id, tg.member_3_id)
+    JOIN public.triad_sessions ts ON ts.triad_group_id = tg.id
+    LEFT JOIN public.triad_reflections tr ON tr.triad_session_id = ts.id AND tr.participant_id = ou.user_id
   ),
   prompt_agg AS (
     SELECT dp.training_week_id AS week_id,
@@ -325,17 +349,21 @@ AS $function$
          THEN ROUND(ra.n_submitted * 100.0 / uc.cnt, 1)
          ELSE NULL
     END,
-    CASE WHEN uc.cnt > 0 THEN ROUND(COALESCE(tra.n_reflected, 0) * 100.0 / uc.cnt, 1) ELSE NULL END,
+    tm.completion_pct,
+    tm.satisfaction_avg,
     CASE WHEN uc.cnt > 0 THEN ROUND(COALESCE(pa.n_responded, 0) * 100.0 / uc.cnt, 1) ELSE NULL END
   FROM org_weeks ow
   JOIN user_counts uc ON uc.programme_id = ow.programme_id
   LEFT JOIN skill_card sc ON sc.week_id = ow.week_id
   LEFT JOIN quiz_agg qa ON qa.week_id = ow.week_id
   LEFT JOIN reflection_agg ra ON ra.week_number = ow.week_number
-  LEFT JOIN triad_agg tra ON tra.week_id = ow.week_id
+  CROSS JOIN triad_metrics tm
   LEFT JOIN prompt_agg pa ON pa.week_id = ow.week_id
   ORDER BY ow.week_number;
 $function$;
+
+REVOKE EXECUTE ON FUNCTION public.sponsor_programme_engagement() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.sponsor_programme_engagement() TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.sponsor_roster()
 RETURNS TABLE(enrollment_id uuid, coachee_id uuid, full_name text, cohort_name text, enrollment_status enrollment_status, progress_pct integer, sessions_completed integer, sessions_entitled integer, goal_growth numeric)

@@ -584,6 +584,57 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_session_feedback: {
+        Row: {
+          coach_id: string
+          created_at: string
+          engagement_level: string | null
+          flag_for_admin: boolean
+          flag_notes: string | null
+          id: string
+          quality_rating: number | null
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          engagement_level?: string | null
+          flag_for_admin?: boolean
+          flag_notes?: string | null
+          id?: string
+          quality_rating?: number | null
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          engagement_level?: string | null
+          flag_for_admin?: boolean
+          flag_notes?: string | null
+          id?: string
+          quality_rating?: number | null
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_session_feedback_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_session_feedback_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_session_limits: {
         Row: {
           coach_user_id: string | null
@@ -1404,27 +1455,83 @@ export type Database = {
       }
       organizations: {
         Row: {
+          account_manager_id: string | null
+          admin_notes: string | null
+          billing_contact: Json | null
+          coaching_budget: number | null
+          company_size: string | null
+          contract_end: string | null
+          contract_start: string | null
           created_at: string
+          focus_competencies: string[] | null
+          hq_country: string | null
           id: string
           industry: string | null
+          locale: string | null
+          logo_url: string | null
           name: string
+          programme_objectives: string[] | null
+          secondary_contact: Json | null
+          subscription_tier: string | null
+          timezone: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          account_manager_id?: string | null
+          admin_notes?: string | null
+          billing_contact?: Json | null
+          coaching_budget?: number | null
+          company_size?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
           created_at?: string
+          focus_competencies?: string[] | null
+          hq_country?: string | null
           id?: string
           industry?: string | null
+          locale?: string | null
+          logo_url?: string | null
           name: string
+          programme_objectives?: string[] | null
+          secondary_contact?: Json | null
+          subscription_tier?: string | null
+          timezone?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          account_manager_id?: string | null
+          admin_notes?: string | null
+          billing_contact?: Json | null
+          coaching_budget?: number | null
+          company_size?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
           created_at?: string
+          focus_competencies?: string[] | null
+          hq_country?: string | null
           id?: string
           industry?: string | null
+          locale?: string | null
+          logo_url?: string | null
           name?: string
+          programme_objectives?: string[] | null
+          secondary_contact?: Json | null
+          subscription_tier?: string | null
+          timezone?: string | null
           updated_at?: string
+          website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_account_manager_id_fkey"
+            columns: ["account_manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       peer_coach_session_private_notes: {
         Row: {
@@ -1586,6 +1693,7 @@ export type Database = {
           id: string
           last_profile_update_at: string
           must_change_password: boolean
+          notification_prefs: Json
           onboarding_completed_at: string | null
           peer_coaching_opt_in: boolean
           preferred_language: string
@@ -1602,6 +1710,7 @@ export type Database = {
           id: string
           last_profile_update_at?: string
           must_change_password?: boolean
+          notification_prefs?: Json
           onboarding_completed_at?: string | null
           peer_coaching_opt_in?: boolean
           preferred_language?: string
@@ -1618,6 +1727,7 @@ export type Database = {
           id?: string
           last_profile_update_at?: string
           must_change_password?: boolean
+          notification_prefs?: Json
           onboarding_completed_at?: string | null
           peer_coaching_opt_in?: boolean
           preferred_language?: string
@@ -2244,6 +2354,7 @@ export type Database = {
           created_at: string
           department: string | null
           organization_id: string
+          phone: string | null
           title: string | null
           updated_at: string
           user_id: string
@@ -2252,6 +2363,7 @@ export type Database = {
           created_at?: string
           department?: string | null
           organization_id: string
+          phone?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
@@ -2260,6 +2372,7 @@ export type Database = {
           created_at?: string
           department?: string | null
           organization_id?: string
+          phone?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string
@@ -2493,6 +2606,60 @@ export type Database = {
           },
         ]
       }
+      triad_alternative_proposals: {
+        Row: {
+          created_at: string
+          id: string
+          member_1_response: string
+          member_2_response: string
+          member_3_response: string | null
+          proposed_by: string
+          proposed_end_time: string
+          proposed_start_time: string
+          status: string
+          triad_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_1_response?: string
+          member_2_response?: string
+          member_3_response?: string | null
+          proposed_by: string
+          proposed_end_time: string
+          proposed_start_time: string
+          status?: string
+          triad_session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_1_response?: string
+          member_2_response?: string
+          member_3_response?: string | null
+          proposed_by?: string
+          proposed_end_time?: string
+          proposed_start_time?: string
+          status?: string
+          triad_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_alternative_proposals_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_alternative_proposals_triad_session_id_fkey"
+            columns: ["triad_session_id"]
+            isOneToOne: false
+            referencedRelation: "triad_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       triad_groups: {
         Row: {
           assigned_by: string
@@ -2584,6 +2751,63 @@ export type Database = {
           },
         ]
       }
+      triad_reflections: {
+        Row: {
+          id: string
+          learned_as_coach: string | null
+          learned_as_coachee: string | null
+          learned_as_observer: string | null
+          participant_id: string
+          satisfaction_rating: number | null
+          submitted_at: string
+          triad_session_id: string
+          will_use_as_coach: string | null
+          will_use_as_coachee: string | null
+          will_use_as_observer: string | null
+        }
+        Insert: {
+          id?: string
+          learned_as_coach?: string | null
+          learned_as_coachee?: string | null
+          learned_as_observer?: string | null
+          participant_id: string
+          satisfaction_rating?: number | null
+          submitted_at?: string
+          triad_session_id: string
+          will_use_as_coach?: string | null
+          will_use_as_coachee?: string | null
+          will_use_as_observer?: string | null
+        }
+        Update: {
+          id?: string
+          learned_as_coach?: string | null
+          learned_as_coachee?: string | null
+          learned_as_observer?: string | null
+          participant_id?: string
+          satisfaction_rating?: number | null
+          submitted_at?: string
+          triad_session_id?: string
+          will_use_as_coach?: string | null
+          will_use_as_coachee?: string | null
+          will_use_as_observer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_reflections_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_reflections_triad_session_id_fkey"
+            columns: ["triad_session_id"]
+            isOneToOne: false
+            referencedRelation: "triad_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       triad_rounds: {
         Row: {
           auto_assign_date: string
@@ -2644,117 +2868,6 @@ export type Database = {
           },
         ]
       }
-      triad_alternative_proposals: {
-        Row: {
-          created_at: string
-          id: string
-          member_1_response: string
-          member_2_response: string
-          member_3_response: string | null
-          proposed_by: string
-          proposed_end_time: string
-          proposed_start_time: string
-          status: string
-          triad_session_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
-          proposed_by: string
-          proposed_end_time: string
-          proposed_start_time: string
-          status?: string
-          triad_session_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
-          proposed_by?: string
-          proposed_end_time?: string
-          proposed_start_time?: string
-          status?: string
-          triad_session_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "triad_alternative_proposals_proposed_by_fkey"
-            columns: ["proposed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_alternative_proposals_triad_session_id_fkey"
-            columns: ["triad_session_id"]
-            isOneToOne: false
-            referencedRelation: "triad_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      triad_reflections: {
-        Row: {
-          id: string
-          learned_as_coach: string | null
-          learned_as_coachee: string | null
-          learned_as_observer: string | null
-          participant_id: string
-          satisfaction_rating: number | null
-          submitted_at: string
-          triad_session_id: string
-          will_use_as_coach: string | null
-          will_use_as_coachee: string | null
-          will_use_as_observer: string | null
-        }
-        Insert: {
-          id?: string
-          learned_as_coach?: string | null
-          learned_as_coachee?: string | null
-          learned_as_observer?: string | null
-          participant_id: string
-          satisfaction_rating?: number | null
-          submitted_at?: string
-          triad_session_id: string
-          will_use_as_coach?: string | null
-          will_use_as_coachee?: string | null
-          will_use_as_observer?: string | null
-        }
-        Update: {
-          id?: string
-          learned_as_coach?: string | null
-          learned_as_coachee?: string | null
-          learned_as_observer?: string | null
-          participant_id?: string
-          satisfaction_rating?: number | null
-          submitted_at?: string
-          triad_session_id?: string
-          will_use_as_coach?: string | null
-          will_use_as_coachee?: string | null
-          will_use_as_observer?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "triad_reflections_participant_id_fkey"
-            columns: ["participant_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_reflections_triad_session_id_fkey"
-            columns: ["triad_session_id"]
-            isOneToOne: false
-            referencedRelation: "triad_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       triad_sessions: {
         Row: {
           created_at: string
@@ -2767,6 +2880,7 @@ export type Database = {
           proposed_by: string
           proposed_end_time: string | null
           proposed_start_time: string | null
+          start_time: string | null
           status: string
           triad_group_id: string
           updated_at: string
@@ -2782,6 +2896,7 @@ export type Database = {
           proposed_by?: string
           proposed_end_time?: string | null
           proposed_start_time?: string | null
+          start_time?: string | null
           status?: string
           triad_group_id: string
           updated_at?: string
@@ -2797,6 +2912,7 @@ export type Database = {
           proposed_by?: string
           proposed_end_time?: string | null
           proposed_start_time?: string | null
+          start_time?: string | null
           status?: string
           triad_group_id?: string
           updated_at?: string
@@ -2931,6 +3047,7 @@ export type Database = {
         Returns: boolean
       }
       coachee_has_allowlist: { Args: { _coachee_id: string }; Returns: boolean }
+      dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
       get_coach_peer_session_usage: {
         Args: { _coach_id: string }
         Returns: {
@@ -3065,6 +3182,7 @@ export type Database = {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
+      is_triad_member: { Args: { group_id: string }; Returns: boolean }
       remove_own_coachee: { Args: { _coachee_id: string }; Returns: boolean }
       shares_session_with: {
         Args: { _target: string; _viewer: string }
@@ -3073,6 +3191,13 @@ export type Database = {
       sponsor_can_view_coachee: {
         Args: { _coachee_id: string }
         Returns: boolean
+      }
+      sponsor_coach_utilisation: {
+        Args: never
+        Returns: {
+          coach_name: string
+          completed_sessions: number
+        }[]
       }
       sponsor_confidence_trend: {
         Args: never
@@ -3117,13 +3242,6 @@ export type Database = {
           sessions_used: number
         }[]
       }
-      sponsor_coach_utilisation: {
-        Args: never
-        Returns: {
-          coach_name: string
-          completed_sessions: number
-        }[]
-      }
       sponsor_min_leaders_for_distribution: { Args: never; Returns: number }
       sponsor_programme_engagement: {
         Args: never
@@ -3134,6 +3252,7 @@ export type Database = {
           reflection_completion_pct: number
           skill_card_completion_pct: number
           triad_completion_pct: number
+          triad_satisfaction_avg: number
           week_number: number
           week_title: string
         }[]

@@ -533,7 +533,15 @@ export default function SponsorDashboard() {
                       <EngagementCell pct={w.skill_card_completion_pct} />
                       <EngagementCell pct={w.quiz_completion_pct} sub={w.quiz_avg_score != null ? `${Math.round(w.quiz_avg_score)}% avg` : undefined} />
                       <EngagementCell pct={w.reflection_completion_pct} />
-                      <EngagementCell pct={w.triad_completion_pct} />
+                      <div>
+                        <EngagementCell pct={w.triad_completion_pct} />
+                        {w.triad_satisfaction_avg != null && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            {w.triad_satisfaction_avg.toFixed(1)}<span className="opacity-60">/5</span>
+                          </span>
+                        )}
+                      </div>
                       <EngagementCell pct={w.daily_prompt_response_rate} tone="accent" />
                     </div>
                   ))}

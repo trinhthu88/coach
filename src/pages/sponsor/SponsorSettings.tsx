@@ -155,7 +155,7 @@ export default function SponsorSettings() {
     if (!user) return;
     setSavingPrefs(true);
     try {
-      const { error } = await supabase.from("profiles").update({ notification_prefs: prefs }).eq("id", user.id);
+      const { error } = await supabase.from("profiles").update({ notification_prefs: { ...prefs } }).eq("id", user.id);
       if (error) throw error;
       await refreshProfile();
       toast.success(t("settings.notifications.saved"));
