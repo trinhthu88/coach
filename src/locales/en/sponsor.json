@@ -85,11 +85,25 @@
       "onTrack": "On track",
       "atRisk": "At risk",
       "sessionsUsed": "Sessions used",
+      "avgSatisfaction": "Avg satisfaction",
       "atRiskInline_other": "{{count}} leaders at risk and may need attention",
       "atRiskInline_one": "{{count}} leader at risk and may need attention",
       "budgetUsed": "Budget used",
       "budgetSubline": "{{spent}} of {{total}}",
       "budgetRunsOut": "at this pace, budget runs out {{date}}"
+    },
+    "healthMatrix": {
+      "label": "Cohort health matrix",
+      "columns": {
+        "cohort": "Cohort",
+        "leaders": "Leaders",
+        "onTrack": "On track %",
+        "sessionsPace": "Sessions pace",
+        "avgGoalGrowth": "Avg goal growth",
+        "satisfaction": "Satisfaction",
+        "signal": "Signal"
+      },
+      "satisfactionNote": "Satisfaction is an organization-wide average — Clariva doesn't yet break it down per cohort."
     },
     "orgBanner": {
       "tiers": {
@@ -205,8 +219,9 @@
     "unnamedCohort": "Unnamed cohort",
     "leaderCount_one": "{{count}} leader",
     "leaderCount_other": "{{count}} leaders",
-    "openInDashboard": "Open in dashboard",
+    "viewCohort": "View cohort",
     "statusMix": "Status mix",
+    "onTrackPct": "On track",
     "sessions": "Sessions",
     "avgGrowth": "Avg growth",
     "growthPct": "{{n}}% progressing",
@@ -215,6 +230,51 @@
     "suppressedNote": "Breakdowns suppressed — under {{min}} leaders. View rolled up across all cohorts above.",
     "noCohortsFound": "No cohorts found.",
     "privacyNote": "Cohort comparison uses participation and self-rated progress only. Coach identities, session notes, and goal wording are excluded from every cohort view."
+  },
+  "shared": {
+    "health": {
+      "healthy": "Healthy",
+      "watch": "Watch",
+      "attention": "Needs attention"
+    }
+  },
+  "cohortDetail": {
+    "header": {
+      "eyebrow": "Cohort",
+      "title": "Focused on",
+      "subtitle": "Everything about this cohort — participation, pace, and outcomes."
+    },
+    "programmeDetails": {
+      "label": "Programme details",
+      "sessionsPerLeader": "{{count}} sessions per leader",
+      "status": {
+        "upcoming": "Upcoming",
+        "active": "Active",
+        "complete": "Complete"
+      },
+      "dayOf": "Day {{elapsed}} of {{total}}"
+    },
+    "programmeEngagement": {
+      "lowCompletion": "Week {{week}} completion is under 40% across modules — worth a check-in."
+    },
+    "completionFunnel": {
+      "label": "Completion funnel",
+      "enrolled": "Enrolled",
+      "firstSession": "First session",
+      "midpoint": "Midpoint",
+      "finalSession": "Final session",
+      "complete": "Programme complete"
+    },
+    "paceRisk": {
+      "label": "Session pace risk",
+      "description": "At current pace, may not complete their full allocation before the programme ends."
+    },
+    "neverStarted": {
+      "label": "Never started"
+    },
+    "healthMatrix": {
+      "label": "Cohort health matrix"
+    }
   },
   "leaderDrawer": {
     "srLabelSuffix": "leader detail",

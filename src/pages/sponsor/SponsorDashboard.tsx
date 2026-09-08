@@ -5,7 +5,7 @@ import { format, differenceInCalendarDays, addDays } from "date-fns";
 import {
   Users, CheckCircle2, AlertTriangle, CalendarCheck, Star,
   CalendarRange, ShieldCheck, Loader2, ArrowRight, Building2,
-  Clock, Filter, ChevronDown, GraduationCap, MessageCircle, type LucideIcon,
+  Clock, ChevronDown, GraduationCap, MessageCircle, type LucideIcon,
   Wallet, Info, FileDown, Layers,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -14,13 +14,17 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { SectionCard, Pill, MiniBar, Avatar, EngagementCell } from "@/pages/admin/_shared";
+import { SectionCard, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
 import type { SponsorRosterRow, SponsorSatisfactionTrendRow } from "@/hooks/sponsor/useSponsorDashboardData";
+import {
+  RosterTable, GoalGrowthCard, ProgrammeEngagementTable, CoachUtilisationBars,
+  HealthSignalPill, Avatar,
+} from "@/pages/sponsor/_shared";
+import { healthSignal, cohortProgress } from "@/pages/sponsor/sponsorUtils";
 import { SponsorLeaderDrawer } from "./SponsorLeaderDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -35,23 +39,6 @@ interface OrgBannerData {
   account_manager: { full_name: string } | null;
 }
 
-const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
-  active: "success",
-  completed: "muted",
-  paused: "warning",
-  at_risk: "destructive",
-};
-const STATUS_LABEL_KEY: Record<SponsorRosterRow["enrollment_status"], string> = {
-  active: "active",
-  completed: "completed",
-  paused: "paused",
-  at_risk: "atRisk",
-};
-
-function initials(name: string) {
-  return name.split(" ").map(p => p[0]).join("").toUpperCase().slice(0, 2);
-}
-
 export default function SponsorDashboard() {
   const { t } = useTranslation("sponsor");
   const { user } = useAuth();
@@ -61,7 +48,7 @@ export default function SponsorDashboard() {
   } = useSponsorDashboardData();
   const [org, setOrg] = useState<OrgBannerData | null>(null);
   const [selectedLeader, setSelectedLeader] = useState<SponsorRosterRow | null>(null);
-  const [cohortFilter, setCohortFilter] = useState<string>("all");
+  const [cohortDates, setCohortDates] = useState<Map<string, { start_date: string | null; end_date: string | null }>>(new Map());
   const [contactOpen, setContactOpen] = useState(false);
   const [contactMessage, setContactMessage] = useState("");
   const [contactSending, setContactSending] = useState(false);
@@ -93,6 +80,66 @@ export default function SponsorDashboard() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [loading]);
+
+  const cohortNames = useMemo(
+    () => Array.from(new Set(roster.map((r) => r.cohort_name).filter(Boolean))),
+    [roster]
+  );
+
+  // Cohort start/end dates for the health matrix's session-pace bar — cohorts
+  // is the one table sponsor pages may query directly (RLS: any authenticated
+  // user may SELECT it), since none of the sponsor_* RPCs carry per-cohort
+  // dates.
+  useEffect(() => {
+    if (cohortNames.length === 0) return;
+    let mounted = true;
+    supabase
+      .from("cohorts")
+      .select("name, start_date, end_date")
+      .in("name", cohortNames)
+      .then(({ data }) => {
+        if (!mounted || !data) return;
+        setCohortDates(new Map(data.map((c) => [c.name, { start_date: c.start_date, end_date: c.end_date }])));
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [cohortNames]);
+
+  // Cohort Health Matrix — one row per cohort, aggregated from the same
+  // roster the rest of this dashboard already has. Satisfaction has no
+  // per-cohort breakdown anywhere in the sponsor_* surface (sponsor_
+  // satisfaction_summary is a single org-wide row), so every row shows the
+  // same org-wide average rather than fabricating a per-cohort figure.
+  const cohortHealthRows = useMemo(() => {
+    const byCohort = new Map<string, SponsorRosterRow[]>();
+    roster.forEach((r) => {
+      if (!r.cohort_name) return;
+      if (!byCohort.has(r.cohort_name)) byCohort.set(r.cohort_name, []);
+      byCohort.get(r.cohort_name)!.push(r);
+    });
+    return Array.from(byCohort.entries()).map(([cohortName, rows]) => {
+      const onTrack = rows.filter((r) => r.enrollment_status === "active").length;
+      const atRisk = rows.filter((r) => r.enrollment_status === "at_risk").length;
+      const sessionsCompleted = rows.reduce((s, r) => s + r.sessions_completed, 0);
+      const sessionsEntitled = rows.reduce((s, r) => s + r.sessions_entitled, 0);
+      const withGrowth = rows.filter((r) => r.goal_growth != null);
+      const avgGoalGrowth = withGrowth.length ? withGrowth.reduce((s, r) => s + r.goal_growth!, 0) / withGrowth.length : null;
+      const dates = cohortDates.get(cohortName);
+      const progress = dates ? cohortProgress(dates.start_date, dates.end_date) : null;
+      const pace = progress && progress.elapsed > 0 && sessionsEntitled > 0
+        ? Math.min(100, ((sessionsCompleted / progress.elapsed) * progress.total / sessionsEntitled) * 100)
+        : null;
+      return {
+        cohortName,
+        leaders: rows.length,
+        onTrackPct: rows.length ? (onTrack / rows.length) * 100 : 0,
+        pace,
+        avgGoalGrowth,
+        signal: healthSignal(atRisk, rows.length),
+      };
+    });
+  }, [roster, cohortDates]);
 
   const orgName = org?.name ?? null;
 
@@ -173,7 +220,6 @@ export default function SponsorDashboard() {
     return list;
   }, [roster, redFlags, contractDaysRemaining, t]);
 
-  const maxCoachSessions = Math.max(1, ...coachUtilisation.map((c) => c.completed_sessions));
 
   const contactAdmin = async () => {
     if (!contactMessage.trim()) return;
@@ -204,11 +250,6 @@ export default function SponsorDashboard() {
 
   const isFirstLogin = !kpis || kpis.leaders_enrolled === 0;
 
-  const distributionShown = goalGrowth?.hit_target_count != null && !isFirstLogin;
-  const distributionTotal = distributionShown
-    ? (goalGrowth!.hit_target_count + goalGrowth!.meaningful_progress_count + goalGrowth!.just_started_count + goalGrowth!.flat_declined_count) || 1
-    : 1;
-
   const daysRemaining = timeline?.latest_end
     ? Math.max(0, differenceInCalendarDays(new Date(timeline.latest_end), new Date()))
     : null;
@@ -216,12 +257,6 @@ export default function SponsorDashboard() {
   const daysUntilStart = timeline?.earliest_start
     ? Math.max(0, differenceInCalendarDays(new Date(timeline.earliest_start), new Date()))
     : null;
-
-  // Cohort filter
-  const cohortNames = Array.from(new Set(roster.map(r => r.cohort_name).filter(Boolean)));
-  const filteredRoster = cohortFilter === "all"
-    ? roster
-    : roster.filter(r => r.cohort_name === cohortFilter);
 
   return (
     <>
@@ -340,6 +375,12 @@ export default function SponsorDashboard() {
               icon={CalendarCheck}
               tone="secondary"
             />
+            <HeadlineStat
+              label={t("dashboard.kpis.avgSatisfaction")}
+              value={satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : "—"}
+              icon={Star}
+              tone="primary"
+            />
             {budgetUsedPct != null && (
               <div className="flex items-start gap-3">
                 <Wallet className={cn("mt-1 h-5 w-5 shrink-0", budgetUsedPct > 95 ? "text-destructive" : budgetUsedPct > 80 ? "text-warning" : "text-secondary")} />
@@ -368,6 +409,57 @@ export default function SponsorDashboard() {
             </p>
           )}
         </div>
+
+        {/* COHORT HEALTH MATRIX */}
+        {!isFirstLogin && cohortHealthRows.length > 0 && (
+          <SectionCard label={t("dashboard.healthMatrix.label")}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12px]">
+                <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.cohort")}</th>
+                    <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.leaders")}</th>
+                    <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.healthMatrix.columns.onTrack")}</th>
+                    <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.healthMatrix.columns.sessionsPace")}</th>
+                    <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.healthMatrix.columns.avgGoalGrowth")}</th>
+                    <th className="px-2 py-2 text-left font-semibold hidden lg:table-cell">{t("dashboard.healthMatrix.columns.satisfaction")}</th>
+                    <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.signal")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {cohortHealthRows.map((row) => (
+                    <tr key={row.cohortName} className="transition-colors hover:bg-muted/40">
+                      <td className="px-2 py-2.5">
+                        <Link to={`/sponsor/cohorts/${encodeURIComponent(row.cohortName)}`} className="font-medium text-primary hover:underline">
+                          {row.cohortName}
+                        </Link>
+                      </td>
+                      <td className="px-2 py-2.5">{row.leaders}</td>
+                      <td className="px-2 py-2.5 hidden sm:table-cell">{Math.round(row.onTrackPct)}%</td>
+                      <td className="px-2 py-2.5 hidden md:table-cell">
+                        {row.pace != null ? (
+                          <div className="w-24"><MiniBar pct={row.pace} tone={row.pace > 100 ? "warning" : "primary"} /></div>
+                        ) : (
+                          <span className="italic text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2.5 hidden sm:table-cell">
+                        {row.avgGoalGrowth != null ? `${Math.round(row.avgGoalGrowth)}%` : <span className="italic text-muted-foreground">—</span>}
+                      </td>
+                      <td className="px-2 py-2.5 hidden lg:table-cell">
+                        {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : "—"}
+                      </td>
+                      <td className="px-2 py-2.5"><HealthSignalPill signal={row.signal} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-[10px] italic text-muted-foreground">
+              {t("dashboard.healthMatrix.satisfactionNote")}
+            </p>
+          </SectionCard>
+        )}
 
         {/* SMART ALERTS */}
         {!isFirstLogin && (
@@ -411,44 +503,7 @@ export default function SponsorDashboard() {
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 pt-4">
               {/* GOAL GROWTH */}
-              <SectionCard label={t("dashboard.goalGrowth.label")} action={
-                <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
-                  {t("dashboard.goalGrowth.scaleNote")}
-                </span>
-              }>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("dashboard.goalGrowth.averageGrowth")}</p>
-                    <p className="font-display mt-1 text-[2rem] font-normal leading-none">
-                      {goalGrowth?.pct_progressing != null ? `${Math.round(goalGrowth.pct_progressing)}%` : "—"}
-                    </p>
-                    <p className="mt-2 text-[11px] text-muted-foreground">
-                      {goalGrowth?.pct_progressing != null
-                        ? t("dashboard.goalGrowth.pctProgressing")
-                        : t("dashboard.goalGrowth.noRatingsYet")}
-                    </p>
-                  </div>
-                  <div>
-                    {distributionShown ? (
-                      <div className="space-y-2">
-                        <DistRow label={t("dashboard.goalGrowth.hitTarget")} count={goalGrowth!.hit_target_count} total={distributionTotal} tone="success" />
-                        <DistRow label={t("dashboard.goalGrowth.meaningfulProgress")} count={goalGrowth!.meaningful_progress_count} total={distributionTotal} tone="primary" />
-                        <DistRow label={t("dashboard.goalGrowth.justStarted")} count={goalGrowth!.just_started_count} total={distributionTotal} tone="warning" />
-                        <DistRow label={t("dashboard.goalGrowth.flatDeclined")} count={goalGrowth!.flat_declined_count} total={distributionTotal} tone="destructive" />
-                      </div>
-                    ) : (
-                      <div className="rounded-xl bg-muted/40 p-3">
-                        <p className="text-[11px] text-muted-foreground">
-                          {t("dashboard.goalGrowth.distributionHidden", { min: minLeadersForDistribution })}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <p className="mt-4 text-[10px] italic text-muted-foreground">
-                  {t("dashboard.goalGrowth.footnote")}
-                </p>
-              </SectionCard>
+              <GoalGrowthCard goalGrowth={goalGrowth} minLeadersForDistribution={minLeadersForDistribution} />
 
               {/* TIMELINE + SATISFACTION */}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -516,36 +571,7 @@ export default function SponsorDashboard() {
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 pt-4">
-              <Card className="overflow-hidden">
-                <div className="grid grid-cols-[64px_repeat(5,1fr)] gap-0 border-b bg-muted/30 px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <span>{t("dashboard.programmeEngagement.columns.week")}</span>
-                  <span>{t("dashboard.programmeEngagement.columns.skillCard")}</span>
-                  <span>{t("dashboard.programmeEngagement.columns.quiz")}</span>
-                  <span>{t("dashboard.programmeEngagement.columns.reflection")}</span>
-                  <span>{t("dashboard.programmeEngagement.columns.triad")}</span>
-                  <span>{t("dashboard.programmeEngagement.columns.prompt")}</span>
-                </div>
-                <div className="divide-y">
-                  {programmeEngagement.map((w) => (
-                    <div key={`${w.week_number}-${w.week_title}`} className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-0 px-4 py-3 text-[12.5px]">
-                      <span className="font-bold">W{w.week_number}</span>
-                      <EngagementCell pct={w.skill_card_completion_pct} />
-                      <EngagementCell pct={w.quiz_completion_pct} sub={w.quiz_avg_score != null ? `${Math.round(w.quiz_avg_score)}% avg` : undefined} />
-                      <EngagementCell pct={w.reflection_completion_pct} />
-                      <div>
-                        <EngagementCell pct={w.triad_completion_pct} />
-                        {w.triad_satisfaction_avg != null && (
-                          <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                            {w.triad_satisfaction_avg.toFixed(1)}<span className="opacity-60">/5</span>
-                          </span>
-                        )}
-                      </div>
-                      <EngagementCell pct={w.daily_prompt_response_rate} tone="accent" />
-                    </div>
-                  ))}
-                </div>
-              </Card>
+              <ProgrammeEngagementTable rows={programmeEngagement} />
 
               <Card className="p-5">
                 <p className="mb-3 text-2xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
@@ -600,74 +626,11 @@ export default function SponsorDashboard() {
 
         {/* ROSTER */}
         <div data-onboarding="sponsor-roster">
-        <SectionCard
-          label={t("dashboard.roster.label", { count: filteredRoster.length })}
-          action={
-            cohortNames.length > 1 ? (
-              <div className="flex items-center gap-1.5" data-onboarding="sponsor-cohort-filter">
-                <Filter className="h-3 w-3 text-muted-foreground" />
-                <Select value={cohortFilter} onValueChange={setCohortFilter}>
-                  <SelectTrigger className="h-6 w-32 border-0 bg-transparent p-0 text-[10px] text-muted-foreground shadow-none focus:ring-0">
-                    <SelectValue placeholder={t("dashboard.roster.allCohorts")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="text-xs">{t("dashboard.roster.allCohorts")}</SelectItem>
-                    {cohortNames.map(c => (
-                      <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : undefined
-          }
-        >
+        <SectionCard label={t("dashboard.roster.label", { count: roster.length })}>
           <p className="mb-3 text-[10px] text-muted-foreground">
             {t("dashboard.roster.note")}
           </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
-              <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.leader")}</th>
-                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.roster.columns.cohort")}</th>
-                  <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.status")}</th>
-                  <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.roster.columns.progress")}</th>
-                  <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.sessions")}</th>
-                  <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.roster.columns.goalProgress")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filteredRoster.map((r) => (
-                  <tr
-                    key={r.enrollment_id}
-                    onClick={() => setSelectedLeader(r)}
-                    className="cursor-pointer transition-colors hover:bg-muted/40"
-                  >
-                    <td className="px-2 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[10px] font-semibold text-primary">
-                          {initials(r.full_name)}
-                        </div>
-                        <span className="font-medium">{r.full_name}</span>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2.5 text-muted-foreground hidden sm:table-cell">{r.cohort_name || "—"}</td>
-                    <td className="px-2 py-2.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{t(`status.${STATUS_LABEL_KEY[r.enrollment_status]}`)}</Pill></td>
-                    <td className="px-2 py-2.5 hidden md:table-cell">
-                      <div className="w-24"><MiniBar pct={r.progress_pct} tone="primary" /></div>
-                    </td>
-                    <td className="px-2 py-2.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
-                    <td className="px-2 py-2.5 hidden sm:table-cell">
-                      {r.goal_growth != null ? <GoalProgressBar pct={r.goal_growth} /> : <span className="italic text-muted-foreground">—</span>}
-                    </td>
-                  </tr>
-                ))}
-                {filteredRoster.length === 0 && (
-                  <tr><td colSpan={6} className="px-2 py-8 text-center text-[12px] text-muted-foreground">{t("dashboard.roster.empty")}</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <RosterTable rows={roster} onSelect={setSelectedLeader} showCohortColumn sortable={false} />
           <p className="mt-3 text-[10px] italic text-muted-foreground">
             {t("dashboard.roster.footnote")}
           </p>
@@ -677,20 +640,7 @@ export default function SponsorDashboard() {
         {/* COACH UTILISATION */}
         {coachUtilisation.length > 0 && (
           <SectionCard label={t("dashboard.coachUtilisation.label")}>
-            <div className="space-y-2.5">
-              {coachUtilisation.map((c) => (
-                <div key={c.coach_name} className="flex items-center gap-3">
-                  <span className="w-28 shrink-0 truncate text-[12px] font-medium">{c.coach_name}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${(c.completed_sessions / maxCoachSessions) * 100}%` }}
-                    />
-                  </div>
-                  <span className="w-6 shrink-0 text-right font-mono text-[11px] text-muted-foreground">{c.completed_sessions}</span>
-                </div>
-              ))}
-            </div>
+            <CoachUtilisationBars rows={coachUtilisation} />
           </SectionCard>
         )}
 
@@ -780,19 +730,6 @@ function HeadlineStat({
   );
 }
 
-function DistRow({ label, count, total, tone }: { label: string; count: number; total: number; tone: "success" | "primary" | "warning" | "destructive" }) {
-  const pct = total > 0 ? (count / total) * 100 : 0;
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-[11px]">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">{count}</span>
-      </div>
-      <MiniBar pct={pct} tone={tone} />
-    </div>
-  );
-}
-
 function SatisfactionTrendChart({ data }: { data: SponsorSatisfactionTrendRow[] }) {
   const width = 280;
   const height = 90;
@@ -827,19 +764,6 @@ function SatisfactionTrendChart({ data }: { data: SponsorSatisfactionTrendRow[] 
           <span key={p.month}>{format(new Date(p.month), "MMM")}</span>
         ))}
       </div>
-    </div>
-  );
-}
-
-function GoalProgressBar({ pct }: { pct: number }) {
-  const clamped = Math.max(0, Math.min(100, pct));
-  const tone = clamped >= 50 ? "bg-success" : clamped >= 20 ? "bg-warning" : "bg-muted-foreground/40";
-  return (
-    <div className="flex items-center gap-2">
-      <div className="h-1 w-16 overflow-hidden rounded-full bg-muted">
-        <div className={cn("h-full rounded-full", tone)} style={{ width: `${clamped}%` }} />
-      </div>
-      <span className="w-8 text-right text-[10px] font-medium text-muted-foreground">{Math.round(pct)}%</span>
     </div>
   );
 }

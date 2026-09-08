@@ -1,8 +1,10 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Loader2, Users, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard, Pill, Kpi } from "@/pages/admin/_shared";
+import { HealthSignalPill } from "@/pages/sponsor/_shared";
+import { healthSignal } from "@/pages/sponsor/sponsorUtils";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import { Card } from "@/components/ui/card";
@@ -41,7 +43,6 @@ function statusCounts(rows: SponsorRosterRow[]): StatusCounts {
 
 export default function SponsorCohorts() {
   const { t } = useTranslation("sponsor");
-  const navigate = useNavigate();
   const { kpis, roster, minLeadersForDistribution, loading } = useSponsorDashboardData();
 
   if (loading) {
@@ -101,6 +102,9 @@ export default function SponsorCohorts() {
             return wg.reduce((s, r) => s + r.goal_growth!, 0) / wg.length;
           })();
           const sessions = { used: rows.reduce((s, r) => s + r.sessions_completed, 0), total: rows.reduce((s, r) => s + r.sessions_entitled, 0) };
+          const onTrackPct = rows.length ? (rows.filter(r => r.enrollment_status === "active").length / rows.length) * 100 : 0;
+          const atRiskCount = rows.filter(r => r.enrollment_status === "at_risk").length;
+          const signal = healthSignal(atRiskCount, rows.length);
 
           return (
             <Card key={cohortName} className="p-4">
@@ -109,12 +113,7 @@ export default function SponsorCohorts() {
                   <p className="font-semibold">{cohortName}</p>
                   <p className="text-[11px] text-muted-foreground">{t("cohorts.leaderCount", { count: rows.length })}</p>
                 </div>
-                <button
-                  onClick={() => navigate(`/sponsor?cohort=${encodeURIComponent(cohortName)}`)}
-                  className="flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-3 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors"
-                >
-                  {t("cohorts.openInDashboard")} <ArrowRight className="h-2.5 w-2.5" />
-                </button>
+                <HealthSignalPill signal={signal} />
               </div>
 
               {/* Status mix */}
@@ -132,10 +131,14 @@ export default function SponsorCohorts() {
               {/* Stats row */}
               <div className="grid grid-cols-2 gap-2 border-t border-border pt-3">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("cohorts.sessions")}</p>
-                  <p className="font-mono text-sm">{sessions.used} / {sessions.total}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("cohorts.onTrackPct")}</p>
+                  <p className="font-mono text-sm">{Math.round(onTrackPct)}%</p>
                 </div>
                 <div>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("cohorts.sessions")}</p>
+                  <p className="font-mono text-sm">{sessions.used} / {sessions.total}{sessions.total > 0 ? ` · ${Math.round((sessions.used / sessions.total) * 100)}%` : ""}</p>
+                </div>
+                <div className="col-span-2">
                   <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("cohorts.avgGrowth")}</p>
                   {suppressed ? (
                     <p className="text-[11px] italic text-muted-foreground">{t("cohorts.suppressed", { min: minLeadersForDistribution })}</p>
@@ -152,6 +155,13 @@ export default function SponsorCohorts() {
                   {t("cohorts.suppressedNote", { min: minLeadersForDistribution })}
                 </p>
               )}
+
+              <Link
+                to={`/sponsor/cohorts/${encodeURIComponent(cohortName)}`}
+                className="mt-3 flex items-center justify-end gap-1 text-[11px] font-semibold text-primary hover:underline"
+              >
+                {t("cohorts.viewCohort")} <ArrowRight className="h-3 w-3" />
+              </Link>
             </Card>
           );
         })}

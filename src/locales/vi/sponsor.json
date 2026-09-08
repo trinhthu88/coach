@@ -85,10 +85,24 @@
       "onTrack": "Đúng tiến độ",
       "atRisk": "Có nguy cơ",
       "sessionsUsed": "Session đã dùng",
+      "avgSatisfaction": "Mức hài lòng TB",
       "atRiskInline_other": "{{count}} người có rủi ro cần được chú ý",
       "budgetUsed": "Ngân sách đã dùng",
       "budgetSubline": "{{spent}} trong {{total}}",
       "budgetRunsOut": "với tốc độ này, ngân sách sẽ hết vào {{date}}"
+    },
+    "healthMatrix": {
+      "label": "Bảng sức khỏe theo nhóm",
+      "columns": {
+        "cohort": "Nhóm",
+        "leaders": "Lãnh đạo",
+        "onTrack": "% đúng tiến độ",
+        "sessionsPace": "Tốc độ session",
+        "avgGoalGrowth": "Tăng trưởng mục tiêu TB",
+        "satisfaction": "Mức độ hài lòng",
+        "signal": "Tín hiệu"
+      },
+      "satisfactionNote": "Mức độ hài lòng là trung bình toàn tổ chức — Clariva chưa chia nhỏ theo từng nhóm."
     },
     "orgBanner": {
       "tiers": {
@@ -203,8 +217,9 @@
     "unnamedCohort": "Nhóm chưa đặt tên",
     "leaderCount_one": "{{count}} lãnh đạo",
     "leaderCount_other": "{{count}} lãnh đạo",
-    "openInDashboard": "Mở trong trang tổng quan",
+    "viewCohort": "Xem nhóm",
     "statusMix": "Phân bổ trạng thái",
+    "onTrackPct": "Đúng tiến độ",
     "sessions": "Session",
     "avgGrowth": "Tăng trưởng TB",
     "growthPct": "{{n}}% đang tiến triển",
@@ -213,6 +228,51 @@
     "suppressedNote": "Phân tích chi tiết bị ẩn — dưới {{min}} lãnh đạo. Xem tổng hợp trên tất cả các nhóm ở trên.",
     "noCohortsFound": "Không tìm thấy nhóm nào.",
     "privacyNote": "So sánh giữa các nhóm chỉ sử dụng mức độ tham gia và tiến độ tự đánh giá. Danh tính coach, ghi chú session và cách diễn đạt mục tiêu được loại trừ khỏi mọi góc nhìn theo nhóm."
+  },
+  "shared": {
+    "health": {
+      "healthy": "Tốt",
+      "watch": "Cần theo dõi",
+      "attention": "Cần chú ý"
+    }
+  },
+  "cohortDetail": {
+    "header": {
+      "eyebrow": "Nhóm",
+      "title": "Tập trung vào",
+      "subtitle": "Mọi thông tin về nhóm này — mức độ tham gia, tiến độ và kết quả."
+    },
+    "programmeDetails": {
+      "label": "Chi tiết chương trình",
+      "sessionsPerLeader": "{{count}} session mỗi lãnh đạo",
+      "status": {
+        "upcoming": "Sắp diễn ra",
+        "active": "Đang hoạt động",
+        "complete": "Đã hoàn thành"
+      },
+      "dayOf": "Ngày {{elapsed}} / {{total}}"
+    },
+    "programmeEngagement": {
+      "lowCompletion": "Tỷ lệ hoàn thành tuần {{week}} dưới 40% trên các module — nên kiểm tra lại."
+    },
+    "completionFunnel": {
+      "label": "Tiến trình hoàn thành",
+      "enrolled": "Đã đăng ký",
+      "firstSession": "Session đầu tiên",
+      "midpoint": "Giữa chặng",
+      "finalSession": "Session cuối cùng",
+      "complete": "Hoàn thành chương trình"
+    },
+    "paceRisk": {
+      "label": "Rủi ro tiến độ session",
+      "description": "Với tốc độ hiện tại, có thể không hoàn thành hết số session được phân bổ trước khi chương trình kết thúc."
+    },
+    "neverStarted": {
+      "label": "Chưa từng bắt đầu"
+    },
+    "healthMatrix": {
+      "label": "Bảng sức khỏe theo nhóm"
+    }
   },
   "leaderDrawer": {
     "srLabelSuffix": "chi tiết lãnh đạo",

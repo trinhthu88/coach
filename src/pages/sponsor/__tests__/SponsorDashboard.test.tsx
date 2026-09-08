@@ -16,11 +16,15 @@ const rpcResponses: Record<string, unknown> = {};
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: (fn: string) => Promise.resolve({ data: rpcResponses[fn], error: null }),
-    from: () => ({
-      select: () => ({
-        maybeSingle: async () => ({ data: { name: "Acme Corp" } }),
-      }),
-    }),
+    // "organizations" backs the header's org banner (maybeSingle); "cohorts"
+    // backs the Cohort Health Matrix's session-pace dates (a plain .in()
+    // query, no dates needed for these fixtures).
+    from: (table: string) => {
+      if (table === "cohorts") {
+        return { select: () => ({ in: async () => ({ data: [] }) }) };
+      }
+      return { select: () => ({ maybeSingle: async () => ({ data: { name: "Acme Corp" } }) }) };
+    },
   },
 }));
 
@@ -98,7 +102,8 @@ describe("SponsorDashboard", () => {
     // Roster rows, never showing goal titles/notes — just names and numbers
     expect(screen.getByText("Priya Shah")).toBeInTheDocument();
     expect(screen.getByText("Tom Baker")).toBeInTheDocument();
-    expect(screen.getAllByText("Q3 Leaders")).toHaveLength(2);
+    // 2 roster rows + 1 Cohort Health Matrix row, all showing the same cohort name
+    expect(screen.getAllByText("Q3 Leaders")).toHaveLength(3);
 
     // Persistent privacy notice
     expect(

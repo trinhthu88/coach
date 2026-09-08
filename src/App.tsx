@@ -62,6 +62,7 @@ const MentoringBookSession = lazy(() => import("./pages/MentoringBookSession"));
 const MentoringSessionDetail = lazy(() => import("./pages/MentoringSessionDetail"));
 const SponsorDashboard = lazy(() => import("./pages/sponsor/SponsorDashboard"));
 const SponsorCohorts = lazy(() => import("./pages/sponsor/SponsorCohorts"));
+const SponsorCohortDetail = lazy(() => import("./pages/sponsor/SponsorCohortDetail"));
 const SponsorReport = lazy(() => import("./pages/sponsor/SponsorReport"));
 const SponsorSettings = lazy(() => import("./pages/sponsor/SponsorSettings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -360,6 +361,7 @@ const App = () => (
                   <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
                   <Route path="/admin/organizations" element={<ProtectedRoute role="admin"><AdminOrganizations /></ProtectedRoute>} />
                   <Route path="/sponsor" element={<ProtectedRoute role="sponsor"><SponsorDashboard /></ProtectedRoute>} />
+                  <Route path="/sponsor/cohorts/:cohortId" element={<ProtectedRoute role="sponsor"><SponsorCohortDetail /></ProtectedRoute>} />
                   <Route path="/sponsor/cohorts" element={<ProtectedRoute role="sponsor"><SponsorCohorts /></ProtectedRoute>} />
                   <Route path="/sponsor/report" element={<ProtectedRoute role="sponsor"><SponsorReport /></ProtectedRoute>} />
                   <Route path="/sponsor/settings" element={<ProtectedRoute role="sponsor"><SponsorSettings /></ProtectedRoute>} />
