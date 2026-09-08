@@ -7,14 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { ArrowRight, Loader2, ShieldCheck, Sparkles, GraduationCap, Compass } from "lucide-react";
+import { ArrowRight, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import authHero from "@/assets/auth-hero.jpg";
 import clarivaLogo from "@/assets/clariva-logo-dark.png";
-import { cn } from "@/lib/utils";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { trackEvent } from "@/lib/analytics";
-
-type SignupRole = "coachee" | "coach";
 
 function isSameOriginRelativePath(path: string): boolean {
   try {
@@ -30,53 +27,25 @@ export default function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
-  const [mode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "", fullName: "" });
-  const [signupRole, setSignupRole] = useState<SignupRole>("coachee");
+  const [form, setForm] = useState({ email: "", password: "" });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: form.email,
-          password: form.password,
-        });
-        if (error) throw error;
-        trackEvent("sign_in_completed", {
-          method: "password",
-          destination: isSameOriginRelativePath(next) ? new URL(next, window.location.origin).pathname : "/dashboard",
-        });
-        toast({ title: t("toast.signInSuccess.title"), description: t("toast.signInSuccess.description") });
-        navigate(isSameOriginRelativePath(next) ? next : "/dashboard", { replace: true });
-      } else {
-        const returnTo = isSameOriginRelativePath(next) ? `${window.location.origin}${next}` : `${window.location.origin}/dashboard`;
-        const { error } = await supabase.auth.signUp({
-          email: form.email,
-          password: form.password,
-          options: {
-            emailRedirectTo: returnTo,
-            data: { full_name: form.fullName, role: signupRole },
-          },
-        });
-        if (error) throw error;
-        trackEvent("sign_up_completed", {
-          method: "password",
-          role: signupRole,
-          destination: isSameOriginRelativePath(next) ? new URL(next, window.location.origin).pathname : "/dashboard",
-        });
-        toast({
-          title: t("toast.signUpSuccess.title"),
-          description:
-            signupRole === "coach"
-              ? t("toast.signUpSuccessCoach")
-              : t("toast.signUpSuccessCoachee"),
-        });
-        navigate(isSameOriginRelativePath(next) ? next : "/dashboard", { replace: true });
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+      if (error) throw error;
+      trackEvent("sign_in_completed", {
+        method: "password",
+        destination: isSameOriginRelativePath(next) ? new URL(next, window.location.origin).pathname : "/dashboard",
+      });
+      toast({ title: t("toast.signInSuccess.title"), description: t("toast.signInSuccess.description") });
+      navigate(isSameOriginRelativePath(next) ? next : "/dashboard", { replace: true });
     } catch (err) {
       toast({
         title: t("toast.error.title"),
@@ -140,69 +109,17 @@ export default function Auth() {
           <div className="mb-8 space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
               <Sparkles className="h-3 w-3" />
-              {mode === "signin" ? t("badge.signin") : t("badge.signup")}
+              {t("badge.signin")}
             </div>
             <h2 className="font-display text-4xl font-light tracking-tight text-secondary">
-              {mode === "signin" ? t("heading.signin") : t("heading.signup")}
+              {t("heading.signin")}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {mode === "signin" ? t("subheading.signin") : t("subheading.signup")}
+              {t("subheading.signin")}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {mode === "signup" && (
-              <>
-                <div className="space-y-2">
-                  <Label>{t("roleSelect.label")}</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {([
-                      { value: "coachee", label: t("roleSelect.coachee.label"), desc: t("roleSelect.coachee.desc"), icon: Compass },
-                      { value: "coach", label: t("roleSelect.coach.label"), desc: t("roleSelect.coach.desc"), icon: GraduationCap },
-                    ] as const).map((opt) => {
-                      const Icon = opt.icon;
-                      const active = signupRole === opt.value;
-                      return (
-                        <button
-                          type="button"
-                          key={opt.value}
-                          aria-pressed={active}
-                          onClick={() => setSignupRole(opt.value)}
-                          className={cn(
-                            "flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all",
-                            active
-                              ? "border-primary bg-primary-soft shadow-sm"
-                              : "border-border hover:border-primary/40 hover:bg-muted/40"
-                          )}
-                        >
-                          <Icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} />
-                          <span className="text-sm font-semibold">{opt.label}</span>
-                          <span className="text-[11px] text-muted-foreground">{opt.desc}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {signupRole === "coach" && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {t("roleSelect.coachApprovalNotice")}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">{t("fields.fullNameLabel")}</Label>
-                  <Input
-                    id="fullName"
-                    required
-                    value={form.fullName}
-                    onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                    placeholder={t("fields.fullNamePlaceholder")}
-                    className="h-11"
-                  />
-                </div>
-              </>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="email">{t("fields.emailLabel")}</Label>
               <Input
@@ -240,21 +157,19 @@ export default function Auth() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  {mode === "signin" ? t("submit.signin") : t("submit.signup")}
+                  {t("submit.signin")}
                   <ArrowRight className="ml-1 h-4 w-4" />
                 </>
               )}
             </Button>
           </form>
 
-          {mode === "signin" && (
-            <div className="mt-8 border-t border-border/60 pt-6 text-center text-sm text-muted-foreground">
-              {t("footer.newToClariva")}{" "}
-              <Link to="/request-access" className="font-semibold text-primary hover:underline">
-                {t("footer.requestAccess")}
-              </Link>
-            </div>
-          )}
+          <div className="mt-8 border-t border-border/60 pt-6 text-center text-sm text-muted-foreground">
+            {t("footer.newToClariva")}{" "}
+            <Link to="/request-access" className="font-semibold text-primary hover:underline">
+              {t("footer.requestAccess")}
+            </Link>
+          </div>
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
             <Link to="/" className="hover:text-foreground">{t("footer.backToHome")}</Link>
