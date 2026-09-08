@@ -171,10 +171,9 @@ export default function BookSession() {
           } else {
             if (role === "coach") {
               // Coach booking a regular coaching session (coach-as-coachee allowlist path).
-              // These numbers are display-only now — resolve via the coach's
-              // coach_programme_enrollments -> coach_programmes join, the same source
-              // can_book_session() and enforce_coach_as_coachee_limit() use, so the
-              // banner can't show a different limit than what's actually enforced.
+              // LEGACY: still reading from coach_programme_enrollments → coach_programmes.
+              // TODO: once coach session limits move to programme_modules.config, read
+              // the coaching module's receive_limit from programme_enrollments instead.
               // null mentee_sessions_limit = unlimited; no enrollment row at all falls
               // back to DEFAULT_SESSION_LIMIT, matching the old default.
               const [{ data: enrollment }, coachCount] = await Promise.all([

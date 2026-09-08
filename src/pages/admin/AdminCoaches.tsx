@@ -46,8 +46,10 @@ const STATUS_TONE: Record<Status, "muted"|"success"|"warning"|"destructive"> = {
   reach_limit: "warning",
 };
 
-// null = unlimited (coach_programmes limit column); a coach with no coach programme
-// enrollment falls back to 4, matching the DB-side fallback in enforce_coach_as_coachee_limit().
+// TODO (coach_programmes cleanup): coach session limits are still read from the
+// legacy coach_programme_enrollments → coach_programmes tables below.
+// They should move to programme_modules.config (coaching.give_limit / receive_limit)
+// once the backend migration is applied. null = unlimited; no enrollment row falls back to DEFAULT_SESSION_LIMIT (4).
 function fmtLimit(n: number | null): string {
   return n === null ? "∞" : String(n);
 }
@@ -116,6 +118,7 @@ export default function AdminCoaches() {
       supabase.from("coach_profiles").select("id, approval_status, rating_avg"),
       supabase.from("sessions").select("coach_id, coachee_id, status"),
       supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, status"),
+      // LEGACY: move to programme_modules.config after DB migration
       supabase.from("coach_programme_enrollments").select("coach_id, coach_programme:coach_programmes(name, mentee_sessions_limit, peer_received_limit, peer_given_limit)"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
       supabase.from("cohorts").select("id, name"),
