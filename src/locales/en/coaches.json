@@ -36,6 +36,7 @@
     "experienceWithCountry": "{{years}} yrs · {{country}}",
     "experienceOnly": "{{years}} yrs",
     "viewProfile": "View profile",
+    "loadMore": "Load more",
     "error": {
       "title": "Couldn't load coaches",
       "body": "Something went wrong while fetching the coach directory. Check your connection and try again.",

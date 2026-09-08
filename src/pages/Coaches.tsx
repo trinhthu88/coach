@@ -9,7 +9,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Star, Heart, AlertTriangle } from "lucide-react";
+import { Search, Star, Heart, AlertTriangle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "@/hooks/useFavorites";
 
@@ -41,11 +41,27 @@ const SPECIALTY_FILTERS = [
   "Wellness",
 ] as const;
 
+const PAGE_SIZE = 24;
+
+function coachesQuery() {
+  return supabase
+    .from("coach_profiles")
+    .select(
+      "id, title, specialties, years_experience, country_based, is_featured, rating_avg, sessions_completed, profiles!inner(full_name, avatar_url, bio)"
+    )
+    .eq("approval_status", "active")
+    .order("is_featured", { ascending: false })
+    .order("rating_avg", { ascending: false });
+}
+
 export default function Coaches() {
   const { t } = useTranslation("coaches");
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [query, setQuery] = useState("");
   const [activeSpec, setActiveSpec] = useState<string>("All");
   const [retryKey, setRetryKey] = useState(0);
@@ -53,23 +69,33 @@ export default function Coaches() {
   useEffect(() => {
     setLoading(true);
     setLoadError(false);
+    setPage(0);
     (async () => {
-      const { data, error } = await supabase
-        .from("coach_profiles")
-        .select(
-          "id, title, specialties, years_experience, country_based, is_featured, rating_avg, sessions_completed, profiles!inner(full_name, avatar_url, bio)"
-        )
-        .eq("approval_status", "active")
-        .order("is_featured", { ascending: false })
-        .order("rating_avg", { ascending: false });
+      const { data, error } = await coachesQuery().range(0, PAGE_SIZE - 1);
       if (error) {
         setLoadError(true);
       } else {
-        setCoaches((data as unknown as CoachRow[]) || []);
+        const rows = (data as unknown as CoachRow[]) || [];
+        setCoaches(rows);
+        setHasMore(rows.length === PAGE_SIZE);
       }
       setLoading(false);
     })();
   }, [retryKey]);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const from = nextPage * PAGE_SIZE;
+    const { data, error } = await coachesQuery().range(from, from + PAGE_SIZE - 1);
+    if (!error) {
+      const rows = (data as unknown as CoachRow[]) || [];
+      setCoaches((prev) => [...prev, ...rows]);
+      setHasMore(rows.length === PAGE_SIZE);
+      setPage(nextPage);
+    }
+    setLoadingMore(false);
+  };
 
   const filtered = useMemo(() => {
     return coaches.filter((c) => {
@@ -121,11 +147,21 @@ export default function Coaches() {
       ) : filtered.length === 0 ? (
         <EmptyState query={query} />
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((coach) => (
-            <CoachCard key={coach.id} coach={coach} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((coach) => (
+              <CoachCard key={coach.id} coach={coach} />
+            ))}
+          </div>
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                {t("list.loadMore")}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
