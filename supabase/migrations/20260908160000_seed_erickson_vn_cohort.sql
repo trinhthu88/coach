@@ -41,7 +41,7 @@ BEGIN
   -- ──────────────────────────────────────────────────────────────
   -- 0. Password hash (pgcrypto)
   -- ──────────────────────────────────────────────────────────────
-  v_pw_hash := crypt('Clariva2026!', gen_salt('bf', 10));
+  v_pw_hash := extensions.crypt('Clariva2026!', extensions.gen_salt('bf', 10));
 
   -- ──────────────────────────────────────────────────────────────
   -- 1. Resolve programme (TASC - Essential Course)
@@ -95,7 +95,7 @@ BEGIN
   -- 2. Organization
   -- ──────────────────────────────────────────────────────────────
   INSERT INTO public.organizations (id, name, industry, subscription_tier, contract_start, contract_end, coaching_budget, hq_country)
-  VALUES (v_org_id, 'Erickson Coaching Vietnam', 'Education & Professional Development', 'premium', '2026-09-01', '2027-02-28', 48000, 'Vietnam')
+  VALUES (v_org_id, 'Erickson Coaching Vietnam', 'Education & Professional Development', 'enterprise', '2026-09-01', '2027-02-28', 48000, 'Vietnam')
   ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name, industry = EXCLUDED.industry,
     subscription_tier = EXCLUDED.subscription_tier,
@@ -235,9 +235,9 @@ BEGIN
   -- 9. Coachee allowlist (so they can book the coaches)
   -- ──────────────────────────────────────────────────────────────
   INSERT INTO public.coachee_coach_allowlist (coachee_id, coach_id, source)
-  VALUES (v_claire_id, v_coach1_id, 'admin'), (v_claire_id, v_coach2_id, 'admin'),
-         (v_daniel_id, v_coach1_id, 'admin'), (v_daniel_id, v_coach2_id, 'admin'),
-         (v_yuki_id,   v_coach1_id, 'admin'), (v_yuki_id,   v_coach2_id, 'admin')
+  VALUES (v_claire_id, v_coach1_id, 'admin_added'), (v_claire_id, v_coach2_id, 'admin_added'),
+         (v_daniel_id, v_coach1_id, 'admin_added'), (v_daniel_id, v_coach2_id, 'admin_added'),
+         (v_yuki_id,   v_coach1_id, 'admin_added'), (v_yuki_id,   v_coach2_id, 'admin_added')
   ON CONFLICT (coachee_id, coach_id) DO NOTHING;
 
   -- ──────────────────────────────────────────────────────────────
@@ -392,7 +392,7 @@ BEGIN
     ('ef010001-0000-0000-0000-000000000001', 'ee010100-0000-0000-0000-000000000001', v_coach1_id, 4, 'high', false),
     ('ef010001-0000-0000-0000-000000000002', 'ee010100-0000-0000-0000-000000000002', v_coach1_id, 5, 'high', false),
     ('ef010001-0000-0000-0000-000000000003', 'ee010100-0000-0000-0000-000000000003', v_coach1_id, 5, 'high', false),
-    ('ef020001-0000-0000-0000-000000000001', 'ee020100-0000-0000-0000-000000000001', v_coach2_id, 4, 'medium', false),
+    ('ef020001-0000-0000-0000-000000000001', 'ee020100-0000-0000-0000-000000000001', v_coach2_id, 4, 'moderate', false),
     ('ef020001-0000-0000-0000-000000000002', 'ee020100-0000-0000-0000-000000000002', v_coach2_id, 3, 'low', false),
     ('ef030001-0000-0000-0000-000000000001', 'ee030100-0000-0000-0000-000000000001', v_coach1_id, 5, 'high', false),
     ('ef030001-0000-0000-0000-000000000002', 'ee030100-0000-0000-0000-000000000002', v_coach1_id, 5, 'high', false),
@@ -521,7 +521,7 @@ BEGIN
   INSERT INTO public.triad_groups (id, programme_id, cohort_id, member_1_id, member_2_id, member_3_id,
     group_language, name, is_active, assigned_by)
   VALUES (v_triad_group_id, v_programme_id, v_cohort_id, v_claire_id, v_daniel_id, v_yuki_id,
-    'en', 'Erickson VN Triad — Alpha', true, v_claire_id)
+    'en', 'Erickson VN Triad — Alpha', true, 'admin')
   ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, is_active=EXCLUDED.is_active;
 
   -- Triad session 1 (Week 2) — completed
