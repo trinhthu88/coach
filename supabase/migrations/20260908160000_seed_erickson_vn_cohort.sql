@@ -106,45 +106,73 @@ BEGIN
   -- 3. Auth users (trigger auto-creates profiles + coachee roles)
   -- ──────────────────────────────────────────────────────────────
 
+  -- Each user below resolves by email first, falling back to inserting
+  -- with the fixed id only when no row exists yet. This is necessary (not
+  -- just defensive): auth.users' real uniqueness constraint that matters
+  -- here is on email (a partial unique index, "users_email_partial_key"),
+  -- not id — an ON CONFLICT (id) DO NOTHING insert still errors on a
+  -- stray pre-existing row for the same email under a different id, and
+  -- every downstream table below (sponsor_profiles, coachee_profiles,
+  -- programme_enrollments, ...) is keyed off these v_*_id variables, so
+  -- reusing whatever id the email already resolves to — rather than
+  -- assuming our fixed constant — is what keeps this migration idempotent
+  -- against that case instead of just failing on retry.
+
   -- Sponsor: contact@erickson.vn
-  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
-      email_confirmed_at, raw_user_meta_data, created_at, updated_at,
-      confirmation_token, email_change_token_new, recovery_token)
-  VALUES (v_sponsor_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-    'contact@erickson.vn', v_pw_hash, now(),
-    '{"full_name":"Erickson VN Sponsor","role":"coachee"}'::jsonb,
-    now(), now(), '', '', '')
-  ON CONFLICT (id) DO NOTHING;
+  SELECT id INTO v_sponsor_id FROM auth.users WHERE email = 'contact@erickson.vn' LIMIT 1;
+  IF v_sponsor_id IS NULL THEN
+    v_sponsor_id := 'ee000000-0000-0000-0000-000000000002'::uuid;
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
+        email_confirmed_at, raw_user_meta_data, created_at, updated_at,
+        confirmation_token, email_change_token_new, recovery_token)
+    VALUES (v_sponsor_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+      'contact@erickson.vn', v_pw_hash, now(),
+      '{"full_name":"Erickson VN Sponsor","role":"coachee"}'::jsonb,
+      now(), now(), '', '', '')
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
 
   -- Claire Dubois
-  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
-      email_confirmed_at, raw_user_meta_data, created_at, updated_at,
-      confirmation_token, email_change_token_new, recovery_token)
-  VALUES (v_claire_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-    'claire.dubois@erickson.vn', v_pw_hash, now(),
-    '{"full_name":"Claire Dubois","role":"coachee"}'::jsonb,
-    now(), now(), '', '', '')
-  ON CONFLICT (id) DO NOTHING;
+  SELECT id INTO v_claire_id FROM auth.users WHERE email = 'claire.dubois@erickson.vn' LIMIT 1;
+  IF v_claire_id IS NULL THEN
+    v_claire_id := 'ee000000-0000-0000-0000-000000000010'::uuid;
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
+        email_confirmed_at, raw_user_meta_data, created_at, updated_at,
+        confirmation_token, email_change_token_new, recovery_token)
+    VALUES (v_claire_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+      'claire.dubois@erickson.vn', v_pw_hash, now(),
+      '{"full_name":"Claire Dubois","role":"coachee"}'::jsonb,
+      now(), now(), '', '', '')
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
 
   -- Daniel Okafor
-  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
-      email_confirmed_at, raw_user_meta_data, created_at, updated_at,
-      confirmation_token, email_change_token_new, recovery_token)
-  VALUES (v_daniel_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-    'daniel.okafor@erickson.vn', v_pw_hash, now(),
-    '{"full_name":"Daniel Okafor","role":"coachee"}'::jsonb,
-    now(), now(), '', '', '')
-  ON CONFLICT (id) DO NOTHING;
+  SELECT id INTO v_daniel_id FROM auth.users WHERE email = 'daniel.okafor@erickson.vn' LIMIT 1;
+  IF v_daniel_id IS NULL THEN
+    v_daniel_id := 'ee000000-0000-0000-0000-000000000020'::uuid;
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
+        email_confirmed_at, raw_user_meta_data, created_at, updated_at,
+        confirmation_token, email_change_token_new, recovery_token)
+    VALUES (v_daniel_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+      'daniel.okafor@erickson.vn', v_pw_hash, now(),
+      '{"full_name":"Daniel Okafor","role":"coachee"}'::jsonb,
+      now(), now(), '', '', '')
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
 
   -- Yuki Tanaka
-  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
-      email_confirmed_at, raw_user_meta_data, created_at, updated_at,
-      confirmation_token, email_change_token_new, recovery_token)
-  VALUES (v_yuki_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-    'yuki.tanaka@erickson.vn', v_pw_hash, now(),
-    '{"full_name":"Yuki Tanaka","role":"coachee"}'::jsonb,
-    now(), now(), '', '', '')
-  ON CONFLICT (id) DO NOTHING;
+  SELECT id INTO v_yuki_id FROM auth.users WHERE email = 'yuki.tanaka@erickson.vn' LIMIT 1;
+  IF v_yuki_id IS NULL THEN
+    v_yuki_id := 'ee000000-0000-0000-0000-000000000030'::uuid;
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
+        email_confirmed_at, raw_user_meta_data, created_at, updated_at,
+        confirmation_token, email_change_token_new, recovery_token)
+    VALUES (v_yuki_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+      'yuki.tanaka@erickson.vn', v_pw_hash, now(),
+      '{"full_name":"Yuki Tanaka","role":"coachee"}'::jsonb,
+      now(), now(), '', '', '')
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
 
   -- ──────────────────────────────────────────────────────────────
   -- 4. Enrich profiles (bio, language, onboarding)
@@ -398,18 +426,18 @@ BEGIN
     ('ef030001-0000-0000-0000-000000000002', 'ee030100-0000-0000-0000-000000000002', v_coach1_id, 5, 'high', false),
     ('ef030001-0000-0000-0000-000000000003', 'ee030100-0000-0000-0000-000000000003', v_coach1_id, 5, 'high', false),
     ('ef030001-0000-0000-0000-000000000004', 'ee030100-0000-0000-0000-000000000004', v_coach1_id, 5, 'high', false)
-  ON CONFLICT (id) DO UPDATE SET quality_rating=EXCLUDED.quality_rating, engagement_level=EXCLUDED.engagement_level;
+  ON CONFLICT (session_id, coach_id) DO UPDATE SET quality_rating=EXCLUDED.quality_rating, engagement_level=EXCLUDED.engagement_level;
 
   -- Session goal ratings (Claire)
   INSERT INTO public.session_goal_ratings (id, session_id, coachee_id, goal_id, rating, note)
   VALUES
-    ('eg010001-0000-0000-0000-000000000001', 'ee010100-0000-0000-0000-000000000001', v_claire_id, 'ee010001-0000-0000-0000-000000000001', 4, 'Starting to pause before advising'),
-    ('eg010001-0000-0000-0000-000000000002', 'ee010100-0000-0000-0000-000000000002', v_claire_id, 'ee010001-0000-0000-0000-000000000001', 5, 'H→I pivot landing consistently'),
-    ('eg010001-0000-0000-0000-000000000003', 'ee010100-0000-0000-0000-000000000003', v_claire_id, 'ee010001-0000-0000-0000-000000000001', 7, 'Confidently asking before advising now'),
-    ('eg030001-0000-0000-0000-000000000001', 'ee030100-0000-0000-0000-000000000001', v_yuki_id, 'ee030001-0000-0000-0000-000000000001', 5, 'SHIFT becoming intuitive'),
-    ('eg030001-0000-0000-0000-000000000002', 'ee030100-0000-0000-0000-000000000002', v_yuki_id, 'ee030001-0000-0000-0000-000000000001', 7, 'Silence natural and generative'),
-    ('eg030001-0000-0000-0000-000000000003', 'ee030100-0000-0000-0000-000000000003', v_yuki_id, 'ee030001-0000-0000-0000-000000000001', 8, 'Running full SHIFT without notes')
-  ON CONFLICT (id) DO UPDATE SET rating=EXCLUDED.rating, note=EXCLUDED.note;
+    ('ea010001-0000-0000-0000-000000000001', 'ee010100-0000-0000-0000-000000000001', v_claire_id, 'ee010001-0000-0000-0000-000000000001', 4, 'Starting to pause before advising'),
+    ('ea010001-0000-0000-0000-000000000002', 'ee010100-0000-0000-0000-000000000002', v_claire_id, 'ee010001-0000-0000-0000-000000000001', 5, 'H→I pivot landing consistently'),
+    ('ea010001-0000-0000-0000-000000000003', 'ee010100-0000-0000-0000-000000000003', v_claire_id, 'ee010001-0000-0000-0000-000000000001', 7, 'Confidently asking before advising now'),
+    ('ea030001-0000-0000-0000-000000000001', 'ee030100-0000-0000-0000-000000000001', v_yuki_id, 'ee030001-0000-0000-0000-000000000001', 5, 'SHIFT becoming intuitive'),
+    ('ea030001-0000-0000-0000-000000000002', 'ee030100-0000-0000-0000-000000000002', v_yuki_id, 'ee030001-0000-0000-0000-000000000001', 7, 'Silence natural and generative'),
+    ('ea030001-0000-0000-0000-000000000003', 'ee030100-0000-0000-0000-000000000003', v_yuki_id, 'ee030001-0000-0000-0000-000000000001', 8, 'Running full SHIFT without notes')
+  ON CONFLICT (session_id, goal_id) DO UPDATE SET rating=EXCLUDED.rating, note=EXCLUDED.note;
 
   -- ──────────────────────────────────────────────────────────────
   -- 12. Peer sessions
@@ -511,7 +539,7 @@ BEGIN
       'very_strong', 'very_strong', 'very_strong', 'very_strong',
       'very_strong', 'very_strong', 'very_strong', 'very_strong',
       'Exceptional mentor session. The insight about "curious listeners" was the most useful thing I have heard in this programme. My mentor also challenged me to think bigger — not just my team, but the organisation.')
-  ON CONFLICT (id) DO UPDATE SET overall_notes=EXCLUDED.overall_notes,
+  ON CONFLICT (mentoring_session_id) DO UPDATE SET overall_notes=EXCLUDED.overall_notes,
     coaching_mindset=EXCLUDED.coaching_mindset;
 
   -- ──────────────────────────────────────────────────────────────
@@ -760,7 +788,7 @@ BEGIN
       v_refl UUID := 'ee030500-0000-0000-0000-000000000001'::uuid;
       v_r UUID := NULL;
     BEGIN
-      SELECT id INTO v_r FROM public.programme_reflections
+      SELECT programme_reflections.id INTO v_r FROM public.programme_reflections
         JOIN public.reflection_submissions rs ON rs.id = v_refl AND rs.reflection_id = programme_reflections.id
         LIMIT 1;
       IF v_r IS NULL THEN RETURN; END IF;
