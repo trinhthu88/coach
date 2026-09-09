@@ -28,6 +28,12 @@ export interface RawWeek {
   subtitle: string | null;
   subtitle_vi: string | null;
   unlock_date: string | null;
+  /** Cohort-relative unlock date (override, then cohort start + week offset,
+   *  then the flat unlock_date fallback) — get_my_training_weeks() already
+   *  computes this server-side; prefer it over unlock_date for display and
+   *  for any "is this due yet" timing math, never recompute the fallback
+   *  chain here. */
+  effective_unlock_date: string | null;
   locked: boolean;
   viewed_at: string | null;
   completed_at: string | null;
@@ -63,7 +69,7 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
 
   const weekIds = weeks.map((w) => w.id);
   const weekNumberById = new Map(weeks.map((w) => [w.id, w.week_number]));
-  const weekUnlockById = new Map(weeks.map((w) => [w.id, w.unlock_date]));
+  const weekUnlockById = new Map(weeks.map((w) => [w.id, w.effective_unlock_date]));
   const weeksCompleted = weeks.filter((w) => w.completed_at).length;
 
   const [{ data: assignments }, { data: prompts }] = await Promise.all([

@@ -5,7 +5,7 @@ import { format, differenceInCalendarDays, addDays } from "date-fns";
 import {
   Users, CheckCircle2, AlertTriangle, CalendarCheck, Star,
   CalendarRange, ShieldCheck, Loader2, ArrowRight, Building2,
-  Clock, ChevronDown, GraduationCap, MessageCircle, type LucideIcon,
+  Clock, ChevronDown, MessageCircle, type LucideIcon,
   Wallet, Info, FileDown, Layers,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -18,7 +18,7 @@ import { SectionCard, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
 import type { SponsorRosterRow, SponsorSatisfactionTrendRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import {
-  RosterTable, GoalGrowthCard, ProgrammeEngagementTable, CoachUtilisationBars,
+  RosterTable, CoachUtilisationBars,
   HealthSignalPill, Avatar,
 } from "@/pages/sponsor/_shared";
 import { healthSignal, cohortProgress } from "@/pages/sponsor/sponsorUtils";
@@ -27,7 +27,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface OrgBannerData {
   name: string;
@@ -43,8 +42,8 @@ export default function SponsorDashboard() {
   const { t } = useTranslation("sponsor");
   const { user } = useAuth();
   const {
-    kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution,
-    programmeEngagement, redFlags, satisfactionTrend, coachUtilisation, loading,
+    kpis, roster, satisfaction, timeline,
+    redFlags, satisfactionTrend, coachUtilisation, loading,
   } = useSponsorDashboardData();
   const [org, setOrg] = useState<OrgBannerData | null>(null);
   const [selectedLeader, setSelectedLeader] = useState<SponsorRosterRow | null>(null);
@@ -368,6 +367,7 @@ export default function SponsorDashboard() {
         <div ref={kpiRowRef} className="rounded-2xl border border-border bg-card p-6">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <HeadlineStat label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
+            <HeadlineStat label={t("dashboard.kpis.enrolledActive")} value={kpis?.enrolled_active_count ?? 0} icon={Users} tone="primary" />
             <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
             <HeadlineStat
               label={t("dashboard.kpis.sessionsUsed")}
@@ -410,7 +410,12 @@ export default function SponsorDashboard() {
           )}
         </div>
 
-        {/* COHORT HEALTH MATRIX */}
+        {/* COHORT HEALTH MATRIX — this already is the "Your Cohorts" summary
+            (leaders / on-track % / sessions pace / signal per cohort, each
+            row linking to its detail page): adding a second, more compact
+            card-based cohort summary directly below an existing table doing
+            the same job would just be a redundant twin, not a real
+            simplification, so it wasn't added on top of this. */}
         {!isFirstLogin && cohortHealthRows.length > 0 && (
           <SectionCard label={t("dashboard.healthMatrix.label")}>
             <div className="overflow-x-auto">
@@ -495,133 +500,86 @@ export default function SponsorDashboard() {
           </Collapsible>
         )}
 
+        {/* TIMELINE + SATISFACTION — genuinely org-level metrics (unlike
+            goal growth and per-week programme engagement, which are now
+            shown correctly per-cohort on each cohort's own detail page and
+            were dropped from here rather than duplicated/blended across
+            cohorts). Shown directly, no longer behind a collapsible, since
+            removing goal growth left just these two compact cards. */}
         {!isFirstLogin && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-muted/40 [&[data-state=open]>svg]:rotate-180">
-              {t("dashboard.detailsToggle")}
-              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pt-4">
-              {/* GOAL GROWTH */}
-              <GoalGrowthCard goalGrowth={goalGrowth} minLeadersForDistribution={minLeadersForDistribution} />
-
-              {/* TIMELINE + SATISFACTION */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <SectionCard label={t("dashboard.timeline.label")}>
-                  <div className="flex items-center gap-3">
-                    <CalendarRange className="h-8 w-8 text-primary" />
-                    <div>
-                      <p className="text-[13px] font-medium">
-                        {timeline?.earliest_start ? format(new Date(timeline.earliest_start), "MMM d, yyyy") : "—"}
-                        {" → "}
-                        {timeline?.latest_end ? format(new Date(timeline.latest_end), "MMM d, yyyy") : "—"}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {daysRemaining != null ? t("dashboard.timeline.daysRemaining", { count: daysRemaining }) : t("dashboard.timeline.noEndDate")}
-                        {timeline?.programme_names?.length ? ` · ${timeline.programme_names.join(", ")}` : ""}
-                      </p>
-                    </div>
-                  </div>
-                </SectionCard>
-
-                <SectionCard label={t("dashboard.satisfaction.label")}>
-                  {satisfactionTrend.length > 0 ? (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Star className="h-5 w-5 text-warning" />
-                        <p className="text-[13px] font-medium">
-                          {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : t("dashboard.satisfaction.noRatingsYet")}
-                        </p>
-                        <span className="text-[11px] text-muted-foreground">
-                          {t("dashboard.satisfaction.acrossRated", { count: satisfaction?.rated_session_count ?? 0 })}
-                        </span>
-                      </div>
-                      <SatisfactionTrendChart data={satisfactionTrend} />
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <Star className="h-8 w-8 text-warning" />
-                      <div>
-                        <p className="text-[13px] font-medium">
-                          {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : t("dashboard.satisfaction.noRatingsYet")}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {t("dashboard.satisfaction.acrossRated", { count: satisfaction?.rated_session_count ?? 0 })}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  <p className="mt-1 text-[10px] italic text-muted-foreground">{t("dashboard.satisfaction.writtenFeedbackNote")}</p>
-                </SectionCard>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SectionCard label={t("dashboard.timeline.label")}>
+              <div className="flex items-center gap-3">
+                <CalendarRange className="h-8 w-8 text-primary" />
+                <div>
+                  <p className="text-[13px] font-medium">
+                    {timeline?.earliest_start ? format(new Date(timeline.earliest_start), "MMM d, yyyy") : "—"}
+                    {" → "}
+                    {timeline?.latest_end ? format(new Date(timeline.latest_end), "MMM d, yyyy") : "—"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {daysRemaining != null ? t("dashboard.timeline.daysRemaining", { count: daysRemaining }) : t("dashboard.timeline.noEndDate")}
+                    {timeline?.programme_names?.length ? ` · ${timeline.programme_names.join(", ")}` : ""}
+                  </p>
+                </div>
               </div>
-            </CollapsibleContent>
-          </Collapsible>
+            </SectionCard>
+
+            <SectionCard label={t("dashboard.satisfaction.label")}>
+              {satisfactionTrend.length > 0 ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Star className="h-5 w-5 text-warning" />
+                    <p className="text-[13px] font-medium">
+                      {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : t("dashboard.satisfaction.noRatingsYet")}
+                    </p>
+                    <span className="text-[11px] text-muted-foreground">
+                      {t("dashboard.satisfaction.acrossRated", { count: satisfaction?.rated_session_count ?? 0 })}
+                    </span>
+                  </div>
+                  <SatisfactionTrendChart data={satisfactionTrend} />
+                </>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Star className="h-8 w-8 text-warning" />
+                  <div>
+                    <p className="text-[13px] font-medium">
+                      {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : t("dashboard.satisfaction.noRatingsYet")}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {t("dashboard.satisfaction.acrossRated", { count: satisfaction?.rated_session_count ?? 0 })}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <p className="mt-1 text-[10px] italic text-muted-foreground">{t("dashboard.satisfaction.writtenFeedbackNote")}</p>
+            </SectionCard>
+          </div>
         )}
 
-        {/* PROGRAMME ENGAGEMENT — only rendered when the org's programme(s)
-            actually have training/quiz/triads/daily_prompt modules enabled;
-            sponsor_programme_engagement() returns zero rows otherwise, same
-            "silently absent" contract as the rest of this dashboard. */}
-        {!isFirstLogin && programmeEngagement.length > 0 && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-muted/40 [&[data-state=open]>svg]:rotate-180">
-              <span className="inline-flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-primary" /> {t("dashboard.programmeEngagement.label")}
-              </span>
-              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pt-4">
-              <ProgrammeEngagementTable rows={programmeEngagement} />
-
-              <Card className="p-5">
-                <p className="mb-3 text-2xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                  {t("dashboard.programmeEngagement.completionFunnel")}
-                </p>
-                <div className="h-44">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={programmeEngagement.map((w) => ({
-                        week: `W${w.week_number}`,
-                        pct: w.skill_card_completion_pct ?? 0,
-                      }))}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="week" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                      <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          fontSize: 11,
-                        }}
-                        formatter={(value: number) => [`${Math.round(value)}%`, "Completed"]}
-                      />
-                      <Bar dataKey="pct" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+        {/* FALLING BEHIND — the per-week programme engagement table and
+            completion-funnel chart that used to live alongside this were
+            removed (per-cohort versions on SponsorCohortDetail.tsx are the
+            correct place for them; org-wide they'd blend cohorts on
+            different unlock schedules together). This list stands on its
+            own now instead of nesting inside that removed collapsible. */}
+        {!isFirstLogin && redFlags.length > 0 && (
+          <Card className="border-l-4 border-l-accent p-5">
+            <p className="text-2xs font-bold uppercase tracking-[0.2em] text-accent">{t("dashboard.redFlags.label")}</p>
+            <div className="mt-3.5 flex flex-col gap-2.5">
+              {redFlags.map((r) => (
+                <div key={r.user_id} className="flex items-center gap-3">
+                  <Avatar name={r.full_name} tone="accent" size={26} />
+                  <span className="flex-1 text-[12.5px]">{r.full_name}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {r.days_since_last_activity >= 999
+                      ? t("dashboard.redFlags.noActivityYet")
+                      : t("dashboard.redFlags.daysInactive", { count: r.days_since_last_activity })}
+                  </span>
                 </div>
-              </Card>
-
-              {redFlags.length > 0 && (
-                <Card className="border-l-4 border-l-accent p-5">
-                  <p className="text-2xs font-bold uppercase tracking-[0.2em] text-accent">{t("dashboard.redFlags.label")}</p>
-                  <div className="mt-3.5 flex flex-col gap-2.5">
-                    {redFlags.map((r) => (
-                      <div key={r.user_id} className="flex items-center gap-3">
-                        <Avatar name={r.full_name} tone="accent" size={26} />
-                        <span className="flex-1 text-[12.5px]">{r.full_name}</span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {r.days_since_last_activity >= 999
-                            ? t("dashboard.redFlags.noActivityYet")
-                            : t("dashboard.redFlags.daysInactive", { count: r.days_since_last_activity })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+              ))}
+            </div>
+          </Card>
         )}
 
         {/* ROSTER */}

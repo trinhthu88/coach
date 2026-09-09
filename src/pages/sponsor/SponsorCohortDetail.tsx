@@ -30,7 +30,7 @@ export default function SponsorCohortDetail() {
   const cohortName = decodeURIComponent(cohortId);
   const { t } = useTranslation("sponsor");
   const {
-    goalGrowth, roster, satisfaction, minLeadersForDistribution,
+    kpis, goalGrowth, roster, satisfaction, minLeadersForDistribution,
     programmeEngagement, redFlags, coachUtilisation, loading,
   } = useSponsorCohortData(cohortName);
   const [cohort, setCohort] = useState<CohortRecord | null>(null);
@@ -70,7 +70,6 @@ export default function SponsorCohortDetail() {
 
   const sessionsCompleted = roster.reduce((s, r) => s + r.sessions_completed, 0);
   const sessionsEntitled = roster.reduce((s, r) => s + r.sessions_entitled, 0);
-  const onTrackCount = roster.filter((r) => r.enrollment_status === "active").length;
   const atRiskCount = roster.filter((r) => r.enrollment_status === "at_risk").length;
   const daysRemaining = progress ? Math.max(0, progress.total - progress.elapsed) : null;
   const avgGoalGrowthShown = !suppressIndividuals && goalGrowth?.pct_progressing != null;
@@ -122,7 +121,8 @@ export default function SponsorCohortDetail() {
       {/* SECTION 1 — HIGHLIGHT NUMBERS */}
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
         <Kpi label={t("dashboard.kpis.leadersEnrolled")} value={roster.length} icon={Users} tone="primary" />
-        <Kpi label={t("dashboard.kpis.onTrack")} value={onTrackCount} icon={CheckCircle2} tone="success" />
+        <Kpi label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
+        <Kpi label={t("dashboard.kpis.enrolledActive")} value={kpis?.enrolled_active_count ?? 0} icon={Users} tone="primary" />
         <Kpi label={t("dashboard.kpis.atRisk")} value={atRiskCount} icon={AlertTriangle} tone="warning" />
         <Kpi
           label={t("dashboard.kpis.sessionsUsed")}

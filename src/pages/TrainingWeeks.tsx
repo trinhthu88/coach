@@ -115,7 +115,7 @@ function WeekTimelineCard({
 
         {week.locked ? (
           <p className="mt-2 text-xs font-semibold text-muted-foreground">
-            {week.unlock_date ? t("list.unlockDate", { date: format(new Date(week.unlock_date), "MMM d, yyyy") }) : t("list.locked")}
+            {week.effective_unlock_date ? t("list.unlockDate", { date: format(new Date(week.effective_unlock_date), "MMM d, yyyy") }) : t("list.locked")}
           </p>
         ) : (
           <>

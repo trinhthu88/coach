@@ -89,7 +89,8 @@
       "atRiskInline_other": "{{count}} người có rủi ro cần được chú ý",
       "budgetUsed": "Ngân sách đã dùng",
       "budgetSubline": "{{spent}} trong {{total}}",
-      "budgetRunsOut": "với tốc độ này, ngân sách sẽ hết vào {{date}}"
+      "budgetRunsOut": "với tốc độ này, ngân sách sẽ hết vào {{date}}",
+      "enrolledActive": "Đã ghi danh & hoạt động"
     },
     "healthMatrix": {
       "label": "Bảng sức khỏe theo nhóm",
@@ -253,7 +254,9 @@
       "dayOf": "Ngày {{elapsed}} / {{total}}"
     },
     "programmeEngagement": {
-      "lowCompletion": "Tỷ lệ hoàn thành tuần {{week}} dưới 40% trên các module — nên kiểm tra lại."
+      "lowCompletion": "Tỷ lệ hoàn thành tuần {{week}} dưới 40% trên các module — nên kiểm tra lại.",
+      "unlocksOn": "Mở khóa vào {{date}}",
+      "locked": "Chưa mở khóa"
     },
     "completionFunnel": {
       "label": "Tiến trình hoàn thành",

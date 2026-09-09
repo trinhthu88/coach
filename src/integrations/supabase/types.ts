@@ -1089,6 +1089,42 @@ export type Database = {
           },
         ]
       }
+      cohort_week_overrides: {
+        Row: {
+          cohort_id: string
+          is_visible: boolean | null
+          training_week_id: string
+          unlock_date: string | null
+        }
+        Insert: {
+          cohort_id: string
+          is_visible?: boolean | null
+          training_week_id: string
+          unlock_date?: string | null
+        }
+        Update: {
+          cohort_id?: string
+          is_visible?: boolean | null
+          training_week_id?: string
+          unlock_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_week_overrides_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_week_overrides_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_prompt_responses: {
         Row: {
           confidence_score: number | null
@@ -1902,6 +1938,35 @@ export type Database = {
           },
         ]
       }
+      programme_triad_rounds: {
+        Row: {
+          at_week: number
+          id: string
+          programme_id: string
+          round_number: number
+        }
+        Insert: {
+          at_week: number
+          id?: string
+          programme_id: string
+          round_number: number
+        }
+        Update: {
+          at_week?: number
+          id?: string
+          programme_id?: string
+          round_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programme_triad_rounds_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programmes: {
         Row: {
           coach_session_limit: number
@@ -2673,6 +2738,7 @@ export type Database = {
           member_3_id: string | null
           name: string | null
           programme_id: string
+          round_number: number | null
           triad_round_id: string | null
           updated_at: string
         }
@@ -2688,6 +2754,7 @@ export type Database = {
           member_3_id?: string | null
           name?: string | null
           programme_id: string
+          round_number?: number | null
           triad_round_id?: string | null
           updated_at?: string
         }
@@ -2703,6 +2770,7 @@ export type Database = {
           member_3_id?: string | null
           name?: string | null
           programme_id?: string
+          round_number?: number | null
           triad_round_id?: string | null
           updated_at?: string
         }
@@ -3106,6 +3174,7 @@ export type Database = {
         Args: never
         Returns: {
           completed_at: string
+          effective_unlock_date: string
           id: string
           locked: boolean
           skill_card_visible: boolean
@@ -3236,6 +3305,7 @@ export type Database = {
         Args: { p_cohort_id?: string | null }
         Returns: {
           at_risk_count: number
+          enrolled_active_count: number
           leaders_enrolled: number
           on_track_count: number
           sessions_entitled: number
@@ -3250,6 +3320,8 @@ export type Database = {
         Args: { p_cohort_id?: string | null }
         Returns: {
           daily_prompt_response_rate: number
+          effective_unlock_date: string
+          is_locked: boolean
           quiz_avg_score: number
           quiz_completion_pct: number
           reflection_completion_pct: number

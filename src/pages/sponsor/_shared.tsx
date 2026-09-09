@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Star, ArrowUpDown } from "lucide-react";
+import { format } from "date-fns";
+import { Star, ArrowUpDown, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { SectionCard, Pill, MiniBar, Avatar, EngagementCell } from "@/pages/admin/_shared";
@@ -111,6 +112,22 @@ export function ProgrammeEngagementTable({ rows, lowCompletionNote }: { rows: Sp
         {rows.map((w) => {
           const pcts = [w.skill_card_completion_pct, w.quiz_completion_pct, w.reflection_completion_pct, w.triad_completion_pct, w.daily_prompt_response_rate].filter((p): p is number => p != null);
           const avgPct = pcts.length ? pcts.reduce((s, p) => s + p, 0) / pcts.length : null;
+          if (w.is_locked) {
+            return (
+              <div
+                key={`${w.week_number}-${w.week_title}`}
+                className="grid grid-cols-[64px_1fr] items-center gap-2 px-4 py-3 text-[12.5px] text-muted-foreground opacity-60"
+              >
+                <span className="font-bold">W{w.week_number}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Lock className="h-3 w-3" />
+                  {w.effective_unlock_date
+                    ? t("cohortDetail.programmeEngagement.unlocksOn", { date: format(new Date(w.effective_unlock_date), "MMM d, yyyy") })
+                    : t("cohortDetail.programmeEngagement.locked")}
+                </span>
+              </div>
+            );
+          }
           return (
             <div key={`${w.week_number}-${w.week_title}`}>
               <div className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-0 px-4 py-3 text-[12.5px]">

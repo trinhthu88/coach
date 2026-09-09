@@ -90,7 +90,8 @@
       "atRiskInline_one": "{{count}} leader at risk and may need attention",
       "budgetUsed": "Budget used",
       "budgetSubline": "{{spent}} of {{total}}",
-      "budgetRunsOut": "at this pace, budget runs out {{date}}"
+      "budgetRunsOut": "at this pace, budget runs out {{date}}",
+      "enrolledActive": "Enrolled & active"
     },
     "healthMatrix": {
       "label": "Cohort health matrix",
@@ -255,7 +256,9 @@
       "dayOf": "Day {{elapsed}} of {{total}}"
     },
     "programmeEngagement": {
-      "lowCompletion": "Week {{week}} completion is under 40% across modules — worth a check-in."
+      "lowCompletion": "Week {{week}} completion is under 40% across modules — worth a check-in.",
+      "unlocksOn": "Unlocks {{date}}",
+      "locked": "Not yet unlocked"
     },
     "completionFunnel": {
       "label": "Completion funnel",
