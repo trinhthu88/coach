@@ -3193,7 +3193,7 @@ export type Database = {
         Returns: boolean
       }
       sponsor_coach_utilisation: {
-        Args: never
+        Args: { p_cohort_id?: string | null }
         Returns: {
           coach_name: string
           completed_sessions: number
@@ -3210,7 +3210,7 @@ export type Database = {
         }[]
       }
       sponsor_engagement_red_flags: {
-        Args: never
+        Args: { p_cohort_id?: string | null }
         Returns: {
           days_since_last_activity: number
           full_name: string
@@ -3221,7 +3221,7 @@ export type Database = {
         }[]
       }
       sponsor_goal_growth_summary: {
-        Args: never
+        Args: { p_cohort_id?: string | null }
         Returns: {
           avg_growth: number
           enrolled_leaders_count: number
@@ -3233,7 +3233,7 @@ export type Database = {
         }[]
       }
       sponsor_kpis: {
-        Args: never
+        Args: { p_cohort_id?: string | null }
         Returns: {
           at_risk_count: number
           leaders_enrolled: number
@@ -3242,9 +3242,12 @@ export type Database = {
           sessions_used: number
         }[]
       }
-      sponsor_min_leaders_for_distribution: { Args: never; Returns: number }
+      sponsor_min_leaders_for_distribution: {
+        Args: { p_cohort_id?: string | null }
+        Returns: number
+      }
       sponsor_programme_engagement: {
-        Args: never
+        Args: { p_cohort_id?: string | null }
         Returns: {
           daily_prompt_response_rate: number
           quiz_avg_score: number
@@ -3258,7 +3261,7 @@ export type Database = {
         }[]
       }
       sponsor_roster: {
-        Args: never
+        Args: { p_cohort_id?: string | null }
         Returns: {
           coachee_id: string
           cohort_name: string
@@ -3272,14 +3275,14 @@ export type Database = {
         }[]
       }
       sponsor_satisfaction_summary: {
-        Args: never
+        Args: { p_cohort_id?: string | null }
         Returns: {
           avg_rating: number
           rated_session_count: number
         }[]
       }
       sponsor_satisfaction_trend: {
-        Args: never
+        Args: { p_cohort_id?: string | null }
         Returns: {
           avg_rating: number
           month_start: string

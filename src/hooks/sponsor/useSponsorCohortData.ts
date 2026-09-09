@@ -23,28 +23,22 @@ interface SponsorCohortData {
 }
 
 /**
- * None of the sponsor_* RPCs take a cohort_id argument (see
- * src/integrations/supabase/types.ts — every one of them is `Args: never`),
- * so this hook fetches the same org-wide RPCs useSponsorDashboardData does
- * and narrows client-side to one cohort:
- *  - roster: filtered by cohort_name, the only cohort field it returns.
- *  - redFlags: cross-referenced against the cohort-filtered roster's
- *    coachee_id (sponsor_engagement_red_flags returns user_id but no
- *    cohort_name at all).
- *  - goalGrowth: recomputed from the cohort-filtered roster's own
- *    goal_growth (already a per-leader 0-100 pct), using the same bucket
- *    thresholds sponsor_goal_growth_summary() uses server-side — the RPC's
- *    own return value is a single org-wide row with no per-leader
- *    breakdown to filter.
- *  - programmeEngagement / coachUtilisation: these RPCs aggregate across
- *    the whole org with no leader or cohort dimension in their returned
- *    columns at all (programme_engagement is per-week-across-all-users,
- *    coach_utilisation is per-coach-across-all-sessions) — there is no
- *    field to filter on, so these are shown org-wide on every cohort's
- *    detail page rather than silently faked as cohort-scoped.
+ * Every sponsor_* RPC now accepts an optional p_cohort_id uuid (see
+ * src/integrations/supabase/types.ts), so this hook fetches cohort-scoped
+ * data server-side instead of over-fetching org-wide rows and filtering
+ * them client-side.
+ *
+ * The `cohortId` this hook receives is actually the cohort *name* — the
+ * route param SponsorCohortDetail.tsx passes in (none of the sponsor_*
+ * RPCs return a cohort id, only cohort_name, so the route was built on the
+ * name). p_cohort_id is a uuid, so the cohort's id is resolved from its
+ * name first via a direct `cohorts` table query — the one exception to the
+ * sponsor_*-RPC-only rule, same one SponsorCohortDetail.tsx already uses
+ * for the cohort's start/end dates.
  */
 export function useSponsorCohortData(cohortId: string): SponsorCohortData {
   const [kpis, setKpis] = useState<SponsorKpis | null>(null);
+  const [goalGrowth, setGoalGrowth] = useState<SponsorGoalGrowth | null>(null);
   const [roster, setRoster] = useState<SponsorRosterRow[]>([]);
   const [satisfaction, setSatisfaction] = useState<SponsorSatisfaction | null>(null);
   const [minLeadersForDistribution, setMinLeadersForDistribution] = useState(5);
@@ -57,29 +51,36 @@ export function useSponsorCohortData(cohortId: string): SponsorCohortData {
     let mounted = true;
     setLoading(true);
     (async () => {
+      const { data: cohortRow } = await supabase
+        .from("cohorts")
+        .select("id")
+        .eq("name", cohortId)
+        .maybeSingle();
+      if (!mounted) return;
+      const pCohortId = cohortRow?.id ?? null;
+
       const [
-        kpisRes, rosterRes, satisfactionRes, minLeadersRes,
+        kpisRes, goalGrowthRes, rosterRes, satisfactionRes, minLeadersRes,
         engagementRes, redFlagsRes, utilisationRes,
       ] = await Promise.all([
-        supabase.rpc("sponsor_kpis"),
-        supabase.rpc("sponsor_roster"),
-        supabase.rpc("sponsor_satisfaction_summary"),
-        supabase.rpc("sponsor_min_leaders_for_distribution"),
-        supabase.rpc("sponsor_programme_engagement"),
-        supabase.rpc("sponsor_engagement_red_flags"),
-        supabase.rpc("sponsor_coach_utilisation"),
+        supabase.rpc("sponsor_kpis", { p_cohort_id: pCohortId }),
+        supabase.rpc("sponsor_goal_growth_summary", { p_cohort_id: pCohortId }),
+        supabase.rpc("sponsor_roster", { p_cohort_id: pCohortId }),
+        supabase.rpc("sponsor_satisfaction_summary", { p_cohort_id: pCohortId }),
+        supabase.rpc("sponsor_min_leaders_for_distribution", { p_cohort_id: pCohortId }),
+        supabase.rpc("sponsor_programme_engagement", { p_cohort_id: pCohortId }),
+        supabase.rpc("sponsor_engagement_red_flags", { p_cohort_id: pCohortId }),
+        supabase.rpc("sponsor_coach_utilisation", { p_cohort_id: pCohortId }),
       ]);
       if (!mounted) return;
 
-      const cohortRoster = (rosterRes.data ?? []).filter((r) => r.cohort_name === cohortId);
-      const cohortCoacheeIds = new Set(cohortRoster.map((r) => r.coachee_id));
-
       setKpis(kpisRes.data?.[0] ?? null);
-      setRoster(cohortRoster);
+      setGoalGrowth(goalGrowthRes.data?.[0] ?? null);
+      setRoster(rosterRes.data ?? []);
       setSatisfaction(satisfactionRes.data?.[0] ?? null);
       if (typeof minLeadersRes.data === "number") setMinLeadersForDistribution(minLeadersRes.data);
       setProgrammeEngagement(engagementRes.data ?? []);
-      setRedFlags((redFlagsRes.data ?? []).filter((f) => cohortCoacheeIds.has(f.user_id)));
+      setRedFlags(redFlagsRes.data ?? []);
       setCoachUtilisation(utilisationRes.data ?? []);
       setLoading(false);
     })();
@@ -87,18 +88,6 @@ export function useSponsorCohortData(cohortId: string): SponsorCohortData {
       mounted = false;
     };
   }, [cohortId]);
-
-  const minLeaders = minLeadersForDistribution;
-  const withGrowth = roster.filter((r) => r.goal_growth != null);
-  const goalGrowth: SponsorGoalGrowth | null = roster.length === 0 ? null : {
-    avg_growth: withGrowth.length ? withGrowth.reduce((s, r) => s + r.goal_growth!, 0) / withGrowth.length : null as unknown as number,
-    pct_progressing: withGrowth.length ? (100 * withGrowth.filter((r) => r.goal_growth! >= 50).length) / withGrowth.length : null as unknown as number,
-    enrolled_leaders_count: roster.length,
-    hit_target_count: withGrowth.length >= minLeaders ? withGrowth.filter((r) => r.goal_growth! >= 100).length : null as unknown as number,
-    meaningful_progress_count: withGrowth.length >= minLeaders ? withGrowth.filter((r) => r.goal_growth! >= 50 && r.goal_growth! < 100).length : null as unknown as number,
-    just_started_count: withGrowth.length >= minLeaders ? withGrowth.filter((r) => r.goal_growth! > 0 && r.goal_growth! < 50).length : null as unknown as number,
-    flat_declined_count: withGrowth.length >= minLeaders ? withGrowth.filter((r) => r.goal_growth! <= 0).length : null as unknown as number,
-  };
 
   return {
     kpis, goalGrowth, roster, satisfaction, minLeadersForDistribution,
