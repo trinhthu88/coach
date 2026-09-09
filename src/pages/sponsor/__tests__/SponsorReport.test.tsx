@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import "@/i18n/config";
 import i18n from "@/i18n/config";
@@ -33,16 +34,20 @@ vi.mock("@/context/AuthContext", () => ({
 
 import SponsorReport from "../SponsorReport";
 
+function renderSponsorReport() {
+  return render(<MemoryRouter initialEntries={["/sponsor/report"]}><SponsorReport /></MemoryRouter>);
+}
+
 describe("SponsorReport", () => {
   it("shows the preview placeholder until generated, then renders the report with the real distribution (org has >= 5 leaders)", async () => {
-    render(<SponsorReport />);
+    renderSponsorReport();
 
     await waitFor(() => expect(screen.getByText("Your one-pager previews here")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: /generate report/i }));
 
     await waitFor(() => expect(screen.getByText("Clariva Sponsor Summary")).toBeInTheDocument(), { timeout: 2000 });
-    expect(screen.getByText("Hit target")).toBeInTheDocument();
+    expect(screen.getByText("Goal reached")).toBeInTheDocument();
     expect(screen.getByText("Priya Shah")).toBeInTheDocument();
     expect(
       screen.getByText(/session notes, chat messages, reflections and goal wording are excluded/i)

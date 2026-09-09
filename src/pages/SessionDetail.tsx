@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  Clock,
   Loader2,
   Video,
   Save,

@@ -1,0 +1,22 @@
+name: Database validation
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'src/integrations/supabase/types.ts'
+      - 'scripts/validate-db.sh'
+      - 'package*.json'
+      - '.github/workflows/database-validation.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run validate:db

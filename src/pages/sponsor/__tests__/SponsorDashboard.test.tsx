@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import "@/i18n/config";
 import i18n from "@/i18n/config";
 
@@ -33,6 +34,10 @@ vi.mock("@/context/AuthContext", () => ({
 }));
 
 import SponsorDashboard from "../SponsorDashboard";
+
+function renderSponsorDashboard() {
+  return render(<MemoryRouter initialEntries={["/sponsor"]}><SponsorDashboard /></MemoryRouter>);
+}
 
 function setMockData(overrides: Partial<typeof rpcResponses> = {}) {
   Object.assign(rpcResponses, {
@@ -82,7 +87,7 @@ function setMockData(overrides: Partial<typeof rpcResponses> = {}) {
 describe("SponsorDashboard", () => {
   it("shows a loading spinner before data arrives", async () => {
     setMockData();
-    const { container } = render(<SponsorDashboard />);
+    const { container } = renderSponsorDashboard();
     expect(container.querySelector(".animate-spin")).toBeInTheDocument();
     // Let the pending fetch settle before the test ends, so React doesn't
     // warn about a state update outside act() once the promise resolves.
@@ -91,7 +96,7 @@ describe("SponsorDashboard", () => {
 
   it("renders KPIs, roster, and the privacy notice from fetched data", async () => {
     setMockData();
-    render(<SponsorDashboard />);
+    renderSponsorDashboard();
 
     await waitFor(() => expect(screen.getByText("Priya Shah")).toBeInTheDocument());
 
@@ -115,7 +120,7 @@ describe("SponsorDashboard", () => {
     fireEvent.click(screen.getByText(/see programme details/i));
 
     // Distribution shown (org has 8 >= 5 leaders)
-    expect(screen.getByText("Hit target")).toBeInTheDocument();
+    expect(screen.getByText("Goal reached")).toBeInTheDocument();
     expect(screen.getByText("Meaningful progress")).toBeInTheDocument();
   });
 
@@ -133,13 +138,13 @@ describe("SponsorDashboard", () => {
         },
       ],
     });
-    render(<SponsorDashboard />);
+    renderSponsorDashboard();
 
     await waitFor(() => expect(screen.getByText(/see programme details/i)).toBeInTheDocument());
     fireEvent.click(screen.getByText(/see programme details/i));
 
     await waitFor(() => expect(screen.getByText(/distribution hidden/i)).toBeInTheDocument());
-    expect(screen.queryByText("Hit target")).not.toBeInTheDocument();
+    expect(screen.queryByText("Goal reached")).not.toBeInTheDocument();
   });
 
   it("renders an empty-roster message when the org has no enrolled leaders", async () => {
@@ -148,7 +153,7 @@ describe("SponsorDashboard", () => {
       sponsor_roster: [],
       sponsor_goal_growth_summary: [],
     });
-    render(<SponsorDashboard />);
+    renderSponsorDashboard();
 
     await waitFor(() => expect(screen.getByText("No leaders enrolled yet.")).toBeInTheDocument());
   });

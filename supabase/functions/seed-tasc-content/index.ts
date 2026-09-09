@@ -1136,7 +1136,7 @@ Deno.serve(async (req) => {
     // ---- 4-6. Training weeks + daily prompts + quizzes ----
     const weekIds: string[] = [];
     const quizIds: string[] = [];
-    for (const w of WEEKS as any[]) {
+    for (const w of WEEKS) {
       const { dailyPrompts, quiz, id: _weekFallbackId, ...weekRow } = w;
       const { data: existingWeek } = await admin
         .from("training_weeks")
@@ -1193,7 +1193,7 @@ Deno.serve(async (req) => {
 
     // ---- 7. Programme reflections + reflection questions ----
     const reflectionIds: string[] = [];
-    for (const r of REFLECTIONS as any[]) {
+    for (const r of REFLECTIONS) {
       const { questions, id: _reflFallbackId, ...reflectionRow } = r;
       const { data: existingRefl } = await admin
         .from("programme_reflections")
@@ -1221,9 +1221,9 @@ Deno.serve(async (req) => {
 
     // ---- 8. Triad rounds ----
     const roundIds: string[] = [];
-    for (const tr of TRIAD_ROUNDS as any[]) {
+    for (const tr of TRIAD_ROUNDS) {
       const { id: _roundFallbackId, ...roundRow } = tr;
-      const weekIdx = WEEKS.findIndex((w: any) => w.id === tr.training_week_id);
+      const weekIdx = WEEKS.findIndex((w) => w.id === tr.training_week_id);
       const trainingWeekId = weekIdx >= 0 ? weekIds[weekIdx] : null;
       const { data: existingRound } = await admin
         .from("triad_rounds")

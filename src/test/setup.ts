@@ -13,3 +13,17 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+class MockIntersectionObserver implements IntersectionObserver {
+  readonly root = null;
+  readonly rootMargin = "";
+  readonly thresholds: ReadonlyArray<number> = [];
+
+  constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
+  disconnect() {}
+  observe(_target: Element) {}
+  takeRecords(): IntersectionObserverEntry[] { return []; }
+  unobserve(_target: Element) {}
+}
+
+globalThis.IntersectionObserver = MockIntersectionObserver;
