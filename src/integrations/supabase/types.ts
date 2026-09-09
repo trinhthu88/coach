@@ -7,36 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       access_requests: {
@@ -143,6 +113,7 @@ export type Database = {
           answers: Json
           assignment_id: string
           correct_count: number | null
+          enrollment_id: string | null
           id: string
           reflection_text: string | null
           score_pct: number | null
@@ -154,6 +125,7 @@ export type Database = {
           answers?: Json
           assignment_id: string
           correct_count?: number | null
+          enrollment_id?: string | null
           id?: string
           reflection_text?: string | null
           score_pct?: number | null
@@ -165,6 +137,7 @@ export type Database = {
           answers?: Json
           assignment_id?: string
           correct_count?: number | null
+          enrollment_id?: string | null
           id?: string
           reflection_text?: string | null
           score_pct?: number | null
@@ -178,6 +151,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_submissions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
             referencedColumns: ["id"]
           },
           {
@@ -764,6 +744,7 @@ export type Database = {
           created_at: string
           current_rating: number
           current_updated_at: string
+          enrollment_id: string | null
           goal_id: string
           id: string
           start_rating: number
@@ -775,6 +756,7 @@ export type Database = {
           created_at?: string
           current_rating?: number
           current_updated_at?: string
+          enrollment_id?: string | null
           goal_id: string
           id?: string
           start_rating?: number
@@ -786,19 +768,29 @@ export type Database = {
           created_at?: string
           current_rating?: number
           current_updated_at?: string
+          enrollment_id?: string | null
           goal_id?: string
           id?: string
           start_rating?: number
           target_rating?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coachee_goal_ratings_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coachee_goals: {
         Row: {
           coachee_id: string
           created_at: string
           description: string | null
+          enrollment_id: string | null
           id: string
           shared_with_sponsor: boolean
           sort_order: number
@@ -811,6 +803,7 @@ export type Database = {
           coachee_id: string
           created_at?: string
           description?: string | null
+          enrollment_id?: string | null
           id?: string
           shared_with_sponsor?: boolean
           sort_order?: number
@@ -823,6 +816,7 @@ export type Database = {
           coachee_id?: string
           created_at?: string
           description?: string | null
+          enrollment_id?: string | null
           id?: string
           shared_with_sponsor?: boolean
           sort_order?: number
@@ -831,13 +825,22 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coachee_goals_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coachee_milestones: {
         Row: {
           coachee_id: string
           created_at: string
           done_at: string | null
+          enrollment_id: string | null
           goal_id: string
           id: string
           is_done: boolean
@@ -850,6 +853,7 @@ export type Database = {
           coachee_id: string
           created_at?: string
           done_at?: string | null
+          enrollment_id?: string | null
           goal_id: string
           id?: string
           is_done?: boolean
@@ -862,6 +866,7 @@ export type Database = {
           coachee_id?: string
           created_at?: string
           done_at?: string | null
+          enrollment_id?: string | null
           goal_id?: string
           id?: string
           is_done?: boolean
@@ -871,6 +876,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "coachee_milestones_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "coachee_milestones_goal_id_fkey"
             columns: ["goal_id"]
@@ -889,6 +901,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           duration_minutes: number
+          enrollment_id: string | null
           id: string
           meeting_url: string | null
           peer_provider_id: string
@@ -913,6 +926,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
+          enrollment_id?: string | null
           id?: string
           meeting_url?: string | null
           peer_provider_id: string
@@ -937,6 +951,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number
+          enrollment_id?: string | null
           id?: string
           meeting_url?: string | null
           peer_provider_id?: string
@@ -953,7 +968,15 @@ export type Database = {
           topic?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coachee_peer_sessions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coachee_profiles: {
         Row: {
@@ -1130,6 +1153,7 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           daily_prompt_id: string
+          enrollment_id: string | null
           id: string
           opened_at: string | null
           responded_at: string | null
@@ -1140,6 +1164,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           daily_prompt_id: string
+          enrollment_id?: string | null
           id?: string
           opened_at?: string | null
           responded_at?: string | null
@@ -1150,6 +1175,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           daily_prompt_id?: string
+          enrollment_id?: string | null
           id?: string
           opened_at?: string | null
           responded_at?: string | null
@@ -1162,6 +1188,13 @@ export type Database = {
             columns: ["daily_prompt_id"]
             isOneToOne: false
             referencedRelation: "daily_prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_prompt_responses_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
             referencedColumns: ["id"]
           },
           {
@@ -1210,6 +1243,255 @@ export type Database = {
             columns: ["training_week_id"]
             isOneToOne: false
             referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollment_actions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          enrollment_id: string
+          goal_id: string | null
+          id: string
+          milestone_id: string | null
+          owner_user_id: string
+          source_activity_id: string | null
+          source_activity_type: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          enrollment_id: string
+          goal_id?: string | null
+          id?: string
+          milestone_id?: string | null
+          owner_user_id: string
+          source_activity_id?: string | null
+          source_activity_type?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          enrollment_id?: string
+          goal_id?: string | null
+          id?: string
+          milestone_id?: string | null
+          owner_user_id?: string
+          source_activity_id?: string | null
+          source_activity_type?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_actions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_actions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "coachee_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_actions_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "coachee_milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_actions_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollment_module_milestones: {
+        Row: {
+          created_at: string
+          due_on: string
+          enrollment_module_snapshot_id: string
+          id: string
+          required_units: number
+          sequence: number
+          training_week_id: string | null
+          window_end_on: string | null
+        }
+        Insert: {
+          created_at?: string
+          due_on: string
+          enrollment_module_snapshot_id: string
+          id?: string
+          required_units?: number
+          sequence: number
+          training_week_id?: string | null
+          window_end_on?: string | null
+        }
+        Update: {
+          created_at?: string
+          due_on?: string
+          enrollment_module_snapshot_id?: string
+          id?: string
+          required_units?: number
+          sequence?: number
+          training_week_id?: string | null
+          window_end_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_module_milestones_enrollment_module_snapshot_id_fkey"
+            columns: ["enrollment_module_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "enrollment_module_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_module_milestones_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollment_module_snapshots: {
+        Row: {
+          created_at: string
+          distribution_mode: string
+          distribution_settings: Json
+          ends_on: string
+          enrollment_id: string
+          id: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_module_id: string
+          required: boolean
+          required_units: number
+          starts_on: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          distribution_mode?: string
+          distribution_settings?: Json
+          ends_on: string
+          enrollment_id: string
+          id?: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_module_id: string
+          required?: boolean
+          required_units?: number
+          starts_on: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          distribution_mode?: string
+          distribution_settings?: Json
+          ends_on?: string
+          enrollment_id?: string
+          id?: string
+          module?: Database["public"]["Enums"]["programme_module_type"]
+          programme_module_id?: string
+          required?: boolean
+          required_units?: number
+          starts_on?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_module_snapshots_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_module_snapshots_programme_module_id_fkey"
+            columns: ["programme_module_id"]
+            isOneToOne: false
+            referencedRelation: "programme_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_checkins: {
+        Row: {
+          actor_user_id: string
+          created_at: string
+          enrollment_id: string
+          goal_id: string
+          id: string
+          new_rating: number | null
+          note: string | null
+          previous_rating: number | null
+          source_activity_id: string
+          source_activity_type: string
+        }
+        Insert: {
+          actor_user_id: string
+          created_at?: string
+          enrollment_id: string
+          goal_id: string
+          id?: string
+          new_rating?: number | null
+          note?: string | null
+          previous_rating?: number | null
+          source_activity_id: string
+          source_activity_type: string
+        }
+        Update: {
+          actor_user_id?: string
+          created_at?: string
+          enrollment_id?: string
+          goal_id?: string
+          id?: string
+          new_rating?: number | null
+          note?: string | null
+          previous_rating?: number | null
+          source_activity_id?: string
+          source_activity_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_checkins_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_checkins_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_checkins_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "coachee_goals"
             referencedColumns: ["id"]
           },
         ]
@@ -1358,6 +1640,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           duration_minutes: number
+          enrollment_id: string | null
           feedback_submitted_at: string | null
           id: string
           meeting_url: string | null
@@ -1382,6 +1665,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
+          enrollment_id?: string | null
           feedback_submitted_at?: string | null
           id?: string
           meeting_url?: string | null
@@ -1406,6 +1690,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number
+          enrollment_id?: string | null
           feedback_submitted_at?: string | null
           id?: string
           meeting_url?: string | null
@@ -1423,6 +1708,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "mentoring_sessions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mentoring_sessions_mentee_id_fkey"
             columns: ["mentee_id"]
@@ -1661,6 +1953,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           duration_minutes: number
+          enrollment_id: string | null
           id: string
           meeting_url: string | null
           peer_coach_id: string
@@ -1684,6 +1977,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
+          enrollment_id?: string | null
           id?: string
           meeting_url?: string | null
           peer_coach_id: string
@@ -1707,6 +2001,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number
+          enrollment_id?: string | null
           id?: string
           meeting_url?: string | null
           peer_coach_id?: string
@@ -1717,7 +2012,15 @@ export type Database = {
           topic?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "peer_sessions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -2145,6 +2448,7 @@ export type Database = {
       reflection_submissions: {
         Row: {
           confidence_score: number
+          enrollment_id: string | null
           id: string
           reflection_id: string
           submitted_at: string
@@ -2152,6 +2456,7 @@ export type Database = {
         }
         Insert: {
           confidence_score: number
+          enrollment_id?: string | null
           id?: string
           reflection_id: string
           submitted_at?: string
@@ -2159,12 +2464,20 @@ export type Database = {
         }
         Update: {
           confidence_score?: number
+          enrollment_id?: string | null
           id?: string
           reflection_id?: string
           submitted_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reflection_submissions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reflection_submissions_reflection_id_fkey"
             columns: ["reflection_id"]
@@ -2343,6 +2656,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           duration_minutes: number
+          enrollment_id: string | null
           id: string
           meeting_url: string | null
           slot_id: string | null
@@ -2366,6 +2680,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
+          enrollment_id?: string | null
           id?: string
           meeting_url?: string | null
           slot_id?: string | null
@@ -2389,6 +2704,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number
+          enrollment_id?: string | null
           id?: string
           meeting_url?: string | null
           slot_id?: string | null
@@ -2410,6 +2726,13 @@ export type Database = {
             columns: ["coachee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
             referencedColumns: ["id"]
           },
         ]
@@ -2559,6 +2882,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          enrollment_id: string | null
           id: string
           pdf_downloaded_at: string | null
           training_week_id: string
@@ -2568,6 +2892,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
+          enrollment_id?: string | null
           id?: string
           pdf_downloaded_at?: string | null
           training_week_id: string
@@ -2577,6 +2902,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
+          enrollment_id?: string | null
           id?: string
           pdf_downloaded_at?: string | null
           training_week_id?: string
@@ -2584,6 +2910,13 @@ export type Database = {
           viewed_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "training_progress_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "training_progress_training_week_id_fkey"
             columns: ["training_week_id"]
@@ -2730,6 +3063,9 @@ export type Database = {
           assigned_by: string
           cohort_id: string | null
           created_at: string
+          enrollment_1_id: string | null
+          enrollment_2_id: string | null
+          enrollment_3_id: string | null
           group_language: string
           id: string
           is_active: boolean
@@ -2746,6 +3082,9 @@ export type Database = {
           assigned_by?: string
           cohort_id?: string | null
           created_at?: string
+          enrollment_1_id?: string | null
+          enrollment_2_id?: string | null
+          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
@@ -2762,6 +3101,9 @@ export type Database = {
           assigned_by?: string
           cohort_id?: string | null
           created_at?: string
+          enrollment_1_id?: string | null
+          enrollment_2_id?: string | null
+          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
@@ -2780,6 +3122,27 @@ export type Database = {
             columns: ["cohort_id"]
             isOneToOne: false
             referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_enrollment_1_id_fkey"
+            columns: ["enrollment_1_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_enrollment_2_id_fkey"
+            columns: ["enrollment_2_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_enrollment_3_id_fkey"
+            columns: ["enrollment_3_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
             referencedColumns: ["id"]
           },
           {
@@ -2821,6 +3184,7 @@ export type Database = {
       }
       triad_reflections: {
         Row: {
+          enrollment_id: string | null
           id: string
           learned_as_coach: string | null
           learned_as_coachee: string | null
@@ -2834,6 +3198,7 @@ export type Database = {
           will_use_as_observer: string | null
         }
         Insert: {
+          enrollment_id?: string | null
           id?: string
           learned_as_coach?: string | null
           learned_as_coachee?: string | null
@@ -2847,6 +3212,7 @@ export type Database = {
           will_use_as_observer?: string | null
         }
         Update: {
+          enrollment_id?: string | null
           id?: string
           learned_as_coach?: string | null
           learned_as_coachee?: string | null
@@ -2860,6 +3226,13 @@ export type Database = {
           will_use_as_observer?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "triad_reflections_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "triad_reflections_participant_id_fkey"
             columns: ["participant_id"]
@@ -2938,6 +3311,8 @@ export type Database = {
       }
       triad_sessions: {
         Row: {
+          coach_enrollment_id: string | null
+          coachee_enrollment_id: string | null
           created_at: string
           id: string
           meeting_url: string | null
@@ -2945,6 +3320,7 @@ export type Database = {
           member_2_response: string
           member_3_response: string | null
           notes: string | null
+          observer_enrollment_id: string | null
           proposed_by: string
           proposed_end_time: string | null
           proposed_start_time: string | null
@@ -2954,6 +3330,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          coach_enrollment_id?: string | null
+          coachee_enrollment_id?: string | null
           created_at?: string
           id?: string
           meeting_url?: string | null
@@ -2961,6 +3339,7 @@ export type Database = {
           member_2_response?: string
           member_3_response?: string | null
           notes?: string | null
+          observer_enrollment_id?: string | null
           proposed_by?: string
           proposed_end_time?: string | null
           proposed_start_time?: string | null
@@ -2970,6 +3349,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          coach_enrollment_id?: string | null
+          coachee_enrollment_id?: string | null
           created_at?: string
           id?: string
           meeting_url?: string | null
@@ -2977,6 +3358,7 @@ export type Database = {
           member_2_response?: string
           member_3_response?: string | null
           notes?: string | null
+          observer_enrollment_id?: string | null
           proposed_by?: string
           proposed_end_time?: string | null
           proposed_start_time?: string | null
@@ -2986,6 +3368,27 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "triad_sessions_coach_enrollment_id_fkey"
+            columns: ["coach_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_coachee_enrollment_id_fkey"
+            columns: ["coachee_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_observer_enrollment_id_fkey"
+            columns: ["observer_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "triad_sessions_triad_group_id_fkey"
             columns: ["triad_group_id"]
@@ -3050,9 +3453,41 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      enrollment_ongoing_conflicts: {
+        Row: {
+          enrollment_ids: string[] | null
+          statuses: Database["public"]["Enums"]["enrollment_status"][] | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programme_enrollments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollment_scope_backfill_audit: {
+        Row: {
+          candidate_enrollments: number | null
+          record_id: string | null
+          table_name: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      assert_enrollment_scope: {
+        Args: {
+          p_cohort_id?: string
+          p_enrollment_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       bulk_create_availability: {
         Args: {
           _coach_id: string
@@ -3119,7 +3554,42 @@ export type Database = {
         Args: { p_enrollment_id: string; p_user_id: string }
         Returns: number
       }
+      create_programme_enrollment: {
+        Args: {
+          p_cohort_id: string
+          p_end_date?: string
+          p_organization_id: string
+          p_programme_id: string
+          p_start_date?: string
+          p_user_id: string
+        }
+        Returns: {
+          coachee_id: string | null
+          cohort_id: string | null
+          created_at: string
+          end_date: string | null
+          id: string
+          notes: string | null
+          organization_id: string | null
+          programme_id: string
+          progress_pct: number
+          start_date: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "programme_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
+      generate_enrollment_schedule: {
+        Args: { p_enrollment_id: string }
+        Returns: undefined
+      }
       get_coach_peer_session_usage: {
         Args: { _coach_id: string }
         Returns: {
@@ -3132,6 +3602,19 @@ export type Database = {
         Returns: {
           monthly_limit: number
           used_this_month: number
+        }[]
+      }
+      get_enrollment_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          full_completion_pct: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          pace_status: string
+          required_units: number
         }[]
       }
       get_mentoring_given_limit: {
@@ -3256,6 +3739,34 @@ export type Database = {
         Returns: boolean
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
+      record_goal_checkin: {
+        Args: {
+          p_enrollment_id: string
+          p_goal_id: string
+          p_new_rating: number
+          p_note?: string
+          p_source_activity_id: string
+          p_source_activity_type: string
+        }
+        Returns: {
+          actor_user_id: string
+          created_at: string
+          enrollment_id: string
+          goal_id: string
+          id: string
+          new_rating: number | null
+          note: string | null
+          previous_rating: number | null
+          source_activity_id: string
+          source_activity_type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "goal_checkins"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       refresh_all_progress_pct: { Args: never; Returns: number }
       remove_own_coachee: { Args: { _coachee_id: string }; Returns: boolean }
       shares_session_with: {
@@ -3528,9 +4039,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       alert_severity: ["info", "warning", "critical"],
@@ -3566,3 +4074,4 @@ export const Constants = {
     },
   },
 } as const
+
