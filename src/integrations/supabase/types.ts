@@ -1035,6 +1035,42 @@ export type Database = {
         }
         Relationships: []
       }
+      cohort_week_overrides: {
+        Row: {
+          cohort_id: string
+          is_visible: boolean | null
+          training_week_id: string
+          unlock_date: string | null
+        }
+        Insert: {
+          cohort_id: string
+          is_visible?: boolean | null
+          training_week_id: string
+          unlock_date?: string | null
+        }
+        Update: {
+          cohort_id?: string
+          is_visible?: boolean | null
+          training_week_id?: string
+          unlock_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_week_overrides_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_week_overrides_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cohorts: {
         Row: {
           color: string | null
@@ -1085,42 +1121,6 @@ export type Database = {
             columns: ["programme_id"]
             isOneToOne: false
             referencedRelation: "programmes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cohort_week_overrides: {
-        Row: {
-          cohort_id: string
-          is_visible: boolean | null
-          training_week_id: string
-          unlock_date: string | null
-        }
-        Insert: {
-          cohort_id: string
-          is_visible?: boolean | null
-          training_week_id: string
-          unlock_date?: string | null
-        }
-        Update: {
-          cohort_id?: string
-          is_visible?: boolean | null
-          training_week_id?: string
-          unlock_date?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cohort_week_overrides_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "cohorts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cohort_week_overrides_training_week_id_fkey"
-            columns: ["training_week_id"]
-            isOneToOne: false
-            referencedRelation: "training_weeks"
             referencedColumns: ["id"]
           },
         ]
@@ -3115,6 +3115,10 @@ export type Database = {
         Returns: boolean
       }
       coachee_has_allowlist: { Args: { _coachee_id: string }; Returns: boolean }
+      compute_leader_progress: {
+        Args: { p_enrollment_id: string; p_user_id: string }
+        Returns: number
+      }
       dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
       get_coach_peer_session_usage: {
         Args: { _coach_id: string }
@@ -3252,6 +3256,7 @@ export type Database = {
         Returns: boolean
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
+      refresh_all_progress_pct: { Args: never; Returns: number }
       remove_own_coachee: { Args: { _coachee_id: string }; Returns: boolean }
       shares_session_with: {
         Args: { _target: string; _viewer: string }
@@ -3262,7 +3267,7 @@ export type Database = {
         Returns: boolean
       }
       sponsor_coach_utilisation: {
-        Args: { p_cohort_id?: string | null }
+        Args: { p_cohort_id?: string }
         Returns: {
           coach_name: string
           completed_sessions: number
@@ -3279,7 +3284,7 @@ export type Database = {
         }[]
       }
       sponsor_engagement_red_flags: {
-        Args: { p_cohort_id?: string | null }
+        Args: { p_cohort_id?: string }
         Returns: {
           days_since_last_activity: number
           full_name: string
@@ -3290,7 +3295,7 @@ export type Database = {
         }[]
       }
       sponsor_goal_growth_summary: {
-        Args: { p_cohort_id?: string | null }
+        Args: { p_cohort_id?: string }
         Returns: {
           avg_growth: number
           enrolled_leaders_count: number
@@ -3302,7 +3307,7 @@ export type Database = {
         }[]
       }
       sponsor_kpis: {
-        Args: { p_cohort_id?: string | null }
+        Args: { p_cohort_id?: string }
         Returns: {
           at_risk_count: number
           enrolled_active_count: number
@@ -3313,11 +3318,11 @@ export type Database = {
         }[]
       }
       sponsor_min_leaders_for_distribution: {
-        Args: { p_cohort_id?: string | null }
+        Args: { p_cohort_id?: string }
         Returns: number
       }
       sponsor_programme_engagement: {
-        Args: { p_cohort_id?: string | null }
+        Args: { p_cohort_id?: string }
         Returns: {
           daily_prompt_response_rate: number
           effective_unlock_date: string
@@ -3333,7 +3338,7 @@ export type Database = {
         }[]
       }
       sponsor_roster: {
-        Args: { p_cohort_id?: string | null }
+        Args: { p_cohort_id?: string }
         Returns: {
           coachee_id: string
           cohort_name: string
@@ -3347,14 +3352,14 @@ export type Database = {
         }[]
       }
       sponsor_satisfaction_summary: {
-        Args: { p_cohort_id?: string | null }
+        Args: { p_cohort_id?: string }
         Returns: {
           avg_rating: number
           rated_session_count: number
         }[]
       }
       sponsor_satisfaction_trend: {
-        Args: { p_cohort_id?: string | null }
+        Args: { p_cohort_id?: string }
         Returns: {
           avg_rating: number
           month_start: string
