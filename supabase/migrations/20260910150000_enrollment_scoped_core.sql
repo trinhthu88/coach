@@ -3,6 +3,23 @@
 -- readable while writes move to enrollment_id.  The audit view is the gate for
 -- a later NOT NULL migration.
 
+CREATE OR REPLACE VIEW public.enrollment_ongoing_conflicts WITH (security_invoker=true) AS
+  SELECT user_id, array_agg(id ORDER BY start_date, created_at) AS enrollment_ids,
+         array_agg(status ORDER BY start_date, created_at) AS statuses
+  FROM public.programme_enrollments
+  WHERE status IN ('active', 'at_risk', 'paused')
+  GROUP BY user_id
+  HAVING count(*) > 1;
+
+DO $$
+DECLARE conflict_count integer;
+BEGIN
+  SELECT count(*) INTO conflict_count FROM public.enrollment_ongoing_conflicts;
+  IF conflict_count > 0 THEN
+    RAISE EXCEPTION 'Cannot enforce one ongoing enrollment: % user(s) have active, at-risk, or paused enrollments. Review public.enrollment_ongoing_conflicts and resolve them before rerunning this migration.', conflict_count USING ERRCODE = 'P0001';
+  END IF;
+END $$;
+
 DROP INDEX IF EXISTS public.ux_programme_enrollments_one_active;
 CREATE UNIQUE INDEX ux_programme_enrollments_one_ongoing
   ON public.programme_enrollments (user_id)
@@ -43,13 +60,30 @@ CREATE OR REPLACE FUNCTION public.create_programme_enrollment(
   p_start_date date DEFAULT current_date, p_end_date date DEFAULT NULL
 ) RETURNS public.programme_enrollments
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-declare existing public.programme_enrollments; result public.programme_enrollments;
+declare
+  existing public.programme_enrollments;
+  result public.programme_enrollments;
+  selected_cohort public.cohorts;
+  effective_end_date date;
 begin
   if not public.has_role(auth.uid(), 'admin'::public.app_role) then
     raise exception 'Only an administrator can create enrolments' using errcode = '42501';
   end if;
-  if not exists (select 1 from public.cohorts c where c.id=p_cohort_id and c.programme_id=p_programme_id) then
+  select * into selected_cohort from public.cohorts where id=p_cohort_id and programme_id=p_programme_id;
+  if not found then
     raise exception 'The selected cohort does not belong to the selected programme' using errcode = 'P0001';
+  end if;
+  if selected_cohort.organization_id is distinct from p_organization_id then
+    raise exception 'The selected organisation does not own the selected cohort' using errcode = '42501';
+  end if;
+  effective_end_date := coalesce(p_end_date, selected_cohort.end_date);
+  if effective_end_date is null then
+    raise exception 'An enrollment end date is required to create its schedule snapshot' using errcode = 'P0001';
+  end if;
+  if (selected_cohort.start_date is not null and p_start_date < selected_cohort.start_date)
+     or (selected_cohort.end_date is not null and effective_end_date > selected_cohort.end_date)
+     or effective_end_date < p_start_date then
+    raise exception 'Enrollment dates must fall within the cohort dates' using errcode = 'P0001';
   end if;
   -- Serialize enrollment attempts for one identity. The partial unique index
   -- remains the final race-safe guard even for callers that bypass this RPC.
@@ -64,7 +98,7 @@ begin
     )::text using errcode = 'P0001';
   end if;
   insert into public.programme_enrollments(user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
-  values(p_user_id,p_programme_id,p_cohort_id,p_organization_id,p_start_date,p_end_date,'active') returning * into result;
+  values(p_user_id,p_programme_id,p_cohort_id,p_organization_id,p_start_date,effective_end_date,'active') returning * into result;
   perform public.generate_enrollment_schedule(result.id);
   return result;
 end $$;
@@ -106,6 +140,22 @@ CREATE POLICY "Enrollment actions: learner manage own" ON public.enrollment_acti
  WITH CHECK (exists(select 1 from public.programme_enrollments e where e.id=enrollment_id and e.user_id=auth.uid() and owner_user_id=auth.uid()));
 CREATE POLICY "Enrollment actions: admin manage" ON public.enrollment_actions FOR ALL TO authenticated
  USING (public.has_role(auth.uid(),'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(),'admin'::public.app_role));
+CREATE OR REPLACE FUNCTION public.validate_enrollment_action() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  PERFORM public.assert_enrollment_scope(new.enrollment_id, new.owner_user_id);
+  IF new.goal_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.coachee_goals g WHERE g.id = new.goal_id AND g.enrollment_id = new.enrollment_id) THEN
+    RAISE EXCEPTION 'Action goal must belong to the action enrollment' USING ERRCODE = '42501';
+  END IF;
+  IF new.milestone_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.coachee_milestones m WHERE m.id = new.milestone_id AND m.enrollment_id = new.enrollment_id) THEN
+    RAISE EXCEPTION 'Action milestone must belong to the action enrollment' USING ERRCODE = '42501';
+  END IF;
+  IF (new.source_activity_type IS NULL) <> (new.source_activity_id IS NULL) THEN
+    RAISE EXCEPTION 'Action source activity type and ID must be provided together' USING ERRCODE = 'P0001';
+  END IF;
+  RETURN new;
+END $$;
+CREATE TRIGGER enrollment_actions_validate_scope BEFORE INSERT OR UPDATE ON public.enrollment_actions FOR EACH ROW EXECUTE FUNCTION public.validate_enrollment_action();
 CREATE TRIGGER enrollment_actions_updated before update on public.enrollment_actions for each row execute function public.set_updated_at();
 
 CREATE TABLE public.enrollment_module_snapshots (
@@ -124,13 +174,19 @@ CREATE TABLE public.enrollment_module_milestones (
  required_units integer not null default 1 check(required_units > 0), created_at timestamptz not null default now(), unique(enrollment_module_snapshot_id,sequence)
 );
 CREATE INDEX enrollment_milestones_due_idx ON public.enrollment_module_milestones(enrollment_module_snapshot_id,due_on);
+ALTER TABLE public.enrollment_module_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.enrollment_module_milestones ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enrollment snapshots: learner view own" ON public.enrollment_module_snapshots FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.programme_enrollments e WHERE e.id=enrollment_id AND e.user_id=auth.uid()));
+CREATE POLICY "Enrollment snapshots: admin view" ON public.enrollment_module_snapshots FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+CREATE POLICY "Enrollment milestones: learner view own" ON public.enrollment_module_milestones FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.enrollment_module_snapshots s JOIN public.programme_enrollments e ON e.id=s.enrollment_id WHERE s.id=enrollment_module_snapshot_id AND e.user_id=auth.uid()));
+CREATE POLICY "Enrollment milestones: admin view" ON public.enrollment_module_milestones FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 -- Snapshot only enabled programme modules. Config keys are deliberately
 -- explicit and backwards compatible: required_units, required, distribution_mode,
 -- distribution_settings, weight.
 CREATE OR REPLACE FUNCTION public.generate_enrollment_schedule(p_enrollment_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-declare e public.programme_enrollments; m record; snapshot_id uuid; unit_count int; n int; due date;
+declare e public.programme_enrollments; m record; snapshot_id uuid; unit_count int; n int; due date; entry jsonb; linked_week record; sequence_no int;
 begin
  select * into e from public.programme_enrollments where id=p_enrollment_id;
  if not found then raise exception 'Enrollment not found'; end if;
@@ -142,11 +198,40 @@ begin
    values(p_enrollment_id,m.id,m.module,coalesce((m.config->>'required')::boolean,false),unit_count,
      coalesce(m.config->>'distribution_mode','flexible'),coalesce(m.config->'distribution_settings','{}'::jsonb),
      (m.config->>'weight')::numeric,e.start_date,e.end_date) returning id into snapshot_id;
-   if unit_count > 0 and coalesce(m.config->>'distribution_mode','flexible') <> 'flexible' then
+   if unit_count > 0 and coalesce(m.config->>'distribution_mode','flexible') = 'custom' then
+     if jsonb_typeof(m.config->'distribution_settings'->'milestones') <> 'array' then
+       raise exception 'Custom module schedules require distribution_settings.milestones' using errcode = 'P0001';
+     end if;
+     sequence_no := 0;
+     for entry in select value from jsonb_array_elements(m.config->'distribution_settings'->'milestones') loop
+       sequence_no := sequence_no + 1;
+       due := (entry->>'due_on')::date;
+       if due < e.start_date or due > e.end_date then
+         raise exception 'Custom milestone dates must fall within the enrollment dates' using errcode = 'P0001';
+       end if;
+       insert into public.enrollment_module_milestones(enrollment_module_snapshot_id,sequence,due_on,window_end_on,required_units)
+       values(snapshot_id,sequence_no,due,nullif(entry->>'window_end_on','')::date,coalesce((entry->>'required_units')::int,1));
+     end loop;
+   elsif unit_count > 0 and coalesce(m.config->>'distribution_mode','flexible') = 'training_linked' then
+     sequence_no := 0;
+     for linked_week in select id, coalesce(unlock_date, e.start_date + ((week_number - 1) * 7)) as due_on
+       from public.training_weeks
+       where programme_id=e.programme_id
+         and (coalesce(m.config->'distribution_settings'->'training_week_ids', '[]'::jsonb) = '[]'::jsonb
+              or id::text in (select jsonb_array_elements_text(m.config->'distribution_settings'->'training_week_ids')))
+       order by week_number limit unit_count loop
+       sequence_no := sequence_no + 1;
+       insert into public.enrollment_module_milestones(enrollment_module_snapshot_id,sequence,due_on,training_week_id)
+       values(snapshot_id,sequence_no,least(e.end_date, linked_week.due_on),linked_week.id);
+     end loop;
+     if sequence_no < unit_count then
+       raise exception 'Training-linked module requires at least % selected training weeks', unit_count using errcode = 'P0001';
+     end if;
+   elsif unit_count > 0 and coalesce(m.config->>'distribution_mode','flexible') <> 'flexible' then
      for n in 1..unit_count loop
        due := case coalesce(m.config->>'distribution_mode','flexible')
          when 'evenly_distributed' then e.start_date + ((e.end_date-e.start_date)*n/unit_count)
-         when 'monthly_frequency' then least(e.end_date, (e.start_date + ((n-1) * interval '1 month'))::date)
+         when 'monthly_frequency' then least(e.end_date, (e.start_date + ((n-1) * coalesce((m.config->'distribution_settings'->>'interval_months')::int, 1) * interval '1 month'))::date)
          else e.end_date end;
        insert into public.enrollment_module_milestones(enrollment_module_snapshot_id,sequence,due_on) values(snapshot_id,n,due);
      end loop;
@@ -179,13 +264,13 @@ end $$;
 CREATE TABLE public.goal_checkins (
  id uuid primary key default gen_random_uuid(), enrollment_id uuid not null references public.programme_enrollments(id) on delete restrict,
  goal_id uuid not null references public.coachee_goals(id) on delete restrict, source_activity_type text not null check(source_activity_type in ('coaching','mentoring','peer_coaching','triad')),
- source_activity_id uuid not null, previous_rating numeric(5,2), new_rating numeric(5,2), note text, actor_user_id uuid not null references public.profiles(id), created_at timestamptz not null default now(),
+ source_activity_id uuid not null, previous_rating smallint check (previous_rating between 0 and 100), new_rating smallint check (new_rating between 0 and 100), note text, actor_user_id uuid not null references public.profiles(id), created_at timestamptz not null default now(),
  unique(goal_id,source_activity_type,source_activity_id)
 );
 ALTER TABLE public.goal_checkins ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Goal checkins: learner view own" ON public.goal_checkins FOR SELECT TO authenticated USING(exists(select 1 from public.programme_enrollments e where e.id=enrollment_id and e.user_id=auth.uid()));
 
-CREATE OR REPLACE FUNCTION public.record_goal_checkin(p_enrollment_id uuid,p_goal_id uuid,p_source_activity_type text,p_source_activity_id uuid,p_new_rating numeric,p_note text default null)
+CREATE OR REPLACE FUNCTION public.record_goal_checkin(p_enrollment_id uuid,p_goal_id uuid,p_source_activity_type text,p_source_activity_id uuid,p_new_rating smallint,p_note text default null)
 RETURNS public.goal_checkins LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 declare g public.coachee_goals; r public.coachee_goal_ratings; result public.goal_checkins;
 begin
@@ -193,14 +278,23 @@ begin
  if not found then raise exception 'Selected goal is not active for this enrollment' using errcode='P0001'; end if;
  perform public.assert_enrollment_scope(p_enrollment_id,g.coachee_id);
  if auth.uid() <> g.coachee_id then raise exception 'Only the learner can record a goal check-in' using errcode='42501'; end if;
+ if p_source_activity_type = 'coaching' and not exists (select 1 from public.sessions s where s.id=p_source_activity_id and s.enrollment_id=p_enrollment_id) then
+   raise exception 'Coaching session is not in this enrollment' using errcode='42501';
+ elsif p_source_activity_type = 'mentoring' and not exists (select 1 from public.mentoring_sessions s where s.id=p_source_activity_id and s.enrollment_id=p_enrollment_id) then
+   raise exception 'Mentoring session is not in this enrollment' using errcode='42501';
+ elsif p_source_activity_type = 'peer_coaching' and not exists (select 1 from public.peer_sessions s where s.id=p_source_activity_id and s.enrollment_id=p_enrollment_id union all select 1 from public.coachee_peer_sessions s where s.id=p_source_activity_id and s.enrollment_id=p_enrollment_id) then
+   raise exception 'Peer-coaching session is not in this enrollment' using errcode='42501';
+ elsif p_source_activity_type = 'triad' and not exists (select 1 from public.triad_sessions s where s.id=p_source_activity_id and p_enrollment_id in (s.coach_enrollment_id, s.coachee_enrollment_id, s.observer_enrollment_id)) then
+   raise exception 'Triad session is not in this enrollment' using errcode='42501';
+ end if;
  select * into r from public.coachee_goal_ratings where goal_id=p_goal_id and coachee_id=g.coachee_id for update;
+ if p_new_rating is not null and not found then raise exception 'Goal rating baseline must be created before the first check-in' using errcode='P0001'; end if;
  insert into public.goal_checkins(enrollment_id,goal_id,source_activity_type,source_activity_id,previous_rating,new_rating,note,actor_user_id)
  values(p_enrollment_id,p_goal_id,p_source_activity_type,p_source_activity_id,r.current_rating,p_new_rating,p_note,auth.uid()) returning * into result;
  if p_new_rating is not null then
-   insert into public.coachee_goal_ratings(goal_id,coachee_id,enrollment_id,start_rating,current_rating,target_rating,current_updated_at)
-   values(p_goal_id,g.coachee_id,p_enrollment_id,p_new_rating,p_new_rating,p_new_rating,now())
-   on conflict(goal_id) do update set current_rating=excluded.current_rating,current_updated_at=excluded.current_updated_at,enrollment_id=excluded.enrollment_id;
- end if; return result;
+   update public.coachee_goal_ratings set current_rating=p_new_rating, current_updated_at=now(), enrollment_id=p_enrollment_id where goal_id=p_goal_id and coachee_id=g.coachee_id;
+ end if;
+ return result;
 end $$;
 
 CREATE OR REPLACE VIEW public.enrollment_scope_backfill_audit WITH (security_invoker=true) AS
@@ -216,13 +310,18 @@ CREATE INDEX IF NOT EXISTS training_progress_enrollment_idx ON public.training_p
 
 REVOKE EXECUTE ON FUNCTION public.create_programme_enrollment(uuid,uuid,uuid,uuid,date,date) FROM public,anon;
 GRANT EXECUTE ON FUNCTION public.create_programme_enrollment(uuid,uuid,uuid,uuid,date,date) TO authenticated;
-REVOKE EXECUTE ON FUNCTION public.record_goal_checkin(uuid,uuid,text,uuid,numeric,text) FROM public,anon;
-GRANT EXECUTE ON FUNCTION public.record_goal_checkin(uuid,uuid,text,uuid,numeric,text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.generate_enrollment_schedule(uuid) FROM public, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.record_goal_checkin(uuid,uuid,text,uuid,smallint,text) FROM public,anon;
+GRANT EXECUTE ON FUNCTION public.record_goal_checkin(uuid,uuid,text,uuid,smallint,text) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.get_enrollment_progress(p_enrollment_id uuid, p_as_of date default current_date)
 RETURNS TABLE(module public.programme_module_type, full_completion_pct numeric, due_adherence_pct numeric, pace_status text, completed_units integer, due_units integer, required_units integer, booked_units integer)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
-  with snapshots as (select s.* from public.enrollment_module_snapshots s where s.enrollment_id=p_enrollment_id),
+  with authorized as (
+    select 1 from public.programme_enrollments e where e.id=p_enrollment_id and (e.user_id=auth.uid() or public.has_role(auth.uid(), 'admin'::public.app_role) or public.coach_has_client(auth.uid(), e.user_id))
+  ), snapshots as (
+    select s.* from public.enrollment_module_snapshots s join authorized on true where s.enrollment_id=p_enrollment_id
+  ),
   activity as (
     select 'coaching'::public.programme_module_type module, enrollment_id, status, start_time::date occurred_on from public.sessions
     union all select 'peer_coaching'::public.programme_module_type,enrollment_id,status,start_time::date from public.peer_sessions
@@ -242,3 +341,10 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
     case when s.required_units=0 or c.completed>=s.required_units then 'completed' when d.units_due=0 then 'not_yet_due' when c.completed>=d.units_due then case when c.completed>d.units_due then 'ahead' else 'on_track' end when c.completed+c.booked>=d.units_due then 'scheduled' else 'behind' end,
     c.completed,d.units_due,s.required_units,c.booked from snapshots s join counts c on c.id=s.id join due d on d.id=s.id;
 $$;
+
+
+REVOKE EXECUTE ON FUNCTION public.get_enrollment_progress(uuid,date) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.get_enrollment_progress(uuid,date) TO authenticated;
+
+COMMENT ON COLUMN public.sessions.enrollment_id IS 'Nullable during the deterministic backfill and consumer cutover; a later migration will require it.';
+COMMENT ON COLUMN public.coachee_goals.enrollment_id IS 'Nullable during the deterministic backfill and consumer cutover; a later migration will require it.';

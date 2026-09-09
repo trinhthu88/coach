@@ -8,10 +8,14 @@ on:
       - 'scripts/validate-db.sh'
       - 'package*.json'
       - '.github/workflows/database-validation.yml'
+  workflow_dispatch:
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_CLI_VERSION: '2.117.0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
