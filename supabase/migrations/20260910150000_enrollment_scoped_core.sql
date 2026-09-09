@@ -327,9 +327,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
     union all select 'peer_coaching'::public.programme_module_type,enrollment_id,status,start_time::date from public.peer_sessions
     union all select 'peer_coaching'::public.programme_module_type,enrollment_id,status,start_time::date from public.coachee_peer_sessions
     union all select 'mentoring'::public.programme_module_type,enrollment_id,status,start_time::date from public.mentoring_sessions
-    union all select 'triads'::public.programme_module_type,coach_enrollment_id,status,session_date from public.triad_sessions where coach_enrollment_id is not null
-    union all select 'triads'::public.programme_module_type,coachee_enrollment_id,status,session_date from public.triad_sessions where coachee_enrollment_id is not null
-    union all select 'triads'::public.programme_module_type,observer_enrollment_id,status,session_date from public.triad_sessions where observer_enrollment_id is not null
+    union all select 'triads'::public.programme_module_type,coach_enrollment_id,status,start_time::date from public.triad_sessions where coach_enrollment_id is not null
+    union all select 'triads'::public.programme_module_type,coachee_enrollment_id,status,start_time::date from public.triad_sessions where coachee_enrollment_id is not null
+    union all select 'triads'::public.programme_module_type,observer_enrollment_id,status,start_time::date from public.triad_sessions where observer_enrollment_id is not null
     union all select 'training'::public.programme_module_type,enrollment_id,case when completed_at is null then 'confirmed'::public.session_status else 'completed'::public.session_status end,coalesce(completed_at,created_at)::date from public.training_progress
   ), counts as (
     select s.id,count(a.*) filter(where a.status='completed')::int completed,count(a.*) filter(where a.status in ('pending_coach_approval','confirmed') and a.occurred_on>=p_as_of)::int booked from snapshots s left join activity a on a.enrollment_id=s.enrollment_id and a.module=s.module group by s.id
