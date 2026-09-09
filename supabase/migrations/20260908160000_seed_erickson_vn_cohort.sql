@@ -344,7 +344,7 @@ BEGIN
       '2026-09-25T14:00:00+07:00', 60, 'completed',
       'Daniel has not been practicing between sessions. Still defaulting to advice quickly. Encouraged him to use the "What do YOU think?" redirection as a bridge habit.',
       'Honest feedback from my coach: I am not practicing enough. I need to make this a daily habit, not a once-a-week exercise.',
-      '[{"text":"Set a daily reminder to reflect on one conversation","done":false},{"text":"Use 'What do YOU think?' as redirect in meetings","done":true}]'::jsonb,
+      '[{"text":"Set a daily reminder to reflect on one conversation","done":false},{"text":"Use ''What do YOU think?'' as redirect in meetings","done":true}]'::jsonb,
       3, '2026-09-24T15:00:00Z')
   ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status, coach_notes=EXCLUDED.coach_notes,
     coachee_notes=EXCLUDED.coachee_notes, action_items=EXCLUDED.action_items,
