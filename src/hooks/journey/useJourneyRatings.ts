@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import type { Database } from "@/integrations/supabase/types";
 import type { GoalRating, SessionGoalRating } from "./types";
 
@@ -11,9 +12,9 @@ interface JourneyRatingsData {
   sessionRatings: SessionGoalRating[];
 }
 
-async function fetchJourneyRatings(coacheeId: string): Promise<JourneyRatingsData> {
+async function fetchJourneyRatings(coacheeId: string, enrollmentId: string): Promise<JourneyRatingsData> {
   const [{ data: gr }, { data: sgr }] = await Promise.all([
-    supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", coacheeId),
+    supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId),
     supabase.from("session_goal_ratings").select("*").eq("coachee_id", coacheeId),
   ]);
   const ratings: Record<string, GoalRating> = {};
@@ -28,12 +29,14 @@ async function fetchJourneyRatings(coacheeId: string): Promise<JourneyRatingsDat
  */
 export function useJourneyRatings(coacheeId: string | undefined) {
   const queryClient = useQueryClient();
-  const queryKey = ["journey-ratings", coacheeId];
+  const { selectedEnrollment } = useEnrollmentContext(coacheeId);
+  const enrollmentId = selectedEnrollment?.id;
+  const queryKey = ["journey-ratings", coacheeId, enrollmentId];
 
   const { data, isLoading } = useQuery({
     queryKey,
-    queryFn: () => fetchJourneyRatings(coacheeId as string),
-    enabled: !!coacheeId,
+    queryFn: () => fetchJourneyRatings(coacheeId as string, enrollmentId as string),
+    enabled: !!coacheeId && !!enrollmentId,
     staleTime: 30_000,
   });
   const ratings = data?.ratings ?? {};
@@ -43,7 +46,7 @@ export function useJourneyRatings(coacheeId: string | undefined) {
     mutationFn: async (merged: GoalRatingUpsert) => {
       const { data: saved, error } = await supabase
         .from("coachee_goal_ratings")
-        .upsert(merged, { onConflict: "goal_id" })
+        .upsert({ ...merged, enrollment_id: enrollmentId }, { onConflict: "enrollment_id,goal_id" })
         .select()
         .single();
       if (error) throw error;
@@ -61,11 +64,12 @@ export function useJourneyRatings(coacheeId: string | undefined) {
     goalId: string,
     patch: Partial<{ start_rating: number; current_rating: number; target_rating: number }>
   ) => {
-    if (!coacheeId) return;
+    if (!coacheeId || !enrollmentId) return;
     const existing = ratings[goalId];
     const merged = {
       goal_id: goalId,
       coachee_id: coacheeId,
+      enrollment_id: enrollmentId,
       start_rating: existing?.start_rating ?? 30,
       current_rating: existing?.current_rating ?? 30,
       target_rating: existing?.target_rating ?? 80,

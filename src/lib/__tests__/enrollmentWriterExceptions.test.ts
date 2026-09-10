@@ -24,3 +24,49 @@ describe("temporary direct enrollment writer exceptions", () => {
     ]);
   });
 });
+
+const permittedFixtureWriters = new Set([
+  "supabase/functions/seed-demo-data/index.ts",
+  "supabase/functions/seed-tasc-content/index.ts",
+]);
+
+const activityOwnershipColumns: Record<string, string[]> = {
+  sessions: ["enrollment_id"],
+  peer_sessions: ["enrollment_id"],
+  coachee_peer_sessions: ["enrollment_id"],
+  mentoring_sessions: ["enrollment_id"],
+  training_progress: ["enrollment_id"],
+  assignment_submissions: ["enrollment_id"],
+  daily_prompt_responses: ["enrollment_id"],
+  reflection_submissions: ["enrollment_id"],
+  triad_reflections: ["enrollment_id"],
+  coachee_goals: ["enrollment_id"],
+  coachee_milestones: ["enrollment_id"],
+  coachee_goal_ratings: ["enrollment_id"],
+  triad_groups: ["enrollment_1_id", "enrollment_2_id"],
+  triad_sessions: ["coach_enrollment_id", "coachee_enrollment_id", "observer_enrollment_id"],
+};
+
+describe("activity enrollment ownership assertions", () => {
+  it("requires non-seed activity writes to carry enrollment ownership", () => {
+    const missingOwnership: string[] = [];
+
+    for (const file of ["src", "supabase/functions"].flatMap((directory) => sourceFiles(directory))) {
+      const relativeFile = relative(process.cwd(), file);
+      if (permittedFixtureWriters.has(relativeFile)) continue;
+
+      const source = readFileSync(file, "utf8");
+      for (const [table, columns] of Object.entries(activityOwnershipColumns)) {
+        const callPattern = new RegExp(`from\\("${table}"\\)\\s*\\.(insert|upsert)\\s*\\(`, "g");
+        for (const match of source.matchAll(callPattern)) {
+          const callSource = source.slice(match.index, match.index + 700);
+          if (!columns.some((column) => callSource.includes(column))) {
+            missingOwnership.push(`${relativeFile}:${table}`);
+          }
+        }
+      }
+    }
+
+    expect(missingOwnership.sort()).toEqual([]);
+  });
+});

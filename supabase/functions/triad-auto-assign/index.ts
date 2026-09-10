@@ -16,6 +16,12 @@ interface ParticipantRow {
   spoken_languages: string[];
 }
 
+interface EnrollmentRow {
+  id: string;
+  user_id: string;
+  cohort_id: string | null;
+}
+
 interface AvailabilityRow {
   coachee_id: string;
   slot_date: string; // YYYY-MM-DD
@@ -194,12 +200,12 @@ Deno.serve(async (req) => {
 
     const { data: enrollments } = await admin
       .from("programme_enrollments")
-      .select("user_id")
+      .select("id, user_id, cohort_id")
       .eq("programme_id", round.programme_id)
-      .eq("status", "active");
-    const participantIds = [...new Set((enrollments ?? []).map((e) => e.user_id as string))].filter(
-      (id) => !alreadyGroupedIds.has(id),
-    );
+      .in("status", ["active", "at_risk", "paused"]);
+    const enrollmentRows = ((enrollments ?? []) as EnrollmentRow[]).filter((enrollment) => !alreadyGroupedIds.has(enrollment.user_id));
+    const participantIds = [...new Set(enrollmentRows.map((enrollment) => enrollment.user_id))];
+    const enrollmentByUser = new Map(enrollmentRows.map((enrollment) => [enrollment.user_id, enrollment]));
 
     if (participantIds.length === 0) {
       await admin.from("triad_rounds").update({ auto_assign_status: "completed" }).eq("id", roundId);
@@ -260,14 +266,27 @@ Deno.serve(async (req) => {
 
     async function createGroup(memberIds: string[], language: string) {
       const [m1, m2, m3] = [memberIds[0], memberIds[1], memberIds[2] ?? null];
+      const enrollment1 = enrollmentByUser.get(m1)!;
+      const enrollment2 = enrollmentByUser.get(m2)!;
+      const enrollment3 = m3 ? enrollmentByUser.get(m3)! : null;
+      const cohortIds = new Set([enrollment1.cohort_id, enrollment2.cohort_id, enrollment3?.cohort_id ?? enrollment1.cohort_id]);
+      if (cohortIds.size !== 1 || cohortIds.has(null)) {
+        adminAlerts.push({ id: memberIds.join(":"), reason: "mixed_cohort" });
+        return;
+      }
+
       const { data: inserted, error: insertErr } = await admin
         .from("triad_groups")
         .insert({
           triad_round_id: roundId,
           programme_id: round.programme_id,
+          cohort_id: enrollment1.cohort_id,
           member_1_id: m1,
           member_2_id: m2,
           member_3_id: m3,
+          enrollment_1_id: enrollment1.id,
+          enrollment_2_id: enrollment2.id,
+          enrollment_3_id: enrollment3?.id ?? null,
           assigned_by: "auto",
           group_language: language,
         })
@@ -286,6 +305,9 @@ Deno.serve(async (req) => {
 
       const { error: sessionErr } = await admin.from("triad_sessions").insert({
         triad_group_id: inserted.id,
+        coach_enrollment_id: enrollment1.id,
+        coachee_enrollment_id: enrollment2.id,
+        observer_enrollment_id: enrollment3?.id ?? null,
         proposed_start_time: range?.start ?? null,
         proposed_end_time: range?.end ?? null,
         proposed_by: "system",

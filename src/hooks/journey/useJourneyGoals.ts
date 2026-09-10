@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import type { Goal, Milestone } from "./types";
 
 interface JourneyGoalsData {
@@ -8,10 +9,10 @@ interface JourneyGoalsData {
   milestones: Milestone[];
 }
 
-async function fetchJourneyGoals(coacheeId: string): Promise<JourneyGoalsData> {
+async function fetchJourneyGoals(coacheeId: string, enrollmentId: string): Promise<JourneyGoalsData> {
   const [{ data: g }, { data: m }] = await Promise.all([
-    supabase.from("coachee_goals").select("*").eq("coachee_id", coacheeId).order("created_at"),
-    supabase.from("coachee_milestones").select("*").eq("coachee_id", coacheeId).order("created_at"),
+    supabase.from("coachee_goals").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("created_at"),
+    supabase.from("coachee_milestones").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("created_at"),
   ]);
   return { goals: g || [], milestones: m || [] };
 }
@@ -24,12 +25,14 @@ async function fetchJourneyGoals(coacheeId: string): Promise<JourneyGoalsData> {
  */
 export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () => void) {
   const queryClient = useQueryClient();
-  const queryKey = ["journey-goals", coacheeId];
+  const { selectedEnrollment } = useEnrollmentContext(coacheeId);
+  const enrollmentId = selectedEnrollment?.id;
+  const queryKey = ["journey-goals", coacheeId, enrollmentId];
 
   const { data, isLoading } = useQuery({
     queryKey,
-    queryFn: () => fetchJourneyGoals(coacheeId as string),
-    enabled: !!coacheeId,
+    queryFn: () => fetchJourneyGoals(coacheeId as string, enrollmentId as string),
+    enabled: !!coacheeId && !!enrollmentId,
     staleTime: 30_000,
   });
 
@@ -42,8 +45,10 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
 
   const addGoalMutation = useMutation({
     mutationFn: async (payload: { title: string; description: string | null; target_date: string | null }) => {
+      if (!enrollmentId) throw new Error("Select an enrollment before adding a goal");
       const { error } = await supabase.from("coachee_goals").insert({
         coachee_id: coacheeId as string,
+        enrollment_id: enrollmentId,
         title: payload.title,
         description: payload.description,
         target_date: payload.target_date,
@@ -65,9 +70,11 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
 
   const addMilestoneMutation = useMutation({
     mutationFn: async (payload: { goal_id: string; title: string; target_date: string | null }) => {
+      if (!enrollmentId) throw new Error("Select an enrollment before adding a milestone");
       const { error } = await supabase.from("coachee_milestones").insert({
         goal_id: payload.goal_id,
         coachee_id: coacheeId as string,
+        enrollment_id: enrollmentId,
         title: payload.title,
         target_date: payload.target_date,
       });

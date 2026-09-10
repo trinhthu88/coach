@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
 import { useAuth } from "@/context/AuthContext";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,8 @@ export default function BookSession() {
   const location = useLocation();
   const rescheduleTopic = (location.state as { topic?: string } | null)?.topic;
   const { user, role } = useAuth();
+  const { selectedEnrollment } = useEnrollmentContext(user?.id, searchParams.get("enrollmentId"));
+  const enrollmentId = selectedEnrollment?.id;
   const navigate = useNavigate();
 
   const [coach, setCoach] = useState<CoachDetail | null>(null);
@@ -245,14 +248,14 @@ export default function BookSession() {
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
 
   const overLimit = isOverSessionLimit(usage);
-  const canSubmit = canSubmitBooking({ selectedDate, selectedStart, topic, eligible });
+  const canSubmit = !!enrollmentId && canSubmitBooking({ selectedDate, selectedStart, topic, eligible });
   // eligible === false but the numbers don't show overLimit: something other than the
   // session cap is blocking (allowlist changed, status changed) — the usage-based banner
   // below wouldn't explain it, so show a distinct message instead of nothing.
   const ineligibleForOtherReason = eligible === false && !overLimit;
 
   const handleBook = async () => {
-    if (!user || !coach || !selectedDate || !selectedStart || !topic.trim()) return;
+    if (!user || !coach || !selectedDate || !selectedStart || !topic.trim() || !enrollmentId) return;
     const opt = startOptions.find((o) => o.start === selectedStart);
     if (!opt) return;
     setSubmitting(true);
@@ -273,6 +276,7 @@ export default function BookSession() {
       ({ error } = await supabase.from("peer_sessions").insert({
         peer_coach_id: coach.id,
         peer_coachee_id: user.id,
+        enrollment_id: enrollmentId,
         topic: topic.trim(),
         start_time: startISO,
         duration_minutes: duration,
@@ -283,6 +287,7 @@ export default function BookSession() {
       ({ error } = await supabase.from("sessions").insert({
         coach_id: coach.id,
         coachee_id: user.id,
+        enrollment_id: enrollmentId,
         topic: topic.trim(),
         start_time: startISO,
         duration_minutes: duration,

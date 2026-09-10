@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { toast } from "sonner";
 
 export interface TrainingWeekDetail {
@@ -32,11 +33,13 @@ export interface TrainingWeekDetail {
 export function useSkillCard(weekId: string | undefined) {
   const { t } = useTranslation("training");
   const { user } = useAuth();
+  const { selectedEnrollment } = useEnrollmentContext(user?.id);
+  const enrollmentId = selectedEnrollment?.id;
   const queryClient = useQueryClient();
   const [completing, setCompleting] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["skill-card", weekId],
+    queryKey: ["skill-card", weekId, enrollmentId],
     queryFn: async () => {
       const { data: week, error: weekError } = await supabase
         .from("training_weeks")
@@ -51,7 +54,7 @@ export function useSkillCard(weekId: string | undefined) {
     enabled: !!weekId,
   });
 
-  const progressKey = ["training-progress", weekId, user?.id];
+  const progressKey = ["training-progress", weekId, user?.id, enrollmentId];
   const { data: progress } = useQuery({
     queryKey: progressKey,
     queryFn: async () => {
@@ -60,37 +63,38 @@ export function useSkillCard(weekId: string | undefined) {
         .select("viewed_at, completed_at, pdf_downloaded_at")
         .eq("training_week_id", weekId as string)
         .eq("user_id", user!.id)
+        .eq("enrollment_id", enrollmentId as string)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!weekId && !!user,
+    enabled: !!weekId && !!user && !!enrollmentId,
   });
 
   const weekLoaded = !!data;
   useEffect(() => {
-    if (!weekId || !user || !weekLoaded) return;
+    if (!weekId || !user || !weekLoaded || !enrollmentId) return;
     supabase
       .from("training_progress")
       .upsert(
-        { user_id: user.id, training_week_id: weekId, viewed_at: new Date().toISOString() },
-        { onConflict: "user_id,training_week_id" }
+        { user_id: user.id, enrollment_id: enrollmentId, training_week_id: weekId, viewed_at: new Date().toISOString() },
+        { onConflict: "enrollment_id,training_week_id" }
       )
       .then(({ error }) => {
         if (error) console.error("Failed to record training week view", error);
         else queryClient.invalidateQueries({ queryKey: progressKey });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekId, user?.id, weekLoaded]);
+  }, [weekId, user?.id, weekLoaded, enrollmentId]);
 
   const markComplete = useCallback(async () => {
-    if (!weekId || !user) return;
+    if (!weekId || !user || !enrollmentId) return;
     setCompleting(true);
     const { error } = await supabase
       .from("training_progress")
       .upsert(
-        { user_id: user.id, training_week_id: weekId, completed_at: new Date().toISOString() },
-        { onConflict: "user_id,training_week_id" }
+        { user_id: user.id, enrollment_id: enrollmentId, training_week_id: weekId, completed_at: new Date().toISOString() },
+        { onConflict: "enrollment_id,training_week_id" }
       );
     setCompleting(false);
     if (error) {
@@ -99,7 +103,7 @@ export function useSkillCard(weekId: string | undefined) {
     }
     queryClient.invalidateQueries({ queryKey: progressKey });
     queryClient.invalidateQueries({ queryKey: ["training-weeks", user.id] });
-  }, [weekId, user, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [weekId, user, enrollmentId, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const downloadPdf = useCallback(
     async (path: string) => {
@@ -109,19 +113,19 @@ export function useSkillCard(weekId: string | undefined) {
         return;
       }
       window.open(signed.signedUrl, "_blank");
-      if (weekId && user) {
+      if (weekId && user && enrollmentId) {
         supabase
           .from("training_progress")
           .upsert(
-            { user_id: user.id, training_week_id: weekId, pdf_downloaded_at: new Date().toISOString() },
-            { onConflict: "user_id,training_week_id" }
+            { user_id: user.id, enrollment_id: enrollmentId, training_week_id: weekId, pdf_downloaded_at: new Date().toISOString() },
+            { onConflict: "enrollment_id,training_week_id" }
           )
           .then(({ error: upErr }) => {
             if (upErr) console.error("Failed to record PDF download", upErr);
           });
       }
     },
-    [weekId, user, t]
+    [weekId, user, enrollmentId, t]
   );
 
   return {

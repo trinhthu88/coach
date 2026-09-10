@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { toast } from "sonner";
 
 export interface QuizOption {
@@ -45,11 +46,13 @@ export interface QuizSubmission {
  */
 export function useQuiz(assignmentId: string | undefined) {
   const { user } = useAuth();
+  const { selectedEnrollment } = useEnrollmentContext(user?.id);
+  const enrollmentId = selectedEnrollment?.id;
   const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["quiz", assignmentId, user?.id],
+    queryKey: ["quiz", assignmentId, user?.id, enrollmentId],
     queryFn: async () => {
       const [{ data: assignment, error: aError }, { data: questions, error: qError }, { data: submission, error: sError }] =
         await Promise.all([
@@ -67,6 +70,7 @@ export function useQuiz(assignmentId: string | undefined) {
             .select("answers, score_pct, correct_count, total_count")
             .eq("assignment_id", assignmentId as string)
             .eq("user_id", user!.id)
+            .eq("enrollment_id", enrollmentId as string)
             .maybeSingle(),
         ]);
       if (aError) throw aError;
@@ -79,16 +83,17 @@ export function useQuiz(assignmentId: string | undefined) {
         submission: (submission as QuizSubmission | null) ?? null,
       };
     },
-    enabled: !!assignmentId && !!user,
+    enabled: !!assignmentId && !!user && !!enrollmentId,
   });
 
   const submit = useCallback(
     async (answers: Record<string, string>) => {
-      if (!assignmentId || !user) return;
+      if (!assignmentId || !user || !enrollmentId) return;
       setSubmitting(true);
       const { error } = await supabase.from("assignment_submissions").insert({
         assignment_id: assignmentId,
         user_id: user.id,
+        enrollment_id: enrollmentId,
         answers,
       });
       setSubmitting(false);
@@ -96,10 +101,10 @@ export function useQuiz(assignmentId: string | undefined) {
         toast.error(error.message);
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["quiz", assignmentId, user.id] });
-      queryClient.invalidateQueries({ queryKey: ["assignments", data?.assignment?.training_week_id, user.id] });
+      queryClient.invalidateQueries({ queryKey: ["quiz", assignmentId, user.id, enrollmentId] });
+      queryClient.invalidateQueries({ queryKey: ["assignments", data?.assignment?.training_week_id, user.id, enrollmentId] });
     },
-    [assignmentId, user, queryClient, data?.assignment?.training_week_id]
+    [assignmentId, user, enrollmentId, queryClient, data?.assignment?.training_week_id]
   );
 
   return {

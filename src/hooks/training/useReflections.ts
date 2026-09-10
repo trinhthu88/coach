@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { toast } from "sonner";
 
 export type ReflectionQuestionType = "open_text" | "scale_1_10";
@@ -52,11 +53,13 @@ export interface ReflectionAnswerInput {
  */
 export function useWeekReflection(weekNumber: number | undefined, programmeId: string | undefined) {
   const { user } = useAuth();
+  const { selectedEnrollment } = useEnrollmentContext(user?.id);
+  const enrollmentId = selectedEnrollment?.id;
   const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const queryKey = useMemo(
-    () => ["week-reflection", programmeId, weekNumber, user?.id],
-    [programmeId, weekNumber, user?.id]
+    () => ["week-reflection", programmeId, weekNumber, user?.id, enrollmentId],
+    [programmeId, weekNumber, user?.id, enrollmentId]
   );
 
   const { data, isLoading } = useQuery({
@@ -84,6 +87,7 @@ export function useWeekReflection(weekNumber: number | undefined, programmeId: s
           .select("id, confidence_score, submitted_at")
           .eq("reflection_id", reflection.id)
           .eq("user_id", user!.id)
+          .eq("enrollment_id", enrollmentId as string)
           .maybeSingle(),
       ]);
       if (qError) throw qError;
@@ -106,19 +110,19 @@ export function useWeekReflection(weekNumber: number | undefined, programmeId: s
         answers,
       };
     },
-    enabled: !!programmeId && !!weekNumber && !!user,
+    enabled: !!programmeId && !!weekNumber && !!user && !!enrollmentId,
   });
 
   const submit = useCallback(
     async (confidenceScore: number, answers: ReflectionAnswerInput[]) => {
       const reflectionId = data?.reflection?.id;
-      if (!reflectionId || !user) return;
+      if (!reflectionId || !user || !enrollmentId) return;
       setSubmitting(true);
       const { data: submission, error } = await supabase
         .from("reflection_submissions")
         .upsert(
-          { reflection_id: reflectionId, user_id: user.id, confidence_score: confidenceScore },
-          { onConflict: "reflection_id,user_id" }
+          { reflection_id: reflectionId, user_id: user.id, enrollment_id: enrollmentId, confidence_score: confidenceScore },
+          { onConflict: "enrollment_id,reflection_id" }
         )
         .select("id")
         .single();
@@ -143,7 +147,7 @@ export function useWeekReflection(weekNumber: number | undefined, programmeId: s
       }
       queryClient.invalidateQueries({ queryKey });
     },
-    [data?.reflection?.id, user, queryClient, queryKey]
+    [data?.reflection?.id, user, enrollmentId, queryClient, queryKey]
   );
 
   return {
