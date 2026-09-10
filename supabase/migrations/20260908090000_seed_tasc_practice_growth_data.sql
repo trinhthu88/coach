@@ -1,3 +1,5 @@
+/*
+RETired obsolete demo seed. Local replacement is supabase/seed.sql.
 -- Extra practice-growth data for trang.tt@hsp.consulting on top of the TASC
 -- seed (20260907120000_seed_tasc_essential_course.sql). That migration only
 -- gave her one peer_session_competency_feedback row, and it rates coach2's
@@ -91,3 +93,4 @@ BEGIN
   END IF;
 END;
 $tasc_growth_seed$;
+*/

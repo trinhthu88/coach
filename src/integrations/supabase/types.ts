@@ -4027,9 +4027,10 @@ export type Database = {
         }[]
       }
       sponsor_satisfaction_summary: {
-        Args: { p_cohort_id?: string }
+        Args: { p_cohort_id: string }
         Returns: {
           avg_rating: number
+          cohort_id: string
           rated_session_count: number
         }[]
       }

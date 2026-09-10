@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "validate:db": "bash scripts/validate-db.sh"
+    "validate:db": "bash scripts/validate-db.sh",
+    "db:reset:demo": "PGOPTIONS='-c app.seed_environment=local' supabase db reset"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -143,7 +143,7 @@ async function callAllAsUser(email) {
   const [roster, growth, satisfaction, kpis, timeline] = await Promise.all([
     client.rpc("sponsor_roster"),
     client.rpc("sponsor_goal_growth_summary"),
-    client.rpc("sponsor_satisfaction_summary"),
+    client.rpc("sponsor_satisfaction_summary", { p_cohort_id: null }),
     client.rpc("sponsor_kpis"),
     client.rpc("sponsor_timeline"),
   ]);

@@ -250,3 +250,21 @@ REVOKE ALL ON FUNCTION public.sponsor_enrollment_summaries(uuid) FROM PUBLIC, an
 REVOKE ALL ON FUNCTION public.sponsor_cohort_summaries(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.sponsor_enrollment_summaries(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.sponsor_cohort_summaries(uuid) TO authenticated;
+
+-- Numeric-only satisfaction aggregate. It deliberately exposes no session
+-- text, provider identity, comments, or private notes.
+DROP FUNCTION IF EXISTS public.sponsor_satisfaction_summary(uuid);
+CREATE OR REPLACE FUNCTION public.sponsor_satisfaction_summary(p_cohort_id uuid)
+RETURNS TABLE(cohort_id uuid, rated_session_count integer, avg_rating numeric)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $$
+  SELECT e.cohort_id, count(s.coachee_rating)::integer,
+         round(avg(s.coachee_rating)::numeric,2)
+  FROM public.programme_enrollments e
+  JOIN public.cohorts c ON c.id=e.cohort_id
+  JOIN public.sponsor_profiles sp ON sp.organization_id=c.organization_id
+  LEFT JOIN public.sessions s ON s.enrollment_id=e.id AND s.status='completed' AND s.coachee_rating IS NOT NULL
+  WHERE sp.user_id=auth.uid() AND e.cohort_id=p_cohort_id
+  GROUP BY e.cohort_id;
+$$;
+REVOKE ALL ON FUNCTION public.sponsor_satisfaction_summary(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.sponsor_satisfaction_summary(uuid) TO authenticated;

@@ -1,3 +1,5 @@
+/*
+Retired obsolete demo seed. Local replacement is supabase/seed.sql.
 -- Seed data for "TASC - Essential Course": a 4-week Erickson Solution-Focused
 -- Coaching programme, plus full session/feedback test data for
 -- trang.tt@hsp.consulting. Content-only — does not create users.
@@ -636,3 +638,4 @@ BEGIN
   RAISE NOTICE 'TASC Essential Course seed complete. programme_id=%, trang_id=%', v_programme_id, v_trang_id;
 END;
 $tasc_seed$;
+*/

@@ -110,10 +110,14 @@ CREATE POLICY "Alerts: admin manage" ON public.admin_alerts
 CREATE TRIGGER trg_admin_alerts_updated BEFORE UPDATE ON public.admin_alerts
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
--- Seed programmes
+/* Retired legacy programme demo seed. The local-only supabase/seed.sql is the
+   sole demo fixture; structural tables and functions in this migration stay
+   active. */
+/*
 INSERT INTO public.programmes (name, description, total_sessions, duration_months, color)
 VALUES
   ('Foundations', 'Introductory coaching programme — build core habits and clarity.', 8, 3, 'cobalt'),
   ('Growth', 'Mid-level programme focused on leadership skills and team dynamics.', 12, 6, 'teal'),
   ('Executive', 'Long-form executive coaching with deep behavioural work.', 16, 9, 'gold')
 ON CONFLICT DO NOTHING;
+*/
