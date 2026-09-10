@@ -5,7 +5,7 @@
 
 CREATE OR REPLACE FUNCTION public.only_enrollment_candidate(p_user_id uuid, p_programme_id uuid DEFAULT NULL, p_on date DEFAULT NULL)
 RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
-  SELECT CASE WHEN count(*) = 1 THEN min(pe.id) ELSE NULL END
+  SELECT CASE WHEN count(*) = 1 THEN (array_agg(pe.id))[1] ELSE NULL END
   FROM public.programme_enrollments pe
   WHERE pe.user_id = p_user_id
     AND (p_programme_id IS NULL OR pe.programme_id = p_programme_id)
@@ -201,10 +201,14 @@ BEGIN
      OR (new.observer_enrollment_id IS NOT NULL AND new.observer_enrollment_id NOT IN (g.enrollment_1_id, g.enrollment_2_id, g.enrollment_3_id)) THEN
     RAISE EXCEPTION 'Triad session enrollments must belong to the triad group' USING ERRCODE='42501';
   END IF;
-  IF (SELECT user_id FROM public.programme_enrollments WHERE id = new.coach_enrollment_id) <> new.coach_role_id
-     OR (SELECT user_id FROM public.programme_enrollments WHERE id = new.coachee_enrollment_id) <> new.coachee_role_id
-     OR (new.observer_enrollment_id IS NOT NULL AND (SELECT user_id FROM public.programme_enrollments WHERE id = new.observer_enrollment_id) <> new.observer_role_id) THEN
-    RAISE EXCEPTION 'Triad session enrollment must match its learner role' USING ERRCODE='42501';
+  IF (SELECT user_id FROM public.programme_enrollments WHERE id = new.coach_enrollment_id) <> g.member_1_id
+     OR (SELECT user_id FROM public.programme_enrollments WHERE id = new.coachee_enrollment_id) <> g.member_2_id
+     OR (g.member_3_id IS NULL AND new.observer_enrollment_id IS NOT NULL)
+     OR (g.member_3_id IS NOT NULL AND (
+       new.observer_enrollment_id IS NULL
+       OR (SELECT user_id FROM public.programme_enrollments WHERE id = new.observer_enrollment_id) <> g.member_3_id
+     )) THEN
+    RAISE EXCEPTION 'Triad session enrollment must match its group member' USING ERRCODE='42501';
   END IF;
   RETURN new;
 END $$;

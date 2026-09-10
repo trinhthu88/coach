@@ -48,6 +48,24 @@ const activityOwnershipColumns: Record<string, string[]> = {
 };
 
 describe("activity enrollment ownership assertions", () => {
+  it("does not use unsupported UUID aggregates in the enrollment ownership migration", () => {
+    const migration = readFileSync(
+      "supabase/migrations/20260910161000_enrollment_activity_ownership.sql",
+      "utf8"
+    );
+
+    expect(migration).not.toMatch(/\b(?:min|max|sum|avg)\s*\(\s*pe\.id\s*\)/i);
+  });
+
+  it("does not reference triad session role columns dropped by the redesign migration", () => {
+    const migration = readFileSync(
+      "supabase/migrations/20260910161000_enrollment_activity_ownership.sql",
+      "utf8"
+    );
+
+    expect(migration).not.toMatch(/\b(?:coach_role_id|coachee_role_id|observer_role_id)\b/);
+  });
+
   it("requires non-seed activity writes to carry enrollment ownership", () => {
     const missingOwnership: string[] = [];
 
