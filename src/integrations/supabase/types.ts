@@ -3474,6 +3474,7 @@ export type Database = {
           candidate_enrollments: number | null
           record_id: string | null
           table_name: string | null
+          unresolved_reason: string | null
           user_id: string | null
         }
         Relationships: []
