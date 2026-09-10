@@ -15,6 +15,7 @@ interface DisplaySession {
   start_time: string;
   status: string;
   duration_minutes: number;
+  /** Compatibility projection populated from enrollment_actions by the caller. */
   action_items: Json;
   coachee_notes: string | null;
   _source?: SessionSource;

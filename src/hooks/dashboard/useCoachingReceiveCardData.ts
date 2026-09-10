@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
 import { AppRole } from "@/context/AuthContext";
+import { withEnrollmentActions } from "@/lib/enrollmentActions";
 
 interface CoachingReceiveData {
   nextSession: {
@@ -35,7 +36,7 @@ async function fetchData(userId: string, role: AppRole): Promise<CoachingReceive
   const [{ data: sessions }, { data: milestones }, usageResult] = await Promise.all([
     supabase
       .from("sessions")
-      .select("id, topic, start_time, status, coach_id, action_items")
+       .select("id, topic, start_time, status, coach_id, enrollment_id")
       .eq("coachee_id", userId)
       .order("start_time", { ascending: false }),
     supabase.from("coachee_milestones").select("is_done").eq("coachee_id", userId),
@@ -43,7 +44,7 @@ async function fetchData(userId: string, role: AppRole): Promise<CoachingReceive
       ? supabase.rpc("get_coachee_session_usage", { _coachee_id: userId })
       : Promise.resolve({ data: null }),
   ]);
-  const list = sessions || [];
+  const list = await withEnrollmentActions(sessions || [], "coaching");
 
   const now = new Date();
   const upcoming = list

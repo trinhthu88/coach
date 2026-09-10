@@ -94,7 +94,31 @@
     "goalsLabel": "Goals",
     "goalsSummary_one": "{{count}} active goal",
     "goalsSummary_other": "{{count}} active goals",
-    "goalsSummaryEmpty": "No active goals yet — set one from My development."
+    "goalsSummaryEmpty": "No active goals yet — set one from My development.",
+    "loadError": "Programme progress could not be loaded.",
+    "enrollmentRequired": "Programme progress is unavailable until an enrollment is selected.",
+    "trainingActivity": "Training activity",
+    "completedUnits": "{{completed}} of {{required}} completed",
+    "completedUnitsNoRequirement": "{{completed}} completed",
+    "dueAdherence": "{{pct}}% of {{due}} due completed",
+    "modules": {
+      "coaching": "Coaching",
+      "peer_coaching": "Peer coaching",
+      "mentoring": "Mentoring",
+      "triads": "Triads",
+      "training": "Training",
+      "quiz": "Quizzes",
+      "assessment": "Assessments",
+      "daily_prompt": "Daily prompts"
+    },
+    "pace": {
+      "completed": "Completed",
+      "not_yet_due": "Not yet due",
+      "ahead": "Ahead",
+      "on_track": "On track",
+      "scheduled": "Scheduled",
+      "behind": "Behind"
+    }
   },
   "admin": {
     "eyebrow": "Admin",

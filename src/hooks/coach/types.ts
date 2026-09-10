@@ -1,8 +1,10 @@
 export type ClientStatus = "on_track" | "needs_attention" | "at_risk";
 
 export interface RawAction {
+  id?: string;
   text: string;
   done?: boolean;
+  description?: string | null;
   due_date?: string | null;
   milestone_id?: string | null;
 }

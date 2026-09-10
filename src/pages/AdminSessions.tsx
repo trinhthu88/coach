@@ -81,8 +81,8 @@ export default function AdminSessions() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: sessions }, { data: peerSessions }] = await Promise.all([
-      supabase.from("sessions").select("*").order("start_time", { ascending: false }),
-      supabase.from("peer_sessions").select("*").order("start_time", { ascending: false }),
+      supabase.from("sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, coach_id, coachee_id, created_at, coachee_rating, coachee_rating_comment").order("start_time", { ascending: false }),
+      supabase.from("peer_sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, provider_notes, receiver_notes, peer_coach_id, peer_coachee_id, created_at, receiver_rating, receiver_rating_comment").order("start_time", { ascending: false }),
     ]);
 
     type RawRow = (Tables<"sessions"> | Tables<"peer_sessions">) & {
@@ -90,13 +90,13 @@ export default function AdminSessions() {
       coach_id: string;
       coachee_id: string;
     };
-    const coaching: RawRow[] = (sessions || []).map((s) => ({ ...s, kind: "coaching" as const, coach_id: s.coach_id, coachee_id: s.coachee_id }));
+    const coaching: RawRow[] = (sessions || []).map((s) => ({ ...s, kind: "coaching" as const, coach_id: s.coach_id, coachee_id: s.coachee_id })) as unknown as RawRow[];
     const peer: RawRow[] = (peerSessions || []).map((s) => ({
       ...s,
       kind: "peer" as const,
       coach_id: s.peer_coach_id,
       coachee_id: s.peer_coachee_id,
-    }));
+    })) as unknown as RawRow[];
     const all = [...coaching, ...peer].sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
 
     const userIds = Array.from(new Set(all.flatMap((s) => [s.coach_id, s.coachee_id])));

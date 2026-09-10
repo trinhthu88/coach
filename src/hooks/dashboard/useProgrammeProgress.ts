@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 export interface ProgrammeProgressSummary {
   weeksCompleted: number;
@@ -52,16 +53,10 @@ const EMPTY: ProgrammeProgressSummary = {
   currentQuizAssignmentId: null,
 };
 
-async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> {
-  // triad_sessions doesn't depend on weekIds at all (RLS — "Triad sessions:
-  // member read" — already scopes it to the caller's own sessions), so fire
-  // it alongside the weeks RPC instead of waiting for weekIds first. Worst
-  // case (no training weeks) the result goes unused, but that's cheap next
-  // to shaving a full round trip off the common case (see 2026-09-08
-  // dashboard-load-latency investigation).
+async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSummary> {
   const [{ data: weeksData, error }, { data: triadSessions }] = await Promise.all([
-    supabase.rpc("get_my_training_weeks"),
-    supabase.from("triad_sessions").select("id, proposed_start_time, status"),
+    supabase.rpc("get_enrollment_training_weeks", { p_enrollment_id: enrollmentId }),
+    supabase.from("triad_sessions").select("id, proposed_start_time, status").or(`coach_enrollment_id.eq.${enrollmentId},coachee_enrollment_id.eq.${enrollmentId},observer_enrollment_id.eq.${enrollmentId}`),
   ]);
   if (error) throw error;
   const weeks = (weeksData || []) as RawWeek[];
@@ -82,10 +77,10 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
 
   const [{ data: submissions }, { data: responses }] = await Promise.all([
     assignmentIds.length
-      ? supabase.from("assignment_submissions").select("assignment_id, score_pct").eq("user_id", userId).in("assignment_id", assignmentIds)
+      ? supabase.from("assignment_submissions").select("assignment_id, score_pct").eq("enrollment_id", enrollmentId).in("assignment_id", assignmentIds)
       : Promise.resolve({ data: [] as { assignment_id: string; score_pct: number | null }[] }),
     promptIds.length
-      ? supabase.from("daily_prompt_responses").select("daily_prompt_id, responded_at").eq("user_id", userId).in("daily_prompt_id", promptIds)
+      ? supabase.from("daily_prompt_responses").select("daily_prompt_id, responded_at").eq("enrollment_id", enrollmentId).in("daily_prompt_id", promptIds)
       : Promise.resolve({ data: [] as { daily_prompt_id: string; responded_at: string | null }[] }),
   ]);
 
@@ -157,20 +152,18 @@ async function fetchProgress(userId: string): Promise<ProgrammeProgressSummary> 
 }
 
 /**
- * Backs ProgrammeProgressCard on the coach/coachee dashboards. Callers gate
- * on hasModule('training') themselves (same convention as
- * useProgrammeTimeline) since get_my_training_weeks()
- * already returns nothing when that module is off — quiz/triad/daily_prompt
- * data is naturally empty too in that case since it all hangs off training
- * weeks the caller can't see.
+ * Provides learner-only training shortcuts for the selected enrollment.
+ * Authoritative module completion and pace come from useEnrollmentProgress.
  */
-export function useProgrammeProgress(userId: string | undefined) {
+export function useProgrammeProgress(userId: string | undefined, initialEnrollmentId?: string | null) {
+  const context = useEnrollmentContext(userId, initialEnrollmentId);
+  const enrollmentId = context.selectedEnrollment?.id;
   const { data, isLoading } = useQuery({
-    queryKey: ["programme-progress", userId],
-    queryFn: () => fetchProgress(userId as string),
-    enabled: !!userId,
+    queryKey: ["programme-training-progress", enrollmentId],
+    queryFn: () => fetchProgress(enrollmentId as string),
+    enabled: !!userId && !!enrollmentId,
     staleTime: 30_000,
   });
 
-  return { summary: data ?? EMPTY, loading: !!userId && isLoading };
+  return { enrollmentId, summary: data ?? EMPTY, loading: context.loading || (!!enrollmentId && isLoading) };
 }

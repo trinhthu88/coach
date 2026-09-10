@@ -1,3 +1,4 @@
+import { SessionGoalRatings } from "./session/SessionGoalRatings";
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -235,6 +236,7 @@ export default function MentoringSessionDetail() {
         )}
       </Card>
 
+      {session.enrollment_id && <SessionGoalRatings sessionId={session.id} coacheeId={session.mentee_id} enrollmentId={session.enrollment_id} sourceActivityType="mentoring" canCreateGoal={isMentee} canEdit={isMentee && session.status === "completed"} sessionStatus={session.status} />}
       {/* Mentor feedback */}
       {(isMentor || isMentee) && (
         <MentorFeedbackForm feedback={feedback} isMentor={isMentor} canSubmit={isMentor && session.status === "completed"} />

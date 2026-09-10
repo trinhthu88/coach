@@ -1,20 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          eq: () => ({
-            order: async () => ({ data: [] }),
-          }),
-          order: undefined,
-        }),
-      }),
-    }),
-  },
-}));
+vi.mock("@/integrations/supabase/client", () => {
+  const query = {
+    select: () => query,
+    eq: () => query,
+    order: async () => ({ data: [], error: null }),
+  };
+  return { supabase: { from: () => query } };
+});
 
 import "@/i18n/config";
 import i18n from "@/i18n/config";
@@ -34,7 +28,13 @@ describe("SessionGoalRatings i18n", () => {
     render(
       <>
         <LanguageSwitcher />
-        <SessionGoalRatings sessionId="s1" coacheeId="c1" canEdit={false} sessionStatus="completed" />
+        <SessionGoalRatings
+          sessionId="s1"
+          coacheeId="c1"
+          enrollmentId="enrollment-1"
+          canEdit={false}
+          sessionStatus="completed"
+        />
       </>
     );
 

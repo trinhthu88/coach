@@ -27,12 +27,8 @@ interface ActionSession {
 }
 
 /**
- * Flattens each session's `action_items` JSON blob into a single list
- * (tagged with the owning session), plus overdue/this-week/upcoming/
- * completed groupings. Shared between the coachee and coach "my journey"
- * views — neither `allActionItems` nor `grouped` is memoized against a
- * `now` timestamp, matching the pre-extraction behavior of recomputing on
- * every render.
+ * Flattens the normalized action projection attached by withEnrollmentActions
+ * at the display boundary. This hook never reads the persisted session JSON.
  */
 export function useFlatActionItems<S extends ActionSession>(sessions: S[]) {
   const allActionItems: FlatAction[] = useMemo(() => {

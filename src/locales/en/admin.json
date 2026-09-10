@@ -387,6 +387,46 @@
         "quiz": "Quiz",
         "assessment": "Assessment",
         "daily_prompt": "Daily prompt"
+      },
+      "schedule": {
+        "required": "Required",
+        "optional": "Optional",
+        "requiredHint": "Required modules count toward programme completion.",
+        "requiredToggle": "Required or optional",
+        "requiredUnits": "Required units",
+        "weightOptional": "Weight (optional)",
+        "distributionMode": "Schedule",
+        "monthlyInterval": "Interval (months)",
+        "trainingWeeks": "Training weeks",
+        "trainingWeekOption": "Week {{week}}: {{title}}",
+        "allTrainingWeeksHint": "Select exactly one training week for each required unit.",
+        "noTrainingWeeks": "No training weeks are configured for this programme yet.",
+        "customMilestones": "Custom milestones",
+        "addMilestone": "Add milestone",
+        "dueDate": "Due date {{number}}",
+        "milestoneUnits": "Units {{number}}",
+        "windowEnd": "Window end {{number}}",
+        "removeMilestone": "Remove milestone {{number}}",
+        "modes": {
+          "evenly_distributed": "Evenly distributed",
+          "monthly_frequency": "Monthly frequency",
+          "training_linked": "Linked to training weeks",
+          "custom": "Custom milestones",
+          "flexible": "Flexible"
+        }
+      },
+      "validation": {
+        "requiredUnitsWholeNonNegative": "Required units must be a whole number of zero or more.",
+        "weightNonNegative": "Weight must be zero or more.",
+        "requiredUnitsPositive": "Required modules must have at least one unit.",
+        "distributionModeInvalid": "Choose a valid schedule.",
+        "distributionSettingsInvalid": "Schedule settings are invalid.",
+        "monthlyIntervalPositive": "Monthly interval must be a positive whole number.",
+        "trainingWeekIdsInvalid": "The selected training weeks are invalid.",
+        "customMilestonesRequired": "Add at least one custom milestone.",
+        "customMilestoneInvalid": "Each custom milestone needs a valid date, positive whole units, and a window ending on or after its due date.",
+        "customUnitsMismatch": "Custom milestone units must add up to the required units.",
+        "trainingWeeksInsufficient": "Select exactly as many training weeks as required units."
       }
     }
   },

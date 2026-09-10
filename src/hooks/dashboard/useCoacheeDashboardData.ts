@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { withEnrollmentActions } from "@/lib/enrollmentActions";
 
 export type SessionLite = Pick<
   Database["public"]["Tables"]["sessions"]["Row"],
-  "id" | "topic" | "start_time" | "duration_minutes" | "status" | "meeting_url" | "coach_id" | "coachee_id" | "action_items"
+    "id" | "topic" | "start_time" | "duration_minutes" | "status" | "meeting_url" | "coach_id" | "coachee_id" | "action_items"
 >;
 
 export type CoachLite = {
@@ -41,10 +42,10 @@ async function fetchCoacheeDashboardData(
 ): Promise<UseCoacheeDashboardDataResult> {
   const { data: ses } = await supabase
     .from("sessions")
-    .select("id, topic, start_time, duration_minutes, status, meeting_url, coach_id, coachee_id, action_items")
+    .select("id, topic, start_time, duration_minutes, status, meeting_url, coach_id, coachee_id, enrollment_id")
     .eq("coachee_id", userId)
     .order("start_time", { ascending: false });
-  const list = ses || [];
+  const list = await withEnrollmentActions(ses || [], "coaching") as SessionLite[];
 
   const coachIds = Array.from(new Set(list.map((s) => s.coach_id)));
   let coachesById: Record<string, ProfileLite> = {};

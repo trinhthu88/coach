@@ -71,7 +71,7 @@ export function CoachProgrammeCard({
   programmeWeeks: ProgrammeWeeks | null;
   coachSummaries: CoachSummary[];
   sessionsCompletedCount: number;
-  avgGoalProgress: number;
+  avgGoalProgress: number | null;
 }) {
   const { t } = useTranslation("journey");
   if (!programme) {
@@ -140,8 +140,8 @@ export function CoachProgrammeCard({
         </div>
         <div className="rounded-lg border bg-muted/20 p-3">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmeCard.goalProgress")}</p>
-          <p className="mt-1 text-xl font-semibold text-primary">{avgGoalProgress}%</p>
-          <Progress value={avgGoalProgress} className="mt-2 h-1.5" />
+          <p className="mt-1 text-xl font-semibold text-primary">{avgGoalProgress == null ? "—" : `${avgGoalProgress}%`}</p>
+          <Progress value={avgGoalProgress ?? 0} className="mt-2 h-1.5" />
         </div>
       </div>
 

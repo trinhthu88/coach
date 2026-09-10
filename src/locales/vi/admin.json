@@ -381,6 +381,46 @@
         "quiz": "Quiz",
         "assessment": "Đánh giá",
         "daily_prompt": "Nhắc nhở hàng ngày"
+      },
+      "schedule": {
+        "required": "Bắt buộc",
+        "optional": "Tùy chọn",
+        "requiredHint": "Module bắt buộc được tính vào mức độ hoàn thành chương trình.",
+        "requiredToggle": "Bắt buộc hoặc tùy chọn",
+        "requiredUnits": "Số đơn vị bắt buộc",
+        "weightOptional": "Trọng số (tùy chọn)",
+        "distributionMode": "Lịch trình",
+        "monthlyInterval": "Khoảng cách (tháng)",
+        "trainingWeeks": "Tuần đào tạo",
+        "trainingWeekOption": "Tuần {{week}}: {{title}}",
+        "allTrainingWeeksHint": "Chọn đúng một tuần đào tạo cho mỗi đơn vị bắt buộc.",
+        "noTrainingWeeks": "Chương trình này chưa có tuần đào tạo.",
+        "customMilestones": "Mốc tùy chỉnh",
+        "addMilestone": "Thêm mốc",
+        "dueDate": "Ngày đến hạn {{number}}",
+        "milestoneUnits": "Đơn vị {{number}}",
+        "windowEnd": "Kết thúc khoảng thời gian {{number}}",
+        "removeMilestone": "Xóa mốc {{number}}",
+        "modes": {
+          "evenly_distributed": "Phân bổ đều",
+          "monthly_frequency": "Tần suất hàng tháng",
+          "training_linked": "Liên kết với tuần đào tạo",
+          "custom": "Mốc tùy chỉnh",
+          "flexible": "Linh hoạt"
+        }
+      },
+      "validation": {
+        "requiredUnitsWholeNonNegative": "Số đơn vị bắt buộc phải là số nguyên không âm.",
+        "weightNonNegative": "Trọng số phải bằng hoặc lớn hơn 0.",
+        "requiredUnitsPositive": "Module bắt buộc phải có ít nhất một đơn vị.",
+        "distributionModeInvalid": "Hãy chọn một lịch trình hợp lệ.",
+        "distributionSettingsInvalid": "Cài đặt lịch trình không hợp lệ.",
+        "monthlyIntervalPositive": "Khoảng cách theo tháng phải là số nguyên dương.",
+        "trainingWeekIdsInvalid": "Các tuần đào tạo đã chọn không hợp lệ.",
+        "customMilestonesRequired": "Hãy thêm ít nhất một mốc tùy chỉnh.",
+        "customMilestoneInvalid": "Mỗi mốc tùy chỉnh cần ngày hợp lệ, số đơn vị nguyên dương và ngày kết thúc không trước ngày đến hạn.",
+        "customUnitsMismatch": "Tổng số đơn vị của các mốc tùy chỉnh phải bằng số đơn vị bắt buộc.",
+        "trainingWeeksInsufficient": "Số tuần đào tạo được chọn phải bằng số đơn vị bắt buộc."
       }
     }
   },

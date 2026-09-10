@@ -1,53 +1,34 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { vi } from "vitest";
 import "@/i18n/config";
 import i18n from "@/i18n/config";
 
-beforeEach(async () => {
-  await i18n.changeLanguage("en");
-});
-
-const rpcResponses: Record<string, unknown> = {
-  sponsor_kpis: [{ leaders_enrolled: 4, on_track_count: 3, at_risk_count: 1, sessions_used: 10, sessions_entitled: 32 }],
-  sponsor_goal_growth_summary: [],
-  sponsor_roster: [
-    { enrollment_id: "e1", coachee_id: "c1", full_name: "Priya Shah", cohort_name: "Q3 Leaders", enrollment_status: "active", progress_pct: 55, sessions_completed: 4, sessions_entitled: 8, goal_growth: 22 },
-    { enrollment_id: "e2", coachee_id: "c2", full_name: "Tom Baker", cohort_name: "Q4 Leaders", enrollment_status: "at_risk", progress_pct: 15, sessions_completed: 1, sessions_entitled: 8, goal_growth: -3 },
-  ],
-  sponsor_satisfaction_summary: [{ avg_rating: 4.6, rated_session_count: 19 }],
-  sponsor_timeline: [{ earliest_start: "2026-01-15", latest_end: "2026-12-15", programme_names: ["Executive"] }],
-  sponsor_min_leaders_for_distribution: 5,
-};
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    rpc: (fn: string) => Promise.resolve({ data: rpcResponses[fn], error: null }),
-    from: () => ({ select: () => ({ single: async () => ({ data: { name: "Acme Corp" } }) }) }),
-  },
-}));
-vi.mock("@/context/AuthContext", () => ({
-  useAuth: () => ({ user: { id: "sponsor-1" } }),
-}));
-
+const calls: string[] = [];
+const id1 = "11111111-1111-4111-8111-111111111111";
+const id2 = "22222222-2222-4222-8222-222222222222";
+const rows = (id: string, label: string) => [{ enrollment_id: `e-${id}`, learner_display_name: "Priya Shah", programme_label: "Executive", cohort_id: id, cohort_label: label, enrollment_status: "active", required_units: 8, completed_units: 4, due_units: 4, due_adherence_pct: 100, pace_status: "on_track", coaching_completed_count: 4, mentoring_completed_count: 0, peer_completed_count: 0, triad_completed_count: 0, goal_count: 1, open_action_count: 0, completed_action_count: 0 }];
+const responses: Record<string, unknown> = {};
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: (fn: string) => { calls.push(fn); return Promise.resolve({ data: responses[fn], error: null }); } } }));
+vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: { id: "sponsor-1" } }) }));
 import SponsorCohorts from "../SponsorCohorts";
 
-describe("SponsorCohorts", () => {
-  it("renders one card per cohort, each suppressed below the leader threshold", async () => {
-    render(
-      <MemoryRouter>
-        <SponsorCohorts />
-      </MemoryRouter>
-    );
+beforeEach(async () => {
+  await i18n.changeLanguage("en"); calls.length = 0;
+  responses.sponsor_enrollment_summaries = [...rows(id1, "Small cohort"), ...rows(id2, "Another cohort")];
+  responses.sponsor_cohort_summaries = [
+    { cohort_id: id1, cohort_label: "Small cohort", programme_label: "Executive", enrollment_count: null, suppressed: true },
+    { cohort_id: id2, cohort_label: "Another cohort", programme_label: "Executive", enrollment_count: null, suppressed: true },
+  ];
+});
 
-    await waitFor(() => expect(screen.getByText("Q3 Leaders")).toBeInTheDocument());
-    expect(screen.getByText("Q4 Leaders")).toBeInTheDocument();
-
-    // Each cohort here has only 1 leader, well under the threshold of 5
-    expect(screen.getAllByText(/Suppressed </)).toHaveLength(2);
-
-    // Rolled-up KPIs use the org-wide totals, not a single cohort's
-    expect(screen.getByText("4")).toBeInTheDocument(); // leaders_enrolled
+describe("SponsorCohorts privacy contract", () => {
+  it("uses UUID links and explicitly shows suppression for small cohorts", async () => {
+    render(<MemoryRouter><SponsorCohorts /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText("Small cohort")).toBeInTheDocument());
+    expect(screen.getAllByText("Suppressed")).toHaveLength(2);
+    expect(screen.queryByText(/enrollments/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /View cohort/i })[0]).toHaveAttribute("href", `/sponsor/cohorts/${id1}`);
+    expect(calls.every((name) => name === "sponsor_enrollment_summaries" || name === "sponsor_cohort_summaries")).toBe(true);
   });
 });

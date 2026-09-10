@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export function RatingSlider({
@@ -12,7 +12,7 @@ export function RatingSlider({
 }: {
   label: string;
   hint?: string;
-  value: number;
+  value: number | null;
   trackColor: string;
   disabled?: boolean;
   onChange: (v: number) => void;
@@ -26,17 +26,19 @@ export function RatingSlider({
           <span className="text-[11px] font-semibold">{label}</span>
           {hint && <span className="ml-2 text-[10px] text-muted-foreground">{hint}</span>}
         </div>
-        <span className="text-xs font-semibold tabular-nums text-foreground">{local}</span>
+        <span className="text-xs font-semibold tabular-nums text-foreground">{local ?? "—"}</span>
       </div>
-      <Slider
-        value={[local]}
+      <Input
+        type="number"
+        aria-label={label}
+        value={local ?? ""}
         min={0}
         max={100}
         step={1}
         disabled={disabled}
-        onValueChange={(v) => setLocal(v[0])}
-        onValueCommit={(v) => onChange(v[0])}
-        className={cn("[&_[data-orientation=horizontal]>span]:h-1.5", trackColor && "")}
+        onChange={(event) => setLocal(event.target.value === "" ? null : Number(event.target.value))}
+        onBlur={() => { if (local != null && Number.isInteger(local) && local >= 0 && local <= 100 && local !== value) onChange(local); }}
+        className={trackColor ? "border-primary/20" : undefined}
       />
     </div>
   );

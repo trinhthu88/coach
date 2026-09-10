@@ -135,7 +135,7 @@ export default function CoacheeJourney() {
           </p>
         </Card>
          <Card className="surface-card hover-lift flex flex-col items-center gap-2 p-6">
-          <ProgressRing value={avgGoalProgress} tone="warning" />
+          {avgGoalProgress == null ? <span aria-label="Unrated">—</span> : <ProgressRing value={avgGoalProgress} tone="warning" />}
           <p className="text-sm font-semibold">{t("coacheeJourney.progressRings.goalsOnTrack")}</p>
           <p className="text-xs text-muted-foreground">
             {t("coacheeJourney.progressRings.goalsOnTrackSub", { count: goals.filter((g) => goalProgress(g.id) >= 50).length, total: goals.length })}

@@ -742,37 +742,37 @@ export type Database = {
         Row: {
           coachee_id: string
           created_at: string
-          current_rating: number
+          current_rating: number | null
           current_updated_at: string
           enrollment_id: string | null
           goal_id: string
           id: string
-          start_rating: number
-          target_rating: number
+          start_rating: number | null
+          target_rating: number | null
           updated_at: string
         }
         Insert: {
           coachee_id: string
           created_at?: string
-          current_rating?: number
+          current_rating?: number | null
           current_updated_at?: string
           enrollment_id?: string | null
           goal_id: string
           id?: string
-          start_rating?: number
-          target_rating?: number
+          start_rating?: number | null
+          target_rating?: number | null
           updated_at?: string
         }
         Update: {
           coachee_id?: string
           created_at?: string
-          current_rating?: number
+          current_rating?: number | null
           current_updated_at?: string
           enrollment_id?: string | null
           goal_id?: string
           id?: string
-          start_rating?: number
-          target_rating?: number
+          start_rating?: number | null
+          target_rating?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1435,6 +1435,38 @@ export type Database = {
           },
         ]
       }
+      enrollment_schedule_backfill_audit: {
+        Row: {
+          enrollment_id: string
+          first_seen_at: string
+          last_seen_at: string
+          metadata: Json
+          reason: string
+        }
+        Insert: {
+          enrollment_id: string
+          first_seen_at?: string
+          last_seen_at?: string
+          metadata?: Json
+          reason: string
+        }
+        Update: {
+          enrollment_id?: string
+          first_seen_at?: string
+          last_seen_at?: string
+          metadata?: Json
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_schedule_backfill_audit_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: true
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_checkins: {
         Row: {
           actor_user_id: string
@@ -1447,6 +1479,7 @@ export type Database = {
           previous_rating: number | null
           source_activity_id: string
           source_activity_type: string
+          submission_id: string | null
         }
         Insert: {
           actor_user_id: string
@@ -1459,6 +1492,7 @@ export type Database = {
           previous_rating?: number | null
           source_activity_id: string
           source_activity_type: string
+          submission_id?: string | null
         }
         Update: {
           actor_user_id?: string
@@ -1471,6 +1505,7 @@ export type Database = {
           previous_rating?: number | null
           source_activity_id?: string
           source_activity_type?: string
+          submission_id?: string | null
         }
         Relationships: [
           {
@@ -3586,7 +3621,37 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_create_programme_enrollment: {
+        Args: {
+          p_cohort_id: string
+          p_end_date?: string
+          p_organization_id: string
+          p_programme_id: string
+          p_start_date?: string
+          p_user_id: string
+        }
+        Returns: Database["public"]["Functions"]["create_programme_enrollment"]["Returns"]
+        SetofOptions: {
+          from: "*"
+          to: "programme_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
+      backfill_enrollment_schedule_snapshots: {
+        Args: { p_limit?: number | null }
+        Returns: {
+          processed: number
+          succeeded: number
+          unresolved: number
+          skipped: number
+        }[]
+      }
+      assert_enrollment_schedule_backfill_ready: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_enrollment_schedule: {
         Args: { p_enrollment_id: string }
         Returns: undefined
@@ -3603,6 +3668,23 @@ export type Database = {
         Returns: {
           monthly_limit: number
           used_this_month: number
+        }[]
+      }
+      get_enrollment_training_weeks: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          completed_at: string
+          effective_unlock_date: string
+          id: string
+          locked: boolean
+          skill_card_visible: boolean
+          subtitle: string
+          subtitle_vi: string
+          title: string
+          title_vi: string
+          unlock_date: string
+          viewed_at: string
+          week_number: number
         }[]
       }
       get_enrollment_progress: {
@@ -3748,7 +3830,7 @@ export type Database = {
         Args: {
           p_enrollment_id: string
           p_goal_id: string
-          p_new_rating: number
+          p_new_rating: number | null
           p_note?: string
           p_source_activity_id: string
           p_source_activity_type: string
@@ -3764,6 +3846,7 @@ export type Database = {
           previous_rating: number | null
           source_activity_id: string
           source_activity_type: string
+          submission_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3771,6 +3854,37 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      record_goal_checkins: {
+        Args: {
+          p_checkins: Json
+          p_enrollment_id: string
+          p_source_activity_id: string
+          p_source_activity_type: string
+          p_submission_id?: string
+        }
+        Returns: {
+          actor_user_id: string
+          created_at: string
+          enrollment_id: string
+          goal_id: string
+          id: string
+          new_rating: number | null
+          note: string | null
+          previous_rating: number | null
+          source_activity_id: string
+          source_activity_type: string
+          submission_id: string | null
+        }[]
+      }
+      save_enrollment_activity_actions: {
+        Args: {
+          p_actions: Json
+          p_enrollment_id: string
+          p_source_activity_id: string
+          p_source_activity_type: string
+        }
+        Returns: undefined
       }
       refresh_all_progress_pct: { Args: never; Returns: number }
       remove_own_coachee: { Args: { _coachee_id: string }; Returns: boolean }
@@ -3787,6 +3901,51 @@ export type Database = {
         Returns: {
           coach_name: string
           completed_sessions: number
+        }[]
+      }
+      sponsor_enrollment_summaries: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          enrollment_id: string
+          learner_display_name: string
+          programme_label: string
+          cohort_id: string
+          cohort_label: string
+          enrollment_status: string
+          required_units: number
+          completed_units: number
+          due_units: number
+          due_adherence_pct: number
+          pace_status: string
+          coaching_completed_count: number
+          mentoring_completed_count: number
+          peer_completed_count: number
+          triad_completed_count: number
+          goal_count: number
+          open_action_count: number
+          completed_action_count: number
+        }[]
+      }
+      sponsor_cohort_summaries: {
+        Args: { p_cohort_id?: string }
+        Returns: {
+          cohort_id: string
+          cohort_label: string
+          programme_label: string
+          enrollment_count: number | null
+          suppressed: boolean
+          required_units: number
+          completed_units: number
+          due_units: number
+          due_adherence_pct: number
+          pace_status: string
+          coaching_completed_count: number
+          mentoring_completed_count: number
+          peer_completed_count: number
+          triad_completed_count: number
+          goal_count: number
+          open_action_count: number
+          completed_action_count: number
         }[]
       }
       sponsor_confidence_trend: {

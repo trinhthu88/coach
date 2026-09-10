@@ -26,27 +26,6 @@ interface RosterRow {
   enrollment_status: string;
   sessions_completed: number;
   sessions_entitled: number;
-  goal_growth: number | null;
-}
-
-interface ProgrammeEngagementRow {
-  week_number: number;
-  week_title: string;
-  skill_card_completion_pct: number | null;
-  quiz_avg_score: number | null;
-  quiz_completion_pct: number | null;
-  triad_completion_pct: number | null;
-  daily_prompt_response_rate: number | null;
-}
-
-// Report-only, sourced from reflection_submissions — not the live dashboard.
-// Sponsors never see anonymized reflection quotes (see sponsor_confidence_trend()).
-interface ConfidenceTrendRow {
-  reflection_number: number;
-  reflection_title: string;
-  appears_at_week: number;
-  avg_confidence: number | null;
-  response_count: number;
 }
 
 const PAGE_SIZE: [number, number] = [612, 792]; // US Letter
@@ -88,24 +67,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    const [kpisRes, growthRes, rosterRes, satisfactionRes, orgRes, engagementRes, confidenceTrendRes] = await Promise.all([
-      asUser.rpc("sponsor_kpis"),
-      asUser.rpc("sponsor_goal_growth_summary"),
-      asUser.rpc("sponsor_roster"),
-      asUser.rpc("sponsor_satisfaction_summary"),
-      asUser.from("sponsor_profiles").select("organizations(name)").eq("user_id", user.id).maybeSingle(),
-      asUser.rpc("sponsor_programme_engagement"),
-      asUser.rpc("sponsor_confidence_trend"),
+    let requestBody: { p_cohort_id?: unknown; cohort_id?: unknown } = {};
+    try { requestBody = await req.json(); } catch { /* validation below returns 400 */ }
+    const requestedCohort = requestBody.p_cohort_id ?? requestBody.cohort_id;
+    if (typeof requestedCohort !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedCohort)) {
+      return new Response(JSON.stringify({ error: "p_cohort_id must be a valid cohort UUID" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const [cohortRes, enrollmentRes] = await Promise.all([
+      asUser.rpc("sponsor_cohort_summaries", { p_cohort_id: requestedCohort }),
+      asUser.rpc("sponsor_enrollment_summaries", { p_cohort_id: requestedCohort }),
     ]);
-    if (kpisRes.error) throw kpisRes.error;
+    if (cohortRes.error) throw cohortRes.error;
+    if (enrollmentRes.error) throw enrollmentRes.error;
+    const cohort = cohortRes.data?.[0];
+    if (!cohort || cohort.suppressed) {
+      return new Response(JSON.stringify({ error: "Detailed sponsor report is suppressed to protect privacy" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const kpis = kpisRes.data?.[0] ?? null;
-    const growth = growthRes.data?.[0] ?? null;
-    const roster = (rosterRes.data ?? []) as RosterRow[];
-    const satisfaction = satisfactionRes.data?.[0] ?? null;
-    const orgName = (orgRes.data as { organizations: { name: string } | null } | null)?.organizations?.name ?? "Your organization";
-    const engagement = (engagementRes.data ?? []) as ProgrammeEngagementRow[];
-    const confidenceTrend = (confidenceTrendRes.data ?? []) as ConfidenceTrendRow[];
+    const rows = enrollmentRes.data ?? [];
+    const kpis = rows.length ? {
+      leaders_enrolled: rows.length,
+      sessions_used: rows.reduce((n, r) => n + r.coaching_completed_count, 0),
+      sessions_entitled: rows.reduce((n, r) => n + r.required_units, 0),
+    } : null;
+    const roster = rows.map((r) => ({
+      full_name: r.learner_display_name,
+      cohort_name: r.cohort_label,
+      enrollment_status: r.enrollment_status,
+      sessions_completed: r.coaching_completed_count,
+      sessions_entitled: r.required_units,
+    })) as RosterRow[];
 
     // ------------------------------------------------------------------
     // Build the PDF
@@ -135,7 +130,7 @@ Deno.serve(async (req) => {
     }
 
     text("Clariva Sponsor Summary", { size: 20, f: bold, color: brand, gap: 4 });
-    text(orgName, { size: 13, f: bold, gap: 2 });
+    text(cohort.cohort_label ?? "Sponsor cohort", { size: 13, f: bold, gap: 2 });
     text(`Issued ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`, {
       size: 9,
       color: muted,
@@ -145,16 +140,7 @@ Deno.serve(async (req) => {
     text("Key metrics", { size: 13, f: bold, gap: 10 });
     text(`Leaders enrolled: ${kpis?.leaders_enrolled ?? "—"}`);
     text(`Sessions used: ${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`);
-    text(`Average rating: ${satisfaction?.avg_rating != null ? Number(satisfaction.avg_rating).toFixed(1) : "—"} / 5.0`);
-    text(`At risk: ${kpis?.at_risk_count ?? 0}`, { gap: 18 });
-
-    text("Goal growth", { size: 13, f: bold, gap: 10 });
-    text(
-      growth?.avg_growth != null
-        ? `Average growth: +${Math.round(growth.avg_growth)} pts across ${growth.enrolled_leaders_count ?? 0} leaders`
-        : "No goal ratings recorded yet.",
-      { gap: 18 }
-    );
+    text("Privacy-safe enrollment and cohort metrics only.", { gap: 18 });
 
     if (roster.length > 0) {
       text("Leader roster", { size: 13, f: bold, gap: 10 });
@@ -163,7 +149,6 @@ Deno.serve(async (req) => {
         { label: "Cohort", w: 110 },
         { label: "Status", w: 80 },
         { label: "Sessions", w: 70 },
-        { label: "Growth", w: 70 },
       ];
       newPageIfNeeded(20);
       let x = MARGIN;
@@ -181,48 +166,12 @@ Deno.serve(async (req) => {
           r.cohort_name || "—",
           r.enrollment_status,
           `${r.sessions_completed}/${r.sessions_entitled}`,
-          r.goal_growth != null ? `+${Math.round(r.goal_growth)}` : "—",
         ];
         values.forEach((v, i) => {
           page.drawText(String(v).slice(0, 28), { x, y, size: 9, font, color: ink });
           x += cols[i].w;
         });
         y -= 14;
-      }
-    }
-
-    // Programme impact — omitted entirely when there's no engagement data
-    // (mirrors SponsorReport.tsx's on-screen preview, which does the same).
-    if (engagement.length > 0) {
-      newPageIfNeeded(20);
-      y -= 10;
-      text("Programme impact", { size: 13, f: bold, gap: 10 });
-
-      const avgOf = (values: (number | null)[]) => {
-        const present = values.filter((v): v is number => v != null);
-        return present.length > 0 ? present.reduce((a, b) => a + b, 0) / present.length : null;
-      };
-      const fmtPct = (v: number | null) => (v != null ? `${Math.round(v)}%` : "—");
-      text(`Skill card completion: ${fmtPct(avgOf(engagement.map((w) => w.skill_card_completion_pct)))}`);
-      text(`Quiz completion: ${fmtPct(avgOf(engagement.map((w) => w.quiz_completion_pct)))}`);
-      text(`Triad completion: ${fmtPct(avgOf(engagement.map((w) => w.triad_completion_pct)))}`);
-      text(`Daily prompt response rate: ${fmtPct(avgOf(engagement.map((w) => w.daily_prompt_response_rate)))}`, { gap: 18 });
-
-      // Confidence trend is report-only (never the live dashboard), and
-      // sourced from reflections — not the anonymized-quote feature, which
-      // sponsors never see.
-      const scoredTrend = confidenceTrend.filter((c) => c.avg_confidence != null);
-      if (scoredTrend.length > 0) {
-        newPageIfNeeded(20);
-        text("Confidence trend", { size: 11, f: bold, gap: 8 });
-        for (const c of scoredTrend) {
-          text(`Reflection ${c.reflection_number}: ${Number(c.avg_confidence).toFixed(1)}/10 (${c.response_count} responses)`, {
-            size: 9,
-            color: muted,
-            gap: 6,
-          });
-        }
-        y -= 8;
       }
     }
 

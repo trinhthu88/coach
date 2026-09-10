@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PeerSessionRow, SessionRow, SessionSource } from "./types";
+import { withEnrollmentActions, saveEnrollmentActions } from "@/lib/enrollmentActions";
 
 export type { SessionSource };
 
@@ -28,8 +29,10 @@ async function fetchJourneySessions(coacheeId: string, includePeer: boolean): Pr
           .order("start_time", { ascending: false })
       : Promise.resolve({ data: [] as PeerSessionRow[] }),
   ]);
-  const coachingSessions = s || [];
-  const peerSessions = peerResult.data || [];
+  const coachingSessions = await withEnrollmentActions(s || [], "coaching") as SessionRow[];
+  const peerSessions = includePeer
+    ? await withEnrollmentActions(peerResult.data || [], "peer_coaching") as PeerSessionRow[]
+    : [];
 
   const ids = new Set<string>();
   coachingSessions.forEach((x) => x.coach_id && ids.add(x.coach_id));
@@ -81,10 +84,15 @@ export function useJourneySessions(coacheeId: string | undefined, options: Optio
 
   const toggleActionMutation = useMutation({
     mutationFn: async ({ table, sessionId, items }: { table: "sessions" | "peer_sessions"; sessionId: string; items: unknown[] }) => {
-      const { error } = await supabase
-        .from(table)
-        .update({ action_items: items as never })
-        .eq("id", sessionId);
+      const list = table === "sessions" ? coachingSessions : peerSessions;
+      const session = list.find((item) => item.id === sessionId);
+      if (!session?.enrollment_id) throw new Error("An enrollment is required to save programme actions");
+      const { error } = await saveEnrollmentActions(
+        session.enrollment_id,
+        table === "sessions" ? "coaching" : "peer_coaching",
+        sessionId,
+        items as { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null }[],
+      );
       if (error) throw error;
     },
     onError: (error) => {

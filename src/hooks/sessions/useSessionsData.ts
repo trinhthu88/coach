@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/context/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 import type { SessionStatus } from "@/lib/sessionStatusMeta";
+import { withEnrollmentActions } from "@/lib/enrollmentActions";
 
 export type SessionKind =
   | "coaching"
@@ -41,7 +42,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       .select("*")
       .eq(col, userId)
       .order("start_time", { ascending: false });
-    sess = data || [];
+    sess = await withEnrollmentActions(data || [], "coaching") as Tables<"sessions">[];
   }
 
   if (role === "coach") {
@@ -50,7 +51,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       .select("*")
       .or(`peer_coach_id.eq.${userId},peer_coachee_id.eq.${userId}`)
       .order("start_time", { ascending: false });
-    peer = data || [];
+    peer = await withEnrollmentActions(data || [], "peer_coaching") as Tables<"peer_sessions">[];
   }
 
   if (role === "coachee") {
@@ -59,7 +60,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       .select("*")
       .or(`peer_provider_id.eq.${userId},peer_receiver_id.eq.${userId}`)
       .order("start_time", { ascending: false });
-    coacheePeer = data || [];
+    coacheePeer = await withEnrollmentActions(data || [], "coachee_peer_coaching") as Tables<"coachee_peer_sessions">[];
   }
 
   // Mentoring: a mentee can be either role (coach or coachee, RULES.md §3
@@ -73,7 +74,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       .select("*")
       .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`)
       .order("start_time", { ascending: false });
-    mentoring = data || [];
+    mentoring = await withEnrollmentActions(data || [], "mentoring") as Tables<"mentoring_sessions">[];
   }
 
   const allRows = [

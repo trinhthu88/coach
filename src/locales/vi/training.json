@@ -93,7 +93,31 @@
     "triadReflectionAction": "Phản tư triad",
     "goalsLabel": "Mục tiêu",
     "goalsSummary_other": "{{count}} mục tiêu đang hoạt động",
-    "goalsSummaryEmpty": "Chưa có mục tiêu nào — hãy đặt một mục tiêu từ trang Phát triển của tôi."
+    "goalsSummaryEmpty": "Chưa có mục tiêu nào — hãy đặt một mục tiêu từ trang Phát triển của tôi.",
+    "loadError": "Không thể tải tiến độ chương trình.",
+    "enrollmentRequired": "Không thể xem tiến độ cho đến khi chọn một đợt tham gia.",
+    "trainingActivity": "Hoạt động đào tạo",
+    "completedUnits": "Đã hoàn thành {{completed}} / {{required}}",
+    "completedUnitsNoRequirement": "Đã hoàn thành {{completed}}",
+    "dueAdherence": "Đã hoàn thành {{pct}}% trong {{due}} mục đến hạn",
+    "modules": {
+      "coaching": "Khai vấn",
+      "peer_coaching": "Khai vấn đồng cấp",
+      "mentoring": "Cố vấn",
+      "triads": "Nhóm bộ ba",
+      "training": "Đào tạo",
+      "quiz": "Bài trắc nghiệm",
+      "assessment": "Đánh giá",
+      "daily_prompt": "Gợi ý hàng ngày"
+    },
+    "pace": {
+      "completed": "Đã hoàn thành",
+      "not_yet_due": "Chưa đến hạn",
+      "ahead": "Vượt tiến độ",
+      "on_track": "Đúng tiến độ",
+      "scheduled": "Đã lên lịch",
+      "behind": "Chậm tiến độ"
+    }
   },
   "admin": {
     "eyebrow": "Quản trị",

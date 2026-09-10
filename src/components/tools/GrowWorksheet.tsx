@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { withEnrollmentActions, saveEnrollmentActions, type EnrollmentActionItem } from "@/lib/enrollmentActions";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ interface GrowResponses {
 }
 
 interface ActionItem {
+  id?: string;
   text: string;
   done: boolean;
   due_date: string | null;
@@ -54,20 +56,22 @@ export function GrowWorksheet({
   const [dueDate, setDueDate] = useState("");
   const [adding, setAdding] = useState(false);
   const [items, setItems] = useState<ActionItem[]>([]);
+  const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const sourceType = sessionId ? "coaching" : "peer_coaching" as const;
 
   const loadItems = useCallback(async () => {
     const { data } = (await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(parentTable as any)
-      .select("action_items")
+      .select("id, enrollment_id")
       .eq("id", parentId)
-      .maybeSingle()) as { data: { action_items: unknown } | null };
-    setItems(
-      Array.isArray(data?.action_items)
-        ? (data!.action_items as unknown as ActionItem[])
-        : []
-    );
-  }, [parentTable, parentId]);
+      .maybeSingle()) as { data: { id: string; enrollment_id: string | null } | null };
+    const activity = data as { id: string; enrollment_id: string | null } | null;
+    setEnrollmentId(activity?.enrollment_id ?? null);
+    if (!activity) { setItems([]); return; }
+    const [normalized] = await withEnrollmentActions([activity], sourceType);
+    setItems((normalized.action_items ?? []) as ActionItem[]);
+  }, [parentTable, parentId, sourceType]);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,29 +136,16 @@ export function GrowWorksheet({
     const text = commitment.trim();
     if (!text) return;
     setAdding(true);
-    const { data: current, error: readErr } = (await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .from(parentTable as any)
-      .select("action_items")
-      .eq("id", parentId)
-      .maybeSingle()) as { data: { action_items: unknown } | null; error: { message: string } | null };
-    if (readErr || !current) {
+    if (!enrollmentId) {
       setAdding(false);
-      toast.error(readErr?.message || t("growWorksheet.toast.loadActionItemsFailed"));
+      toast.error("An enrollment is required to save programme actions");
       return;
     }
-    const existing = Array.isArray(current.action_items)
-      ? (current.action_items as unknown as ActionItem[])
-      : [];
     const next: ActionItem[] = [
-      ...existing,
+      ...items,
       { text, done: false, due_date: dueDate || null, milestone_id: null },
     ];
-    const { error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .from(parentTable as any)
-      .update({ action_items: next as unknown as Json })
-      .eq("id", parentId);
+    const { error } = await saveEnrollmentActions(enrollmentId, sourceType, parentId, next as EnrollmentActionItem[]);
     setAdding(false);
     if (error) {
       toast.error(error.message);

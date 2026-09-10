@@ -20,19 +20,20 @@ export function useGoalRatingRows(goals: Goal[], ratings: Record<string, GoalRat
         return {
           goalId: g.id,
           title: g.title,
-          start: r?.start_rating ?? 30,
-          current: r?.current_rating ?? 30,
-          target: r?.target_rating ?? 80,
+          start: r?.start_rating ?? null,
+          current: r?.current_rating ?? null,
+          target: r?.target_rating ?? null,
         };
       }),
     [goals, ratings]
   );
 
   const avgGoalProgress = useMemo(() => {
-    if (!ratingRows.length) return 0;
-    const vals = ratingRows.map((r) => {
-      const span = Math.max(1, r.target - r.start);
-      const got = Math.max(0, r.current - r.start);
+    const ratedRows = ratingRows.filter((r) => r.start != null && r.current != null && r.target != null && r.target > r.start);
+    if (!ratedRows.length) return null;
+    const vals = ratedRows.map((r) => {
+      const span = Math.max(1, r.target! - r.start!);
+      const got = Math.max(0, r.current! - r.start!);
       return Math.min(100, Math.round((got / span) * 100));
     });
     return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
@@ -95,7 +96,7 @@ export function useSessionRatingSeries<S extends RatedSession>(
     const grouped = new Map<string, { date: string; rows: { goalId: string; rating: number }[] }>();
     for (const row of sessionRatings) {
       const sess = sessionById.get(row.session_id);
-      if (!sess) continue;
+      if (!sess || row.rating == null) continue;
       const cur = grouped.get(row.session_id) || { date: sess.start_time, rows: [] };
       cur.rows.push({ goalId: row.goal_id, rating: row.rating });
       grouped.set(row.session_id, cur);

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { isAfter, isBefore, endOfWeek } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RawAction } from "./types";
+import { withEnrollmentActions } from "@/lib/enrollmentActions";
 
 export interface FlatClientAction {
   sessionId: string;
@@ -41,15 +42,16 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
       supabase.from("coachee_profiles").select("*").eq("id", coacheeId).maybeSingle(),
       supabase.from("coachee_goals").select("*").eq("coachee_id", coacheeId).order("created_at"),
       supabase.from("coachee_milestones").select("*").eq("coachee_id", coacheeId).order("created_at"),
-      supabase.from("sessions").select("*").eq("coach_id", coachId).eq("coachee_id", coacheeId).order("start_time", { ascending: false }),
+       supabase.from("sessions").select("id, enrollment_id, coach_id, coachee_id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, cancelled_at, slot_id").eq("coach_id", coachId).eq("coachee_id", coacheeId).order("start_time", { ascending: false }),
       supabase.from("coach_client_notes").select("*").eq("coach_id", coachId).eq("coachee_id", coacheeId).order("created_at", { ascending: false }),
     ]);
     setProfile(prof);
     setCoacheeProfile(cprof);
 
+    const normalizedSessions = await withEnrollmentActions(s || [], "coaching");
     // Filter goals/milestones to only those linked via action items in THIS coach's sessions
     const linkedMs = new Set<string>();
-    for (const sess of s || []) {
+    for (const sess of normalizedSessions) {
       const items: RawAction[] = Array.isArray(sess.action_items)
         ? (sess.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
         : [];
@@ -63,7 +65,7 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
 
     setGoals(visibleGoals);
     setMilestones(visibleMilestones);
-    setSessions(s || []);
+    setSessions(normalizedSessions as Tables<"sessions">[]);
     setNotes(n || []);
   }, [coacheeId, coachId]);
 

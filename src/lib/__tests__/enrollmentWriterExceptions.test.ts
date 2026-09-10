@@ -10,18 +10,15 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
-describe("temporary direct enrollment writer exceptions", () => {
-  it("limits direct programme enrollment writes to the two Phase 7 seed replacements", () => {
+describe("programme enrollment writer boundary", () => {
+  it("does not directly write programme_enrollments in production source", () => {
     const writers = ["src", "supabase/functions"]
       .flatMap((directory) => sourceFiles(directory))
       .filter((file) => /from\("programme_enrollments"\)[\s\S]{0,240}\.(insert|upsert|update|delete)\(/.test(readFileSync(file, "utf8")))
       .map((file) => relative(process.cwd(), file))
       .sort();
 
-    expect(writers).toEqual([
-      "supabase/functions/seed-demo-data/index.ts",
-      "supabase/functions/seed-tasc-content/index.ts",
-    ]);
+    expect(writers).toEqual([]);
   });
 });
 

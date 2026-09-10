@@ -14,13 +14,14 @@ import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
+import { withEnrollmentActions } from "@/lib/enrollmentActions";
 
 interface AlertsScanSessionRow {
   id: string;
   coach_id: string;
   coachee_id: string;
   status: string;
-  action_items: Json;
+  enrollment_id: string | null;
   start_time: string;
   coachee_notes: string | null;
 }
@@ -121,7 +122,7 @@ export default function AdminAlerts() {
       ] = await Promise.all([
         supabase
           .from("sessions")
-          .select("id, coach_id, coachee_id, status, action_items, start_time, coachee_notes"),
+          .select("id, enrollment_id, coach_id, coachee_id, status, start_time, coachee_notes"),
         supabase
           .from("peer_sessions")
           .select("id, peer_coach_id, peer_coachee_id, status, start_time"),
@@ -145,7 +146,8 @@ export default function AdminAlerts() {
         (peerFeedback || []).map((f: { peer_session_id: string }) => f.peer_session_id)
       );
       const overdueByCoachee = new Map<string, number>();
-      (sessions || []).forEach((s: AlertsScanSessionRow) => {
+      const normalizedSessions = await withEnrollmentActions(sessions || [], "coaching");
+      normalizedSessions.forEach((s: AlertsScanSessionRow & { action_items?: unknown }) => {
         const items = Array.isArray(s.action_items) ? s.action_items : [];
         items.forEach((it: Json) => {
           const action = it as { done?: boolean; due_date?: string | null } | null;

@@ -61,7 +61,7 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
 
   const deleteGoalMutation = useMutation({
     mutationFn: async (goalId: string) => {
-      const { error } = await supabase.from("coachee_goals").delete().eq("id", goalId);
+      const { error } = await supabase.from("coachee_goals").update({ status: "archived" }).eq("id", goalId).eq("enrollment_id", enrollmentId as string);
       if (error) throw error;
     },
     onSuccess: notifyChanged,

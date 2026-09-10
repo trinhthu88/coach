@@ -1283,25 +1283,17 @@ Deno.serve(async (req) => {
       if (!coach1Id) {
         trangSeed = { skipped: true, reason: "No coach found (other than Trang herself)" };
       } else {
-    // 9. Programme enrollment (update in place if she's already enrolled)
-    const { data: existingEnrollment } = await admin.from("programme_enrollments").select("id").eq("user_id", trangId).eq("programme_id", programmeId).maybeSingle();
-    if (existingEnrollment) {
-      const { error } = await admin.from("programme_enrollments").update({
-        cohort_id: cohortId,
-        status: "active",
-        start_date: "2026-09-08",
-        end_date: "2026-10-06",
-        progress_pct: 55,
-        notes: "Pilot participant — joined from day 1",
-      }).eq("id", existingEnrollment.id);
-      if (error) throw error;
-    } else {
-      const { error } = await admin.from("programme_enrollments").insert({
-        user_id: trangId, coachee_id: trangId, programme_id: programmeId, cohort_id: cohortId,
-        status: "active", start_date: "2026-09-08",
-        end_date: "2026-10-06", progress_pct: 55, notes: "Pilot participant — joined from day 1",
-      });
-      if (error) throw error;
+    // 9. Enrollment transition is race-safe and never reassigns an ongoing row.
+    const { error: enrollmentError } = await admin.rpc("admin_create_programme_enrollment", {
+      p_user_id: trangId,
+      p_programme_id: programmeId,
+      p_cohort_id: cohortId,
+      p_organization_id: null,
+      p_start_date: "2026-09-08",
+      p_end_date: "2026-10-06",
+    });
+    if (enrollmentError && !String(enrollmentError.message ?? "").includes("ongoing_enrollment_exists")) {
+      throw enrollmentError;
     }
 
       // 10. Coachee goals, ratings, milestones (added alongside any pre-existing goals)

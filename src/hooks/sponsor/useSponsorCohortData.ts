@@ -1,96 +1,58 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type {
-  SponsorGoalGrowth,
-  SponsorKpis,
-  SponsorRosterRow,
-  SponsorSatisfaction,
-  SponsorProgrammeEngagementRow,
-  SponsorRedFlagRow,
-  SponsorCoachUtilisationRow,
-} from "./useSponsorDashboardData";
+import type { SponsorKpis, SponsorRosterRow } from "./useSponsorDashboardData";
 
-interface SponsorCohortData {
+export interface SponsorCohortData {
   kpis: SponsorKpis | null;
-  goalGrowth: SponsorGoalGrowth | null;
   roster: SponsorRosterRow[];
-  satisfaction: SponsorSatisfaction | null;
   minLeadersForDistribution: number;
-  programmeEngagement: SponsorProgrammeEngagementRow[];
-  redFlags: SponsorRedFlagRow[];
-  coachUtilisation: SponsorCoachUtilisationRow[];
+  cohortLabel: string | null;
+  suppressed: boolean;
   loading: boolean;
 }
 
-/**
- * Every sponsor_* RPC now accepts an optional p_cohort_id uuid (see
- * src/integrations/supabase/types.ts), so this hook fetches cohort-scoped
- * data server-side instead of over-fetching org-wide rows and filtering
- * them client-side.
- *
- * The `cohortId` this hook receives is actually the cohort *name* — the
- * route param SponsorCohortDetail.tsx passes in (none of the sponsor_*
- * RPCs return a cohort id, only cohort_name, so the route was built on the
- * name). p_cohort_id is a uuid, so the cohort's id is resolved from its
- * name first via a direct `cohorts` table query — the one exception to the
- * sponsor_*-RPC-only rule, same one SponsorCohortDetail.tsx already uses
- * for the cohort's start/end dates.
- */
+/** Fetches a UUID-scoped, server-authorized sponsor cohort summary. */
 export function useSponsorCohortData(cohortId: string): SponsorCohortData {
   const [kpis, setKpis] = useState<SponsorKpis | null>(null);
-  const [goalGrowth, setGoalGrowth] = useState<SponsorGoalGrowth | null>(null);
   const [roster, setRoster] = useState<SponsorRosterRow[]>([]);
-  const [satisfaction, setSatisfaction] = useState<SponsorSatisfaction | null>(null);
-  const [minLeadersForDistribution, setMinLeadersForDistribution] = useState(5);
-  const [programmeEngagement, setProgrammeEngagement] = useState<SponsorProgrammeEngagementRow[]>([]);
-  const [redFlags, setRedFlags] = useState<SponsorRedFlagRow[]>([]);
-  const [coachUtilisation, setCoachUtilisation] = useState<SponsorCoachUtilisationRow[]>([]);
+  const [cohortLabel, setCohortLabel] = useState<string | null>(null);
+  const [suppressed, setSuppressed] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    (async () => {
-      const { data: cohortRow } = await supabase
-        .from("cohorts")
-        .select("id")
-        .eq("name", cohortId)
-        .maybeSingle();
+    Promise.all([
+      supabase.rpc("sponsor_enrollment_summaries", { p_cohort_id: cohortId }),
+      supabase.rpc("sponsor_cohort_summaries", { p_cohort_id: cohortId }),
+    ]).then(([summaryRes, cohortRes]) => {
       if (!mounted) return;
-      const pCohortId = cohortRow?.id ?? null;
-
-      const [
-        kpisRes, goalGrowthRes, rosterRes, satisfactionRes, minLeadersRes,
-        engagementRes, redFlagsRes, utilisationRes,
-      ] = await Promise.all([
-        supabase.rpc("sponsor_kpis", { p_cohort_id: pCohortId }),
-        supabase.rpc("sponsor_goal_growth_summary", { p_cohort_id: pCohortId }),
-        supabase.rpc("sponsor_roster", { p_cohort_id: pCohortId }),
-        supabase.rpc("sponsor_satisfaction_summary", { p_cohort_id: pCohortId }),
-        supabase.rpc("sponsor_min_leaders_for_distribution", { p_cohort_id: pCohortId }),
-        supabase.rpc("sponsor_programme_engagement", { p_cohort_id: pCohortId }),
-        supabase.rpc("sponsor_engagement_red_flags", { p_cohort_id: pCohortId }),
-        supabase.rpc("sponsor_coach_utilisation", { p_cohort_id: pCohortId }),
-      ]);
-      if (!mounted) return;
-
-      setKpis(kpisRes.data?.[0] ?? null);
-      setGoalGrowth(goalGrowthRes.data?.[0] ?? null);
-      setRoster(rosterRes.data ?? []);
-      setSatisfaction(satisfactionRes.data?.[0] ?? null);
-      if (typeof minLeadersRes.data === "number") setMinLeadersForDistribution(minLeadersRes.data);
-      setProgrammeEngagement(engagementRes.data ?? []);
-      setRedFlags(redFlagsRes.data ?? []);
-      setCoachUtilisation(utilisationRes.data ?? []);
+      const rows = summaryRes.data ?? [];
+      const aggregate = cohortRes.data?.[0];
+      setCohortLabel(aggregate?.cohort_label ?? rows[0]?.cohort_label ?? null);
+      setSuppressed(aggregate?.suppressed ?? rows.length < 5);
+      setRoster(rows.map((r) => ({
+        ...r,
+        full_name: r.learner_display_name,
+        cohort_name: r.cohort_label,
+        coachee_id: "",
+        goal_growth: null,
+        progress_pct: r.due_adherence_pct ?? 0,
+        sessions_completed: r.coaching_completed_count,
+        sessions_entitled: r.required_units,
+      })));
+      setKpis(aggregate ? {
+        leaders_enrolled: aggregate.enrollment_count,
+        enrolled_active_count: rows.filter((r) => r.enrollment_status === "active").length,
+        on_track_count: rows.filter((r) => r.pace_status === "on_track").length,
+        at_risk_count: rows.filter((r) => r.pace_status === "behind").length,
+        sessions_used: aggregate.completed_units ?? 0,
+        sessions_entitled: aggregate.required_units ?? 0,
+      } : null);
       setLoading(false);
-    })();
-    return () => {
-      mounted = false;
-    };
+    });
+    return () => { mounted = false; };
   }, [cohortId]);
 
-  return {
-    kpis, goalGrowth, roster, satisfaction, minLeadersForDistribution,
-    programmeEngagement, redFlags, coachUtilisation, loading,
-  };
+  return { kpis, roster, minLeadersForDistribution: 5, cohortLabel, suppressed, loading };
 }

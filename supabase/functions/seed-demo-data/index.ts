@@ -2,6 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 
 const PASSWORD = "Clariva2026!";
+const DEMO_ORGANIZATION_ID = "a1000000-0000-0000-0000-000000000001";
+const DEMO_COHORT_ID = "a1000000-0000-0000-0000-000000000001";
 
 const COACHES = [
   {
@@ -197,6 +199,18 @@ Deno.serve(async (req) => {
       )
       .select("id")
       .single();
+    if (!programme?.id) throw new Error("Growth programme could not be resolved");
+    const { error: organizationError } = await admin.from("organizations").upsert(
+      { id: DEMO_ORGANIZATION_ID, name: "Clariva Demo Organization" },
+      { onConflict: "id" },
+    );
+    if (organizationError) throw organizationError;
+    const { error: cohortError } = await admin.from("cohorts").upsert({
+      id: DEMO_COHORT_ID, name: "Growth Demo Cohort", programme_id: programme.id,
+      organization_id: DEMO_ORGANIZATION_ID, start_date: new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10),
+      end_date: new Date(Date.now() + 120 * 86400000).toISOString().slice(0, 10),
+    }, { onConflict: "id" });
+    if (cohortError) throw cohortError;
 
     for (const c of COACHES) {
       const id = await ensureUser(c.email, c.full_name);
@@ -245,19 +259,14 @@ Deno.serve(async (req) => {
         approval_status: "approved",
       });
       if (programme?.id) {
-        const { data: enr } = await admin
-          .from("programme_enrollments")
-          .select("id")
-          .eq("coachee_id", id)
-          .maybeSingle();
-        if (!enr) {
-          await admin.from("programme_enrollments").insert({
-            coachee_id: id,
-            programme_id: programme.id,
-            status: "active",
-            start_date: new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10),
-            progress_pct: 35,
-          });
+        const { error: enrollmentError } = await admin.rpc("admin_create_programme_enrollment", {
+          p_user_id: id, p_programme_id: programme.id, p_cohort_id: DEMO_COHORT_ID,
+          p_organization_id: DEMO_ORGANIZATION_ID,
+          p_start_date: new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10),
+          p_end_date: new Date(Date.now() + 120 * 86400000).toISOString().slice(0, 10),
+        });
+        if (enrollmentError && !String(enrollmentError.message ?? "").includes("ongoing_enrollment_exists")) {
+          throw enrollmentError;
         }
       }
     }

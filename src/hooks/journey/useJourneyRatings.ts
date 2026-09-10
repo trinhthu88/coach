@@ -15,11 +15,11 @@ interface JourneyRatingsData {
 async function fetchJourneyRatings(coacheeId: string, enrollmentId: string): Promise<JourneyRatingsData> {
   const [{ data: gr }, { data: sgr }] = await Promise.all([
     supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId),
-    supabase.from("session_goal_ratings").select("*").eq("coachee_id", coacheeId),
+    supabase.from("goal_checkins").select("*").eq("enrollment_id", enrollmentId),
   ]);
   const ratings: Record<string, GoalRating> = {};
   for (const row of gr || []) ratings[row.goal_id] = row;
-  return { ratings, sessionRatings: sgr || [] };
+  return { ratings, sessionRatings: (sgr || []).map((row) => ({ ...row, session_id: row.source_activity_id, rating: row.new_rating, coachee_id: coacheeId })) };
 }
 
 /**
@@ -70,28 +70,15 @@ export function useJourneyRatings(coacheeId: string | undefined) {
       goal_id: goalId,
       coachee_id: coacheeId,
       enrollment_id: enrollmentId,
-      start_rating: existing?.start_rating ?? 30,
-      current_rating: existing?.current_rating ?? 30,
-      target_rating: existing?.target_rating ?? 80,
+      start_rating: existing?.start_rating ?? null,
+      current_rating: existing?.current_rating ?? null,
+      target_rating: existing?.target_rating ?? null,
       current_updated_at: existing?.current_updated_at ?? new Date().toISOString(),
       ...patch,
     };
     if (patch.current_rating !== undefined) {
       merged.current_updated_at = new Date().toISOString();
     }
-    // Optimistic local update, same as before the migration — not rolled
-    // back on error, the toast is the only failure signal.
-    queryClient.setQueryData(queryKey, (prev: JourneyRatingsData | undefined) =>
-      prev
-        ? {
-            ...prev,
-            ratings: {
-              ...prev.ratings,
-              [goalId]: { ...(existing as GoalRating), ...merged, id: existing?.id ?? "" },
-            },
-          }
-        : prev
-    );
     await saveMutation.mutateAsync(merged).catch(() => {});
   };
 

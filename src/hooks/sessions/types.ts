@@ -16,6 +16,7 @@ export interface ProfileLite {
 
 export interface SessionRow {
   id: string;
+  enrollment_id: string | null;
   coach_id: string;
   coachee_id: string;
   topic: string;
@@ -31,8 +32,10 @@ export interface SessionRow {
 }
 
 export interface ActionItem {
+  id?: string;
   text: string;
   done?: boolean;
+  description?: string | null;
   due_date?: string | null;
   milestone_id?: string | null;
 }
@@ -66,8 +69,10 @@ export function normalizeItems(raw: unknown): ActionItem[] {
     typeof it === "string"
       ? { text: it, done: false, due_date: null, milestone_id: null }
       : {
+          id: (it as ActionItem).id,
           text: (it as ActionItem).text || "",
           done: !!(it as ActionItem).done,
+          description: (it as ActionItem).description || null,
           due_date: (it as ActionItem).due_date || null,
           milestone_id: (it as ActionItem).milestone_id || null,
         }

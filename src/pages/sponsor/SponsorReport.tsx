@@ -1,396 +1,84 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
-import { toast } from "sonner";
 import { FileDown, ShieldCheck, Loader2, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionCard, Pill, MiniBar } from "@/pages/admin/_shared";
+import { SectionCard, Pill } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
-import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { trackEvent } from "@/lib/analytics";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
-
-const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
-  active: "success",
-  completed: "muted",
-  paused: "warning",
-  at_risk: "destructive",
-};
-const STATUS_LABEL_KEY: Record<SponsorRosterRow["enrollment_status"], string> = {
-  active: "active",
-  completed: "completed",
-  paused: "paused",
-  at_risk: "atRisk",
-};
-
-const PERIOD_OPTS = ["all", "90d", "60d", "30d"] as const;
+import { toast } from "sonner";
 
 export default function SponsorReport() {
   const { t } = useTranslation("sponsor");
-  const { kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution, programmeEngagement, loading } = useSponsorDashboardData();
-  const [period, setPeriod] = useState("all");
-  const [scope, setScope] = useState("all");
+  const { cohortSummaries, loading } = useSponsorDashboardData();
+  const [detailRows, setDetailRows] = useState<import("@/hooks/sponsor/useSponsorDashboardData").SponsorEnrollmentSummary[]>([]);
+  const [scope, setScope] = useState("");
   const [includeRoster, setIncludeRoster] = useState(true);
   const [generated, setGenerated] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
-  const [confidenceTrend, setConfidenceTrend] = useState<{ reflection_number: number; avg_confidence: number | null }[]>([]);
-
-  // Confidence trend is report-only, sourced from reflections (not daily
-  // prompts) — see sponsor_confidence_trend(). It never appears on the live
-  // dashboard.
+  const cohorts = cohortSummaries.map((r) => [r.cohort_id, r.cohort_label] as const);
+  const selectedSummary = cohortSummaries.find((r) => r.cohort_id === scope);
+  const filtered = detailRows;
+  const suppressed = selectedSummary?.suppressed ?? false;
   useEffect(() => {
-    supabase.rpc("sponsor_confidence_trend").then(({ data }) => setConfidenceTrend(data ?? []));
-  }, []);
+    if (!scope) { setDetailRows([]); return; }
+    supabase.rpc("sponsor_enrollment_summaries", { p_cohort_id: scope })
+      .then(({ data }) => setDetailRows(data ?? []));
+  }, [scope]);
 
-  const cohortNames = Array.from(new Set(roster.map(r => r.cohort_name).filter(Boolean)));
-
-  // Overall completion rates across all weeks — averaged ignoring weeks
-  // where that metric is null (module not enabled / no data yet for that
-  // week), same "silent when absent" contract as sponsor_programme_engagement().
-  const avgOf = (values: (number | null)[]) => {
-    const present = values.filter((v): v is number => v != null);
-    return present.length > 0 ? present.reduce((a, b) => a + b, 0) / present.length : null;
-  };
-  const impactAvg = {
-    skillCard: avgOf(programmeEngagement.map(w => w.skill_card_completion_pct)),
-    quiz: avgOf(programmeEngagement.map(w => w.quiz_completion_pct)),
-    reflection: avgOf(programmeEngagement.map(w => w.reflection_completion_pct)),
-    triad: avgOf(programmeEngagement.map(w => w.triad_completion_pct)),
-    prompt: avgOf(programmeEngagement.map(w => w.daily_prompt_response_rate)),
-  };
-  const confidenceTrendData = confidenceTrend
-    .filter(r => r.avg_confidence != null)
-    .map(r => ({ week: `R${r.reflection_number}`, confidence: Number(r.avg_confidence) }));
-  const completionComparisonData = [
-    { module: t("report.programmeImpact.completionComparison.training"), pct: impactAvg.skillCard },
-    { module: t("report.programmeImpact.completionComparison.quiz"), pct: impactAvg.quiz },
-    { module: t("report.programmeImpact.completionComparison.reflection"), pct: impactAvg.reflection },
-    { module: t("report.programmeImpact.completionComparison.triads"), pct: impactAvg.triad },
-    { module: t("report.programmeImpact.completionComparison.prompts"), pct: impactAvg.prompt },
-  ].filter(d => d.pct != null) as { module: string; pct: number }[];
-
-  const filteredRoster = scope === "all" ? roster : roster.filter(r => r.cohort_name === scope);
-
-  // hit_target_count etc. come back null from sponsor_goal_growth_summary()
-  // when the server suppresses the distribution (org has fewer than
-  // minLeadersForDistribution enrolled leaders) — that's the authoritative
-  // signal, not the size of the bucket counts themselves. A cohort with
-  // e.g. 6 enrolled leaders but only 2 goal ratings set is legitimately
-  // unsuppressed and should still render its (small) real distribution.
-  const distributionShown = goalGrowth?.hit_target_count != null;
-  const distributionTotal = distributionShown
-    ? (goalGrowth!.hit_target_count + goalGrowth!.meaningful_progress_count + goalGrowth!.just_started_count + goalGrowth!.flat_declined_count) || 1
-    : 1;
-
-  function handleGenerate() {
-    trackEvent("sponsor_report_generated", {
-      period,
-      scope: scope === "all" ? "all_cohorts" : "single_cohort",
-      roster_size: filteredRoster.length,
-    });
-    setGenerating(true);
-    setTimeout(() => { setGenerating(false); setGenerated(true); }, 800);
-  }
-
-  async function handleDownloadPdf() {
-    trackEvent("report_export_initiated", {
-      format: "pdf",
-      period,
-      scope: scope === "all" ? "all_cohorts" : "single_cohort",
-      roster_size: filteredRoster.length,
-    });
+  async function downloadPdf() {
     setPdfLoading(true);
-    const { data, error } = await supabase.functions.invoke<{ url: string }>("generate-report-pdf");
+    const { data, error } = await supabase.functions.invoke<{ url: string }>("generate-report-pdf", { body: { p_cohort_id: scope } });
     setPdfLoading(false);
-    if (error || !data?.url) {
-      toast.error(t("pdfError"));
-      return;
-    }
+    if (error || !data?.url) { toast.error(t("pdfError")); return; }
     window.open(data.url, "_blank", "noopener,noreferrer");
-    trackEvent("report_export_completed", {
-      format: "pdf",
-      period,
-      scope: scope === "all" ? "all_cohorts" : "single_cohort",
-      roster_size: filteredRoster.length,
-    });
   }
 
-  const scopeLabel = scope === "all" ? t("report.setup.allCohorts") : scope;
-  const periodLabel = t(`report.period.${period}`, { defaultValue: t("report.period.all") });
-  const today = format(new Date(), "d MMM yyyy");
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
+  if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow={t("report.header.eyebrow")}
-        title={t("report.header.title")}
-        emphasis={t("report.header.emphasis")}
-        subtitle={t("report.header.subtitle")}
-      />
-
+      <PageHeader eyebrow={t("report.header.eyebrow")} title={t("report.header.title")} emphasis={t("report.header.emphasis")} subtitle={t("report.header.subtitle")} />
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        {/* Setup panel */}
-        <div className="space-y-4">
-          <SectionCard label={t("report.setup.label")}>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.setup.periodLabel")}</p>
-                <Select value={period} onValueChange={v => { setPeriod(v); setGenerated(false); }}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PERIOD_OPTS.map(p => (
-                      <SelectItem key={p} value={p} className="text-sm">{t(`report.period.${p}`)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.setup.scopeLabel")}</p>
-                <Select value={scope} onValueChange={v => { setScope(v); setGenerated(false); }}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="text-sm">{t("report.setup.allCohorts")}</SelectItem>
-                    {cohortNames.map(c => (
-                      <SelectItem key={c} value={c} className="text-sm">{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="include-roster" className="text-sm font-medium">{t("report.setup.includeRoster")}</Label>
-                  <p className="text-[10px] text-muted-foreground">{t("report.setup.includeRosterHint")}</p>
-                </div>
-                <Switch
-                  id="include-roster"
-                  checked={includeRoster}
-                  onCheckedChange={v => { setIncludeRoster(v); setGenerated(false); }}
-                />
-              </div>
-
-              <Button onClick={handleGenerate} className="w-full" disabled={generating}>
-                {generating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("report.setup.generating")}</> : t("report.setup.generate")}
-              </Button>
-
-              {generated && (
-                <Button variant="outline" onClick={handleDownloadPdf} disabled={pdfLoading} className="w-full gap-2">
-                  {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-                  {pdfLoading ? t("generatingPdf") : t("downloadPdf")}
-                </Button>
-              )}
+        <SectionCard label={t("report.setup.label")}>
+          <div className="space-y-4">
+            <Select value={scope} onValueChange={(v) => { setScope(v); setGenerated(false); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" disabled>Select a cohort</SelectItem>
+                {cohorts.map(([id, label]) => <SelectItem key={id} value={id}>{label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="include-roster">{t("report.setup.includeRoster")}</Label>
+              <Switch id="include-roster" checked={includeRoster} onCheckedChange={setIncludeRoster} />
             </div>
-          </SectionCard>
-
-          <div className="flex items-start gap-2 rounded-xl bg-muted/40 px-3 py-2.5 text-[10px] text-muted-foreground">
-            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-            {t("report.nothingPrivateNote")}
+            <Button className="w-full" onClick={() => setGenerated(true)} disabled={!scope}>{t("report.setup.generate")}</Button>
+            {generated && <Button variant="outline" className="w-full gap-2" onClick={downloadPdf} disabled={pdfLoading}>
+              {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}{t("downloadPdf")}
+            </Button>}
           </div>
-        </div>
-
-        {/* Preview */}
-        <div>
-          {!generated ? (
-            <div className="flex h-80 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border text-center text-sm text-muted-foreground">
-              <RefreshCw className="mb-3 h-8 w-8 text-muted-foreground/40" />
-              <p className="font-medium">{t("report.preview.placeholderTitle")}</p>
-              <p className="mt-1 text-xs">{t("report.preview.placeholderBody")}</p>
+          <div className="mt-4 flex items-start gap-2 rounded-xl bg-muted/40 px-3 py-2.5 text-[10px] text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5 text-primary" />{t("report.nothingPrivateNote")}</div>
+        </SectionCard>
+        {!generated ? <div className="flex h-80 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border text-center text-sm text-muted-foreground"><RefreshCw className="mb-3 h-8 w-8 opacity-40" /><p>{t("report.preview.placeholderTitle")}</p></div> :
+          <div className="rounded-2xl border border-border bg-white p-6">
+            <h2 className="text-lg font-semibold">{cohorts.find(([id]) => id === scope)?.[1]}</h2>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Metric label={t("report.kpis.enrolled")} value={filtered.length} />
+              <Metric label={t("report.kpis.sessionsUsed")} value={`${filtered.reduce((n, r) => n + r.coaching_completed_count, 0)}/${filtered.reduce((n, r) => n + r.required_units, 0)}`} />
+              <Metric label="Due adherence" value={filtered.length ? `${Math.round(filtered.reduce((n, r) => n + (r.due_adherence_pct ?? 0), 0) / filtered.length)}%` : "—"} />
+              <Metric label="Open actions" value={filtered.reduce((n, r) => n + r.open_action_count, 0)} />
             </div>
-          ) : (
-            <div className="report-preview rounded-2xl border border-border bg-white shadow-md overflow-hidden print:shadow-none print:border-0">
-              {/* Report header */}
-              <div className="bg-secondary px-6 py-4 text-white">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">{t("report.documentHeader.brand")}</p>
-                <p className="text-lg font-semibold mt-0.5">{scopeLabel}</p>
-                <p className="text-sm text-white/70">{t("report.issuedOn", { period: periodLabel, date: today })}</p>
-              </div>
-
-              <div className="p-6 space-y-5">
-                {/* KPIs */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <MiniKpi label={t("report.kpis.enrolled")} value={filteredRoster.length} suffix={t("report.kpis.leadersSuffix")} />
-                  <MiniKpi label={t("report.kpis.sessionsUsed")} value={`${filteredRoster.reduce((s,r)=>s+r.sessions_completed,0)}/${filteredRoster.reduce((s,r)=>s+r.sessions_entitled,0)}`} />
-                  <MiniKpi label={t("report.kpis.avgRating")} value={satisfaction?.avg_rating?.toFixed(1) ?? "—"} suffix={t("report.kpis.outOfFive")} />
-                  <MiniKpi label={t("report.kpis.atRisk")} value={kpis?.at_risk_count ?? 0} />
-                </div>
-
-                {/* Goal growth */}
-                <div className="rounded-xl border border-border p-4">
-                  <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.goalGrowth.label")}</p>
-                  <p className="font-display text-2xl font-normal">
-                    {goalGrowth?.pct_progressing != null ? `${Math.round(goalGrowth.pct_progressing)}%` : "—"}
-                  </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {goalGrowth?.pct_progressing != null ? t("report.goalGrowth.pctProgressing") : t("report.goalGrowth.noRatingsYet")}
-                  </p>
-                  {distributionShown ? (
-                    <div className="mt-3 space-y-1.5">
-                      {[
-                        { label: t("report.goalGrowth.hitTarget"), n: goalGrowth!.hit_target_count, tone: "success" as const },
-                        { label: t("report.goalGrowth.meaningfulProgress"), n: goalGrowth!.meaningful_progress_count, tone: "primary" as const },
-                        { label: t("report.goalGrowth.justStarted"), n: goalGrowth!.just_started_count, tone: "warning" as const },
-                        { label: t("report.goalGrowth.flatDeclined"), n: goalGrowth!.flat_declined_count, tone: "destructive" as const },
-                      ].map(b => (
-                        <div key={b.label}>
-                          <div className="mb-0.5 flex justify-between text-[10px]">
-                            <span className="text-muted-foreground">{b.label}</span>
-                            <span>{b.n}</span>
-                          </div>
-                          <MiniBar pct={(b.n / distributionTotal) * 100} tone={b.tone} />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-[10px] italic text-muted-foreground">{t("report.goalGrowth.distributionWithheld", { min: minLeadersForDistribution })}</p>
-                  )}
-                </div>
-
-                {/* Programme & satisfaction */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-border p-3">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{t("report.programmeSatisfaction.label")}</p>
-                    <div className="space-y-1 text-[11px]">
-                      <p className="flex justify-between"><span className="text-muted-foreground">{t("report.programmeSatisfaction.daysRemaining")}</span><span>{(() => { const d = timeline?.latest_end ? Math.max(0, Math.round((new Date(timeline.latest_end).getTime() - Date.now())/(1000*60*60*24))) : null; return d != null ? d : "—"; })()}</span></p>
-                      <p className="flex justify-between"><span className="text-muted-foreground">{t("report.programmeSatisfaction.avgRating")}</span><span>{satisfaction?.avg_rating?.toFixed(1) ?? "—"} / 5.0</span></p>
-                      <p className="flex justify-between"><span className="text-muted-foreground">{t("report.programmeSatisfaction.ratedSessions")}</span><span>{satisfaction?.rated_session_count ?? 0}</span></p>
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-border p-3">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{t("report.window.label")}</p>
-                    <p className="text-[11px]">
-                      {timeline?.earliest_start ? format(new Date(timeline.earliest_start), "MMM d, yyyy") : "—"}
-                      {" → "}
-                      {timeline?.latest_end ? format(new Date(timeline.latest_end), "MMM d, yyyy") : "—"}
-                    </p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">{timeline?.programme_names?.join(", ")}</p>
-                  </div>
-                </div>
-
-                {/* Roster (optional) */}
-                {includeRoster && filteredRoster.length > 0 && (
-                  <div>
-                    <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.roster.label")}</p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-[11px]">
-                        <thead>
-                          <tr className="border-b text-[9px] uppercase tracking-widest text-muted-foreground">
-                            <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.leader")}</th>
-                            <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.cohort")}</th>
-                            <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.status")}</th>
-                            <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.progress")}</th>
-                            <th className="py-1.5 text-left font-semibold">{t("report.roster.columns.goalProgress")}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {filteredRoster.map(r => (
-                            <tr key={r.enrollment_id}>
-                              <td className="py-1.5 font-medium">{r.full_name}</td>
-                              <td className="py-1.5 text-muted-foreground">{r.cohort_name || "—"}</td>
-                              <td className="py-1.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{t(`status.${STATUS_LABEL_KEY[r.enrollment_status]}`)}</Pill></td>
-                              <td className="py-1.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
-                              <td className="py-1.5">{r.goal_growth != null ? `${Math.round(r.goal_growth)}%` : "—"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* Programme impact — omitted entirely when there's no
-                    engagement data at all (no training-module programme in
-                    scope), same silent-absence contract as the dashboard. */}
-                {programmeEngagement.length > 0 && (
-                  <div className="rounded-xl border border-border p-4">
-                    <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.programmeImpact.label")}</p>
-
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <MiniKpi label={t("report.programmeImpact.summary.skillCard")} value={impactAvg.skillCard != null ? `${Math.round(impactAvg.skillCard)}%` : "—"} />
-                      <MiniKpi label={t("report.programmeImpact.summary.quiz")} value={impactAvg.quiz != null ? `${Math.round(impactAvg.quiz)}%` : "—"} />
-                      <MiniKpi label={t("report.programmeImpact.summary.reflection")} value={impactAvg.reflection != null ? `${Math.round(impactAvg.reflection)}%` : "—"} />
-                      <MiniKpi label={t("report.programmeImpact.summary.triad")} value={impactAvg.triad != null ? `${Math.round(impactAvg.triad)}%` : "—"} />
-                      <MiniKpi label={t("report.programmeImpact.summary.prompt")} value={impactAvg.prompt != null ? `${Math.round(impactAvg.prompt)}%` : "—"} />
-                    </div>
-
-                    {confidenceTrendData.length > 1 && (
-                      <div className="mt-4">
-                        <p className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.programmeImpact.confidenceTrend.label")}</p>
-                        <div className="h-32">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={confidenceTrendData} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
-                              {/* Fixed light-mode grays, not theme tokens — this preview box is a
-                                  fixed-white printable page regardless of the viewer's app theme. */}
-                              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                              <XAxis dataKey="week" tick={{ fill: "#6b7280", fontSize: 9 }} />
-                              <YAxis domain={[0, 10]} tick={{ fill: "#6b7280", fontSize: 9 }} />
-                              <Tooltip />
-                              <Line type="monotone" dataKey="confidence" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 2 }} />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    )}
-
-                    {completionComparisonData.length > 0 && (
-                      <div className="mt-4">
-                        <p className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("report.programmeImpact.completionComparison.label")}</p>
-                        <div className="h-32">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={completionComparisonData} margin={{ top: 4, right: 8, bottom: 0, left: -24 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                              <XAxis dataKey="module" tick={{ fill: "#6b7280", fontSize: 9 }} />
-                              <YAxis domain={[0, 100]} tick={{ fill: "#6b7280", fontSize: 9 }} />
-                              <Tooltip />
-                              <Bar dataKey="pct" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                )}
-
-                {/* Footer disclaimer */}
-                <p className="text-[9px] italic text-muted-foreground border-t border-border pt-3">
-                  {t("report.footerDisclaimer")}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+            {suppressed && <p className="mt-5 rounded-lg bg-muted p-3 text-sm text-muted-foreground">Aggregate detail is suppressed to protect privacy.</p>}
+            {includeRoster && !suppressed && <div className="mt-6 space-y-2">{filtered.map((r) => <div key={r.enrollment_id} className="flex items-center justify-between border-b py-2 text-sm"><span>{r.learner_display_name}</span><span className="flex items-center gap-3"><Pill tone={r.enrollment_status === "active" ? "success" : "muted"}>{r.enrollment_status}</Pill><span>{r.completed_units}/{r.required_units}</span></span></div>)}</div>}
+          </div>}
       </div>
     </div>
   );
 }
 
-function MiniKpi({ label, value, suffix }: { label: string; value: string | number; suffix?: string }) {
-  return (
-    <div className="rounded-lg border border-border p-3">
-      <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="font-display mt-1 text-xl font-normal leading-none">
-        {value}
-        {suffix && <span className="ml-1 text-xs font-normal text-muted-foreground">{suffix}</span>}
-      </p>
-    </div>
-  );
+function Metric({ label, value }: { label: string; value: string | number }) {
+  return <div className="rounded-lg border border-border p-3"><p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p><p className="mt-1 text-xl">{value}</p></div>;
 }
