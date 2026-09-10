@@ -10,7 +10,9 @@ interface JourneyProgrammeData {
 
 async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): Promise<JourneyProgrammeData> {
   const [{ data: u, error: usageError }, { data: e, error: enrollmentError }] = await Promise.all([
-    supabase.rpc("get_coachee_session_usage", { _coachee_id: coacheeId }),
+    supabase.rpc("get_coachee_session_usage_for_enrollment", {
+      p_enrollment_id: enrollmentId,
+    }),
     supabase
       .from("programme_enrollments")
       .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")

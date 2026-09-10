@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import type { Json } from "@/integrations/supabase/types";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { Goal, Milestone, RawActionItem, SessionSource } from "@/hooks/journey/types";
+import type { EnrollmentActionItem } from "@/lib/enrollmentActions";
 import type { FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { ActionRow } from "./ActionRow";
 
@@ -15,8 +15,7 @@ interface DisplaySession {
   start_time: string;
   status: string;
   duration_minutes: number;
-  /** Compatibility projection populated from enrollment_actions by the caller. */
-  action_items: Json;
+  enrollment_actions: EnrollmentActionItem[];
   coachee_notes: string | null;
   _source?: SessionSource;
   _otherCoachId: string | null;
@@ -92,9 +91,7 @@ function SessionRow<S extends DisplaySession>({
   const { t } = useTranslation("journey");
   const [open, setOpen] = useState(false);
   const d = new Date(s.start_time);
-  const items: RawActionItem[] = Array.isArray(s.action_items)
-    ? s.action_items.map((it: Json) => (typeof it === "string" ? { text: it } : (it as unknown as RawActionItem)))
-    : [];
+  const items: RawActionItem[] = s.enrollment_actions;
 
   const labelFor = (mid?: string | null) => {
     if (!mid || !milestones || !goals) return undefined;

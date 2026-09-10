@@ -34,8 +34,18 @@ select ok(not exists(select 1 from profiles where id in
  'obsolete identities absent');
 select ok(has_function('public','admin_create_programme_enrollment',
  array['uuid','uuid','uuid','uuid','date','date']),'authoritative enrollment RPC exists');
-select is((select count(*)::int from programmes),2,'local reset has exactly two programmes total');
-select is((select count(*)::int from cohorts),2,'local reset has exactly two cohorts total');
+-- The reset fixture owns exactly these identities in its own organisation.  Do
+-- not assert global totals: a local database may deliberately preserve other
+-- organisations/programmes.
+select is((select count(distinct p.id)::int from programmes p
+  join cohorts c on c.programme_id=p.id
+  where c.organization_id='11111111-1111-4111-8111-111111111111'
+    and p.id in ('11111111-1111-4111-8111-111111111112','11111111-1111-4111-8111-111111111113')),2,
+  'exactly two fixture programmes in the demo organisation');
+select is((select count(*)::int from cohorts
+  where organization_id='11111111-1111-4111-8111-111111111111'
+    and id in ('11111111-1111-4111-8111-111111111114','11111111-1111-4111-8111-111111111115')),2,
+  'exactly two fixture cohorts in the demo organisation');
 select is((select count(*)::int from programme_enrollments where status in ('active','at_risk','paused')
   group by user_id having count(*)>1),NULL,'no leader has multiple ongoing enrollments');
 select is((select count(*)::int from programme_enrollments where id in

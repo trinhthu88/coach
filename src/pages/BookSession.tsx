@@ -65,7 +65,7 @@ export default function BookSession() {
   const location = useLocation();
   const rescheduleTopic = (location.state as { topic?: string } | null)?.topic;
   const { user, role } = useAuth();
-  const { selectedEnrollment } = useEnrollmentContext(user?.id, searchParams.get("enrollmentId"));
+  const { selectedEnrollment, selectionError } = useEnrollmentContext(user?.id, searchParams.get("enrollmentId"));
   const enrollmentId = selectedEnrollment?.id;
   const navigate = useNavigate();
 
@@ -159,55 +159,81 @@ export default function BookSession() {
             // Peer mode: use new RPC for peer-only monthly limit. This is relationship 3
             // (open opt-in pool, see RULES.md) — not covered by can_book_session(), which
             // only governs the two curated-allowlist relationships on `sessions`.
-            const { data: u } = await supabase.rpc("get_coach_peer_session_usage", {
-              _coach_id: user.id,
+            const { data: u } = await supabase.rpc("get_peer_session_usage", {
+              p_enrollment_id: enrollmentId,
             });
             const row = Array.isArray(u) ? u[0] : u;
-            // null = unlimited (coach's programme has no peer_received_limit set) —
+             // null = unlimited (the programme has no peer monthly_limit set) —
             // only fall back to DEFAULT_SESSION_LIMIT when the RPC returned no row at all.
-            const peerLimit: number | null = row ? row.peer_monthly_limit : DEFAULT_SESSION_LIMIT;
-            const peerUsed = row?.used_this_month ?? 0;
+             const peerLimit: number | null = row ? row.monthly_limit : DEFAULT_SESSION_LIMIT;
+             const peerUsed = row?.used_count ?? 0;
             setUsage({ monthly_limit: peerLimit, used_this_month: peerUsed });
-            // Not covered by can_book_session() (see comment above) — gate on the
-            // usage numbers directly instead of leaving `eligible` unset.
-            setEligible(peerLimit === null || peerUsed < peerLimit);
+             const { data: canPeerBook } = await supabase.rpc("can_book_peer_session", {
+               p_peer_coach_id: coachId,
+               p_enrollment_id: enrollmentId,
+             });
+             setEligible(canPeerBook ?? false);
           } else {
             if (role === "coach") {
-              // Coach booking a regular coaching session (coach-as-coachee allowlist path).
-              // LEGACY: still reading from coach_programme_enrollments → coach_programmes.
-              // TODO: once coach session limits move to programme_modules.config, read
-              // the coaching module's receive_limit from programme_enrollments instead.
-              // null mentee_sessions_limit = unlimited; no enrollment row at all falls
-              // back to DEFAULT_SESSION_LIMIT, matching the old default.
+              // Coach booking as a coachee: limits and usage are scoped to the
+              // explicitly selected programme enrollment.
               const [{ data: enrollment }, coachCount] = await Promise.all([
                 supabase
-                  .from("coach_programme_enrollments")
-                  .select("coach_programme:coach_programmes(mentee_sessions_limit)")
-                  .eq("coach_id", user.id)
+                  .from("programme_enrollments")
+                  .select("id, programme_id")
+                  .eq("id", enrollmentId)
+                  .eq("user_id", user.id)
                   .maybeSingle(),
                 supabase
                   .from("sessions")
                   .select("id", { count: "exact", head: true })
                   .eq("coachee_id", user.id)
+                  .eq("enrollment_id", enrollmentId)
                   .eq("status", "completed"),
               ]);
+              const { data: module } = enrollment
+                ? await supabase
+                    .from("programme_modules")
+                    .select("config")
+                    .eq("programme_id", enrollment.programme_id)
+                    .eq("module", "coaching")
+                    .eq("enabled", true)
+                    .maybeSingle()
+                : { data: null };
+              const config = (module?.config || {}) as { receive_limit?: number | null };
               const monthlyLimit: number | null = enrollment
-                ? enrollment.coach_programme?.mentee_sessions_limit ?? null
+                ? config.receive_limit ?? null
                 : DEFAULT_SESSION_LIMIT;
               setUsage({
                 monthly_limit: monthlyLimit,
                 used_this_month: coachCount.count || 0,
               });
             } else {
-              const [{ data: u }, { count }] = await Promise.all([
-                supabase.rpc("get_coachee_session_usage", { _coachee_id: user.id }),
+              const [{ data: enrollment }, { count }] = await Promise.all([
+                supabase
+                  .from("programme_enrollments")
+                  .select("id, programme_id")
+                  .eq("id", enrollmentId)
+                  .eq("user_id", user.id)
+                  .maybeSingle(),
                 supabase
                   .from("sessions")
                   .select("id", { count: "exact", head: true })
                   .eq("coachee_id", user.id)
+                  .eq("enrollment_id", enrollmentId)
                   .eq("status", "completed"),
               ]);
-              const limit = u && u.length ? u[0].monthly_limit : DEFAULT_SESSION_LIMIT;
+              const { data: module } = enrollment
+                ? await supabase
+                    .from("programme_modules")
+                    .select("config")
+                    .eq("programme_id", enrollment.programme_id)
+                    .eq("module", "coaching")
+                    .eq("enabled", true)
+                    .maybeSingle()
+                : { data: null };
+              const config = (module?.config || {}) as { receive_limit?: number | null };
+              const limit = enrollment ? config.receive_limit ?? null : DEFAULT_SESSION_LIMIT;
               setUsage({ monthly_limit: limit, used_this_month: count || 0 });
             }
 
@@ -216,6 +242,7 @@ export default function BookSession() {
             // supabase/migrations/20260810150000_can_book_session_rpc.sql.
             const { data: canBook } = await supabase.rpc("check_can_book_session", {
               p_coach_id: coachId,
+              p_enrollment_id: enrollmentId,
             });
             setEligible(canBook ?? false);
           }
@@ -227,7 +254,7 @@ export default function BookSession() {
         setLoading(false);
       }
     })();
-  }, [coachId, user, mode, role, retryKey]);
+  }, [coachId, user, mode, role, enrollmentId, retryKey]);
 
   const datesWithSlots = useMemo(() => new Set(slots.map((s) => s.slot_date)), [slots]);
   const week = useMemo(
@@ -273,16 +300,15 @@ export default function BookSession() {
 
     let error;
     if (mode === "peer") {
-      ({ error } = await supabase.from("peer_sessions").insert({
-        peer_coach_id: coach.id,
-        peer_coachee_id: user.id,
-        enrollment_id: enrollmentId,
-        topic: topic.trim(),
-        start_time: startISO,
-        duration_minutes: duration,
-        status: "pending_coach_approval",
-        slot_id: opt.slotId,
-      }));
+      const result = await supabase.rpc("book_peer_session", {
+        p_peer_coach_id: coach.id,
+        p_enrollment_id: enrollmentId,
+        p_topic: topic.trim(),
+        p_start_time: startISO,
+        p_duration_minutes: duration,
+        p_slot_id: opt.slotId,
+      });
+      error = result.error;
     } else {
       ({ error } = await supabase.from("sessions").insert({
         coach_id: coach.id,
@@ -478,6 +504,13 @@ export default function BookSession() {
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
               {t("bookSession.ineligible")}
+            </div>
+          )}
+
+          {selectionError && (
+            <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+              <AlertCircle className="h-4 w-4" />
+              {selectionError}
             </div>
           )}
 

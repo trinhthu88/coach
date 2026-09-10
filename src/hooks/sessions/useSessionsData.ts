@@ -22,7 +22,8 @@ export interface SessionRow {
   start_time: string;
   duration_minutes: number;
   status: SessionStatus;
-  action_items: Tables<"sessions">["action_items"];
+  enrollment_id: string | null;
+  enrollment_actions: import("@/lib/enrollmentActions").EnrollmentActionItem[];
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
   kind: SessionKind;

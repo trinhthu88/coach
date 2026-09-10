@@ -20,11 +20,22 @@ export default function SponsorCohortDetail() {
     <PageHeader eyebrow={t("cohortDetail.header.eyebrow")} title={t("cohortDetail.header.title")} emphasis={cohortLabel ?? "—"} subtitle={t("cohortDetail.header.subtitle")} />
     {suppressed && <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">Aggregate detail is suppressed to protect privacy.</div>}
     {!suppressed && <div className="grid gap-3 sm:grid-cols-4">
-      <Kpi label={t("dashboard.kpis.leadersEnrolled")} value={roster.length} />
+       <Kpi label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} />
       <Kpi label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} />
-      <Kpi label={t("dashboard.kpis.sessionsUsed")} value={`${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`} />
-      <Kpi label="Open actions" value={roster.reduce((n, r) => n + r.open_action_count, 0)} />
+      <Kpi label={t("dashboard.kpis.sessionsUsed")} value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`} />
+       <Kpi label="Booked / overdue" value={`${kpis?.booked_units ?? 0} / ${kpis?.overdue_units ?? 0}`} />
     </div>}
+     {!suppressed && <div className="grid grid-cols-2 gap-2 text-sm">
+       <span>Completion <b>{kpis?.full_completion_pct == null ? "—" : `${Math.round(kpis.full_completion_pct)}%`}</b></span>
+       <span>Adherence <b>{kpis?.due_adherence_pct == null ? "—" : `${Math.round(kpis.due_adherence_pct)}%`}</b></span>
+       <span>Coverage <b>{kpis?.schedule_coverage_pct == null ? "—" : `${Math.round(kpis.schedule_coverage_pct)}%`}</b></span>
+       <span>Goals setup / total <b>{kpis?.goal_setup_count ?? 0} / {kpis?.goal_count ?? 0}</b></span>
+       <span>Actions complete <b>{kpis?.completed_action_count ?? 0} / {kpis?.total_action_count ?? 0}</b></span>
+       <span>Goal progress <b>{kpis?.goal_progress_pct == null ? "—" : `${Math.round(kpis.goal_progress_pct)}%`}</b></span>
+       <span>Pace NYD / ahead / on-track <b>{kpis?.not_yet_due_count ?? 0} / {kpis?.ahead_count ?? 0} / {kpis?.on_track_count ?? 0}</b></span>
+       <span>Pace scheduled / behind / complete <b>{kpis?.scheduled_count ?? 0} / {kpis?.behind_count ?? 0} / {kpis?.completed_pace_count ?? 0}</b></span>
+       <span>Satisfaction <b>{kpis?.satisfaction_avg == null ? "—" : kpis.satisfaction_avg.toFixed(2)}</b></span>
+     </div>}
     {!suppressed && <SectionCard label={t("dashboard.roster.label", { count: roster.length })}>
       <RosterTable rows={roster} onSelect={setSelected} showCohortColumn={false} sortable />
     </SectionCard>}

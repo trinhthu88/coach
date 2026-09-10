@@ -26,18 +26,17 @@
 -- behavior to before this migration.
 
 -- added p_cohort_id filter 20260909043650
+DROP FUNCTION IF EXISTS public.sponsor_min_leaders_for_distribution(uuid);
 DROP FUNCTION IF EXISTS public.sponsor_min_leaders_for_distribution();
-CREATE FUNCTION public.sponsor_min_leaders_for_distribution(p_cohort_id uuid DEFAULT NULL)
+CREATE FUNCTION public.sponsor_min_leaders_for_distribution()
 RETURNS integer
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  -- Constant with no underlying rows to scope — p_cohort_id accepted only
-  -- so every sponsor_* function shares one signature shape.
   SELECT 5
 $$;
-REVOKE EXECUTE ON FUNCTION public.sponsor_min_leaders_for_distribution(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.sponsor_min_leaders_for_distribution(uuid) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.sponsor_min_leaders_for_distribution() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.sponsor_min_leaders_for_distribution() TO authenticated;
 
 -- added p_cohort_id filter 20260909043650
 DROP FUNCTION IF EXISTS public.sponsor_roster();

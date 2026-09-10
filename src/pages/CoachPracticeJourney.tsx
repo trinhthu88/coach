@@ -24,6 +24,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { PageHeader } from "@/components/ui/page-header";
+import { useSearchParams } from "react-router-dom";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 const COMPETENCY_KEYS = [
   "ethical_practice",
@@ -46,6 +48,7 @@ interface Entry {
   status: string;
   kind: "coached" | "peer-given" | "peer-received";
   counterpart_id: string;
+  enrollment_id: string;
 }
 
 interface Feedback {
@@ -67,6 +70,11 @@ interface Feedback {
 export default function CoachPracticeJourney() {
   const { t } = useTranslation("dashboard");
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { selectedEnrollment, selectionError, loading: enrollmentLoading } = useEnrollmentContext(
+    user?.id,
+    searchParams.get("enrollmentId")
+  );
   const COMPETENCIES = useMemo(
     () => COMPETENCY_KEYS.map((key) => ({ key, label: t(`practiceJourney.competencies.${key}`) })),
     [t]
@@ -77,23 +85,26 @@ export default function CoachPracticeJourney() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !selectedEnrollment) return;
+    const enrollmentId = selectedEnrollment.id;
     (async () => {
-      const [{ data: coached }, { data: peer }, { data: fb }] = await Promise.all([
+      const [{ data: coached }, { data: peer }] = await Promise.all([
         supabase
           .from("sessions")
-          .select("id, topic, start_time, duration_minutes, status, coach_id")
-          .eq("coachee_id", user.id),
+          .select("id, topic, start_time, duration_minutes, status, coach_id, enrollment_id")
+          .eq("coachee_id", user.id)
+          .eq("enrollment_id", enrollmentId),
         supabase
           .from("peer_sessions")
-          .select("id, topic, start_time, duration_minutes, status, peer_coach_id, peer_coachee_id")
-          .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`),
-        supabase
-          .from("peer_session_competency_feedback")
-          .select("*")
-          .eq("peer_coach_id", user.id)
-          .order("created_at", { ascending: true }),
+            .select("id, topic, start_time, duration_minutes, status, peer_coach_id, peer_coachee_id, enrollment_id")
+            .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
+            .eq("enrollment_id", enrollmentId),
       ]);
+      const scopedPeer = peer || [];
+      const peerIds = scopedPeer.map((s) => s.id);
+      const { data: fb } = peerIds.length
+        ? await supabase.from("peer_session_competency_feedback").select("*").in("peer_session_id", peerIds).eq("peer_coach_id", user.id).order("created_at", { ascending: true })
+        : { data: [] };
 
       const list: Entry[] = [];
       (coached || []).forEach((s) =>
@@ -105,9 +116,10 @@ export default function CoachPracticeJourney() {
           status: s.status,
           kind: "coached",
           counterpart_id: s.coach_id,
+           enrollment_id: enrollmentId,
         })
       );
-      (peer || []).forEach((s) =>
+       scopedPeer.forEach((s) =>
         list.push({
           id: s.id,
           topic: s.topic,
@@ -116,6 +128,7 @@ export default function CoachPracticeJourney() {
           status: s.status,
           kind: s.peer_coach_id === user.id ? "peer-given" : "peer-received",
           counterpart_id: s.peer_coach_id === user.id ? s.peer_coachee_id : s.peer_coach_id,
+           enrollment_id: enrollmentId,
         })
       );
       list.sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
@@ -139,7 +152,7 @@ export default function CoachPracticeJourney() {
       }
       setLoading(false);
     })();
-  }, [user]);
+  }, [user, selectedEnrollment]);
 
   const stats = useMemo(() => {
     const booked = entries.filter((e) =>
@@ -192,12 +205,16 @@ export default function CoachPracticeJourney() {
     };
   }, [radarData]);
 
-  if (loading) {
+  if (loading || enrollmentLoading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
+  }
+
+  if (!selectedEnrollment || selectionError) {
+    return <EmptyHint text={selectionError || "Select a programme enrollment to view your practice journey."} />;
   }
 
   return (

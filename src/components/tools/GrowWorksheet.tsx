@@ -70,7 +70,7 @@ export function GrowWorksheet({
     setEnrollmentId(activity?.enrollment_id ?? null);
     if (!activity) { setItems([]); return; }
     const [normalized] = await withEnrollmentActions([activity], sourceType);
-    setItems((normalized.action_items ?? []) as ActionItem[]);
+    setItems(normalized.enrollment_actions ?? []);
   }, [parentTable, parentId, sourceType]);
 
   useEffect(() => {
@@ -93,7 +93,14 @@ export function GrowWorksheet({
         const r = (data.responses ?? {}) as Partial<GrowResponses>;
         setValues({ ...EMPTY, ...r });
       }
-      await loadItems();
+      try {
+        await loadItems();
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : "Unable to load programme actions");
+          setItems([]);
+        }
+      }
       if (!cancelled) setLoading(false);
     };
     load();

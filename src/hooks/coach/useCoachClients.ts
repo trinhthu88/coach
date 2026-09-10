@@ -44,9 +44,7 @@ export function useCoachClients(userId: string | undefined) {
     // Build per-coachee set of milestone_ids referenced by THIS coach's session action items
     const linkedMsByCoachee = new Map<string, Set<string>>();
     for (const s of normalizedSessions) {
-      const items: RawAction[] = Array.isArray(s.action_items)
-        ? (s.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
-        : [];
+      const items: RawAction[] = s.enrollment_actions ?? [];
       for (const it of items) {
         if (it?.milestone_id) {
           if (!linkedMsByCoachee.has(s.coachee_id)) linkedMsByCoachee.set(s.coachee_id, new Set());
@@ -112,9 +110,7 @@ export function useCoachClients(userId: string | undefined) {
       }
       if (!c.weekStart || t < new Date(c.weekStart)) c.weekStart = s.start_time;
 
-      const items: RawAction[] = Array.isArray(s.action_items)
-        ? (s.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
-        : [];
+      const items: RawAction[] = s.enrollment_actions ?? [];
       for (const it of items) {
         if (!it?.text) continue;
         c.actionItemsTotal++;

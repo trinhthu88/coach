@@ -17,7 +17,7 @@ interface CoacheeProfileSheetProps {
 
 export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) {
   const { t } = useTranslation("admin");
-  const { loading, goals, sessions, profileData, enrollments } = useCoacheeProfileDetail(row?.id);
+  const { loading, goals, sessions, profileData, enrollments } = useCoacheeProfileDetail(row?.id, row?.enrollment_id);
 
   if (!row) return null;
   const pct = programmeCompletionPct(row.enrollment_start_date, row.programme_duration_months);

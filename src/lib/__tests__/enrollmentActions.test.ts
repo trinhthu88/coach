@@ -9,17 +9,19 @@ describe("normalized enrollment actions", () => {
   it("uses normalized rows and preserves their identities and relationships instead of legacy JSON", async () => {
     stored.push({id:"action",enrollment_id:"enrollment",source_activity_type:"coaching",source_activity_id:"session",title:"Actual action",status:"completed",goal_id:"goal",milestone_id:"milestone",due_date:null});
     const rows = await withEnrollmentActions([{id:"session",enrollment_id:"enrollment",action_items:[{text:"Legacy stale text"}]}],"coaching");
-    expect(rows[0].action_items).toEqual([{id:"action",text:"Actual action",description:null,done:true,goal_id:"goal",milestone_id:"milestone",due_date:null}]);
+    expect(rows[0].enrollment_actions).toEqual([{id:"action",text:"Actual action",description:null,done:true,goal_id:"goal",milestone_id:"milestone",due_date:null}]);
+    expect(rows[0].enrollment_actions).not.toEqual([{text:"Legacy stale text"}]);
     expect(scopes).toContainEqual(["enrollment_actions","enrollment_id","enrollment"]);
   });
   it("does not attach another enrollment's action even if a malformed response has the same source ID", async () => {
     stored.push({id:"action",enrollment_id:"foreign",source_activity_type:"coaching",source_activity_id:"session",title:"Private"});
     const rows = await withEnrollmentActions([{id:"session",enrollment_id:"enrollment"}],"coaching");
-    expect(rows[0].action_items).toEqual([]);
+    expect(rows[0].enrollment_actions).toEqual([]);
   });
-  it("does not infer missing enrollment ownership or fall back to JSON", async () => {
-    const rows=await withEnrollmentActions([{id:"session",enrollment_id:null,action_items:[{text:"Legacy"}]}],"coaching");
-    expect(rows[0].action_items).toEqual([]); expect(scopes).toEqual([]);
+  it("fails explicitly for missing enrollment ownership and never falls back to JSON", async () => {
+    await expect(withEnrollmentActions([{id:"session",enrollment_id:null,action_items:[{text:"Legacy"}]}],"coaching"))
+      .rejects.toThrow("unscoped coaching activity session");
+    expect(scopes).toEqual([]);
     const result=await saveEnrollmentActions(null,"coaching","session",[]);
     expect(result.error).toBeTruthy(); expect(rpc).not.toHaveBeenCalled();
   });

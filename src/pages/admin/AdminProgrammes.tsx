@@ -48,8 +48,7 @@ interface Programme {
   coach_session_limit: number;
   peer_session_limit: number;
   peer_given_limit: number;
-  // Unlike the four limits above (NOT NULL, numeric default), this one is
-  // nullable — NULL = unlimited, matching coach_programmes' convention.
+  // NULL means unlimited for the mentoring module.
   mentoring_received_limit: number | null;
 }
 

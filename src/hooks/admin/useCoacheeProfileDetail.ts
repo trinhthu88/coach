@@ -41,7 +41,7 @@ export interface EnrollmentHistoryRow {
  * sessions) shown in the admin coachee profile drawer — none of this is
  * already present in the coachees list row.
  */
-export function useCoacheeProfileDetail(coacheeId: string | undefined) {
+export function useCoacheeProfileDetail(coacheeId: string | undefined, enrollmentId?: string | null) {
   const [loading, setLoading] = useState(false);
   const [goals, setGoals] = useState<ProfileGoal[]>([]);
   const [sessions, setSessions] = useState<ProfileSession[]>([]);
@@ -49,13 +49,17 @@ export function useCoacheeProfileDetail(coacheeId: string | undefined) {
   const [enrollments, setEnrollments] = useState<EnrollmentHistoryRow[]>([]);
 
   useEffect(() => {
-    if (!coacheeId) return;
+    if (!coacheeId || !enrollmentId) {
+      setGoals([]);
+      setSessions([]);
+      return;
+    }
     (async () => {
       setLoading(true);
       const [{ data: gs }, { data: rs }, { data: ss }, { data: prof }, { data: cprof }, { data: enr }] = await Promise.all([
-        supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId).eq("status", "active").order("sort_order"),
-        supabase.from("coachee_goal_ratings").select("goal_id, start_rating, current_rating, target_rating").eq("coachee_id", coacheeId),
-        supabase.from("sessions").select("id, topic, start_time, status").eq("coachee_id", coacheeId).order("start_time", { ascending: false }).limit(10),
+        supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).eq("status", "active").order("sort_order"),
+        supabase.from("coachee_goal_ratings").select("goal_id, start_rating, current_rating, target_rating").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId),
+        supabase.from("sessions").select("id, topic, start_time, status").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("start_time", { ascending: false }).limit(10),
         supabase.from("profiles").select("bio").eq("id", coacheeId).maybeSingle(),
         supabase.from("coachee_profiles").select("job_title, industry, location, phone, timezone, goals").eq("id", coacheeId).maybeSingle(),
         // Full enrollment history — Part 2 of the enrollment-cardinality fix
@@ -103,7 +107,7 @@ export function useCoacheeProfileDetail(coacheeId: string | undefined) {
       );
       setLoading(false);
     })();
-  }, [coacheeId]);
+  }, [coacheeId, enrollmentId]);
 
   return { loading, goals, sessions, profileData, enrollments };
 }

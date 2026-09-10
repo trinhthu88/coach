@@ -46,7 +46,7 @@ export function useAdminCoacheesData() {
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at, spoken_languages"),
-      supabase.from("sessions").select("coachee_id, status"),
+      supabase.from("sessions").select("coachee_id, enrollment_id, status"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date"),
       supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
       supabase.from("cohorts").select("id, name"),
@@ -77,7 +77,9 @@ export function useAdminCoacheesData() {
     });
     const done = new Map<string, number>();
     const booked = new Map<string, number>();
-    (sess || []).forEach((s) => {
+    (sess || []).filter((s) => s.enrollment_id).forEach((s) => {
+      const enr = enrByUser.get(s.coachee_id);
+      if (!enr || enr.id !== s.enrollment_id) return;
       if (s.status === "completed") done.set(s.coachee_id, (done.get(s.coachee_id) || 0) + 1);
       if (["pending_coach_approval", "confirmed"].includes(s.status)) booked.set(s.coachee_id, (booked.get(s.coachee_id) || 0) + 1);
     });

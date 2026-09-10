@@ -1,0 +1,419 @@
+You are continuing work on:
+
+Repository:
+https://github.com/trinhthu88/coach.git
+
+Branch:
+feature/enrollment-scoped-foundation
+
+This is NOT a redesign task.
+
+This is a FINISH-ONLY, VALIDATION-DRIVEN task for the enrollment-scoped architecture already implemented from the “Reorganize App Data” specification.
+
+DO NOT start unrelated refactoring.
+DO NOT redesign UI.
+DO NOT change product semantics unless required by the existing master specification.
+DO NOT merge to main.
+DO NOT deploy.
+DO NOT run destructive migrations against production.
+DO NOT silently resolve ambiguous historical data.
+DO NOT claim completion until every required verification gate is green.
+
+The current branch is ahead of main and contains the enrollment-scoped implementation. Normal CI currently passes, but the dedicated database validation fails.
+
+Follow this exact order.
+
+1. FIX THE CURRENT DATABASE VALIDATION BLOCKER FIRST
+
+Current clean-reset failure:
+
+Migration:
+supabase/migrations/20260910173000_enrollment_sponsor_reporting.sql
+
+Function:
+public.sponsor_cohort_summaries(...)
+
+Error:
+SQLSTATE 42702
+column reference "cohort_id" is ambiguous
+
+Known root cause:
+the `rows` CTE uses:
+
+SELECT cl.*, r.*
+
+Both `cohort_list` and `sponsor_enrollment_summaries()` expose `cohort_id`, creating duplicate `cohort_id` columns and making the subsequent reference ambiguous.
+
+Do not apply a superficial qualification workaround.
+
+Fix the CTE structurally by explicitly selecting and naming fields so that every column has one unambiguous meaning.
+
+Add/adjust a regression test that executes sponsor_cohort_summaries() during a clean reset.
+
+Then run the COMPLETE database-validation flow again.
+
+Important:
+The previous GitHub run initially encountered ECR/Docker rate-limit messages, but it recovered, started Supabase and reached the SQL migration failure. Therefore SQLSTATE 42702 is a real application/database defect, not merely infrastructure noise.
+
+Do not stop after fixing this first error. Continue the clean reset so any subsequent migration errors are discovered and fixed.
+
+Migrations after 20260910173000, including the schedule-backfill and admin-transition migrations, must also be reached and validated successfully.
+
+2. COMPLETE BATCH 3 — SPONSOR REPORTING
+
+The current implementation is incomplete.
+
+Use enrollment_id as the source of truth and calculate sponsor information from the same canonical enrollment-level progress logic used elsewhere.
+
+Do not create separate frontend progress formulas.
+
+Level 1 — Organisation dashboard must support:
+- cohort count;
+- total enrollment/leader count;
+- active count;
+- at-risk count;
+- paused count;
+- completed count;
+- module completion;
+- due-to-date adherence;
+- pace distribution, including not_yet_due;
+- schedule coverage/booked requirements where applicable;
+- aggregate goal setup/count;
+- aggregate numeric goal progress;
+- aggregate numeric satisfaction;
+- cohort comparison.
+
+Fix the current frontend implementation where:
+- enrolled_active_count is hard-coded to 0;
+- on_track_count counts cohorts instead of enrollments;
+- at_risk_count counts cohorts instead of enrollments;
+- sponsor roster is artificially emptied on the organisation hook;
+- required sponsor metrics are missing.
+
+The organisation overview must continue respecting the approved privacy contract. Do not expose leader names there unless explicitly permitted by the existing requirement.
+
+Level 2 — Cohort detail must support:
+- cohort UUID and programme identity;
+- programme dates;
+- enrollment counts by status;
+- module completion;
+- due-to-date adherence;
+- pace distribution;
+- not_yet_due;
+- booked/upcoming/overdue requirements;
+- schedule coverage;
+- numeric goal progress;
+- numeric satisfaction;
+- roster;
+- per-leader operational indicators.
+
+Keep route/query identity based on cohort_id UUID.
+
+Do not look up a cohort by its name to establish database identity.
+
+Level 3 — Individual leader detail must be enrollment-scoped.
+
+The current SponsorLeaderDrawer compatibility mapping is not acceptable as the final implementation.
+
+Specifically remove these incorrect mappings:
+- do not map due_adherence_pct into a field called programme progress;
+- do not set goal progress/growth to null when enrollment-level goal_progress_pct exists;
+- do not compare coaching_completed_count against total required_units from all programme modules;
+- do not substitute one activity type for programme completion.
+
+Individual sponsor detail must show permitted numeric/operational information separately:
+- enrollment status;
+- programme/cohort;
+- enrollment dates;
+- module requirements;
+- full completion percentage;
+- due-to-date adherence percentage;
+- pace status;
+- completed units;
+- booked/scheduled units;
+- due units;
+- overdue units where available;
+- goal count/setup;
+- numeric goal progress;
+- action completion count/percentage without action text;
+- numeric satisfaction without comments.
+
+Never expose:
+- goal wording;
+- action wording;
+- coaching notes;
+- mentoring notes;
+- private objectives/topics;
+- reflections;
+- prompts;
+- feedback comments;
+- quiz answers/scores unless separately approved;
+- files;
+- recordings;
+- transcripts;
+- private peer/triad content.
+
+Reuse the canonical numeric satisfaction source already present in the data model. Scope it through enrollment relationships. Do not invent a new satisfaction definition.
+
+3. FIX SPONSOR PRIVACY THRESHOLD CENTRALIZATION
+
+There are hard-coded `5` thresholds in sponsor SQL/frontend.
+
+Do not let frontend code independently decide the privacy suppression threshold.
+
+Use one backend-authoritative rule/function for the minimum population threshold.
+
+The frontend should consume the backend `suppressed` result or returned threshold instead of reimplementing:
+
+rows.length < 5
+
+or:
+
+minLeadersForDistribution: 5
+
+Also remove hard-coded `CASE WHEN n < 5` where a canonical sponsor privacy threshold function already exists.
+
+Add tests demonstrating that changing the canonical threshold cannot cause frontend/backend disagreement.
+
+4. FIX PACE SEMANTICS
+
+`not_yet_due` is an explicit valid pace state.
+
+Do not default a cohort or organisation with no currently due requirements to `on_track`.
+
+Expose pace distribution wherever aggregation makes a single pace label misleading.
+
+At minimum distinguish:
+- not_yet_due;
+- ahead;
+- on_track;
+- scheduled;
+- behind;
+- completed.
+
+Booked future activity may contribute to schedule coverage / `scheduled`, but MUST NOT count as completed activity.
+
+5. VERIFY BATCH 2 END TO END AFTER DATABASE RESET IS GREEN
+
+Do not assume Batch 2 is complete merely because source files exist.
+
+Verify all of these against the clean database:
+- one ongoing enrollment per person;
+- ongoing statuses include active, at_risk and paused;
+- multiple completed historical enrollments allowed;
+- concurrent enrollment attempts cannot create two ongoing enrollments;
+- clear admin conflict response;
+- enrollment schedule snapshots;
+- snapshot immutability;
+- evenly_distributed mode;
+- monthly_frequency mode;
+- training_linked mode;
+- custom mode;
+- flexible mode;
+- coaching-only programme;
+- training optional;
+- module-level completion;
+- due-to-date adherence;
+- pace;
+- booked versus completed behavior;
+- three-active-goal maximum;
+- archived/completed goals do not consume the limit;
+- universal goal check-ins;
+- coaching check-ins;
+- mentoring check-ins;
+- peer-coaching check-ins;
+- triad check-ins;
+- no fabricated rating such as 50;
+- normalized enrollment actions;
+- action source/enrollment validation;
+- goal/action/milestone historical isolation.
+
+Keep overall blended percentage NULL/absent unless explicit module weights are valid and sum to 100%.
+
+6. COMPLETE BATCH 4 EXACTLY AS SPECIFIED
+
+The existing generic demo seed is NOT the Batch 4 acceptance fixture.
+
+Create identity-safe, idempotent enrollment-scoped demo fixtures satisfying the approved specification:
+
+Exactly:
+- 2 demo programmes;
+- 2 demo cohorts;
+- 10 distinct demo leaders;
+- 5 leaders in cohort A;
+- 5 leaders in cohort B;
+- one programme demonstrating coaching-only behavior;
+- one programme demonstrating a blended configuration;
+- sponsor account/contact: contact@erickson.vn;
+- realistic enrollment-scoped activity;
+- progress at varied states;
+- goals/check-ins;
+- normalized actions;
+- satisfaction numeric data where appropriate;
+- booking/completion variation;
+- privacy-threshold-valid cohort sizes.
+
+Preserve existing real/admin identities.
+
+Do not delete users or records merely by matching display names.
+
+Fixtures must be idempotent.
+
+Running the seed twice must not duplicate enrollments, sessions, goals, actions or activity.
+
+Add explicit database tests for:
+- exactly two intended demo cohorts;
+- exactly five demo leaders in each;
+- ten distinct leader user IDs;
+- correct programme composition;
+- correct sponsor ownership/access;
+- cross-organisation isolation;
+- sponsor privacy exclusions;
+- repeated seed idempotency.
+
+7. RUN A FULL LEGACY-PRODUCTION-REFERENCE AUDIT
+
+Use repository-wide `rg` or equivalent on the FEATURE BRANCH, not only changed files.
+
+Do not blindly remove every user_id/coachee_id reference because actor identity is legitimate.
+
+Classify each occurrence as:
+A. legitimate actor identity;
+B. historical migration/backfill/test/type only;
+C. prohibited production ownership inference;
+D. temporary compatibility path requiring removal before final enforcement.
+
+Audit at minimum:
+- action_items;
+- session_goal_ratings;
+- coach_programmes;
+- coach_programme_enrollments;
+- old person-scoped programme progress calculations;
+- direct programme-activity queries filtered only by coachee_id/user_id;
+- “latest enrollment” queries that can silently select the wrong history;
+- cohort-name database lookup/routing;
+- date-range enrollment inference during normal application operation;
+- direct sponsor table queries;
+- frontend sponsor progress calculations;
+- hard-coded sponsor privacy threshold values;
+- old progress_pct calculations;
+- writes to programme-owned records without enrollment_id.
+
+Include:
+src/
+supabase/functions/
+current RPCs/functions/views/triggers.
+
+Legacy references that exist only for deterministic migration, audit retention, tests, or generated types may remain when justified.
+
+The final report must show the exact remaining production references.
+
+Target:
+ZERO prohibited production readers/writers/calculations.
+
+8. VERIFY ENROLLMENT BACKFILL READINESS
+
+Run the enrollment backfill/audit checks after the full clean database validation.
+
+Report unresolved records grouped by:
+- source table;
+- reason;
+- count.
+
+Do not attach ambiguous historical data to an arbitrary enrollment.
+
+If ANY unresolved production/audit records remain:
+STOP FINAL ENFORCEMENT.
+
+Keep the records in the audit/remediation workflow.
+
+Provide the exact unresolved categories requiring manual review.
+
+9. FINAL ENFORCEMENT IS A SEPARATE GATE
+
+Only if the enrollment audit is zero may you PREPARE and locally test final enforcement.
+
+Do not apply destructive/final constraints to production.
+
+The final enforcement migration should eventually:
+- require enrollment_id on programme-owned data where structurally appropriate;
+- preserve legitimate actor-only references;
+- add/confirm required foreign keys and validation constraints;
+- remove obsolete production readers/writers;
+- remove obsolete compatibility fallbacks only after proving no consumer remains;
+- keep historical audit evidence as required;
+- regenerate Supabase TypeScript types.
+
+If unresolved audit count is greater than zero, do not fake completion.
+
+Report:
+FINAL ENFORCEMENT BLOCKED — N unresolved records.
+
+10. VERIFICATION GATE
+
+Before claiming the branch is complete, all applicable commands must succeed.
+
+Run:
+npm ci
+npm run lint
+npx tsc --noEmit
+npm run test
+npm run build
+npm run validate:db
+
+The database-validation command must complete the ENTIRE migration history and SQL test suite.
+
+Do not consider a partial Supabase start/reset successful.
+
+Also verify:
+- enrollment SQL tests;
+- progress SQL tests;
+- goal SQL tests;
+- action SQL tests;
+- sponsor reporting SQL tests;
+- schedule backfill tests;
+- admin enrollment transition tests;
+- frontend enrollment-context tests;
+- sponsor frontend tests;
+- privacy/isolation tests.
+
+Do not weaken or delete a valid test merely to make the suite green.
+
+11. FINAL REVIEW
+
+Before finishing, inspect the final diff specifically for:
+- programme ownership by user_id instead of enrollment_id;
+- sponsor privacy leaks;
+- accidental goal/action text exposure;
+- completion/adherence conflation;
+- booked sessions counted as completed;
+- not_yet_due converted to on_track;
+- cross-enrollment data leakage;
+- cross-organisation sponsor leakage;
+- non-idempotent seed data;
+- duplicate business calculations between SQL and React.
+
+12. OUTPUT REQUIRED
+
+When finished, give me a concise factual completion report containing:
+- branch/head commit;
+- migrations added/changed;
+- exact database failure(s) found and corrected;
+- Batch 2 verification;
+- Batch 3 verification;
+- Batch 4 fixture verification;
+- legacy-reference audit results;
+- unresolved enrollment audit count;
+- sponsor privacy verification;
+- exact commands executed and PASS/FAIL result;
+- any remaining blockers;
+- whether final enforcement is safe to prepare;
+- files changed;
+- commit hashes.
+
+Do NOT say “done”, “complete”, “production-ready”, or “safe to merge” unless every required gate actually passed.
+
+Do not merge to main.
+Do not deploy.
+Do not alter production data.
+Do not push destructive production migrations without explicit approval.

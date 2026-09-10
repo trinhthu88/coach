@@ -153,8 +153,6 @@ export default function AdminSessions() {
     if (!editing) return;
     setSaving(true);
     try {
-      const table = editing.kind === "peer" ? "peer_sessions" : "sessions";
-
       if (isCancelling) {
         // Routes through cancel-session so the coach's availability slot is
         // freed and both parties get a cancellation email — a plain status
@@ -166,21 +164,36 @@ export default function AdminSessions() {
         if (cancelError) throw cancelError;
       }
 
-      const { error } = await supabase
-        .from(table)
-        .update({
-          topic: editing.topic,
-          start_time: editing.start_time,
-          duration_minutes: editing.duration_minutes,
-          // Already set by cancel-session above when isCancelling; for every
-          // other transition (including staying cancelled) a plain status
-          // write is fine — there's no side effect to replicate.
-          ...(isCancelling ? {} : { status: editing.status as Tables<"sessions">["status"] }),
-          meeting_url: editing.meeting_url,
-          coach_notes: editing.coach_notes,
-          coachee_notes: editing.coachee_notes,
-        })
-        .eq("id", editing.id);
+      const commonUpdate = {
+        topic: editing.topic,
+        start_time: editing.start_time,
+        duration_minutes: editing.duration_minutes,
+        meeting_url: editing.meeting_url,
+      };
+      // Peer sessions use provider/receiver_notes, while coaching sessions
+      // use coach/coachee_notes. Keep the edit model shared without sending a
+      // coaching-only column to the peer table.
+      const { error } = editing.kind === "peer"
+        ? await supabase
+            .from("peer_sessions")
+            .update({
+              ...commonUpdate,
+              ...(isCancelling ? {} : { status: editing.status as Tables<"peer_sessions">["status"] }),
+              provider_notes: editing.coach_notes,
+              receiver_notes: editing.coachee_notes,
+            })
+            .eq("id", editing.id)
+        : await supabase
+            .from("sessions")
+            .update({
+              ...commonUpdate,
+              // Already set by cancel-session above when isCancelling; for
+              // every other transition a plain status write is fine.
+              ...(isCancelling ? {} : { status: editing.status as Tables<"sessions">["status"] }),
+              coach_notes: editing.coach_notes,
+              coachee_notes: editing.coachee_notes,
+            })
+            .eq("id", editing.id);
       if (error) throw error;
       toast({ title: t("sessions.sessionUpdated") });
       setEditing(null);

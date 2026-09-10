@@ -13,7 +13,6 @@ import {
 import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { Json } from "@/integrations/supabase/types";
 import { withEnrollmentActions } from "@/lib/enrollmentActions";
 
 interface AlertsScanSessionRow {
@@ -36,7 +35,6 @@ interface AlertsScanEnrollmentRow {
   id: string;
   user_id: string;
   status: string;
-  progress_pct: number | null;
   start_date: string;
 }
 
@@ -46,6 +44,7 @@ type NewAlert = {
   title: string;
   message: string;
   related_coachee_id: string | null;
+  related_enrollment_id?: string | null;
   related_coach_id?: string | null;
   resolved: false;
 };
@@ -57,6 +56,7 @@ interface Alert {
   title: string;
   message: string | null;
   related_coachee_id: string | null;
+  related_enrollment_id: string | null;
   related_coach_id: string | null;
   resolved: boolean;
   resolved_at: string | null;
@@ -125,18 +125,18 @@ export default function AdminAlerts() {
           .select("id, enrollment_id, coach_id, coachee_id, status, start_time, coachee_notes"),
         supabase
           .from("peer_sessions")
-          .select("id, peer_coach_id, peer_coachee_id, status, start_time"),
+           .select("id, enrollment_id, peer_coach_id, peer_coachee_id, status, start_time"),
         supabase.from("peer_session_competency_feedback").select("peer_session_id"),
         supabase.from("profiles").select("id, full_name, email"),
-        supabase.from("programme_enrollments").select("id, user_id, status, progress_pct, start_date"),
+         supabase.from("programme_enrollments").select("id, user_id, status, start_date"),
         supabase
           .from("mentoring_sessions")
-          .select("id, mentee_id, status, start_time, prep_file_path, feedback_submitted_at"),
+          .select("id, enrollment_id, mentee_id, status, start_time, prep_file_path, feedback_submitted_at"),
         supabase.from("assignments").select("id, assignment_type"),
-        supabase.from("assignment_submissions").select("user_id, assignment_id, score_pct, submitted_at"),
-        supabase.from("daily_prompt_responses").select("user_id, responded_at"),
-        supabase.from("triad_reflections").select("participant_id, submitted_at"),
-        supabase.from("training_progress").select("user_id, completed_at"),
+        supabase.from("assignment_submissions").select("user_id, enrollment_id, assignment_id, score_pct, submitted_at"),
+        supabase.from("daily_prompt_responses").select("user_id, enrollment_id, responded_at"),
+        supabase.from("triad_reflections").select("participant_id, enrollment_id, submitted_at"),
+        supabase.from("training_progress").select("user_id, enrollment_id, completed_at"),
         supabase.from("coach_session_feedback").select("session_id, coach_id, flag_notes").eq("flag_for_admin", true),
       ]);
 
@@ -145,21 +145,28 @@ export default function AdminAlerts() {
       const peerFeedbackSessionIds = new Set(
         (peerFeedback || []).map((f: { peer_session_id: string }) => f.peer_session_id)
       );
-      const overdueByCoachee = new Map<string, number>();
+      const overdueByEnrollment = new Map<string, number>();
+      const enrollmentById = new Map((enrollments || []).map((e: AlertsScanEnrollmentRow) => [e.id, e]));
       const normalizedSessions = await withEnrollmentActions(sessions || [], "coaching");
-      normalizedSessions.forEach((s: AlertsScanSessionRow & { action_items?: unknown }) => {
-        const items = Array.isArray(s.action_items) ? s.action_items : [];
-        items.forEach((it: Json) => {
-          const action = it as { done?: boolean; due_date?: string | null } | null;
-          if (action && !action.done && action.due_date && new Date(action.due_date) < new Date()) {
-            overdueByCoachee.set(s.coachee_id, (overdueByCoachee.get(s.coachee_id) || 0) + 1);
+      normalizedSessions.forEach((s: AlertsScanSessionRow & { enrollment_actions?: { done?: boolean; due_date?: string | null }[] }) => {
+        const items = s.enrollment_actions ?? [];
+        items.forEach((action) => {
+          if (action && !action.done && action.due_date && new Date(action.due_date) < new Date() && s.enrollment_id) {
+            overdueByEnrollment.set(s.enrollment_id, (overdueByEnrollment.get(s.enrollment_id) || 0) + 1);
           }
         });
       });
 
-      const newAlerts: NewAlert[] = [];
-      overdueByCoachee.forEach((count, coacheeId) => {
+       const progressRows = await supabase.rpc("get_admin_enrollment_progress", {
+         p_enrollment_ids: (enrollments || []).map((e: AlertsScanEnrollmentRow) => e.id),
+       });
+       const progressByEnrollment = new Map((progressRows.data || []).map((row) => [row.enrollment_id, row.full_completion_pct == null ? null : Number(row.full_completion_pct)]));
+       const newAlerts: NewAlert[] = [];
+       overdueByEnrollment.forEach((count, enrollmentId) => {
         if (count >= 3) {
+           const enrollment = enrollmentById.get(enrollmentId);
+           if (!enrollment) return;
+           const coacheeId = enrollment.user_id;
           newAlerts.push({
             severity: count >= 5 ? "critical" : "warning",
             alert_type: "overdue_actions",
@@ -177,8 +184,9 @@ export default function AdminAlerts() {
             severity: "critical",
             alert_type: "programme_at_risk",
             title: `${profById.get(e.user_id) || "Coachee"} — programme at risk`,
-            message: `Progress ${e.progress_pct}% · review needed`,
+             message: `Canonical progress ${progressByEnrollment.get(e.id) == null ? "unavailable" : `${Math.round(progressByEnrollment.get(e.id)!)}%`} · review needed`,
             related_coachee_id: e.user_id,
+            related_enrollment_id: e.id,
             resolved: false,
           });
         }
@@ -213,27 +221,24 @@ export default function AdminAlerts() {
 
       // Programme engagement (Phase 4) — stale participants, low quiz scores.
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const activeUserIds = [
-        ...new Set(
-          (enrollments || [])
-            .filter((e: AlertsScanEnrollmentRow) => e.status === "active" && new Date(e.start_date) <= weekAgo)
-            .map((e: AlertsScanEnrollmentRow) => e.user_id)
-        ),
-      ];
+       const activeEnrollments = (enrollments || [])
+         .filter((e: AlertsScanEnrollmentRow) => e.status === "active" && new Date(e.start_date) <= weekAgo)
+         .map((e: AlertsScanEnrollmentRow) => ({ enrollmentId: e.id, userId: e.user_id }));
       const activity: ScanActivityRow[] = [
-        ...(submissions || []).map((s: { user_id: string; submitted_at: string }) => ({ userId: s.user_id, timestamp: s.submitted_at })),
-        ...(promptResponses || []).map((r: { user_id: string; responded_at: string | null }) => ({ userId: r.user_id, timestamp: r.responded_at })),
-        ...(reflections || []).map((r: { participant_id: string; submitted_at: string }) => ({ userId: r.participant_id, timestamp: r.submitted_at })),
-        ...(trainingProgress || []).map((p: { user_id: string; completed_at: string | null }) => ({ userId: p.user_id, timestamp: p.completed_at })),
+         ...(submissions || []).filter((s: { enrollment_id: string | null }) => !!s.enrollment_id).map((s: { user_id: string; enrollment_id: string; submitted_at: string }) => ({ userId: s.user_id, enrollmentId: s.enrollment_id, timestamp: s.submitted_at })),
+         ...(promptResponses || []).filter((r: { enrollment_id: string | null }) => !!r.enrollment_id).map((r: { user_id: string; enrollment_id: string; responded_at: string | null }) => ({ userId: r.user_id, enrollmentId: r.enrollment_id, timestamp: r.responded_at })),
+         ...(reflections || []).filter((r: { enrollment_id: string | null }) => !!r.enrollment_id).map((r: { participant_id: string; enrollment_id: string; submitted_at: string }) => ({ userId: r.participant_id, enrollmentId: r.enrollment_id, timestamp: r.submitted_at })),
+         ...(trainingProgress || []).filter((p: { enrollment_id: string | null }) => !!p.enrollment_id).map((p: { user_id: string; enrollment_id: string; completed_at: string | null }) => ({ userId: p.user_id, enrollmentId: p.enrollment_id, timestamp: p.completed_at })),
       ];
       newAlerts.push(
-        ...buildStaleProgrammeParticipantAlerts({ activeUserIds, activity, nameById: profById, emailById, now })
+         ...buildStaleProgrammeParticipantAlerts({ activeEnrollments, activity, nameById: profById, emailById, now })
       );
 
       const quizAssignmentIds = new Set((assignments || []).filter((a: { id: string; assignment_type: string }) => a.assignment_type === "quiz").map((a) => a.id));
       const quizSubmissions: ScanQuizSubmissionRow[] = (submissions || [])
         .filter((s: { assignment_id: string }) => quizAssignmentIds.has(s.assignment_id))
-        .map((s: { user_id: string; score_pct: number | null }) => ({ userId: s.user_id, scorePct: s.score_pct }));
+         .filter((s: { enrollment_id: string | null }) => !!s.enrollment_id)
+         .map((s: { user_id: string; enrollment_id: string; score_pct: number | null }) => ({ userId: s.user_id, enrollmentId: s.enrollment_id, scorePct: s.score_pct }));
       newAlerts.push(...buildLowQuizScoreAlerts({ submissions: quizSubmissions, nameById: profById, emailById }));
 
       // Coach-flagged sessions (optional coach_session_feedback.flag_for_admin)

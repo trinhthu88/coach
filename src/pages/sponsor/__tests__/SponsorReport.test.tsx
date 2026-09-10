@@ -25,6 +25,6 @@ describe("SponsorReport privacy contract", () => {
     await waitFor(() => expect(screen.getByText("Due adherence")).toBeInTheDocument());
     expect(screen.getByText("Priya Shah")).toBeInTheDocument();
     expect(screen.queryByText(/Goal reached|confidence|satisfaction|quiz/i)).not.toBeInTheDocument();
-    expect(calls).toEqual(["sponsor_cohort_summaries", "sponsor_enrollment_summaries"]);
+    expect(calls).toEqual(["sponsor_cohort_summaries", "sponsor_organisation_summary", "sponsor_min_leaders_for_distribution", "sponsor_enrollment_summaries"]);
   });
 });

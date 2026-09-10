@@ -71,6 +71,7 @@ export type Database = {
           message: string | null
           related_coach_id: string | null
           related_coachee_id: string | null
+          related_enrollment_id: string | null
           resolved: boolean
           resolved_at: string | null
           resolved_by: string | null
@@ -85,6 +86,7 @@ export type Database = {
           message?: string | null
           related_coach_id?: string | null
           related_coachee_id?: string | null
+          related_enrollment_id?: string | null
           resolved?: boolean
           resolved_at?: string | null
           resolved_by?: string | null
@@ -99,6 +101,7 @@ export type Database = {
           message?: string | null
           related_coach_id?: string | null
           related_coachee_id?: string | null
+          related_enrollment_id?: string | null
           resolved?: boolean
           resolved_at?: string | null
           resolved_by?: string | null
@@ -3542,7 +3545,7 @@ export type Database = {
         Returns: string
       }
       can_book_session: {
-        Args: { p_coach_id: string; p_coachee_id: string }
+        Args: { p_coach_id: string; p_coachee_id: string; p_enrollment_id?: string }
         Returns: boolean
       }
       can_message_peer_session: {
@@ -3561,7 +3564,7 @@ export type Database = {
         Args: { p_mentor_id: string }
         Returns: string
       }
-      check_can_book_session: { Args: { p_coach_id: string }; Returns: boolean }
+      check_can_book_session: { Args: { p_coach_id: string; p_enrollment_id?: string }; Returns: boolean }
       check_has_module_access: { Args: { p_module: string }; Returns: boolean }
       check_mentoring_given_usage: {
         Args: { p_mentor_id: string }
@@ -3663,8 +3666,30 @@ export type Database = {
           used_this_month: number
         }[]
       }
-      get_coachee_session_usage: {
-        Args: { _coachee_id: string }
+      get_peer_session_usage: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          monthly_limit: number | null
+          used_count: number
+        }[]
+      }
+      can_book_peer_session: {
+        Args: { p_peer_coach_id: string; p_enrollment_id: string }
+        Returns: boolean
+      }
+      book_peer_session: {
+        Args: {
+          p_peer_coach_id: string
+          p_enrollment_id: string
+          p_topic: string
+          p_start_time: string
+          p_duration_minutes: number
+          p_slot_id?: string | null
+        }
+        Returns: string
+      }
+      get_coachee_session_usage_for_enrollment: {
+        Args: { p_enrollment_id: string }
         Returns: {
           monthly_limit: number
           used_this_month: number
@@ -3698,6 +3723,13 @@ export type Database = {
           module: Database["public"]["Enums"]["programme_module_type"]
           pace_status: string
           required_units: number
+        }[]
+      }
+      get_admin_enrollment_progress: {
+        Args: { p_as_of?: string; p_enrollment_ids: string[] }
+        Returns: {
+          enrollment_id: string
+          full_completion_pct: number | null
         }[]
       }
       get_mentoring_given_limit: {
@@ -3892,17 +3924,6 @@ export type Database = {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
-      sponsor_can_view_coachee: {
-        Args: { _coachee_id: string }
-        Returns: boolean
-      }
-      sponsor_coach_utilisation: {
-        Args: { p_cohort_id?: string }
-        Returns: {
-          coach_name: string
-          completed_sessions: number
-        }[]
-      }
       sponsor_enrollment_summaries: {
         Args: { p_cohort_id: string }
         Returns: {
@@ -3911,11 +3932,11 @@ export type Database = {
           programme_label: string
           cohort_id: string
           cohort_label: string
-          enrollment_status: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
           required_units: number
           completed_units: number
           due_units: number
-          due_adherence_pct: number
+          due_adherence_pct: number | null
           pace_status: string
           coaching_completed_count: number
           mentoring_completed_count: number
@@ -3924,6 +3945,21 @@ export type Database = {
           goal_count: number
           open_action_count: number
           completed_action_count: number
+           programme_id: string
+           enrollment_start_date: string
+           enrollment_end_date: string | null
+           programme_start_date: string | null
+           programme_end_date: string | null
+           full_completion_pct: number | null
+           booked_units: number
+           overdue_units: number
+           schedule_coverage_pct: number | null
+           goal_setup: boolean
+           goal_progress_pct: number | null
+           total_action_count: number
+           action_completion_pct: number | null
+           satisfaction_avg: number | null
+           satisfaction_rated_count: number
         }[]
       }
       sponsor_cohort_summaries: {
@@ -3934,96 +3970,77 @@ export type Database = {
           programme_label: string
           enrollment_count: number | null
           suppressed: boolean
-          required_units: number
-          completed_units: number
-          due_units: number
-          due_adherence_pct: number
-          pace_status: string
-          coaching_completed_count: number
-          mentoring_completed_count: number
-          peer_completed_count: number
-          triad_completed_count: number
-          goal_count: number
-          open_action_count: number
-          completed_action_count: number
-        }[]
-      }
-      sponsor_confidence_trend: {
-        Args: never
-        Returns: {
-          appears_at_week: number
-          avg_confidence: number
-          reflection_number: number
-          reflection_title: string
-          response_count: number
-        }[]
-      }
-      sponsor_engagement_red_flags: {
-        Args: { p_cohort_id?: string }
-        Returns: {
-          days_since_last_activity: number
-          full_name: string
-          missed_prompts: number
-          missed_quizzes: number
-          missed_triads: number
-          user_id: string
-        }[]
-      }
-      sponsor_goal_growth_summary: {
-        Args: { p_cohort_id?: string }
-        Returns: {
-          avg_growth: number
-          enrolled_leaders_count: number
-          flat_declined_count: number
-          hit_target_count: number
-          just_started_count: number
-          meaningful_progress_count: number
-          pct_progressing: number
-        }[]
-      }
-      sponsor_kpis: {
-        Args: { p_cohort_id?: string }
-        Returns: {
-          at_risk_count: number
-          enrolled_active_count: number
-          leaders_enrolled: number
-          on_track_count: number
-          sessions_entitled: number
-          sessions_used: number
+          required_units: number | null
+          completed_units: number | null
+          due_units: number | null
+          due_adherence_pct: number | null
+          pace_status: string | null
+          coaching_completed_count: number | null
+          mentoring_completed_count: number | null
+          peer_completed_count: number | null
+          triad_completed_count: number | null
+          goal_count: number | null
+          open_action_count: number | null
+          completed_action_count: number | null
+           active_count: number | null
+           at_risk_count: number | null
+           paused_count: number | null
+           completed_count: number | null
+           not_yet_due_count: number | null
+           ahead_count: number | null
+           on_track_count: number | null
+           scheduled_count: number | null
+           behind_count: number | null
+           full_completion_pct: number | null
+           booked_units: number | null
+           overdue_units: number | null
+           schedule_coverage_pct: number | null
+           completed_pace_count: number | null
+           satisfaction_avg: number | null
+           satisfaction_rated_count: number | null
+           goal_setup_count: number | null
+           goal_progress_pct: number | null
+           total_action_count: number | null
+           action_completion_pct: number | null
+           on_track_pct: number | null
         }[]
       }
       sponsor_min_leaders_for_distribution: {
-        Args: { p_cohort_id?: string }
+        Args: never
         Returns: number
       }
-      sponsor_programme_engagement: {
-        Args: { p_cohort_id?: string }
+      sponsor_organisation_summary: {
+        Args: never
         Returns: {
-          daily_prompt_response_rate: number
-          effective_unlock_date: string
-          is_locked: boolean
-          quiz_avg_score: number
-          quiz_completion_pct: number
-          reflection_completion_pct: number
-          skill_card_completion_pct: number
-          triad_completion_pct: number
-          triad_satisfaction_avg: number
-          week_number: number
-          week_title: string
-        }[]
-      }
-      sponsor_roster: {
-        Args: { p_cohort_id?: string }
-        Returns: {
-          coachee_id: string
-          cohort_name: string
-          enrollment_id: string
-          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
-          full_name: string
-          goal_growth: number
-          progress_pct: number
-          sessions_completed: number
-          sessions_entitled: number
+          cohort_count: number
+          enrollment_count: number | null
+          active_count: number | null
+          at_risk_count: number | null
+          paused_count: number | null
+          completed_count: number | null
+          required_units: number | null
+          completed_units: number | null
+          due_units: number | null
+          booked_units: number | null
+          overdue_units: number | null
+          full_completion_pct: number | null
+          due_adherence_pct: number | null
+          schedule_coverage_pct: number | null
+          not_yet_due_count: number | null
+          ahead_count: number | null
+          on_track_count: number | null
+          scheduled_count: number | null
+          behind_count: number | null
+          completed_pace_count: number | null
+          goal_count: number | null
+          goal_setup_count: number | null
+          goal_progress_pct: number | null
+          total_action_count: number | null
+          completed_action_count: number | null
+          action_completion_pct: number | null
+          satisfaction_avg: number | null
+          satisfaction_rated_count: number | null
+          suppressed: boolean
         }[]
       }
       sponsor_satisfaction_summary: {
@@ -4032,22 +4049,6 @@ export type Database = {
           avg_rating: number
           cohort_id: string
           rated_session_count: number
-        }[]
-      }
-      sponsor_satisfaction_trend: {
-        Args: { p_cohort_id?: string }
-        Returns: {
-          avg_rating: number
-          month_start: string
-          rated_session_count: number
-        }[]
-      }
-      sponsor_timeline: {
-        Args: never
-        Returns: {
-          earliest_start: string
-          latest_end: string
-          programme_names: string[]
         }[]
       }
     }

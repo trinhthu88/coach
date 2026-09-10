@@ -5,6 +5,7 @@ import {
   isOngoingEnrollment,
   parseOngoingEnrollmentConflict,
   resolveSelectedEnrollment,
+  resolveSelectedEnrollmentResult,
   type Enrollment,
 } from "../enrollments";
 
@@ -125,5 +126,21 @@ describe("explicit enrollment context", () => {
     expect(enrollmentQueryKey("journey-goals", "enrollment-active")).not.toEqual(
       enrollmentQueryKey("journey-goals", "enrollment-completed")
     );
+  });
+
+  it("does not guess when multiple ongoing enrollments exist", () => {
+    const second = { ...activeEnrollment, id: "enrollment-active-2", programme_id: "programme-other" };
+    expect(resolveSelectedEnrollment([activeEnrollment, second])).toBeNull();
+    expect(resolveSelectedEnrollmentResult([activeEnrollment, second])).toMatchObject({
+      kind: "ambiguous",
+      enrollments: [activeEnrollment, second],
+    });
+  });
+
+  it("reports an invalid explicit enrollment instead of falling back", () => {
+    expect(resolveSelectedEnrollmentResult([activeEnrollment], "missing")).toEqual({
+      kind: "invalid",
+      enrollmentId: "missing",
+    });
   });
 });

@@ -33,6 +33,17 @@ printf '%s\n' '==> Resetting local database, migrations, and configured seed dat
 # `db reset --local` applies every migration and then supabase/seed.sql.
 # PGOPTIONS is the seed's explicit local-only guard.
 PGOPTIONS='-c app.seed_environment=local' supabase_cli db reset --local
+printf '%s\n' '==> Running signed-client sponsor isolation test against local Supabase'
+[[ -x supabase/tests/sponsor_isolation_test.mjs ]] || {
+  printf '%s\n' 'sponsor_isolation_test.mjs must be executable' >&2
+  exit 1
+}
+# Read credentials from the local stack only; never use linked-project env vars.
+eval "$(supabase_cli status -o env)"
+VITE_SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}" \
+VITE_SUPABASE_ANON_KEY="${ANON_KEY:?local anon key unavailable}" \
+SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?local service key unavailable}" \
+  node supabase/tests/sponsor_isolation_test.mjs
 printf '%s\n' '==> Running database tests'
 supabase_cli test db --local supabase/tests
 cat > "$snapshot_sql_file" <<'SQL'

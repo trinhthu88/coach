@@ -19,6 +19,12 @@ export interface OngoingEnrollmentConflict {
   endDate: string | null;
 }
 
+export type EnrollmentSelectionResult =
+  | { kind: "selected"; enrollment: Enrollment }
+  | { kind: "missing" }
+  | { kind: "ambiguous"; enrollments: Enrollment[] }
+  | { kind: "invalid"; enrollmentId: string };
+
 export interface CreateProgrammeEnrollmentInput {
   userId: string;
   programmeId: string;
@@ -58,10 +64,27 @@ export function enrollmentQueryKey(resource: string, enrollmentId: string | unde
 }
 
 export function resolveSelectedEnrollment(enrollments: Enrollment[], selectedEnrollmentId?: string | null): Enrollment | null {
+  const result = resolveSelectedEnrollmentResult(enrollments, selectedEnrollmentId);
+  return result.kind === "selected" ? result.enrollment : null;
+}
+
+/**
+ * Resolve ownership without guessing. In particular, two ongoing enrollments
+ * are an ambiguity, not a reason to use whichever row the database returned
+ * first.
+ */
+export function resolveSelectedEnrollmentResult(
+  enrollments: Enrollment[],
+  selectedEnrollmentId?: string | null
+): EnrollmentSelectionResult {
   if (selectedEnrollmentId) {
-    return enrollments.find((enrollment) => enrollment.id === selectedEnrollmentId) ?? null;
+    const enrollment = enrollments.find((candidate) => candidate.id === selectedEnrollmentId);
+    return enrollment ? { kind: "selected", enrollment } : { kind: "invalid", enrollmentId: selectedEnrollmentId };
   }
-  return enrollments.find((enrollment) => isOngoingEnrollment(enrollment.status)) ?? null;
+  const ongoing = enrollments.filter((enrollment) => isOngoingEnrollment(enrollment.status));
+  if (ongoing.length === 1) return { kind: "selected", enrollment: ongoing[0] };
+  if (ongoing.length > 1) return { kind: "ambiguous", enrollments: ongoing };
+  return { kind: "missing" };
 }
 
 export function parseOngoingEnrollmentConflict(error: unknown): OngoingEnrollmentConflict | null {
@@ -137,5 +160,8 @@ export async function getEnrollmentHistory(userId: string): Promise<Enrollment[]
 
 export async function getOngoingEnrollment(userId: string): Promise<Enrollment | null> {
   const history = await getEnrollmentHistory(userId);
-  return history.find((enrollment) => isOngoingEnrollment(enrollment.status)) ?? null;
+  const ongoing = history.filter((enrollment) => isOngoingEnrollment(enrollment.status));
+  // An account can have historical rows, but ownership must never be guessed
+  // when more than one ongoing row exists.
+  return ongoing.length === 1 ? ongoing[0] : null;
 }

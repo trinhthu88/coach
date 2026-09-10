@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Json } from "@/integrations/supabase/types";
 import { AppRole } from "@/context/AuthContext";
 import { withEnrollmentActions } from "@/lib/enrollmentActions";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 interface CoachingReceiveData {
   nextSession: {
@@ -27,23 +27,27 @@ const empty: CoachingReceiveData = {
   upcomingCount: 0,
 };
 
-async function fetchData(userId: string, role: AppRole): Promise<CoachingReceiveData> {
+async function fetchData(userId: string, role: AppRole, enrollmentId: string): Promise<CoachingReceiveData> {
   // Sessions, milestones, and the usage RPC don't depend on one another —
   // fire them together instead of one-at-a-time so the round trips overlap
   // instead of stacking (each hop costs real latency; see 2026-09-08
   // dashboard-load-latency investigation). Only the coach profile lookup
   // genuinely depends on a prior result (next session's coach_id).
-  const [{ data: sessions }, { data: milestones }, usageResult] = await Promise.all([
+  const [{ data: sessions }, { data: milestones }] = await Promise.all([
     supabase
       .from("sessions")
        .select("id, topic, start_time, status, coach_id, enrollment_id")
       .eq("coachee_id", userId)
+      .eq("enrollment_id", enrollmentId)
       .order("start_time", { ascending: false }),
-    supabase.from("coachee_milestones").select("is_done").eq("coachee_id", userId),
-    role === "coachee"
-      ? supabase.rpc("get_coachee_session_usage", { _coachee_id: userId })
-      : Promise.resolve({ data: null }),
+    supabase.from("coachee_milestones").select("is_done").eq("coachee_id", userId).eq("enrollment_id", enrollmentId),
   ]);
+  const usageResult =
+    role === "coachee"
+      ? await supabase.rpc("get_coachee_session_usage_for_enrollment", {
+          p_enrollment_id: enrollmentId,
+        })
+      : { data: null };
   const list = await withEnrollmentActions(sessions || [], "coaching");
 
   const now = new Date();
@@ -63,8 +67,8 @@ async function fetchData(userId: string, role: AppRole): Promise<CoachingReceive
   }
 
   const actionItemsOpen = list.reduce((acc, s) => {
-    const arr = Array.isArray(s.action_items) ? s.action_items : [];
-    return acc + arr.filter((it: Json) => (typeof it === "string" ? true : !(it as { done?: boolean })?.done)).length;
+    const arr = s.enrollment_actions ?? [];
+    return acc + arr.filter((it) => !it.done).length;
   }, 0);
 
   const totalMs = milestones?.length ?? 0;
@@ -90,11 +94,13 @@ async function fetchData(userId: string, role: AppRole): Promise<CoachingReceive
 }
 
 export function useCoachingReceiveCardData(userId: string | undefined, role: AppRole | null, enabled: boolean) {
+  const enrollmentContext = useEnrollmentContext(userId);
+  const enrollmentId = enrollmentContext.selectedEnrollment?.id;
   const { data, isLoading } = useQuery({
-    queryKey: ["coaching-receive-card", userId],
-    queryFn: () => fetchData(userId as string, role as AppRole),
-    enabled: !!userId && !!role && enabled,
+    queryKey: ["coaching-receive-card", userId, enrollmentId ?? null],
+    queryFn: () => fetchData(userId as string, role as AppRole, enrollmentId as string),
+    enabled: !!userId && !!role && !!enrollmentId && enabled,
     staleTime: 30_000,
   });
-  return { data: data ?? empty, loading: isLoading };
+  return { data: data ?? empty, loading: enrollmentContext.loading || isLoading };
 }

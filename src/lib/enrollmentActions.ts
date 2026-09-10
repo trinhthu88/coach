@@ -19,7 +19,7 @@ export interface EnrollmentActionItem {
 interface EnrollmentOwnedActivity {
   id: string;
   enrollment_id?: string | null;
-  action_items?: unknown;
+  enrollment_actions?: EnrollmentActionItem[];
 }
 
 interface StoredEnrollmentAction {
@@ -39,15 +39,20 @@ export async function withEnrollmentActions<T extends EnrollmentOwnedActivity>(
   activities: T[],
   sourceActivityType: EnrollmentActionSource,
 ): Promise<T[]> {
+  const unscopedActivity = activities.find((activity) => !activity.enrollment_id);
+  if (unscopedActivity) {
+    throw new Error(
+      `Cannot load programme actions for unscoped ${sourceActivityType} activity ${unscopedActivity.id}`,
+    );
+  }
+
   const enrollmentIds = [...new Set(
     activities
       .map((activity) => activity.enrollment_id)
       .filter((id): id is string => Boolean(id)),
   )];
 
-  if (enrollmentIds.length === 0) {
-    return activities.map((activity) => ({ ...activity, action_items: [] }));
-  }
+  if (enrollmentIds.length === 0) return activities.map((activity) => ({ ...activity, enrollment_actions: [] }));
 
   const sourceIds = activities.map((activity) => activity.id);
   const baseQuery = supabase
@@ -64,13 +69,11 @@ export async function withEnrollmentActions<T extends EnrollmentOwnedActivity>(
   const stored = (data ?? []) as StoredEnrollmentAction[];
   return activities.map((activity) => ({
     ...activity,
-    action_items: activity.enrollment_id
+    enrollment_actions: activity.enrollment_id
       ? stored
-          .filter((action) => (
-            action.enrollment_id === activity.enrollment_id
+          .filter((action) => action.enrollment_id === activity.enrollment_id
             && action.source_activity_type === sourceActivityType
-            && action.source_activity_id === activity.id
-          ))
+            && action.source_activity_id === activity.id)
           .map((action) => ({
             id: action.id,
             text: action.title,

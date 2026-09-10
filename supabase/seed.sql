@@ -116,7 +116,10 @@ BEGIN
     start_date:=CASE WHEN i=6 THEN '2026-09-01' WHEN i=7 THEN '2026-09-15'
       WHEN i=8 THEN '2026-09-01' WHEN i=9 THEN '2026-09-01' ELSE '2026-11-15' END;
     end_date:=CASE WHEN i<=5 THEN '2026-12-01' ELSE '2027-03-01' END;
-    SELECT id INTO eid FROM programme_enrollments WHERE user_id=uid AND cohort_id=cohort;
+    -- Scope lookup to this seed's organisation.  A preserved unrelated row
+    -- must never be mistaken for one of the deterministic demo enrollments.
+    SELECT id INTO eid FROM programme_enrollments
+      WHERE user_id=uid AND cohort_id=cohort AND organization_id=org;
     IF eid IS NULL THEN
       -- Seed-only deterministic IDs; the production authoritative writer is
       -- unchanged. Schedule generation remains the authoritative snapshot

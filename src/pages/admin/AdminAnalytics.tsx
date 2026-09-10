@@ -47,6 +47,7 @@ interface AnalyticsCoachProfileRow {
 }
 
 interface AnalyticsSessionRow {
+  enrollment_id: string | null;
   coach_id: string;
   coachee_id: string;
   status: string;
@@ -55,6 +56,7 @@ interface AnalyticsSessionRow {
 }
 
 interface AnalyticsPeerSessionRow {
+  enrollment_id: string | null;
   peer_coach_id: string;
   peer_coachee_id: string;
   status: string;
@@ -62,9 +64,9 @@ interface AnalyticsPeerSessionRow {
 }
 
 interface AnalyticsEnrollmentRow {
+  id: string;
   user_id: string;
   status: string;
-  progress_pct: number | null;
 }
 
 interface AnalyticsData {
@@ -101,12 +103,12 @@ export default function AdminAnalytics() {
     if (!selectedProgrammeId && programmes.length > 0) setSelectedProgrammeId(programmes[0].id);
   }, [programmes, selectedProgrammeId]);
 
-  const flagParticipant = async (userId: string, fullName: string) => {
+  const flagParticipant = async (userId: string, enrollmentId: string, fullName: string) => {
     const { data: existing } = await supabase
       .from("admin_alerts")
       .select("id")
       .eq("alert_type", "stale_programme_participant")
-      .eq("related_coachee_id", userId)
+      .eq("related_enrollment_id", enrollmentId)
       .eq("resolved", false)
       .maybeSingle();
     if (existing) {
@@ -119,13 +121,14 @@ export default function AdminAnalytics() {
       title: `${fullName} — no programme activity in 7+ days`,
       message: `${fullName} hasn't completed a training week, quiz, triad reflection, or daily prompt in over a week.`,
       related_coachee_id: userId,
+      related_enrollment_id: enrollmentId,
       resolved: false,
     });
     if (error) {
       toast.error(error.message);
       return;
     }
-    setFlaggedIds((prev) => new Set(prev).add(userId));
+    setFlaggedIds((prev) => new Set(prev).add(enrollmentId));
     toast.success(t("analytics.programmeEngagement.flagged"));
   };
 
@@ -144,49 +147,52 @@ export default function AdminAnalytics() {
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("profiles").select("id, full_name, status"),
         supabase.from("coach_profiles").select("id, rating_avg, peer_coaching_opt_in"),
-        supabase.from("sessions").select("coach_id, coachee_id, status, duration_minutes, coachee_rating"),
-        supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, status, duration_minutes"),
+        supabase.from("sessions").select("enrollment_id, coach_id, coachee_id, status, duration_minutes, coachee_rating"),
+        supabase.from("peer_sessions").select("enrollment_id, peer_coach_id, peer_coachee_id, status, duration_minutes"),
         supabase.from("peer_session_competency_feedback").select("*"),
-        supabase.from("programme_enrollments").select("user_id, status, progress_pct"),
+         supabase.from("programme_enrollments").select("id, user_id, status"),
       ]);
 
       const profById = new Map((profiles || []).map((p: AnalyticsProfileRow) => [p.id, p]));
       const cpById = new Map((cps || []).map((c: AnalyticsCoachProfileRow) => [c.id, c]));
       const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
       const coacheeIds = (roles || []).filter(r => r.role === "coachee").map(r => r.user_id);
+      const validEnrollmentIds = new Set((enr || []).map((e: AnalyticsEnrollmentRow) => e.id));
+      const scopedSess = (sess || []).filter((s: AnalyticsSessionRow) => s.enrollment_id && validEnrollmentIds.has(s.enrollment_id));
+      const scopedPeer = (peer || []).filter((s: AnalyticsPeerSessionRow) => s.enrollment_id && validEnrollmentIds.has(s.enrollment_id));
 
       // Platform KPIs
-      const sessTotal = (sess || []).filter((s: AnalyticsSessionRow) => s.status === "completed").length;
-      const peerTotal = (peer || []).filter((s: AnalyticsPeerSessionRow) => s.status === "completed").length;
-      const ratings = (sess || []).map((s: AnalyticsSessionRow) => s.coachee_rating).filter((r): r is number => r != null);
+      const sessTotal = scopedSess.filter((s) => s.status === "completed").length;
+      const peerTotal = scopedPeer.filter((s) => s.status === "completed").length;
+      const ratings = scopedSess.map((s) => s.coachee_rating).filter((r): r is number => r != null);
       const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
       const dist = [0, 0, 0, 0, 0];
       ratings.forEach((r) => { if (r >= 1 && r <= 5) dist[r - 1]++; });
-      const totalHours = [...(sess || []), ...(peer || [])]
+      const totalHours = [...scopedSess, ...scopedPeer]
         .filter((s: AnalyticsSessionRow | AnalyticsPeerSessionRow) => s.status === "completed")
         .reduce((a: number, s: AnalyticsSessionRow | AnalyticsPeerSessionRow) => a + (s.duration_minutes || 0) / 60, 0);
 
       // Coachee analytics
       const coacheeSessDone = new Map<string, number>();
       const coacheeSessBooked = new Map<string, number>();
-      (sess || []).forEach((s: AnalyticsSessionRow) => {
+       scopedSess.forEach((s: AnalyticsSessionRow) => {
         if (s.status === "completed") coacheeSessDone.set(s.coachee_id, (coacheeSessDone.get(s.coachee_id) || 0) + 1);
         if (["pending_coach_approval", "confirmed"].includes(s.status)) coacheeSessBooked.set(s.coachee_id, (coacheeSessBooked.get(s.coachee_id) || 0) + 1);
       });
-      const enrByCoachee = new Map<string, AnalyticsEnrollmentRow>();
-      (enr || []).forEach((e: AnalyticsEnrollmentRow) => enrByCoachee.set(e.user_id, e));
+       const progressRows = await supabase.rpc("get_admin_enrollment_progress", {
+         p_enrollment_ids: (enr || []).map((e: AnalyticsEnrollmentRow) => e.id),
+       });
+       const progressByEnrollment = new Map((progressRows.data || []).map((row) => [row.enrollment_id, row.full_completion_pct == null ? null : Number(row.full_completion_pct)]));
       const activeCoachees = coacheeIds.filter(id => profById.get(id)?.status === "active").length;
-      const enrolled = coacheeIds.filter(id => enrByCoachee.has(id)).length;
-      const progressAvg = (() => {
-        const vals = coacheeIds.map(id => (enrByCoachee.get(id)?.progress_pct ?? 0));
-        return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-      })();
+       const enrolled = new Set((enr || []).map((e: AnalyticsEnrollmentRow) => e.user_id)).size;
+       const progressValues = (enr || []).map((e: AnalyticsEnrollmentRow) => progressByEnrollment.get(e.id)).filter((v): v is number => v != null);
+       const progressAvg = progressValues.length ? progressValues.reduce((a, b) => a + b, 0) / progressValues.length : 0;
       const atRisk = (enr || []).filter((e: AnalyticsEnrollmentRow) => e.status === "at_risk").length;
 
       // Coach analytics (delivered)
       const coachDelivered = new Map<string, number>();
       const coachUnique = new Map<string, Set<string>>();
-      (sess || []).forEach((s: AnalyticsSessionRow) => {
+       scopedSess.forEach((s: AnalyticsSessionRow) => {
         if (s.status === "completed") coachDelivered.set(s.coach_id, (coachDelivered.get(s.coach_id) || 0) + 1);
         if (["confirmed", "completed"].includes(s.status)) {
           const set = coachUnique.get(s.coach_id) || new Set();
@@ -209,7 +215,7 @@ export default function AdminAnalytics() {
       const peerCoaches = coachIds.filter(id => cpById.get(id)?.peer_coaching_opt_in);
       const peerGiven = new Map<string, number>();
       const peerReceived = new Map<string, number>();
-      (peer || []).forEach((s: AnalyticsPeerSessionRow) => {
+       scopedPeer.forEach((s: AnalyticsPeerSessionRow) => {
         if (s.status === "completed") {
           peerGiven.set(s.peer_coach_id, (peerGiven.get(s.peer_coach_id) || 0) + 1);
           peerReceived.set(s.peer_coachee_id, (peerReceived.get(s.peer_coachee_id) || 0) + 1);
@@ -455,8 +461,8 @@ export default function AdminAnalytics() {
                   <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.programmeEngagement.noRedFlags")}</p>
                 ) : (
                   <div className="mt-3.5 divide-y">
-                    {redFlags.map((f) => (
-                      <div key={f.userId} className="flex flex-col gap-2 py-2.5 text-[12px] sm:flex-row sm:items-center sm:justify-between">
+                     {redFlags.map((f) => (
+                       <div key={f.enrollmentId} className="flex flex-col gap-2 py-2.5 text-[12px] sm:flex-row sm:items-center sm:justify-between">
                         <span className="inline-flex items-center gap-2.5 font-medium">
                           <Avatar name={f.fullName} tone="accent" size={26} /> {f.fullName}
                         </span>
@@ -469,11 +475,11 @@ export default function AdminAnalytics() {
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={flaggedIds.has(f.userId)}
-                            onClick={() => flagParticipant(f.userId, f.fullName)}
+                             disabled={flaggedIds.has(f.enrollmentId)}
+                             onClick={() => flagParticipant(f.userId, f.enrollmentId, f.fullName)}
                           >
                             <Flag className="mr-1 h-3.5 w-3.5" />
-                            {flaggedIds.has(f.userId) ? t("analytics.programmeEngagement.flaggedLabel") : t("analytics.programmeEngagement.flag")}
+                             {flaggedIds.has(f.enrollmentId) ? t("analytics.programmeEngagement.flaggedLabel") : t("analytics.programmeEngagement.flag")}
                           </Button>
                         </div>
                       </div>

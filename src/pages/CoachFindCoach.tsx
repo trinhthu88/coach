@@ -14,8 +14,7 @@ export default function CoachFindCoach() {
   const { coaches, loading, error, reload: load } = useCoachAsCoacheeAllowlist();
 
   // Coaching module's receive_limit — null/absent = unlimited. Comes from
-  // the coach's active programme's programme_modules config, not the
-  // deprecated coach_programme_enrollments/coach_programmes tables.
+  // the coach's active programme's programme_modules config.
   const receiveLimit = (getConfig("coaching").receive_limit as number | null | undefined) ?? null;
 
   return (

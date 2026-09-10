@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PeerSessionRow, SessionRow, SessionSource } from "./types";
 import { withEnrollmentActions, saveEnrollmentActions } from "@/lib/enrollmentActions";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 export type { SessionSource };
 
 interface Options {
   /** Also fetch peer_sessions where the user is the peer coachee. */
   includePeer?: boolean;
+  enrollmentId?: string | null;
 }
 
 interface JourneySessionsData {
@@ -18,14 +20,15 @@ interface JourneySessionsData {
   coachNames: Record<string, string>;
 }
 
-async function fetchJourneySessions(coacheeId: string, includePeer: boolean): Promise<JourneySessionsData> {
+async function fetchJourneySessions(coacheeId: string, includePeer: boolean, enrollmentId: string): Promise<JourneySessionsData> {
   const [{ data: s }, peerResult] = await Promise.all([
-    supabase.from("sessions").select("*").eq("coachee_id", coacheeId).order("start_time", { ascending: false }),
+    supabase.from("sessions").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("start_time", { ascending: false }),
     includePeer
       ? supabase
           .from("peer_sessions")
           .select("*")
-          .eq("peer_coachee_id", coacheeId)
+           .eq("peer_coachee_id", coacheeId)
+          .eq("enrollment_id", enrollmentId)
           .order("start_time", { ascending: false })
       : Promise.resolve({ data: [] as PeerSessionRow[] }),
   ]);
@@ -52,14 +55,16 @@ async function fetchJourneySessions(coacheeId: string, includePeer: boolean): Pr
  * Shared between the coachee and coach "my journey" views.
  */
 export function useJourneySessions(coacheeId: string | undefined, options: Options = {}) {
-  const { includePeer = false } = options;
+  const { includePeer = false, enrollmentId: explicitEnrollmentId } = options;
+  const enrollmentContext = useEnrollmentContext(coacheeId, explicitEnrollmentId);
+  const enrollmentId = enrollmentContext.selectedEnrollment?.id;
   const queryClient = useQueryClient();
-  const queryKey = ["journey-sessions", coacheeId, includePeer];
+  const queryKey = ["journey-sessions", coacheeId, includePeer, enrollmentId ?? null];
 
   const { data, isLoading } = useQuery({
     queryKey,
-    queryFn: () => fetchJourneySessions(coacheeId as string, includePeer),
-    enabled: !!coacheeId,
+    queryFn: () => fetchJourneySessions(coacheeId as string, includePeer, enrollmentId as string),
+    enabled: !!coacheeId && !!enrollmentId,
     staleTime: 30_000,
   });
   const coachingSessions = data?.coachingSessions ?? [];
@@ -106,7 +111,7 @@ export function useJourneySessions(coacheeId: string | undefined, options: Optio
     const list = source === "coaching" ? coachingSessions : peerSessions;
     const sess = list.find((s) => s.id === sessionId);
     if (!sess) return;
-    const items = Array.isArray(sess.action_items) ? [...(sess.action_items as unknown[])] : [];
+    const items = [...(sess.enrollment_actions ?? [])];
     const cur = items[idx];
     const norm = typeof cur === "string" ? { text: cur, done: false } : { ...(cur as object) };
     (norm as { done?: boolean }).done = !(norm as { done?: boolean }).done;
@@ -115,9 +120,9 @@ export function useJourneySessions(coacheeId: string | undefined, options: Optio
     // Optimistic update, reverted via refresh() in onError above (matches
     // pre-migration behavior).
     if (source === "coaching") {
-      setCoachingSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, action_items: items as SessionRow["action_items"] } : s)));
+      setCoachingSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, enrollment_actions: items } : s)));
     } else {
-      setPeerSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, action_items: items as PeerSessionRow["action_items"] } : s)));
+      setPeerSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, enrollment_actions: items } : s)));
     }
 
     await toggleActionMutation.mutateAsync({ table, sessionId, items }).catch(() => {});
@@ -127,7 +132,7 @@ export function useJourneySessions(coacheeId: string | undefined, options: Optio
     coachingSessions,
     peerSessions,
     coachNames: data?.coachNames ?? {},
-    loading: isLoading,
+    loading: enrollmentContext.loading || (!!enrollmentId && isLoading),
     refresh,
     toggleAction,
     setCoachingSessions,

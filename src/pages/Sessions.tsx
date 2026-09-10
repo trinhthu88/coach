@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import type { EnrollmentActionItem } from "@/lib/enrollmentActions";
 import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +17,6 @@ import { Calendar, Loader2, Star, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import type { Tables } from "@/integrations/supabase/types";
 import { getSessionStatusPillMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
 import { useSessionsData } from "@/hooks/sessions/useSessionsData";
 import type { SessionRow as SessionRowData, SessionKind } from "@/hooks/sessions/useSessionsData";
@@ -329,7 +329,7 @@ function SessionCard({
             {t("list.markComplete")}
           </Button>
         )}
-        <ActionItemsList items={session.action_items} date={session.start_time} />
+        <ActionItemsList items={session.enrollment_actions} date={session.start_time} />
         {showRating && (
           <div className="mt-4 border-t pt-3">
             <RateSession session={session} onChanged={onChanged} />
@@ -413,13 +413,9 @@ interface ActionItem {
   done?: boolean;
 }
 
-function ActionItemsList({ items, date }: { items: Tables<"sessions">["action_items"]; date: string }) {
+function ActionItemsList({ items, date }: { items: EnrollmentActionItem[]; date: string }) {
   const { t } = useTranslation("sessions");
-  const list: ActionItem[] = Array.isArray(items)
-    ? items
-        .map((it) => (typeof it === "string" ? { text: it, done: false } : (it as unknown as ActionItem)))
-        .filter((it): it is ActionItem => !!it?.text)
-    : [];
+  const list: ActionItem[] = items.filter((it) => !!it.text);
   if (list.length === 0) return null;
   return (
     <div className="mt-4 border-t pt-3">

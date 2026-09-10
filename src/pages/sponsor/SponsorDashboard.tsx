@@ -42,7 +42,7 @@ export default function SponsorDashboard() {
   const { t } = useTranslation("sponsor");
   const { user } = useAuth();
   const {
-    kpis, roster, loading,
+    kpis, roster, cohortSummaries, loading,
   } = useSponsorDashboardData();
   const [org, setOrg] = useState<OrgBannerData | null>(null);
   const [selectedLeader, setSelectedLeader] = useState<SponsorRosterRow | null>(null);
@@ -79,33 +79,27 @@ export default function SponsorDashboard() {
   }, [loading]);
 
   const cohortNames = useMemo(
-    () => Array.from(new Set(roster.map((r) => r.cohort_name).filter(Boolean))),
-    [roster]
+    () => cohortSummaries.map((r) => r.cohort_label),
+    [cohortSummaries]
   );
 
   // Cohort Health Matrix — one row per cohort, aggregated from the same
   // roster the rest of this dashboard already has. Satisfaction has no
   // per-cohort breakdown anywhere in the sponsor_* surface (sponsor_
   const cohortHealthRows = useMemo(() => {
-    const byCohort = new Map<string, SponsorRosterRow[]>();
-    roster.forEach((r) => {
-      if (!r.cohort_name) return;
-      if (!byCohort.has(r.cohort_name)) byCohort.set(r.cohort_name, []);
-      byCohort.get(r.cohort_name)!.push(r);
-    });
-    return Array.from(byCohort.entries()).map(([cohortName, rows]) => {
-      const onTrack = rows.filter((r) => r.enrollment_status === "active").length;
-      const atRisk = rows.filter((r) => r.enrollment_status === "at_risk").length;
+    return cohortSummaries.map((summary) => {
+      const leaders = summary.enrollment_count ?? 0;
+      const atRisk = summary.at_risk_count ?? 0;
       return {
-        cohortName,
-        cohortId: rows[0].cohort_id,
-        leaders: rows.length,
-        onTrackPct: rows.length ? (onTrack / rows.length) * 100 : 0,
+        cohortName: summary.cohort_label,
+        cohortId: summary.cohort_id,
+        leaders,
+        onTrackPct: summary.on_track_pct ?? 0,
         pace: null,
-        signal: healthSignal(atRisk, rows.length),
+        signal: healthSignal(atRisk, leaders),
       };
     });
-  }, [roster]);
+  }, [cohortSummaries]);
 
   const orgName = org?.name ?? null;
 
@@ -119,8 +113,8 @@ export default function SponsorDashboard() {
   // * budget) until real billing data exists, per spec. Projected exhaustion
   // date extrapolates the burn rate seen so far across the contract; only
   // shown once there's enough signal (contract has started, some budget used).
-  const budgetUsedPct = org?.coaching_budget != null && kpis?.sessions_entitled
-    ? Math.min(100, ((kpis.sessions_used ?? 0) / kpis.sessions_entitled) * 100)
+  const budgetUsedPct = org?.coaching_budget != null && kpis?.required_units
+    ? Math.min(100, ((kpis.completed_units ?? 0) / kpis.required_units) * 100)
     : null;
   const spendToDate = org?.coaching_budget != null && budgetUsedPct != null
     ? (budgetUsedPct / 100) * org.coaching_budget
@@ -142,11 +136,11 @@ export default function SponsorDashboard() {
 
     const byCohort = new Map<string, { used: number; entitled: number }>();
     roster.forEach((r) => {
-      const key = r.cohort_name || "";
+      const key = r.cohort_label || "";
       if (!key) return;
       const agg = byCohort.get(key) || { used: 0, entitled: 0 };
-      agg.used += r.sessions_completed;
-      agg.entitled += r.sessions_entitled;
+      agg.used += r.completed_units;
+      agg.entitled += r.required_units;
       byCohort.set(key, agg);
     });
     byCohort.forEach((agg, cohortName) => {
@@ -318,7 +312,7 @@ export default function SponsorDashboard() {
             <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
             <HeadlineStat
               label={t("dashboard.kpis.sessionsUsed")}
-              value={`${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`}
+              value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`}
               icon={CalendarCheck}
               tone="secondary"
             />
@@ -342,6 +336,20 @@ export default function SponsorDashboard() {
                 </div>
               </div>
             )}
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-4 text-[11px] sm:grid-cols-4">
+            <span>Completion <b>{kpis?.full_completion_pct == null ? "—" : `${Math.round(kpis.full_completion_pct)}%`}</b></span>
+            <span>Adherence <b>{kpis?.due_adherence_pct == null ? "—" : `${Math.round(kpis.due_adherence_pct)}%`}</b></span>
+            <span>Booked / overdue <b>{kpis?.booked_units ?? 0} / {kpis?.overdue_units ?? 0}</b></span>
+            <span>Coverage <b>{kpis?.schedule_coverage_pct == null ? "—" : `${Math.round(kpis.schedule_coverage_pct)}%`}</b></span>
+            <span>Paused / completed <b>{kpis?.paused_count ?? 0} / {kpis?.completed_count ?? 0}</b></span>
+            <span>Pace NYD / ahead <b>{kpis?.not_yet_due_count ?? 0} / {kpis?.ahead_count ?? 0}</b></span>
+            <span>Pace on-track / scheduled <b>{kpis?.on_track_count ?? 0} / {kpis?.scheduled_count ?? 0}</b></span>
+            <span>Pace behind / complete <b>{kpis?.behind_count ?? 0} / {kpis?.completed_pace_count ?? 0}</b></span>
+            <span>Goals setup / total <b>{kpis?.goal_setup_count ?? 0} / {kpis?.goal_count ?? 0}</b></span>
+            <span>Goal progress <b>{kpis?.goal_progress_pct == null ? "—" : `${Math.round(kpis.goal_progress_pct)}%`}</b></span>
+            <span>Actions complete <b>{kpis?.completed_action_count ?? 0} / {kpis?.total_action_count ?? 0}</b></span>
+            <span>Satisfaction <b>{kpis?.satisfaction_avg == null ? "—" : kpis.satisfaction_avg.toFixed(2)}</b></span>
           </div>
           {(kpis?.at_risk_count ?? 0) > 0 && (
             <p className="mt-5 flex items-center gap-1.5 border-t border-border pt-4 text-[12px] font-medium text-warning">

@@ -2,3 +2,4 @@
 - [Replit vite setup](replit-vite-setup.md) — host must be 0.0.0.0 (not ::), port 5000, allowedHosts: true; lovable-tagger/mcp-js plugins removed.
 - [Enrollment enforcement gate](enrollment-enforcement-gate.md) — final constraints wait for zero unresolved backfill audits and explicit production approval.
 - [Demo pace fixtures](demo-pace-fixtures.md) — validate seeded pace through fixed-date progress RPC results, not inferred activity row counts.
+- [Local Supabase health failure](local-supabase-health-failure.md) — DB validation may stop before migrations because Docker cannot execute the container health check.

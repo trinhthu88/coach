@@ -42,8 +42,8 @@ describe("SponsorDashboard privacy contract", () => {
   it("uses aggregate cohort data only and no forbidden metrics", async () => {
     render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
     await waitFor(() => expect(screen.queryByText("Priya Shah")).not.toBeInTheDocument());
-    expect(calls).toEqual(["sponsor_cohort_summaries"]);
-    expect(screen.queryByText(/Goal reached|confidence|satisfaction|quiz/i)).not.toBeInTheDocument();
+    expect(calls).toEqual(["sponsor_cohort_summaries", "sponsor_organisation_summary", "sponsor_min_leaders_for_distribution"]);
+    expect(screen.queryByText(/Goal reached|confidence|quiz/i)).not.toBeInTheDocument();
     expect(calls.some((name) => /sponsor_(kpis|roster|goal_growth|satisfaction|confidence|programme|engagement|coach)/.test(name))).toBe(false);
   });
 });

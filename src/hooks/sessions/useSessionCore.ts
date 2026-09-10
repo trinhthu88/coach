@@ -11,7 +11,6 @@ import {
   MilestoneLite,
   ProfileLite,
   SessionRow,
-  normalizeItems,
 } from "./types";
 
 type SessionsTable = SessionTableKind;
@@ -89,9 +88,9 @@ async function fetchSessionCore(
     goal_title: goalById.get(m.goal_id),
   }));
 
-  const [withActions] = await withEnrollmentActions([{ ...norm, action_items: [] }], sourceActivityType);
+  const [withActions] = await withEnrollmentActions([norm], sourceActivityType);
   return {
-    session: { ...norm, action_items: withActions.action_items as SessionRow["action_items"] },
+    session: { ...norm, enrollment_actions: withActions.enrollment_actions ?? [] },
     coach: (byId.get(norm.coach_id) as ProfileLite) || null,
     coachee: (byId.get(norm.coachee_id) as ProfileLite) || null,
     milestones,
@@ -141,7 +140,7 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
     setCoachNotes(session.coach_notes || "");
     setCoacheeNotes(session.coachee_notes || "");
     setMeetingUrl(session.meeting_url || "");
-    setItems(normalizeItems(session.action_items));
+    setItems(session.enrollment_actions);
   }, [session]);
 
   const load = useCallback(() => queryClient.invalidateQueries({ queryKey }), [queryClient, queryKey]);

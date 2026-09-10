@@ -30,8 +30,7 @@ export interface CoachListRow {
   rating_avg: number;
   country_based: string | null;
   years_experience: number | null;
-  // Coach-as-coachee — sourced from coach_programme_enrollments -> coach_programmes;
-  // null = unlimited.
+  // Coach-as-coachee limit from the active programme module; null = unlimited.
   coach_limit: number | null;
   coach_used: number;
   peer_limit: number | null;

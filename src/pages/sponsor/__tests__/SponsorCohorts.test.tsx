@@ -29,6 +29,6 @@ describe("SponsorCohorts privacy contract", () => {
     expect(screen.getAllByText("Suppressed")).toHaveLength(2);
     expect(screen.queryByText(/enrollments/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /View cohort/i })[0]).toHaveAttribute("href", `/sponsor/cohorts/${id1}`);
-    expect(calls.every((name) => name === "sponsor_enrollment_summaries" || name === "sponsor_cohort_summaries")).toBe(true);
+    expect(calls.every((name) => name === "sponsor_enrollment_summaries" || name === "sponsor_cohort_summaries" || name === "sponsor_min_leaders_for_distribution" || name === "sponsor_organisation_summary")).toBe(true);
   });
 });

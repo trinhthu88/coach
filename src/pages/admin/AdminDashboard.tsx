@@ -35,7 +35,6 @@ interface DashboardCoachProfileRow {
 interface DashboardEnrollmentRow {
   id: string;
   status: string;
-  progress_pct: number | null;
 }
 
 interface DashboardStats {
@@ -96,7 +95,7 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
     supabase.from("coach_profiles").select("id, approval_status"),
     supabase.from("sessions").select("id, coach_id, start_time, status, meeting_url"),
     supabase.from("peer_sessions").select("id, start_time, status"),
-    supabase.from("programme_enrollments").select("id, status, progress_pct"),
+    supabase.from("programme_enrollments").select("id, status"),
     supabase.from("admin_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(6),
     supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "coach"),
     supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "executive"),
@@ -116,8 +115,12 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
       ["confirmed", "pending_coach_approval"].includes(s.status ?? "") && !s.meeting_url
   ).length;
 
-  const avgProgress = (enrollments || []).length
-    ? (enrollments || []).reduce((acc: number, e: DashboardEnrollmentRow) => acc + (e.progress_pct || 0), 0) / (enrollments || []).length
+  const { data: progressRows } = await supabase.rpc("get_admin_enrollment_progress", {
+    p_enrollment_ids: (enrollments || []).map((e: DashboardEnrollmentRow) => e.id),
+  });
+  const avgProgressValues = (progressRows || []).map((e) => e.full_completion_pct).filter((value): value is number => value != null);
+  const avgProgress = avgProgressValues.length
+    ? avgProgressValues.reduce((acc, value) => acc + value, 0) / avgProgressValues.length
     : 0;
 
   const stats: DashboardStats = {

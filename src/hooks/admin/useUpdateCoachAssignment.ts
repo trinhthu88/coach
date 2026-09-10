@@ -4,8 +4,7 @@ import { toast } from "@/hooks/use-toast";
 
 /**
  * Saves a coach's coach-as-coachee allowlist of assignable coaches. Session limits
- * are managed separately via coach_programme_enrollments (see the Coach Programmes
- * admin page), not here.
+ * are managed separately via programme module configuration, not here.
  */
 export function useUpdateCoachAssignment() {
   const [saving, setSaving] = useState(false);

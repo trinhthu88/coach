@@ -5,6 +5,7 @@ import { isAfter, isBefore, endOfWeek } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RawAction } from "./types";
 import { withEnrollmentActions } from "@/lib/enrollmentActions";
+import { getEnrollmentHistory, isOngoingEnrollment } from "@/lib/enrollments";
 
 export interface FlatClientAction {
   sessionId: string;
@@ -27,9 +28,15 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
   const [milestones, setMilestones] = useState<Tables<"coachee_milestones">[]>([]);
   const [sessions, setSessions] = useState<Tables<"sessions">[]>([]);
   const [notes, setNotes] = useState<Tables<"coach_client_notes">[]>([]);
+  const [actionsBySession, setActionsBySession] = useState<Map<string, RawAction[]>>(new Map());
   const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async () => {
+    const history = await getEnrollmentHistory(coacheeId);
+    const ongoing = history.filter((e) => isOngoingEnrollment(e.status));
+    // Do not infer ownership from session chronology when enrollment history
+    // is missing or ambiguous.
+    const enrollmentId = ongoing.length === 1 ? ongoing[0].id : null;
     const [
       { data: prof },
       { data: cprof },
@@ -40,21 +47,32 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
     ] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", coacheeId).maybeSingle(),
       supabase.from("coachee_profiles").select("*").eq("id", coacheeId).maybeSingle(),
-      supabase.from("coachee_goals").select("*").eq("coachee_id", coacheeId).order("created_at"),
-      supabase.from("coachee_milestones").select("*").eq("coachee_id", coacheeId).order("created_at"),
-       supabase.from("sessions").select("id, enrollment_id, coach_id, coachee_id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, cancelled_at, slot_id").eq("coach_id", coachId).eq("coachee_id", coacheeId).order("start_time", { ascending: false }),
+       enrollmentId
+         ? supabase.from("coachee_goals").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("created_at")
+         : Promise.resolve({ data: [] as Tables<"coachee_goals">[] }),
+       enrollmentId
+         ? supabase.from("coachee_milestones").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("created_at")
+         : Promise.resolve({ data: [] as Tables<"coachee_milestones">[] }),
+       enrollmentId
+         ? supabase.from("sessions").select("id, enrollment_id, coach_id, coachee_id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, cancelled_at, slot_id").eq("coach_id", coachId).eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("start_time", { ascending: false })
+         : Promise.resolve({ data: [] as Tables<"sessions">[] }),
       supabase.from("coach_client_notes").select("*").eq("coach_id", coachId).eq("coachee_id", coacheeId).order("created_at", { ascending: false }),
     ]);
     setProfile(prof);
     setCoacheeProfile(cprof);
 
     const normalizedSessions = await withEnrollmentActions(s || [], "coaching");
-    // Filter goals/milestones to only those linked via action items in THIS coach's sessions
+    // Keep normalized actions separate from session rows.
+    const actionMap = new Map<string, RawAction[]>();
+    for (const sess of normalizedSessions) {
+      const items = ((sess as { enrollment_actions?: RawAction[] }).enrollment_actions ?? []);
+      actionMap.set(sess.id, items);
+    }
+    setActionsBySession(actionMap);
+    // Filter goals/milestones to only those linked via normalized actions in THIS coach's sessions
     const linkedMs = new Set<string>();
     for (const sess of normalizedSessions) {
-      const items: RawAction[] = Array.isArray(sess.action_items)
-        ? (sess.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
-        : [];
+      const items = actionMap.get(sess.id) ?? [];
       for (const it of items) {
         if (it?.milestone_id) linkedMs.add(it.milestone_id);
       }
@@ -65,7 +83,11 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
 
     setGoals(visibleGoals);
     setMilestones(visibleMilestones);
-    setSessions(normalizedSessions as Tables<"sessions">[]);
+    const sessionRows = normalizedSessions.map((sess) => {
+      const { enrollment_actions: _actions, ...session } = sess;
+      return session;
+    });
+    setSessions(sessionRows as Tables<"sessions">[]);
     setNotes(n || []);
   }, [coacheeId, coachId]);
 
@@ -95,15 +117,13 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
   const allActions = useMemo(() => {
     const out: FlatClientAction[] = [];
     for (const s of sessions) {
-      const items: RawAction[] = Array.isArray(s.action_items)
-        ? (s.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
-        : [];
+      const items = actionsBySession.get(s.id) ?? [];
       items.forEach((it, idx) => {
         if (it?.text) out.push({ sessionId: s.id, idx, topic: s.topic, date: s.start_time, item: it });
       });
     }
     return out;
-  }, [sessions]);
+  }, [sessions, actionsBySession]);
 
   const now = new Date();
   const overdue = allActions.filter((a) => !a.item.done && a.item.due_date && isBefore(new Date(a.item.due_date), now));
