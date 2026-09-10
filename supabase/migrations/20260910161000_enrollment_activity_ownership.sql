@@ -125,7 +125,8 @@ JOIN public.triad_groups g ON g.id = s.triad_group_id
 WHERE r.triad_session_id = s.id
   AND r.enrollment_id IS NULL;
 
-CREATE OR REPLACE VIEW public.enrollment_scope_backfill_audit WITH (security_invoker=true) AS
+DROP VIEW IF EXISTS public.enrollment_scope_backfill_audit;
+CREATE VIEW public.enrollment_scope_backfill_audit WITH (security_invoker=true) AS
 WITH candidates AS (
   SELECT 'sessions'::text table_name, s.id record_id, s.coachee_id user_id, count(pe.id)::int candidate_enrollments
   FROM public.sessions s LEFT JOIN public.programme_enrollments pe ON pe.user_id=s.coachee_id AND s.start_time::date>=pe.start_date AND (pe.end_date IS NULL OR s.start_time::date<=pe.end_date)
