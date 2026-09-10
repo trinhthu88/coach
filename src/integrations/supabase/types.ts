@@ -3740,6 +3740,10 @@ export type Database = {
         Returns: boolean
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
+      only_enrollment_candidate: {
+        Args: { p_on?: string; p_programme_id?: string; p_user_id: string }
+        Returns: string
+      }
       record_goal_checkin: {
         Args: {
           p_enrollment_id: string
