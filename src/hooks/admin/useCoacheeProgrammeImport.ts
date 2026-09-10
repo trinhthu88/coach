@@ -3,13 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ProgrammeOpt } from "./useAdminCoacheesData";
 import type { Row } from "@/pages/admin/coachees/coacheeDisplay";
-import { upsertCoacheeEnrollment } from "@/lib/enrollmentTransition";
 
 /**
- * Imports a Name/Email/Programme spreadsheet against the coachees list:
- * existing accounts (matched by email) get enrolled into the named
- * programme directly; unrecognized emails are staged so the programme is
- * auto-applied once they sign up through the normal access-request flow.
+ * The import file intentionally stages new people only. Existing users must
+ * be enrolled from the admin editor, where a cohort and organization are
+ * supplied to the enrollment RPC and any ongoing-enrollment conflict is
+ * reviewable. This prevents imports from inventing enrollment context.
  */
 export function useCoacheeProgrammeImport(programmes: ProgrammeOpt[], rows: Row[], onImported: () => void) {
   const [importing, setImporting] = useState(false);
@@ -36,54 +35,35 @@ export function useCoacheeProgrammeImport(programmes: ProgrammeOpt[], rows: Row[
       const progByName = new Map(programmes.map((p) => [p.name.toLowerCase(), p]));
       const existingEmails = new Set(rows.map((r) => r.email.toLowerCase()));
 
-      let enrolledExisting = 0;
       let stagedNew = 0;
+      let existingRequiresReview = 0;
       let skipped = 0;
       const stagedPayload: { email: string; full_name: string; programme_id: string }[] = [];
-      const enrollPayload: { user_id: string; programme_id: string }[] = [];
 
-      for (const r of data) {
-        const email = String(r.Email || r.email || "").trim().toLowerCase();
-        const name = String(r.Name || r.name || "").trim() || email.split("@")[0];
-        const progName = String(r.Programme || r.programme || "").trim().toLowerCase();
-        if (!email || !progName) {
+      for (const row of data) {
+        const email = String(row.Email || row.email || "").trim().toLowerCase();
+        const name = String(row.Name || row.name || "").trim() || email.split("@")[0];
+        const programmeName = String(row.Programme || row.programme || "").trim().toLowerCase();
+        if (!email || !programmeName || !progByName.has(programmeName)) {
           skipped++;
           continue;
         }
-        const prog = progByName.get(progName);
-        if (!prog) {
-          skipped++;
-          continue;
-        }
-
         if (existingEmails.has(email)) {
-          // enroll existing coachee
-          const existing = rows.find((x) => x.email.toLowerCase() === email);
-          if (existing) {
-            if (existing.enrollment_id) {
-              // Transition rather than update-in-place — a bare update would
-              // silently lose history if this person's programme is actually
-              // changing (and would violate ux_programme_enrollments_one_active
-              // if it tried to insert a second active row instead).
-              await upsertCoacheeEnrollment(
-                existing.id,
-                { id: existing.enrollment_id, programme_id: existing.programme_id ?? null },
-                { programme_id: prog.id }
-              );
-            } else {
-              enrollPayload.push({ user_id: existing.id, programme_id: prog.id });
-            }
-            enrolledExisting++;
-          }
-        } else {
-          stagedPayload.push({ email, full_name: name, programme_id: prog.id });
-          stagedNew++;
+          existingRequiresReview++;
+          continue;
         }
+        stagedPayload.push({ email, full_name: name, programme_id: progByName.get(programmeName)!.id });
+        stagedNew++;
       }
-      if (enrollPayload.length) await supabase.from("programme_enrollments").insert(enrollPayload);
-      if (stagedPayload.length) await supabase.from("staged_enrollments").upsert(stagedPayload, { onConflict: "email" });
 
-      toast.success(`Import done: ${enrolledExisting} enrolled, ${stagedNew} staged for signup, ${skipped} skipped`);
+      if (stagedPayload.length) {
+        const { error } = await supabase.from("staged_enrollments").upsert(stagedPayload, { onConflict: "email" });
+        if (error) throw error;
+      }
+
+      toast.success(
+        `Import done: ${stagedNew} staged for signup, ${existingRequiresReview} existing users require enrollment review, ${skipped} skipped`
+      );
       onImported();
       return true;
     } catch (err) {

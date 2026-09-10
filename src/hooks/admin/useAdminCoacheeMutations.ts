@@ -3,43 +3,68 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Row } from "@/pages/admin/coachees/coacheeDisplay";
-import { upsertCoacheeEnrollment } from "@/lib/enrollmentTransition";
+import { requestAdminEnrollment } from "@/lib/enrollmentTransition";
+import type { OngoingEnrollmentConflict } from "@/lib/enrollments";
 
 /**
- * Owns the two write actions available from the coachee edit drawer: saving
- * the full edit form, and resending the passwordless login link.
+ * Owns profile edits and the RPC-only enrollment request. An ongoing
+ * enrollment is immutable here: switching programme, cohort, or organization
+ * must first be closed explicitly in its own workflow.
  */
 export function useAdminCoacheeMutations(onChanged: () => void) {
   const { t } = useTranslation("admin");
   const [saving, setSaving] = useState(false);
+  const [enrollmentConflict, setEnrollmentConflict] = useState<OngoingEnrollmentConflict | null>(null);
   const [resendingLink, setResendingLink] = useState(false);
   const [resentLink, setResentLink] = useState<{ email: string; full_name: string; email_sent: boolean } | null>(null);
 
   const saveEdit = async (editing: Row, original: Row | undefined) => {
     if (!editing.programme_id) {
       toast.error(t("coacheeEditSheet.toast.programmeRequired"));
-      return;
+      return false;
     }
     if (!editing.spoken_languages.length) {
       toast.error(t("coacheeEditSheet.toast.spokenLanguageRequired"));
-      return;
+      return false;
     }
     setSaving(true);
+    setEnrollmentConflict(null);
     try {
+      const enrollmentChanged =
+        !editing.enrollment_id ||
+        editing.programme_id !== original?.programme_id ||
+        editing.cohort_id !== original?.cohort_id ||
+        editing.organization_id !== original?.organization_id;
+
+      if (enrollmentChanged) {
+        if (!editing.cohort_id || !editing.organization_id) {
+          throw new Error("A cohort and sponsor organization are required for a new enrollment.");
+        }
+        const creation = await requestAdminEnrollment({
+          userId: editing.id,
+          programmeId: editing.programme_id,
+          cohortId: editing.cohort_id,
+          organizationId: editing.organization_id,
+        });
+        if (creation.kind === "conflict") {
+          setEnrollmentConflict(creation.conflict);
+          return false;
+        }
+        if (creation.kind === "error") throw creation.error;
+      }
+
       await supabase.from("profiles").update({
         full_name: editing.full_name,
         status: editing.status,
         spoken_languages: editing.spoken_languages,
       }).eq("id", editing.id);
 
-      // session limit override
       if (editing.limit_row_id) {
         await supabase.from("session_limits").update({ monthly_limit: editing.session_limit }).eq("id", editing.limit_row_id);
       } else {
         await supabase.from("session_limits").insert({ coachee_id: editing.id, monthly_limit: editing.session_limit });
       }
 
-      // Selected coaches diff
       const oldIds = new Set((original?.selected_coaches || []).map((c) => c.id));
       const newIds = new Set(editing.selected_coaches.map((c) => c.id));
       const toAdd = [...newIds].filter((i) => !oldIds.has(i));
@@ -51,23 +76,6 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
       }
       for (const cid of toRemove) {
         await supabase.from("coachee_coach_allowlist").delete().eq("coachee_id", editing.id).eq("coach_id", cid);
-      }
-
-      // Programme/cohort/organization. A programme change transitions
-      // (closes the old active row as history) rather than overwriting
-      // programme_id in place — see enrollmentTransition.ts.
-      if (editing.programme_id) {
-        const existing = editing.enrollment_id
-          ? { id: editing.enrollment_id, programme_id: original?.programme_id ?? null }
-          : null;
-        const { error } = await upsertCoacheeEnrollment(editing.id, existing, {
-          programme_id: editing.programme_id,
-          cohort_id: editing.cohort_id,
-          organization_id: editing.organization_id,
-        });
-        if (error) throw error;
-      } else if (editing.enrollment_id) {
-        await supabase.from("programme_enrollments").delete().eq("id", editing.enrollment_id);
       }
 
       toast.success(t("coacheeEditSheet.toast.coacheeUpdated"));
@@ -91,7 +99,6 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
       if (error) throw error;
       const result = data as { error?: string; email?: string; email_sent?: boolean };
       if (result?.error) throw new Error(result.error);
-
       setResentLink({
         email: result.email ?? editing.email,
         full_name: editing.full_name,
@@ -106,5 +113,14 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
     }
   };
 
-  return { saving, saveEdit, resendingLink, resendLoginLink, resentLink, setResentLink };
+  return {
+    saving,
+    saveEdit,
+    enrollmentConflict,
+    clearEnrollmentConflict: () => setEnrollmentConflict(null),
+    resendingLink,
+    resendLoginLink,
+    resentLink,
+    setResentLink,
+  };
 }

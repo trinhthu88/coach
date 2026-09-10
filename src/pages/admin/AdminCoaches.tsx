@@ -18,7 +18,7 @@ import {
   Loader2, Search, FileDown, Eye, Star, Users, Pencil, Save,
 } from "lucide-react";
 import { getFriendlyErrorMessage } from "@/lib/errors";
-import { upsertCoacheeEnrollment } from "@/lib/enrollmentTransition";
+import { requestAdminEnrollment } from "@/lib/enrollmentTransition";
 
 function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
   if (!startDate || !durationMonths) return null;
@@ -91,7 +91,7 @@ export default function AdminCoaches() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<CoachRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
-  const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
+  const [cohorts, setCohorts] = useState<{ id: string; name: string; organization_id?: string | null }[]>([]);
   const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; peer_session_limit: number; peer_given_limit: number; duration_months: number }[]>([]);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
@@ -121,7 +121,7 @@ export default function AdminCoaches() {
       // LEGACY: move to programme_modules.config after DB migration
       supabase.from("coach_programme_enrollments").select("coach_id, coach_programme:coach_programmes(name, mentee_sessions_limit, peer_received_limit, peer_given_limit)"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
-      supabase.from("cohorts").select("id, name"),
+      supabase.from("cohorts").select("id, name, organization_id"),
       supabase.from("programmes").select("id, name, coachee_session_limit, peer_session_limit, peer_given_limit, duration_months"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, start_date"),
     ]);
@@ -304,20 +304,23 @@ export default function AdminCoaches() {
           .eq("coach_user_id", editing.id).eq("selectable_coach_id", sid);
       }
 
-      // 3. Programme enrollment (mandatory). Coach is treated as coachee here.
-      // A programme change transitions (closes the old active row, keeping
-      // it as history) rather than overwriting programme_id in place —
-      // ux_programme_enrollments_one_active only allows one active row per
-      // person, and a bare update-in-place would silently lose history.
-      if (editing.programme_id) {
-        const existing = editing.enrollment_id
-          ? { id: editing.enrollment_id, programme_id: original?.programme_id ?? null }
-          : null;
-        const { error } = await upsertCoacheeEnrollment(editing.id, existing, {
-          programme_id: editing.programme_id,
-          cohort_id: editing.cohort_id,
+      // 3. Programme enrollment is immutable while ongoing. Any changed
+      // programme or cohort is submitted to the RPC, which returns a conflict
+      // rather than changing the current enrollment.
+      const enrollmentChanged = !editing.enrollment_id ||
+        editing.programme_id !== original?.programme_id ||
+        editing.cohort_id !== original?.cohort_id;
+      if (editing.programme_id && enrollmentChanged) {
+        const organizationId = cohorts.find((cohort) => cohort.id === editing.cohort_id)?.organization_id;
+        if (!editing.cohort_id || !organizationId) throw new Error("A cohort with an organization is required for enrollment.");
+        const creation = await requestAdminEnrollment({
+          userId: editing.id,
+          programmeId: editing.programme_id,
+          cohortId: editing.cohort_id,
+          organizationId,
         });
-        if (error) throw error;
+        if (creation.kind === "conflict") throw new Error("This user already has an ongoing enrollment. Review it before creating another enrollment.");
+        if (creation.kind === "error") throw creation.error;
       }
 
       toast.success(t("coaches.coachUpdated"));
