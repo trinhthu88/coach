@@ -21,6 +21,7 @@ export interface ProgrammeWeekEngagement {
 
 export interface ProgrammeRedFlag {
   userId: string;
+  enrollmentId: string;
   fullName: string;
   daysSinceLastActivity: number | null;
 }
@@ -58,11 +59,12 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
       setLoading(true);
 
       const [{ data: enrollments }, { data: trainingWeeks }] = await Promise.all([
-        supabase.from("programme_enrollments").select("user_id").eq("programme_id", programmeId).eq("status", "active"),
+        supabase.from("programme_enrollments").select("id, user_id").eq("programme_id", programmeId).eq("status", "active"),
         supabase.from("training_weeks").select("id, week_number, title").eq("programme_id", programmeId).eq("is_visible", true).order("week_number"),
       ]);
       if (!mounted) return;
 
+      const enrollmentIds = (enrollments ?? []).map((e) => e.id as string);
       const enrolledIds = [...new Set((enrollments ?? []).map((e) => e.user_id as string))];
       const weekIds = (trainingWeeks ?? []).map((w) => w.id as string);
 
@@ -74,7 +76,7 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
       }
 
       const [{ data: progress }, { data: assignments }, { data: groups }, { data: profiles }, { data: triadRounds }] = await Promise.all([
-        supabase.from("training_progress").select("user_id, training_week_id, completed_at").in("training_week_id", weekIds).in("user_id", enrolledIds),
+        supabase.from("training_progress").select("user_id, enrollment_id, training_week_id, completed_at").in("training_week_id", weekIds).in("enrollment_id", enrollmentIds),
         supabase.from("assignments").select("id, training_week_id, assignment_type").eq("is_visible", true).in("training_week_id", weekIds),
         supabase.from("triad_groups").select("id, triad_round_id").eq("programme_id", programmeId).eq("is_active", true),
         supabase.from("profiles").select("id, full_name").in("id", enrolledIds),
@@ -92,7 +94,7 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
 
       const [{ data: submissions }, { data: triadSessions }, { data: prompts }] = await Promise.all([
         quizAssignmentIds.length
-          ? supabase.from("assignment_submissions").select("user_id, assignment_id, score_pct, submitted_at").in("assignment_id", quizAssignmentIds).in("user_id", enrolledIds)
+          ? supabase.from("assignment_submissions").select("user_id, enrollment_id, assignment_id, score_pct, submitted_at").in("assignment_id", quizAssignmentIds).in("enrollment_id", enrollmentIds)
           : Promise.resolve({ data: [] as { user_id: string; assignment_id: string; score_pct: number | null; submitted_at: string }[] }),
         groupIds.length
           ? supabase.from("triad_sessions").select("id, triad_group_id").in("triad_group_id", groupIds)
@@ -109,7 +111,7 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
           ? supabase.from("triad_reflections").select("participant_id, triad_session_id, submitted_at").in("triad_session_id", sessionIds)
           : Promise.resolve({ data: [] as { participant_id: string; triad_session_id: string; submitted_at: string }[] }),
         promptIds.length
-          ? supabase.from("daily_prompt_responses").select("user_id, daily_prompt_id, responded_at").in("daily_prompt_id", promptIds).in("user_id", enrolledIds)
+          ? supabase.from("daily_prompt_responses").select("user_id, enrollment_id, daily_prompt_id, responded_at").in("daily_prompt_id", promptIds).in("enrollment_id", enrollmentIds)
           : Promise.resolve({ data: [] as { user_id: string; daily_prompt_id: string; responded_at: string | null }[] }),
       ]);
       if (!mounted) return;
@@ -165,10 +167,12 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
       (promptResponses ?? []).forEach((r) => bump(r.user_id, r.responded_at));
 
       const cutoff = Date.now() - 7 * DAY_MS;
+      const enrollmentByUser = new Map((enrollments ?? []).map((e) => [e.user_id as string, e.id as string]));
       const flags: ProgrammeRedFlag[] = enrolledIds
         .filter((id) => !lastActiveByUser.has(id) || (lastActiveByUser.get(id) ?? 0) < cutoff)
         .map((id) => ({
           userId: id,
+          enrollmentId: enrollmentByUser.get(id)!,
           fullName: nameById.get(id) || "—",
           daysSinceLastActivity: lastActiveByUser.has(id) ? Math.floor((Date.now() - lastActiveByUser.get(id)!) / DAY_MS) : null,
         }))

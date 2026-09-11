@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import type { ProgrammeInfo, SessionUsage } from "./types";
 
 interface JourneyProgrammeData {
@@ -7,20 +8,21 @@ interface JourneyProgrammeData {
   usage: SessionUsage | null;
 }
 
-async function fetchJourneyProgramme(coacheeId: string): Promise<JourneyProgrammeData> {
-  const [{ data: u }, { data: enr }] = await Promise.all([
-    supabase.rpc("get_coachee_session_usage", { _coachee_id: coacheeId }),
+async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): Promise<JourneyProgrammeData> {
+  const [{ data: u, error: usageError }, { data: e, error: enrollmentError }] = await Promise.all([
+    supabase.rpc("get_coachee_session_usage_for_enrollment", {
+      p_enrollment_id: enrollmentId,
+    }),
     supabase
       .from("programme_enrollments")
       .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")
-      .eq("user_id", coacheeId)
-      .eq("status", "active")
-      .order("start_date", { ascending: false })
-      .limit(1),
+      .eq("id", enrollmentId)
+      .maybeSingle(),
   ]);
+  if (usageError) throw usageError;
+  if (enrollmentError) throw enrollmentError;
   const usageRow = Array.isArray(u) ? u[0] : u;
 
-  const e = (enr || [])[0];
   const programme: ProgrammeInfo | null =
     e && e.programmes
       ? {
@@ -40,21 +42,24 @@ async function fetchJourneyProgramme(coacheeId: string): Promise<JourneyProgramm
  * Owns the active programme enrollment + monthly session usage quota for a
  * coachee. Shared between the coachee and coach "my journey" views.
  */
-export function useJourneyProgramme(coacheeId: string | undefined) {
+export function useJourneyProgramme(coacheeId: string | undefined, initialEnrollmentId?: string | null) {
   const queryClient = useQueryClient();
-  const queryKey = ["journey-programme", coacheeId];
+  const enrollmentContext = useEnrollmentContext(coacheeId, initialEnrollmentId);
+  const enrollmentId = enrollmentContext.selectedEnrollment?.id;
+  const queryKey = ["journey-programme", coacheeId, enrollmentId ?? null];
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey,
-    queryFn: () => fetchJourneyProgramme(coacheeId as string),
-    enabled: !!coacheeId,
+    queryFn: () => fetchJourneyProgramme(coacheeId as string, enrollmentId as string),
+    enabled: !!coacheeId && !!enrollmentId,
     staleTime: 30_000,
   });
 
   return {
     programme: data?.programme ?? null,
     usage: data?.usage ?? null,
-    loading: isLoading,
+    loading: enrollmentContext.loading || (!!enrollmentId && isLoading),
+    error,
     refresh: () => queryClient.invalidateQueries({ queryKey }),
   };
 }

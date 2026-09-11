@@ -6,6 +6,7 @@ export interface ScanSessionRow {
   status: string;
   start_time: string;
   coachee_notes: string | null;
+  enrollment_id?: string | null;
 }
 
 export interface ScanPeerSessionRow {
@@ -13,6 +14,7 @@ export interface ScanPeerSessionRow {
   peer_coachee_id: string;
   status: string;
   start_time: string;
+  enrollment_id?: string | null;
 }
 
 export interface FeedbackAlert {
@@ -21,6 +23,7 @@ export interface FeedbackAlert {
   title: string;
   message: string;
   related_coachee_id: string;
+  related_enrollment_id?: string | null;
   resolved: false;
 }
 
@@ -64,6 +67,7 @@ export function buildFeedbackAlerts(opts: {
         title: `${name} — reflection still missing`,
         message: `${name} hasn't submitted their reflection for a session on ${dateStr}${contact}. The coach can't mark this session complete until it's submitted.`,
         related_coachee_id: s.coachee_id,
+        related_enrollment_id: s.enrollment_id ?? null,
         resolved: false,
       });
     } else if (s.status === "completed") {
@@ -73,6 +77,7 @@ export function buildFeedbackAlerts(opts: {
         title: `${name} — reflection missing (completed session)`,
         message: `${name} hasn't submitted their reflection for a session on ${dateStr}${contact}.`,
         related_coachee_id: s.coachee_id,
+        related_enrollment_id: s.enrollment_id ?? null,
         resolved: false,
       });
     }
@@ -91,6 +96,7 @@ export function buildFeedbackAlerts(opts: {
         title: `${name} — competency feedback still missing`,
         message: `${name} hasn't submitted their competency feedback for a peer session on ${dateStr}${contact}. The coach can't mark this session complete until it's submitted.`,
         related_coachee_id: s.peer_coachee_id,
+        related_enrollment_id: s.enrollment_id ?? null,
         resolved: false,
       });
     } else if (s.status === "completed") {
@@ -100,6 +106,7 @@ export function buildFeedbackAlerts(opts: {
         title: `${name} — competency feedback missing (completed session)`,
         message: `${name} hasn't submitted their competency feedback for a peer session on ${dateStr}${contact}.`,
         related_coachee_id: s.peer_coachee_id,
+        related_enrollment_id: s.enrollment_id ?? null,
         resolved: false,
       });
     }
@@ -115,6 +122,7 @@ export interface ScanMentoringSessionRow {
   start_time: string;
   prep_file_path: string | null;
   feedback_submitted_at: string | null;
+  enrollment_id?: string | null;
 }
 
 export interface MentoringAlert {
@@ -123,6 +131,7 @@ export interface MentoringAlert {
   title: string;
   message: string;
   related_coachee_id: string;
+  related_enrollment_id?: string | null;
   resolved: false;
 }
 
@@ -157,6 +166,7 @@ export function buildMentoringPrepFileOverdueAlerts(opts: {
       title: `${name} — preparation file still missing`,
       message: `${name} hasn't submitted a preparation file for a mentoring session on ${dateStr}${contact}. The mentor can't mark this session complete until it's submitted.`,
       related_coachee_id: s.mentee_id,
+      related_enrollment_id: s.enrollment_id ?? null,
       resolved: false,
     });
   });
@@ -185,6 +195,7 @@ export function buildMentoringFeedbackOverdueAlerts(opts: {
       title: `${name} — mentor feedback missing (completed session)`,
       message: `The mentor hasn't submitted feedback for ${name}'s mentoring session on ${dateStr}${contact}.`,
       related_coachee_id: s.mentee_id,
+      related_enrollment_id: s.enrollment_id ?? null,
       resolved: false,
     });
   });
@@ -206,11 +217,13 @@ export interface ProgrammeAlert {
   title: string;
   message: string;
   related_coachee_id: string | null;
+  related_enrollment_id?: string | null;
   resolved: false;
 }
 
 export interface ScanActivityRow {
   userId: string;
+  enrollmentId: string;
   timestamp: string | null;
 }
 
@@ -222,28 +235,28 @@ export interface ScanActivityRow {
  * signal came from.
  */
 export function buildStaleProgrammeParticipantAlerts(opts: {
-  activeUserIds: string[];
+  activeEnrollments: { enrollmentId: string; userId: string }[];
   activity: ScanActivityRow[];
   nameById: Map<string, string | null | undefined>;
   emailById: Map<string, string | null | undefined>;
   now: Date;
 }): ProgrammeAlert[] {
-  const { activeUserIds, activity, nameById, emailById, now } = opts;
-  const lastActiveByUser = new Map<string, number>();
-  activity.forEach(({ userId, timestamp }) => {
+  const { activeEnrollments, activity, nameById, emailById, now } = opts;
+  const lastActiveByEnrollment = new Map<string, number>();
+  activity.forEach(({ enrollmentId, timestamp }) => {
     if (!timestamp) return;
     const t = new Date(timestamp).getTime();
-    if (!lastActiveByUser.has(userId) || t > (lastActiveByUser.get(userId) ?? 0)) lastActiveByUser.set(userId, t);
+    if (!lastActiveByEnrollment.has(enrollmentId) || t > (lastActiveByEnrollment.get(enrollmentId) ?? 0)) lastActiveByEnrollment.set(enrollmentId, t);
   });
 
   const cutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-  return activeUserIds
-    .filter((id) => !lastActiveByUser.has(id) || (lastActiveByUser.get(id) ?? 0) < cutoff)
-    .map((id) => {
-      const name = nameById.get(id) || "Participant";
-      const email = emailById.get(id);
+  return activeEnrollments
+    .filter(({ enrollmentId }) => !lastActiveByEnrollment.has(enrollmentId) || (lastActiveByEnrollment.get(enrollmentId) ?? 0) < cutoff)
+    .map(({ enrollmentId, userId }) => {
+      const name = nameById.get(userId) || "Participant";
+      const email = emailById.get(userId);
       const contact = email ? ` (${email})` : "";
-      const lastActive = lastActiveByUser.get(id);
+      const lastActive = lastActiveByEnrollment.get(enrollmentId);
       const sinceText = lastActive
         ? `last activity ${format(new Date(lastActive), "d MMM yyyy")}`
         : "no activity recorded since enrolling";
@@ -252,7 +265,8 @@ export function buildStaleProgrammeParticipantAlerts(opts: {
         alert_type: "stale_programme_participant" as const,
         title: `${name} — no programme activity in 7+ days`,
         message: `${name}${contact} hasn't completed a training week, quiz, triad reflection, or daily prompt in over a week (${sinceText}).`,
-        related_coachee_id: id,
+        related_coachee_id: userId,
+        related_enrollment_id: enrollmentId,
         resolved: false,
       };
     });
@@ -260,6 +274,7 @@ export function buildStaleProgrammeParticipantAlerts(opts: {
 
 export interface ScanQuizSubmissionRow {
   userId: string;
+  enrollmentId: string;
   scorePct: number | null;
 }
 
@@ -270,16 +285,16 @@ export function buildLowQuizScoreAlerts(opts: {
   emailById: Map<string, string | null | undefined>;
 }): ProgrammeAlert[] {
   const { submissions, nameById, emailById } = opts;
-  const byUser = new Map<string, number[]>();
-  submissions.forEach(({ userId, scorePct }) => {
+  const byEnrollment = new Map<string, { userId: string; scores: number[] }>();
+  submissions.forEach(({ userId, enrollmentId, scorePct }) => {
     if (scorePct == null) return;
-    const arr = byUser.get(userId) ?? [];
-    arr.push(scorePct);
-    byUser.set(userId, arr);
+    const item = byEnrollment.get(enrollmentId) ?? { userId, scores: [] };
+    item.scores.push(scorePct);
+    byEnrollment.set(enrollmentId, item);
   });
 
   const alerts: ProgrammeAlert[] = [];
-  byUser.forEach((scores, userId) => {
+  byEnrollment.forEach(({ userId, scores }, enrollmentId) => {
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     if (avg >= 50) return;
     const name = nameById.get(userId) || "Participant";
@@ -291,6 +306,7 @@ export function buildLowQuizScoreAlerts(opts: {
       title: `${name} — quiz average ${Math.round(avg)}%`,
       message: `${name}${contact} is averaging ${Math.round(avg)}% across ${scores.length} quiz${scores.length === 1 ? "" : "zes"} — below the 50% threshold.`,
       related_coachee_id: userId,
+      related_enrollment_id: enrollmentId,
       resolved: false,
     });
   });

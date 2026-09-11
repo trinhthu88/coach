@@ -12,7 +12,7 @@ export type Milestone = Pick<
 
 export type GoalRating = Tables<"coachee_goal_ratings">;
 
-export type SessionGoalRating = Tables<"session_goal_ratings">;
+export type SessionGoalRating = Tables<"goal_checkins"> & { session_id: string; rating: number | null; coachee_id: string };
 
 export type SessionRow = Tables<"sessions">;
 export type PeerSessionRow = Tables<"peer_sessions">;
@@ -32,8 +32,10 @@ export interface SessionUsage {
 }
 
 export interface RawActionItem {
+  id?: string;
   text: string;
   done?: boolean;
+  description?: string | null;
   due_date?: string | null;
   milestone_id?: string | null;
 }

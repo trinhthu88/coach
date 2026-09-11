@@ -1,0 +1,358 @@
+# 16. Replace existing programme seed data
+
+After the new enrollment-scoped architecture, migrations, RLS, reporting functions, and frontend flows are working, replace the existing programme demo data with a controlled and repeatable seed dataset.
+
+This seed replacement must run only in local, development, preview, or automated-test environments. It must never delete production data.
+
+## 16.1 Remove obsolete seed data
+
+Inspect all seed files and identify records belonging to the current demo programmes.
+
+Remove and replace:
+
+- Existing seeded programmes
+- Existing seeded cohorts
+- Seeded enrollments connected to those programmes
+- Seeded sessions and bookings
+- Seeded training progress
+- Seeded goals, ratings, milestones, and actions
+- Seeded prompts and responses
+- Seeded reflections
+- Seeded assignments and submissions
+- Seeded peer-coaching data
+- Seeded mentoring data
+- Seeded triad data
+- Seeded satisfaction ratings
+- Other programme-related seeded activity records
+
+Also remove the seeded demo users and all their dependent demo records for:
+
+- Claire Dubois
+- Yuki Tanaka
+- Daniel Okafor
+
+Safety requirements:
+
+- Do not delete users by display name alone.
+- Resolve their stable seeded UUIDs or seed keys first.
+- Confirm they are development seed identities.
+- Do not remove a real user who happens to have the same name.
+- Do not run broad deletes against all profiles, users, organisations, coaches, mentors, sponsors, or administrators.
+- Preserve lookup tables, configuration reference data, and other structural seed data.
+- Preserve the existing admin user.
+- Preserve existing valid coaches and mentors because they will be reused.
+- Do not modify or delete production authentication accounts.
+- If the existing records cannot be proven to be seed data, report them instead of deleting them automatically.
+- Delete dependent records in a foreign-key-safe order or use intentional, verified cascading relationships.
+- Add an explicit environment guard to any executable cleanup script.
+
+Prefer replacing obsolete seed definitions and validating through a fresh local database reset instead of creating a migration that deletes production records.
+
+# 17. New demo organisation and sponsor
+
+Create or reuse one demo organisation that owns both new programmes and cohorts.
+
+Use the existing user with this email as the sponsor:
+
+`contact@erickson.vn`
+
+Requirements:
+
+- Reuse the existing authentication identity and profile if present.
+- Do not create a duplicate user.
+- Do not change or overwrite the user’s password or authentication credentials.
+- Ensure the user has the correct sponsor role and organisation relationship.
+- Ensure the sponsor can access both cohorts through the organisation.
+- If the user does not exist in a fresh local database, create it only through the repository’s approved local seed/auth mechanism using deterministic configuration.
+- Do not hardcode a production password or secret in the repository.
+
+Keep the current existing admin unchanged.
+
+Reuse suitable existing users with coach or mentor roles. Do not create unnecessary new coach or mentor profiles. Confirm that reused coaches and mentors have the required role assignments and can access only their allocated sessions.
+
+# 18. Create exactly two programmes and two cohorts
+
+Create exactly two new seeded programmes, with one cohort per programme and five unique leaders per cohort.
+
+There must be:
+
+- 2 programmes
+- 2 cohorts
+- 10 distinct leader users
+- 10 ongoing enrollment records
+- 5 leaders in each cohort
+- No leader enrolled in both cohorts
+- No leader with more than one ongoing enrollment
+
+The ten leaders are additional to the existing sponsor, admin, coaches, and mentors. Sponsor, admin, coach, and mentor accounts do not count toward the ten leaders.
+
+Use deterministic UUIDs, seed keys, and demo email addresses so the seed can be rerun safely.
+
+Use clearly non-production demo email addresses following an existing safe repository convention. Do not use real personal email addresses.
+
+## Programme A: Executive Coaching
+
+Suggested name:
+
+`Executive Coaching Accelerator`
+
+Suggested cohort name:
+
+`Executive Coaching – Demo Cohort A`
+
+Configuration:
+
+- Duration: three months
+- Training disabled
+- Coaching enabled and required
+- Six 1:1 coaching sessions required
+- Distribution mode: `evenly_distributed`
+- Mentoring disabled
+- Peer coaching disabled
+- Triad disabled
+- One to three active goals per leader
+- Goal target dates within the enrollment period
+- Actions with shorter individual deadlines
+- Post-session goal check-ins
+- Numeric satisfaction ratings
+- No overall training requirement
+
+This programme must prove that Clariva fully supports a coaching-only corporate programme without training content.
+
+Use five distinct leaders and give them different scenarios:
+
+1. Leader A1: ahead of schedule
+2. Leader A2: on track
+3. Leader A3: behind schedule with an overdue action
+4. Leader A4: completed sessions plus future booked sessions, producing scheduled coverage
+5. Leader A5: paused enrollment with valid historical progress
+
+Seed a realistic mix of:
+
+- Completed sessions
+- Booked sessions
+- Cancelled or rescheduled sessions
+- Goal ratings
+- Goal-check-in history
+- Completed and overdue actions
+- Numeric satisfaction ratings
+- Private coaching notes
+
+Private coaching notes must exist for privacy testing but must never appear in sponsor results.
+
+## Programme B: Blended Leadership Development
+
+Suggested name:
+
+`Leadership Development Journey`
+
+Suggested cohort name:
+
+`Leadership Development – Demo Cohort B`
+
+Configuration:
+
+- Duration: six months
+- Training enabled
+- Coaching enabled
+- Mentoring enabled
+- Peer coaching enabled
+- Triad enabled
+- Prompts and reflections enabled
+- Assignments enabled
+- One to three active goals per leader
+- Module-level scheduling and progress
+- Explicit module weights totaling 100%, so the weighted overall-progress calculation can be tested
+
+Use a reasonable initial weight configuration, for example:
+
+- Training: 30%
+- Coaching: 25%
+- Mentoring: 15%
+- Peer coaching: 15%
+- Triad: 15%
+
+If the existing product model supports a different valid weighting design, adapt it while preserving a total of 100%.
+
+Use five different leaders and create these scenarios:
+
+1. Leader B1: ahead across most modules
+2. Leader B2: on track across all modules
+3. Leader B3: training complete but coaching behind
+4. Leader B4: coaching on track but training or assignment work behind
+5. Leader B5: recently enrolled or still completing goal setup, with most milestones not yet due
+
+Seed a realistic mix of:
+
+- Training modules and progress
+- Assignments and submissions
+- Coaching sessions
+- Mentoring sessions
+- Peer-coaching sessions
+- Triad membership and sessions
+- Prompts and responses
+- Reflections
+- Programme goals
+- Goal-rating history
+- Actions and milestones
+- Numeric satisfaction ratings
+- Private written content
+
+All learner-scoped records must reference the correct `enrollment_id`.
+
+Peer and triad participants must belong to Demo Cohort B. Do not use leaders from Demo Cohort A in Demo Cohort B’s peer or triad activities.
+
+# 19. Date and progress design
+
+Generate dates relative to one documented seed anchor date so the dataset creates predictable progress states.
+
+The seed must intentionally produce:
+
+- `not_yet_due`
+- `ahead`
+- `on_track`
+- `scheduled`
+- `behind`
+- `paused`
+
+If dates are calculated relative to the execution date:
+
+- keep the calculation deterministic for that reset;
+- document the formula;
+- make repeated seeding update the same records rather than creating duplicates.
+
+If fixed dates are used:
+
+- document the anchor date;
+- provide a simple way for developers to refresh the demo timeline later.
+
+Do not manually store progress percentages when they can be calculated from authoritative activities and schedule milestones. Seed the underlying activities, then verify the calculated results.
+
+# 20. Sponsor-view test data
+
+The seed data must support all three sponsor reporting levels for `contact@erickson.vn`.
+
+## Organisation dashboard
+
+Expected data:
+
+- Exactly two cohorts
+- Exactly ten leaders
+- Combined metrics across both cohorts
+- Enrollment status distribution
+- Per-module completion and due-to-date adherence
+- Pace distribution
+- Goal setup and numeric goal progress
+- Numeric satisfaction summary
+- No private programme content
+
+## Cohort detail
+
+Each cohort must show:
+
+- Exactly five leaders
+- Correct programme configuration
+- Correct module summary
+- Correct enrollment statuses
+- Completion and adherence
+- Pace states
+- Goal progress
+- Numeric satisfaction
+- Named leader roster
+
+## Individual leader detail
+
+Each seeded leader must have enough data to test:
+
+- Enrollment-scoped programme history
+- Module progress
+- Completed, booked, due, and overdue requirements
+- Pace
+- Goal count and numeric goal progress
+- Action completion summary
+- Numeric satisfaction rating
+
+The sponsor must not receive:
+
+- Coaching or mentoring notes
+- Session topics or private objectives
+- Goal titles or descriptions
+- Action titles or descriptions
+- Reflection content
+- Prompt-response content
+- Written feedback comments
+- Assignment content
+- Files
+- Recordings
+- Transcripts
+- Private triad or peer-coaching content
+
+Seed some of these private fields intentionally, then add automated assertions proving that sponsor-facing RPCs, views, and frontend queries do not return them.
+
+# 21. Seed implementation quality
+
+The new seed process must be:
+
+- Deterministic
+- Idempotent
+- Foreign-key safe
+- Enrollment-scoped
+- Suitable for local development and automated testing
+- Clearly isolated from production
+- Easy to reset and rerun
+
+Running the seed twice must not:
+
+- Duplicate programmes
+- Duplicate cohorts
+- Duplicate users
+- Duplicate enrollments
+- Duplicate sessions
+- Duplicate goals
+- Duplicate activity records
+- Change stable IDs unexpectedly
+
+Prefer stable UUID constants or a documented deterministic UUID-generation method.
+
+Do not use display names as relational keys.
+
+# 22. Seed acceptance tests
+
+After a clean local database reset, verify automatically:
+
+- Claire Dubois does not exist as an obsolete seeded profile.
+- Yuki Tanaka does not exist as an obsolete seeded profile.
+- Daniel Okafor does not exist as an obsolete seeded profile.
+- No dependent records remain for those obsolete seed identities.
+- Old seeded programme and cohort records have been removed.
+- Exactly two new demo programmes exist.
+- Exactly two new demo cohorts exist.
+- Each programme has exactly one cohort.
+- Exactly ten distinct demo leaders exist.
+- Each cohort contains exactly five leaders.
+- Each leader has exactly one ongoing enrollment.
+- No leader appears in both cohorts.
+- `contact@erickson.vn` can access both cohorts through the sponsor organisation.
+- The existing admin remains unchanged.
+- Existing selected coaches and mentors remain intact.
+- Every programme activity has the correct enrollment ownership.
+- Programme A works without a training module.
+- Programme B calculates module-level and weighted overall progress.
+- The intended pace scenarios are produced.
+- Sponsor aggregate counts equal the underlying enrollment data.
+- Sponsor queries do not expose any private fields.
+- Running the seed process twice produces identical counts and stable record IDs.
+
+Include SQL assertions or automated integration tests for these conditions.
+
+At completion, report:
+
+1. Which obsolete seed files and records were replaced.
+2. Which stable seed identifiers were used.
+3. The two programmes and their configurations.
+4. The two cohorts and their five leaders.
+5. Which existing coaches and mentors were assigned.
+6. Sponsor dashboard expected values.
+7. Seed command and reset command.
+8. Results from idempotency and privacy tests.
+9. Confirmation that no production deletion mechanism was added.

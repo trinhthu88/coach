@@ -18,7 +18,7 @@ import {
   Loader2, Search, FileDown, Eye, Star, Users, Pencil, Save,
 } from "lucide-react";
 import { getFriendlyErrorMessage } from "@/lib/errors";
-import { upsertCoacheeEnrollment } from "@/lib/enrollmentTransition";
+import { requestAdminEnrollment } from "@/lib/enrollmentTransition";
 
 function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
   if (!startDate || !durationMonths) return null;
@@ -46,10 +46,6 @@ const STATUS_TONE: Record<Status, "muted"|"success"|"warning"|"destructive"> = {
   reach_limit: "warning",
 };
 
-// TODO (coach_programmes cleanup): coach session limits are still read from the
-// legacy coach_programme_enrollments → coach_programmes tables below.
-// They should move to programme_modules.config (coaching.give_limit / receive_limit)
-// once the backend migration is applied. null = unlimited; no enrollment row falls back to DEFAULT_SESSION_LIMIT (4).
 function fmtLimit(n: number | null): string {
   return n === null ? "∞" : String(n);
 }
@@ -62,7 +58,7 @@ interface CoachRow {
   created_at: string;
   approval_status: string;
   rating_avg: number;
-  // Coach as receiver — sourced from coach_programme_enrollments -> coach_programmes
+  // Coach as receiver — sourced from the active programme module config.
   coach_session_limit: number | null;
   coach_used: number;
   peer_session_limit: number | null;
@@ -91,7 +87,7 @@ export default function AdminCoaches() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<CoachRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
-  const [cohorts, setCohorts] = useState<{ id: string; name: string }[]>([]);
+  const [cohorts, setCohorts] = useState<{ id: string; name: string; organization_id?: string | null }[]>([]);
   const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; peer_session_limit: number; peer_given_limit: number; duration_months: number }[]>([]);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
@@ -107,23 +103,22 @@ export default function AdminCoaches() {
       { data: cps },
       { data: sess },
       { data: peerSess },
-      { data: coachEnrollments },
       { data: assigned },
       { data: cohortsData },
       { data: progsData },
       { data: enrolls },
+      { data: moduleData },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
       supabase.from("coach_profiles").select("id, approval_status, rating_avg"),
-      supabase.from("sessions").select("coach_id, coachee_id, status"),
-      supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, status"),
-      // LEGACY: move to programme_modules.config after DB migration
-      supabase.from("coach_programme_enrollments").select("coach_id, coach_programme:coach_programmes(name, mentee_sessions_limit, peer_received_limit, peer_given_limit)"),
+      supabase.from("sessions").select("coach_id, coachee_id, enrollment_id, status"),
+      supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, enrollment_id, status"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
-      supabase.from("cohorts").select("id, name"),
+      supabase.from("cohorts").select("id, name, organization_id"),
       supabase.from("programmes").select("id, name, coachee_session_limit, peer_session_limit, peer_given_limit, duration_months"),
-      supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, start_date"),
+      supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, start_date, status, programmes(name)").in("status", ["active", "at_risk", "paused"]),
+      supabase.from("programme_modules").select("programme_id, module, enabled, config"),
     ]);
 
     const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
@@ -135,7 +130,12 @@ export default function AdminCoaches() {
       if (p) coachNameById.set(id, p.full_name);
     });
 
-    const enrollmentByCoach = new Map((coachEnrollments || []).map((e) => [e.coach_id, e]));
+    const modulesByProgramme = new Map<string, { module: string; enabled: boolean; config: Record<string, unknown> }[]>();
+    (moduleData || []).forEach((m) => {
+      const list = modulesByProgramme.get(m.programme_id) || [];
+      list.push({ module: m.module, enabled: m.enabled, config: (m.config || {}) as Record<string, unknown> });
+      modulesByProgramme.set(m.programme_id, list);
+    });
 
     // sessions delivered
     const completedDelivered = new Map<string, number>();
@@ -144,16 +144,16 @@ export default function AdminCoaches() {
     // sessions received as coachee
     const receivedDone = new Map<string, number>();
     (sess || []).forEach((s) => {
-      if (s.status === "completed") {
+      if (s.enrollment_id && s.status === "completed") {
         completedDelivered.set(s.coach_id, (completedDelivered.get(s.coach_id) || 0) + 1);
         if (coachIds.includes(s.coachee_id)) {
           receivedDone.set(s.coachee_id, (receivedDone.get(s.coachee_id) || 0) + 1);
         }
       }
-      if (["pending_coach_approval", "confirmed"].includes(s.status)) {
+      if (s.enrollment_id && ["pending_coach_approval", "confirmed"].includes(s.status)) {
         bookedDelivered.set(s.coach_id, (bookedDelivered.get(s.coach_id) || 0) + 1);
       }
-      if (["confirmed", "completed"].includes(s.status)) {
+      if (s.enrollment_id && ["confirmed", "completed"].includes(s.status)) {
         const set = uniqueCoachees.get(s.coach_id) || new Set();
         set.add(s.coachee_id);
         uniqueCoachees.set(s.coach_id, set);
@@ -162,7 +162,7 @@ export default function AdminCoaches() {
     const peerReceived = new Map<string, number>();
     const peerGiven = new Map<string, number>();
     (peerSess || []).forEach((s) => {
-      if (s.status === "completed") {
+      if (s.enrollment_id && s.status === "completed") {
         peerReceived.set(s.peer_coachee_id, (peerReceived.get(s.peer_coachee_id) || 0) + 1);
         peerGiven.set(s.peer_coach_id, (peerGiven.get(s.peer_coach_id) || 0) + 1);
       }
@@ -175,8 +175,8 @@ export default function AdminCoaches() {
       assignedByCoach.set(a.coach_user_id, arr);
     });
 
-    const enrollByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "user_id" | "programme_id" | "cohort_id" | "start_date">>();
-    (enrolls || []).forEach((e) => enrollByUser.set(e.user_id, e));
+    const enrollByUser = new Map<string, NonNullable<typeof enrolls>[number]>();
+    (enrolls || []).forEach((e) => { if (!enrollByUser.has(e.user_id)) enrollByUser.set(e.user_id, e); });
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const progById = new Map((progsData || []).map((p) => [p.id, p]));
 
@@ -184,10 +184,13 @@ export default function AdminCoaches() {
       const p = profileById.get(id);
       const cp = cpById.get(id);
       if (!p) return null;
-      const coachEnr = enrollmentByCoach.get(id);
-      const coachProg = coachEnr?.coach_programme;
       const enr = enrollByUser.get(id);
       const prog = enr?.programme_id ? progById.get(enr.programme_id) : null;
+       const moduleRows = enr ? modulesByProgramme.get(enr.programme_id) || [] : [];
+       const coaching = moduleRows.find((m) => m.module === "coaching" && m.enabled);
+       const peer = moduleRows.find((m) => m.module === "peer_coaching" && m.enabled);
+       const coachingConfig = coaching?.config as { receive_limit?: number | null } | undefined;
+       const peerConfig = peer?.config as { monthly_limit?: number | null } | undefined;
       return {
         id,
         full_name: p.full_name,
@@ -196,13 +199,13 @@ export default function AdminCoaches() {
         created_at: p.created_at,
         approval_status: cp?.approval_status || "pending_approval",
         rating_avg: Number(cp?.rating_avg || 0),
-        coach_session_limit: coachEnr ? coachProg?.mentee_sessions_limit ?? null : 4,
+         coach_session_limit: enr ? coachingConfig?.receive_limit ?? null : 4,
         coach_used: receivedDone.get(id) || 0,
-        peer_session_limit: coachEnr ? coachProg?.peer_received_limit ?? null : 4,
+         peer_session_limit: enr ? peerConfig?.monthly_limit ?? null : 4,
         peer_used: peerReceived.get(id) || 0,
-        peer_given_limit: coachEnr ? coachProg?.peer_given_limit ?? null : 4,
+         peer_given_limit: enr ? (peer?.config as { give_limit?: number | null } | undefined)?.give_limit ?? null : 4,
         peer_given_used: peerGiven.get(id) || 0,
-        coach_programme_name: coachProg?.name ?? null,
+         coach_programme_name: (enr as { programmes?: { name?: string } | null } | undefined)?.programmes?.name ?? null,
         assigned_coaches: assignedByCoach.get(id) || [],
         coachees_count: (uniqueCoachees.get(id) || new Set()).size,
         booked_sessions: bookedDelivered.get(id) || 0,
@@ -285,8 +288,7 @@ export default function AdminCoaches() {
         ...(editing.status === "active" ? { last_approved_at: new Date().toISOString() } : {}),
       }).eq("id", editing.id);
 
-      // Session limits are managed on the Coach Programmes admin page now (coach's
-      // coach_programme_enrollments row), not here.
+      // Session limits are managed by the programme module configuration.
 
       // 2. Assigned coaches diff
       const original = rows.find(r => r.id === editing.id);
@@ -304,20 +306,23 @@ export default function AdminCoaches() {
           .eq("coach_user_id", editing.id).eq("selectable_coach_id", sid);
       }
 
-      // 3. Programme enrollment (mandatory). Coach is treated as coachee here.
-      // A programme change transitions (closes the old active row, keeping
-      // it as history) rather than overwriting programme_id in place —
-      // ux_programme_enrollments_one_active only allows one active row per
-      // person, and a bare update-in-place would silently lose history.
-      if (editing.programme_id) {
-        const existing = editing.enrollment_id
-          ? { id: editing.enrollment_id, programme_id: original?.programme_id ?? null }
-          : null;
-        const { error } = await upsertCoacheeEnrollment(editing.id, existing, {
-          programme_id: editing.programme_id,
-          cohort_id: editing.cohort_id,
+      // 3. Programme enrollment is immutable while ongoing. Any changed
+      // programme or cohort is submitted to the RPC, which returns a conflict
+      // rather than changing the current enrollment.
+      const enrollmentChanged = !editing.enrollment_id ||
+        editing.programme_id !== original?.programme_id ||
+        editing.cohort_id !== original?.cohort_id;
+      if (editing.programme_id && enrollmentChanged) {
+        const organizationId = cohorts.find((cohort) => cohort.id === editing.cohort_id)?.organization_id;
+        if (!editing.cohort_id || !organizationId) throw new Error("A cohort with an organization is required for enrollment.");
+        const creation = await requestAdminEnrollment({
+          userId: editing.id,
+          programmeId: editing.programme_id,
+          cohortId: editing.cohort_id,
+          organizationId,
         });
-        if (error) throw error;
+        if (creation.kind === "conflict") throw new Error("This user already has an ongoing enrollment. Review it before creating another enrollment.");
+        if (creation.kind === "error") throw creation.error;
       }
 
       toast.success(t("coaches.coachUpdated"));

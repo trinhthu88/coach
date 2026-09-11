@@ -38,14 +38,12 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
   const { t } = useTranslation("sponsor");
   if (!leader) return null;
 
-  const sessionPct = leader.sessions_entitled > 0
-    ? Math.round((leader.sessions_completed / leader.sessions_entitled) * 100)
-    : 0;
+  const completionPct = leader.full_completion_pct ?? 0;
 
   return (
     <Sheet open={!!leader} onOpenChange={open => { if (!open) onClose(); }}>
       <SheetContent side="right" className="w-full max-w-md overflow-y-auto p-0">
-        <SheetTitle className="sr-only">{leader.full_name} — {t("leaderDrawer.srLabelSuffix")}</SheetTitle>
+        <SheetTitle className="sr-only">{leader.learner_display_name} — {t("leaderDrawer.srLabelSuffix")}</SheetTitle>
 
         {/* Header */}
         <div className="bg-gradient-to-br from-secondary to-secondary/80 p-6 text-white">
@@ -57,11 +55,12 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
           </button>
           <div className="flex items-center gap-4">
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/15 text-xl font-semibold text-white">
-              {initials(leader.full_name)}
+              {initials(leader.learner_display_name)}
             </div>
             <div>
-              <p className="text-lg font-semibold leading-tight">{leader.full_name}</p>
-              <p className="mt-0.5 text-sm text-white/60">{leader.cohort_name || "—"}</p>
+              <p className="text-lg font-semibold leading-tight">{leader.learner_display_name}</p>
+              <p className="mt-0.5 text-sm text-white/60">{leader.cohort_label || "—"}</p>
+              <p className="mt-0.5 text-[11px] text-white/50">{leader.programme_label} · {leader.enrollment_start_date} — {leader.enrollment_end_date ?? "ongoing"}</p>
               <div className="mt-2">
                 <Pill tone={STATUS_TONE[leader.enrollment_status]}>
                   {t(`status.${STATUS_LABEL_KEY[leader.enrollment_status]}`)}
@@ -78,28 +77,38 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <StatCard
                 icon={Calendar}
-                label={t("leaderDrawer.sessionsUsed")}
-                value={`${leader.sessions_completed} / ${leader.sessions_entitled}`}
-                sub={t("leaderDrawer.ofAllocation", { pct: sessionPct })}
+                 label="Completed units"
+                 value={`${leader.completed_units} / ${leader.required_units}`}
+                 sub={`${completionPct}% full completion`}
               />
               <StatCard
                 icon={TrendingUp}
-                label={t("leaderDrawer.selfRatedGrowth")}
-                value={leader.goal_growth != null ? t("leaderDrawer.growthPct", { n: Math.round(leader.goal_growth) }) : "—"}
-                sub={leader.goal_growth != null ? t("leaderDrawer.sinceBaseline") : t("leaderDrawer.noRatingsYet")}
+                 label="Due-to-date adherence"
+                 value={leader.due_adherence_pct != null ? `${Math.round(leader.due_adherence_pct)}%` : "—"}
+                 sub={`Pace: ${leader.pace_status ?? "not_yet_due"}`}
               />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+              <span>Booked / due / overdue: <b>{leader.booked_units} / {leader.due_units} / {leader.overdue_units}</b></span>
+              <span>Coverage: <b>{leader.schedule_coverage_pct == null ? "—" : `${Math.round(leader.schedule_coverage_pct)}%`}</b></span>
+              <span>Goals setup / total: <b>{leader.goal_setup ? "Yes" : "No"} / {leader.goal_count}</b></span>
+              <span>Goal progress: <b>{leader.goal_progress_pct == null ? "—" : `${Math.round(leader.goal_progress_pct)}%`}</b></span>
+              <span>Actions complete: <b>{leader.completed_action_count} / {leader.total_action_count}</b></span>
+              <span>Action completion: <b>{leader.action_completion_pct == null ? "—" : `${Math.round(leader.action_completion_pct)}%`}</b></span>
+              <span>Satisfaction: <b>{leader.satisfaction_avg == null ? "—" : leader.satisfaction_avg.toFixed(2)}</b></span>
+              <span>Rated sessions: <b>{leader.satisfaction_rated_count}</b></span>
             </div>
 
             {/* Progress bar */}
             <div className="mt-3">
               <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                <span>{t("leaderDrawer.programmeProgress")}</span>
-                <span className="font-medium">{Math.round(leader.progress_pct)}%</span>
+                 <span>Full completion</span>
+                 <span className="font-medium">{completionPct}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${Math.min(leader.progress_pct, 100)}%` }}
+                   style={{ width: `${Math.min(completionPct, 100)}%` }}
                 />
               </div>
             </div>

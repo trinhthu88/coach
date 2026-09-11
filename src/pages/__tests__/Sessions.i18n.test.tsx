@@ -7,6 +7,7 @@ const sessionRow = {
   id: "sess1",
   coach_id: "coach1",
   coachee_id: "coachee1",
+  enrollment_id: "enrol1",
   topic: "Leadership focus",
   start_time: new Date(Date.now() + 86400000).toISOString(),
   duration_minutes: 45,
@@ -18,18 +19,38 @@ const sessionRow = {
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    from: (table: string) => ({
-      select: () => ({
-        eq: () => ({
-          order: async () => (table === "sessions" ? { data: [sessionRow] } : { data: [] }),
-        }),
-        or: () => ({
-          order: async () => ({ data: [] }),
-        }),
-        in: async () => ({ data: [{ id: "coach1", full_name: "Elena Richter", email: "e@x.com", avatar_url: null }] }),
-      }),
-      update: () => ({ eq: async () => ({ error: null }) }),
-    }),
+    from: (table: string) => {
+      const query = {
+        select: () => query,
+        eq: () => query,
+        or: () => query,
+        in: () => table === "profiles"
+          ? Promise.resolve({ data: [{ id: "coach1", full_name: "Elena Richter", email: "e@x.com", avatar_url: null }] })
+          : query,
+        update: () => ({ eq: async () => ({ error: null }) }),
+        order: async () => {
+          if (table === "sessions") return { data: [sessionRow] };
+          if (table === "enrollment_actions") {
+            return {
+              data: [{
+                id: "action1",
+                enrollment_id: "enrol1",
+                source_activity_type: "coaching",
+                source_activity_id: "sess1",
+                title: "Prepare leadership follow-up",
+                description: null,
+                status: "open",
+                goal_id: null,
+                milestone_id: null,
+                due_date: null,
+              }],
+            };
+          }
+          return { data: [] };
+        },
+      };
+      return query;
+    },
   },
 }));
 

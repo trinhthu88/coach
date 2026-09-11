@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
 import type { Client, RawAction } from "./types";
+import { withEnrollmentActions } from "@/lib/enrollmentActions";
 
 /**
  * Loads every coachee this coach has a confirmed or completed session with,
@@ -17,7 +18,7 @@ export function useCoachClients(userId: string | undefined) {
     setLoading(true);
     const { data: ses } = await supabase
       .from("sessions")
-      .select("id, coachee_id, status, start_time, action_items")
+      .select("id, enrollment_id, coachee_id, status, start_time")
       .eq("coach_id", userId);
 
     const coacheeIds = Array.from(
@@ -39,12 +40,11 @@ export function useCoachClients(userId: string | undefined) {
       supabase.from("coachee_milestones").select("id, goal_id, coachee_id, is_done").in("coachee_id", coacheeIds),
     ]);
 
+    const normalizedSessions = await withEnrollmentActions(ses || [], "coaching");
     // Build per-coachee set of milestone_ids referenced by THIS coach's session action items
     const linkedMsByCoachee = new Map<string, Set<string>>();
-    for (const s of ses || []) {
-      const items: RawAction[] = Array.isArray(s.action_items)
-        ? (s.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
-        : [];
+    for (const s of normalizedSessions) {
+      const items: RawAction[] = s.enrollment_actions ?? [];
       for (const it of items) {
         if (it?.milestone_id) {
           if (!linkedMsByCoachee.has(s.coachee_id)) linkedMsByCoachee.set(s.coachee_id, new Set());
@@ -91,7 +91,7 @@ export function useCoachClients(userId: string | undefined) {
       });
     }
 
-    for (const s of ses || []) {
+    for (const s of normalizedSessions) {
       const c = byCoachee.get(s.coachee_id);
       if (!c) continue;
       c.totalSessions++;
@@ -110,9 +110,7 @@ export function useCoachClients(userId: string | undefined) {
       }
       if (!c.weekStart || t < new Date(c.weekStart)) c.weekStart = s.start_time;
 
-      const items: RawAction[] = Array.isArray(s.action_items)
-        ? (s.action_items as unknown[]).map((it) => (typeof it === "string" ? { text: it } : (it as RawAction)))
-        : [];
+      const items: RawAction[] = s.enrollment_actions ?? [];
       for (const it of items) {
         if (!it?.text) continue;
         c.actionItemsTotal++;

@@ -23,6 +23,7 @@ interface SessionActivityRow {
   start_time: string;
   coachee_id: string;
   coach_id: string;
+  enrollment_id: string | null;
   coachee_rating: number | null;
   updated_at: string;
 }
@@ -34,6 +35,7 @@ interface PeerSessionActivityRow {
   start_time: string;
   peer_coach_id: string;
   peer_coachee_id: string;
+  enrollment_id: string | null;
   updated_at: string;
 }
 
@@ -50,6 +52,7 @@ interface MilestoneActivityRow {
   is_done: boolean;
   done_at: string | null;
   coachee_id: string;
+  enrollment_id: string | null;
 }
 
 export default function AdminActivity() {
@@ -65,14 +68,18 @@ export default function AdminActivity() {
         { data: peer },
         { data: profs },
         { data: milestones },
+        { data: enrollments },
       ] = await Promise.all([
-        supabase.from("sessions").select("id, topic, status, start_time, coachee_id, coach_id, coachee_rating, updated_at").order("updated_at", { ascending: false }).limit(40),
-        supabase.from("peer_sessions").select("id, topic, status, start_time, peer_coach_id, peer_coachee_id, updated_at").order("updated_at", { ascending: false }).limit(20),
+        supabase.from("sessions").select("id, topic, status, start_time, coachee_id, coach_id, enrollment_id, coachee_rating, updated_at").not("enrollment_id", "is", null).order("updated_at", { ascending: false }).limit(40),
+        supabase.from("peer_sessions").select("id, topic, status, start_time, peer_coach_id, peer_coachee_id, enrollment_id, updated_at").not("enrollment_id", "is", null).order("updated_at", { ascending: false }).limit(20),
         supabase.from("profiles").select("id, full_name, status, created_at").order("created_at", { ascending: false }).limit(20),
-        supabase.from("coachee_milestones").select("id, title, is_done, done_at, coachee_id").eq("is_done", true).order("done_at", { ascending: false }).limit(20),
+        supabase.from("coachee_milestones").select("id, title, is_done, done_at, coachee_id, enrollment_id").eq("is_done", true).not("enrollment_id", "is", null).order("done_at", { ascending: false }).limit(20),
+        supabase.from("programme_enrollments").select("user_id").not("id", "is", null),
       ]);
 
-      const profById = new Map((profs || []).map((p: ProfileActivityRow) => [p.id, p.full_name]));
+      const enrolledUsers = new Set((enrollments || []).map((e) => e.user_id));
+      const scopedProfiles = (profs || []).filter((p) => enrolledUsers.has(p.id));
+      const profById = new Map(scopedProfiles.map((p: ProfileActivityRow) => [p.id, p.full_name]));
 
       const list: Item[] = [];
       (sess || []).forEach((s: SessionActivityRow) => {
@@ -97,7 +104,7 @@ export default function AdminActivity() {
           });
         }
       });
-      (profs || []).forEach((p: ProfileActivityRow) => {
+      scopedProfiles.forEach((p: ProfileActivityRow) => {
         if (p.status === "active") {
           list.push({
             id: `u-${p.id}`,
@@ -122,7 +129,7 @@ export default function AdminActivity() {
       setItems(list.slice(0, 60));
       setLoading(false);
     })();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (

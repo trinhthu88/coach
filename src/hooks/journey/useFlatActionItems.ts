@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { endOfWeek, isAfter, isBefore } from "date-fns";
-import type { Json } from "@/integrations/supabase/types";
 import type { RawActionItem, SessionSource } from "./types";
+import type { EnrollmentActionItem } from "@/lib/enrollmentActions";
 
 export interface FlatAction extends RawActionItem {
   sessionId: string;
@@ -22,26 +22,20 @@ interface ActionSession {
   id: string;
   topic: string;
   start_time: string;
-  action_items: Json;
+  enrollment_actions: EnrollmentActionItem[];
   _source?: SessionSource;
 }
 
 /**
- * Flattens each session's `action_items` JSON blob into a single list
- * (tagged with the owning session), plus overdue/this-week/upcoming/
- * completed groupings. Shared between the coachee and coach "my journey"
- * views — neither `allActionItems` nor `grouped` is memoized against a
- * `now` timestamp, matching the pre-extraction behavior of recomputing on
- * every render.
+ * Flattens the normalized action projection attached by withEnrollmentActions
+ * at the display boundary. This hook never reads the persisted session JSON.
  */
 export function useFlatActionItems<S extends ActionSession>(sessions: S[]) {
   const allActionItems: FlatAction[] = useMemo(() => {
     const out: FlatAction[] = [];
     for (const s of sessions) {
-      const items = Array.isArray(s.action_items) ? s.action_items : [];
-      items.forEach((it: Json, idx: number) => {
-        const obj: RawActionItem =
-          typeof it === "string" ? { text: it, done: false } : (it as unknown as RawActionItem);
+      const items = s.enrollment_actions;
+      items.forEach((obj: EnrollmentActionItem, idx: number) => {
         if (obj?.text) {
           out.push({
             ...obj,

@@ -262,6 +262,7 @@
     }
   },
   "goalRatings": {
+    "enrollmentRequired": "Không thể đánh giá mục tiêu cho đến khi chọn một đợt tham gia.",
     "title": "Suy ngẫm về mục tiêu",
     "emptyPrefix": "Chưa có mục tiêu nào đang hoạt động. Thêm mục tiêu trong",
     "emptyLinkText": "Hành trình của tôi",

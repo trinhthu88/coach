@@ -16,9 +16,9 @@ import { cn } from "@/lib/utils";
 export interface GoalRatingRow {
   goalId: string;
   title: string;
-  start: number;
-  current: number;
-  target: number;
+  start: number | null;
+  current: number | null;
+  target: number | null;
 }
 
 export interface SessionRatingSeries {
@@ -42,14 +42,14 @@ export function GoalWheel({
   const { t } = useTranslation("journey");
   const data = useMemo(() => {
     return rows.map((r) => {
-      const point: { axis: string; Start: number; Target: number; [key: string]: string | number } = {
+      const point: { axis: string; Start: number | null; Target: number | null; [key: string]: string | number | null } = {
         axis: SHORT(r.title),
         Start: r.start,
         Target: r.target,
       };
       sessionSeries.forEach((s, idx) => {
         const rating = s.rows.find((x) => x.goalId === r.goalId)?.rating;
-        point[`s${idx}`] = rating ?? r.start;
+        point[`s${idx}`] = rating ?? null;
       });
       return point;
     });
@@ -161,7 +161,8 @@ export function GoalScoreCards({ rows }: { rows: GoalRatingRow[] }) {
   return (
     <div className="grid gap-3 md:grid-cols-3">
       {cards.map((c) => {
-        const avg = Math.round(rows.reduce((s, r) => s + r[c.key], 0) / rows.length);
+        const rated = rows.filter((r) => r[c.key] != null);
+        const avg = rated.length ? Math.round(rated.reduce((s, r) => s + r[c.key]!, 0) / rated.length) : "—";
         return (
           <Card key={c.key} className="p-4">
             <div className="flex items-baseline justify-between">
@@ -176,11 +177,11 @@ export function GoalScoreCards({ rows }: { rows: GoalRatingRow[] }) {
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-[11px]">{r.title}</span>
                     <span className="shrink-0 text-[10px] font-semibold tabular-nums text-muted-foreground">
-                      {r[c.key]}
+                      {r[c.key] ?? "—"}
                     </span>
                   </div>
                   <div className="h-1 overflow-hidden rounded-full bg-muted">
-                    <div className={cn("h-full", c.barCls)} style={{ width: `${r[c.key]}%` }} />
+                    <div className={cn("h-full", c.barCls)} style={{ width: `${r[c.key] ?? "—"}%` }} />
                   </div>
                 </li>
               ))}

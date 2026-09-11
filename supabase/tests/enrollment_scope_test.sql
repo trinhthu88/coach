@@ -1,0 +1,13 @@
+begin;
+select plan(9);
+select has_function('public', 'create_programme_enrollment', array['uuid','uuid','uuid','uuid','date','date']);
+select has_function('public', 'record_goal_checkin', array['uuid','uuid','text','uuid','smallint','text']);
+select has_function('public', 'get_enrollment_progress', array['uuid','date']);
+select has_function('public', 'generate_enrollment_schedule', array['uuid']);
+select has_index('public', 'programme_enrollments', 'ux_programme_enrollments_one_ongoing', 'ongoing enrollment uniqueness index exists');
+select has_trigger('public', 'sessions', 'sessions_enrollment_activity_scope', 'sessions require enrollment ownership');
+select has_trigger('public', 'triad_groups', 'triad_groups_enrollment_scope', 'triad groups require same-cohort enrollments');
+select has_view('public', 'enrollment_scope_backfill_audit', 'unresolved activity rows remain auditable');
+select has_index('public', 'training_progress', 'training_progress_enrollment_week_key', 'training progress is unique per enrollment');
+select * from finish();
+rollback;

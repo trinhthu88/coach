@@ -81,8 +81,8 @@ export default function AdminSessions() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: sessions }, { data: peerSessions }] = await Promise.all([
-      supabase.from("sessions").select("*").order("start_time", { ascending: false }),
-      supabase.from("peer_sessions").select("*").order("start_time", { ascending: false }),
+      supabase.from("sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, coach_id, coachee_id, created_at, coachee_rating, coachee_rating_comment").order("start_time", { ascending: false }),
+      supabase.from("peer_sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, provider_notes, receiver_notes, peer_coach_id, peer_coachee_id, created_at, receiver_rating, receiver_rating_comment").order("start_time", { ascending: false }),
     ]);
 
     type RawRow = (Tables<"sessions"> | Tables<"peer_sessions">) & {
@@ -90,13 +90,13 @@ export default function AdminSessions() {
       coach_id: string;
       coachee_id: string;
     };
-    const coaching: RawRow[] = (sessions || []).map((s) => ({ ...s, kind: "coaching" as const, coach_id: s.coach_id, coachee_id: s.coachee_id }));
+    const coaching: RawRow[] = (sessions || []).map((s) => ({ ...s, kind: "coaching" as const, coach_id: s.coach_id, coachee_id: s.coachee_id })) as unknown as RawRow[];
     const peer: RawRow[] = (peerSessions || []).map((s) => ({
       ...s,
       kind: "peer" as const,
       coach_id: s.peer_coach_id,
       coachee_id: s.peer_coachee_id,
-    }));
+    })) as unknown as RawRow[];
     const all = [...coaching, ...peer].sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
 
     const userIds = Array.from(new Set(all.flatMap((s) => [s.coach_id, s.coachee_id])));
@@ -153,8 +153,6 @@ export default function AdminSessions() {
     if (!editing) return;
     setSaving(true);
     try {
-      const table = editing.kind === "peer" ? "peer_sessions" : "sessions";
-
       if (isCancelling) {
         // Routes through cancel-session so the coach's availability slot is
         // freed and both parties get a cancellation email — a plain status
@@ -166,21 +164,36 @@ export default function AdminSessions() {
         if (cancelError) throw cancelError;
       }
 
-      const { error } = await supabase
-        .from(table)
-        .update({
-          topic: editing.topic,
-          start_time: editing.start_time,
-          duration_minutes: editing.duration_minutes,
-          // Already set by cancel-session above when isCancelling; for every
-          // other transition (including staying cancelled) a plain status
-          // write is fine — there's no side effect to replicate.
-          ...(isCancelling ? {} : { status: editing.status as Tables<"sessions">["status"] }),
-          meeting_url: editing.meeting_url,
-          coach_notes: editing.coach_notes,
-          coachee_notes: editing.coachee_notes,
-        })
-        .eq("id", editing.id);
+      const commonUpdate = {
+        topic: editing.topic,
+        start_time: editing.start_time,
+        duration_minutes: editing.duration_minutes,
+        meeting_url: editing.meeting_url,
+      };
+      // Peer sessions use provider/receiver_notes, while coaching sessions
+      // use coach/coachee_notes. Keep the edit model shared without sending a
+      // coaching-only column to the peer table.
+      const { error } = editing.kind === "peer"
+        ? await supabase
+            .from("peer_sessions")
+            .update({
+              ...commonUpdate,
+              ...(isCancelling ? {} : { status: editing.status as Tables<"peer_sessions">["status"] }),
+              provider_notes: editing.coach_notes,
+              receiver_notes: editing.coachee_notes,
+            })
+            .eq("id", editing.id)
+        : await supabase
+            .from("sessions")
+            .update({
+              ...commonUpdate,
+              // Already set by cancel-session above when isCancelling; for
+              // every other transition a plain status write is fine.
+              ...(isCancelling ? {} : { status: editing.status as Tables<"sessions">["status"] }),
+              coach_notes: editing.coach_notes,
+              coachee_notes: editing.coachee_notes,
+            })
+            .eq("id", editing.id);
       if (error) throw error;
       toast({ title: t("sessions.sessionUpdated") });
       setEditing(null);

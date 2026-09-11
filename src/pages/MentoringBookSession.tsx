@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
 import { useAuth } from "@/context/AuthContext";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,8 @@ export default function MentoringBookSession() {
   const { t } = useTranslation("mentoring");
   const { mentorId } = useParams<{ mentorId: string }>();
   const { user } = useAuth();
+  const { selectedEnrollment } = useEnrollmentContext(user?.id);
+  const enrollmentId = selectedEnrollment?.id;
   const navigate = useNavigate();
 
   const [mentor, setMentor] = useState<MentorDetail | null>(null);
@@ -160,10 +163,10 @@ export default function MentoringBookSession() {
 
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
 
-  const canSubmit = !!selectedDate && !!selectedStart && topic.trim().length > 0 && eligible !== false;
+  const canSubmit = !!enrollmentId && !!selectedDate && !!selectedStart && topic.trim().length > 0 && eligible !== false;
 
   const handleBook = async () => {
-    if (!user || !mentor || !selectedDate || !selectedStart || !topic.trim()) return;
+    if (!user || !mentor || !selectedDate || !selectedStart || !topic.trim() || !enrollmentId) return;
     const opt = startOptions.find((o) => o.start === selectedStart);
     if (!opt) return;
     setSubmitting(true);
@@ -175,6 +178,7 @@ export default function MentoringBookSession() {
       .insert({
         mentor_id: mentor.coach_user_id,
         mentee_id: user.id,
+        enrollment_id: enrollmentId,
         topic: topic.trim(),
         start_time: startISO,
         duration_minutes: duration,

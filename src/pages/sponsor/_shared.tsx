@@ -214,7 +214,7 @@ export function RosterTable({
     if (sortKey === "status") {
       sorted.sort((a, b) => dir * a.enrollment_status.localeCompare(b.enrollment_status));
     } else if (sortKey === "sessions") {
-      sorted.sort((a, b) => dir * (a.sessions_completed - b.sessions_completed));
+      sorted.sort((a, b) => dir * (a.completed_units - b.completed_units));
     }
     return sorted;
   })();
@@ -256,19 +256,19 @@ export function RosterTable({
               <td className="px-2 py-2.5">
                 <div className="flex items-center gap-2">
                   <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[10px] font-semibold text-primary">
-                    {initials(r.full_name)}
+                    {initials(r.learner_display_name)}
                   </div>
-                  <span className="font-medium">{r.full_name}</span>
+                  <span className="font-medium">{r.learner_display_name}</span>
                 </div>
               </td>
-              {showCohortColumn && <td className="px-2 py-2.5 text-muted-foreground hidden sm:table-cell">{r.cohort_name || "—"}</td>}
+              {showCohortColumn && <td className="px-2 py-2.5 text-muted-foreground hidden sm:table-cell">{r.cohort_label || "—"}</td>}
               <td className="px-2 py-2.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{t(`status.${STATUS_LABEL_KEY[r.enrollment_status]}`)}</Pill></td>
               <td className="px-2 py-2.5 hidden md:table-cell">
-                <div className="w-24"><MiniBar pct={r.progress_pct} tone="primary" /></div>
+                <div className="w-24"><MiniBar pct={r.full_completion_pct ?? 0} tone="primary" /></div>
               </td>
-              <td className="px-2 py-2.5 font-mono text-muted-foreground">{r.sessions_completed}/{r.sessions_entitled}</td>
+              <td className="px-2 py-2.5 font-mono text-muted-foreground">{r.completed_units}/{r.required_units}</td>
               <td className="px-2 py-2.5 hidden sm:table-cell">
-                {r.goal_growth != null ? <GoalProgressBar pct={r.goal_growth} /> : <span className="italic text-muted-foreground">—</span>}
+                {r.goal_progress_pct != null ? <GoalProgressBar pct={r.goal_progress_pct} /> : <span className="italic text-muted-foreground">—</span>}
               </td>
             </tr>
           ))}

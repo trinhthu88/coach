@@ -67,7 +67,7 @@ export function GoalAccordion({
   };
 
   const deleteGoal = async () => {
-    if (!confirm(t("goalAccordion.confirmDeleteGoal"))) return;
+    if (!confirm(t("goalAccordion.confirmArchiveGoal", { defaultValue: "Archive this goal? Its history will be preserved." }))) return;
     await onDeleteGoal(goal.id);
   };
 
@@ -224,7 +224,7 @@ export function GoalAccordion({
                 <Plus className="mr-1 h-3 w-3" /> {t("goalAccordion.addMilestone")}
               </Button>
               <button onClick={deleteGoal} className="text-xs text-muted-foreground hover:text-destructive">
-                {t("goalAccordion.deleteGoal")}
+                {t("goalAccordion.archiveGoal", { defaultValue: "Archive goal" })}
               </button>
             </div>
           )}

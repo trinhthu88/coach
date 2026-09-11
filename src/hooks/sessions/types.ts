@@ -1,4 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
+import type { EnrollmentActionItem } from "@/lib/enrollmentActions";
 
 export type SessionStatus =
   | "pending_coach_approval"
@@ -16,6 +17,7 @@ export interface ProfileLite {
 
 export interface SessionRow {
   id: string;
+  enrollment_id: string | null;
   coach_id: string;
   coachee_id: string;
   topic: string;
@@ -25,14 +27,16 @@ export interface SessionRow {
   meeting_url: string | null;
   coach_notes: string | null;
   coachee_notes: string | null;
-  action_items: Database["public"]["Tables"]["sessions"]["Row"]["action_items"];
+  enrollment_actions: EnrollmentActionItem[];
   cancelled_at: string | null;
   slot_id: string | null;
 }
 
 export interface ActionItem {
+  id?: string;
   text: string;
   done?: boolean;
+  description?: string | null;
   due_date?: string | null;
   milestone_id?: string | null;
 }
@@ -60,16 +64,13 @@ export type PeerFeedbackState = {
   existed: boolean;
 };
 
-export function normalizeItems(raw: unknown): ActionItem[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((it) =>
-    typeof it === "string"
-      ? { text: it, done: false, due_date: null, milestone_id: null }
-      : {
-          text: (it as ActionItem).text || "",
-          done: !!(it as ActionItem).done,
-          due_date: (it as ActionItem).due_date || null,
-          milestone_id: (it as ActionItem).milestone_id || null,
-        }
-  );
+export function normalizeItems(raw: EnrollmentActionItem[]): ActionItem[] {
+  return raw.map((it) => ({
+    id: it.id,
+    text: it.text || "",
+    done: !!it.done,
+    description: it.description || null,
+    due_date: it.due_date || null,
+    milestone_id: it.milestone_id || null,
+  }));
 }

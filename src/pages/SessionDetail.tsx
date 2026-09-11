@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  Clock,
   Loader2,
   Video,
   Save,
@@ -558,10 +557,13 @@ export default function SessionDetail() {
           </Card>
 
           {/* Per-goal rating snapshot (non-peer sessions only) */}
-          {!isPeer && !isCoacheePeer && (
+          {session.enrollment_id && (
             <SessionGoalRatings
               sessionId={session.id}
               coacheeId={session.coachee_id}
+              enrollmentId={session.enrollment_id}
+              sourceActivityType={isPeer || isCoacheePeer ? "peer_coaching" : "coaching"}
+              canCreateGoal={isCoachee}
               canEdit={isCoachee && session.status === "completed"}
               sessionStatus={session.status}
             />

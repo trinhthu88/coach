@@ -34,6 +34,30 @@ export interface TriadParticipant {
   spoken_languages: string[];
 }
 
+interface ParticipantEnrollment {
+  id: string;
+  user_id: string;
+  cohort_id: string | null;
+}
+
+async function getParticipantEnrollments(programmeId: string, memberIds: string[]): Promise<Map<string, ParticipantEnrollment>> {
+  const { data, error } = await supabase
+    .from("programme_enrollments")
+    .select("id, user_id, cohort_id")
+    .eq("programme_id", programmeId)
+    .in("status", ["active", "at_risk", "paused"])
+    .in("user_id", memberIds);
+  if (error) throw error;
+
+  const byUser = new Map((data ?? []).map((enrollment) => [enrollment.user_id as string, enrollment as ParticipantEnrollment]));
+  const missing = memberIds.filter((id) => !byUser.has(id));
+  if (missing.length > 0) throw new Error("Every triad participant needs an ongoing enrollment in this programme");
+
+  const cohortIds = new Set(Array.from(byUser.values()).map((enrollment) => enrollment.cohort_id));
+  if (cohortIds.size !== 1 || cohortIds.has(null)) throw new Error("Triad participants must belong to the same cohort");
+  return byUser;
+}
+
 /** All triad rounds for a programme, newest round_number first — admin sees hidden rounds too. */
 export function useAdminTriadRounds(programmeId: string | undefined) {
   const query = useQuery({
@@ -132,7 +156,7 @@ export function useAdminTriadParticipants(programmeId: string | undefined) {
         .from("programme_enrollments")
         .select("user_id")
         .eq("programme_id", programmeId as string)
-        .eq("status", "active");
+        .in("status", ["active", "at_risk", "paused"]);
       if (error) throw error;
       const userIds = [...new Set((enrollments ?? []).map((e) => e.user_id as string))];
       if (userIds.length === 0) return [];
@@ -213,14 +237,24 @@ export function useAdminTriadMutations() {
       memberIds: [string, string, string | null];
       language: string;
     }) => {
+      const presentMemberIds = memberIds.filter((id): id is string => Boolean(id));
+      const enrollmentByUser = await getParticipantEnrollments(programmeId, presentMemberIds);
+      const enrollment1 = enrollmentByUser.get(memberIds[0])!;
+      const enrollment2 = enrollmentByUser.get(memberIds[1])!;
+      const enrollment3 = memberIds[2] ? enrollmentByUser.get(memberIds[2])! : null;
+
       const { data: group, error } = await supabase
         .from("triad_groups")
         .insert({
           triad_round_id: roundId,
           programme_id: programmeId,
+          cohort_id: enrollment1.cohort_id,
           member_1_id: memberIds[0],
           member_2_id: memberIds[1],
           member_3_id: memberIds[2],
+          enrollment_1_id: enrollment1.id,
+          enrollment_2_id: enrollment2.id,
+          enrollment_3_id: enrollment3?.id ?? null,
           assigned_by: "admin",
           group_language: language,
         })
@@ -229,6 +263,9 @@ export function useAdminTriadMutations() {
       if (error) throw error;
       const { error: sessionErr } = await supabase.from("triad_sessions").insert({
         triad_group_id: group.id,
+        coach_enrollment_id: enrollment1.id,
+        coachee_enrollment_id: enrollment2.id,
+        observer_enrollment_id: enrollment3?.id ?? null,
         proposed_by: "system",
         status: "proposed",
         member_3_response: memberIds[2] ? "pending" : null,

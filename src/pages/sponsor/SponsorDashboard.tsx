@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { format, differenceInCalendarDays, addDays } from "date-fns";
 import {
-  Users, CheckCircle2, AlertTriangle, CalendarCheck, Star,
-  CalendarRange, ShieldCheck, Loader2, ArrowRight, Building2,
+  Users, CheckCircle2, AlertTriangle, CalendarCheck,
+  ShieldCheck, Loader2, ArrowRight, Building2,
   Clock, ChevronDown, MessageCircle, type LucideIcon,
   Wallet, Info, FileDown, Layers,
 } from "lucide-react";
@@ -16,12 +16,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { SectionCard, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
-import type { SponsorRosterRow, SponsorSatisfactionTrendRow } from "@/hooks/sponsor/useSponsorDashboardData";
+import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import {
-  RosterTable, CoachUtilisationBars,
-  HealthSignalPill, Avatar,
+  RosterTable,
+  HealthSignalPill,
 } from "@/pages/sponsor/_shared";
-import { healthSignal, cohortProgress } from "@/pages/sponsor/sponsorUtils";
+import { healthSignal } from "@/pages/sponsor/sponsorUtils";
 import { SponsorLeaderDrawer } from "./SponsorLeaderDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -37,17 +37,15 @@ interface OrgBannerData {
   coaching_budget: number | null;
   account_manager: { full_name: string } | null;
 }
-
+/* End of sponsor dashboard. */
 export default function SponsorDashboard() {
   const { t } = useTranslation("sponsor");
   const { user } = useAuth();
   const {
-    kpis, roster, satisfaction, timeline,
-    redFlags, satisfactionTrend, coachUtilisation, loading,
+    kpis, roster, cohortSummaries, loading,
   } = useSponsorDashboardData();
   const [org, setOrg] = useState<OrgBannerData | null>(null);
   const [selectedLeader, setSelectedLeader] = useState<SponsorRosterRow | null>(null);
-  const [cohortDates, setCohortDates] = useState<Map<string, { start_date: string | null; end_date: string | null }>>(new Map());
   const [contactOpen, setContactOpen] = useState(false);
   const [contactMessage, setContactMessage] = useState("");
   const [contactSending, setContactSending] = useState(false);
@@ -81,64 +79,27 @@ export default function SponsorDashboard() {
   }, [loading]);
 
   const cohortNames = useMemo(
-    () => Array.from(new Set(roster.map((r) => r.cohort_name).filter(Boolean))),
-    [roster]
+    () => cohortSummaries.map((r) => r.cohort_label),
+    [cohortSummaries]
   );
-
-  // Cohort start/end dates for the health matrix's session-pace bar — cohorts
-  // is the one table sponsor pages may query directly (RLS: any authenticated
-  // user may SELECT it), since none of the sponsor_* RPCs carry per-cohort
-  // dates.
-  useEffect(() => {
-    if (cohortNames.length === 0) return;
-    let mounted = true;
-    supabase
-      .from("cohorts")
-      .select("name, start_date, end_date")
-      .in("name", cohortNames)
-      .then(({ data }) => {
-        if (!mounted || !data) return;
-        setCohortDates(new Map(data.map((c) => [c.name, { start_date: c.start_date, end_date: c.end_date }])));
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [cohortNames]);
 
   // Cohort Health Matrix — one row per cohort, aggregated from the same
   // roster the rest of this dashboard already has. Satisfaction has no
   // per-cohort breakdown anywhere in the sponsor_* surface (sponsor_
-  // satisfaction_summary is a single org-wide row), so every row shows the
-  // same org-wide average rather than fabricating a per-cohort figure.
   const cohortHealthRows = useMemo(() => {
-    const byCohort = new Map<string, SponsorRosterRow[]>();
-    roster.forEach((r) => {
-      if (!r.cohort_name) return;
-      if (!byCohort.has(r.cohort_name)) byCohort.set(r.cohort_name, []);
-      byCohort.get(r.cohort_name)!.push(r);
-    });
-    return Array.from(byCohort.entries()).map(([cohortName, rows]) => {
-      const onTrack = rows.filter((r) => r.enrollment_status === "active").length;
-      const atRisk = rows.filter((r) => r.enrollment_status === "at_risk").length;
-      const sessionsCompleted = rows.reduce((s, r) => s + r.sessions_completed, 0);
-      const sessionsEntitled = rows.reduce((s, r) => s + r.sessions_entitled, 0);
-      const withGrowth = rows.filter((r) => r.goal_growth != null);
-      const avgGoalGrowth = withGrowth.length ? withGrowth.reduce((s, r) => s + r.goal_growth!, 0) / withGrowth.length : null;
-      const dates = cohortDates.get(cohortName);
-      const progress = dates ? cohortProgress(dates.start_date, dates.end_date) : null;
-      const pace = progress && progress.elapsed > 0 && sessionsEntitled > 0
-        ? Math.min(100, ((sessionsCompleted / progress.elapsed) * progress.total / sessionsEntitled) * 100)
-        : null;
+    return cohortSummaries.map((summary) => {
+      const leaders = summary.enrollment_count ?? 0;
+      const atRisk = summary.at_risk_count ?? 0;
       return {
-        cohortName,
-        leaders: rows.length,
-        onTrackPct: rows.length ? (onTrack / rows.length) * 100 : 0,
-        pace,
-        avgGoalGrowth,
-        signal: healthSignal(atRisk, rows.length),
+        cohortName: summary.cohort_label,
+        cohortId: summary.cohort_id,
+        leaders,
+        onTrackPct: summary.on_track_pct ?? 0,
+        pace: null,
+        signal: healthSignal(atRisk, leaders),
       };
     });
-  }, [roster, cohortDates]);
+  }, [cohortSummaries]);
 
   const orgName = org?.name ?? null;
 
@@ -152,8 +113,8 @@ export default function SponsorDashboard() {
   // * budget) until real billing data exists, per spec. Projected exhaustion
   // date extrapolates the burn rate seen so far across the contract; only
   // shown once there's enough signal (contract has started, some budget used).
-  const budgetUsedPct = org?.coaching_budget != null && kpis?.sessions_entitled
-    ? Math.min(100, ((kpis.sessions_used ?? 0) / kpis.sessions_entitled) * 100)
+  const budgetUsedPct = org?.coaching_budget != null && kpis?.required_units
+    ? Math.min(100, ((kpis.completed_units ?? 0) / kpis.required_units) * 100)
     : null;
   const spendToDate = org?.coaching_budget != null && budgetUsedPct != null
     ? (budgetUsedPct / 100) * org.coaching_budget
@@ -173,27 +134,13 @@ export default function SponsorDashboard() {
   const alerts = useMemo(() => {
     const list: { key: string; icon: LucideIcon; tone: "warning" | "info"; message: string; to?: string }[] = [];
 
-    roster
-      .filter((r) => r.enrollment_status === "at_risk")
-      .forEach((r) => {
-        const flag = redFlags.find((f) => f.user_id === r.coachee_id);
-        if (flag && flag.days_since_last_activity >= 14 && flag.days_since_last_activity < 999) {
-          list.push({
-            key: `at-risk-${r.enrollment_id}`,
-            icon: AlertTriangle,
-            tone: "warning",
-            message: t("dashboard.alerts.atRiskInactive", { name: r.full_name, count: flag.days_since_last_activity }),
-          });
-        }
-      });
-
     const byCohort = new Map<string, { used: number; entitled: number }>();
     roster.forEach((r) => {
-      const key = r.cohort_name || "";
+      const key = r.cohort_label || "";
       if (!key) return;
       const agg = byCohort.get(key) || { used: 0, entitled: 0 };
-      agg.used += r.sessions_completed;
-      agg.entitled += r.sessions_entitled;
+      agg.used += r.completed_units;
+      agg.entitled += r.required_units;
       byCohort.set(key, agg);
     });
     byCohort.forEach((agg, cohortName) => {
@@ -217,7 +164,7 @@ export default function SponsorDashboard() {
     }
 
     return list;
-  }, [roster, redFlags, contractDaysRemaining, t]);
+  }, [roster, contractDaysRemaining, t]);
 
 
   const contactAdmin = async () => {
@@ -249,13 +196,7 @@ export default function SponsorDashboard() {
 
   const isFirstLogin = !kpis || kpis.leaders_enrolled === 0;
 
-  const daysRemaining = timeline?.latest_end
-    ? Math.max(0, differenceInCalendarDays(new Date(timeline.latest_end), new Date()))
-    : null;
-
-  const daysUntilStart = timeline?.earliest_start
-    ? Math.max(0, differenceInCalendarDays(new Date(timeline.earliest_start), new Date()))
-    : null;
+  const daysUntilStart = null;
 
   return (
     <>
@@ -371,15 +312,9 @@ export default function SponsorDashboard() {
             <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
             <HeadlineStat
               label={t("dashboard.kpis.sessionsUsed")}
-              value={`${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`}
+              value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`}
               icon={CalendarCheck}
               tone="secondary"
-            />
-            <HeadlineStat
-              label={t("dashboard.kpis.avgSatisfaction")}
-              value={satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : "—"}
-              icon={Star}
-              tone="primary"
             />
             {budgetUsedPct != null && (
               <div className="flex items-start gap-3">
@@ -401,6 +336,20 @@ export default function SponsorDashboard() {
                 </div>
               </div>
             )}
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-4 text-[11px] sm:grid-cols-4">
+            <span>Completion <b>{kpis?.full_completion_pct == null ? "—" : `${Math.round(kpis.full_completion_pct)}%`}</b></span>
+            <span>Adherence <b>{kpis?.due_adherence_pct == null ? "—" : `${Math.round(kpis.due_adherence_pct)}%`}</b></span>
+            <span>Booked / overdue <b>{kpis?.booked_units ?? 0} / {kpis?.overdue_units ?? 0}</b></span>
+            <span>Coverage <b>{kpis?.schedule_coverage_pct == null ? "—" : `${Math.round(kpis.schedule_coverage_pct)}%`}</b></span>
+            <span>Paused / completed <b>{kpis?.paused_count ?? 0} / {kpis?.completed_count ?? 0}</b></span>
+            <span>Pace NYD / ahead <b>{kpis?.not_yet_due_count ?? 0} / {kpis?.ahead_count ?? 0}</b></span>
+            <span>Pace on-track / scheduled <b>{kpis?.on_track_count ?? 0} / {kpis?.scheduled_count ?? 0}</b></span>
+            <span>Pace behind / complete <b>{kpis?.behind_count ?? 0} / {kpis?.completed_pace_count ?? 0}</b></span>
+            <span>Goals setup / total <b>{kpis?.goal_setup_count ?? 0} / {kpis?.goal_count ?? 0}</b></span>
+            <span>Goal progress <b>{kpis?.goal_progress_pct == null ? "—" : `${Math.round(kpis.goal_progress_pct)}%`}</b></span>
+            <span>Actions complete <b>{kpis?.completed_action_count ?? 0} / {kpis?.total_action_count ?? 0}</b></span>
+            <span>Satisfaction <b>{kpis?.satisfaction_avg == null ? "—" : kpis.satisfaction_avg.toFixed(2)}</b></span>
           </div>
           {(kpis?.at_risk_count ?? 0) > 0 && (
             <p className="mt-5 flex items-center gap-1.5 border-t border-border pt-4 text-[12px] font-medium text-warning">
@@ -426,8 +375,6 @@ export default function SponsorDashboard() {
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.leaders")}</th>
                     <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.healthMatrix.columns.onTrack")}</th>
                     <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.healthMatrix.columns.sessionsPace")}</th>
-                    <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.healthMatrix.columns.avgGoalGrowth")}</th>
-                    <th className="px-2 py-2 text-left font-semibold hidden lg:table-cell">{t("dashboard.healthMatrix.columns.satisfaction")}</th>
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.signal")}</th>
                   </tr>
                 </thead>
@@ -435,7 +382,7 @@ export default function SponsorDashboard() {
                   {cohortHealthRows.map((row) => (
                     <tr key={row.cohortName} className="transition-colors hover:bg-muted/40">
                       <td className="px-2 py-2.5">
-                        <Link to={`/sponsor/cohorts/${encodeURIComponent(row.cohortName)}`} className="font-medium text-primary hover:underline">
+                         <Link to={`/sponsor/cohorts/${row.cohortId}`} className="font-medium text-primary hover:underline">
                           {row.cohortName}
                         </Link>
                       </td>
@@ -448,21 +395,12 @@ export default function SponsorDashboard() {
                           <span className="italic text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-2 py-2.5 hidden sm:table-cell">
-                        {row.avgGoalGrowth != null ? `${Math.round(row.avgGoalGrowth)}%` : <span className="italic text-muted-foreground">—</span>}
-                      </td>
-                      <td className="px-2 py-2.5 hidden lg:table-cell">
-                        {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : "—"}
-                      </td>
                       <td className="px-2 py-2.5"><HealthSignalPill signal={row.signal} /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="mt-3 text-[10px] italic text-muted-foreground">
-              {t("dashboard.healthMatrix.satisfactionNote")}
-            </p>
           </SectionCard>
         )}
 
@@ -506,56 +444,6 @@ export default function SponsorDashboard() {
             were dropped from here rather than duplicated/blended across
             cohorts). Shown directly, no longer behind a collapsible, since
             removing goal growth left just these two compact cards. */}
-        {!isFirstLogin && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SectionCard label={t("dashboard.timeline.label")}>
-              <div className="flex items-center gap-3">
-                <CalendarRange className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="text-[13px] font-medium">
-                    {timeline?.earliest_start ? format(new Date(timeline.earliest_start), "MMM d, yyyy") : "—"}
-                    {" → "}
-                    {timeline?.latest_end ? format(new Date(timeline.latest_end), "MMM d, yyyy") : "—"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {daysRemaining != null ? t("dashboard.timeline.daysRemaining", { count: daysRemaining }) : t("dashboard.timeline.noEndDate")}
-                    {timeline?.programme_names?.length ? ` · ${timeline.programme_names.join(", ")}` : ""}
-                  </p>
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard label={t("dashboard.satisfaction.label")}>
-              {satisfactionTrend.length > 0 ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-warning" />
-                    <p className="text-[13px] font-medium">
-                      {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : t("dashboard.satisfaction.noRatingsYet")}
-                    </p>
-                    <span className="text-[11px] text-muted-foreground">
-                      {t("dashboard.satisfaction.acrossRated", { count: satisfaction?.rated_session_count ?? 0 })}
-                    </span>
-                  </div>
-                  <SatisfactionTrendChart data={satisfactionTrend} />
-                </>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Star className="h-8 w-8 text-warning" />
-                  <div>
-                    <p className="text-[13px] font-medium">
-                      {satisfaction?.avg_rating != null ? `${satisfaction.avg_rating.toFixed(1)} / 5.0` : t("dashboard.satisfaction.noRatingsYet")}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {t("dashboard.satisfaction.acrossRated", { count: satisfaction?.rated_session_count ?? 0 })}
-                    </p>
-                  </div>
-                </div>
-              )}
-              <p className="mt-1 text-[10px] italic text-muted-foreground">{t("dashboard.satisfaction.writtenFeedbackNote")}</p>
-            </SectionCard>
-          </div>
-        )}
 
         {/* FALLING BEHIND — the per-week programme engagement table and
             completion-funnel chart that used to live alongside this were
@@ -563,24 +451,6 @@ export default function SponsorDashboard() {
             correct place for them; org-wide they'd blend cohorts on
             different unlock schedules together). This list stands on its
             own now instead of nesting inside that removed collapsible. */}
-        {!isFirstLogin && redFlags.length > 0 && (
-          <Card className="border-l-4 border-l-accent p-5">
-            <p className="text-2xs font-bold uppercase tracking-[0.2em] text-accent">{t("dashboard.redFlags.label")}</p>
-            <div className="mt-3.5 flex flex-col gap-2.5">
-              {redFlags.map((r) => (
-                <div key={r.user_id} className="flex items-center gap-3">
-                  <Avatar name={r.full_name} tone="accent" size={26} />
-                  <span className="flex-1 text-[12.5px]">{r.full_name}</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {r.days_since_last_activity >= 999
-                      ? t("dashboard.redFlags.noActivityYet")
-                      : t("dashboard.redFlags.daysInactive", { count: r.days_since_last_activity })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
 
         {/* ROSTER */}
         <div data-onboarding="sponsor-roster">
@@ -596,11 +466,6 @@ export default function SponsorDashboard() {
         </div>
 
         {/* COACH UTILISATION */}
-        {coachUtilisation.length > 0 && (
-          <SectionCard label={t("dashboard.coachUtilisation.label")}>
-            <CoachUtilisationBars rows={coachUtilisation} />
-          </SectionCard>
-        )}
 
         {/* PRIVACY NOTICE */}
         <div className="flex items-start gap-2 rounded-xl bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground">
@@ -660,7 +525,6 @@ export default function SponsorDashboard() {
     </>
   );
 }
-
 function HeadlineStat({
   label,
   value,
@@ -683,44 +547,6 @@ function HeadlineStat({
       <div>
         <p className="font-display text-[2.25rem] font-normal leading-none tracking-tight">{value}</p>
         <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      </div>
-    </div>
-  );
-}
-
-function SatisfactionTrendChart({ data }: { data: SponsorSatisfactionTrendRow[] }) {
-  const width = 280;
-  const height = 90;
-  const padTop = 8;
-  const padBottom = 18;
-  const plotHeight = height - padTop - padBottom;
-  const domainMin = 1;
-  const domainMax = 5;
-
-  const points = data.map((d, i) => {
-    const x = data.length > 1 ? (i / (data.length - 1)) * width : width / 2;
-    const clamped = Math.min(domainMax, Math.max(domainMin, d.avg_rating));
-    const y = padTop + (1 - (clamped - domainMin) / (domainMax - domainMin)) * plotHeight;
-    return { x, y, month: d.month_start };
-  });
-
-  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const areaPath = points.length
-    ? `${linePath} L ${points[points.length - 1].x} ${height - padBottom} L ${points[0].x} ${height - padBottom} Z`
-    : "";
-  const last = points[points.length - 1];
-
-  return (
-    <div className="mt-3">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ maxHeight: 90 }}>
-        {areaPath && <path d={areaPath} fill="hsl(var(--primary))" opacity={0.15} />}
-        {linePath && <path d={linePath} fill="none" stroke="hsl(var(--primary))" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
-        {last && <circle cx={last.x} cy={last.y} r={3} fill="hsl(var(--primary))" />}
-      </svg>
-      <div className="flex justify-between text-[9px] text-muted-foreground">
-        {points.map((p) => (
-          <span key={p.month}>{format(new Date(p.month), "MMM")}</span>
-        ))}
       </div>
     </div>
   );

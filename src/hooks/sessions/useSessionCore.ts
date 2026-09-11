@@ -4,14 +4,13 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { extractFunctionError } from "@/lib/errors";
-import type { Database } from "@/integrations/supabase/types";
 import { getSessionFieldMap, type SessionTableKind } from "@/lib/sessionTableHelper";
+import { withEnrollmentActions, saveEnrollmentActions, type EnrollmentActionSource } from "@/lib/enrollmentActions";
 import {
   ActionItem,
   MilestoneLite,
   ProfileLite,
   SessionRow,
-  normalizeItems,
 } from "./types";
 
 type SessionsTable = SessionTableKind;
@@ -36,12 +35,18 @@ async function fetchSessionCore(
   coachField: string,
   coacheeField: string,
   coachNotesField: string,
-  coacheeNotesField: string
+  coacheeNotesField: string,
+  sourceActivityType: EnrollmentActionSource
 ): Promise<SessionCoreData | null> {
+  const selectFields = tableName === "sessions"
+    ? "id, enrollment_id, coach_id, coachee_id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, cancelled_at, slot_id"
+    : tableName === "peer_sessions"
+      ? "id, enrollment_id, peer_coach_id, peer_coachee_id, topic, start_time, duration_minutes, status, meeting_url, provider_notes, receiver_notes, cancelled_at, slot_id"
+      : "id, enrollment_id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, meeting_url, provider_notes, receiver_notes, cancelled_at, slot_id";
   const { data } = await supabase
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from(tableName as any)
-    .select("*")
+    .select(selectFields)
     .eq("id", sessionId)
     .maybeSingle();
   if (!data) return null;
@@ -83,8 +88,9 @@ async function fetchSessionCore(
     goal_title: goalById.get(m.goal_id),
   }));
 
+  const [withActions] = await withEnrollmentActions([norm], sourceActivityType);
   return {
-    session: norm,
+    session: { ...norm, enrollment_actions: withActions.enrollment_actions ?? [] },
     coach: (byId.get(norm.coach_id) as ProfileLite) || null,
     coachee: (byId.get(norm.coachee_id) as ProfileLite) || null,
     milestones,
@@ -103,10 +109,11 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
 
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ["session-core", tableName, sessionId], [tableName, sessionId]);
+  const sourceActivityType: EnrollmentActionSource = isCoacheePeer ? "coachee_peer_coaching" : isPeer ? "peer_coaching" : "coaching";
 
   const { data, isLoading } = useQuery({
     queryKey,
-    queryFn: () => fetchSessionCore(sessionId as string, tableName, coachField, coacheeField, coachNotesField, coacheeNotesField),
+    queryFn: () => fetchSessionCore(sessionId as string, tableName, coachField, coacheeField, coachNotesField, coacheeNotesField, sourceActivityType),
     enabled: !!sessionId,
     staleTime: 30_000,
     // Local state below mirrors `session` and is only meant to resync on an
@@ -133,7 +140,7 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
     setCoachNotes(session.coach_notes || "");
     setCoacheeNotes(session.coachee_notes || "");
     setMeetingUrl(session.meeting_url || "");
-    setItems(normalizeItems(session.action_items));
+    setItems(session.enrollment_actions);
   }, [session]);
 
   const load = useCallback(() => queryClient.invalidateQueries({ queryKey }), [queryClient, queryKey]);
@@ -146,31 +153,29 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
     }) => {
       if (!session) return { error: null };
       setSaving(true);
-      const update: Record<string, unknown> = {
-        action_items: items as unknown as Database["public"]["Tables"]["sessions"]["Update"]["action_items"],
-      };
+      const { error: actionsError } = await saveEnrollmentActions(session.enrollment_id, sourceActivityType, session.id, items);
+      if (actionsError) { setSaving(false); return { error: actionsError }; }
+      const update: Record<string, unknown> = {};
       if (opts.includeCoachNotes) update[coachNotesField] = coachNotes;
       if (opts.includeMeetingUrl) update.meeting_url = meetingUrl || null;
       if (opts.includeCoacheeNotes) update[coacheeNotesField] = coacheeNotes;
-      const { error } = await supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from(tableName as any)
-        .update(update)
-        .eq("id", session.id);
+      const { error } = Object.keys(update).length
+        ? await supabase
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .from(tableName as any)
+            .update(update)
+            .eq("id", session.id)
+        : { error: null };
       setSaving(false);
       return { error };
     },
-    [session, items, coachNotes, coacheeNotes, meetingUrl, tableName, coachNotesField, coacheeNotesField]
+    [session, items, coachNotes, coacheeNotes, meetingUrl, tableName, coachNotesField, coacheeNotesField, sourceActivityType]
   );
 
   const saveActionItems = useCallback(async () => {
     if (!session) return;
     setSaving(true);
-    const { error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .from(tableName as any)
-      .update({ action_items: items as unknown as Database["public"]["Tables"]["sessions"]["Update"]["action_items"] })
-      .eq("id", session.id);
+    const { error } = await saveEnrollmentActions(session.enrollment_id, sourceActivityType, session.id, items);
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -178,7 +183,7 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
     }
     toast.success(t("detail.toast.actionItemsSaved"));
     load();
-  }, [session, items, tableName, load, t]);
+  }, [session, items, sourceActivityType, load, t]);
 
   const saveMeetingUrl = useCallback(
     async (trimmed: string) => {

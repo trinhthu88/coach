@@ -40,17 +40,19 @@ export function useAdminRegistrations() {
       { data: allowlist },
       { data: sess },
       { data: cps },
-      { data: coachEnrollments },
+      { data: programmeEnrollments },
+      { data: programmeModules },
       { data: peerSess },
       { data: coachAllow },
     ] = await Promise.all([
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
       supabase.from("session_limits").select("coachee_id, monthly_limit"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
-      supabase.from("sessions").select("id, coach_id, coachee_id, status"),
+      supabase.from("sessions").select("id, coach_id, coachee_id, enrollment_id, status"),
       supabase.from("coach_profiles").select("*"),
-      supabase.from("coach_programme_enrollments").select("coach_id, coach_programme:coach_programmes(name, mentee_sessions_limit, peer_received_limit)"),
-      supabase.from("peer_sessions").select("id, peer_coach_id, peer_coachee_id, status"),
+       supabase.from("programme_enrollments").select("id, user_id, programme_id, status, programmes(name)").in("status", ["active", "at_risk", "paused"]),
+       supabase.from("programme_modules").select("programme_id, module, enabled, config"),
+      supabase.from("peer_sessions").select("id, peer_coach_id, peer_coachee_id, enrollment_id, status"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
     ]);
 
@@ -60,12 +62,18 @@ export function useAdminRegistrations() {
     >[];
     const limitsData = (limits || []) as Pick<SessionLimitRow, "coachee_id" | "monthly_limit">[];
     const allowlistData = (allowlist || []) as Pick<AllowlistRow, "coachee_id" | "coach_id">[];
-    const sessData = (sess || []) as Pick<SessionRow, "id" | "coach_id" | "coachee_id" | "status">[];
+    const sessData = (sess || []) as Pick<SessionRow, "id" | "coach_id" | "coachee_id" | "enrollment_id" | "status">[];
     const cpsData = (cps || []) as CoachProfileRow[];
     const peerSessData = (peerSess || []) as Pick<
       PeerSessionRow,
-      "id" | "peer_coach_id" | "peer_coachee_id" | "status"
+      "id" | "peer_coach_id" | "peer_coachee_id" | "enrollment_id" | "status"
     >[];
+    const modulesByProgramme = new Map<string, { module: string; enabled: boolean; config: Record<string, unknown> }[]>();
+    (programmeModules || []).forEach((m) => {
+      const list = modulesByProgramme.get(m.programme_id) || [];
+      list.push({ module: m.module, enabled: m.enabled, config: (m.config || {}) as Record<string, unknown> });
+      modulesByProgramme.set(m.programme_id, list);
+    });
     const coachAllowData = (coachAllow || []) as Pick<
       CoachAsCoacheeAllowlistRow,
       "coach_user_id" | "selectable_coach_id"
@@ -83,10 +91,10 @@ export function useAdminRegistrations() {
     const bookedByCoachee = new Map<string, number>();
     const doneByCoachee = new Map<string, number>();
     sessData.forEach((s) => {
-      if (["pending_coach_approval", "confirmed"].includes(s.status)) {
+      if (s.enrollment_id && ["pending_coach_approval", "confirmed"].includes(s.status)) {
         bookedByCoachee.set(s.coachee_id, (bookedByCoachee.get(s.coachee_id) || 0) + 1);
       }
-      if (s.status === "completed") {
+      if (s.enrollment_id && s.status === "completed") {
         doneByCoachee.set(s.coachee_id, (doneByCoachee.get(s.coachee_id) || 0) + 1);
       }
     });
@@ -95,10 +103,10 @@ export function useAdminRegistrations() {
     const coachCompletedById = new Map<string, number>();
     const coachCoacheesById = new Map<string, Set<string>>();
     sessData.forEach((s) => {
-      if (s.status === "completed") {
+      if (s.enrollment_id && s.status === "completed") {
         coachCompletedById.set(s.coach_id, (coachCompletedById.get(s.coach_id) || 0) + 1);
       }
-      if (["confirmed", "completed"].includes(s.status)) {
+      if (s.enrollment_id && ["confirmed", "completed"].includes(s.status)) {
         const set = coachCoacheesById.get(s.coach_id) || new Set<string>();
         set.add(s.coachee_id);
         coachCoacheesById.set(s.coach_id, set);
@@ -136,12 +144,17 @@ export function useAdminRegistrations() {
       })
       .filter((row): row is CoacheeRow => row !== null);
 
-    const enrollmentByCoach = new Map((coachEnrollments || []).map((e) => [e.coach_id, e]));
+    const enrollmentByCoach = new Map<string, NonNullable<typeof programmeEnrollments>[number]>();
+    (programmeEnrollments || []).forEach((e) => {
+      // Only an explicitly ongoing enrollment is eligible; never select a
+      // historical "latest" row as a fallback.
+      if (!enrollmentByCoach.has(e.user_id)) enrollmentByCoach.set(e.user_id, e);
+    });
 
     // Coach-as-coachee usage (completed coaching sessions where coach is the coachee)
     const coachAsCoacheeDone = new Map<string, number>();
     sessData.forEach((s) => {
-      if (s.status === "completed" && coachIds.includes(s.coachee_id)) {
+      if (s.enrollment_id && s.status === "completed" && coachIds.includes(s.coachee_id)) {
         coachAsCoacheeDone.set(s.coachee_id, (coachAsCoacheeDone.get(s.coachee_id) || 0) + 1);
       }
     });
@@ -149,7 +162,7 @@ export function useAdminRegistrations() {
     // Peer-as-receiver usage (completed peer sessions)
     const peerReceivedDone = new Map<string, number>();
     peerSessData.forEach((s) => {
-      if (s.status === "completed") {
+      if (s.enrollment_id && s.status === "completed") {
         peerReceivedDone.set(s.peer_coachee_id, (peerReceivedDone.get(s.peer_coachee_id) || 0) + 1);
       }
     });
@@ -168,7 +181,14 @@ export function useAdminRegistrations() {
         const cp = cpById.get(id);
         if (!p) return null;
         const enr = enrollmentByCoach.get(id);
-        const prog = enr?.coach_programme;
+        const coaching = enr
+          ? modulesByProgramme.get(enr.programme_id)?.find((m) => m.module === "coaching" && m.enabled)
+          : undefined;
+        const peer = enr
+          ? modulesByProgramme.get(enr.programme_id)?.find((m) => m.module === "peer_coaching" && m.enabled)
+          : undefined;
+        const coachingConfig = coaching?.config as { receive_limit?: number | null } | undefined;
+        const peerConfig = peer?.config as { monthly_limit?: number | null } | undefined;
         return {
           id,
           full_name: p.full_name,
@@ -182,11 +202,11 @@ export function useAdminRegistrations() {
           rating_avg: Number(cp?.rating_avg || 0),
           country_based: cp?.country_based || null,
           years_experience: cp?.years_experience || null,
-          coach_limit: enr ? prog?.mentee_sessions_limit ?? null : 4,
+          coach_limit: enr ? coachingConfig?.receive_limit ?? null : 4,
           coach_used: coachAsCoacheeDone.get(id) || 0,
-          peer_limit: enr ? prog?.peer_received_limit ?? null : 4,
+          peer_limit: enr ? peerConfig?.monthly_limit ?? null : 4,
           peer_used: peerReceivedDone.get(id) || 0,
-          coach_programme_name: prog?.name ?? null,
+          coach_programme_name: (enr as { programmes?: { name?: string } | null } | undefined)?.programmes?.name ?? null,
           assigned_coaches: assignedByCoach.get(id) || [],
         };
       })

@@ -42,6 +42,7 @@ const CoachMyJourney = lazy(() => import("./pages/CoachMyJourney"));
 const AdminCoaches = lazy(() => import("./pages/admin/AdminCoaches"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminCoachees = lazy(() => import("./pages/admin/AdminCoachees"));
+const AdminEnrollmentReview = lazy(() => import("./pages/admin/AdminEnrollmentReview"));
 const AdminAlerts = lazy(() => import("./pages/admin/AdminAlerts"));
 const AdminActivity = lazy(() => import("./pages/admin/AdminActivity"));
 const AdminProgrammes = lazy(() => import("./pages/admin/AdminProgrammes"));
@@ -354,6 +355,7 @@ const App = () => (
                   />
                   <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
                   <Route path="/admin/coachees" element={<ProtectedRoute role="admin"><AdminCoachees /></ProtectedRoute>} />
+                  <Route path="/admin/coachees/:userId/enrollments/:enrollmentId" element={<ProtectedRoute role="admin"><AdminEnrollmentReview /></ProtectedRoute>} />
                   <Route path="/admin/alerts" element={<ProtectedRoute role="admin"><AdminAlerts /></ProtectedRoute>} />
                   <Route path="/admin/activity" element={<ProtectedRoute role="admin"><AdminActivity /></ProtectedRoute>} />
                   <Route path="/admin/programmes" element={<ProtectedRoute role="admin"><AdminProgrammes /></ProtectedRoute>} />

@@ -64,8 +64,6 @@ const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "out
   reach_limit: "outline",
 };
 
-// LEGACY: limit values here still come from coach_programmes (via useAdminRegistrations).
-// TODO: migrate to programme_modules.config once the backend migration is applied.
 // null = unlimited.
 function fmtLimit(n: number | null): string {
   return n === null ? "∞" : String(n);

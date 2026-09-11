@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EnrollmentConflictNotice } from "@/components/EnrollmentConflictNotice";
 import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -43,8 +44,13 @@ export function CoacheeEditSheet({
   defaultLimit,
 }: CoacheeEditSheetProps) {
   const { t } = useTranslation("admin");
-  const { saving, saveEdit, resendingLink, resendLoginLink, resentLink, setResentLink } = useAdminCoacheeMutations(onSaved);
+  const { saving, saveEdit, enrollmentConflict, clearEnrollmentConflict, resendingLink, resendLoginLink, resentLink, setResentLink } = useAdminCoacheeMutations(onSaved);
   const [editing, setEditing] = useState<Row | null>(row);
+  const conflictDisplay = enrollmentConflict && {
+    ...enrollmentConflict,
+    programmeName: enrollmentConflict.programmeName ?? programmes.find((programme) => programme.id === enrollmentConflict.programmeId)?.name,
+    cohortName: enrollmentConflict.cohortName ?? cohorts.find((cohort) => cohort.id === enrollmentConflict.cohortId)?.name ?? null,
+  };
 
   // Reseed the local edit copy whenever a different row is opened.
   if (row && editing?.id !== row.id) {
@@ -70,6 +76,12 @@ export function CoacheeEditSheet({
           </SheetHeader>
           {editing && (
             <div className="mt-4 space-y-5">
+              {conflictDisplay && (
+                <EnrollmentConflictNotice
+                  conflict={conflictDisplay}
+                  reviewHref={"/admin/coachees/" + editing.id + "/enrollments/" + conflictDisplay.enrollmentId}
+                />
+              )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div><Label>{t("coacheeEditSheet.fullName")}</Label><Input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} /></div>
                 <div>
@@ -210,7 +222,7 @@ export function CoacheeEditSheet({
           )}
           <SheetFooter className="mt-6">
             <Button variant="outline" onClick={onClose}>{t("coacheeEditSheet.cancel")}</Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={() => { clearEnrollmentConflict(); handleSave(); }} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("coacheeEditSheet.save")}
             </Button>
           </SheetFooter>

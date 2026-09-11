@@ -1,3 +1,4 @@
+import { SessionGoalRatings } from "../session/SessionGoalRatings";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -40,6 +41,8 @@ export default function TriadReflectionPage() {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [sessionStatus, setSessionStatus] = useState("");
   const [sessionExists, setSessionExists] = useState(false);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [form, setForm] = useState<TriadReflectionInput>(EMPTY_FORM);
@@ -51,13 +54,17 @@ export default function TriadReflectionPage() {
   useEffect(() => {
     if (!sessionId) return;
     (async () => {
-      const { data: session } = await supabase.from("triad_sessions").select("id, triad_group_id").eq("id", sessionId).maybeSingle();
+      const { data: session } = await supabase.from("triad_sessions").select("id, triad_group_id, status, coach_enrollment_id, coachee_enrollment_id, observer_enrollment_id").eq("id", sessionId).maybeSingle();
       if (!session) {
         setSessionExists(false);
         setLoading(false);
         return;
       }
       setSessionExists(true);
+      setSessionStatus(session.status);
+      const enrollmentIds = [session.coach_enrollment_id, session.coachee_enrollment_id, session.observer_enrollment_id].filter((id): id is string => !!id);
+      const { data: ownEnrollments } = await supabase.from("programme_enrollments").select("id").in("id", enrollmentIds).eq("user_id", user?.id ?? "");
+      setEnrollmentId(ownEnrollments?.length === 1 ? ownEnrollments[0].id : null);
       const { data: group } = await supabase
         .from("triad_groups")
         .select("member_1_id, member_2_id, member_3_id")
@@ -70,7 +77,7 @@ export default function TriadReflectionPage() {
       setProfiles((profileRows ?? []) as ProfileRow[]);
       setLoading(false);
     })();
-  }, [sessionId]);
+  }, [sessionId, user?.id]);
 
   const nameById = new Map(profiles.map((p) => [p.id, p.full_name]));
 
@@ -107,6 +114,7 @@ export default function TriadReflectionPage() {
 
   return (
     <div className="mx-auto max-w-[760px] space-y-6">
+      {enrollmentId && sessionId && user && <SessionGoalRatings sessionId={sessionId} coacheeId={user.id} enrollmentId={enrollmentId} sourceActivityType="triad" canCreateGoal canEdit={sessionStatus === "completed"} sessionStatus={sessionStatus} />}
       <Link to="/triads" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-[#2c8fa8]">
         <ChevronLeft className="h-4 w-4" /> {t("reflection.back")}
       </Link>

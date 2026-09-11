@@ -2,27 +2,29 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-export type SponsorKpis = Database["public"]["Functions"]["sponsor_kpis"]["Returns"][number];
-export type SponsorGoalGrowth = Database["public"]["Functions"]["sponsor_goal_growth_summary"]["Returns"][number];
-export type SponsorRosterRow = Database["public"]["Functions"]["sponsor_roster"]["Returns"][number];
-export type SponsorSatisfaction = Database["public"]["Functions"]["sponsor_satisfaction_summary"]["Returns"][number];
-export type SponsorTimeline = Database["public"]["Functions"]["sponsor_timeline"]["Returns"][number];
-export type SponsorProgrammeEngagementRow = Database["public"]["Functions"]["sponsor_programme_engagement"]["Returns"][number];
-export type SponsorRedFlagRow = Database["public"]["Functions"]["sponsor_engagement_red_flags"]["Returns"][number];
-export type SponsorSatisfactionTrendRow = Database["public"]["Functions"]["sponsor_satisfaction_trend"]["Returns"][number];
-export type SponsorCoachUtilisationRow = Database["public"]["Functions"]["sponsor_coach_utilisation"]["Returns"][number];
+export type SponsorEnrollmentSummary = Database["public"]["Functions"]["sponsor_enrollment_summaries"]["Returns"][number];
+export type SponsorCohortSummary = Database["public"]["Functions"]["sponsor_cohort_summaries"]["Returns"][number];
+export type SponsorRosterRow = SponsorEnrollmentSummary;
+export type SponsorKpis = Database["public"]["Functions"]["sponsor_organisation_summary"]["Returns"][number];
+export type SponsorGoalGrowth = {
+  hit_target_count: number; meaningful_progress_count: number; just_started_count: number;
+  flat_declined_count: number; pct_progressing: number;
+};
+export type SponsorProgrammeEngagementRow = {
+  week_number: number; week_title: string; is_locked: boolean; effective_unlock_date: string | null;
+  skill_card_completion_pct: number; quiz_completion_pct: number; quiz_avg_score: number | null;
+  reflection_completion_pct: number; triad_completion_pct: number; triad_satisfaction_avg: number | null;
+  daily_prompt_response_rate: number;
+};
+export type SponsorRedFlagRow = { full_name: string; missed_prompts: number; missed_quizzes: number; missed_triads: number; days_since_last_activity: number };
+export type SponsorSatisfactionTrendRow = { week_number: number; avg_rating: number | null };
+export type SponsorCoachUtilisationRow = { coach_name: string; completed_sessions: number };
 
 interface SponsorDashboardData {
   kpis: SponsorKpis | null;
-  goalGrowth: SponsorGoalGrowth | null;
-  roster: SponsorRosterRow[];
-  satisfaction: SponsorSatisfaction | null;
-  timeline: SponsorTimeline | null;
+  roster: SponsorEnrollmentSummary[];
+  cohortSummaries: SponsorCohortSummary[];
   minLeadersForDistribution: number;
-  programmeEngagement: SponsorProgrammeEngagementRow[];
-  redFlags: SponsorRedFlagRow[];
-  satisfactionTrend: SponsorSatisfactionTrendRow[];
-  coachUtilisation: SponsorCoachUtilisationRow[];
   loading: boolean;
 }
 
@@ -34,46 +36,28 @@ interface SponsorDashboardData {
  */
 export function useSponsorDashboardData(): SponsorDashboardData {
   const [kpis, setKpis] = useState<SponsorKpis | null>(null);
-  const [goalGrowth, setGoalGrowth] = useState<SponsorGoalGrowth | null>(null);
-  const [roster, setRoster] = useState<SponsorRosterRow[]>([]);
-  const [satisfaction, setSatisfaction] = useState<SponsorSatisfaction | null>(null);
-  const [timeline, setTimeline] = useState<SponsorTimeline | null>(null);
-  const [minLeadersForDistribution, setMinLeadersForDistribution] = useState(5);
-  const [programmeEngagement, setProgrammeEngagement] = useState<SponsorProgrammeEngagementRow[]>([]);
-  const [redFlags, setRedFlags] = useState<SponsorRedFlagRow[]>([]);
-  const [satisfactionTrend, setSatisfactionTrend] = useState<SponsorSatisfactionTrendRow[]>([]);
-  const [coachUtilisation, setCoachUtilisation] = useState<SponsorCoachUtilisationRow[]>([]);
+  const [roster, setRoster] = useState<SponsorEnrollmentSummary[]>([]);
+  const [cohortSummaries, setCohortSummaries] = useState<SponsorCohortSummary[]>([]);
+  const [minLeadersForDistribution, setMinLeadersForDistribution] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [
-        kpisRes, growthRes, rosterRes, satisfactionRes, timelineRes, minLeadersRes,
-        engagementRes, redFlagsRes, trendRes, utilisationRes,
-      ] = await Promise.all([
-        supabase.rpc("sponsor_kpis"),
-        supabase.rpc("sponsor_goal_growth_summary"),
-        supabase.rpc("sponsor_roster"),
-        supabase.rpc("sponsor_satisfaction_summary"),
-        supabase.rpc("sponsor_timeline"),
+      const [{ data: cohorts, error }, { data: organisation }, threshold] = await Promise.all([
+        supabase.rpc("sponsor_cohort_summaries"),
+        supabase.rpc("sponsor_organisation_summary"),
         supabase.rpc("sponsor_min_leaders_for_distribution"),
-        supabase.rpc("sponsor_programme_engagement"),
-        supabase.rpc("sponsor_engagement_red_flags"),
-        supabase.rpc("sponsor_satisfaction_trend"),
-        supabase.rpc("sponsor_coach_utilisation"),
       ]);
       if (!mounted) return;
-      setKpis(kpisRes.data?.[0] ?? null);
-      setGoalGrowth(growthRes.data?.[0] ?? null);
-      setRoster(rosterRes.data ?? []);
-      setSatisfaction(satisfactionRes.data?.[0] ?? null);
-      setTimeline(timelineRes.data?.[0] ?? null);
-      if (typeof minLeadersRes.data === "number") setMinLeadersForDistribution(minLeadersRes.data);
-      setProgrammeEngagement(engagementRes.data ?? []);
-      setRedFlags(redFlagsRes.data ?? []);
-      setSatisfactionTrend(trendRes.data ?? []);
-      setCoachUtilisation(utilisationRes.data ?? []);
+      if (error) { setLoading(false); return; }
+      setMinLeadersForDistribution(threshold.data ?? 0);
+      setCohortSummaries(cohorts ?? []);
+      // Organisation scope is aggregate-only. Names and enrollment rows are
+      // available only after navigating to an explicit, unsuppressed cohort.
+      setRoster([]);
+      const summary = organisation?.[0];
+      setKpis(summary ?? null);
       setLoading(false);
     })();
     return () => {
@@ -82,7 +66,6 @@ export function useSponsorDashboardData(): SponsorDashboardData {
   }, []);
 
   return {
-    kpis, goalGrowth, roster, satisfaction, timeline, minLeadersForDistribution,
-    programmeEngagement, redFlags, satisfactionTrend, coachUtilisation, loading,
+    kpis, roster, cohortSummaries, minLeadersForDistribution, loading,
   };
 }

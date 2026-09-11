@@ -1,11 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { withEnrollmentActions } from "@/lib/enrollmentActions";
+import type { EnrollmentActionItem } from "@/lib/enrollmentActions";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 export type SessionLite = Pick<
   Database["public"]["Tables"]["sessions"]["Row"],
-  "id" | "topic" | "start_time" | "duration_minutes" | "status" | "meeting_url" | "coach_id" | "coachee_id" | "action_items"
->;
+  "id" | "topic" | "start_time" | "duration_minutes" | "status" | "meeting_url" | "coach_id" | "coachee_id" | "enrollment_id"
+> & { action_items: EnrollmentActionItem[] };
 
 export type CoachLite = {
   id: string;
@@ -37,14 +40,18 @@ const emptyData: UseCoacheeDashboardDataResult = {
 
 async function fetchCoacheeDashboardData(
   userId: string,
-  favorites: string[]
+  favorites: string[],
+  enrollmentId: string
 ): Promise<UseCoacheeDashboardDataResult> {
-  const { data: ses } = await supabase
-    .from("sessions")
-    .select("id, topic, start_time, duration_minutes, status, meeting_url, coach_id, coachee_id, action_items")
-    .eq("coachee_id", userId)
-    .order("start_time", { ascending: false });
-  const list = ses || [];
+  const [{ data: ses }] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("id, topic, start_time, duration_minutes, status, meeting_url, coach_id, coachee_id, enrollment_id")
+      .eq("coachee_id", userId)
+      .eq("enrollment_id", enrollmentId)
+      .order("start_time", { ascending: false }),
+  ]);
+  const list = await withEnrollmentActions(ses || [], "coaching") as SessionLite[];
 
   const coachIds = Array.from(new Set(list.map((s) => s.coach_id)));
   let coachesById: Record<string, ProfileLite> = {};
@@ -59,7 +66,9 @@ async function fetchCoacheeDashboardData(
   }
 
   // Session limit (monthly limit acts as the cap shown in the recap)
-  const { data: usage } = await supabase.rpc("get_coachee_session_usage", { _coachee_id: userId });
+  const { data: usage } = await supabase.rpc("get_coachee_session_usage_for_enrollment", {
+    p_enrollment_id: enrollmentId,
+  });
   const sessionLimit = usage && usage.length > 0 ? usage[0].monthly_limit || 0 : 0;
 
   // Recommended (top-rated active coaches, max 3)
@@ -90,10 +99,12 @@ export function useCoacheeDashboardData(
   isCoachee: boolean,
   favorites: string[]
 ): UseCoacheeDashboardDataResult {
+  const enrollmentContext = useEnrollmentContext(userId);
+  const enrollmentId = enrollmentContext.selectedEnrollment?.id;
   const { data } = useQuery({
-    queryKey: ["coachee-dashboard", userId, favorites],
-    queryFn: () => fetchCoacheeDashboardData(userId as string, favorites),
-    enabled: !!userId && isCoachee,
+    queryKey: ["coachee-dashboard", userId, enrollmentId ?? null, favorites],
+    queryFn: () => fetchCoacheeDashboardData(userId as string, favorites, enrollmentId as string),
+    enabled: !!userId && isCoachee && !!enrollmentId,
     staleTime: 30_000,
   });
 

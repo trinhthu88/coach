@@ -22,6 +22,11 @@ interface TrainingWeekRow {
   unlock_date: string;
 }
 
+interface EnrollmentRow {
+  id: string;
+  user_id: string;
+}
+
 interface ProfileRow {
   id: string;
   full_name: string | null;
@@ -101,10 +106,12 @@ Deno.serve(async (req) => {
 
       const { data: enrollments } = await admin
         .from("programme_enrollments")
-        .select("user_id")
+        .select("id, user_id")
         .eq("programme_id", programmeId)
-        .eq("status", "active");
-      const userIds = [...new Set((enrollments ?? []).map((e) => e.user_id))];
+        .in("status", ["active", "at_risk", "paused"]);
+      const enrollmentRows = (enrollments ?? []) as EnrollmentRow[];
+      const userIds = [...new Set(enrollmentRows.map((e) => e.user_id))];
+      const enrollmentByUser = new Map(enrollmentRows.map((enrollment) => [enrollment.user_id, enrollment.id]));
       if (userIds.length === 0) continue;
 
       const { data: existingResponses } = await admin
@@ -124,6 +131,9 @@ Deno.serve(async (req) => {
         .in("id", pendingIds);
 
       for (const profile of (profiles ?? []) as ProfileRow[]) {
+        const enrollmentId = enrollmentByUser.get(profile.id);
+        if (!enrollmentId) continue;
+
         const isVi = profile.preferred_language === "vi";
         const promptText = (isVi && prompt.prompt_text_vi) || prompt.prompt_text;
 
@@ -140,8 +150,8 @@ Deno.serve(async (req) => {
         }
 
         const { error: responseErr } = await admin.from("daily_prompt_responses").upsert(
-          { daily_prompt_id: prompt.id, user_id: profile.id, opened_at: null },
-          { onConflict: "daily_prompt_id,user_id", ignoreDuplicates: true }
+          { daily_prompt_id: prompt.id, user_id: profile.id, enrollment_id: enrollmentId, opened_at: null },
+          { onConflict: "enrollment_id,daily_prompt_id", ignoreDuplicates: true }
         );
         if (responseErr) {
           console.error("Failed to seed daily_prompt_responses row", { userId: profile.id, error: responseErr });

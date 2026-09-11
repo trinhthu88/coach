@@ -7,6 +7,8 @@ import {
   ScanPeerSessionRow,
   ScanSessionRow,
   ScanMentoringSessionRow,
+  buildStaleProgrammeParticipantAlerts,
+  buildLowQuizScoreAlerts,
 } from "../alertScan";
 
 const NOW = new Date("2026-08-10T12:00:00.000Z");
@@ -21,6 +23,35 @@ const emailById = new Map([
   ["coachee-1", "jane@example.com"],
   ["peer-coachee-1", null],
 ]);
+
+describe("programme alerts — enrollment scoping", () => {
+  it("aggregates stale activity by enrollment, not person", () => {
+    const alerts = buildStaleProgrammeParticipantAlerts({
+      activeEnrollments: [
+        { enrollmentId: "enrol-old", userId: "coachee-1" },
+        { enrollmentId: "enrol-new", userId: "coachee-1" },
+      ],
+      activity: [{ userId: "coachee-1", enrollmentId: "enrol-old", timestamp: "2026-08-01T10:00:00.000Z" }],
+      nameById,
+      emailById,
+      now: NOW,
+    });
+    expect(alerts.map((a) => a.related_enrollment_id)).toEqual(["enrol-old", "enrol-new"]);
+  });
+
+  it("aggregates quiz scores by enrollment", () => {
+    const alerts = buildLowQuizScoreAlerts({
+      submissions: [
+        { userId: "coachee-1", enrollmentId: "enrol-a", scorePct: 20 },
+        { userId: "coachee-1", enrollmentId: "enrol-b", scorePct: 90 },
+      ],
+      nameById,
+      emailById,
+    });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].related_enrollment_id).toBe("enrol-a");
+  });
+});
 
 function regularSession(overrides: Partial<ScanSessionRow>): ScanSessionRow {
   return {

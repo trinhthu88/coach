@@ -123,26 +123,8 @@ CREATE TRIGGER trg_pcspn_updated
 BEFORE UPDATE ON public.peer_coach_session_private_notes
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
--- ============================================================
--- 3) REALTIME: deny broadcast/presence on realtime.messages by default
--- ============================================================
--- postgres_changes events still flow via table RLS; this only restricts
--- broadcast and presence, which we don't use.
-ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Realtime: deny broadcast/presence by default" ON realtime.messages;
-CREATE POLICY "Realtime: deny broadcast/presence by default"
-ON realtime.messages
-FOR SELECT
-TO authenticated
-USING (false);
-
-DROP POLICY IF EXISTS "Realtime: deny insert broadcast/presence by default" ON realtime.messages;
-CREATE POLICY "Realtime: deny insert broadcast/presence by default"
-ON realtime.messages
-FOR INSERT
-TO authenticated
-WITH CHECK (false);
+-- realtime.messages is Supabase-managed and must not be altered by application migrations.
+-- This application does not use Realtime broadcast or presence.
 
 -- ============================================================
 -- 4) ADMIN EMAIL: remove hardcoded email from handle_new_user

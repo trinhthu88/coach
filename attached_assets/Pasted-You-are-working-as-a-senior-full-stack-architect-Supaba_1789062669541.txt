@@ -1,0 +1,507 @@
+You are working as a senior full-stack architect, Supabase/PostgreSQL engineer, React/TypeScript developer, data migration specialist, and business analyst.
+
+Repository:
+https://github.com/trinhthu88/coach.git
+
+Your task is to redesign and implement Clariva’s data architecture so that all programme participation and activity data is scoped by `enrollment_id`.
+
+Do not start by blindly changing files. First inspect:
+
+- `RULES.md`, `AGENTS.md`, and all repository instructions.
+- The complete Supabase migration history.
+- Current tables, constraints, indexes, RLS policies, database functions, triggers, and RPCs.
+- All frontend hooks, forms, routes, dashboards, and reporting queries affected by enrollment, sessions, goals, actions, training, prompts, reflections, triads, and sponsor reporting.
+- Existing tests and generated Supabase TypeScript types.
+- Current uncommitted changes. Preserve unrelated user changes.
+
+After inspection, write a concise implementation plan and then execute it in safe, testable phases. If repository reality conflicts materially with these requirements, explain the conflict before proceeding. Otherwise, implement autonomously.
+
+# 1. Core identity and enrollment model
+
+Use these rules:
+
+- `user_id` is the permanent identity of a person.
+- The same `user_id` can act as a coachee/leader, coach, mentor, peer, sponsor, or administrator.
+- Role columns such as `coach_id`, `mentor_id`, `sponsor_id`, or participant IDs are actor references. Do not use them as the programme ownership key.
+- `enrollment_id` represents one user’s participation in one specific `cohort_id`.
+- Programme activity belongs to an enrollment, not directly to a person.
+- Programme and cohort must be derived through the enrollment wherever possible.
+- A user may have multiple historical enrollments but cannot have more than one ongoing enrollment at a time.
+- Ongoing statuses are:
+  - `active`
+  - `at_risk`
+  - `paused`
+- A new enrollment is allowed only when all previous enrollments are `completed` or another explicitly terminal status approved by the existing domain model.
+- Enforce this rule at database level with an appropriate partial unique index or constraint, not only in the UI.
+- The current migration may enforce uniqueness only for `status = 'active'`. Replace that behavior safely so `active`, `at_risk`, and `paused` all count as ongoing.
+- When an admin attempts to enroll a user who already has an ongoing enrollment:
+  - block the operation;
+  - return a clear domain error;
+  - show the current programme, cohort, enrollment status, and relevant dates;
+  - provide navigation to that enrollment where practical.
+- Handle race conditions: two concurrent requests must not create two ongoing enrollments.
+
+# 2. Enrollment-scoped programme data
+
+Every programme-related record must reference `enrollment_id`, directly or through an unambiguous parent that references it.
+
+Audit and update all applicable data, including:
+
+- Coaching sessions
+- Mentoring sessions
+- Peer-coaching sessions
+- Triad groups, participation, sessions, and reflections
+- Training progress
+- Assignment submissions
+- Programme goals
+- Goal ratings/check-ins
+- Milestones
+- Action items
+- Reflections
+- Prompt responses
+- Session feedback and satisfaction ratings
+- Attendance, booking, cancellation, and completion data
+- Programme progress calculations
+- Sponsor reporting queries and RPCs
+
+Do not rely on matching `user_id` plus date ranges to infer an enrollment in normal application operation.
+
+External coaches and mentors may participate as actor `user_id` references without being enrolled as learners in the cohort.
+
+Peer-coaching and triad learner participants must belong to the same cohort. Validate this in the database and application layer wherever possible.
+
+Prefer an incremental redesign:
+
+- Keep the existing domain session tables when replacing them with a single generic table would cause unnecessary risk.
+- Add consistent enrollment ownership.
+- Build a normalized reporting view or RPC if a unified activity stream is needed.
+- Avoid a high-risk “rewrite everything into one universal session table” migration unless the existing schema clearly supports that safely.
+
+# 3. Programme composition
+
+Training is optional.
+
+A programme may contain any supported combination of:
+
+- Coaching
+- Mentoring
+- Peer coaching
+- Triad sessions
+- Training
+- Assignments, prompts, or reflections where configured
+
+Examples include:
+
+- Executive coaching only
+- Mentoring only
+- Coaching plus training
+- Training plus peer coaching
+- Multi-module leadership programmes
+
+Do not require a training module to create, track, or report coaching, mentoring, peer-coaching, or triad sessions.
+
+# 4. Programme module configuration and scheduling
+
+Create or adapt a programme-module configuration model.
+
+For every enabled module, an admin must be able to configure:
+
+- Whether it is enabled
+- Whether it is required or optional
+- Required quantity, such as six coaching sessions
+- Programme duration or applicable date range
+- Distribution mode
+- Any distribution-specific settings
+- Optional module weight, only if Clariva supports an overall blended progress score
+
+The distribution-mode dropdown should support:
+
+- `evenly_distributed`
+- `monthly_frequency`
+- `training_linked`
+- `custom`
+- `flexible`
+
+Expected behavior:
+
+- `evenly_distributed`: generate milestones evenly between enrollment start and end.
+- `monthly_frequency`: distribute the required quantity by month or configured interval.
+- `training_linked`: associate session expectations with selected training modules or learning milestones.
+- `custom`: admin supplies explicit milestone dates or date windows.
+- `flexible`: required quantity is defined, but there are no intermediate due dates; only the final programme deadline applies.
+
+The admin should not have to enter every deadline for normal evenly distributed or monthly programmes.
+
+Generate enrollment-level schedule snapshots when an enrollment begins. Historical enrollments must retain their original schedule even when the programme template changes.
+
+Programme-template edits apply to future enrollments by default. Applying a template change to ongoing enrollments must be an explicit admin action with an impact preview.
+
+Store deadline snapshots rather than dynamically recalculating historical deadlines from the latest template.
+
+# 5. Progress model
+
+For each module calculate and expose two distinct concepts.
+
+Full completion:
+
+`completed required units / total required units`
+
+Example: two completed sessions out of six = 33%.
+
+Due-to-date adherence:
+
+`completed required units / units due by today`
+
+Cap adherence at 100%.
+
+Also calculate a separate pace status:
+
+- `not_yet_due`
+- `ahead`
+- `on_track`
+- `scheduled`
+- `behind`
+- `completed`
+
+Rules:
+
+- A booked session does not count as completed.
+- A booked future session may satisfy schedule coverage and produce `scheduled`.
+- Before the first milestone is due, show `not_yet_due`.
+- The primary module progress bar uses full completion.
+- Pace is shown separately.
+- Do not disguise overdue work by counting bookings as completion.
+- Account for cancelled and rescheduled sessions correctly.
+- All calculations must use enrollment-level schedule snapshots.
+
+For blended programmes, show each module’s progress separately.
+
+Do not create a mathematically misleading overall percentage by simply averaging or adding different activities. Only calculate overall programme progress when explicit module weights exist and sum to 100%. Otherwise return no overall percentage and show the module breakdown.
+
+# 6. Goals
+
+Goals are enrollment-level programme goals, not coaching-only goals.
+
+A learner may create goals:
+
+- During onboarding
+- From the goals page
+- During the first coaching session
+- During mentoring
+- During peer coaching
+- During a triad session
+
+Any supported session type may link to and update an existing goal.
+
+Goal rules:
+
+- Each ongoing enrollment can have between one and three active goals.
+- Default `max_active_goals` to 3 and allow programme configuration if it fits the existing programme model.
+- Enforce the active-goal limit in the database as well as the UI.
+- Achieved, cancelled, or archived goals do not count toward the active limit.
+- Preserve historical goals.
+- Every goal belongs to exactly one `enrollment_id`.
+- A goal has a target date.
+- Default the target date to the enrollment end date.
+- The learner may choose an earlier target date, within the enrollment period.
+- For triads, each learner works on goals belonging to their own enrollment. Do not create one shared personal goal for the whole triad.
+- Distinguish a programme goal from a private, one-session objective.
+- Private session objectives must never automatically become sponsor-visible goals.
+
+Preserve the current 0–100 database rating scale for migration compatibility unless there is a compelling technical reason to change it. The UI may display a 1–10 scale by converting consistently, but do not maintain two conflicting sources of truth.
+
+# 7. Universal goal check-ins
+
+Replace coaching-only goal rating behavior with a reusable goal-check-in flow available after every supported completed session:
+
+- Coaching
+- Mentoring
+- Peer coaching
+- Triad
+
+The flow should:
+
+1. Display only active goals belonging to the session’s enrollment.
+2. Allow the learner to select which goals were relevant to the session.
+3. Record a rating only for selected goals.
+4. Allow “no change” as a valid rating result.
+5. Store the source activity/session type and source record ID.
+6. Store the previous rating, new rating, timestamp, and actor.
+7. Update the goal’s current rating atomically with the check-in history.
+8. Never insert a fabricated default rating such as 50 when the user did not supply a rating.
+9. Preserve the complete rating history.
+
+Use database transactions or an RPC so check-in history and current goal state cannot diverge.
+
+Define goal progress from rating movement, handling division-by-zero and reverse-direction goals safely. Keep raw current rating available so reporting does not depend only on a derived percentage.
+
+# 8. Actions and milestones
+
+Normalize action items instead of keeping important programme actions only inside session JSON.
+
+Each action should support:
+
+- `id`
+- `enrollment_id`
+- `goal_id`
+- optional `milestone_id`
+- optional source activity type
+- optional source activity ID
+- title/description
+- owner `user_id`
+- due date
+- status
+- completion timestamp
+- created/updated timestamps
+
+Actions created after a session have their own shorter deadlines. Goal target dates and action deadlines are separate concepts.
+
+Keep these metrics separate:
+
+- Goal progress: movement from start rating toward target rating.
+- Action progress: completed actions or milestones divided by total applicable actions or milestones.
+
+If legacy session JSON must remain temporarily for compatibility, implement a controlled transition and one authoritative source of truth. Do not allow two permanently divergent action stores.
+
+# 9. Data migration
+
+Use a staged, reversible migration strategy.
+
+Required phases:
+
+1. Add new columns/tables/indexes without immediately breaking old reads.
+2. Backfill `enrollment_id` where the correct enrollment is deterministic.
+3. Detect ambiguous historical records.
+4. Produce an audit query or migration report for ambiguous and orphaned records.
+5. Do not silently attach ambiguous records to an arbitrary enrollment.
+6. Update writes so all new programme data requires `enrollment_id`.
+7. Update reads, RPCs, progress calculations, and UI routes to use enrollment scope.
+8. Add `NOT NULL`, foreign keys, uniqueness, and validation constraints only after the backfill is verified.
+9. Remove or deprecate legacy person-scoped behavior only when no consumers remain.
+
+Backfill matching may consider:
+
+- user identity;
+- cohort;
+- programme;
+- enrollment date range;
+- source session relationships;
+- existing cohort-linked parents.
+
+Document the deterministic matching rule.
+
+Make migrations safe to run once in production and predictable in local reset environments. Do not edit previously deployed migrations unless repository conventions explicitly permit it; normally create new forward migrations.
+
+# 10. RLS and authorization
+
+Review and update RLS for every affected table, view, function, and RPC.
+
+Requirements:
+
+- Learners can access only data for their own enrollments.
+- Coaches and mentors can access only records for assigned participants and permitted session context.
+- Peer and triad participants can access only the appropriate shared session metadata and their own private reflections/goals.
+- Organisation administrators can manage only their organisation’s programmes, cohorts, and enrollments.
+- Sponsors receive only the approved reporting data described below.
+- Privileged functions must validate organisation and enrollment scope internally.
+- Do not trust a frontend-supplied `enrollment_id` without authorization checks.
+- Use `SECURITY DEFINER` only when required, with safe `search_path` and explicit authorization.
+- Ensure views do not accidentally bypass RLS or expose private fields.
+
+# 11. Sponsor reporting model
+
+Implement the reporting data contracts after the enrollment-scoped model is correct.
+
+Sponsor access has three levels.
+
+## Level 1: Organisation dashboard
+
+Aggregate across all cohorts belonging to the sponsor’s organisation.
+
+Show aggregate data such as:
+
+- Number of cohorts
+- Number of leaders/enrollments
+- Ongoing, completed, paused, and at-risk enrollment counts
+- Module completion and due-to-date adherence
+- Pace distribution
+- Schedule coverage
+- Aggregate goal setup and numeric progress
+- Aggregate numeric satisfaction rating
+- Cohort comparison cards
+
+Do not expose leader names on the organisation overview unless an existing approved requirement explicitly calls for a named exception.
+
+## Level 2: Cohort detail
+
+Show:
+
+- Cohort identity and programme dates
+- Enrollment/leader counts by status
+- Module-level completion, adherence, and pace
+- Upcoming and overdue requirements
+- Aggregate numeric goal progress
+- Aggregate numeric satisfaction rating
+- Named leader roster
+- For each leader: operational progress, pace, goal setup/progress, and permitted status indicators
+
+Use `cohort_id` in routes and queries. Do not use cohort name as the database identity.
+
+## Level 3: Individual leader detail
+
+Scope every query by `enrollment_id`, not only `user_id`.
+
+Show:
+
+- Programme and cohort
+- Enrollment status and dates
+- Module requirements
+- Completed, booked, due, and overdue counts
+- Full completion and due-to-date adherence
+- Pace status
+- Goal count
+- Numeric goal progress
+- Action completion summary without action text
+- Numeric satisfaction ratings without comments
+- Appropriate attendance and schedule coverage
+
+Sponsor privacy exclusions:
+
+- Coaching or mentoring notes
+- Session topics or private objectives
+- Reflection answers
+- Prompt answers
+- Written feedback or satisfaction comments
+- Quiz answers or scores unless separately and explicitly approved
+- Assessment outcomes
+- Goal wording/title by default
+- Action wording/content
+- Uploaded files
+- Recordings
+- Transcripts
+- Private triad or peer-session content
+
+Sponsors may see numeric satisfaction ratings, but never comments.
+
+Sponsors may see numeric goal progress, number of goals, setup status, and last-update date. Keep goal wording hidden by default. If the application later needs sponsor-aligned goal wording, implement explicit per-goal consent rather than making all goal text visible.
+
+# 12. Frontend behavior
+
+Update all affected React/TypeScript screens and hooks.
+
+Requirements:
+
+- Maintain a clearly selected enrollment context.
+- Do not silently select the wrong historical enrollment.
+- If the user has one ongoing enrollment, use it.
+- Historical data must be opened using an explicit enrollment route or selector.
+- Session creation must receive or resolve a valid enrollment.
+- Session participants must be validated against that enrollment and cohort.
+- Goal pages, journey pages, training pages, prompts, reflections, and session completion flows must query by enrollment.
+- Admin enrollment forms must display the ongoing-enrollment conflict clearly.
+- Programme configuration forms must explain distribution modes in plain language.
+- Progress UI must distinguish completion from pace/adherence.
+- Do not show “0% behind” before the first deadline; show “Not yet due.”
+- Regenerate Supabase TypeScript types after schema changes.
+- Remove stale `any` workarounds created only because old types lacked new fields.
+
+# 13. Compatibility and code quality
+
+- Follow existing repository patterns unless they conflict with these requirements.
+- Avoid unrelated refactoring.
+- Centralize progress calculations so the sponsor dashboard, cohort page, leader detail, and learner views cannot calculate different results.
+- Centralize authorization and enrollment-resolution logic.
+- Prefer small, well-named functions and hooks over large components.
+- Preserve existing valid data.
+- Keep legacy compatibility only for a defined migration period.
+- Add comments only where the business rule is not obvious from the code.
+- Do not expose confidential data in logs or error messages.
+
+# 14. Testing
+
+Add database and application tests covering at least:
+
+Enrollment:
+
+- A user can have multiple completed historical enrollments.
+- A user cannot have two `active` enrollments.
+- A user cannot have `active` plus `paused`.
+- A user cannot have `at_risk` plus another ongoing enrollment.
+- Concurrent enrollment attempts cannot bypass the constraint.
+- Admin receives a useful conflict message.
+
+Scope:
+
+- Activity from enrollment A never appears in enrollment B for the same user.
+- Sessions, goals, actions, training, prompts, and reflections resolve the correct enrollment.
+- Peer and triad participants must belong to the same cohort.
+- External coach/mentor participation works without learner enrollment.
+
+Progress:
+
+- Coaching-only programme with six sessions over three months.
+- Before the first due date.
+- On-track completion.
+- Ahead of schedule.
+- Booked but not completed.
+- Behind schedule.
+- Cancelled/rescheduled sessions.
+- Flexible distribution.
+- Custom schedule.
+- Training-linked schedule.
+- Blended programme without weights.
+- Blended programme with valid weights.
+
+Goals:
+
+- Maximum three active goals.
+- Archived goals do not count against the limit.
+- Goal dates remain inside the enrollment period.
+- Goal check-ins work for all session types.
+- Unselected goals receive no fabricated rating.
+- Check-in history and current rating update atomically.
+- Enrollment A’s goals cannot be linked to enrollment B’s session.
+
+Sponsor privacy:
+
+- Sponsor queries expose permitted numeric metrics.
+- Sponsor queries never expose private notes, goal wording, action wording, reflections, prompt content, comments, files, recordings, or transcripts.
+- Cross-organisation access is denied.
+
+Run:
+
+- Database migration/reset validation
+- SQL tests
+- TypeScript type checking
+- Linting
+- Unit/integration tests
+- Production build
+
+Do not claim success unless the relevant commands pass. If pre-existing failures remain, separate them clearly from failures caused by this change.
+
+# 15. Deliverables
+
+When finished, provide:
+
+1. Architecture summary.
+2. List of migrations and schema changes.
+3. Data-backfill strategy and ambiguity report/query.
+4. List of frontend flows updated.
+5. RLS and privacy summary.
+6. Progress formulas used.
+7. Tests added and exact verification results.
+8. Remaining risks or manual deployment steps.
+9. A concise rollback strategy.
+10. Git diff summary and commit hashes if commits were created.
+
+Implement this as several logical commits where practical:
+
+1. Enrollment constraints and core schema.
+2. Enrollment backfill and activity ownership.
+3. Module scheduling and progress engine.
+4. Goals, check-ins, actions, and milestones.
+5. Frontend enrollment-context changes.
+6. Sponsor reporting and privacy.
+7. Tests, cleanup, and documentation.
+
+Do not push, deploy, delete production data, or run destructive production migrations without explicit approval.

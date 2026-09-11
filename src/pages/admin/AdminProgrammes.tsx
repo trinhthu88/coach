@@ -23,6 +23,8 @@ import { getFriendlyErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import type { ProgrammeModuleType } from "@/hooks/useProgrammeModules";
 import type { Json } from "@/integrations/supabase/types";
+import { ProgrammeModuleScheduleFields, type TrainingWeekOption } from "./ProgrammeModuleScheduleFields";
+import { normalizeModuleScheduleConfig, validateModuleScheduleConfig } from "@/lib/programmeModuleConfig";
 
 const MODULE_ICONS: Record<ProgrammeModuleType, LucideIcon> = {
   coaching: Users,
@@ -46,8 +48,7 @@ interface Programme {
   coach_session_limit: number;
   peer_session_limit: number;
   peer_given_limit: number;
-  // Unlike the four limits above (NOT NULL, numeric default), this one is
-  // nullable — NULL = unlimited, matching coach_programmes' convention.
+  // NULL means unlimited for the mentoring module.
   mentoring_received_limit: number | null;
 }
 
@@ -136,12 +137,14 @@ function ModuleConfigRow({
   onToggle,
   onConfigChange,
   t,
+  trainingWeeks,
 }: {
   module: ProgrammeModuleType;
   row: ModuleRow;
   onToggle: (enabled: boolean) => void;
   onConfigChange: (patch: Record<string, unknown>) => void;
   t: (key: string, opts?: Record<string, unknown>) => string;
+  trainingWeeks: TrainingWeekOption[];
 }) {
   const cfg = row.config;
   const Icon = MODULE_ICONS[module];
@@ -235,6 +238,11 @@ function ModuleConfigRow({
               {t("programmes.modules.includeDirectReports")}
             </label>
           )}
+          <ProgrammeModuleScheduleFields
+            config={cfg}
+            onChange={onConfigChange}
+            trainingWeeks={trainingWeeks}
+          />
         </div>
       )}
     </div>
@@ -249,6 +257,7 @@ export default function AdminProgrammes() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Programme> | null>(null);
   const [moduleRows, setModuleRows] = useState<ModuleRows>(defaultModuleRows());
+  const [trainingWeeks, setTrainingWeeks] = useState<TrainingWeekOption[]>([]);
   const [saving, setSaving] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -256,12 +265,20 @@ export default function AdminProgrammes() {
     setEditing(p);
     if (!p?.id) {
       setModuleRows(defaultModuleRows());
+      setTrainingWeeks([]);
       return;
     }
-    const { data } = await supabase
-      .from("programme_modules")
-      .select("module, enabled, config")
-      .eq("programme_id", p.id);
+    const [{ data }, { data: weekData }] = await Promise.all([
+      supabase
+        .from("programme_modules")
+        .select("module, enabled, config")
+        .eq("programme_id", p.id),
+      supabase
+        .from("training_weeks")
+        .select("id, week_number, title")
+        .eq("programme_id", p.id)
+        .order("week_number"),
+    ]);
     const rows = defaultModuleRows();
     (data || []).forEach((m) => {
       rows[m.module] = {
@@ -270,6 +287,11 @@ export default function AdminProgrammes() {
       };
     });
     setModuleRows(rows);
+    setTrainingWeeks((weekData || []).map((week) => ({
+      id: week.id,
+      weekNumber: week.week_number,
+      title: week.title,
+    })));
   };
 
   const updateModule = (mod: ProgrammeModuleType, patch: Partial<ModuleRow>) =>
@@ -298,6 +320,14 @@ export default function AdminProgrammes() {
 
   const save = async () => {
     if (!editing?.name?.trim()) { toast.error(t("programmes.nameRequired")); return; }
+    for (const module of MODULE_TYPES) {
+      if (!moduleRows[module].enabled) continue;
+      const validationKey = validateModuleScheduleConfig(moduleRows[module].config, trainingWeeks.map((week) => week.id));
+      if (validationKey) {
+        toast.error(`${t(`programmes.modules.types.${module}`)}: ${t(validationKey)}`);
+        return;
+      }
+    }
     setSaving(true);
     try {
       const payload = {
@@ -326,7 +356,7 @@ export default function AdminProgrammes() {
         programme_id: programmeId,
         module,
         enabled: moduleRows[module].enabled,
-        config: moduleRows[module].config as Json,
+        config: normalizeModuleScheduleConfig(moduleRows[module].config) as Json,
       }));
       const { error: moduleError } = await supabase
         .from("programme_modules")
@@ -466,7 +496,7 @@ export default function AdminProgrammes() {
       </Card>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing?.id ? t("programmes.dialogTitleEdit") : t("programmes.dialogTitleNew")}</DialogTitle>
           </DialogHeader>
@@ -531,6 +561,7 @@ export default function AdminProgrammes() {
                       onToggle={(enabled) => updateModule(mod, { enabled })}
                       onConfigChange={(patch) => updateModuleConfig(mod, patch)}
                       t={t}
+                      trainingWeeks={trainingWeeks}
                     />
                   ))}
                 </div>

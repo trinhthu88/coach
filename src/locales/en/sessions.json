@@ -263,6 +263,7 @@
     }
   },
   "goalRatings": {
+    "enrollmentRequired": "Goal ratings are unavailable until an enrollment is selected.",
     "title": "Goal reflection",
     "emptyPrefix": "No active goals yet. Add goals in",
     "emptyLinkText": "My journey",
