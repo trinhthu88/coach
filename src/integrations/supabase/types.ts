@@ -1467,6 +1467,45 @@ export type Database = {
           },
         ]
       }
+      enrollment_ownership_retirements: {
+        Row: {
+          domain: string
+          evidence: Json
+          migration_id: string
+          parent_record_id: string | null
+          reason: string
+          record_id: string
+          retired_at: string
+          source_activity_id: string | null
+          source_activity_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          domain: string
+          evidence?: Json
+          migration_id: string
+          parent_record_id?: string | null
+          reason: string
+          record_id: string
+          retired_at?: string
+          source_activity_id?: string | null
+          source_activity_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          domain?: string
+          evidence?: Json
+          migration_id?: string
+          parent_record_id?: string | null
+          reason?: string
+          record_id?: string
+          retired_at?: string
+          source_activity_id?: string | null
+          source_activity_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       enrollment_schedule_backfill_audit: {
         Row: {
           enrollment_id: string
@@ -3976,6 +4015,10 @@ export type Database = {
       is_active_coach_profile: { Args: { _id: string }; Returns: boolean }
       is_allowlisted_pair: {
         Args: { _target: string; _viewer: string }
+        Returns: boolean
+      }
+      is_historical_ownership_retired: {
+        Args: { p_domain: string; p_record_id: string }
         Returns: boolean
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
