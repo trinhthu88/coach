@@ -21,7 +21,7 @@ DECLARE
   ca uuid := '11111111-1111-4111-8111-111111111114';
   cb uuid := '11111111-1111-4111-8111-111111111115';
   sponsor uuid; uid uuid; eid uuid; coach uuid; mentor uuid; gid uuid; admin_id uuid;
-  i int; email text; nm text; cohort uuid; programme uuid; start_date date; end_date date;
+  i int; fixture_email text; nm text; cohort uuid; programme uuid; start_date date; end_date date;
   coaches uuid[];
 BEGIN
   INSERT INTO public.organizations(id,name) VALUES(org,'Clariva Erickson Demo Organisation')
@@ -81,13 +81,13 @@ BEGIN
   INSERT INTO profiles(id,email,full_name,status) VALUES(admin_id,'admin@demo.clariva.club','Local Demo Admin','active') ON CONFLICT(id) DO NOTHING;
   INSERT INTO user_roles(user_id,role) VALUES(admin_id,'admin') ON CONFLICT(user_id,role) DO NOTHING;
   FOR i IN 1..2 LOOP
-    email:=format('provider.%s@demo.clariva.club',i); nm:=format('Demo Provider %s',i);
-    SELECT id INTO uid FROM auth.users WHERE lower(auth.users.email)=lower(email) LIMIT 1;
+    fixture_email:=format('provider.%s@demo.clariva.club',i); nm:=format('Demo Provider %s',i);
+    SELECT id INTO uid FROM auth.users WHERE lower(auth.users.email)=lower(fixture_email) LIMIT 1;
     IF uid IS NULL THEN uid:=('11111111-1111-4111-8111-'||lpad((120+i)::text,12,'0'))::uuid;
       INSERT INTO auth.users(id,instance_id,aud,role,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
-      VALUES(uid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',email,now(),jsonb_build_object('full_name',nm),now(),now()) ON CONFLICT(id) DO NOTHING;
+      VALUES(uid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',fixture_email,now(),jsonb_build_object('full_name',nm),now(),now()) ON CONFLICT(id) DO NOTHING;
     END IF;
-    INSERT INTO profiles(id,email,full_name,status) VALUES(uid,email,nm,'active') ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name;
+    INSERT INTO profiles(id,email,full_name,status) VALUES(uid,fixture_email,nm,'active') ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name;
     INSERT INTO user_roles(user_id,role) VALUES(uid,'coach') ON CONFLICT(user_id,role) DO NOTHING;
     INSERT INTO coach_profiles(id,title,approval_status) VALUES(uid,CASE WHEN i=1 THEN 'Executive Coach' ELSE 'Leadership Mentor' END,'active') ON CONFLICT(id) DO UPDATE SET approval_status='active';
   END LOOP;
@@ -97,16 +97,16 @@ BEGIN
   coach:=coaches[1]; mentor:=coaches[2];
 
   FOR i IN 1..10 LOOP
-    email:=format('leader.%s@demo.clariva.club',CASE WHEN i<=5 THEN 'a'||i ELSE 'b'||(i-5) END);
+    fixture_email:=format('leader.%s@demo.clariva.club',CASE WHEN i<=5 THEN 'a'||i ELSE 'b'||(i-5) END);
     nm:=format('Leader %s%s',CASE WHEN i<=5 THEN 'A' ELSE 'B' END,CASE WHEN i<=5 THEN i ELSE i-5 END);
-    SELECT id INTO uid FROM auth.users WHERE lower(auth.users.email)=lower(email) LIMIT 1;
+    SELECT id INTO uid FROM auth.users WHERE lower(auth.users.email)=lower(fixture_email) LIMIT 1;
     IF uid IS NULL THEN
       uid:=('11111111-1111-4111-8111-'||lpad(i::text,12,'0'))::uuid;
       INSERT INTO auth.users(id,instance_id,aud,role,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
-      VALUES(uid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',email,now(),jsonb_build_object('full_name',nm),now(),now())
+      VALUES(uid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',fixture_email,now(),jsonb_build_object('full_name',nm),now(),now())
       ON CONFLICT(id) DO NOTHING;
     END IF;
-    INSERT INTO profiles(id,email,full_name,status) VALUES(uid,email,nm,'active') ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name;
+    INSERT INTO profiles(id,email,full_name,status) VALUES(uid,fixture_email,nm,'active') ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name;
     INSERT INTO user_roles(user_id,role) VALUES(uid,'coachee') ON CONFLICT(user_id,role) DO NOTHING;
     INSERT INTO coachee_profiles(id,job_title,industry,location,timezone,goals,approval_status)
       VALUES(uid,'Demo Leader','Professional services','Ho Chi Minh City, Vietnam','Asia/Ho_Chi_Minh',
