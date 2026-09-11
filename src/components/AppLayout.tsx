@@ -354,6 +354,7 @@ function SidebarFooter({
 export default function AppLayout() {
   const { t } = useTranslation("common");
   const { user, profile, role, signOut } = useAuth();
+  const isLiveDemo = user?.app_metadata?.live_demo === true;
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -609,6 +610,11 @@ export default function AppLayout() {
         </header>
 
         <div className="flex-1 overflow-y-auto">
+          {isLiveDemo && (
+            <div className="border-b border-amber-300 bg-amber-50 px-6 py-2 text-center text-[12px] text-amber-950">
+              Shared fictional demo — changes are visible to other prospects. Do not enter confidential information.
+            </div>
+          )}
           <div className="mx-auto w-full max-w-[1240px] px-6 pb-20 pt-9 sm:px-[30px]">
             <Outlet />
           </div>
@@ -629,4 +635,3 @@ export default function AppLayout() {
     </div>
   );
 }
-

@@ -60,6 +60,7 @@ function initials(name: string) {
 export default function SponsorSettings() {
   const { t } = useTranslation("sponsor");
   const { user, profile, refreshProfile } = useAuth();
+  const isLiveDemo = user?.app_metadata?.live_demo === true;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Tab 1 — profile form. full_name/preferred_language live on profiles;
@@ -208,7 +209,7 @@ export default function SponsorSettings() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={avatarUploading}
+                  disabled={avatarUploading || isLiveDemo}
                   className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow"
                   aria-label={t("settings.profile.changeAvatar")}
                 >
@@ -228,23 +229,28 @@ export default function SponsorSettings() {
               </div>
             </div>
 
-            <div><Label>{t("settings.profile.fullNameLabel")}</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+            {isLiveDemo && (
+              <p className="rounded-lg border bg-muted/30 p-3 text-[12px] text-muted-foreground">
+                This shared Demo Sponsor account is read-only. You can explore reports, filters, cohorts, date ranges, drill-downs and exports.
+              </p>
+            )}
+            <div><Label>{t("settings.profile.fullNameLabel")}</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} disabled={isLiveDemo} /></div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><Label>{t("settings.profile.titleLabel")}</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} disabled={!sponsorRowLoaded} /></div>
-              <div><Label>{t("settings.profile.departmentLabel")}</Label><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} disabled={!sponsorRowLoaded} /></div>
+              <div><Label>{t("settings.profile.titleLabel")}</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} disabled={!sponsorRowLoaded || isLiveDemo} /></div>
+              <div><Label>{t("settings.profile.departmentLabel")}</Label><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} disabled={!sponsorRowLoaded || isLiveDemo} /></div>
             </div>
-            <div><Label>{t("settings.profile.phoneLabel")}</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={!sponsorRowLoaded} /></div>
+            <div><Label>{t("settings.profile.phoneLabel")}</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={!sponsorRowLoaded || isLiveDemo} /></div>
             <div>
               <Label>{t("settings.profile.languageLabel")}</Label>
               <Select value={form.preferred_language} onValueChange={(v) => setForm({ ...form, preferred_language: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger disabled={isLiveDemo}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            <Button onClick={saveProfile} disabled={savingProfile}>
+            <Button onClick={saveProfile} disabled={savingProfile || isLiveDemo}>
               {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />} {t("settings.profile.save")}
             </Button>
           </Card>
@@ -360,25 +366,29 @@ export default function SponsorSettings() {
                   label={t("settings.notifications.weeklyDigest")}
                   checked={prefs.weekly_digest}
                   onChange={(v) => setPrefs({ ...prefs, weekly_digest: v })}
+                  disabled={isLiveDemo}
                 />
                 <NotificationRow
                   label={t("settings.notifications.atRiskAlerts")}
                   checked={prefs.at_risk_alerts}
                   onChange={(v) => setPrefs({ ...prefs, at_risk_alerts: v })}
+                  disabled={isLiveDemo}
                 />
                 <NotificationRow
                   label={t("settings.notifications.sessionMilestones")}
                   checked={prefs.session_milestones}
                   onChange={(v) => setPrefs({ ...prefs, session_milestones: v })}
+                  disabled={isLiveDemo}
                 />
                 <NotificationRow
                   label={t("settings.notifications.monthlyAutoReport")}
                   checked={prefs.monthly_auto_report}
                   onChange={(v) => setPrefs({ ...prefs, monthly_auto_report: v })}
+                  disabled={isLiveDemo}
                 />
               </div>
             </SectionCard>
-            <Button className="mt-4" onClick={saveNotifications} disabled={savingPrefs}>
+            <Button className="mt-4" onClick={saveNotifications} disabled={savingPrefs || isLiveDemo}>
               {savingPrefs && <Loader2 className="h-4 w-4 animate-spin" />} {t("settings.notifications.save")}
             </Button>
           </Card>
@@ -388,11 +398,11 @@ export default function SponsorSettings() {
   );
 }
 
-function NotificationRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function NotificationRow({ label, checked, onChange, disabled }: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
       <span className="text-[13px]">{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} />
     </div>
   );
 }

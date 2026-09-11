@@ -15,6 +15,7 @@ import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { LIVE_DEMO_ORG_ID } from "@/lib/liveDemo";
 
 type CompanySize = "1-50" | "50-200" | "200-1000" | "1000+";
 type SubscriptionTier = "essentials" | "growth" | "enterprise";
@@ -66,6 +67,7 @@ export default function AdminOrganizations() {
   const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", title: "", department: "" });
   const [inviteBusy, setInviteBusy] = useState(false);
   const [resetBusy, setResetBusy] = useState<string | null>(null);
+  const [demoResetBusy, setDemoResetBusy] = useState(false);
   const [credential, setCredential] = useState<{ email: string; password: string; full_name: string } | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -213,6 +215,32 @@ export default function AdminOrganizations() {
     }
   };
 
+  const resetDemoData = async () => {
+    const ok = await confirm({
+      title: "Reset Demo Data",
+      description: "Restore the Clariva Demo Organization baseline? Prospect changes will be replaced. All four shared login credentials will be retained.",
+      confirmLabel: "Reset Demo Data",
+      destructive: true,
+    });
+    if (!ok) return;
+    setDemoResetBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("seed-demo-data", {
+        body: {},
+        headers: { "idempotency-key": crypto.randomUUID() },
+      });
+      if (error) throw error;
+      const result = data as { error?: string; generation?: number };
+      if (result?.error) throw new Error(result.error);
+      toast.success(`Demo data restored (generation ${result.generation ?? "updated"})`);
+      await load();
+    } catch (e) {
+      toast.error(getFriendlyErrorMessage(e, t, { fallback: "Demo reset failed. No client organization was changed." }));
+    } finally {
+      setDemoResetBusy(false);
+    }
+  };
+
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
@@ -275,6 +303,17 @@ export default function AdminOrganizations() {
                 <Button variant="outline" size="sm" onClick={() => setEditing(o)}><Pencil className="h-3.5 w-3.5" /> {t("organizations.edit")}</Button>
                 <Button variant="ghost" size="sm" onClick={() => removeOrg(o.id)}><Trash2 className="h-3.5 w-3.5" /> {t("organizations.delete")}</Button>
               </div>
+              {o.id === LIVE_DEMO_ORG_ID && (
+                <div className="mt-3 border-t pt-3">
+                  <p className="mb-2 text-[11px] text-muted-foreground">
+                    Restores only the registered fictional demo organization. Shared credentials are retained.
+                  </p>
+                  <Button variant="destructive" size="sm" className="w-full" onClick={resetDemoData} disabled={demoResetBusy}>
+                    {demoResetBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                    Reset Demo Data
+                  </Button>
+                </div>
+              )}
             </Card>
           );
         })}

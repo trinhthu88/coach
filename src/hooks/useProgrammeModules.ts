@@ -20,6 +20,7 @@ interface ProgrammeModule {
 
 export function useProgrammeModules() {
   const { user, role } = useAuth();
+  const isDemoCoach = user?.app_metadata?.live_demo === true && user?.app_metadata?.demo_kind === "coach";
 
   const { data, isLoading } = useQuery({
     queryKey: ["programme-modules", user?.id],
@@ -32,7 +33,12 @@ export function useProgrammeModules() {
     staleTime: 60_000,
   });
 
-  const modules = data ?? [];
+  const modules = isDemoCoach ? [
+    { module: "coaching" as const, enabled: true, config: { give: true } },
+    { module: "mentoring" as const, enabled: true, config: { give: true } },
+    { module: "peer_coaching" as const, enabled: true, config: { give: true, receive: true } },
+    { module: "triads" as const, enabled: true, config: {} },
+  ] : data ?? [];
 
   const hasModule = (mod: ProgrammeModuleType) =>
     modules.some((m) => m.module === mod && m.enabled);
