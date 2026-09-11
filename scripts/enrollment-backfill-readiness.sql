@@ -4,8 +4,12 @@ WITH unresolved AS (
   SELECT table_name AS domain, unresolved_reason AS reason
   FROM public.enrollment_scope_backfill_audit
   UNION ALL
-  SELECT 'actions/' || source_activity_type, unresolved_reason
-  FROM public.enrollment_action_backfill_audit
+  SELECT 'actions/' || a.source_activity_type, a.unresolved_reason
+  FROM public.enrollment_action_backfill_audit a
+  WHERE NOT public.is_historical_ownership_retired(
+    'actions/' || a.source_activity_type,
+    a.source_activity_id
+  )
   UNION ALL
   SELECT 'schedule', reason FROM public.enrollment_schedule_backfill_audit
 )
