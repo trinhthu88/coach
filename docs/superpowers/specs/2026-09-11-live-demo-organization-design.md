@@ -7,7 +7,7 @@ Status: Design specification for review; implementation is not authorized by thi
 
 ## Purpose and approved scope
 
-Provide prospective clients with a realistic demonstration inside the live Clariva application. One permanent, generic **Clariva Demo Organization** contains fictional programme activity and three stable shared accounts: **Demo Learner**, **Demo Coach**, and **Demo Sponsor**. The owner manually distributes credentials to selected prospects. There is no public Try Demo page, public credential listing, automatic prospect signup, or client-branded copy workflow.
+Provide prospective clients with a realistic demonstration inside the live Clariva application. One permanent, generic **Clariva Demo Organization** contains fictional programme activity and four stable shared accounts: **Demo Learner — Executive Coaching (A)**, **Demo Learner — Emerging Leaders (C)**, **Demo Coach**, and **Demo Sponsor**. The owner manually distributes credentials to selected prospects. There is no public Try Demo page, public credential listing, automatic prospect signup, or client-branded copy workflow.
 
 Learner and Coach use a hybrid experience: permitted everyday actions persist, while programme structure and core baseline records remain protected. Sponsor is strictly read-only and can explore filters, cohort selection, date ranges, drill-downs, exports, and report views. Changes remain until a real Clariva administrator invokes **Reset Demo Data**. There is no scheduled, nightly, login-triggered, or deployment-triggered reset.
 
@@ -60,9 +60,9 @@ All participants in coaching, mentoring, peer, triad, and booking relationships 
 
 ## Accounts and access
 
-There are exactly three prospect-accessible logins. Additional fictional leaders and providers are data identities, not additional distributed logins. If the schema requires Auth identities for those records, create them through supported administrative provisioning with interactive authentication disabled.
+There are exactly four prospect-accessible logins: two separate learners, one Coach, and one Sponsor. Additional fictional leaders and providers are data identities, not additional distributed logins. If the schema requires Auth identities for those records, create them through supported administrative provisioning with interactive authentication disabled.
 
-The Demo Learner maps to the normal coachee role and has one ongoing blended-programme enrollment. The Demo Coach maps to the normal coach role and is assigned only to a bounded set of demo enrollments. Demo Sponsor has only the Sponsor role and is linked solely to the demo organization. None has admin privileges or real-organization memberships.
+Both Demo Learners map to the normal coachee role. Demo Learner — Executive Coaching has one ongoing enrollment in Programme A / Cohort A. Demo Learner — Emerging Leaders has one ongoing enrollment in Programme C / Cohort C. They are separate identities, pre-enrolled by the administrator; prospects do not apply, self-enroll, switch programmes, or hold both ongoing enrollments on one account. The Demo Coach maps to the normal coach role and is assigned to both shared learners and a bounded set of other demo enrollments. Demo Sponsor has only the Sponsor role and is linked solely to the demo organization. None has admin privileges or real-organization memberships.
 
 Provisioning creates dedicated accounts before publishing the completed organization as available. Shared login UUIDs and passwords survive ordinary data resets. Reset restores their application profiles, role assignments, and demo links, but does not delete/recreate Auth users or rotate passwords. Missing or compromised Auth identities require a separate privileged repair or credential-rotation operation; reset fails closed in that case. Secrets are stored outside source control and distributed manually by the owner.
 
@@ -72,7 +72,7 @@ Show a persistent notice: this is a shared fictional demo, changes may be visibl
 
 ## Hybrid interaction contract
 
-Normal role authorization still applies. Demo authorization only narrows it. Every unlisted mutation is denied by default.
+Normal role authorization still applies. An action is available only when the user's selected enrollment, enabled programme module and enrollment snapshot, lifecycle, ownership/assignment, entitlement, and demo allowlist all permit it. Demo authorization only narrows these permissions. The table below is the maximum safe action set, not a grant of every action to every learner. Every unlisted mutation is denied by default.
 
 | Actor | Permitted behavior | Protected boundary |
 | --- | --- | --- |
@@ -93,13 +93,13 @@ Apply normal validation and bounded request/record limits to shared writes and e
 
 ## Fictional baseline and reporting coverage
 
-Use the following fixed portfolio size: 40 distinct fictional leaders in four cohorts. The shared Demo Learner is included among the 12 leaders in Cohort C, not added as a 41st leader. The shared Coach and Sponsor are not counted as leaders.
+Use the following fixed portfolio size: four distinct demo programmes, each with one corresponding cohort, and 40 distinct fictional leaders. The shared Executive Coaching learner is included among the 8 leaders in Cohort A; the shared Emerging Leaders learner is included among the 12 leaders in Cohort C. These accounts do not increase the total to 42. The shared Coach and Sponsor are not counted as leaders.
 
 | Cohort | Leaders | Programme profile | Baseline lifecycle |
 | --- | ---: | --- | --- |
-| A — Executive Coaching | 8 | Coaching only | Active cohort with varied individual progress |
+| A — Executive Coaching | 8 | Coaching only | Active cohort containing the Executive Coaching learner and varied individual progress |
 | B — Leadership Development | 10 | Coaching and blended development | Active cohort with mixed activity and satisfaction |
-| C — Emerging Leaders | 12 | Blended training, coaching, mentoring, peer and triad activity | Active cohort containing the interactive Learner |
+| C — Emerging Leaders | 12 | Blended training, coaching, mentoring, peer and triad activity | Active cohort containing the Emerging Leaders learner |
 | D — Leadership Excellence | 10 | Completed blended programme | Historical completed cohort with mixed final outcomes |
 
 An active cohort can contain paused, at-risk, or completed individual enrollments. Enrollment lifecycle and computed pace are separate dimensions: paused is not a fabricated pace enum. Across current cohorts demonstrate ahead, on_track, scheduled, behind, not_yet_due, and completed using actual progress calculations. Historical completion does not imply every goal was reached or all satisfaction scores were perfect.
@@ -109,6 +109,35 @@ The manifest must include completed and future booked coaching sessions; mentori
 Dates are derived once per successful initialization/reset from a recorded UTC anchor date. Current cohort schedules span that anchor; historical schedules end before it. Record deterministic offsets and fixture version so the same version and anchor reproduce the baseline. Normal time continues afterward: pace may age and changes persist. Do not silently shift dates, freeze the application clock, or reseed on visits. A later manual reset establishes a new anchor.
 
 Fixture assertions must use the real progress and Sponsor reporting functions at the anchor, rather than infer pace from row counts. Store schedules and enrollment snapshots consistently, respect module weights and entitlements, and keep optional/non-applicable modules distinct from zero completion.
+
+## Programme modules and learner experiences
+
+Each programme has a dedicated configuration and enrollment snapshots. A–D identify programmes as well as their corresponding cohorts; a programme and a cohort remain separate records. The following module matrix defines the demo baseline. B and D use the same blended module selection but separate programme records, schedules and content; D demonstrates completed historical delivery.
+
+| Module / capability | A — Executive Coaching | B — Leadership Development | C — Emerging Leaders | D — Leadership Excellence |
+| --- | --- | --- | --- | --- |
+| Coaching | Enabled | Enabled | Enabled | Enabled; historical |
+| Mentoring | Disabled | Enabled | Enabled | Enabled; historical |
+| Peer coaching | Disabled | Disabled | Enabled | Enabled; historical |
+| Triads | Disabled | Enabled | Enabled | Enabled; historical |
+| Training / learning content | Disabled | Enabled | Enabled | Enabled; historical |
+| Quizzes / assignments | Disabled | Enabled | Enabled | Enabled; historical |
+| Daily prompts | Disabled | Enabled | Enabled | Enabled; historical |
+| Programme reflections | Disabled | Enabled | Enabled | Enabled; historical |
+| Enrollment goals, goal check-ins and actions | Available | Available | Available | Historical, read-only |
+| Numeric session feedback | For enabled session types | For enabled session types | For enabled session types | Historical, read-only |
+
+Goals, check-ins, actions and feedback are supporting capabilities governed by existing enrollment and activity rules, not newly invented programme module enums. Programme reflections belong to the enabled learning experience; their absence in A does not disable goal check-ins or coaching-session feedback. Map each learning capability to its existing module/content controls during implementation planning; do not add a duplicate module system. Enabled does not bypass content release dates, activity prerequisites, role permissions, session limits, or baseline protection.
+
+**Learner A** demonstrates a focused coaching experience: their own programme overview, coaching bookings, goals, check-ins, actions, coaching progress and session feedback. Training, quizzes, daily prompts, programme reflections, mentoring, peer and triad actions are unavailable. A must not show missing training work or diluted progress because those modules are disabled.
+
+**Learner C** demonstrates the full blended experience: coaching, mentoring, peer and triad participation plus released learning content, quizzes, prompts and programme reflections, alongside goals and actions. Safe writes are limited by the hybrid contract. Seed dedicated eligible partners, provider assignments and session opportunities so enabled activities have valid targets. Group participation does not permit editing baseline triad structure or other participants' records.
+
+**Coach** sees both learner assignments and their different programme requirements. Assignment to C does not enable C's modules for A, and the coach role does not automatically grant mentor, peer, triad or learner permissions. Other required provider identities remain non-login fictional fixtures.
+
+**Sponsor** can compare all four programmes and cohorts. Show disabled modules as not applicable, never as incomplete or zero performance; aggregate module metrics use only eligible enrollments. D retains its enabled configuration and recorded outcomes while its completed lifecycle blocks new activity.
+
+The implementation plan must derive unit counts, weights and milestone schedules for these enabled modules using current programme configuration contracts. Those scheduling parameters do not change this module-selection decision or authorize implementation in this specification revision.
 
 ## Sponsor reporting and privacy
 
@@ -147,7 +176,7 @@ A lost HTTP response is resolved by querying the operation ID, not blindly start
 
 Place **Reset Demo Data** in the demo organization's admin detail area. Show the last successful reset, fixture version, current state and operation result. The action is absent from real-organization details and all prospect accounts.
 
-Before submission, show a confirmation naming Clariva Demo Organization and explaining that shared demo changes will be replaced and the three login credentials retained. No organization picker or freeform target is provided. Disable repeat submission while running and show success only after committed validation. Report failure with an operation reference; never display success for a partial restoration.
+Before submission, show a confirmation naming Clariva Demo Organization and explaining that shared demo changes will be replaced and all four login credentials retained. No organization picker or freeform target is provided. Disable repeat submission while running and show success only after committed validation. Report failure with an operation reference; never display success for a partial restoration.
 
 If configuration is invalid, ownership is ambiguous, accounts are missing, dependencies cross the boundary, or schema compatibility fails, keep existing data and refuse reset. A reset failure does not justify weakening scope checks. Operational recovery remains limited to the demo and never restores or rewrites the whole production database.
 
@@ -155,8 +184,8 @@ If configuration is invalid, ownership is ambiguous, accounts are missing, depen
 
 Future implementation must demonstrate:
 
-1. Exactly one registered demo organization, three accessible shared logins, and 8/10/12/10 fictional leaders across three active and one historical cohort.
-2. Allowed Learner/Coach actions succeed and persist across logout and reload; structural edits, baseline deletion and historical writes fail through direct APIs as well as UI.
+1. Exactly one registered demo organization, four accessible shared logins, four distinct programmes, and 8/10/12/10 fictional leaders across three active and one historical cohort.
+2. Allowed Learner/Coach actions succeed and persist across logout and reload; structural edits, baseline deletion and historical writes fail through direct APIs as well as UI. Verify A and C with their separate learner logins: A cannot access C's training, mentoring, peer or triad actions by URL or API; C can use its enabled modules within normal permissions. Neither learner can access the other's private enrollment. Coach permissions are checked separately against each assigned enrollment. Disabled modules contribute neither missing-work indicators nor progress denominators.
 3. Sponsor cannot mutate application settings or data through tables, RPCs, storage, Auth flows or alternate routes. Filters, dates, report views, cohort/leader drill-down and safe exports work.
 4. Organization totals, cohort reports and exports reconcile using the real reporting contracts. All specified pace scenarios are verified at the baseline anchor.
 5. Private text stays absent from Sponsor payloads and exports; production suppression remains effective under narrow filters.
@@ -171,6 +200,6 @@ Run these destructive scenarios in isolated test/staging databases containing sy
 
 ## Self-review
 
-Reviewed for placeholders, contradictions, ambiguity and scope. The contract distinguishes baseline protection from permitted progress updates, cohort lifecycle from computed pace, stable credentials from resettable application data, report exploration from Sponsor mutations, and ordinary persistence from reset-time date anchoring. Organization ownership covers resources lacking an organization column and every relationship participant. Reset concurrency, rollback, stale requests, external effects and identity collisions have explicit fail-closed behavior.
+Reviewed for placeholders, contradictions, ambiguity and scope. The contract defines four distinct programmes and two separately enrolled learner accounts, with all four shared credentials preserved on reset. Module eligibility narrows every allowed action and reporting denominator. The contract distinguishes baseline protection from permitted progress updates, cohort lifecycle from computed pace, stable credentials from resettable application data, report exploration from Sponsor mutations, and ordinary persistence from reset-time date anchoring. Organization ownership covers resources lacking an organization column and every relationship participant. Reset concurrency, rollback, stale requests, external effects and identity collisions have explicit fail-closed behavior.
 
 The deliverable is this design specification only. No code, migrations, production operations or implementation plan are included.
