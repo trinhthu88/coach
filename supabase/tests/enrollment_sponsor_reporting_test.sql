@@ -46,26 +46,26 @@ select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regpro
   'goal counts use an independent pre-aggregate');
 select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'actions',
   'action counts use an independent pre-aggregate');
-select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'e\\.id AS enrollment_id',
+select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'e\.id AS enrollment_id',
   'progress CTE uses the programme enrollment primary key');
-select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) !~ 'e\\.enrollment_id',
+select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) !~ 'e\.enrollment_id',
   'progress CTE does not reference a nonexistent enrollment_id column');
 select ok(pg_get_functiondef('public.sponsor_cohort_summaries(uuid)'::regprocedure) ~ 'THEN NULL ELSE n END',
   'suppressed cohorts do not expose exact enrollment counts');
-select ok(pg_get_functiondef('public.sponsor_cohort_summaries(uuid)'::regprocedure) ~ 'sponsor_min_leaders_for_distribution\\(\\)',
+select ok(pg_get_functiondef('public.sponsor_cohort_summaries(uuid)'::regprocedure) ~ 'sponsor_min_leaders_for_distribution\(\)',
   'privacy threshold uses canonical zero-argument function');
-select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'least\\(100',
+select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'least\(100',
   'enrollment percentages are capped');
 select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'booked_units',
   'booked units remain distinct from completed units');
-select ok(pg_get_functiondef('public.get_enrollment_progress(uuid,date)'::regprocedure) ~ 'least\\(count',
+select ok(pg_get_functiondef('public.get_enrollment_progress(uuid,date)'::regprocedure) ~ 'least\(count',
   'booked units are bounded to remaining required units');
-select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'greatest\\(0, coalesce\\(pr.due_units',
+select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'greatest\(0, coalesce\(pr.due_units',
   'overdue remains due minus completed even when booked');
 select ok(pg_get_functiondef('public.sponsor_satisfaction_summary(uuid)'::regprocedure) ~ 'sponsor_min_leaders_for_distribution',
   'satisfaction is threshold suppressed');
 select has_function('public', 'sponsor_organisation_summary', array[]::text[]);
-select ok(pg_get_functiondef('public.sponsor_organisation_summary()'::regprocedure) ~ 'sponsor_min_leaders_for_distribution\\(\\)',
+select ok(pg_get_functiondef('public.sponsor_organisation_summary()'::regprocedure) ~ 'sponsor_min_leaders_for_distribution\(\)',
   'organisation summary uses canonical zero-argument threshold');
 select ok(pg_get_function_result('public.sponsor_organisation_summary()'::regprocedure) !~* '(learner|full_name|user_id|coachee_id)',
   'organisation summary is unnamed');
@@ -84,12 +84,12 @@ select ok(not exists (
 select ok(pg_get_functiondef('public.get_enrollment_progress(uuid,date)'::regprocedure)
   ~ 'sponsor_min_leaders_for_distribution', 'individual progress requires canonical cohort threshold');
 select ok(pg_get_functiondef('public.get_enrollment_progress(uuid,date)'::regprocedure)
-  ~ 'count\\(\\*\\).*programme_enrollments', 'progress authorization counts the complete cohort');
+  ~ 'count\(\*\).*programme_enrollments', 'progress authorization counts the complete cohort');
 select has_function('public', 'get_peer_session_usage', array['uuid']);
 select has_function('public', 'can_book_peer_session', array['uuid','uuid']);
 select has_function('public', 'book_peer_session', array['uuid','uuid','text','timestamptz','integer','uuid']);
 select ok(pg_get_functiondef('public.book_peer_session(uuid,uuid,text,timestamptz,integer,uuid)'::regprocedure)
-  ~ 'auth\\.uid\\(\\)', 'peer booking RPC preserves authenticated actor identity');
+  ~ 'auth\.uid\(\)', 'peer booking RPC preserves authenticated actor identity');
 select ok(pg_get_functiondef('public.validate_peer_session_enrollment()'::regprocedure)
   ~ 'peer_coaching', 'peer booking trigger checks enabled peer coaching module');
 
