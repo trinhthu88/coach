@@ -33,6 +33,8 @@ printf '%s\n' '==> Resetting local database, migrations, and configured seed dat
 # `db reset --local` applies every migration and then supabase/seed.sql.
 # PGOPTIONS is the seed's explicit local-only guard.
 PGOPTIONS='-c app.seed_environment=local' supabase_cli db reset --local
+printf '%s\n' '==> Local/test backfill readiness report'
+supabase_cli db query --local --file scripts/enrollment-backfill-readiness.sql
 printf '%s\n' '==> Running signed-client sponsor isolation test against local Supabase'
 [[ -x supabase/tests/sponsor_isolation_test.mjs ]] || {
   printf '%s\n' 'sponsor_isolation_test.mjs must be executable' >&2
@@ -88,6 +90,9 @@ printf '%s\n' '==> Linting local database'
 supabase_cli db lint --local
 printf '%s\n' '==> Checking generated Supabase TypeScript types'
 supabase_cli gen types typescript --local --schema public > "$types_output"
+if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+  cp "$types_output" "${RUNNER_TEMP}/clariva-generated-types.ts"
+fi
 diff -u src/integrations/supabase/types.ts "$types_output"
 printf '%s\n' '==> Running TypeScript checks'
 npx tsc --noEmit
