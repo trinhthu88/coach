@@ -6,8 +6,8 @@ select has_function('public', 'sponsor_enrollment_summaries', array['uuid']);
 select has_function('public', 'sponsor_cohort_summaries', array['uuid']);
 select function_lang_is('public', 'sponsor_enrollment_summaries', 'sql');
 select function_lang_is('public', 'sponsor_cohort_summaries', 'sql');
-select has_function_privilege('authenticated', 'public.sponsor_enrollment_summaries(uuid)', 'EXECUTE');
-select has_function_privilege('authenticated', 'public.sponsor_cohort_summaries(uuid)', 'EXECUTE');
+select ok(has_function_privilege('authenticated', 'public.sponsor_enrollment_summaries(uuid)', 'EXECUTE'), 'authenticated can execute sponsor_enrollment_summaries');
+select ok(has_function_privilege('authenticated', 'public.sponsor_cohort_summaries(uuid)', 'EXECUTE'), 'authenticated can execute sponsor_cohort_summaries');
 select ok((select pronargdefaults from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname='public' and p.proname='sponsor_enrollment_summaries') = 0,
   'enrollment scope has no nullable/default cohort bypass');

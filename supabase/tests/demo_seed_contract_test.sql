@@ -32,8 +32,8 @@ select is((select count(*)::int from goal_checkins c join sessions s on s.id=c.s
 select ok(not exists(select 1 from profiles where id in
  ('ee000000-0000-0000-0000-000000000010','ee000000-0000-0000-0000-000000000020','ee000000-0000-0000-0000-000000000030')),
  'obsolete identities absent');
-select ok(has_function('public','admin_create_programme_enrollment',
- array['uuid','uuid','uuid','uuid','date','date']),'authoritative enrollment RPC exists');
+select has_function('public','admin_create_programme_enrollment',
+ array['uuid','uuid','uuid','uuid','date','date'],'authoritative enrollment RPC exists');
 -- The reset fixture owns exactly these identities in its own organisation.  Do
 -- not assert global totals: a local database may deliberately preserve other
 -- organisations/programmes.
@@ -52,7 +52,7 @@ select is((select count(*)::int from programme_enrollments where id in
  ('12121212-1212-4121-8121-000000000001','12121212-1212-4121-8121-000000000010')),2,'enrollment IDs are stable fixed IDs');
 select is((select count(*)::int from profiles where email in ('admin@demo.clariva.club','provider.1@demo.clariva.club','provider.2@demo.clariva.club')),3,'admin and providers are preserved fixtures');
 select is((select count(*)::int from user_roles r join profiles p on p.id=r.user_id where p.email like 'provider.%@demo.clariva.club' and r.role='coach'),2,'two deterministic provider roles exist');
-select ok(has_function('public','sponsor_satisfaction_summary',array['uuid']),'numeric sponsor satisfaction RPC exists');
+select has_function('public','sponsor_satisfaction_summary',array['uuid'],'numeric sponsor satisfaction RPC exists');
 select ok(has_function_privilege('authenticated','public.sponsor_satisfaction_summary(uuid)','EXECUTE'),'sponsor satisfaction RPC is callable by authenticated users');
 select is((select count(*)::int from programme_enrollments where cohort_id='11111111-1111-4111-8111-111111111114'),5,'A has five leaders');
 select is((select count(*)::int from programme_enrollments where cohort_id='11111111-1111-4111-8111-111111111115'),5,'B has five leaders');
