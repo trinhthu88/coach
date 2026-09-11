@@ -16,6 +16,12 @@ values
 insert into public.organizations (id, name)
 values ('b1000000-0000-0000-0000-000000000001', 'Schedule test organization');
 
+insert into public.user_roles (user_id, role)
+values ('a3000000-0000-0000-0000-000000000003', 'coach');
+
+insert into public.coach_profiles (id, approval_status, peer_coaching_opt_in)
+values ('a3000000-0000-0000-0000-000000000003', 'active', true);
+
 insert into public.programmes (id, name, duration_months)
 values ('c1000000-0000-0000-0000-000000000001', 'Schedule progress test programme', 3);
 

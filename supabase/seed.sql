@@ -113,7 +113,7 @@ BEGIN
         'Practise leadership habits in a realistic programme fixture.','active')
       ON CONFLICT(id) DO UPDATE SET approval_status='active',goals=excluded.goals;
     cohort:=CASE WHEN i<=5 THEN ca ELSE cb END; programme:=CASE WHEN i<=5 THEN pa ELSE pb END;
-    start_date:=CASE WHEN i=6 THEN '2026-09-01' WHEN i=7 THEN '2026-09-15'
+    start_date:=CASE WHEN i<=5 THEN '2026-09-01' WHEN i=6 THEN '2026-09-01' WHEN i=7 THEN '2026-09-15'
       WHEN i=8 THEN '2026-09-01' WHEN i=9 THEN '2026-09-01' ELSE '2026-11-15' END;
     end_date:=CASE WHEN i<=5 THEN '2026-12-01' ELSE '2027-03-01' END;
     -- Scope lookup to this seed's organisation.  A preserved unrelated row

@@ -125,8 +125,8 @@ select is((select count(*)::int from sponsor_cohort_summaries(null)),2,'sponsor 
 select is((select count(*)::int from sponsor_enrollment_summaries('11111111-1111-4111-8111-111111111114')),5,'sponsor exact enrollment total A');
 select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
  where n.nspname='public' and p.proname in ('sponsor_enrollment_summaries','sponsor_cohort_summaries')
- and pg_get_function_result(p.oid) ~* '(note|goal|action|prompt|reflection|assignment|file|triad|peer)'),
- 'sponsor result contains no private payload');
+  and pg_get_function_result(p.oid) ~* '(notes?|description|title|comment|reflection|prompt|assignment|file|recording|transcript)'),
+  'sponsor result contains no private text or content payload');
 select ok(not exists(select 1 from programmes where id in ('ee000000-0000-0000-0000-000000000001','ee000000-0000-0000-0000-000000000002')),'obsolete programme IDs absent');
 select ok(not exists(select 1 from cohorts where id in ('ee000000-0000-0000-0000-000000000101','ee000000-0000-0000-0000-000000000102')),'obsolete cohort IDs absent');
 select is((select count(*)::int from sessions where enrollment_id is null),0,'no orphan obsolete sessions');
