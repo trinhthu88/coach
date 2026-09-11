@@ -5,9 +5,6 @@
 
 WITH approved_goal_mapping(goal_id, enrollment_id) AS (
   VALUES
-    -- Historical Growth goals for the first learner.
-    ('ea31acdd-c0d7-482a-bcf2-2824bb4c6d52'::uuid, 'dda90c8c-d640-43dd-b1c5-e754925fb466'::uuid),
-    ('d8afd1c3-fc5b-47c1-a8e6-484ed373e180'::uuid, 'dda90c8c-d640-43dd-b1c5-e754925fb466'::uuid),
     -- TASC Essential demo goals for the first learner.
     ('d0000000-0000-0000-0000-000000000001'::uuid, '68426342-289a-4b04-aa61-e8ce12fd6f31'::uuid),
     ('d0000000-0000-0000-0000-000000000002'::uuid, '68426342-289a-4b04-aa61-e8ce12fd6f31'::uuid),
@@ -49,8 +46,6 @@ BEGIN
     SELECT 1
     FROM public.coachee_goals
     WHERE id IN (
-      'ea31acdd-c0d7-482a-bcf2-2824bb4c6d52'::uuid,
-      'd8afd1c3-fc5b-47c1-a8e6-484ed373e180'::uuid,
       'd0000000-0000-0000-0000-000000000001'::uuid,
       'd0000000-0000-0000-0000-000000000002'::uuid,
       'd0000000-0000-0000-0000-000000000003'::uuid,
