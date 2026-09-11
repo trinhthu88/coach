@@ -39,6 +39,14 @@ WHERE tp.training_week_id = tw.id
   AND tp.enrollment_id IS NULL
   AND public.only_enrollment_candidate(tp.user_id, tw.programme_id, NULL) IS NOT NULL;
 
+-- Quiz submissions are immutable after scoring, including through the client.
+-- The new enrollment_id is ownership metadata, not quiz content, so allow this
+-- one deterministic migration update while holding the table lock.  The
+-- trigger is restored before the migration completes and remains enforced for
+-- all later writes.
+ALTER TABLE public.assignment_submissions
+  DISABLE TRIGGER trg_prevent_quiz_resubmission;
+
 UPDATE public.assignment_submissions sub
 SET enrollment_id = public.only_enrollment_candidate(sub.user_id, tw.programme_id, NULL)
 FROM public.assignments a
@@ -46,6 +54,9 @@ JOIN public.training_weeks tw ON tw.id = a.training_week_id
 WHERE sub.assignment_id = a.id
   AND sub.enrollment_id IS NULL
   AND public.only_enrollment_candidate(sub.user_id, tw.programme_id, NULL) IS NOT NULL;
+
+ALTER TABLE public.assignment_submissions
+  ENABLE TRIGGER trg_prevent_quiz_resubmission;
 
 UPDATE public.daily_prompt_responses r
 SET enrollment_id = public.only_enrollment_candidate(r.user_id, tw.programme_id, NULL)
