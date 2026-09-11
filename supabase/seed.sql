@@ -89,7 +89,7 @@ BEGIN
     END IF;
     INSERT INTO profiles(id,email,full_name,status) VALUES(uid,fixture_email,nm,'active') ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name;
     INSERT INTO user_roles(user_id,role) VALUES(uid,'coach') ON CONFLICT(user_id,role) DO NOTHING;
-    INSERT INTO coach_profiles(id,title,approval_status) VALUES(uid,CASE WHEN i=1 THEN 'Executive Coach' ELSE 'Leadership Mentor' END,'active') ON CONFLICT(id) DO UPDATE SET approval_status='active';
+    INSERT INTO coach_profiles(id,title,approval_status,peer_coaching_opt_in) VALUES(uid,CASE WHEN i=1 THEN 'Executive Coach' ELSE 'Leadership Mentor' END,'active',true) ON CONFLICT(id) DO UPDATE SET approval_status='active',peer_coaching_opt_in=true;
   END LOOP;
   SELECT array_agg(p.id ORDER BY p.id) INTO coaches FROM profiles p JOIN user_roles r ON r.user_id=p.id
     WHERE r.role='coach';
@@ -281,8 +281,8 @@ BEGIN
     VALUES('eeeeeeee-eeee-4eee-8eee-000000000002','eeeeeeee-eeee-4eee-8eee-000000000001','2026-10-10T10:00:00Z','2026-10-10T11:00:00Z','system','accepted','accepted','accepted',e1,e2,e3,'confirmed','Private triad notes')
     ON CONFLICT(id) DO UPDATE SET status=excluded.status,notes=excluded.notes;
   INSERT INTO peer_sessions(id,enrollment_id,peer_coach_id,peer_coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
-    VALUES('eeeeeeee-eeee-4eee-8eee-000000000003',e2,u1,u2,'B peer practice','2026-10-15',60,'completed',5),
-          ('eeeeeeee-eeee-4eee-8eee-000000000004',e3,u2,u3,'B peer practice','2026-11-15',60,'confirmed',NULL)
+    VALUES('eeeeeeee-eeee-4eee-8eee-000000000003',e2,mentor_provider,u2,'B peer practice','2026-10-15',60,'completed',5),
+          ('eeeeeeee-eeee-4eee-8eee-000000000004',e3,mentor_provider,u3,'B peer practice','2026-11-15',60,'confirmed',NULL)
     ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status=excluded.status;
   INSERT INTO mentoring_sessions(id,enrollment_id,mentor_id,mentee_id,topic,start_time,duration_minutes,status,prep_file_path,mentee_notes)
     VALUES('eeeeeeee-eeee-4eee-8eee-000000000005',e2,mentor_provider,u2,'B mentoring','2026-10-20',60,'completed','demo/prep.txt','Private mentoring note'),
