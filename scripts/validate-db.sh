@@ -27,7 +27,7 @@ trap cleanup EXIT
 printf '%s\n' '==> Supabase CLI version'
 supabase_cli --version
 printf '%s\n' '==> Starting local Supabase'
-supabase_cli start
+PGOPTIONS='-c app.seed_environment=local' supabase_cli start
 stack_started=true
 printf '%s\n' '==> Resetting local database, migrations, and configured seed data'
 # `db reset --local` applies every migration and then supabase/seed.sql.
