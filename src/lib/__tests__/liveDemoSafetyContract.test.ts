@@ -22,6 +22,8 @@ describe("live demo safety contract", () => {
     expect(migration).toContain("Demo Sponsor is read-only");
     expect(migration).toContain("INSERT INTO public.coachee_coach_allowlist");
     expect(migration).toContain("INSERT INTO public.mentoring_allowlist");
+    expect(migration).toContain("INSERT INTO public.quiz_questions");
+    expect(migration).not.toContain("coach_private_notes");
     expect(migration).toContain("REVOKE ALL ON FUNCTION public.reset_live_demo_data");
     expect(migration).not.toContain("TRUNCATE");
   });

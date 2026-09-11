@@ -250,6 +250,16 @@ BEGIN
       INSERT INTO public.assignments(id,training_week_id,assignment_type,title,instructions,is_visible,due_offset_days,sort_order)
       VALUES(('d38'||i::text||'0000-0000-4000-8000-'||lpad(week_no::text,12,'0'))::uuid,('d37'||i::text||'0000-0000-4000-8000-'||lpad(week_no::text,12,'0'))::uuid,
         'reflection','Leadership reflection','Describe a fictional practice example.',true,14,1);
+      INSERT INTO public.assignments(id,training_week_id,assignment_type,title,instructions,is_visible,due_offset_days,sort_order)
+      VALUES(('d3f'||i::text||'0000-0000-4000-8000-'||lpad(week_no::text,12,'0'))::uuid,('d37'||i::text||'0000-0000-4000-8000-'||lpad(week_no::text,12,'0'))::uuid,
+        'quiz','Leadership knowledge check','Choose the strongest leadership response.',true,14,2);
+      INSERT INTO public.quiz_questions(id,assignment_id,question_text,options,explanation,sort_order)
+      VALUES(('d4b'||i::text||'0000-0000-4000-8000-'||lpad(week_no::text,12,'0'))::uuid,('d3f'||i::text||'0000-0000-4000-8000-'||lpad(week_no::text,12,'0'))::uuid,
+        'What is the best first step when giving developmental feedback?',
+        jsonb_build_array(
+          jsonb_build_object('id','a','text','Describe a specific observed behavior','is_correct',true),
+          jsonb_build_object('id','b','text','Make a general judgment about the person','is_correct',false)
+        ),'Specific observations make feedback clear and actionable.',1);
       INSERT INTO public.daily_prompts(id,training_week_id,day_offset,prompt_text)
       VALUES(('d39'||i::text||'0000-0000-4000-8000-'||lpad(week_no::text,12,'0'))::uuid,('d37'||i::text||'0000-0000-4000-8000-'||lpad(week_no::text,12,'0'))::uuid,1,'What leadership behavior will you practise?');
       INSERT INTO public.programme_reflections(id,programme_id,reflection_number,title,instructions,appears_at_week,is_visible)
@@ -288,7 +298,7 @@ BEGIN
       VALUES(('d35'||i::text||'0000-4000-8000-'||lpad(j::text,12,'0'))::uuid,eid,('d33'||i::text||'0000-0000-4000-8000-'||lpad(j::text,12,'0'))::uuid,uid,
         'Practise one leadership habit','Fictional private action detail',CASE WHEN j%3=0 THEN 'open' ELSE 'completed' END,starts+30,CASE WHEN j%3=0 THEN NULL ELSE starts+28 END);
       FOR session_no IN 1..CASE WHEN i=4 THEN 5 ELSE 1+(j%4) END LOOP
-        INSERT INTO public.sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating,coach_private_notes)
+        INSERT INTO public.sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating,coach_notes)
         VALUES(('d36'||i::text||lpad(j::text,2,'0')||'00-0000-4000-8000-'||lpad(session_no::text,12,'0'))::uuid,eid,demo_coach,uid,
           'Fictional coaching conversation',starts+(session_no*21)*interval '1 day',60,'completed',3+((j+session_no)%3),'Private fictional coaching note');
       END LOOP;
