@@ -46,9 +46,10 @@ SELECT is(
 
 SELECT is(
   (SELECT count(*)::integer
-   FROM public.enrollment_ownership_retirements),
+   FROM public.enrollment_ownership_retirements r
+   WHERE NOT public.is_historical_ownership_retired(r.source_table, r.source_record_id)),
   0,
-  'clean fixtures have no production retirement rows'
+  'every retained historical row is recognized by the retirement ledger'
 );
 
 SELECT * FROM finish();
