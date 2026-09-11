@@ -12,7 +12,7 @@ select ok(has_function_privilege('service_role','public.reset_live_demo_data(uui
 select ok(not has_function_privilege('authenticated','public.reset_live_demo_data(uuid,text,integer,date,jsonb)','EXECUTE'),'authenticated callers cannot reset directly');
 select has_trigger('public','sessions','sessions_protect_demo_baseline','seeded coaching history is protected');
 select has_trigger('public','profiles','profiles_protect_live_demo','shared demo profiles are protected');
-select has_policy('public','profiles','Profiles: live demo boundary','profile discovery has a reciprocal demo boundary');
+select ok(has_policy('public','profiles','Profiles: live demo boundary'),'profile discovery has a reciprocal demo boundary');
 
 select * from finish();
 rollback;
