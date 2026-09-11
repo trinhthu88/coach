@@ -3,3 +3,4 @@
 - [Enrollment enforcement gate](enrollment-enforcement-gate.md) — final constraints wait for zero unresolved backfill audits and explicit production approval.
 - [Demo pace fixtures](demo-pace-fixtures.md) — validate seeded pace through fixed-date progress RPC results, not inferred activity row counts.
 - [Local Supabase health failure](local-supabase-health-failure.md) — DB validation may stop before migrations because Docker cannot execute the container health check.
+- [Historical ownership retirement](historical-ownership-retirement.md) — preserve ambiguous legacy rows, record explicit retirement evidence, and exclude retired sources from repeatable readiness/backfill scans.
