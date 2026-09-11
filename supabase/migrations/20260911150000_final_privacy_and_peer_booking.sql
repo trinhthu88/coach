@@ -74,7 +74,7 @@ AS $$
     SELECT s.id,count(a.*) FILTER (WHERE a.status='completed' AND a.occurred_on<=p_as_of)::integer completed,
       least(count(a.*) FILTER (WHERE a.status IN ('pending_coach_approval','confirmed') AND a.occurred_on>=p_as_of),
         greatest(s.required_units-count(a.*) FILTER (WHERE a.status='completed' AND a.occurred_on<=p_as_of),0))::integer booked
-    FROM snapshots s LEFT JOIN activity a ON a.enrollment_id=s.enrollment_id AND a.module=s.module GROUP BY s.id
+    FROM snapshots s LEFT JOIN activity a ON a.enrollment_id=s.enrollment_id AND a.module=s.module GROUP BY s.id, s.required_units
   ), due AS (
     SELECT s.id,coalesce(sum(m.required_units) FILTER (WHERE m.due_on<=p_as_of),0)::integer units_due
     FROM snapshots s LEFT JOIN public.enrollment_module_milestones m ON m.enrollment_module_snapshot_id=s.id GROUP BY s.id
