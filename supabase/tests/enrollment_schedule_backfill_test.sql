@@ -78,7 +78,7 @@ select set_config('request.jwt.claim.sub','aa000000-0000-0000-0000-000000000003'
 select throws_ok($$select public.backfill_enrollment_schedule_snapshots()$$,'42501',NULL,'non-admin cannot execute backfill');
 select is_empty($$select * from public.enrollment_schedule_backfill_audit$$,'non-admin cannot read audit rows');
 select throws_ok($$select public.assert_enrollment_schedule_backfill_ready()$$,'42501',NULL,'non-admin cannot execute readiness assertion');
-select is((select count(*) from information_schema.columns where table_schema='public' and table_name='enrollment_schedule_backfill_audit' and column_name in ('email','full_name','topic','response_text','notes','description')),0,'audit contains no PII or coaching-content columns');
+select is((select count(*)::integer from information_schema.columns where table_schema='public' and table_name='enrollment_schedule_backfill_audit' and column_name in ('email','full_name','topic','response_text','notes','description')),0,'audit contains no PII or coaching-content columns');
 
 select set_config('request.jwt.claim.sub','aa000000-0000-0000-0000-000000000002',true);
 reset role;

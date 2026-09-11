@@ -60,7 +60,7 @@ select is((select count(*)::int from programme_enrollments where user_id in
  (select user_id from programme_enrollments where cohort_id='11111111-1111-4111-8111-111111111114')
  and cohort_id='11111111-1111-4111-8111-111111111115'),0,'cohort rosters are disjoint');
 select is((select count(*)::int from programme_modules where programme_id='11111111-1111-4111-8111-111111111112'),1,'A is coaching-only');
-select is((select sum((config->>'weight')::numeric) from programme_modules where programme_id='11111111-1111-4111-8111-111111111113'),100,'B weights total 100');
+select is((select sum((config->>'weight')::numeric) from programme_modules where programme_id='11111111-1111-4111-8111-111111111113'),100::numeric,'B weights total 100');
 select is((select count(*)::int from training_weeks where programme_id='11111111-1111-4111-8111-111111111113'),4,'B has training weeks');
 select is((select count(*)::int from training_progress tp join programme_enrollments e on e.id=tp.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),11,'training progress is enrollment-owned');
 select is((select count(*)::int from training_progress tp join programme_enrollments e on e.id=tp.enrollment_id
