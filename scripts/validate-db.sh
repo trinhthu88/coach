@@ -14,6 +14,13 @@ supabase_cli() {
   npx --yes "supabase@${SUPABASE_CLI_VERSION}" "$@"
 }
 
+run_guarded_local_seed() {
+  PGOPTIONS='-c app.seed_environment=local' \
+    psql --no-psqlrc --set=ON_ERROR_STOP=1 \
+      --file supabase/seed.sql \
+      "${DB_URL:?local database URL unavailable}"
+}
+
 cleanup() {
   local exit_code=$?
   rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file"
@@ -81,10 +88,10 @@ FROM (
 SQL
 supabase_cli db query --local --file "$snapshot_sql_file" > "$snapshot_before"
 printf '%s\n' '==> Re-running the guarded seed for idempotency'
-PGOPTIONS='-c app.seed_environment=local' supabase_cli db query --local --file supabase/seed.sql
+run_guarded_local_seed
 supabase_cli db query --local --file "$snapshot_sql_file" > "$snapshot_after"
 diff -u "$snapshot_before" "$snapshot_after"
-PGOPTIONS='-c app.seed_environment=local' supabase_cli db query --local --file supabase/seed.sql
+run_guarded_local_seed
 supabase_cli test db --local supabase/tests
 printf '%s\n' '==> Linting local database'
 supabase_cli db lint --local
