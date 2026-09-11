@@ -70,6 +70,15 @@ AS $$
     UNION ALL SELECT 'triads',coachee_enrollment_id,status::text,coalesce(start_time,proposed_start_time)::date FROM public.triad_sessions WHERE coachee_enrollment_id IS NOT NULL
     UNION ALL SELECT 'triads',observer_enrollment_id,status::text,coalesce(start_time,proposed_start_time)::date FROM public.triad_sessions WHERE observer_enrollment_id IS NOT NULL
     UNION ALL SELECT 'training',enrollment_id,'completed',completed_at::date FROM public.training_progress WHERE completed_at IS NOT NULL
+    UNION ALL SELECT 'quiz',sub.enrollment_id,'completed',sub.submitted_at::date
+      FROM public.assignment_submissions sub
+      JOIN public.assignments a ON a.id=sub.assignment_id
+      WHERE sub.enrollment_id IS NOT NULL
+        AND a.assignment_type='quiz'::public.assignment_type
+    UNION ALL SELECT 'daily_prompt',enrollment_id,'completed',responded_at::date
+      FROM public.daily_prompt_responses
+      WHERE enrollment_id IS NOT NULL
+        AND responded_at IS NOT NULL
   ), counts AS (
     SELECT s.id,count(a.*) FILTER (WHERE a.status='completed' AND a.occurred_on<=p_as_of)::integer completed,
       least(count(a.*) FILTER (WHERE a.status IN ('pending_coach_approval','confirmed') AND a.occurred_on>=p_as_of),
