@@ -19,12 +19,12 @@ insert into public.coachee_goals(id,coachee_id,enrollment_id,title) values
 
 insert into public.coachee_goals(id,coachee_id,enrollment_id,title) values
  ('a5000000-0000-0000-0000-000000000053','a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000031','Goal three');
-select throws_ok($$insert into public.coachee_goals(coachee_id,enrollment_id,title) values('a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-000000000031','Fourth')$$,'P0001','This enrollment already has the maximum of 3 active goals','fourth active goal rejected');
+select throws_ok($$insert into public.coachee_goals(coachee_id,enrollment_id,title) values('a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000031','Fourth')$$,'P0001','This enrollment already has the maximum of 3 active goals','fourth active goal rejected');
 select lives_ok($$update public.coachee_goals set title='Updated' where id='a5000000-0000-0000-0000-000000000053'$$,'editing an existing active goal does not count it twice');
 select set_config('request.jwt.claim.sub','a5000000-0000-0000-0000-000000000001',true);
 select lives_ok($$select public.record_goal_checkin('a5000000-0000-0000-0000-000000000031','a5000000-0000-0000-0000-000000000051','coaching','a5000000-0000-0000-0000-000000000041',null,'Unrated note')$$,'unrated check-in is allowed');
 select is((select new_rating from public.goal_checkins where goal_id='a5000000-0000-0000-0000-000000000051'),null::smallint,'unrated check-in never invents 50');
-select lives_ok($$select public.record_goal_checkin('a5000000-0000-0000-0000-000000000031','a5000000-0000-0000-0000-000000000051','coaching','a5000000-0000-0000-000000000041',65::smallint,null)$$,'entered rating can be saved without fabricated baseline');
+select lives_ok($$select public.record_goal_checkin('a5000000-0000-0000-0000-000000000031','a5000000-0000-0000-0000-000000000051','coaching','a5000000-0000-0000-0000-000000000041',65::smallint,null)$$,'entered rating can be saved without fabricated baseline');
 select is((select count(*)::integer from public.goal_checkins where goal_id='a5000000-0000-0000-0000-000000000051'),2,'later check-ins preserve earlier history');
 select is((select start_rating from public.coachee_goal_ratings where goal_id='a5000000-0000-0000-0000-000000000051'),null::smallint,'missing baseline remains null');
 select is((select current_rating from public.coachee_goal_ratings where goal_id='a5000000-0000-0000-0000-000000000051'),65::smallint,'explicit rating updates enrollment current rating');

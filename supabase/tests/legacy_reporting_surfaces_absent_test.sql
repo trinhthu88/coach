@@ -1,35 +1,35 @@
 begin;
 select plan(22);
 
-select ok(not has_function('public', 'sponsor_can_view_coachee', array['uuid']),
+select hasnt_function('public', 'sponsor_can_view_coachee', array['uuid'],
   'legacy sponsor visibility fallback RPC is retired');
-select ok(not has_function('public', 'sponsor_confidence_trend', array[]::text[]),
+select hasnt_function('public', 'sponsor_confidence_trend', array[]::text[],
   'legacy sponsor confidence trend RPC is retired');
-select ok(not has_function('public', 'sponsor_engagement_red_flags', array['uuid']),
+select hasnt_function('public', 'sponsor_engagement_red_flags', array['uuid'],
   'legacy sponsor red flags RPC is retired');
-select ok(not has_function('public', 'sponsor_goal_growth_summary', array['uuid']),
+select hasnt_function('public', 'sponsor_goal_growth_summary', array['uuid'],
   'legacy sponsor goal growth RPC is retired');
-select ok(not has_function('public', 'sponsor_kpis', array['uuid']),
+select hasnt_function('public', 'sponsor_kpis', array['uuid'],
   'legacy sponsor KPI RPC is retired');
-select ok(not has_function('public', 'sponsor_programme_engagement', array['uuid']),
+select hasnt_function('public', 'sponsor_programme_engagement', array['uuid'],
   'legacy sponsor engagement RPC is retired');
-select ok(not has_function('public', 'sponsor_roster', array['uuid']),
+select hasnt_function('public', 'sponsor_roster', array['uuid'],
   'legacy sponsor roster RPC is retired');
-select ok(not has_function('public', 'sponsor_satisfaction_trend', array['uuid']),
+select hasnt_function('public', 'sponsor_satisfaction_trend', array['uuid'],
   'legacy sponsor satisfaction trend RPC is retired');
-select ok(not has_function('public', 'sponsor_coach_utilisation', array['uuid']),
+select hasnt_function('public', 'sponsor_coach_utilisation', array['uuid'],
   'legacy sponsor coach utilisation RPC is retired');
-select ok(not has_function('public', 'sponsor_timeline', array[]::text[]),
+select hasnt_function('public', 'sponsor_timeline', array[]::text[],
   'legacy sponsor timeline RPC is retired');
-select ok(not has_function('public', 'sponsor_roster', array[]::text[]),
+select hasnt_function('public', 'sponsor_roster', array[]::text[],
   'zero-argument sponsor roster overload is retired');
-select ok(not has_function('public', 'sponsor_goal_growth_summary', array[]::text[]),
+select hasnt_function('public', 'sponsor_goal_growth_summary', array[]::text[],
   'zero-argument sponsor goal growth overload is retired');
-select ok(not has_function('public', 'sponsor_satisfaction_summary', array[]::text[]),
+select hasnt_function('public', 'sponsor_satisfaction_summary', array[]::text[],
   'zero-argument sponsor satisfaction overload is retired');
-select ok(not has_function('public', 'sponsor_kpis', array[]::text[]),
+select hasnt_function('public', 'sponsor_kpis', array[]::text[],
   'zero-argument sponsor KPI overload is retired');
-select ok(not has_function('public', 'sponsor_timeline', array[]::text[]),
+select hasnt_function('public', 'sponsor_timeline', array[]::text[],
   'zero-argument sponsor timeline overload is retired');
 
 select ok(pg_get_functiondef('public.get_coach_peer_session_usage(uuid)'::regprocedure)
