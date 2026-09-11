@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "python-base-3.13"]
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
 
 [[ports]]
 localPort = 5000
@@ -56,3 +56,6 @@ outputType = "webview"
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 60000
+
+[nix]
+channel = "stable-25_05"
