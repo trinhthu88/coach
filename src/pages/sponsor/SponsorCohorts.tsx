@@ -13,7 +13,7 @@ export default function SponsorCohorts() {
   return <div className="space-y-6">
     <PageHeader eyebrow={t("cohorts.header.eyebrow")} title={t("cohorts.header.title")} emphasis={t("cohorts.header.emphasis")} subtitle={t("cohorts.header.subtitle")} />
     <SectionCard label={t("cohorts.rolledUpLabel")}><div className="grid gap-3 sm:grid-cols-3">
-      <Kpi label={t("cohorts.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} />
+      <Kpi label={t("cohorts.kpis.leadersEnrolled")} value={kpis?.enrollment_count ?? 0} />
       <Kpi label={t("cohorts.kpis.onTrack")} value={kpis?.on_track_count ?? 0} />
        <Kpi label={t("cohorts.kpis.sessionsUsed")} value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`} />
     </div></SectionCard>
