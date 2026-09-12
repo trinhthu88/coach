@@ -6,3 +6,4 @@
 - [Training timeline enrollment scope](training-timeline-scope.md) — timeline readers must use the selected enrollment; active-programme joins can mix training across programmes.
 - [Live demo safety boundary](live-demo-safety.md) — migrations create registry infrastructure only; provisioning/reset stay server-only and fixed-target.
 - [Live demo executor contract](live-demo-executor.md) — Batch 1 uses a hard-coded fixed UUID/date contract and service-only transactional operation state machine.
+- [Supabase CLI validation block](supabase-cli-validation-block.md) — local DB validation is blocked before startup when the package firewall rejects the pinned Supabase CLI download.
