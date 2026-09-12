@@ -359,6 +359,22 @@
     "activeHint": "Hiển thị cho các lượt ghi danh mới.",
     "cancel": "Hủy",
     "save": "Lưu",
+    "builder": {
+      "newTitle": "Chương trình mới",
+      "editTitle": "Sửa chương trình",
+      "subtitle": "Xây dựng cấu trúc, lịch trình và mục tiêu hoàn thành chương trình.",
+      "back": "Quay lại chương trình",
+      "summary": "Tóm tắt trực tiếp",
+      "validation": "Kiểm tra hợp lệ",
+      "valid": "Tất cả đều hợp lệ.",
+      "untitled": "Chương trình chưa đặt tên",
+      "noModules": "Chưa bật module nào.",
+      "fixErrors": "Hãy sửa lỗi trước khi lưu.",
+      "targetExceedsMaximum": "Mục tiêu bắt buộc của {{module}} ({{target}}) không được vượt quá mức tối đa áp dụng ({{max}}).",
+      "unsavedTitle": "Rời đi mà không lưu?",
+      "unsavedDescription": "Bạn có thay đổi chương trình chưa lưu. Các thay đổi sẽ bị mất nếu rời trang.",
+      "leave": "Rời trang"
+    },
     "modules": {
       "heading": "Module chương trình",
       "hint": "Các tính năng chương trình này bao gồm, và cấu hình của chúng. Áp dụng cho bất kỳ ai đang ghi danh hoạt động — coach hoặc coachee.",

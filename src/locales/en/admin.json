@@ -365,6 +365,22 @@
     "activeHint": "Visible for new enrollments.",
     "cancel": "Cancel",
     "save": "Save",
+    "builder": {
+      "newTitle": "New programme",
+      "editTitle": "Edit programme",
+      "subtitle": "Build the programme structure, schedule, and completion targets.",
+      "back": "Back to programmes",
+      "summary": "Live summary",
+      "validation": "Validation",
+      "valid": "Everything looks valid.",
+      "untitled": "Untitled programme",
+      "noModules": "No modules enabled yet.",
+      "fixErrors": "Fix the validation errors before saving.",
+      "targetExceedsMaximum": "{{module}} required target ({{target}}) cannot exceed the applicable maximum ({{max}}).",
+      "unsavedTitle": "Leave without saving?",
+      "unsavedDescription": "You have unsaved programme changes. They will be lost if you leave this page.",
+      "leave": "Leave page"
+    },
     "modules": {
       "heading": "Programme modules",
       "hint": "Which features this programme includes, and their configuration. Applies to whoever is actively enrolled — coach or coachee.",

@@ -19,7 +19,17 @@ async function fetchJourneyRatings(coacheeId: string, enrollmentId: string): Pro
   ]);
   const ratings: Record<string, GoalRating> = {};
   for (const row of gr || []) ratings[row.goal_id] = row;
-  return { ratings, sessionRatings: (sgr || []).map((row) => ({ ...row, session_id: row.source_activity_id, rating: row.new_rating, coachee_id: coacheeId })) };
+  return {
+    ratings,
+    sessionRatings: (sgr || [])
+      .filter((row): row is typeof row & { source_activity_id: string } => row.source_activity_id !== null)
+      .map((row) => ({
+        ...row,
+        session_id: row.source_activity_id,
+        rating: row.new_rating,
+        coachee_id: coacheeId,
+      })),
+  };
 }
 
 /**
@@ -44,6 +54,7 @@ export function useJourneyRatings(coacheeId: string | undefined) {
 
   const saveMutation = useMutation({
     mutationFn: async (merged: GoalRatingUpsert) => {
+      if (!enrollmentId) throw new Error("An enrollment is required to save a goal rating");
       const { data: saved, error } = await supabase
         .from("coachee_goal_ratings")
         .upsert({ ...merged, enrollment_id: enrollmentId }, { onConflict: "enrollment_id,goal_id" })

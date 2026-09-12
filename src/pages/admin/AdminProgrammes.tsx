@@ -60,19 +60,6 @@ interface Cohort {
   end_date: string | null;
 }
 
-const empty: Partial<Programme> = {
-  name: "",
-  description: "",
-  duration_months: 3,
-  color: "cobalt",
-  is_active: true,
-  coachee_session_limit: 8,
-  coach_session_limit: 8,
-  peer_session_limit: 4,
-  peer_given_limit: 4,
-  mentoring_received_limit: null,
-};
-
 const MODULE_TYPES: ProgrammeModuleType[] = [
   "coaching",
   "peer_coaching",
@@ -84,21 +71,21 @@ const MODULE_TYPES: ProgrammeModuleType[] = [
   "daily_prompt",
 ];
 
-interface ModuleRow {
+export interface ModuleRow {
   enabled: boolean;
   config: Record<string, unknown>;
 }
 
-type ModuleRows = Record<ProgrammeModuleType, ModuleRow>;
+export type ModuleRows = Record<ProgrammeModuleType, ModuleRow>;
 
 // Default config shape per module type — see the programme_modules.config
 // JSONB shapes documented alongside the 20260903100000 migration.
-function defaultModuleRows(): ModuleRows {
+export function defaultModuleRows(): ModuleRows {
   return {
     coaching: { enabled: false, config: { give: false, receive: false, give_limit: null, receive_limit: null } },
-    peer_coaching: { enabled: false, config: { give: false, receive: false, monthly_limit: null } },
+    peer_coaching: { enabled: false, config: { give: false, receive: false, give_limit: null, receive_limit: null, monthly_limit: null } },
     mentoring: { enabled: false, config: { give: false, receive: false, give_limit: null, receive_limit: null } },
-    triads: { enabled: false, config: { group_size: 3, max_triads: null } },
+    triads: { enabled: false, config: { max_triads: null } },
     training: { enabled: false, config: { weeks: 4 } },
     quiz: { enabled: false, config: {} },
     assessment: { enabled: false, config: { include_direct_reports: false } },
@@ -131,7 +118,7 @@ function LimitField({
   );
 }
 
-function ModuleConfigRow({
+export function ModuleConfigRow({
   module,
   row,
   onToggle,
@@ -194,23 +181,21 @@ function ModuleConfigRow({
                 {t("programmes.modules.receive")}
               </label>
               <LimitField
-                label={t("programmes.modules.monthlyLimit")}
-                value={(cfg.monthly_limit as number | null) ?? null}
-                onChange={(v) => onConfigChange({ monthly_limit: v })}
+                label={t("programmes.modules.giveLimit")}
+                value={(cfg.give_limit as number | null) ?? null}
+                onChange={(v) => onConfigChange({ give_limit: v })}
+                t={t}
+              />
+              <LimitField
+                label={t("programmes.modules.receiveLimit")}
+                value={(cfg.receive_limit as number | null) ?? null}
+                onChange={(v) => onConfigChange({ receive_limit: v })}
                 t={t}
               />
             </>
           )}
           {module === "triads" && (
             <>
-              <div>
-                <Label className="text-[10.5px] text-muted-foreground">{t("programmes.modules.groupSize")}</Label>
-                <Input
-                  type="number" min={2}
-                  value={(cfg.group_size as number) ?? 3}
-                  onChange={(e) => onConfigChange({ group_size: Number(e.target.value) })}
-                />
-              </div>
               <LimitField
                 label={t("programmes.modules.maxTriads")}
                 value={(cfg.max_triads as number | null) ?? null}
@@ -257,42 +242,9 @@ export default function AdminProgrammes() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Programme> | null>(null);
   const [moduleRows, setModuleRows] = useState<ModuleRows>(defaultModuleRows());
-  const [trainingWeeks, setTrainingWeeks] = useState<TrainingWeekOption[]>([]);
+  const [trainingWeeks] = useState<TrainingWeekOption[]>([]);
   const [saving, setSaving] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
-
-  const openEditor = async (p: Partial<Programme> | null) => {
-    setEditing(p);
-    if (!p?.id) {
-      setModuleRows(defaultModuleRows());
-      setTrainingWeeks([]);
-      return;
-    }
-    const [{ data }, { data: weekData }] = await Promise.all([
-      supabase
-        .from("programme_modules")
-        .select("module, enabled, config")
-        .eq("programme_id", p.id),
-      supabase
-        .from("training_weeks")
-        .select("id, week_number, title")
-        .eq("programme_id", p.id)
-        .order("week_number"),
-    ]);
-    const rows = defaultModuleRows();
-    (data || []).forEach((m) => {
-      rows[m.module] = {
-        enabled: m.enabled,
-        config: { ...rows[m.module].config, ...(m.config as Record<string, unknown>) },
-      };
-    });
-    setModuleRows(rows);
-    setTrainingWeeks((weekData || []).map((week) => ({
-      id: week.id,
-      weekNumber: week.week_number,
-      title: week.title,
-    })));
-  };
 
   const updateModule = (mod: ProgrammeModuleType, patch: Partial<ModuleRow>) =>
     setModuleRows((prev) => ({ ...prev, [mod]: { ...prev[mod], ...patch } }));
@@ -399,7 +351,7 @@ export default function AdminProgrammes() {
         title={t("programmes.title")}
         trailing=""
         subtitle={t("programmes.subtitle")}
-        right={<Button onClick={() => openEditor(empty)}><Plus className="h-4 w-4" /> {t("programmes.newProgramme")}</Button>}
+        right={<Button asChild><Link to="/admin/programmes/new"><Plus className="h-4 w-4" /> {t("programmes.newProgramme")}</Link></Button>}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -438,7 +390,7 @@ export default function AdminProgrammes() {
               </div>
             </div>
             <div className="mt-3 flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => openEditor(p)}><Pencil className="h-3.5 w-3.5" /> {t("programmes.edit")}</Button>
+              <Button asChild variant="outline" size="sm"><Link to={`/admin/programmes/${p.id}/edit`}><Pencil className="h-3.5 w-3.5" /> {t("programmes.edit")}</Link></Button>
               <Button variant="ghost" size="sm" onClick={() => remove(p.id)}><Trash2 className="h-3.5 w-3.5" /> {t("programmes.delete")}</Button>
             </div>
           </Card>

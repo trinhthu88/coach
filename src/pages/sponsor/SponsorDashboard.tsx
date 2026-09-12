@@ -194,7 +194,7 @@ export default function SponsorDashboard() {
     );
   }
 
-  const isFirstLogin = !kpis || kpis.leaders_enrolled === 0;
+  const isFirstLogin = !kpis || kpis.enrollment_count === 0;
 
   const daysUntilStart = null;
 
@@ -308,8 +308,8 @@ export default function SponsorDashboard() {
         <div ref={kpiRowRef} className="rounded-2xl border border-border bg-card p-6">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <HeadlineStat label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
-            <HeadlineStat label={t("dashboard.kpis.enrolledActive")} value={kpis?.enrolled_active_count ?? 0} icon={Users} tone="primary" />
-            <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} icon={Users} tone="primary" />
+            <HeadlineStat label={t("dashboard.kpis.enrolledActive")} value={kpis?.active_count ?? 0} icon={Users} tone="primary" />
+            <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.enrollment_count ?? 0} icon={Users} tone="primary" />
             <HeadlineStat
               label={t("dashboard.kpis.sessionsUsed")}
               value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`}

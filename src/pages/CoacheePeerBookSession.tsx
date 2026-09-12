@@ -147,15 +147,13 @@ export default function CoacheePeerBookSession() {
     const ds = dateKey(selectedDate);
     const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
 
-    const { error } = await supabase.from("coachee_peer_sessions").insert({
-      peer_provider_id: partner.id,
-      peer_receiver_id: user.id,
-      enrollment_id: enrollmentId,
-      topic: topic.trim(),
-      start_time: startISO,
-      duration_minutes: duration,
-      status: "pending_coach_approval",
-      slot_id: opt.slotId,
+    const { error } = await supabase.rpc("book_coachee_peer_session", {
+      p_provider_id: partner.id,
+      p_enrollment_id: enrollmentId,
+      p_topic: topic.trim(),
+      p_start_time: startISO,
+      p_duration_minutes: duration,
+      p_slot_id: opt.slotId,
     });
     setSubmitting(false);
     if (error) {

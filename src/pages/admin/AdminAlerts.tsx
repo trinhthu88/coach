@@ -227,7 +227,9 @@ export default function AdminAlerts() {
       const activity: ScanActivityRow[] = [
          ...(submissions || []).filter((s: { enrollment_id: string | null }) => !!s.enrollment_id).map((s: { user_id: string; enrollment_id: string; submitted_at: string }) => ({ userId: s.user_id, enrollmentId: s.enrollment_id, timestamp: s.submitted_at })),
          ...(promptResponses || []).filter((r: { enrollment_id: string | null }) => !!r.enrollment_id).map((r: { user_id: string; enrollment_id: string; responded_at: string | null }) => ({ userId: r.user_id, enrollmentId: r.enrollment_id, timestamp: r.responded_at })),
-         ...(reflections || []).filter((r: { enrollment_id: string | null }) => !!r.enrollment_id).map((r: { participant_id: string; enrollment_id: string; submitted_at: string }) => ({ userId: r.participant_id, enrollmentId: r.enrollment_id, timestamp: r.submitted_at })),
+         ...(reflections || [])
+           .filter((r): r is typeof r & { enrollment_id: string } => !!r.enrollment_id)
+           .map((r) => ({ userId: r.participant_id, enrollmentId: r.enrollment_id, timestamp: r.submitted_at })),
          ...(trainingProgress || []).filter((p: { enrollment_id: string | null }) => !!p.enrollment_id).map((p: { user_id: string; enrollment_id: string; completed_at: string | null }) => ({ userId: p.user_id, enrollmentId: p.enrollment_id, timestamp: p.completed_at })),
       ];
       newAlerts.push(
