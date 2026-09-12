@@ -50,6 +50,19 @@ interface Sponsor {
   email: string;
 }
 
+interface DemoStatus {
+  configured: boolean;
+  is_demo: boolean;
+  organization_id?: string;
+  display_name?: string;
+  fixture_version?: string;
+  generation?: number;
+  state?: "uninitialized" | "ready" | "resetting" | "failed";
+  anchor_date?: string | null;
+  last_successful_reset_at?: string | null;
+  last_operation_status?: string | null;
+}
+
 const COMPANY_SIZES: CompanySize[] = ["1-50", "50-200", "200-1000", "1000+"];
 const SUBSCRIPTION_TIERS: SubscriptionTier[] = ["essentials", "growth", "enterprise"];
 
@@ -66,6 +79,7 @@ export default function AdminOrganizations() {
   const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", title: "", department: "" });
   const [inviteBusy, setInviteBusy] = useState(false);
   const [resetBusy, setResetBusy] = useState<string | null>(null);
+  const [demoStatusByOrg, setDemoStatusByOrg] = useState<Record<string, DemoStatus>>({});
   const [credential, setCredential] = useState<{ email: string; password: string; full_name: string } | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -102,10 +116,23 @@ export default function AdminOrganizations() {
     (enr || []).forEach((e) => {
       if (e.organization_id) counts[e.organization_id] = (counts[e.organization_id] || 0) + 1;
     });
-    setOrgs((o || []) as Organization[]);
+    const loadedOrgs = (o || []) as Organization[];
+    setOrgs(loadedOrgs);
     setSponsorsByOrg(byOrg);
     setEnrollmentCounts(counts);
     setAdminOpts(admins);
+    // The edge function compares each requested id with the deployment's
+    // server-side fixed target. The browser cannot designate a reset target.
+    const demoStatuses = await Promise.all(
+      loadedOrgs.map(async (org) => {
+        const { data, error } = await supabase.functions.invoke("demo-admin", {
+          body: { action: "status", organization_id: org.id },
+        });
+        if (error || !data?.is_demo) return null;
+        return [org.id, data as DemoStatus] as const;
+      }),
+    );
+    setDemoStatusByOrg(Object.fromEntries(demoStatuses.filter((entry): entry is readonly [string, DemoStatus] => entry !== null)));
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -213,6 +240,37 @@ export default function AdminOrganizations() {
     }
   };
 
+  const resetDemo = async (org: Organization) => {
+    const demoStatus = demoStatusByOrg[org.id];
+    if (!demoStatus?.is_demo || demoStatus.organization_id !== org.id || demoStatus.state !== "ready") {
+      toast.error(t("organizations.demoResetUnavailable"));
+      return;
+    }
+    const ok = await confirm({
+      title: t("organizations.demoResetTitle"),
+      description: t("organizations.demoResetDescription"),
+      confirmLabel: t("organizations.demoResetConfirm"),
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setResetBusy(org.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("demo-admin", {
+        body: { action: "reset" },
+      });
+      if (error) throw error;
+      const result = data as { error?: string };
+      if (result?.error) throw new Error(result.error);
+      toast.success(t("organizations.demoResetComplete"));
+      await load();
+    } catch (e) {
+      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("organizations.demoResetUnavailable") }));
+    } finally {
+      setResetBusy(null);
+    }
+  };
+
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
@@ -227,6 +285,7 @@ export default function AdminOrganizations() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {orgs.map((o) => {
           const sponsor = sponsorsByOrg[o.id];
+          const demoStatus = demoStatusByOrg[o.id];
           return (
             <Card key={o.id} className="p-4">
               <div className="mb-2 flex items-start justify-between">
@@ -270,6 +329,27 @@ export default function AdminOrganizations() {
                   </>
                 )}
               </div>
+
+              {demoStatus?.is_demo && demoStatus.organization_id === o.id && (
+                <div className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50/50 p-2.5 dark:bg-amber-950/20">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-800 dark:text-amber-300">
+                    {t("organizations.demoSection")}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t("organizations.demoGeneration", { generation: demoStatus.generation ?? 0, version: demoStatus.fixture_version })}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full border-amber-400/70"
+                    onClick={() => resetDemo(o)}
+                    disabled={resetBusy === o.id || demoStatus.state !== "ready"}
+                  >
+                    {resetBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                    {demoStatus.state === "ready" ? t("organizations.demoReset") : t("organizations.demoNotReady")}
+                  </Button>
+                </div>
+              )}
 
               <div className="mt-3 flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setEditing(o)}><Pencil className="h-3.5 w-3.5" /> {t("organizations.edit")}</Button>

@@ -87,29 +87,52 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
             </div>
           </div>
 
-          {/* Full enrollment history — a person can have exactly one active
-              enrollment at a time but any number of completed ones over time */}
+           {/* Full enrollment history — programme_enrollments is the source of
+               truth, including completed rows and rows without a cohort name. */}
           <div>
             <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              <Layers className="h-3 w-3" /> {t("coacheeProfileSheet.enrollmentHistory")}
+               <Layers className="h-3 w-3" /> {t("coacheeProfileSheet.programmeHistory")}
             </p>
             <div className="space-y-1.5">
               {enrollments.length === 0 && (
                 <p className="rounded-lg border border-dashed p-3 text-center text-[12px] text-muted-foreground">{t("coacheeProfileSheet.noEnrollmentsYet")}</p>
               )}
               {enrollments.map((e) => (
-                <div key={e.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-[12px]">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{e.programme_name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {format(new Date(e.start_date), "MMM d, yyyy")}
-                      {e.end_date ? ` – ${format(new Date(e.end_date), "MMM d, yyyy")}` : ""}
-                      {e.cohort_name ? ` · ${e.cohort_name}` : ""}
-                    </p>
-                  </div>
-                  <Pill tone={e.status === "active" ? "success" : e.status === "at_risk" ? "warning" : "muted"}>
-                    {t(`coacheeProfileSheet.enrollmentStatus.${e.status}`)}
-                  </Pill>
+                 <div key={e.id} className="rounded-lg border px-3 py-2.5 text-[12px]">
+                   <div className="flex items-start justify-between gap-3">
+                     <div className="min-w-0">
+                       <p className="truncate font-semibold">{e.programme_name}</p>
+                       <p className="mt-0.5 text-[10px] text-muted-foreground">
+                         {e.cohort_name || t("coacheeProfileSheet.noCohort")}
+                       </p>
+                     </div>
+                     <div className="flex shrink-0 items-center gap-1.5">
+                       {e.id === row.enrollment_id && (
+                         <Pill tone="success">{t("coacheeProfileSheet.current")}</Pill>
+                       )}
+                       <Pill tone={e.status === "active" ? "success" : e.status === "at_risk" || e.status === "paused" ? "warning" : "muted"}>
+                         {t(`coacheeProfileSheet.enrollmentStatus.${e.status}`, { defaultValue: e.status })}
+                       </Pill>
+                     </div>
+                   </div>
+                   <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                     <div>
+                       <dt className="font-semibold uppercase tracking-wide">{t("coacheeProfileSheet.startDate")}</dt>
+                       <dd className="text-foreground">{format(new Date(e.start_date), "MMM d, yyyy")}</dd>
+                     </div>
+                     <div>
+                       <dt className="font-semibold uppercase tracking-wide">{t("coacheeProfileSheet.endDate")}</dt>
+                       <dd className="text-foreground">{e.end_date ? format(new Date(e.end_date), "MMM d, yyyy") : "—"}</dd>
+                     </div>
+                     <div className="col-span-2">
+                       <dt className="font-semibold uppercase tracking-wide">{t("coacheeProfileSheet.enrollmentKind")}</dt>
+                       <dd className="text-foreground">
+                         {e.id === row.enrollment_id || ["active", "at_risk", "paused"].includes(e.status)
+                           ? t("coacheeProfileSheet.currentEnrollment")
+                           : t("coacheeProfileSheet.historicalEnrollment")}
+                       </dd>
+                     </div>
+                   </dl>
                 </div>
               ))}
             </div>

@@ -49,23 +49,37 @@ export function useCoacheeProfileDetail(coacheeId: string | undefined, enrollmen
   const [enrollments, setEnrollments] = useState<EnrollmentHistoryRow[]>([]);
 
   useEffect(() => {
-    if (!coacheeId || !enrollmentId) {
+    if (!coacheeId) {
       setGoals([]);
       setSessions([]);
+      setProfileData(null);
+      setEnrollments([]);
       return;
     }
     (async () => {
       setLoading(true);
-      const [{ data: gs }, { data: rs }, { data: ss }, { data: prof }, { data: cprof }, { data: enr }] = await Promise.all([
-        supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).eq("status", "active").order("sort_order"),
-        supabase.from("coachee_goal_ratings").select("goal_id, start_rating, current_rating, target_rating").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId),
-        supabase.from("sessions").select("id, topic, start_time, status").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("start_time", { ascending: false }).limit(10),
+      const [
+        { data: gs },
+        { data: rs },
+        { data: ss },
+        { data: prof },
+        { data: cprof },
+        { data: enr },
+      ] = await Promise.all([
+        enrollmentId
+          ? supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).eq("status", "active").order("sort_order")
+          : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+        enrollmentId
+          ? supabase.from("coachee_goal_ratings").select("goal_id, start_rating, current_rating, target_rating").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId)
+          : Promise.resolve({ data: [] as { goal_id: string; start_rating: number; current_rating: number; target_rating: number }[] }),
+        enrollmentId
+          ? supabase.from("sessions").select("id, topic, start_time, status").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("start_time", { ascending: false }).limit(10)
+          : Promise.resolve({ data: [] as ProfileSession[] }),
         supabase.from("profiles").select("bio").eq("id", coacheeId).maybeSingle(),
         supabase.from("coachee_profiles").select("job_title, industry, location, phone, timezone, goals").eq("id", coacheeId).maybeSingle(),
-        // Full enrollment history — Part 2 of the enrollment-cardinality fix
-        // (RULES.md §3 note): a coachee can now have multiple rows over time
-        // (one active + any number completed), so this must list all of
-        // them, not just whichever one a plain unordered query returns first.
+        // The programme_enrollments table is the source of truth for history.
+        // This stays on the authenticated client so the existing admin RLS
+        // policy, ownership rules, and organization visibility remain in force.
         supabase
           .from("programme_enrollments")
           .select("id, status, start_date, end_date, programmes(name), cohorts(name)")

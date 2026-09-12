@@ -4,3 +4,4 @@
 - [Demo pace fixtures](demo-pace-fixtures.md) — validate seeded pace through fixed-date progress RPC results, not inferred activity row counts.
 - [Local Supabase health failure](local-supabase-health-failure.md) — DB validation may stop before migrations because Docker cannot execute the container health check.
 - [Training timeline enrollment scope](training-timeline-scope.md) — timeline readers must use the selected enrollment; active-programme joins can mix training across programmes.
+- [Live demo safety boundary](live-demo-safety.md) — migrations create registry infrastructure only; provisioning/reset stay server-only and fixed-target.
