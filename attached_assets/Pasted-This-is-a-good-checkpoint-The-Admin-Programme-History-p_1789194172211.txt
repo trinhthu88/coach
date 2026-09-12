@@ -1,0 +1,54 @@
+This is a good checkpoint. The Admin Programme History part is essentially complete, and the demo subsystem foundation is in place, but the actual demo environment is not created yet.
+The important distinction is:
+- Programme History: implemented and validated
+- Demo architecture/safety layer: implemented and validated
+- Demo organization, 4 demo accounts, 4 programmes/cohorts, 40 leaders, sample activity/progress data: not yet provisioned
+- Demo reset executor: intentionally disabled
+- Production database: unchanged
+So the next task should be the demo provisioning implementation, not more foundation work.
+I would ask Replit to implement the next phase with these exact boundaries:
+Clariva Live Demo — Provisioning Phase
+Continue from the current demo subsystem foundation.
+Do not redesign the approved demo architecture.
+Implement the actual production-safe provisioning for the fixed Clariva Demo Organization.
+Provision:
+- Clariva Demo Organization
+- 4 approved programmes/cohorts
+- 40 fictional leaders distributed across the approved cohorts
+- Demo Learner — Executive Coaching
+- Demo Learner — Emerging Leaders
+- Demo Coach
+- Demo Sponsor
+Use the existing versioned fixture manifest as the source of truth.
+Populate realistic demo data:
+- varied programme progress
+- completed and upcoming sessions
+- coaching, mentoring, peer, and triad activity where appropriate
+- goals, actions, milestones, ratings, and programme progress
+- one completed historical cohort
+- realistic but fictional sponsor aggregate data
+Preserve strict organization and enrollment isolation.
+Do not expose private coaching notes, reflections, comments, transcripts, goal wording, action wording, or other sponsor-restricted content.
+Implement the reset executor so that:
+- it can only target the fixed demo organization
+- it cannot accept another organization ID from the browser
+- it deletes/recreates only resources registered as demo-owned
+- it is idempotent
+- it records audit entries
+- it cannot affect real Clariva organizations or users
+Add an admin-only Reset Demo Data action using the existing protected demo-admin function.
+Before enabling reset:
+- verify every seeded resource is registered in the demo ownership registry
+- add hard assertions that non-demo organization IDs cannot be touched
+- test repeated reset runs
+Do not reuse supabase/seed.sql.
+Do not deploy or provision production automatically.
+First return:
+- migration/functions/files added
+- exact demo account plan
+- fixture counts
+- reset safety test results
+- TypeScript/tests/lint/build results
+- any required Supabase secrets/configuration
+- whether provisioning is safe to run
+Stop before actually creating the production demo organization/accounts until explicitly approved.
