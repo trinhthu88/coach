@@ -1,11 +1,16 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@/i18n/config";
 import i18n from "@/i18n/config";
 
 const mocks = vi.hoisted(() => ({
   programmeUpdate: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })),
+  programmeInsert: vi.fn(() => ({
+    select: vi.fn(() => ({
+      single: vi.fn().mockResolvedValue({ data: { id: "programme-new" }, error: null }),
+    })),
+  })),
   moduleUpsert: vi.fn().mockResolvedValue({ error: null }),
   toastError: vi.fn(),
 }));
@@ -37,6 +42,7 @@ vi.mock("@/integrations/supabase/client", () => ({
             }),
           }),
           update: mocks.programmeUpdate,
+          insert: mocks.programmeInsert,
         };
       }
       if (table === "cohorts") {
@@ -77,28 +83,35 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
-import AdminProgrammes from "../AdminProgrammes";
+import ProgrammeBuilder from "../ProgrammeBuilder";
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");
   mocks.programmeUpdate.mockClear();
+  mocks.programmeInsert.mockClear();
   mocks.moduleUpsert.mockClear();
   mocks.toastError.mockClear();
 });
 
-describe("AdminProgrammes schedule validation", () => {
-  it("rejects an invalid module schedule before updating the programme", async () => {
-    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AdminProgrammes /></MemoryRouter>);
+describe("ProgrammeBuilder schedule validation", () => {
+  it("rejects an invalid module schedule before creating the programme", async () => {
+    render(
+      <MemoryRouter initialEntries={["/admin/programmes/new"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/admin/programmes/new" element={<ProgrammeBuilder />} />
+        </Routes>
+      </MemoryRouter>,
+    );
 
-    await screen.findByText("Test programme");
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-    await screen.findByRole("dialog", { name: "Edit programme" });
+    fireEvent.change(screen.getAllByRole("textbox")[0], { target: { value: "Invalid programme" } });
+    fireEvent.click(screen.getAllByRole("switch")[0]);
+    fireEvent.click(screen.getByRole("switch", { name: "Required or optional" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(
-      "Coaching: Required modules must have at least one unit."
+      "Fix the validation errors before saving."
     ));
-    expect(mocks.programmeUpdate).not.toHaveBeenCalled();
+    expect(mocks.programmeInsert).not.toHaveBeenCalled();
     expect(mocks.moduleUpsert).not.toHaveBeenCalled();
   });
 });

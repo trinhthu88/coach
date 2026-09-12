@@ -3699,6 +3699,17 @@ export type Database = {
         }
         Returns: string
       }
+      book_coachee_peer_session: {
+        Args: {
+          p_duration_minutes: number
+          p_enrollment_id: string
+          p_provider_id: string
+          p_slot_id?: string
+          p_start_time: string
+          p_topic: string
+        }
+        Returns: string
+      }
       bulk_create_availability: {
         Args: {
           _coach_id: string
@@ -3718,6 +3729,10 @@ export type Database = {
       }
       can_book_peer_session: {
         Args: { p_enrollment_id: string; p_peer_coach_id: string }
+        Returns: boolean
+      }
+      can_book_coachee_peer_session: {
+        Args: { p_enrollment_id: string; p_provider_id: string }
         Returns: boolean
       }
       can_book_session:
@@ -3755,6 +3770,10 @@ export type Database = {
       }
       check_can_book_mentoring_session_reason: {
         Args: { p_mentor_id: string }
+        Returns: string
+      }
+      check_can_book_mentoring_session_reason_for_enrollment: {
+        Args: { p_enrollment_id: string; p_mentor_id: string }
         Returns: string
       }
       check_can_book_session:
@@ -3872,6 +3891,14 @@ export type Database = {
           required_units: number
         }[]
       }
+      get_enrollment_programme_modules: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          config: Json
+          enabled: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+        }[]
+      }
       get_enrollment_training_weeks: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -3906,6 +3933,13 @@ export type Database = {
       }
       get_mentoring_session_usage: {
         Args: { p_user_id: string }
+        Returns: {
+          limit_count: number
+          used_count: number
+        }[]
+      }
+      get_mentoring_session_usage_for_enrollment: {
+        Args: { p_enrollment_id: string }
         Returns: {
           limit_count: number
           used_count: number

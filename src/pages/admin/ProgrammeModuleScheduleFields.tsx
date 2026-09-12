@@ -116,19 +116,6 @@ export function ProgrammeModuleScheduleFields({
           />
         </div>
         <div>
-          <Label htmlFor={`${fieldId}-weight`} className="text-[10.5px] text-muted-foreground">
-            {t("programmes.modules.schedule.weightOptional")}
-          </Label>
-          <Input
-            id={`${fieldId}-weight`}
-            type="number"
-            min={0}
-            step="any"
-            value={typeof config.weight === "number" ? config.weight : ""}
-            onChange={(event) => updateConfig({ weight: event.target.value === "" ? null : Number(event.target.value) })}
-          />
-        </div>
-        <div>
           <Label htmlFor={`${fieldId}-mode`} className="text-[10.5px] text-muted-foreground">
             {t("programmes.modules.schedule.distributionMode")}
           </Label>
