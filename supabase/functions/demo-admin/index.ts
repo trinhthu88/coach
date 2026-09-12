@@ -2,14 +2,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import {
   DEMO_ACCOUNTS,
+  DEMO_ANCHOR_DATE,
+  DEMO_BATCH_1_CONTRACT,
   DEMO_FIXTURE_VERSION,
+  DEMO_FIXTURE_IDS,
   DEMO_LEADER_COUNT,
+  DEMO_ORGANIZATION_ID,
   DEMO_ORGANIZATION_NAME,
   DEMO_ORGANIZATION_SLUG,
   DEMO_PROGRAMMES,
 } from "./manifest.ts";
 
-type Action = "status" | "reset" | "manifest";
+type Action = "status" | "provision" | "reset" | "operation" | "manifest";
 
 function json(body: unknown, status: number, headers: Record<string, string>) {
   return new Response(JSON.stringify(body), {
@@ -33,10 +37,16 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const fixedOrganizationId = Deno.env.get("DEMO_ORGANIZATION_ID");
-    if (!supabaseUrl || !serviceKey || !isUuid(fixedOrganizationId)) {
+    const configuredOrganizationId = Deno.env.get("DEMO_ORGANIZATION_ID");
+    if (
+      !supabaseUrl ||
+      !serviceKey ||
+      !isUuid(configuredOrganizationId) ||
+      configuredOrganizationId !== DEMO_ORGANIZATION_ID
+    ) {
       return json({ error: "Live demo is not configured for this deployment" }, 503, corsHeaders);
     }
+    const fixedOrganizationId = DEMO_ORGANIZATION_ID;
 
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace(/^Bearer\s+/i, "");
@@ -58,6 +68,9 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({})) as {
       action?: Action;
       organization_id?: string;
+      idempotency_key?: string;
+      operation_id?: string;
+      expected_generation?: number;
     };
     const action = body.action ?? "status";
 
@@ -69,6 +82,9 @@ Deno.serve(async (req) => {
         leader_count: DEMO_LEADER_COUNT,
         account_count: DEMO_ACCOUNTS.length,
         programmes: DEMO_PROGRAMMES,
+        anchor_date: DEMO_ANCHOR_DATE,
+        fixture_ids: DEMO_FIXTURE_IDS,
+        batch_1_contract: DEMO_BATCH_1_CONTRACT,
       }, 200, corsHeaders);
     }
 
@@ -91,23 +107,67 @@ Deno.serve(async (req) => {
       }, 200, corsHeaders);
     }
 
-    if (action === "reset") {
-      // The reset executor is intentionally a separate server-side deployment
-      // step. Never turn a missing executor into a partial client-side reset.
-      const { data: rows, error: statusError } = await admin.rpc("get_demo_organization_status", {
-        p_organization_id: fixedOrganizationId,
-      });
-      if (statusError) throw statusError;
-      const status = Array.isArray(rows) ? rows[0] : rows;
-      if (!status) return json({ error: "The fixed demo organization is not registered" }, 409, corsHeaders);
-      if (status.state !== "ready") {
-        return json({ error: `Demo reset is unavailable while the registry is ${status.state}` }, 409, corsHeaders);
+    if (action === "operation") {
+      if (!isUuid(body.operation_id)) return json({ error: "A valid operation_id is required" }, 400, corsHeaders);
+      const { data: operation, error } = await admin
+        .from("demo_operations")
+        .select("*")
+        .eq("id", body.operation_id)
+        .eq("organization_id", fixedOrganizationId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!operation) return json({ error: "Demo operation not found" }, 404, corsHeaders);
+      return json({ configured: true, is_demo: true, operation }, 200, corsHeaders);
+    }
+
+    if (action === "provision" || action === "reset") {
+      if (body.organization_id && body.organization_id !== fixedOrganizationId) {
+        return json({ error: "The demo target is fixed for this deployment" }, 403, corsHeaders);
       }
-      return json({
-        error: "The demo reset executor is not enabled in this deployment",
-        operation: "reset",
-        organization_id: fixedOrganizationId,
-      }, 501, corsHeaders);
+
+      const { error: collisionError } = await admin.rpc("demo_assert_no_account_collisions");
+      if (collisionError) throw collisionError;
+
+      const { error: configureError } = await admin.rpc("demo_configure_target", {
+        p_organization_id: fixedOrganizationId,
+        p_fixture_version: DEMO_FIXTURE_VERSION,
+        p_anchor_date: DEMO_ANCHOR_DATE,
+      });
+      if (configureError) throw configureError;
+
+      const idempotencyKey = body.idempotency_key?.trim() || `${action}-${crypto.randomUUID()}`;
+      const { data: started, error: startError } = await admin.rpc("demo_begin_operation", {
+        p_organization_id: fixedOrganizationId,
+        p_operation: action,
+        p_idempotency_key: idempotencyKey,
+        p_requested_by: callerId,
+        p_fixture_version: DEMO_FIXTURE_VERSION,
+        p_anchor_date: DEMO_ANCHOR_DATE,
+        p_expected_generation: typeof body.expected_generation === "number" ? body.expected_generation : null,
+      });
+      if (startError) throw startError;
+      const operation = Array.isArray(started) ? started[0] : started;
+      if (!operation) throw new Error("Demo operation did not return a lifecycle record");
+
+      if (operation.status === "started") {
+        // Batch 1 intentionally has no leader/activity rows. The executor
+        // still completes the same transactional lifecycle later batches use.
+        const { data: finished, error: finishError } = await admin.rpc("demo_finish_operation", {
+          p_operation_id: operation.id,
+          p_affected_counts: DEMO_BATCH_1_CONTRACT.creates,
+        });
+        if (finishError) {
+          await admin.rpc("demo_fail_operation", {
+            p_operation_id: operation.id,
+            p_error_message: finishError.message,
+          });
+          throw finishError;
+        }
+        return json({ configured: true, is_demo: true, operation: Array.isArray(finished) ? finished[0] : finished }, 200, corsHeaders);
+      }
+
+      const statusCode = operation.status === "busy" ? 409 : operation.status === "failed" ? 409 : 200;
+      return json({ configured: true, is_demo: true, operation }, statusCode, corsHeaders);
     }
 
     return json({ error: "Unsupported demo action" }, 400, corsHeaders);

@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(25);
 
 select has_table('public', 'demo_organization_registry', 'demo registry exists');
 select has_table('public', 'demo_accounts', 'demo account registry exists');
@@ -121,6 +121,74 @@ select ok(
       and pg_get_constraintdef(oid) like '%demo_organization_registry%'
   ),
   'resource ownership is anchored to the protected registry'
+);
+
+select has_table('public', 'demo_executor_target', 'executor target singleton exists');
+select has_function(
+  'public',
+  'demo_configure_target',
+  array['uuid', 'text', 'date'],
+  'server-only target configuration exists'
+);
+select has_function(
+  'public',
+  'demo_begin_operation',
+  array['uuid', 'text', 'text', 'uuid', 'text', 'date', 'bigint'],
+  'operation begin state machine exists'
+);
+select has_function(
+  'public',
+  'demo_finish_operation',
+  array['uuid', 'jsonb'],
+  'operation finish transition exists'
+);
+select has_function(
+  'public',
+  'demo_fail_operation',
+  array['uuid', 'text'],
+  'operation failure transition exists'
+);
+select has_function(
+  'public',
+  'demo_assert_no_account_collisions',
+  array[]::text[],
+  'real-account collision guard exists'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.demo_begin_operation(uuid,text,text,uuid,text,date,bigint)',
+    'EXECUTE'
+  ),
+  'only the server role can begin demo operations'
+);
+select ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.demo_begin_operation(uuid,text,text,uuid,text,date,bigint)',
+    'EXECUTE'
+  ),
+  'authenticated clients cannot begin demo operations'
+);
+select ok(
+  pg_get_functiondef('public.demo_begin_operation(uuid,text,text,uuid,text,date,bigint)'::regprocedure)
+    LIKE '%pg_try_advisory_xact_lock%',
+  'operation begin uses a transactional advisory lock'
+);
+select ok(
+  pg_get_functiondef('public.demo_assert_no_account_collisions()'::regprocedure)
+    LIKE '%auth.users%',
+  'collision guard checks Auth users instead of adopting by profile name'
+);
+select ok(
+  pg_get_functiondef('public.demo_assert_service_target(uuid,text,date)'::regprocedure)
+    LIKE '%c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01%',
+  'executor target is hard-coded to the approved fixed organization'
+);
+select is(
+  (select count(*)::int from public.demo_executor_target),
+  0,
+  'migration does not configure or seed a live executor target'
 );
 
 select * from finish();
