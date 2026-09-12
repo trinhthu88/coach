@@ -4,6 +4,11 @@ export const DEMO_ORGANIZATION_NAME = "Clariva Demo Organization";
 export const DEMO_ORGANIZATION_ID = "c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01";
 export const DEMO_ANCHOR_DATE = "2026-01-05";
 
+const leaderIdFor = (serial: number) =>
+  `c7f8e4b2-2f34-4a1d-8f6f-d${serial.toString().padStart(11, "0")}`;
+const enrollmentIdFor = (serial: number) =>
+  `c7f8e4b2-2f34-4a1d-8f6f-e${serial.toString().padStart(11, "0")}`;
+
 // These IDs are part of the fixture contract. Later batches may populate the
 // rows, but must not generate a second set of identifiers for the same fixture.
 export const DEMO_FIXTURE_IDS = {
@@ -26,6 +31,14 @@ export const DEMO_FIXTURE_IDS = {
     coach: "c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2c0103",
     sponsor: "c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2c0104",
   },
+  leaders: Array.from({ length: 40 }, (_, index) =>
+    index === 0
+      ? "c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2c0101"
+      : index === 18
+        ? "c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2c0102"
+        : leaderIdFor(index + 1),
+  ),
+  enrollments: Array.from({ length: 40 }, (_, index) => enrollmentIdFor(index + 1)),
 } as const;
 
 export const DEMO_BATCH_1_CONTRACT = {
@@ -105,13 +118,71 @@ export const DEMO_PROGRAMMES = [
   },
 ] as const;
 
-export const DEMO_LEADER_COUNT = DEMO_PROGRAMMES.reduce((total, programme) => total + programme.leaderCount, 0);
+const LEADER_NAMES = [
+  "Demo Learner — Executive Coaching", "Marcus Lee", "Sofia Nguyen", "Daniel Wong", "Maya Patel", "Ethan Lim", "Chloe Pham", "Noah Chen",
+  "Isla Ho", "Julian Park", "Nadia Vo", "Theo Martin", "Amara Singh", "Leo Nguyen", "Mina Le", "Rafael Cruz",
+  "Avery Do", "Grace Tan", "Demo Learner — Emerging Leaders", "Caleb Ong", "Hana Bui", "Miles Dao",
+  "Elena Pham", "Kai Wong", "Tessa Nguyen", "Arjun Mehta", "Sienna Lim", "Ben Hoang", "Naomi Lee", "Adam Vo",
+  "Claire Chen", "Duy Phan", "Ivy Tran", "Samir Khan", "Jade Nguyen", "Finn Le", "Rina Patel", "Luca Ho",
+  "Tuan Vo", "Mai Nguyen",
+] as const;
+
+export const DEMO_LEADERS = DEMO_PROGRAMMES.flatMap((programme, programmeIndex) =>
+  Array.from({ length: programme.leaderCount }, (_, cohortPosition) => {
+    const serial = DEMO_PROGRAMMES
+      .slice(0, programmeIndex)
+      .reduce((total, item) => total + item.leaderCount, 0) + cohortPosition + 1;
+    const key = `${programme.key}${String(cohortPosition + 1).padStart(2, "0")}`;
+    const userId = DEMO_FIXTURE_IDS.leaders[serial - 1];
+    const email = serial === 1
+      ? DEMO_ACCOUNTS[0].email
+      : serial === 19
+        ? DEMO_ACCOUNTS[1].email
+        : `demo-leader-${key.toLowerCase()}@demo.clariva.club`;
+    return {
+      key,
+      serial,
+      name: LEADER_NAMES[serial - 1],
+      email,
+      userId,
+      programmeKey: programme.key,
+      cohortId: DEMO_FIXTURE_IDS.cohorts[programme.key],
+      enrollmentId: DEMO_FIXTURE_IDS.enrollments[serial - 1],
+    };
+  }),
+);
+
+export const DEMO_LEADER_COUNT = DEMO_LEADERS.length;
+
+export const DEMO_BATCH_2_CONTRACT = {
+  fixtureVersion: DEMO_FIXTURE_VERSION,
+  organizationId: DEMO_ORGANIZATION_ID,
+  anchorDate: DEMO_ANCHOR_DATE,
+  creates: {
+    programmes: 4,
+    cohorts: 4,
+    accounts: 4,
+    authUsers: 42,
+    profiles: 42,
+    roleAssignments: 42,
+    leaderProfiles: 40,
+    enrollments: 40,
+    activity: 0,
+    ownershipResources: 221,
+  },
+  cohortDistribution: { A: 8, B: 10, C: 12, D: 10 },
+} as const;
 
 if (
   DEMO_LEADER_COUNT !== 40 ||
   DEMO_ACCOUNTS.length !== 4 ||
+  DEMO_LEADERS.filter((leader) => leader.programmeKey === "A").length !== 8 ||
+  DEMO_LEADERS.filter((leader) => leader.programmeKey === "B").length !== 10 ||
+  DEMO_LEADERS.filter((leader) => leader.programmeKey === "C").length !== 12 ||
+  DEMO_LEADERS.filter((leader) => leader.programmeKey === "D").length !== 10 ||
   DEMO_FIXTURE_IDS.organization !== DEMO_ORGANIZATION_ID ||
-  DEMO_BATCH_1_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE
+  DEMO_BATCH_1_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
+  DEMO_BATCH_2_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE
 ) {
   throw new Error("Clariva demo manifest does not match the approved portfolio counts");
 }

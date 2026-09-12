@@ -3,6 +3,8 @@ import {
   DEMO_ACCOUNTS,
   DEMO_ANCHOR_DATE,
   DEMO_BATCH_1_CONTRACT,
+  DEMO_BATCH_2_CONTRACT,
+  DEMO_LEADERS,
   DEMO_FIXTURE_IDS,
   DEMO_FIXTURE_VERSION,
   DEMO_LEADER_COUNT,
@@ -16,6 +18,10 @@ describe("Clariva live-demo Batch 1 contract", () => {
     expect(new Set(Object.values(DEMO_FIXTURE_IDS.programmes)).size).toBe(4);
     expect(new Set(Object.values(DEMO_FIXTURE_IDS.cohorts)).size).toBe(4);
     expect(new Set(Object.values(DEMO_FIXTURE_IDS.accounts)).size).toBe(4);
+    expect(DEMO_FIXTURE_IDS.leaders).toHaveLength(40);
+    expect(DEMO_FIXTURE_IDS.enrollments).toHaveLength(40);
+    expect(DEMO_FIXTURE_IDS.leaders.every((id) => /^[0-9a-f-]{36}$/.test(id))).toBe(true);
+    expect(DEMO_FIXTURE_IDS.enrollments.every((id) => /^[0-9a-f-]{36}$/.test(id))).toBe(true);
     expect(DEMO_ORGANIZATION_ID).toBe("c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01");
   });
 
@@ -27,5 +33,26 @@ describe("Clariva live-demo Batch 1 contract", () => {
     expect(DEMO_PROGRAMMES).toHaveLength(4);
     expect(DEMO_BATCH_1_CONTRACT.creates.leaders).toBe(0);
     expect(DEMO_BATCH_1_CONTRACT.creates.activity).toBe(0);
+  });
+
+  it("keeps Batch 2 counts, distribution, and shared learner identities deterministic", () => {
+    expect(DEMO_BATCH_2_CONTRACT.creates).toMatchObject({
+      programmes: 4,
+      cohorts: 4,
+      accounts: 4,
+      authUsers: 42,
+      profiles: 42,
+      roleAssignments: 42,
+      leaderProfiles: 40,
+      enrollments: 40,
+      activity: 0,
+      ownershipResources: 221,
+    });
+    expect(DEMO_BATCH_2_CONTRACT.cohortDistribution).toEqual({ A: 8, B: 10, C: 12, D: 10 });
+    expect(DEMO_LEADERS.filter((leader) => leader.email.includes("demo-learner-"))).toHaveLength(2);
+    expect(DEMO_LEADERS.find((leader) => leader.serial === 1)?.userId)
+      .toBe(DEMO_FIXTURE_IDS.accounts.learnerExecutive);
+    expect(DEMO_LEADERS.find((leader) => leader.serial === 19)?.userId)
+      .toBe(DEMO_FIXTURE_IDS.accounts.learnerEmerging);
   });
 });

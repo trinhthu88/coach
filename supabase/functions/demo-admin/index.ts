@@ -4,6 +4,7 @@ import {
   DEMO_ACCOUNTS,
   DEMO_ANCHOR_DATE,
   DEMO_BATCH_1_CONTRACT,
+  DEMO_BATCH_2_CONTRACT,
   DEMO_FIXTURE_VERSION,
   DEMO_FIXTURE_IDS,
   DEMO_LEADER_COUNT,
@@ -85,6 +86,7 @@ Deno.serve(async (req) => {
         anchor_date: DEMO_ANCHOR_DATE,
         fixture_ids: DEMO_FIXTURE_IDS,
         batch_1_contract: DEMO_BATCH_1_CONTRACT,
+        batch_2_contract: DEMO_BATCH_2_CONTRACT,
       }, 200, corsHeaders);
     }
 
@@ -136,7 +138,7 @@ Deno.serve(async (req) => {
       if (configureError) throw configureError;
 
       const idempotencyKey = body.idempotency_key?.trim() || `${action}-${crypto.randomUUID()}`;
-      const { data: started, error: startError } = await admin.rpc("demo_begin_operation", {
+      const { data: started, error: startError } = await admin.rpc("demo_begin_batch_2_operation", {
         p_organization_id: fixedOrganizationId,
         p_operation: action,
         p_idempotency_key: idempotencyKey,
@@ -150,11 +152,20 @@ Deno.serve(async (req) => {
       if (!operation) throw new Error("Demo operation did not return a lifecycle record");
 
       if (operation.status === "started") {
-        // Batch 1 intentionally has no leader/activity rows. The executor
-        // still completes the same transactional lifecycle later batches use.
+        const { data: applied, error: applyError } = await admin.rpc("demo_apply_batch_2", {
+          p_operation_id: operation.id,
+        });
+        if (applyError) {
+          await admin.rpc("demo_fail_operation", {
+            p_operation_id: operation.id,
+            p_error_message: applyError.message,
+          });
+          throw applyError;
+        }
+
         const { data: finished, error: finishError } = await admin.rpc("demo_finish_operation", {
           p_operation_id: operation.id,
-          p_affected_counts: DEMO_BATCH_1_CONTRACT.creates,
+          p_affected_counts: Array.isArray(applied) ? applied[0] : applied,
         });
         if (finishError) {
           await admin.rpc("demo_fail_operation", {

@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(38);
 
 select has_table('public', 'demo_organization_registry', 'demo registry exists');
 select has_table('public', 'demo_accounts', 'demo account registry exists');
@@ -189,6 +189,53 @@ select is(
   (select count(*)::int from public.demo_executor_target),
   0,
   'migration does not configure or seed a live executor target'
+);
+
+select has_function(
+  'public',
+  'demo_begin_batch_2_operation',
+  array['uuid', 'text', 'text', 'uuid', 'text', 'date', 'bigint'],
+  'Batch 2 reconciliation begin wrapper exists'
+);
+select has_function(
+  'public',
+  'demo_apply_batch_2',
+  array['uuid'],
+  'Batch 2 reconciliation RPC exists'
+);
+select has_function(
+  'public',
+  'demo_validate_batch_2_ownership',
+  array[]::text[],
+  'Batch 2 ownership closure validator exists'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.demo_apply_batch_2(uuid)',
+    'EXECUTE'
+  ),
+  'only the server role can apply Batch 2'
+);
+select ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.demo_apply_batch_2(uuid)',
+    'EXECUTE'
+  ),
+  'authenticated clients cannot apply Batch 2'
+);
+select ok(
+  pg_get_functiondef('public.demo_apply_batch_2(uuid)'::regprocedure)
+    NOT LIKE '%generate_schedule%'
+    AND pg_get_functiondef('public.demo_apply_batch_2(uuid)'::regprocedure)
+      LIKE '%programme_enrollments%',
+  'Batch 2 creates enrollments without generating activity schedules'
+);
+select ok(
+  pg_get_functiondef('public.demo_configure_target(uuid,text,date)'::regprocedure)
+    LIKE '%demo_organization_registry%',
+  'fixed-target configuration rejects unregistered organization adoption'
 );
 
 select * from finish();
