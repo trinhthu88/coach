@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(31);
 
 select has_table('public', 'demo_organization_registry', 'demo registry exists');
 select has_table('public', 'demo_accounts', 'demo account registry exists');

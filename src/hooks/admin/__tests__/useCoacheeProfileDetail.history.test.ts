@@ -36,14 +36,21 @@ vi.mock("@/integrations/supabase/client", () => ({
         sessions: { data: [], error: null },
       };
       const result = results[table];
-      const query: Record<string, (...args: unknown[]) => unknown> = {
-        select: () => query,
-        eq: () => query,
-        order: () => Promise.resolve(result),
-        limit: () => Promise.resolve(result),
-        maybeSingle: () => Promise.resolve(result),
-        then: (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve),
+      type Query = {
+        select: () => Query;
+        eq: () => Query;
+        order: () => Promise<typeof result>;
+        limit: () => Promise<typeof result>;
+        maybeSingle: () => Promise<typeof result>;
+        then: (resolve: (value: typeof result) => unknown) => Promise<unknown>;
       };
+      const query = {} as Query;
+      query.select = () => query;
+      query.eq = () => query;
+      query.order = () => Promise.resolve(result);
+      query.limit = () => Promise.resolve(result);
+      query.maybeSingle = () => Promise.resolve(result);
+      query.then = (resolve) => Promise.resolve(result).then(resolve);
       return query;
     },
   },

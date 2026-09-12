@@ -508,7 +508,9 @@ GRANT EXECUTE ON FUNCTION public.demo_finish_operation(uuid, jsonb) TO service_r
 GRANT EXECUTE ON FUNCTION public.demo_fail_operation(uuid, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.demo_reap_stale_operation(uuid, interval) TO service_role;
 
-CREATE OR REPLACE FUNCTION public.get_demo_organization_status(p_organization_id uuid)
+DROP FUNCTION IF EXISTS public.get_demo_organization_status(uuid);
+
+CREATE FUNCTION public.get_demo_organization_status(p_organization_id uuid)
 RETURNS TABLE (
   organization_id uuid,
   is_demo boolean,
