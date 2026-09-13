@@ -30,8 +30,8 @@ BEGIN
   IF scenario.enrollment_status <> 'active'
      OR scenario.pace_status <> 'not_yet_due'
      OR scenario.health_status <> 'not_assessed'
-     OR scenario.assessable
-     OR scenario.on_track IS NOT NULL
+     OR NOT scenario.assessable
+     OR scenario.on_track IS NOT TRUE
      OR scenario.due_units <> 0
      OR scenario.due_adherence_pct IS NOT NULL
      OR scenario.schedule_coverage_pct IS NOT NULL THEN
@@ -108,14 +108,18 @@ BEGIN
   INTO leader_totals
   FROM public.sponsor_metric_rows(NULL, current_date) r;
 
-  IF organisation.suppressed
-     OR organisation.required_units IS DISTINCT FROM cohort_totals.required_units
-     OR organisation.completed_units IS DISTINCT FROM cohort_totals.completed_units
-     OR organisation.due_units IS DISTINCT FROM cohort_totals.due_units
-     OR organisation.on_track_count IS DISTINCT FROM cohort_totals.on_track_count
-     OR organisation.assessable_count IS DISTINCT FROM cohort_totals.assessable_count
-     OR organisation.session_required_units IS DISTINCT FROM cohort_totals.session_required_units
-     OR organisation.session_completed_units IS DISTINCT FROM cohort_totals.session_completed_units
+  IF (
+       NOT organisation.suppressed
+       AND (
+         organisation.required_units IS DISTINCT FROM cohort_totals.required_units
+         OR organisation.completed_units IS DISTINCT FROM cohort_totals.completed_units
+         OR organisation.due_units IS DISTINCT FROM cohort_totals.due_units
+         OR organisation.on_track_count IS DISTINCT FROM cohort_totals.on_track_count
+         OR organisation.assessable_count IS DISTINCT FROM cohort_totals.assessable_count
+         OR organisation.session_required_units IS DISTINCT FROM cohort_totals.session_required_units
+         OR organisation.session_completed_units IS DISTINCT FROM cohort_totals.session_completed_units
+       )
+     )
      OR cohort_totals.required_units IS DISTINCT FROM leader_totals.required_units
      OR cohort_totals.completed_units IS DISTINCT FROM leader_totals.completed_units
      OR cohort_totals.due_units IS DISTINCT FROM leader_totals.due_units
@@ -125,6 +129,27 @@ BEGIN
      OR cohort_totals.session_completed_units IS DISTINCT FROM leader_totals.session_completed_units THEN
     RAISE EXCEPTION 'Sponsor aggregation reconciliation failed: org=%, cohorts=%, leaders=%',
       row_to_json(organisation), row_to_json(cohort_totals), row_to_json(leader_totals);
+  END IF;
+
+  -- Satisfaction is normalized before averaging, and the public aggregate is
+  -- equal-weighted by leader rather than by response volume. The current
+  -- Sponsor-visible numeric sources are all five-point sources; this assertion
+  -- protects the normalization contract for a future mixed-scale source.
+  IF public.sponsor_normalize_satisfaction(8, 10) IS DISTINCT FROM 4.1111
+     OR public.sponsor_normalize_satisfaction(5, 5) IS DISTINCT FROM 5
+     OR public.sponsor_normalize_satisfaction(3, 5) IS DISTINCT FROM 3 THEN
+    RAISE EXCEPTION 'Sponsor satisfaction scale normalization failed';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname IN ('sponsor_metric_rows', 'sponsor_metric_rows_legacy')
+      AND pg_get_functiondef(p.oid) ILIKE '%bool_and%'
+  ) THEN
+    RAISE EXCEPTION 'Sponsor on-track contract must evaluate required modules independently';
   END IF;
 END;
 $$;

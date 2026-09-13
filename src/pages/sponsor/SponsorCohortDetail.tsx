@@ -89,7 +89,7 @@ export default function SponsorCohortDetail() {
             />
             {showSatisfaction && (
               <Kpi
-                label={t("cohortDetail.kpis.coachingSatisfaction")}
+                label={t("cohortDetail.kpis.overallSatisfaction")}
                 value={kpis?.satisfaction_avg != null ? `${kpis.satisfaction_avg.toFixed(1)} / 5` : "—"}
                 hint={t("cohortDetail.kpis.responseCount", { count: kpis?.satisfaction_rated_count ?? 0 })}
               />

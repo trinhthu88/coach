@@ -72,9 +72,20 @@ export default function SponsorLeaderDetail() {
 
       {/* CURRENT PROGRAMME INFORMATION — spec section 5. No Time Elapsed %. */}
       <SectionCard label={t("leaderDetail.currentProgramme.label")}>
-        <div className="grid grid-cols-2 gap-3 text-[12px] sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 text-[12px] sm:grid-cols-5">
           <Fact label={t("cohortDetail.overview.programme")} value={leader.programme_label} />
           <Fact label={t("dashboard.currentCohorts.columns.cohort")} value={leader.cohort_label ?? "—"} />
+          <Fact
+            label={t("leaderDetail.currentProgramme.week")}
+            value={leader.programme_start_date
+              ? t("dashboard.currentCohorts.weekOf", {
+                current: Math.max(1, Math.floor((Date.now() - new Date(leader.programme_start_date).getTime()) / 604800000) + 1),
+                total: leader.programme_end_date
+                  ? Math.max(1, Math.ceil((new Date(leader.programme_end_date).getTime() - new Date(leader.programme_start_date).getTime()) / 604800000))
+                  : "—",
+              })
+              : "—"}
+          />
           <Fact
             label={t("cohortDetail.overview.period")}
             value={`${format(new Date(leader.programme_start_date), "d MMM yyyy")} – ${leader.programme_end_date ? format(new Date(leader.programme_end_date), "d MMM yyyy") : t("leaderDetail.ongoing")}`}
@@ -146,10 +157,10 @@ export default function SponsorLeaderDetail() {
         </div>
       </SectionCard>
 
-      {/* SATISFACTION / EXPERIENCE — spec section 11. Source: sessions.
-          coachee_rating, 1:1 coaching feedback only (see delivery report). */}
+      {/* SATISFACTION / EXPERIENCE — one equal-weighted leader average over
+          all applicable numeric Sponsor-visible sources. */}
       {showSatisfaction && (
-        <SectionCard label={t("cohortDetail.kpis.coachingSatisfaction")}>
+        <SectionCard label={t("cohortDetail.kpis.overallSatisfaction")}>
           <p className="font-display text-2xl font-normal">{leader.satisfaction_avg?.toFixed(1)} / 5</p>
           <p className="mt-1 text-[11px] text-muted-foreground">{t("cohortDetail.kpis.responseCount", { count: leader.satisfaction_rated_count })}</p>
         </SectionCard>

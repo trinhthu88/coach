@@ -60,6 +60,7 @@ describe("SponsorCohortDetail spec contract", () => {
     expect(screen.queryByText(/Time Elapsed/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/overdue activities/i)).not.toBeInTheDocument();
 
+    expect(screen.getByText("Overall satisfaction")).toBeInTheDocument();
     // Roster: on_track pills, not a raw completion bar.
     expect(screen.getByText("Not on track")).toBeInTheDocument();
   });

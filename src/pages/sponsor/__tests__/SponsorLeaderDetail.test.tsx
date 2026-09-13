@@ -96,4 +96,39 @@ describe("SponsorLeaderDetail — cohort/leader consistency contract", () => {
     expect(screen.queryByText("Not on track")).not.toBeInTheDocument();
     expect(screen.queryByText("On track")).not.toBeInTheDocument();
   });
+
+  it("treats an active leader with nothing due as On Track while keeping cadence completion unknown", async () => {
+    responses.sponsor_enrollment_summaries = [{
+      enrollment_id: enrollmentId, learner_display_name: "Minh Nguyen",
+      programme_label: "TASC Level 1", cohort_label: "TASC Essential – Sep 2026",
+      enrollment_status: "active", on_track: true, due_adherence_pct: null, goal_progress_pct: null,
+      goal_setup_count: 0, programme_start_date: "2026-09-01", programme_end_date: "2026-11-23",
+      due_units: 0, completed_units: 0, session_due_units: 0, session_completed_units: 0,
+      session_required_units: 6, satisfaction_avg: null, satisfaction_rated_count: 0,
+    }];
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Minh Nguyen")).toBeInTheDocument());
+
+    expect(screen.getByText("On track")).toBeInTheDocument();
+    expect(screen.getAllByText("No activities due yet").length).toBeGreaterThan(0);
+    expect(screen.queryByText("0%")).not.toBeInTheDocument();
+  });
+
+  it("labels the combined numeric experience metric Overall satisfaction", async () => {
+    responses.sponsor_enrollment_summaries = [{
+      enrollment_id: enrollmentId, learner_display_name: "Lan Pham",
+      programme_label: "TASC Level 1", cohort_label: "TASC Essential – Sep 2026",
+      enrollment_status: "active", on_track: true, due_adherence_pct: 90, goal_progress_pct: 60,
+      goal_setup_count: 2, programme_start_date: "2026-08-01", programme_end_date: "2026-10-24",
+      due_units: 10, completed_units: 9, session_due_units: 2, session_completed_units: 2,
+      session_required_units: 6, satisfaction_avg: 4.4, satisfaction_rated_count: 5,
+    }];
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Lan Pham")).toBeInTheDocument());
+
+    expect(screen.getByText("Overall satisfaction")).toBeInTheDocument();
+    expect(screen.getByText("4.4 / 5")).toBeInTheDocument();
+  });
 });

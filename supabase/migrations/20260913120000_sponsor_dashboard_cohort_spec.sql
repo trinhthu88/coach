@@ -5,6 +5,27 @@
 -- fields the reworked Sponsor Dashboard / Cohort Detail pages need. See the
 -- delivery report in the pull request description for the full old-vs-new
 -- calculation writeup.
+
+-- Normalize any supported numeric experience scale to the product's displayed
+-- five-point scale before it enters an enrollment average. The current
+-- Sponsor-visible satisfaction sources are already 1–5; the scale parameter is
+-- intentional so a future standardized 1–10 source cannot be averaged raw.
+DROP FUNCTION IF EXISTS public.sponsor_normalize_satisfaction(numeric, numeric);
+CREATE FUNCTION public.sponsor_normalize_satisfaction(
+  p_score numeric,
+  p_scale_max numeric
+)
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+STRICT
+AS $$
+  SELECT CASE
+    WHEN p_scale_max <= 1 OR p_score < 1 OR p_score > p_scale_max THEN NULL
+    ELSE round(1 + ((p_score - 1) * 4 / (p_scale_max - 1)), 4)
+  END
+$$;
+REVOKE ALL ON FUNCTION public.sponsor_normalize_satisfaction(numeric, numeric) FROM PUBLIC, anon, authenticated;
 --
 -- Bug 1 (on_track): the previous "on_track" flattened every module's
 -- completed/due units into ONE sum before comparing them, so a leader who
@@ -223,15 +244,33 @@ AS $$
     FROM eligible e
     LEFT JOIN public.enrollment_actions a ON a.enrollment_id = e.id
     GROUP BY e.id
+  ), satisfaction_events AS (
+    -- Overall satisfaction is the equal-standard numeric experience signal
+    -- available to Sponsors. All included sources are 1–5 today; routing them
+    -- through the explicit normalizer keeps a future 1–10 source from being
+    -- averaged on its raw scale.
+    SELECT s.enrollment_id, public.sponsor_normalize_satisfaction(s.coachee_rating, 5) AS score
+    FROM public.sessions s
+    WHERE s.status = 'completed' AND s.coachee_rating IS NOT NULL
+    UNION ALL
+    SELECT s.enrollment_id, public.sponsor_normalize_satisfaction(s.coachee_rating, 5)
+    FROM public.peer_sessions s
+    WHERE s.status = 'completed' AND s.coachee_rating IS NOT NULL
+    UNION ALL
+    SELECT s.enrollment_id, public.sponsor_normalize_satisfaction(s.receiver_rating, 5)
+    FROM public.coachee_peer_sessions s
+    WHERE s.status = 'completed' AND s.receiver_rating IS NOT NULL
+    UNION ALL
+    SELECT r.enrollment_id, public.sponsor_normalize_satisfaction(r.satisfaction_rating, 5)
+    FROM public.triad_reflections r
+    JOIN public.triad_sessions ts ON ts.id = r.triad_session_id
+    WHERE ts.status = 'completed' AND r.satisfaction_rating IS NOT NULL
   ), satisfaction AS (
     SELECT e.id AS enrollment_id,
-      count(s.id)::integer AS satisfaction_rated_count,
-      round(avg(s.coachee_rating), 2) AS satisfaction_avg
+      count(se.score)::integer AS satisfaction_rated_count,
+      round(avg(se.score), 2) AS satisfaction_avg
     FROM eligible e
-    LEFT JOIN public.sessions s
-      ON s.enrollment_id = e.id
-     AND s.status = 'completed'
-     AND s.coachee_rating IS NOT NULL
+    LEFT JOIN satisfaction_events se ON se.enrollment_id = e.id
     GROUP BY e.id
   ), base AS (
     SELECT
@@ -463,8 +502,7 @@ AS $$
       sum(r.completed_action_count)::integer AS completed_action_count,
       sum(r.total_action_count)::integer AS total_action_count,
       sum(r.satisfaction_rated_count)::integer AS satisfaction_rated_count,
-      sum(r.satisfaction_avg * r.satisfaction_rated_count)
-        / nullif(sum(r.satisfaction_rated_count), 0) AS satisfaction_avg,
+       avg(r.satisfaction_avg) FILTER (WHERE r.satisfaction_avg IS NOT NULL) AS satisfaction_avg,
       count(*) FILTER (WHERE r.enrollment_status = 'active')::integer AS active_count,
       count(*) FILTER (WHERE r.enrollment_status = 'at_risk')::integer AS at_risk_count,
       count(*) FILTER (WHERE r.enrollment_status = 'paused')::integer AS paused_count,
@@ -655,8 +693,7 @@ AS $$
       sum(r.total_action_count)::integer AS total_action_count,
       sum(r.completed_action_count)::integer AS completed_action_count,
       sum(r.satisfaction_rated_count)::integer AS satisfaction_rated_count,
-      sum(r.satisfaction_avg * r.satisfaction_rated_count)
-        / nullif(sum(r.satisfaction_rated_count), 0) AS satisfaction_avg,
+       avg(r.satisfaction_avg) FILTER (WHERE r.satisfaction_avg IS NOT NULL) AS satisfaction_avg,
       count(*) FILTER (WHERE r.assessable)::integer AS assessable_count,
       count(*) FILTER (WHERE r.assessable IS NOT TRUE)::integer AS not_assessed_count,
       count(*) FILTER (WHERE r.on_track IS TRUE)::integer AS canonical_on_track_count,

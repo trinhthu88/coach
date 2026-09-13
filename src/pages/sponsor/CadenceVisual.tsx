@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { CheckCircle2, Circle, AlertTriangle, MapPin } from "lucide-react";
+import { CheckCircle2, Circle, AlertTriangle, MapPin, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { moduleLabel } from "./sponsorUtils";
 import type { SponsorCadenceItem } from "@/hooks/sponsor/useSponsorCohortData";
@@ -20,11 +20,22 @@ export function CohortCadenceMap({ items }: { items: SponsorCadenceItem[] }) {
   const { t } = useTranslation("sponsor");
   const today = todayIso();
 
-  const { past, next } = useMemo(() => {
+  const { sorted, next } = useMemo(() => {
     const sorted = [...items].sort((a, b) => a.due_on.localeCompare(b.due_on));
     const upcoming = sorted.find((i) => i.due_on > today);
-    return { past: sorted, next: upcoming };
+    return { sorted, next: upcoming };
   }, [items, today]);
+
+  const grouped = useMemo(() => {
+    const firstDate = sorted[0]?.due_on;
+    if (!firstDate) return [];
+    const groups = new Map<number, SponsorCadenceItem[]>();
+    for (const item of sorted) {
+      const week = Math.floor((new Date(`${item.due_on}T00:00:00`).getTime() - new Date(`${firstDate}T00:00:00`).getTime()) / 604800000) + 1;
+      groups.set(week, [...(groups.get(week) ?? []), item]);
+    }
+    return Array.from(groups.entries());
+  }, [sorted]);
 
   const activityTypeSummary = useMemo(() => {
     const byModule = new Map<string, { applies: number; completed: number }>();
@@ -48,37 +59,45 @@ export function CohortCadenceMap({ items }: { items: SponsorCadenceItem[] }) {
   return (
     <div className="space-y-4">
       <div className="overflow-x-auto pb-2">
-        <div className="flex min-w-max items-stretch gap-0">
-          {past.map((item, idx) => {
-            const isPast = item.due_on <= today;
-            const isNext = item === next;
-            const pct = isPast && item.applies_count > 0 ? Math.round((item.completed_count / item.applies_count) * 100) : null;
-            return (
-              <div key={`${item.module}-${item.sequence}`} className="flex items-stretch">
-                {idx > 0 && <div className="mt-6 h-px w-8 shrink-0 self-start bg-border" />}
-                <div className="relative w-32 shrink-0 px-1 text-center">
-                  {isNext && (
-                    <div className="absolute -top-5 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-primary">
-                      <MapPin className="h-3 w-3" /> {t("cohortDetail.cadenceMap.youAreHere")}
+        <div className="flex min-w-max items-start gap-6">
+          {grouped.map(([week, weekItems]) => (
+            <div key={week} className="space-y-2">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{t("cohortDetail.cadenceMap.week", { week })}</p>
+              <div className="flex items-stretch gap-0">
+                {weekItems.map((item, idx) => {
+                  const isPast = item.due_on <= today;
+                  const isNext = item === next;
+                  const pct = isPast && item.applies_count > 0 ? Math.round((item.completed_count / item.applies_count) * 100) : null;
+                  return (
+                    <div key={`${item.module}-${item.sequence}`} className="flex items-stretch">
+                      {idx > 0 && <div className="mt-6 h-px w-5 shrink-0 self-start bg-border" />}
+                      <div className="relative w-32 shrink-0 rounded-xl px-1 text-center">
+                        {isNext && (
+                          <div className="absolute -top-5 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-primary">
+                            <MapPin className="h-3 w-3" /> {t("cohortDetail.cadenceMap.youAreHere")}
+                          </div>
+                        )}
+                        <div
+                          className={cn(
+                            "mx-auto grid h-9 w-9 place-items-center rounded-full border-2",
+                            isNext ? "border-primary bg-primary-soft" : isPast ? "border-success/60 bg-success/10" : "border-border bg-muted/40"
+                          )}
+                          aria-label={isPast ? t("cohortDetail.cadenceMap.completedState") : t("cohortDetail.cadenceMap.upcoming")}
+                        >
+                          {isPast ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Clock3 className="h-4 w-4 text-muted-foreground" />}
+                        </div>
+                        <p className="mt-1.5 truncate text-[10.5px] font-semibold">{moduleLabel(item.module)} {item.sequence}</p>
+                        <p className="text-[9.5px] text-muted-foreground">{format(new Date(item.due_on), "MMM d")}</p>
+                        <p className={cn("mt-0.5 text-[10.5px] font-bold", pct != null && pct < 70 ? "text-warning" : "text-foreground")}>
+                          {pct != null ? `${pct}% · ${item.completed_count}/${item.applies_count}` : t("cohortDetail.cadenceMap.upcoming")}
+                        </p>
+                      </div>
                     </div>
-                  )}
-                  <div
-                    className={cn(
-                      "mx-auto grid h-9 w-9 place-items-center rounded-full border-2",
-                      isNext ? "border-primary bg-primary-soft" : isPast ? "border-success/60 bg-success/10" : "border-border bg-muted/40"
-                    )}
-                  >
-                    {isPast ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
-                  </div>
-                  <p className="mt-1.5 truncate text-[10.5px] font-semibold">{moduleLabel(item.module)} {item.sequence}</p>
-                  <p className="text-[9.5px] text-muted-foreground">{format(new Date(item.due_on), "MMM d")}</p>
-                  <p className={cn("mt-0.5 text-[10.5px] font-bold", pct != null && pct < 70 ? "text-warning" : "text-foreground")}>
-                    {pct != null ? `${pct}%` : t("cohortDetail.cadenceMap.upcoming")}
-                  </p>
-                </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -90,7 +109,7 @@ export function CohortCadenceMap({ items }: { items: SponsorCadenceItem[] }) {
 
       {activityTypeSummary.length > 0 && (
         <div className="grid gap-2 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-3">
-          {activityTypeSummary.map((row) => (
+           {activityTypeSummary.map((row) => (
             <div key={row.module} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-[11px]">
               <span className="text-muted-foreground">{moduleLabel(row.module)}</span>
               <span className="font-semibold">{row.pct == null ? t("cohortDetail.cadenceMap.notDueYet") : `${row.pct}%`}</span>

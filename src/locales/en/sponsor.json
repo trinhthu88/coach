@@ -287,13 +287,15 @@
       "noneDueYet": "No programme activities due yet",
       "leadersWithGoals": "Leaders with goals",
       "avgGoalProgress": "Average goal progress",
-      "coachingSatisfaction": "Coaching session satisfaction",
+      "overallSatisfaction": "Overall satisfaction",
       "responseCount": "{{count}} responses"
     },
     "cadenceMap": {
       "label": "Programme cadence",
       "empty": "This programme has no configured cadence items yet.",
       "youAreHere": "You are here",
+      "week": "Week {{week}}",
+      "completedState": "Completed",
       "upcoming": "Upcoming",
       "nextCheckpoint": "Next checkpoint",
       "notDueYet": "Not due yet"
@@ -337,7 +339,8 @@
     "backToCohort": "Back to cohort",
     "ongoing": "ongoing",
     "currentProgramme": {
-      "label": "Current programme"
+      "label": "Current programme",
+      "week": "Current programme week"
     },
     "journey": {
       "label": "Active programme journey",

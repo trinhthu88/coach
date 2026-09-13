@@ -285,13 +285,15 @@
       "noneDueYet": "Chưa có hoạt động chương trình nào đến hạn",
       "leadersWithGoals": "Lãnh đạo có mục tiêu",
       "avgGoalProgress": "Tiến độ mục tiêu trung bình",
-      "coachingSatisfaction": "Mức hài lòng session 1:1",
+      "overallSatisfaction": "Mức hài lòng tổng thể",
       "responseCount": "{{count}} phản hồi"
     },
     "cadenceMap": {
       "label": "Cadence chương trình",
       "empty": "Chương trình này chưa cấu hình hoạt động cadence nào.",
       "youAreHere": "Bạn đang ở đây",
+      "week": "Tuần {{week}}",
+      "completedState": "Đã hoàn thành",
       "upcoming": "Sắp tới",
       "nextCheckpoint": "Mốc tiếp theo",
       "notDueYet": "Chưa đến hạn"
@@ -335,7 +337,8 @@
     "backToCohort": "Về trang nhóm",
     "ongoing": "đang diễn ra",
     "currentProgramme": {
-      "label": "Chương trình hiện tại"
+      "label": "Chương trình hiện tại",
+      "week": "Tuần hiện tại của chương trình"
     },
     "journey": {
       "label": "Hành trình chương trình đang hoạt động",
