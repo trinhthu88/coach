@@ -146,7 +146,7 @@ export function EngagementCell({ pct, sub, tone = "primary" }: { pct: number | n
   );
 }
 
-export function MiniBar({ pct, tone = "primary" }: { pct: number; tone?: "primary" | "success" | "warning" | "destructive" | "secondary" }) {
+export function MiniBar({ pct, tone = "primary" }: { pct: number | null; tone?: "primary" | "success" | "warning" | "destructive" | "secondary" }) {
   const fill: Record<string, string> = {
     primary: "bg-primary",
     success: "bg-success",
@@ -157,9 +157,9 @@ export function MiniBar({ pct, tone = "primary" }: { pct: number; tone?: "primar
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-        <div className={cn("h-full rounded-full", fill[tone])} style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
+        <div className={cn("h-full rounded-full", fill[tone])} style={{ width: `${pct == null ? 0 : Math.max(0, Math.min(100, pct))}%` }} />
       </div>
-      <span className="w-8 text-right text-[10px] font-medium text-muted-foreground">{Math.round(pct)}%</span>
+      <span className="w-8 text-right text-[10px] font-medium text-muted-foreground">{pct == null ? "—" : `${Math.round(pct)}%`}</span>
     </div>
   );
 }

@@ -28,6 +28,13 @@ export function healthSignal(atRiskCount: number, total: number): HealthSignal {
   return "healthy";
 }
 
+/** Maps the canonical Sponsor aggregate health dimension to the existing UI tone. */
+export function healthStatusSignal(status: string | null | undefined): HealthSignal {
+  if (status === "at_risk") return "attention";
+  if (status === "not_assessed") return "watch";
+  return "healthy";
+}
+
 /** Elapsed/total days for a cohort with known start/end dates, clamped to the programme window. */
 export function cohortProgress(start: string | null, end: string | null): { elapsed: number; total: number; pct: number } | null {
   if (!start || !end) return null;

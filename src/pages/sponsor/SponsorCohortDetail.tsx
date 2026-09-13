@@ -22,8 +22,8 @@ export default function SponsorCohortDetail() {
     {!suppressed && <div className="grid gap-3 sm:grid-cols-4">
        <Kpi label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.enrollment_count ?? 0} />
       <Kpi label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} />
-      <Kpi label={t("dashboard.kpis.sessionsUsed")} value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`} />
-       <Kpi label="Booked / overdue" value={`${kpis?.booked_units ?? 0} / ${kpis?.overdue_units ?? 0}`} />
+       <Kpi label={t("dashboard.kpis.sessionsUsed")} value={`${kpis?.session_completed_units ?? "—"} / ${kpis?.session_required_units ?? "—"}`} />
+        <Kpi label="Booked / overdue" value={`${kpis?.session_booked_units ?? "—"} / ${kpis?.session_overdue_units ?? "—"}`} />
     </div>}
      {!suppressed && <div className="grid grid-cols-2 gap-2 text-sm">
        <span>Completion <b>{kpis?.full_completion_pct == null ? "—" : `${Math.round(kpis.full_completion_pct)}%`}</b></span>

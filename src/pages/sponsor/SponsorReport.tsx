@@ -67,12 +67,12 @@ export default function SponsorReport() {
             <h2 className="text-lg font-semibold">{cohorts.find(([id]) => id === scope)?.[1]}</h2>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Metric label={t("report.kpis.enrolled")} value={filtered.length} />
-              <Metric label={t("report.kpis.sessionsUsed")} value={`${filtered.reduce((n, r) => n + r.coaching_completed_count, 0)}/${filtered.reduce((n, r) => n + r.required_units, 0)}`} />
+               <Metric label={t("report.kpis.sessionsUsed")} value={`${filtered.reduce((n, r) => n + r.session_completed_units, 0)}/${filtered.reduce((n, r) => n + r.session_required_units, 0)}`} />
               <Metric label="Due adherence" value={filtered.length ? `${Math.round(filtered.reduce((n, r) => n + (r.due_adherence_pct ?? 0), 0) / filtered.length)}%` : "—"} />
               <Metric label="Open actions" value={filtered.reduce((n, r) => n + r.open_action_count, 0)} />
             </div>
             {suppressed && <p className="mt-5 rounded-lg bg-muted p-3 text-sm text-muted-foreground">Aggregate detail is suppressed to protect privacy.</p>}
-            {includeRoster && !suppressed && <div className="mt-6 space-y-2">{filtered.map((r) => <div key={r.enrollment_id} className="flex items-center justify-between border-b py-2 text-sm"><span>{r.learner_display_name}</span><span className="flex items-center gap-3"><Pill tone={r.enrollment_status === "active" ? "success" : "muted"}>{r.enrollment_status}</Pill><span>{r.completed_units}/{r.required_units}</span></span></div>)}</div>}
+             {includeRoster && !suppressed && <div className="mt-6 space-y-2">{filtered.map((r) => <div key={r.enrollment_id} className="flex items-center justify-between border-b py-2 text-sm"><span>{r.learner_display_name}</span><span className="flex items-center gap-3"><Pill tone={r.enrollment_status === "active" ? "success" : "muted"}>{r.enrollment_status}</Pill><span>{r.session_completed_units}/{r.session_required_units}</span></span></div>)}</div>}
           </div>}
       </div>
     </div>

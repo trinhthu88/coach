@@ -38,7 +38,7 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
   const { t } = useTranslation("sponsor");
   if (!leader) return null;
 
-  const completionPct = leader.full_completion_pct ?? 0;
+  const completionPct = leader.full_completion_pct;
 
   return (
     <Sheet open={!!leader} onOpenChange={open => { if (!open) onClose(); }}>
@@ -77,9 +77,9 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <StatCard
                 icon={Calendar}
-                 label="Completed units"
-                 value={`${leader.completed_units} / ${leader.required_units}`}
-                 sub={`${completionPct}% full completion`}
+                 label="Sessions completed"
+                 value={`${leader.session_completed_units} / ${leader.session_required_units}`}
+                 sub={`${completionPct == null ? "—" : `${Math.round(completionPct)}%`} full completion`}
               />
               <StatCard
                 icon={TrendingUp}
@@ -89,7 +89,7 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
               />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-              <span>Booked / due / overdue: <b>{leader.booked_units} / {leader.due_units} / {leader.overdue_units}</b></span>
+               <span>Booked / due / overdue: <b>{leader.session_booked_units} / {leader.session_due_units} / {leader.session_overdue_units}</b></span>
               <span>Coverage: <b>{leader.schedule_coverage_pct == null ? "—" : `${Math.round(leader.schedule_coverage_pct)}%`}</b></span>
               <span>Goals setup / total: <b>{leader.goal_setup ? "Yes" : "No"} / {leader.goal_count}</b></span>
               <span>Goal progress: <b>{leader.goal_progress_pct == null ? "—" : `${Math.round(leader.goal_progress_pct)}%`}</b></span>
@@ -103,12 +103,12 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
             <div className="mt-3">
               <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
                  <span>Full completion</span>
-                 <span className="font-medium">{completionPct}%</span>
+                  <span className="font-medium">{completionPct == null ? "—" : `${Math.round(completionPct)}%`}</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-primary transition-all"
-                   style={{ width: `${Math.min(completionPct, 100)}%` }}
+                    style={{ width: `${completionPct == null ? 0 : Math.min(completionPct, 100)}%` }}
                 />
               </div>
             </div>

@@ -8,3 +8,4 @@
 - [Live demo executor contract](live-demo-executor.md) — Batch 1 uses a hard-coded fixed UUID/date contract and service-only transactional operation state machine.
 - [Supabase CLI validation block](supabase-cli-validation-block.md) — local DB validation is blocked before startup when the package firewall rejects the pinned Supabase CLI download.
 - [Demo credential reset](demo-credential-reset.md) — fictional demo passwords rotate through an authenticated admin-only dashboard action, never email or logs.
+- [Sponsor metric contract](sponsor-metric-contract.md) — Sponsor reporting aggregates one enrollment-grain source; not-yet-due is unassessed and session units exclude non-session modules.

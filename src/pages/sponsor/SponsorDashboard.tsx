@@ -21,7 +21,7 @@ import {
   RosterTable,
   HealthSignalPill,
 } from "@/pages/sponsor/_shared";
-import { healthSignal } from "@/pages/sponsor/sponsorUtils";
+import { healthStatusSignal } from "@/pages/sponsor/sponsorUtils";
 import { SponsorLeaderDrawer } from "./SponsorLeaderDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -89,14 +89,13 @@ export default function SponsorDashboard() {
   const cohortHealthRows = useMemo(() => {
     return cohortSummaries.map((summary) => {
       const leaders = summary.enrollment_count ?? 0;
-      const atRisk = summary.at_risk_count ?? 0;
       return {
         cohortName: summary.cohort_label,
         cohortId: summary.cohort_id,
         leaders,
-        onTrackPct: summary.on_track_pct ?? 0,
+        onTrackPct: summary.on_track_pct ?? null,
         pace: null,
-        signal: healthSignal(atRisk, leaders),
+        signal: healthStatusSignal(summary.health_status),
       };
     });
   }, [cohortSummaries]);
@@ -113,8 +112,8 @@ export default function SponsorDashboard() {
   // * budget) until real billing data exists, per spec. Projected exhaustion
   // date extrapolates the burn rate seen so far across the contract; only
   // shown once there's enough signal (contract has started, some budget used).
-  const budgetUsedPct = org?.coaching_budget != null && kpis?.required_units
-    ? Math.min(100, ((kpis.completed_units ?? 0) / kpis.required_units) * 100)
+  const budgetUsedPct = org?.coaching_budget != null && kpis?.session_required_units
+    ? Math.min(100, ((kpis.session_completed_units ?? 0) / kpis.session_required_units) * 100)
     : null;
   const spendToDate = org?.coaching_budget != null && budgetUsedPct != null
     ? (budgetUsedPct / 100) * org.coaching_budget
@@ -139,8 +138,8 @@ export default function SponsorDashboard() {
       const key = r.cohort_label || "";
       if (!key) return;
       const agg = byCohort.get(key) || { used: 0, entitled: 0 };
-      agg.used += r.completed_units;
-      agg.entitled += r.required_units;
+       agg.used += r.session_completed_units;
+       agg.entitled += r.session_required_units;
       byCohort.set(key, agg);
     });
     byCohort.forEach((agg, cohortName) => {
@@ -312,7 +311,7 @@ export default function SponsorDashboard() {
             <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.enrollment_count ?? 0} icon={Users} tone="primary" />
             <HeadlineStat
               label={t("dashboard.kpis.sessionsUsed")}
-              value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`}
+               value={`${kpis?.session_completed_units ?? "—"} / ${kpis?.session_required_units ?? "—"}`}
               icon={CalendarCheck}
               tone="secondary"
             />
@@ -340,7 +339,7 @@ export default function SponsorDashboard() {
           <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-4 text-[11px] sm:grid-cols-4">
             <span>Completion <b>{kpis?.full_completion_pct == null ? "—" : `${Math.round(kpis.full_completion_pct)}%`}</b></span>
             <span>Adherence <b>{kpis?.due_adherence_pct == null ? "—" : `${Math.round(kpis.due_adherence_pct)}%`}</b></span>
-            <span>Booked / overdue <b>{kpis?.booked_units ?? 0} / {kpis?.overdue_units ?? 0}</b></span>
+             <span>Booked / overdue <b>{kpis?.session_booked_units ?? "—"} / {kpis?.session_overdue_units ?? "—"}</b></span>
             <span>Coverage <b>{kpis?.schedule_coverage_pct == null ? "—" : `${Math.round(kpis.schedule_coverage_pct)}%`}</b></span>
             <span>Paused / completed <b>{kpis?.paused_count ?? 0} / {kpis?.completed_count ?? 0}</b></span>
             <span>Pace NYD / ahead <b>{kpis?.not_yet_due_count ?? 0} / {kpis?.ahead_count ?? 0}</b></span>
@@ -387,7 +386,7 @@ export default function SponsorDashboard() {
                         </Link>
                       </td>
                       <td className="px-2 py-2.5">{row.leaders}</td>
-                      <td className="px-2 py-2.5 hidden sm:table-cell">{Math.round(row.onTrackPct)}%</td>
+                      <td className="px-2 py-2.5 hidden sm:table-cell">{row.onTrackPct == null ? "—" : `${Math.round(row.onTrackPct)}%`}</td>
                       <td className="px-2 py-2.5 hidden md:table-cell">
                         {row.pace != null ? (
                           <div className="w-24"><MiniBar pct={row.pace} tone={row.pace > 100 ? "warning" : "primary"} /></div>

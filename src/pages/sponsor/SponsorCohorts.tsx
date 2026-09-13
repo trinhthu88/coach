@@ -15,7 +15,7 @@ export default function SponsorCohorts() {
     <SectionCard label={t("cohorts.rolledUpLabel")}><div className="grid gap-3 sm:grid-cols-3">
       <Kpi label={t("cohorts.kpis.leadersEnrolled")} value={kpis?.enrollment_count ?? 0} />
       <Kpi label={t("cohorts.kpis.onTrack")} value={kpis?.on_track_count ?? 0} />
-       <Kpi label={t("cohorts.kpis.sessionsUsed")} value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`} />
+       <Kpi label={t("cohorts.kpis.sessionsUsed")} value={`${kpis?.session_completed_units ?? "—"} / ${kpis?.session_required_units ?? "—"}`} />
     </div></SectionCard>
     <div className="grid gap-4 sm:grid-cols-2">
       {cohortSummaries.map((cohort) => <Card key={cohort.cohort_id} className="p-4">
@@ -25,7 +25,7 @@ export default function SponsorCohorts() {
            <div className="grid grid-cols-2 gap-2 border-t border-border pt-3 text-sm">
              <span>Completion <b>{cohort.full_completion_pct == null ? "—" : `${Math.round(cohort.full_completion_pct)}%`}</b></span>
              <span>Adherence <b>{cohort.due_adherence_pct == null ? "—" : `${Math.round(cohort.due_adherence_pct)}%`}</b></span>
-             <span>Booked / overdue <b>{cohort.booked_units ?? 0} / {cohort.overdue_units ?? 0}</b></span>
+              <span>Booked / overdue <b>{cohort.session_booked_units ?? "—"} / {cohort.session_overdue_units ?? "—"}</b></span>
              <span>Coverage <b>{cohort.schedule_coverage_pct == null ? "—" : `${Math.round(cohort.schedule_coverage_pct)}%`}</b></span>
              <span>Goals setup / total <b>{cohort.goal_setup_count ?? 0} / {cohort.goal_count ?? 0}</b></span>
              <span>Actions complete <b>{cohort.completed_action_count ?? 0} / {cohort.total_action_count ?? 0}</b></span>
