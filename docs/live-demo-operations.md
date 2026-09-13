@@ -16,6 +16,20 @@ The live demo is a separate, production-safe subsystem. It is not the local
   prospect identities are included in the 40 fictional leaders.
 - Batch 2 deliberately creates no sessions, goals, training, mentoring, peer,
   triad, rating, milestone, sponsor-activity, or schedule rows.
+- Batch 3 adds deterministic enrollment-scoped activity through the same
+  server-only executor. It creates 24 programme modules, 18 neutral training
+  weeks, 254 immutable enrollment snapshots, 748 schedule milestones, 128
+  coaching sessions, 60 mentoring sessions, 44 peer sessions, 7 triad groups,
+  14 triad sessions, 40 goals, 80 goal milestones, 40 numeric goal ratings,
+  40 numeric goal check-ins, 57 normalized actions, and 192 training-progress
+  rows. Cohort D is completed; active cohorts A/B/C contain varied progress
+  states.
+- Batch 3 has a strict privacy boundary: required legacy labels are neutral
+  fixture labels only. It does not create notes, objectives, reflections,
+  written feedback, comments, recordings, transcripts, quiz detail, or
+  assessment detail. The historical mentoring completion gate uses a
+  `demo://no-file-content` sentinel only; no file bytes or storage object are
+  created.
 
 The manifest is code-reviewed and versioned in
 `supabase/functions/demo-admin/manifest.ts`. It contains no passwords or
@@ -35,15 +49,19 @@ credentials.
 4. Record every organization/resource/account/profile/role/enrollment in the
    registry before enabling prospect access. Batch 2 expects 221 protected
    baseline resource rows.
-5. Enable reset only after the full dependency closure and sponsor privacy
+5. Batch 3 extends the same registry with 1,746 protected activity/supporting
+   resource rows and refuses to adopt an existing unregistered row.
+6. Enable reset only after the full dependency closure and sponsor privacy
    assertions pass in an isolated database containing non-demo sentinel data.
 
 Batch 1 provides the server-only executor state machine. Batch 2 uses that
 state machine for a transactional reconciliation of the fixed organization,
 four programmes, four cohorts, four dedicated identities, 40 leaders, and 40
-enrollments. Provisioning is repeatable through the reconciliation path and
-advances the generation only after ownership closure succeeds. It fails closed
-on target, idempotency, collision, lock, ownership, or generation errors.
+enrollments. Batch 3 uses the same lock, generation, collision, ownership, and
+idempotency boundary for activity and progress. Provisioning is repeatable
+through the reconciliation path and advances the generation only after
+ownership closure succeeds. It fails closed on target, idempotency, collision,
+lock, ownership, or generation errors.
 
 ## Reset contract
 

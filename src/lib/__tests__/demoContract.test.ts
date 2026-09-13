@@ -4,6 +4,7 @@ import {
   DEMO_ANCHOR_DATE,
   DEMO_BATCH_1_CONTRACT,
   DEMO_BATCH_2_CONTRACT,
+  DEMO_BATCH_3_CONTRACT,
   DEMO_LEADERS,
   DEMO_FIXTURE_IDS,
   DEMO_FIXTURE_VERSION,
@@ -54,5 +55,37 @@ describe("Clariva live-demo Batch 1 contract", () => {
       .toBe(DEMO_FIXTURE_IDS.accounts.learnerExecutive);
     expect(DEMO_LEADERS.find((leader) => leader.serial === 19)?.userId)
       .toBe(DEMO_FIXTURE_IDS.accounts.learnerEmerging);
+  });
+
+  it("keeps Batch 3 activity, progress, privacy, and ownership counts deterministic", () => {
+    expect(DEMO_BATCH_3_CONTRACT.historicalCompletedCohort).toBe("D");
+    expect(DEMO_BATCH_3_CONTRACT.activeCohorts).toEqual(["A", "B", "C"]);
+    expect(DEMO_BATCH_3_CONTRACT.paceStates).toEqual([
+      "ahead",
+      "on_track",
+      "scheduled",
+      "behind",
+    ]);
+    expect(DEMO_BATCH_3_CONTRACT.creates).toMatchObject({
+      programmeModules: 24,
+      trainingWeeks: 18,
+      enrollmentSnapshots: 254,
+      scheduleMilestones: 748,
+      coachingSessions: 128,
+      mentoringSessions: 60,
+      peerSessions: 44,
+      triadGroups: 7,
+      triadSessions: 14,
+      goals: 40,
+      goalMilestones: 80,
+      goalRatings: 40,
+      goalCheckins: 40,
+      actions: 57,
+      trainingProgress: 192,
+      sensitiveContentRows: 0,
+      ownershipResources: 1746,
+    });
+    expect(DEMO_BATCH_3_CONTRACT.privacy.excluded).toContain("transcripts");
+    expect(DEMO_BATCH_3_CONTRACT.privacy.excluded).toContain("files");
   });
 });

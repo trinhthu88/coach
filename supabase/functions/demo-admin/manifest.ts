@@ -173,6 +173,49 @@ export const DEMO_BATCH_2_CONTRACT = {
   cohortDistribution: { A: 8, B: 10, C: 12, D: 10 },
 } as const;
 
+export const DEMO_BATCH_3_CONTRACT = {
+  fixtureVersion: DEMO_FIXTURE_VERSION,
+  organizationId: DEMO_ORGANIZATION_ID,
+  anchorDate: DEMO_ANCHOR_DATE,
+  historicalCompletedCohort: "D",
+  activeCohorts: ["A", "B", "C"],
+  paceStates: ["ahead", "on_track", "scheduled", "behind"],
+  creates: {
+    programmeModules: 24,
+    trainingWeeks: 18,
+    enrollmentSnapshots: 254,
+    scheduleMilestones: 748,
+    coachingSessions: 128,
+    mentoringSessions: 60,
+    peerSessions: 44,
+    triadGroups: 7,
+    triadSessions: 14,
+    goals: 40,
+    goalMilestones: 80,
+    goalRatings: 40,
+    goalCheckins: 40,
+    actions: 57,
+    trainingProgress: 192,
+    sensitiveContentRows: 0,
+    ownershipResources: 1746,
+  },
+  privacy: {
+    restrictedTextPolicy: "neutral-fixture-labels-only",
+    excluded: [
+      "notes",
+      "objectives",
+      "reflections",
+      "written_feedback",
+      "comments",
+      "files",
+      "recordings",
+      "transcripts",
+      "quiz_detail",
+      "assessment_detail",
+    ],
+  },
+} as const;
+
 if (
   DEMO_LEADER_COUNT !== 40 ||
   DEMO_ACCOUNTS.length !== 4 ||
@@ -182,7 +225,9 @@ if (
   DEMO_LEADERS.filter((leader) => leader.programmeKey === "D").length !== 10 ||
   DEMO_FIXTURE_IDS.organization !== DEMO_ORGANIZATION_ID ||
   DEMO_BATCH_1_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
-  DEMO_BATCH_2_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE
+  DEMO_BATCH_2_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
+  DEMO_BATCH_3_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
+  DEMO_BATCH_3_CONTRACT.creates.ownershipResources !== 1746
 ) {
   throw new Error("Clariva demo manifest does not match the approved portfolio counts");
 }
