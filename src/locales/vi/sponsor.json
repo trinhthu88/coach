@@ -90,7 +90,23 @@
       "budgetUsed": "Ngân sách đã dùng",
       "budgetSubline": "{{spent}} trong {{total}}",
       "budgetRunsOut": "với tốc độ này, ngân sách sẽ hết vào {{date}}",
-      "enrolledActive": "Đã ghi danh & hoạt động"
+      "enrolledActive": "Đã ghi danh & hoạt động",
+      "totalLeaders": "Tổng số lãnh đạo",
+      "activeLeaders": "Lãnh đạo đang hoạt động",
+      "currentCohorts": "Nhóm đang diễn ra"
+    },
+    "currentCohorts": {
+      "label": "Nhóm đang diễn ra",
+      "viewCompleted": "Xem các nhóm đã hoàn thành",
+      "empty": "Hiện không có nhóm nào đang diễn ra.",
+      "weekOf": "Tuần {{current}} / {{total}}",
+      "columns": {
+        "cohort": "Nhóm",
+        "programme": "Chương trình",
+        "position": "Vị trí trong chương trình",
+        "leaders": "Lãnh đạo",
+        "onTrack": "Đúng tiến độ"
+      }
     },
     "healthMatrix": {
       "label": "Bảng sức khỏe theo nhóm",
@@ -169,8 +185,8 @@
         "leader": "Lãnh đạo",
         "cohort": "Nhóm",
         "status": "Trạng thái",
-        "progress": "Tiến độ",
-        "sessions": "Session",
+        "onTrack": "Đúng tiến độ",
+        "cadenceToDate": "Tiến độ cadence",
         "goalProgress": "Tiến độ mục tiêu"
       },
       "empty": "Chưa có lãnh đạo nào đăng ký.",
@@ -205,6 +221,7 @@
       "eyebrow": "Nhà tài trợ",
       "title": "Trên tất cả",
       "emphasis": "các chương trình.",
+      "emphasisCompleted": "các nhóm đã hoàn thành.",
       "subtitle": "Tổng hợp trên mọi thứ bạn tài trợ, sau đó chia theo từng nhóm."
     },
     "rolledUpLabel": "Tổng hợp · tất cả các nhóm",
@@ -235,13 +252,49 @@
       "healthy": "Tốt",
       "watch": "Cần theo dõi",
       "attention": "Cần chú ý"
+    },
+    "onTrack": {
+      "onTrack": "Đúng tiến độ",
+      "notOnTrack": "Chưa đúng tiến độ"
     }
   },
   "cohortDetail": {
+    "breadcrumb": {
+      "sponsor": "Nhà tài trợ"
+    },
     "header": {
       "eyebrow": "Nhóm",
       "title": "Tập trung vào",
       "subtitle": "Mọi thông tin về nhóm này — mức độ tham gia, tiến độ và kết quả."
+    },
+    "overview": {
+      "label": "Tổng quan",
+      "programme": "Chương trình",
+      "period": "Khoảng thời gian",
+      "position": "Vị trí hiện tại",
+      "totalLeaders": "Tổng số lãnh đạo",
+      "status": "Trạng thái"
+    },
+    "status": {
+      "current": "Đang hoạt động",
+      "completed": "Đã hoàn thành",
+      "upcoming": "Sắp diễn ra"
+    },
+    "kpis": {
+      "cadenceToDate": "Tiến độ cadence tính đến nay",
+      "noneDueYet": "Chưa có hoạt động chương trình nào đến hạn",
+      "leadersWithGoals": "Lãnh đạo có mục tiêu",
+      "avgGoalProgress": "Tiến độ mục tiêu trung bình",
+      "coachingSatisfaction": "Mức hài lòng session 1:1",
+      "responseCount": "{{count}} phản hồi"
+    },
+    "cadenceMap": {
+      "label": "Cadence chương trình",
+      "empty": "Chương trình này chưa cấu hình hoạt động cadence nào.",
+      "youAreHere": "Bạn đang ở đây",
+      "upcoming": "Sắp tới",
+      "nextCheckpoint": "Mốc tiếp theo",
+      "notDueYet": "Chưa đến hạn"
     },
     "programmeDetails": {
       "label": "Chi tiết chương trình",
@@ -277,27 +330,54 @@
       "label": "Bảng sức khỏe theo nhóm"
     }
   },
-  "leaderDrawer": {
-    "srLabelSuffix": "chi tiết lãnh đạo",
-    "backToRoster": "Về danh sách",
-    "withheld": {
-      "sessionNotes": "Ghi chú session và tóm tắt coaching",
-      "chatMessages": "Tin nhắn trò chuyện giữa lãnh đạo và coach",
-      "reflections": "Suy ngẫm cá nhân và nhật ký",
-      "goalWording": "Tiêu đề, mô tả và cách diễn đạt mục tiêu",
-      "coachIdentity": "Danh tính coach và chi tiết phương pháp coaching"
+  "leaderDetail": {
+    "notFound": "Không tìm thấy lãnh đạo này, hoặc góc nhìn tổng hợp của tổ chức bạn chưa bao gồm nhóm của họ.",
+    "backToCohort": "Về trang nhóm",
+    "ongoing": "đang diễn ra",
+    "currentProgramme": {
+      "label": "Chương trình hiện tại"
     },
-    "participationLabel": "Mức độ tham gia",
-    "sessionsUsed": "Session đã dùng",
-    "ofAllocation": "{{pct}}% phân bổ",
-    "selfRatedGrowth": "Tăng trưởng tự đánh giá",
-    "growthPct": "{{n}}%",
-    "sinceBaseline": "kể từ mốc ban đầu",
-    "noRatingsYet": "chưa có đánh giá nào",
-    "programmeProgress": "Tiến độ chương trình",
-    "canSeeTitle": "Đây là tất cả những gì bạn có thể thấy",
-    "withheldIntro": "Những mục sau tồn tại trong Clariva nhưng bị ẩn khỏi hồ sơ này:",
-    "sameViewNote": "Mỗi lãnh đạo đều thấy chính góc nhìn về bản thân mà bạn đang thấy."
+    "journey": {
+      "label": "Hành trình chương trình đang hoạt động",
+      "empty": "Chương trình này chưa cấu hình hoạt động cadence nào.",
+      "youAreHere": "Bạn đang ở đây",
+      "states": {
+        "completed": "Đã hoàn thành",
+        "current": "Hiện tại",
+        "overdue": "Quá hạn",
+        "upcoming": "Sắp tới"
+      }
+    },
+    "progress": {
+      "cadenceToDate": "Tiến độ cadence tính đến nay",
+      "activitiesDueToDate": "Hoạt động đến hạn tính đến nay",
+      "noneDueYet": "Chưa có hoạt động nào đến hạn",
+      "completedOfDue": "Hoàn thành {{completed}} / {{due}}"
+    },
+    "goals": {
+      "label": "Mục tiêu",
+      "activeGoals": "Mục tiêu đang hoạt động",
+      "avgProgress": "Tiến độ mục tiêu trung bình",
+      "noGoalsYet": "Chưa có mục tiêu nào được thiết lập"
+    },
+    "coaching": {
+      "label": "Coaching",
+      "dueToDate": "Coaching đến hạn tính đến nay",
+      "completedOfDue": "Hoàn thành {{completed}} / {{due}} session đến hạn",
+      "totalAllocation": "Tổng phân bổ chương trình",
+      "nextSession": "Session tiếp theo",
+      "noneScheduled": "Chưa có lịch"
+    },
+    "history": {
+      "label": "Lịch sử chương trình",
+      "empty": "Không có chương trình đã hoàn thành trước đó.",
+      "columns": {
+        "programme": "Chương trình",
+        "cohort": "Nhóm",
+        "period": "Khoảng thời gian",
+        "status": "Trạng thái cuối"
+      }
+    }
   },
   "report": {
     "period": {

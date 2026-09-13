@@ -47,3 +47,33 @@ describe("SponsorDashboard privacy contract", () => {
     expect(calls.some((name) => /sponsor_(kpis|roster|goal_growth|satisfaction|confidence|programme|engagement|coach)/.test(name))).toBe(false);
   });
 });
+
+// Spec section A1/A4: the four primary KPIs and the Current Cohorts table,
+// and nothing from the A3 retired-metrics list.
+describe("SponsorDashboard four-KPI contract", () => {
+  beforeEach(() => {
+    responses.sponsor_organisation_summary = [{
+      cohort_count: 1, enrollment_count: 20, active_count: 15, at_risk_count: 3, paused_count: 2,
+      on_track_count: 17, assessable_count: 18, suppressed: false,
+    }];
+    responses.sponsor_cohort_summaries = [{
+      cohort_id: cohortId, cohort_label: "TASC Essential – Sep 2026", programme_label: "TASC Level 1",
+      enrollment_count: 20, suppressed: false, on_track_count: 17, assessable_count: 18,
+      cohort_status: "current", current_week: 4, total_weeks: 12,
+    }];
+  });
+
+  it("renders Total/Active Leaders, Current Cohorts and On Track from the org summary only", async () => {
+    render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText("TASC Essential – Sep 2026")).toBeInTheDocument());
+
+    expect(screen.getAllByText("20").length).toBeGreaterThan(0); // Total Leaders
+    expect(screen.getByText("18")).toBeInTheDocument(); // Active Leaders = active_count + at_risk_count
+    expect(screen.getAllByText("17 / 18").length).toBeGreaterThan(0); // On Track
+    expect(screen.getByText("Week 4 of 12")).toBeInTheDocument(); // Programme Position
+
+    for (const forbidden of [/Completion %/i, /Adherence/i, /Coverage/i, /Sessions Used/i, /Budget/i, /Not Started/i, /Pace /i, /Satisfaction/i]) {
+      expect(screen.queryByText(forbidden)).not.toBeInTheDocument();
+    }
+  });
+});

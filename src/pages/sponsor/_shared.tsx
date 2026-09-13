@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { Star, ArrowUpDown, Lock } from "lucide-react";
@@ -180,19 +181,29 @@ export function CoachUtilisationBars({ rows }: { rows: SponsorCoachUtilisationRo
   );
 }
 
-type SortKey = "status" | "sessions" | null;
+type SortKey = "status" | "cadence" | null;
 
-/** The leader roster table — shared between the org dashboard (all cohorts, unsorted) and a cohort detail page (single cohort, sortable). */
+/** On Track / Not On Track / — (paused, completed). Never a third "not assessable" state — see sponsorUtils. */
+export function OnTrackPill({ onTrack }: { onTrack: boolean | null }) {
+  const { t } = useTranslation("sponsor");
+  if (onTrack === null) return <span className="text-muted-foreground">—</span>;
+  return <Pill tone={onTrack ? "success" : "destructive"}>{t(onTrack ? "shared.onTrack.onTrack" : "shared.onTrack.notOnTrack")}</Pill>;
+}
+
+/**
+ * The leader roster table for a single cohort's detail page. Columns match
+ * the specification exactly: Leader, Enrollment Status, On Track, Cadence to
+ * Date, Goal Progress. No Programme Position, Overdue, Actions, raw session
+ * counts, or whole-programme completion % — those were removed per spec
+ * section G1. Rows navigate to the dedicated Leader Detail page rather than
+ * opening a drawer.
+ */
 export function RosterTable({
   rows,
-  onSelect,
-  showCohortColumn = true,
-  sortable = false,
+  cohortId,
 }: {
   rows: SponsorRosterRow[];
-  onSelect: (leader: SponsorRosterRow) => void;
-  showCohortColumn?: boolean;
-  sortable?: boolean;
+  cohortId: string;
 }) {
   const { t } = useTranslation("sponsor");
   const [sortKey, setSortKey] = useState<SortKey>(null);
@@ -208,13 +219,13 @@ export function RosterTable({
   };
 
   const displayRows = (() => {
-    if (!sortable || !sortKey) return rows;
+    if (!sortKey) return rows;
     const dir = sortDir === "asc" ? 1 : -1;
     const sorted = [...rows];
     if (sortKey === "status") {
       sorted.sort((a, b) => dir * a.enrollment_status.localeCompare(b.enrollment_status));
-    } else if (sortKey === "sessions") {
-       sorted.sort((a, b) => dir * (a.session_completed_units - b.session_completed_units));
+    } else if (sortKey === "cadence") {
+      sorted.sort((a, b) => dir * ((a.due_adherence_pct ?? -1) - (b.due_adherence_pct ?? -1)));
     }
     return sorted;
   })();
@@ -235,45 +246,42 @@ export function RosterTable({
         <thead className="border-b text-[10px] uppercase tracking-wider text-muted-foreground">
           <tr>
             <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.leader")}</th>
-            {showCohortColumn && <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.roster.columns.cohort")}</th>}
             <th className="px-2 py-2 text-left">
-              {sortable ? <SortableHeader label={t("dashboard.roster.columns.status")} sortKeyName="status" /> : t("dashboard.roster.columns.status")}
+              <SortableHeader label={t("dashboard.roster.columns.status")} sortKeyName="status" />
             </th>
-            <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.roster.columns.progress")}</th>
+            <th className="px-2 py-2 text-left font-semibold">{t("dashboard.roster.columns.onTrack")}</th>
             <th className="px-2 py-2 text-left">
-              {sortable ? <SortableHeader label={t("dashboard.roster.columns.sessions")} sortKeyName="sessions" /> : t("dashboard.roster.columns.sessions")}
+              <SortableHeader label={t("dashboard.roster.columns.cadenceToDate")} sortKeyName="cadence" />
             </th>
             <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.roster.columns.goalProgress")}</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {displayRows.map((r) => (
-            <tr
-              key={r.enrollment_id}
-              onClick={() => onSelect(r)}
-              className="cursor-pointer transition-colors hover:bg-muted/40"
-            >
+            <tr key={r.enrollment_id} className="transition-colors hover:bg-muted/40">
               <td className="px-2 py-2.5">
-                <div className="flex items-center gap-2">
+                <Link
+                  to={`/sponsor/cohorts/${cohortId}/leaders/${r.enrollment_id}`}
+                  className="flex items-center gap-2"
+                >
                   <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary-soft text-[10px] font-semibold text-primary">
                     {initials(r.learner_display_name)}
                   </div>
-                  <span className="font-medium">{r.learner_display_name}</span>
-                </div>
+                  <span className="font-medium text-primary hover:underline">{r.learner_display_name}</span>
+                </Link>
               </td>
-              {showCohortColumn && <td className="px-2 py-2.5 text-muted-foreground hidden sm:table-cell">{r.cohort_label || "—"}</td>}
               <td className="px-2 py-2.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{t(`status.${STATUS_LABEL_KEY[r.enrollment_status]}`)}</Pill></td>
-              <td className="px-2 py-2.5 hidden md:table-cell">
-                <div className="w-24"><MiniBar pct={r.full_completion_pct} tone="primary" /></div>
+              <td className="px-2 py-2.5"><OnTrackPill onTrack={r.on_track} /></td>
+              <td className="px-2 py-2.5 font-mono text-muted-foreground">
+                {r.due_adherence_pct != null ? `${Math.round(r.due_adherence_pct)}%` : "—"}
               </td>
-              <td className="px-2 py-2.5 font-mono text-muted-foreground">{r.session_completed_units}/{r.session_required_units}</td>
               <td className="px-2 py-2.5 hidden sm:table-cell">
                 {r.goal_progress_pct != null ? <GoalProgressBar pct={r.goal_progress_pct} /> : <span className="italic text-muted-foreground">—</span>}
               </td>
             </tr>
           ))}
           {displayRows.length === 0 && (
-            <tr><td colSpan={showCohortColumn ? 6 : 5} className="px-2 py-8 text-center text-[12px] text-muted-foreground">{t("dashboard.roster.empty")}</td></tr>
+            <tr><td colSpan={5} className="px-2 py-8 text-center text-[12px] text-muted-foreground">{t("dashboard.roster.empty")}</td></tr>
           )}
         </tbody>
       </table>

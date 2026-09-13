@@ -91,7 +91,23 @@
       "budgetUsed": "Budget used",
       "budgetSubline": "{{spent}} of {{total}}",
       "budgetRunsOut": "at this pace, budget runs out {{date}}",
-      "enrolledActive": "Enrolled & active"
+      "enrolledActive": "Enrolled & active",
+      "totalLeaders": "Total leaders",
+      "activeLeaders": "Active leaders",
+      "currentCohorts": "Current cohorts"
+    },
+    "currentCohorts": {
+      "label": "Current cohorts",
+      "viewCompleted": "View completed cohorts",
+      "empty": "No cohorts are currently running.",
+      "weekOf": "Week {{current}} of {{total}}",
+      "columns": {
+        "cohort": "Cohort",
+        "programme": "Programme",
+        "position": "Programme position",
+        "leaders": "Leaders",
+        "onTrack": "On track"
+      }
     },
     "healthMatrix": {
       "label": "Cohort health matrix",
@@ -171,8 +187,8 @@
         "leader": "Leader",
         "cohort": "Cohort",
         "status": "Status",
-        "progress": "Progress",
-        "sessions": "Sessions",
+        "onTrack": "On track",
+        "cadenceToDate": "Cadence to date",
         "goalProgress": "Goal progress"
       },
       "empty": "No leaders enrolled yet.",
@@ -207,6 +223,7 @@
       "eyebrow": "Sponsor",
       "title": "Across",
       "emphasis": "programmes.",
+      "emphasisCompleted": "completed cohorts.",
       "subtitle": "Rolled up across everything you sponsor, then split by cohort."
     },
     "rolledUpLabel": "Rolled up · all cohorts",
@@ -237,13 +254,49 @@
       "healthy": "Healthy",
       "watch": "Watch",
       "attention": "Needs attention"
+    },
+    "onTrack": {
+      "onTrack": "On track",
+      "notOnTrack": "Not on track"
     }
   },
   "cohortDetail": {
+    "breadcrumb": {
+      "sponsor": "Sponsor"
+    },
     "header": {
       "eyebrow": "Cohort",
       "title": "Focused on",
       "subtitle": "Everything about this cohort — participation, pace, and outcomes."
+    },
+    "overview": {
+      "label": "Overview",
+      "programme": "Programme",
+      "period": "Period",
+      "position": "Current position",
+      "totalLeaders": "Total leaders",
+      "status": "Status"
+    },
+    "status": {
+      "current": "Active",
+      "completed": "Completed",
+      "upcoming": "Upcoming"
+    },
+    "kpis": {
+      "cadenceToDate": "Cadence completion to date",
+      "noneDueYet": "No programme activities due yet",
+      "leadersWithGoals": "Leaders with goals",
+      "avgGoalProgress": "Average goal progress",
+      "coachingSatisfaction": "Coaching session satisfaction",
+      "responseCount": "{{count}} responses"
+    },
+    "cadenceMap": {
+      "label": "Programme cadence",
+      "empty": "This programme has no configured cadence items yet.",
+      "youAreHere": "You are here",
+      "upcoming": "Upcoming",
+      "nextCheckpoint": "Next checkpoint",
+      "notDueYet": "Not due yet"
     },
     "programmeDetails": {
       "label": "Programme details",
@@ -279,27 +332,54 @@
       "label": "Cohort health matrix"
     }
   },
-  "leaderDrawer": {
-    "srLabelSuffix": "leader detail",
-    "backToRoster": "Back to roster",
-    "withheld": {
-      "sessionNotes": "Session notes and coaching summaries",
-      "chatMessages": "Chat messages between leader and coach",
-      "reflections": "Personal reflections and journal entries",
-      "goalWording": "Goal titles, descriptions, and wording",
-      "coachIdentity": "Coach identity and coaching approach details"
+  "leaderDetail": {
+    "notFound": "This leader couldn't be found, or your organisation's aggregate view doesn't cover their cohort yet.",
+    "backToCohort": "Back to cohort",
+    "ongoing": "ongoing",
+    "currentProgramme": {
+      "label": "Current programme"
     },
-    "participationLabel": "Participation",
-    "sessionsUsed": "Sessions used",
-    "ofAllocation": "{{pct}}% of allocation",
-    "selfRatedGrowth": "Self-rated growth",
-    "growthPct": "{{n}}%",
-    "sinceBaseline": "since baseline",
-    "noRatingsYet": "no ratings yet",
-    "programmeProgress": "Programme progress",
-    "canSeeTitle": "This is everything you can see",
-    "withheldIntro": "The following exist in Clariva and are withheld from this profile:",
-    "sameViewNote": "Every leader can see the same view of themselves that you see."
+    "journey": {
+      "label": "Active programme journey",
+      "empty": "This programme has no configured cadence items yet.",
+      "youAreHere": "You are here",
+      "states": {
+        "completed": "Completed",
+        "current": "Current",
+        "overdue": "Overdue",
+        "upcoming": "Upcoming"
+      }
+    },
+    "progress": {
+      "cadenceToDate": "Cadence completion to date",
+      "activitiesDueToDate": "Activities due to date",
+      "noneDueYet": "No activities due yet",
+      "completedOfDue": "{{completed}} / {{due}} completed"
+    },
+    "goals": {
+      "label": "Goals",
+      "activeGoals": "Active goals",
+      "avgProgress": "Average goal progress",
+      "noGoalsYet": "No goals established yet"
+    },
+    "coaching": {
+      "label": "Coaching",
+      "dueToDate": "Coaching due to date",
+      "completedOfDue": "{{completed}} / {{due}} due sessions completed",
+      "totalAllocation": "Total programme allocation",
+      "nextSession": "Next session",
+      "noneScheduled": "None scheduled"
+    },
+    "history": {
+      "label": "Programme history",
+      "empty": "No previous completed programmes.",
+      "columns": {
+        "programme": "Programme",
+        "cohort": "Cohort",
+        "period": "Period",
+        "status": "Final status"
+      }
+    }
   },
   "report": {
     "period": {

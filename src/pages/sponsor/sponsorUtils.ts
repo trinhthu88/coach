@@ -44,3 +44,37 @@ export function cohortProgress(start: string | null, end: string | null): { elap
   const elapsed = Math.max(0, Math.min(total, Math.round((Date.now() - startMs) / 86400000)));
   return { elapsed, total, pct: (elapsed / total) * 100 };
 }
+
+export type ProgrammeModuleType =
+  | "coaching" | "peer_coaching" | "mentoring" | "triads"
+  | "training" | "quiz" | "assessment" | "daily_prompt";
+
+/**
+ * Leader Detail header status label (spec: "Do NOT use at_risk as an
+ * enrollment status" there). at_risk is a real enrollment_status value in
+ * this schema -- an ongoing enrollment, just flagged -- so it collapses into
+ * "Active" for this one display rather than inventing a fifth status or
+ * changing the stored value. On Track / Not On Track already carries the
+ * "flagged" signal separately. This mapping is intentionally local to the
+ * Leader Detail header; the Cohort roster's status pill is unchanged.
+ */
+export function leaderHeaderStatusKey(status: SponsorRosterRow["enrollment_status"]): "active" | "paused" | "completed" {
+  if (status === "paused") return "paused";
+  if (status === "completed") return "completed";
+  return "active";
+}
+
+/** Sponsor-facing label for a configured programme cadence activity type. */
+export function moduleLabel(module: string): string {
+  const labels: Record<string, string> = {
+    coaching: "1:1 Coaching",
+    peer_coaching: "Peer Coaching",
+    mentoring: "Mentor Coaching",
+    triads: "Triad Practice",
+    training: "Module",
+    quiz: "Quiz",
+    assessment: "Assessment",
+    daily_prompt: "Daily Prompt",
+  };
+  return labels[module] ?? module;
+}

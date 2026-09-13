@@ -4717,7 +4717,48 @@ export type Database = {
           suppressed: boolean
           total_action_count: number
           triad_completed_count: number
+          cadence_completion_pct: number | null
+          cohort_start_date: string | null
+          cohort_end_date: string | null
+          cohort_status: string
+          current_week: number | null
+          total_weeks: number | null
         }[]
+      }
+      sponsor_cohort_cadence_items: {
+        Args: { p_cohort_id: string; p_as_of?: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          sequence: number
+          due_on: string
+          applies_count: number
+          completed_count: number
+        }[]
+      }
+      sponsor_leader_cadence_items: {
+        Args: { p_enrollment_id: string; p_as_of?: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          sequence: number
+          due_on: string
+          window_end_on: string | null
+          completed: boolean
+        }[]
+      }
+      sponsor_leader_programme_history: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          enrollment_id: string
+          programme_label: string
+          cohort_label: string
+          start_date: string
+          end_date: string | null
+          status: Database["public"]["Enums"]["enrollment_status"]
+        }[]
+      }
+      sponsor_enrollment_next_session: {
+        Args: { p_enrollment_id: string }
+        Returns: string | null
       }
       sponsor_enrollment_summaries: {
         Args: { p_cohort_id: string }
