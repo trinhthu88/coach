@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, Building2, UsersRound, RotateCcw, Copy, ChevronDown, X } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Building2, UsersRound, RotateCcw, Copy, ChevronDown, X, KeyRound } from "lucide-react";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -71,6 +71,14 @@ interface DemoOperation {
   error_message?: string | null;
 }
 
+interface DemoCredential {
+  account_key: string;
+  label: string;
+  role: string;
+  email: string;
+  password: string;
+}
+
 const COMPANY_SIZES: CompanySize[] = ["1-50", "50-200", "200-1000", "1000+"];
 const SUBSCRIPTION_TIERS: SubscriptionTier[] = ["essentials", "growth", "enterprise"];
 
@@ -89,6 +97,7 @@ export default function AdminOrganizations() {
   const [resetBusy, setResetBusy] = useState<string | null>(null);
   const [demoStatusByOrg, setDemoStatusByOrg] = useState<Record<string, DemoStatus>>({});
   const [credential, setCredential] = useState<{ email: string; password: string; full_name: string } | null>(null);
+  const [demoCredentials, setDemoCredentials] = useState<DemoCredential[] | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
   const load = async () => {
@@ -296,6 +305,38 @@ export default function AdminOrganizations() {
     }
   };
 
+  const resetDemoCredentials = async (org: Organization) => {
+    const demoStatus = demoStatusByOrg[org.id];
+    if (!demoStatus?.is_demo || demoStatus.organization_id !== org.id || demoStatus.state !== "ready") {
+      toast.error(t("organizations.demoCredentialsUnavailable"));
+      return;
+    }
+    const ok = await confirm({
+      title: t("organizations.demoCredentialsTitle"),
+      description: t("organizations.demoCredentialsDescription"),
+      confirmLabel: t("organizations.demoCredentialsConfirm"),
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setResetBusy(org.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("demo-admin", {
+        body: { action: "reset_credentials" },
+      });
+      if (error) throw error;
+      const result = data as { error?: string; credentials?: DemoCredential[] };
+      if (result?.error) throw new Error(result.error);
+      if (!result.credentials?.length) throw new Error(t("organizations.demoCredentialsUnavailable"));
+      setDemoCredentials(result.credentials);
+      toast.success(t("organizations.demoCredentialsReady"));
+    } catch (e) {
+      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("organizations.demoCredentialsUnavailable") }));
+    } finally {
+      setResetBusy(null);
+    }
+  };
+
   const provisionDemo = async (org: Organization) => {
     const demoStatus = demoStatusByOrg[org.id];
     if (
@@ -409,16 +450,28 @@ export default function AdminOrganizations() {
                     </p>
                   )}
                   {demoStatus.state === "ready" ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 w-full border-amber-400/70"
-                      onClick={() => resetDemo(o)}
-                      disabled={resetBusy === o.id}
-                    >
-                      {resetBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                      {t("organizations.demoReset")}
-                    </Button>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-amber-400/70"
+                        onClick={() => resetDemoCredentials(o)}
+                        disabled={resetBusy === o.id}
+                      >
+                        {resetBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+                        {t("organizations.demoCredentials")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-amber-400/70"
+                        onClick={() => resetDemo(o)}
+                        disabled={resetBusy === o.id}
+                      >
+                        {resetBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                        {t("organizations.demoReset")}
+                      </Button>
+                    </div>
                   ) : ["uninitialized", "failed"].includes(demoStatus.state || "") ? (
                     <Button
                       variant="outline"
@@ -626,6 +679,32 @@ export default function AdminOrganizations() {
           )}
           <DialogFooter>
             <Button onClick={() => setCredential(null)}>{t("organizations.done")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Demo credentials are deliberately only rendered after the authenticated admin requests a reset. */}
+      <Dialog open={!!demoCredentials} onOpenChange={(o) => !o && setDemoCredentials(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("organizations.demoCredentialsDialogTitle")}</DialogTitle>
+            <DialogDescription>{t("organizations.demoCredentialsDialogDescription")}</DialogDescription>
+          </DialogHeader>
+          {demoCredentials && (
+            <div className="max-h-[55vh] space-y-4 overflow-y-auto pr-1">
+              {demoCredentials.map((account) => (
+                <div key={account.account_key} className="rounded-lg border bg-muted/20 p-3">
+                  <p className="font-semibold">{account.label}</p>
+                  <p className="mb-3 text-xs text-muted-foreground">{account.role}</p>
+                  <div className="space-y-3">
+                    <CopyRow label={t("organizations.email")} value={account.email} />
+                    <CopyRow label={t("organizations.tempPassword")} value={account.password} mono />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setDemoCredentials(null)}>{t("organizations.done")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

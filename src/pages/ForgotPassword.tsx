@@ -55,6 +55,9 @@ export default function ForgotPassword() {
         <p className="mt-2 text-sm text-muted-foreground">
           {t("forgotPassword.subtitle")}
         </p>
+          <p className="mt-3 rounded-lg border border-amber-300/50 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+            {t("forgotPassword.demoAccountHint")}
+          </p>
 
         {sent ? (
           <div className="mt-8 rounded-xl border border-success/30 bg-success/5 p-5 text-sm text-foreground">
