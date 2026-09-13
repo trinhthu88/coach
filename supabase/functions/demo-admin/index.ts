@@ -16,7 +16,7 @@ import {
   DEMO_PROGRAMMES,
 } from "./manifest.ts";
 
-type Action = "status" | "provision" | "reset" | "operation" | "manifest";
+type Action = "status" | "provision" | "reset" | "reset_credentials" | "operation" | "manifest";
 
 function json(body: unknown, status: number, headers: Record<string, string>) {
   return new Response(JSON.stringify(body), {
@@ -27,6 +27,30 @@ function json(body: unknown, status: number, headers: Record<string, string>) {
 
 function isUuid(value: string | undefined): value is string {
   return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function generatePassword(): string {
+  const lowers = "abcdefghijkmnpqrstuvwxyz";
+  const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const digits = "23456789";
+  const symbols = "!@#$%&*";
+  const all = lowers + uppers + digits + symbols;
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const chars = [
+    lowers[bytes[0] % lowers.length],
+    uppers[bytes[1] % uppers.length],
+    digits[bytes[2] % digits.length],
+    symbols[bytes[3] % symbols.length],
+  ];
+  for (let index = 4; index < 18; index += 1) {
+    chars.push(all[bytes[index] % all.length]);
+  }
+  for (let index = chars.length - 1; index > 0; index -= 1) {
+    const swapIndex = bytes[index + 4] % (index + 1);
+    [chars[index], chars[swapIndex]] = [chars[swapIndex], chars[index]];
+  }
+  return chars.join("");
 }
 
 Deno.serve(async (req) => {
@@ -128,6 +152,69 @@ Deno.serve(async (req) => {
       if (error) throw error;
       if (!operation) return json({ error: "Demo operation not found" }, 404, corsHeaders);
       return json({ configured: true, is_demo: true, operation }, 200, corsHeaders);
+    }
+
+    if (action === "reset_credentials") {
+      const { data: registry, error: registryError } = await admin
+        .from("demo_organization_registry")
+        .select("state")
+        .eq("organization_id", fixedOrganizationId)
+        .maybeSingle();
+      if (registryError) throw registryError;
+      if (registry?.state !== "ready") {
+        return json({ error: "Demo data must be ready before credentials can be reset" }, 409, corsHeaders);
+      }
+
+      const { data: accountRows, error: accountError } = await admin
+        .from("demo_accounts")
+        .select("account_key, user_id, role")
+        .eq("organization_id", fixedOrganizationId);
+      if (accountError) throw accountError;
+      if ((accountRows ?? []).length !== DEMO_ACCOUNTS.length) {
+        return json({ error: "The registered demo accounts are incomplete" }, 409, corsHeaders);
+      }
+
+      const accountByKey = new Map((accountRows ?? []).map((row: { account_key: string; user_id: string; role: string }) => [row.account_key, row]));
+      const userIds = (accountRows ?? []).map((row: { user_id: string }) => row.user_id);
+      const { data: profiles, error: profileError } = await admin
+        .from("profiles")
+        .select("id, email")
+        .in("id", userIds);
+      if (profileError) throw profileError;
+      const emailByUserId = new Map((profiles ?? []).map((profile: { id: string; email: string }) => [profile.id, profile.email]));
+      const credentials: Array<{ account_key: string; label: string; role: string; email: string; password: string }> = [];
+
+      for (const account of DEMO_ACCOUNTS) {
+        const row = accountByKey.get(account.key) as { account_key: string; user_id: string; role: string } | undefined;
+        if (!row || row.role !== account.role) {
+          return json({ error: `Demo account linkage is incomplete for ${account.key}` }, 409, corsHeaders);
+        }
+        const password = generatePassword();
+        const { error: passwordError } = await admin.auth.admin.updateUserById(row.user_id, {
+          password,
+          email_confirm: true,
+        });
+        if (passwordError) throw passwordError;
+        const { error: updateProfileError } = await admin
+          .from("profiles")
+          .update({ status: "active", must_change_password: true })
+          .eq("id", row.user_id);
+        if (updateProfileError) throw updateProfileError;
+        credentials.push({
+          account_key: account.key,
+          label: account.label,
+          role: account.role,
+          email: emailByUserId.get(row.user_id) ?? account.email,
+          password,
+        });
+      }
+
+      return json({
+        configured: true,
+        is_demo: true,
+        credentials,
+        warning: "These temporary passwords are shown once. Store them securely and do not send them by email.",
+      }, 200, corsHeaders);
     }
 
     if (action === "provision" || action === "reset") {
