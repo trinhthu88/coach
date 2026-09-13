@@ -216,6 +216,40 @@ export const DEMO_BATCH_3_CONTRACT = {
   },
 } as const;
 
+export const DEMO_BATCH_4_CONTRACT = {
+  fixtureVersion: DEMO_FIXTURE_VERSION,
+  organizationId: DEMO_ORGANIZATION_ID,
+  anchorDate: DEMO_ANCHOR_DATE,
+  operation: "reset",
+  resetScope: "registered-demo-owned-resources-only",
+  preserves: [
+    "fixed_demo_organization",
+    "non_demo_sentinel_rows",
+    "non_demo_auth_identities",
+    "non_demo_storage_objects",
+  ],
+  safeguards: [
+    "fixed_target",
+    "ownership_closure_before_reset",
+    "ownership_closure_after_rebuild",
+    "cross_organization_reference_guard",
+    "organization_advisory_lock",
+    "idempotency_key",
+    "generation_compare_and_swap",
+    "stale_operation_failure",
+    "rollback_on_error",
+  ],
+  deterministicRebuild: {
+    ownershipResources: 1746,
+    generationIncrement: 1,
+    repeatedResetState: "identical_fixture_state",
+  },
+  privacy: {
+    sponsorSafeAggregatesOnly: true,
+    forbiddenContentLeaks: 0,
+  },
+} as const;
+
 if (
   DEMO_LEADER_COUNT !== 40 ||
   DEMO_ACCOUNTS.length !== 4 ||
@@ -227,7 +261,8 @@ if (
   DEMO_BATCH_1_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
   DEMO_BATCH_2_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
   DEMO_BATCH_3_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
-  DEMO_BATCH_3_CONTRACT.creates.ownershipResources !== 1746
+  DEMO_BATCH_3_CONTRACT.creates.ownershipResources !== 1746 ||
+  DEMO_BATCH_4_CONTRACT.deterministicRebuild.ownershipResources !== 1746
 ) {
   throw new Error("Clariva demo manifest does not match the approved portfolio counts");
 }

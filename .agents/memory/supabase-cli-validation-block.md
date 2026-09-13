@@ -12,5 +12,7 @@ the download is denied, no migration, database test, or schema comparison has
 run.
 
 **How to apply:** Report the package-download failure separately from code
-validation results. Do not claim database validation passed, and do not change
-the migration or dependency solely to work around the environment restriction.
+validation results. The presence of a local PostgreSQL port or client does not
+prove the migration stack ran. Do not claim database validation passed, and do
+not change the migration or dependency solely to work around the environment
+restriction.

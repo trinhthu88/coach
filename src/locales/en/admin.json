@@ -304,6 +304,7 @@
     "demoResetConfirm": "Reset demo data",
     "demoResetComplete": "Demo data reset",
     "demoResetUnavailable": "The demo reset is not available in this deployment.",
+    "demoOperationStatus": "Demo operation: {{status}}.",
     "noSponsorYet": "No sponsor assigned yet.",
     "inviteSponsor": "Invite sponsor",
     "edit": "Edit",

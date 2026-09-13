@@ -36,7 +36,14 @@ begin
 end
 $$;
 
-select plan(24);
+insert into public.organizations (id, name)
+values (
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
+  'Non-demo sentinel organization'
+)
+on conflict (id) do nothing;
+
+select plan(52);
 
 select has_function(
   'public',
@@ -295,6 +302,281 @@ select is(
 select lives_ok(
   $$select public.demo_validate_batch_3_ownership()$$,
   'ownership closure and cross-organization isolation pass'
+);
+
+do $$
+begin
+  perform public.demo_finish_operation(
+    (select id from public.demo_operations
+     where idempotency_key = 'batch3-behavior-provision')
+  );
+end
+$$;
+
+select has_function(
+  'public',
+  'demo_apply_batch_4',
+  array['uuid'],
+  'Batch 4 exposes a server-only full reset executor'
+);
+
+select has_function(
+  'public',
+  'demo_begin_batch_4_operation',
+  array['uuid','text','text','uuid','text','date','bigint'],
+  'Batch 4 reset uses the existing lifecycle wrapper'
+);
+
+select lives_ok(
+  $$select public.demo_validate_batch_4_ownership()$$,
+  'Batch 4 verifies ownership closure before reset'
+);
+
+select lives_ok(
+  $$select public.demo_begin_batch_4_operation(
+    'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid,
+    'reset',
+    'batch4-reset-one',
+    '11111111-1111-4111-8111-399999999991'::uuid,
+    'clariva-live-demo-v1',
+    date '2026-01-05',
+    (select generation from public.demo_organization_registry
+     where organization_id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid)
+  )$$,
+  'Batch 4 starts a fixed-target reset'
+);
+
+select lives_ok(
+  $$select public.demo_begin_batch_4_operation(
+    'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid,
+    'reset',
+    'batch4-reset-one',
+    '11111111-1111-4111-8111-399999999991'::uuid,
+    'clariva-live-demo-v1',
+    date '2026-01-05'
+  )$$,
+  'Duplicate reset idempotency returns the original operation'
+);
+
+select is(
+  (select count(*)::int from public.demo_operations where idempotency_key = 'batch4-reset-one'),
+  1,
+  'Duplicate reset does not create a second operation'
+);
+
+select is(
+  (select (public.demo_begin_batch_4_operation(
+    'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid,
+    'reset',
+    'batch4-reset-concurrent',
+    '11111111-1111-4111-8111-399999999991'::uuid,
+    'clariva-live-demo-v1',
+    date '2026-01-05'
+  )).status),
+  'busy',
+  'Concurrent reset is rejected as busy'
+);
+
+select lives_ok(
+  $$select public.demo_apply_batch_4(
+    (select id from public.demo_operations
+     where idempotency_key = 'batch4-reset-one')
+  )$$,
+  'Batch 4 deletes only registered demo resources and rebuilds the fixture'
+);
+
+select lives_ok(
+  $$select public.demo_finish_operation(
+    (select id from public.demo_operations
+     where idempotency_key = 'batch4-reset-one')
+  )$$,
+  'Batch 4 records a successful reset transition'
+);
+
+select is(
+  (select generation::int from public.demo_organization_registry
+   where organization_id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid),
+  3,
+  'First reset increments the generation exactly once'
+);
+
+select is(
+  (select count(*)::int from public.demo_resource_registry
+   where organization_id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid),
+  1746,
+  'First reset rebuilds the exact ownership resource count'
+);
+
+select is(
+  (select count(*)::int from public.organizations
+   where id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid),
+  1,
+  'First reset preserves the fixed demo organization'
+);
+
+select is(
+  (select count(*)::int from public.organizations
+   where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid),
+  1,
+  'First reset preserves a non-demo sentinel organization'
+);
+
+select lives_ok(
+  $$select public.demo_assert_batch_4_privacy()$$,
+  'First reset preserves the sponsor privacy boundary'
+);
+
+select lives_ok(
+  $$select public.demo_begin_batch_4_operation(
+    'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid,
+    'reset',
+    'batch4-reset-two',
+    '11111111-1111-4111-8111-399999999991'::uuid,
+    'clariva-live-demo-v1',
+    date '2026-01-05',
+    3
+  )$$,
+  'A second reset can start from the rebuilt ready state'
+);
+
+select lives_ok(
+  $$select public.demo_apply_batch_4(
+    (select id from public.demo_operations
+     where idempotency_key = 'batch4-reset-two')
+  )$$,
+  'Second reset rebuilds from the same registered ownership set'
+);
+
+select lives_ok(
+  $$select public.demo_finish_operation(
+    (select id from public.demo_operations
+     where idempotency_key = 'batch4-reset-two')
+  )$$,
+  'Second reset completes successfully'
+);
+
+select is(
+  (select generation::int from public.demo_organization_registry
+   where organization_id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid),
+  4,
+  'Second reset increments the generation exactly once'
+);
+
+select is(
+  (select count(*)::int from public.sessions s
+   join public.programme_enrollments e on e.id = s.enrollment_id
+   where e.organization_id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid),
+  128,
+  'Second reset returns the deterministic coaching count'
+);
+
+select is(
+  (select count(*)::int from public.enrollment_actions a
+   join public.programme_enrollments e on e.id = a.enrollment_id
+   where e.organization_id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid),
+  57,
+  'Second reset returns the deterministic action count'
+);
+
+update public.organizations
+set account_manager_id = (
+  select resource_id
+  from public.demo_resource_registry
+  where organization_id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid
+    and resource_type = 'profile'
+  order by resource_id
+  limit 1
+)
+where id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid;
+
+select lives_ok(
+  $$select public.demo_begin_batch_4_operation(
+    'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid,
+    'reset',
+    'batch4-fail-closed',
+    '11111111-1111-4111-8111-399999999991'::uuid,
+    'clariva-live-demo-v1',
+    date '2026-01-05',
+    4
+  )$$,
+  'Fail-closed reset starts before checking an unsafe reference'
+);
+
+select throws_ok(
+  $$select public.demo_apply_batch_4(
+    (select id from public.demo_operations
+     where idempotency_key = 'batch4-fail-closed')
+  )$$,
+  '42501',
+  'Batch 4 found an unregistered profile reference in public.organizations',
+  'Unsafe profile references abort the reset before deletion commits'
+);
+
+select is(
+  (select count(*)::int from public.sessions s
+   join public.programme_enrollments e on e.id = s.enrollment_id
+   where e.organization_id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid),
+  128,
+  'A failed reset rolls back its attempted deletes and rebuilds'
+);
+
+select lives_ok(
+  $$select public.demo_fail_operation(
+    (select id from public.demo_operations
+     where idempotency_key = 'batch4-fail-closed'),
+    'Expected test failure'
+  )$$,
+  'The failed reset is recorded in the audit ledger'
+);
+
+update public.organizations
+set account_manager_id = null
+where id = 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid;
+
+select throws_ok(
+  $$select public.demo_begin_batch_4_operation(
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
+    'reset',
+    'batch4-wrong-target',
+    '11111111-1111-4111-8111-399999999991'::uuid,
+    'clariva-live-demo-v1',
+    date '2026-01-05'
+  )$$,
+  '42501',
+  'Demo executor target or fixture contract is not approved',
+  'Batch 4 rejects a browser or caller-supplied organization target'
+);
+
+select lives_ok(
+  $$select public.demo_begin_batch_4_operation(
+    'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid,
+    'reset',
+    'batch4-stale-reset',
+    '11111111-1111-4111-8111-399999999991'::uuid,
+    'clariva-live-demo-v1',
+    date '2026-01-05',
+    4
+  )$$,
+  'Stale-operation handling starts a third reset lifecycle record'
+);
+
+update public.demo_operations
+set started_at = now() - interval '16 minutes'
+where idempotency_key = 'batch4-stale-reset';
+
+select lives_ok(
+  $$select public.demo_reap_stale_operation(
+    (select id from public.demo_operations
+     where idempotency_key = 'batch4-stale-reset')
+  )$$,
+  'Stale reset is failed closed by the executor'
+);
+
+select is(
+  (select status from public.demo_operations
+   where idempotency_key = 'batch4-stale-reset'),
+  'failed',
+  'Stale reset records a failed audit transition'
 );
 
 select * from finish();

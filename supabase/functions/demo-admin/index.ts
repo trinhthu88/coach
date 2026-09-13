@@ -6,6 +6,7 @@ import {
   DEMO_BATCH_1_CONTRACT,
   DEMO_BATCH_2_CONTRACT,
   DEMO_BATCH_3_CONTRACT,
+  DEMO_BATCH_4_CONTRACT,
   DEMO_FIXTURE_VERSION,
   DEMO_FIXTURE_IDS,
   DEMO_LEADER_COUNT,
@@ -89,6 +90,7 @@ Deno.serve(async (req) => {
         batch_1_contract: DEMO_BATCH_1_CONTRACT,
         batch_2_contract: DEMO_BATCH_2_CONTRACT,
         batch_3_contract: DEMO_BATCH_3_CONTRACT,
+        batch_4_contract: DEMO_BATCH_4_CONTRACT,
       }, 200, corsHeaders);
     }
 
@@ -140,6 +142,50 @@ Deno.serve(async (req) => {
       if (configureError) throw configureError;
 
       const idempotencyKey = body.idempotency_key?.trim() || `${action}-${crypto.randomUUID()}`;
+      if (action === "reset") {
+        const { data: started, error: startError } = await admin.rpc("demo_begin_batch_4_operation", {
+          p_organization_id: fixedOrganizationId,
+          p_operation: "reset",
+          p_idempotency_key: idempotencyKey,
+          p_requested_by: callerId,
+          p_fixture_version: DEMO_FIXTURE_VERSION,
+          p_anchor_date: DEMO_ANCHOR_DATE,
+          p_expected_generation: typeof body.expected_generation === "number" ? body.expected_generation : null,
+        });
+        if (startError) throw startError;
+        const operation = Array.isArray(started) ? started[0] : started;
+        if (!operation) throw new Error("Batch 4 did not return a lifecycle record");
+
+        if (operation.status === "started") {
+          const { data: applied, error: applyError } = await admin.rpc("demo_apply_batch_4", {
+            p_operation_id: operation.id,
+          });
+          if (applyError) {
+            await admin.rpc("demo_fail_operation", {
+              p_operation_id: operation.id,
+              p_error_message: applyError.message,
+            });
+            throw applyError;
+          }
+
+          const { data: finished, error: finishError } = await admin.rpc("demo_finish_operation", {
+            p_operation_id: operation.id,
+            p_affected_counts: Array.isArray(applied) ? applied[0] : applied,
+          });
+          if (finishError) {
+            await admin.rpc("demo_fail_operation", {
+              p_operation_id: operation.id,
+              p_error_message: finishError.message,
+            });
+            throw finishError;
+          }
+          return json({ configured: true, is_demo: true, operation: Array.isArray(finished) ? finished[0] : finished }, 200, corsHeaders);
+        }
+
+        const statusCode = operation.status === "busy" || operation.status === "failed" ? 409 : 200;
+        return json({ configured: true, is_demo: true, operation }, statusCode, corsHeaders);
+      }
+
       // Batch 3 depends on the Batch 2 structure. Keep the two reconciliations
       // as separate lifecycle operations so each generation boundary remains
       // explicit and retryable.

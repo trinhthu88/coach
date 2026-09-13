@@ -30,6 +30,17 @@ The live demo is a separate, production-safe subsystem. It is not the local
   assessment detail. The historical mentoring completion gate uses a
   `demo://no-file-content` sentinel only; no file bytes or storage object are
   created.
+- Batch 4 provides the only full reset path. It requires a ready fixed-target
+  registry, verifies ownership and cross-organization references before
+  deletion, deletes only IDs registered to the demo organization, and rebuilds
+  Batches 2 and 3 in the same transaction. The fixed organization and all
+  non-demo rows remain untouched.
+- Batch 4 verifies the exact 1,746-resource closure and approved domain counts
+  after rebuilding, applies one generation increment through the existing
+  finish operation, and records the reset in `demo_operations`. A failed
+  rebuild rolls back its deletes and leaves the operation failed-closed.
+- The admin Organizations screen polls the returned operation ID when a reset
+  remains in progress and displays the latest operation status or error.
 
 The manifest is code-reviewed and versioned in
 `supabase/functions/demo-admin/manifest.ts`. It contains no passwords or
@@ -62,6 +73,10 @@ idempotency boundary for activity and progress. Provisioning is repeatable
 through the reconciliation path and advances the generation only after
 ownership closure succeeds. It fails closed on target, idempotency, collision,
 lock, ownership, or generation errors.
+
+Batch 4 is reset-only and reuses the same operation lock, idempotency key,
+generation compare-and-swap, stale-operation handling, and audit ledger. It
+does not delete by organization-wide queries or by email/name matching.
 
 ## Reset contract
 

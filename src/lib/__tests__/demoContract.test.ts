@@ -5,6 +5,7 @@ import {
   DEMO_BATCH_1_CONTRACT,
   DEMO_BATCH_2_CONTRACT,
   DEMO_BATCH_3_CONTRACT,
+  DEMO_BATCH_4_CONTRACT,
   DEMO_LEADERS,
   DEMO_FIXTURE_IDS,
   DEMO_FIXTURE_VERSION,
@@ -87,5 +88,20 @@ describe("Clariva live-demo Batch 1 contract", () => {
     });
     expect(DEMO_BATCH_3_CONTRACT.privacy.excluded).toContain("transcripts");
     expect(DEMO_BATCH_3_CONTRACT.privacy.excluded).toContain("files");
+  });
+
+  it("keeps Batch 4 reset scope and rebuild safeguards fixed", () => {
+    expect(DEMO_BATCH_4_CONTRACT.operation).toBe("reset");
+    expect(DEMO_BATCH_4_CONTRACT.resetScope).toBe("registered-demo-owned-resources-only");
+    expect(DEMO_BATCH_4_CONTRACT.deterministicRebuild).toEqual({
+      ownershipResources: 1746,
+      generationIncrement: 1,
+      repeatedResetState: "identical_fixture_state",
+    });
+    expect(DEMO_BATCH_4_CONTRACT.privacy).toEqual({
+      sponsorSafeAggregatesOnly: true,
+      forbiddenContentLeaks: 0,
+    });
+    expect(DEMO_BATCH_4_CONTRACT.safeguards).toContain("rollback_on_error");
   });
 });

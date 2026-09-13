@@ -299,6 +299,7 @@
     "demoResetConfirm": "Đặt lại dữ liệu demo",
     "demoResetComplete": "Đã đặt lại dữ liệu demo",
     "demoResetUnavailable": "Chức năng đặt lại demo chưa khả dụng trong môi trường này.",
+    "demoOperationStatus": "Tác vụ demo: {{status}}.",
     "noSponsorYet": "Chưa có nhà tài trợ được chỉ định.",
     "inviteSponsor": "Mời nhà tài trợ",
     "edit": "Sửa",

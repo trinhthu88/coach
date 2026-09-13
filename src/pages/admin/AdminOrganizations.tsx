@@ -61,6 +61,14 @@ interface DemoStatus {
   anchor_date?: string | null;
   last_successful_reset_at?: string | null;
   last_operation_status?: string | null;
+  last_operation_id?: string | null;
+  last_operation_error?: string | null;
+}
+
+interface DemoOperation {
+  id: string;
+  status: "started" | "succeeded" | "failed" | "busy";
+  error_message?: string | null;
 }
 
 const COMPANY_SIZES: CompanySize[] = ["1-50", "50-200", "200-1000", "1000+"];
@@ -260,8 +268,25 @@ export default function AdminOrganizations() {
         body: { action: "reset" },
       });
       if (error) throw error;
-      const result = data as { error?: string };
+      const result = data as { error?: string; operation?: DemoOperation };
       if (result?.error) throw new Error(result.error);
+      if (!result.operation?.id) throw new Error("Demo reset did not return an operation");
+
+      let operation = result.operation;
+      for (let attempt = 0; operation.status === "started" && attempt < 40; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 750));
+        const { data: polled, error: pollError } = await supabase.functions.invoke("demo-admin", {
+          body: { action: "operation", operation_id: operation.id },
+        });
+        if (pollError) throw pollError;
+        const pollResult = polled as { error?: string; operation?: DemoOperation };
+        if (pollResult.error) throw new Error(pollResult.error);
+        if (!pollResult.operation) throw new Error("Demo reset status was unavailable");
+        operation = pollResult.operation;
+      }
+      if (operation.status !== "succeeded") {
+        throw new Error(operation.error_message || t("organizations.demoResetUnavailable"));
+      }
       toast.success(t("organizations.demoResetComplete"));
       await load();
     } catch (e) {
@@ -338,6 +363,13 @@ export default function AdminOrganizations() {
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {t("organizations.demoGeneration", { generation: demoStatus.generation ?? 0, version: demoStatus.fixture_version })}
                   </p>
+                  {demoStatus.state !== "ready" && (
+                    <p className="mt-1 text-[11px] text-amber-800 dark:text-amber-300">
+                      {demoStatus.last_operation_status === "failed"
+                        ? (demoStatus.last_operation_error || t("organizations.demoResetUnavailable"))
+                        : t("organizations.demoOperationStatus", { status: demoStatus.last_operation_status || demoStatus.state })}
+                    </p>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
