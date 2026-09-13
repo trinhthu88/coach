@@ -1,6 +1,8 @@
 project_id = "ygufjhhpguauwwmfvczy"
 
 [functions]
+  [functions.demo-admin]
+    verify_jwt = false
   [functions.approve-access-request]
     verify_jwt = true
   [functions.confirm-session]

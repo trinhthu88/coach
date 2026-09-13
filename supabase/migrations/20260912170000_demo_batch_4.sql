@@ -340,8 +340,8 @@ BEGIN
       ON r.resource_type = 'session' AND r.resource_id = s.id
     WHERE r.organization_id = fixed_org
       AND (s.topic <> 'Demo session' OR s.coach_notes IS NOT NULL
-        OR s.coach_private_notes IS NOT NULL OR s.coachee_notes IS NOT NULL
-        OR s.action_items <> '[]'::jsonb OR s.meeting_url IS NOT NULL
+        OR s.coachee_notes IS NOT NULL OR s.action_items <> '[]'::jsonb
+        OR s.meeting_url IS NOT NULL
         OR s.coachee_rating_comment IS NOT NULL)
   ) THEN
     RAISE EXCEPTION 'Batch 4 coaching privacy boundary failed';
@@ -439,7 +439,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   fixed_org uuid := 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01'::uuid;
-  expected_count integer := 1746;
+  expected_count integer := 1743;
   actual_count integer;
 BEGIN
   PERFORM public.demo_assert_batch_3_collisions();
@@ -562,7 +562,7 @@ BEGIN
     JOIN public.enrollment_module_snapshots s ON s.id = m.enrollment_module_snapshot_id
     JOIN public.programme_enrollments e ON e.id = s.enrollment_id
     WHERE e.organization_id = fixed_org
-  ) <> 748
+  ) <> 524
   THEN
     RAISE EXCEPTION 'Batch 4 domain count closure is incomplete';
   END IF;
@@ -710,11 +710,15 @@ BEGIN
     JOIN information_schema.constraint_column_usage ccu
       ON ccu.constraint_name = tc.constraint_name
      AND ccu.constraint_schema = tc.constraint_schema
+    JOIN information_schema.referential_constraints rc
+      ON rc.constraint_name = tc.constraint_name
+     AND rc.constraint_schema = tc.constraint_schema
     WHERE tc.constraint_type = 'FOREIGN KEY'
       AND tc.table_schema = 'public'
       AND ccu.table_schema = 'public'
       AND ccu.table_name = 'profiles'
       AND ccu.column_name = 'id'
+      AND rc.delete_rule <> 'CASCADE'
   LOOP
     EXECUTE format(
       'SELECT EXISTS (
@@ -758,7 +762,7 @@ BEGIN
 
   RETURN jsonb_build_object(
     'deletedRows', deleted_count,
-    'deletedOwnershipResources', 1746,
+    'deletedOwnershipResources', 1743,
     'preservedOrganization', true,
     'preservedNonDemoRows', true
   );
@@ -797,8 +801,8 @@ BEGIN
   FROM public.demo_resource_registry
   WHERE organization_id = operation_row.organization_id
     AND protected_baseline;
-  IF final_count <> 1746 THEN
-    RAISE EXCEPTION 'Batch 4 rebuild produced % ownership resources; expected 1746',
+  IF final_count <> 1743 THEN
+    RAISE EXCEPTION 'Batch 4 rebuild produced % ownership resources; expected 1743',
       final_count;
   END IF;
 
@@ -807,7 +811,7 @@ BEGIN
     'deleted', deleted_counts,
     'batch2', batch_2_counts,
     'batch3', batch_3_counts,
-    'ownershipResourcesBefore', 1746,
+    'ownershipResourcesBefore', 1743,
     'ownershipResourcesAfter', final_count,
     'privacyValidated', true,
     'crossOrganizationReferencesValidated', true

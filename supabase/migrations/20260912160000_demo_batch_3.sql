@@ -40,7 +40,7 @@ BEGIN
     ELSE NULL
   END;
 
-  IF kind_code IS NULL OR p_serial < 1 OR p_serial > 99999999 THEN
+  IF kind_code IS NULL OR p_serial < 1 OR p_serial > 9999 THEN
     RAISE EXCEPTION 'Unknown or invalid Batch 3 identifier: %/%', p_kind, p_serial
       USING ERRCODE = '22023';
   END IF;
@@ -48,7 +48,7 @@ BEGIN
   RETURN format(
     'c7f8e4b2-2f34-4a1d-8f6f-1f8e%s%s',
     kind_code,
-    lpad(p_serial::text, 8, '0')
+    lpad(p_serial::text, 4, '0')
   )::uuid;
 END;
 $$;
@@ -155,7 +155,7 @@ DECLARE
   module_order integer;
   expected_id uuid;
   existing_id uuid;
-  programme_id uuid;
+  target_programme_id uuid;
   cohort_key text;
   position_no integer;
   completed_units integer;
@@ -189,7 +189,7 @@ BEGIN
       ('D', 'daily_prompt', 0, NULL), ('D', 'assessment', 0, NULL)
     ) AS batch_values(programme_key, module_name, required_units, weight)
   LOOP
-    programme_id := CASE module_row.programme_key
+    target_programme_id := CASE module_row.programme_key
       WHEN 'A' THEN 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0101'::uuid
       WHEN 'B' THEN 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0102'::uuid
       WHEN 'C' THEN 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0103'::uuid
@@ -197,7 +197,7 @@ BEGIN
     END;
     SELECT pm.id INTO existing_id
     FROM public.programme_modules pm
-    WHERE pm.programme_id = programme_id
+    WHERE pm.programme_id = target_programme_id
       AND pm.module = module_row.module_name::public.programme_module_type;
     expected_id := public.demo_batch_3_id(
       'module',
@@ -205,9 +205,9 @@ BEGIN
         WHEN 'A' THEN 1
         WHEN 'B' THEN 10 + (
           CASE module_row.module_name
-            WHEN 'coaching' THEN 1 WHEN 'mentoring' THEN 2 WHEN 'triads' THEN 3
-            WHEN 'training' THEN 4 WHEN 'quiz' THEN 5 WHEN 'daily_prompt' THEN 6
-            ELSE 7
+            WHEN 'coaching' THEN 1 WHEN 'mentoring' THEN 2 WHEN 'triads' THEN 4
+            WHEN 'training' THEN 5 WHEN 'quiz' THEN 6 WHEN 'daily_prompt' THEN 7
+            ELSE 8
           END)
         WHEN 'C' THEN 20 + (
           CASE module_row.module_name
@@ -241,7 +241,7 @@ BEGIN
       ('D', 1), ('D', 2), ('D', 3), ('D', 4), ('D', 5), ('D', 6)
     ) AS batch_values(programme_key, week_number)
   LOOP
-    programme_id := CASE week_row.programme_key
+    target_programme_id := CASE week_row.programme_key
       WHEN 'B' THEN 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0102'::uuid
       WHEN 'C' THEN 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0103'::uuid
       ELSE 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0104'::uuid
@@ -253,7 +253,7 @@ BEGIN
     );
     SELECT tw.id INTO existing_id
     FROM public.training_weeks tw
-    WHERE tw.programme_id = programme_id
+    WHERE tw.programme_id = target_programme_id
       AND tw.week_number = week_row.week_number;
     IF existing_id IS NOT NULL AND existing_id <> expected_id THEN
       RAISE EXCEPTION 'Batch 3 training week collision for %/%',
@@ -292,10 +292,9 @@ BEGIN
       'goal_checkin', expected_id,
       EXISTS (SELECT 1 FROM public.goal_checkins WHERE id = expected_id)
     );
-    FOR n IN 1..CASE WHEN cohort_key = 'D' OR
+    FOR n IN 1..(CASE WHEN cohort_key = 'D' OR
       (cohort_key = 'A' AND position_no = 8) OR
-      (cohort_key IN ('B','C') AND position_no >= 9) THEN 2 ELSE 1 END LOOP
-    LOOP
+      (cohort_key IN ('B','C') AND position_no >= 9) THEN 2 ELSE 1 END) LOOP
       expected_id := public.demo_batch_3_id('action', i * 10 + n);
       PERFORM public.demo_batch_3_activity_resource_owned(
         'enrollment_action', expected_id,
@@ -416,15 +415,14 @@ BEGIN
             WHERE id = expected_id
           )
         );
-        FOR n IN 1..CASE
+        FOR n IN 1..(CASE
           WHEN module_row.module_name = 'coaching' THEN 4
           WHEN module_row.module_name = 'mentoring' THEN 2
           WHEN module_row.module_name = 'peer_coaching' THEN 2
           WHEN module_row.module_name = 'triads' THEN 2
           WHEN module_row.module_name = 'training' THEN 6
           ELSE 0
-        END LOOP
-        LOOP
+        END) LOOP
           expected_id := public.demo_batch_3_id(
             'schedule_milestone',
             i * 100 + module_row.module_order * 10 + n
@@ -440,10 +438,9 @@ BEGIN
       END IF;
     END LOOP;
 
-    FOR n IN 1..CASE
+    FOR n IN 1..(CASE
       WHEN cohort_key IN ('B','C','D') THEN 6 ELSE 0
-    END LOOP
-    LOOP
+    END) LOOP
       expected_id := public.demo_batch_3_id(
         'training_progress',
         i * 10 + n
@@ -479,7 +476,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  expected_count integer := 1746;
+  expected_count integer := 1522;
   actual_count integer;
   unowned_count integer;
   bad_org_count integer;
@@ -930,15 +927,14 @@ BEGIN
       INSERT INTO public.sessions (
         id, coach_id, coachee_id, enrollment_id, topic, start_time,
         duration_minutes, status, coachee_rating, coachee_rating_comment,
-        coachee_rated_at, meeting_url, coach_notes, coach_private_notes,
-        coachee_notes, action_items
+        coachee_rated_at, meeting_url, coach_notes, coachee_notes, action_items
       )
       VALUES (
         expected_id,
         'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2c0103'::uuid,
         leader.user_id, leader.enrollment_id, 'Demo session', activity_start,
         60, 'completed', 3 + ((i + unit_no) % 3), NULL,
-        activity_start + INTERVAL '1 day', NULL, NULL, NULL, NULL, '[]'::jsonb
+        activity_start + INTERVAL '1 day', NULL, NULL, NULL, '[]'::jsonb
       )
       ON CONFLICT (id) DO UPDATE SET
         coach_id = EXCLUDED.coach_id, coachee_id = EXCLUDED.coachee_id,
@@ -946,8 +942,8 @@ BEGIN
         start_time = EXCLUDED.start_time, duration_minutes = EXCLUDED.duration_minutes,
         status = EXCLUDED.status, coachee_rating = EXCLUDED.coachee_rating,
         coachee_rating_comment = NULL, coachee_rated_at = EXCLUDED.coachee_rated_at,
-        meeting_url = NULL, coach_notes = NULL, coach_private_notes = NULL,
-        coachee_notes = NULL, action_items = '[]'::jsonb;
+        meeting_url = NULL, coach_notes = NULL, coachee_notes = NULL,
+        action_items = '[]'::jsonb;
       PERFORM public.demo_batch_3_register_resource(
         'session', expected_id, registry_generation
       );
@@ -958,21 +954,21 @@ BEGIN
         + (unit_no - 1) * INTERVAL '7 days';
       INSERT INTO public.sessions (
         id, coach_id, coachee_id, enrollment_id, topic, start_time,
-        duration_minutes, status, meeting_url, coach_notes,
-        coach_private_notes, coachee_notes, action_items
+        duration_minutes, status, meeting_url, coach_notes, coachee_notes,
+        action_items
       )
       VALUES (
         expected_id,
         'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2c0103'::uuid,
         leader.user_id, leader.enrollment_id, 'Demo session', activity_start,
-        60, 'confirmed', NULL, NULL, NULL, NULL, '[]'::jsonb
+        60, 'confirmed', NULL, NULL, NULL, '[]'::jsonb
       )
       ON CONFLICT (id) DO UPDATE SET
         coach_id = EXCLUDED.coach_id, coachee_id = EXCLUDED.coachee_id,
         enrollment_id = EXCLUDED.enrollment_id, topic = EXCLUDED.topic,
         start_time = EXCLUDED.start_time, duration_minutes = EXCLUDED.duration_minutes,
         status = EXCLUDED.status, meeting_url = NULL, coach_notes = NULL,
-        coach_private_notes = NULL, coachee_notes = NULL, action_items = '[]'::jsonb;
+        coachee_notes = NULL, action_items = '[]'::jsonb;
       PERFORM public.demo_batch_3_register_resource(
         'session', expected_id, registry_generation
       );
@@ -1306,11 +1302,10 @@ BEGIN
       'goal_checkin', expected_id, registry_generation
     );
 
-    FOR unit_no IN 1..CASE
+    FOR unit_no IN 1..(CASE
       WHEN cohort_key = 'D' OR (cohort_key = 'A' AND position_no = 8)
         OR (cohort_key IN ('B','C') AND position_no >= 9) THEN 2 ELSE 1
-    END LOOP
-    LOOP
+    END) LOOP
       expected_id := public.demo_batch_3_id('action', i * 10 + unit_no);
       INSERT INTO public.enrollment_actions (
         id, enrollment_id, goal_id, milestone_id, source_activity_type,
@@ -1403,7 +1398,7 @@ BEGIN
     'programmeModules', 24,
     'trainingWeeks', 18,
     'enrollmentSnapshots', 254,
-    'scheduleMilestones', 748,
+    'scheduleMilestones', 524,
     'coachingSessions', 128,
     'mentoringSessions', 60,
     'peerSessions', 44,
@@ -1416,7 +1411,7 @@ BEGIN
     'actions', 57,
     'trainingProgress', 192,
     'sensitiveContentRows', 0,
-    'ownershipResources', 1746
+    'ownershipResources', 1522
   );
   RETURN counts;
 END;

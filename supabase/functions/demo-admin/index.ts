@@ -40,7 +40,11 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const configuredOrganizationId = Deno.env.get("DEMO_ORGANIZATION_ID");
+    // The fixture target is intentionally fixed in the versioned manifest.
+    // An environment override is still accepted only when it matches that
+    // approved target, but the demo remains deployable when the optional
+    // deployment setting has not been created yet.
+    const configuredOrganizationId = Deno.env.get("DEMO_ORGANIZATION_ID") ?? DEMO_ORGANIZATION_ID;
     if (
       !supabaseUrl ||
       !serviceKey ||

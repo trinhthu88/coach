@@ -595,8 +595,8 @@ BEGIN
     SELECT * FROM (VALUES
       ('c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2b0101'::uuid, 'Executive Coaching — Cohort A', 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0101'::uuid, DATE '2026-01-05', DATE '2026-04-05'),
       ('c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2b0102'::uuid, 'Leadership Development — Cohort B', 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0102'::uuid, DATE '2026-01-05', DATE '2026-07-05'),
-      ('c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2b0103'::uuid, 'Emerging Leaders — Cohort C', 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2b0103'::uuid, DATE '2026-01-05', DATE '2026-07-05'),
-      ('c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2b0104'::uuid, 'Leadership Excellence — Cohort D', 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2b0104'::uuid, DATE '2025-01-06', DATE '2025-07-06')
+      ('c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2b0103'::uuid, 'Emerging Leaders — Cohort C', 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0103'::uuid, DATE '2026-01-05', DATE '2026-07-05'),
+      ('c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2b0104'::uuid, 'Leadership Excellence — Cohort D', 'c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2a0104'::uuid, DATE '2025-01-06', DATE '2025-07-06')
     ) AS batch_values(id, name, programme_id, start_date, end_date)
   LOOP
     INSERT INTO public.cohorts (

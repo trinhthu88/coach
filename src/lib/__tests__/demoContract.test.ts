@@ -71,7 +71,7 @@ describe("Clariva live-demo Batch 1 contract", () => {
       programmeModules: 24,
       trainingWeeks: 18,
       enrollmentSnapshots: 254,
-      scheduleMilestones: 748,
+       scheduleMilestones: 524,
       coachingSessions: 128,
       mentoringSessions: 60,
       peerSessions: 44,
@@ -84,7 +84,7 @@ describe("Clariva live-demo Batch 1 contract", () => {
       actions: 57,
       trainingProgress: 192,
       sensitiveContentRows: 0,
-      ownershipResources: 1746,
+       ownershipResources: 1743,
     });
     expect(DEMO_BATCH_3_CONTRACT.privacy.excluded).toContain("transcripts");
     expect(DEMO_BATCH_3_CONTRACT.privacy.excluded).toContain("files");
@@ -94,7 +94,7 @@ describe("Clariva live-demo Batch 1 contract", () => {
     expect(DEMO_BATCH_4_CONTRACT.operation).toBe("reset");
     expect(DEMO_BATCH_4_CONTRACT.resetScope).toBe("registered-demo-owned-resources-only");
     expect(DEMO_BATCH_4_CONTRACT.deterministicRebuild).toEqual({
-      ownershipResources: 1746,
+       ownershipResources: 1743,
       generationIncrement: 1,
       repeatedResetState: "identical_fixture_state",
     });

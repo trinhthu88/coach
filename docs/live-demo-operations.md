@@ -18,7 +18,7 @@ The live demo is a separate, production-safe subsystem. It is not the local
   triad, rating, milestone, sponsor-activity, or schedule rows.
 - Batch 3 adds deterministic enrollment-scoped activity through the same
   server-only executor. It creates 24 programme modules, 18 neutral training
-  weeks, 254 immutable enrollment snapshots, 748 schedule milestones, 128
+  weeks, 254 immutable enrollment snapshots, 524 schedule milestones, 128
   coaching sessions, 60 mentoring sessions, 44 peer sessions, 7 triad groups,
   14 triad sessions, 40 goals, 80 goal milestones, 40 numeric goal ratings,
   40 numeric goal check-ins, 57 normalized actions, and 192 training-progress
@@ -35,7 +35,7 @@ The live demo is a separate, production-safe subsystem. It is not the local
   deletion, deletes only IDs registered to the demo organization, and rebuilds
   Batches 2 and 3 in the same transaction. The fixed organization and all
   non-demo rows remain untouched.
-- Batch 4 verifies the exact 1,746-resource closure and approved domain counts
+- Batch 4 verifies the exact 1,743-resource closure and approved domain counts
   after rebuilding, applies one generation increment through the existing
   finish operation, and records the reset in `demo_operations`. A failed
   rebuild rolls back its deletes and leaves the operation failed-closed.
@@ -60,7 +60,7 @@ credentials.
 4. Record every organization/resource/account/profile/role/enrollment in the
    registry before enabling prospect access. Batch 2 expects 221 protected
    baseline resource rows.
-5. Batch 3 extends the same registry with 1,746 protected activity/supporting
+5. Batch 3 extends the same registry with 1,743 protected activity/supporting
    resource rows and refuses to adopt an existing unregistered row.
 6. Enable reset only after the full dependency closure and sponsor privacy
    assertions pass in an isolated database containing non-demo sentinel data.

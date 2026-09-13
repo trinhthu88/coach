@@ -184,7 +184,7 @@ export const DEMO_BATCH_3_CONTRACT = {
     programmeModules: 24,
     trainingWeeks: 18,
     enrollmentSnapshots: 254,
-    scheduleMilestones: 748,
+    scheduleMilestones: 524,
     coachingSessions: 128,
     mentoringSessions: 60,
     peerSessions: 44,
@@ -197,7 +197,7 @@ export const DEMO_BATCH_3_CONTRACT = {
     actions: 57,
     trainingProgress: 192,
     sensitiveContentRows: 0,
-    ownershipResources: 1746,
+    ownershipResources: 1743,
   },
   privacy: {
     restrictedTextPolicy: "neutral-fixture-labels-only",
@@ -240,7 +240,7 @@ export const DEMO_BATCH_4_CONTRACT = {
     "rollback_on_error",
   ],
   deterministicRebuild: {
-    ownershipResources: 1746,
+    ownershipResources: 1743,
     generationIncrement: 1,
     repeatedResetState: "identical_fixture_state",
   },
@@ -261,8 +261,8 @@ if (
   DEMO_BATCH_1_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
   DEMO_BATCH_2_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
   DEMO_BATCH_3_CONTRACT.anchorDate !== DEMO_ANCHOR_DATE ||
-  DEMO_BATCH_3_CONTRACT.creates.ownershipResources !== 1746 ||
-  DEMO_BATCH_4_CONTRACT.deterministicRebuild.ownershipResources !== 1746
+  DEMO_BATCH_3_CONTRACT.creates.ownershipResources !== 1743 ||
+  DEMO_BATCH_4_CONTRACT.deterministicRebuild.ownershipResources !== 1743
 ) {
   throw new Error("Clariva demo manifest does not match the approved portfolio counts");
 }

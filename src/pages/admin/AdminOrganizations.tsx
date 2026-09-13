@@ -296,6 +296,44 @@ export default function AdminOrganizations() {
     }
   };
 
+  const provisionDemo = async (org: Organization) => {
+    const demoStatus = demoStatusByOrg[org.id];
+    if (
+      !demoStatus?.is_demo ||
+      demoStatus.organization_id !== org.id ||
+      !["uninitialized", "failed"].includes(demoStatus.state || "")
+    ) {
+      toast.error(t("organizations.demoResetUnavailable"));
+      return;
+    }
+    const ok = await confirm({
+      title: t("organizations.demoProvisionTitle"),
+      description: t("organizations.demoProvisionDescription"),
+      confirmLabel: t("organizations.demoProvisionConfirm"),
+      destructive: false,
+    });
+    if (!ok) return;
+
+    setResetBusy(org.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("demo-admin", {
+        body: { action: "provision" },
+      });
+      if (error) throw error;
+      const result = data as { error?: string; operation?: DemoOperation };
+      if (result?.error) throw new Error(result.error);
+      if (result.operation?.status !== "succeeded") {
+        throw new Error(result.operation?.error_message || t("organizations.demoResetUnavailable"));
+      }
+      toast.success(t("organizations.demoProvisionComplete"));
+      await load();
+    } catch (e) {
+      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("organizations.demoResetUnavailable") }));
+    } finally {
+      setResetBusy(null);
+    }
+  };
+
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
@@ -370,16 +408,34 @@ export default function AdminOrganizations() {
                         : t("organizations.demoOperationStatus", { status: demoStatus.last_operation_status || demoStatus.state })}
                     </p>
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 w-full border-amber-400/70"
-                    onClick={() => resetDemo(o)}
-                    disabled={resetBusy === o.id || demoStatus.state !== "ready"}
-                  >
-                    {resetBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                    {demoStatus.state === "ready" ? t("organizations.demoReset") : t("organizations.demoNotReady")}
-                  </Button>
+                  {demoStatus.state === "ready" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 w-full border-amber-400/70"
+                      onClick={() => resetDemo(o)}
+                      disabled={resetBusy === o.id}
+                    >
+                      {resetBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                      {t("organizations.demoReset")}
+                    </Button>
+                  ) : ["uninitialized", "failed"].includes(demoStatus.state || "") ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 w-full border-amber-400/70"
+                      onClick={() => provisionDemo(o)}
+                      disabled={resetBusy === o.id}
+                    >
+                      {resetBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                      {t("organizations.demoProvision")}
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" className="mt-2 w-full border-amber-400/70" disabled>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      {t("organizations.demoNotReady")}
+                    </Button>
+                  )}
                 </div>
               )}
 
