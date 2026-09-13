@@ -1,0 +1,527 @@
+Clariva — Sponsor Dashboard & Cohort Detail Specification
+Scope
+Implement/rework only:
+1. Sponsor Dashboard
+2. Sponsor Cohort Detail
+Do not redesign the Leader Detail page yet.
+The objective is to make Sponsor reporting simple, consistent, and driven by the programme cadence already configured for each programme.
+Each programme already defines when required activities should happen, including for example:
+- Modules
+- Quizzes
+- Assignments
+- Triad practice
+- Peer coaching
+- 1:1 coaching sessions
+- Mentor coaching
+- Assessments
+- Other required programme activities
+All calculations must use this configured cadence rather than arbitrary percentages.
+A. SPONSOR DASHBOARD
+Purpose
+The Sponsor Dashboard should answer:
+How many leaders are currently in our programmes?
+How many cohorts are running?
+Are participants generally keeping up with their programme cadence?
+Which cohort should I open for more detail?
+
+The Dashboard must remain executive-level.
+Do not show detailed coaching, goals, actions, satisfaction, individual overdue activities, or programme completion percentages here.
+A1. Top KPI cards
+Show exactly these four primary KPIs.
+KPI	Definition	Calculation
+Total Leaders	Unique leaders enrolled in currently running Sponsor-visible cohorts	Count distinct leaders with valid enrollment in a current cohort. Exclude withdrawn/cancelled enrollment if these statuses exist.
+Active Leaders	Leaders whose enrollment is currently Active	Count enrollment_status = active within current cohorts
+Current Cohorts	Cohorts currently being delivered	cohort_start_date <= today <= cohort_end_date, subject to actual cohort status rules
+On Track	Active leaders currently keeping up with their programme cadence	Active leader has no required cadence item whose allowed deadline has passed and remains incomplete
+
+
+Dashboard example
+Total Leaders       Active Leaders       Current Cohorts       On Track
+30                  27                   3                     24 / 27
+If useful, On Track can additionally show:
+89%
+But the primary display should be:
+24 / 27
+because the Sponsor can understand the population.
+A2. Definition of On Track
+This is a critical business rule.
+A leader is:
+ON TRACK
+when there is currently no required programme cadence item overdue and incomplete.
+NOT ON TRACK
+when at least one required cadence item has passed its allowed deadline/window and remains incomplete.
+Examples:
+Quiz 1 due 10 Sep
+Completed 9 Sep
+→ ON TRACK
+Quiz 1 due 10 Sep
+Today 13 Sep
+Quiz incomplete
+→ NOT ON TRACK
+Quiz due 10 Sep
+Completed late on 12 Sep
+Today 13 Sep
+No other overdue requirement
+→ ON TRACK again
+Historical lateness may still be stored for reporting, but it must not permanently make the leader Not On Track.
+Before anything is due
+If the cohort has started but the first cadence deadline has not yet occurred:
+the active leader is currently On Track, because there is no overdue obligation.
+
+Do not create a visible Dashboard status called:
+- Not Assessable
+- Not Yet Assessable
+- Not Started
+for this purpose.
+A3. Do NOT show these Dashboard KPIs
+Remove from the Sponsor Dashboard:
+- Completion %
+- Programme Progress %
+- Adherence %
+- Coverage %
+- Sessions Used
+- Coaching Delivered
+- Upcoming Sessions
+- Overdue Sessions
+- Paused / Completed
+- Not Started
+- Completed Leaders
+- At Risk
+- Watch
+- Pace NYD / Ahead
+- Pace On Track / Scheduled
+- Pace Behind / Complete
+- Goals Setup / Total
+- Goal Progress
+- Actions Complete
+- Satisfaction
+- Budget Used proxy
+- Projected Budget Exhaustion proxy
+These may exist elsewhere but they do not belong in the executive Sponsor Dashboard.
+A4. Current Cohorts section
+Below the four KPIs show all currently running cohorts.
+Recommended columns:
+Cohort	Programme	Programme Position	Leaders	On Track
+TASC Essential – Sep 2026	TASC Level 1	Week 4 of 12	20	17 / 20
+Leadership Programme B	Leadership as Coach	Week 7 of 10	15	13 / 14
+
+
+Programme Position
+Calculate:
+Current programme week
+from cohort start date and current date.
+Display:
+Week 4 of 12
+Do not display generic organisation-level Programme Progress %.
+Each cohort has its own timeline.
+A5. Completed Cohorts
+Do not mix completed cohorts into the Current Cohorts table.
+Provide:
+View Completed Cohorts →
+or equivalent navigation.
+Completed cohorts should be accessible separately.
+A6. Upcoming Cohorts
+Do not show Upcoming Cohorts on the main Sponsor Dashboard at this stage.
+They may later be available through the broader Cohorts area if required.
+B. COHORT DETAIL PAGE
+Purpose
+The Cohort Detail page should answer:
+Where is this cohort in the programme?
+Are participants following the programme cadence?
+Which parts of the programme have been completed?
+Which leaders are keeping up?
+How are goals and participant experience progressing?
+
+B1. Cohort header
+Show:
+Data	Example
+Cohort Name	TASC Essential – Cohort 1
+Programme Name	TASC Level 1
+Start Date	28 Sep 2026
+End Date	20 Dec 2026
+Current Programme Week	Week 4 of 12
+Total Leaders	20
+Cohort Status	Active
+
+
+Do not show Time Elapsed %.
+Week 4 of 12 is sufficient and easier to understand.
+B2. Main Cohort KPIs
+Show:
+KPI	Example
+On Track	17 / 20 · 85%
+Cadence Completion to Date	91%
+Leaders with Goals	15 / 20
+Average Goal Progress	58%
+Satisfaction	Only when correct source is confirmed
+
+
+B3. Cohort On Track
+Same rule used everywhere.
+For every active leader:
+Does this leader currently have ≥1 overdue required cadence item?
+If:
+NO → On Track
+YES → Not On Track
+At Cohort level:
+On Track active leaders
+───────────────────────
+Total active leaders
+Example:
+17 / 20 = 85%
+Do not add another main KPI called Not On Track.
+The remainder is obvious.
+B4. Cadence Completion to Date
+This is different from On Track.
+On Track answers:
+How many leaders currently have no overdue obligation?
+
+It is a binary leader status.
+Cadence Completion to Date answers:
+Of what participants should have completed by today, how much have they actually completed?
+
+It shows the depth of completion, not just whether someone has missed something.
+Calculation
+First calculate each leader separately.
+For Leader A:
+9 completed required activities due by today
+10 required activities due by today
+
+= 90%
+Leader B:
+10 / 10 = 100%
+Leader C:
+7 / 10 = 70%
+Then calculate the cohort:
+Average of individual leader cadence-completion percentages
+Do not simply add all completed activity instances across the whole cohort and divide by everything.
+Each leader should receive equal weight.
+Example
+Twenty leaders have:
+100%
+100%
+90%
+90%
+...
+Their average equals:
+91%
+Display:
+Cadence Completion to Date — 91%
+
+Zero denominator
+If a leader has no cadence item due yet:
+cadence_completion_to_date = NULL
+Do not produce:
+100%
+For the cohort, average only valid leader percentages where at least one activity is due.
+If no participant has anything due yet:
+No programme activities due yet
+
+B5. Do NOT show separate Overdue Requirement KPI
+Do not create a cohort KPI like:
+7 overdue activities
+This can be misleading because seven overdue items could belong to one person or seven people.
+The Cohort On Track metric tells the Sponsor whether leaders are keeping up.
+Exact overdue requirements belong in Leader Detail.
+C. PROGRAMME CADENCE VISUAL
+This is a major part of the Cohort Detail page.
+Create a very visual representation of the entire programme cadence.
+It must show:
+- Programme weeks/stages
+- Modules
+- Quizzes
+- Assignments
+- Triads
+- Peer coaching
+- Coaching sessions
+- Mentor coaching
+- Assessments
+- Any other configured required activity
+- Current cohort position
+- Completed/past activities
+- Current activities
+- Upcoming activities
+- Cohort completion rate for each cadence item
+Example concept
+WEEK 1        WEEK 2         WEEK 3        WEEK 4         WEEK 5
+
+Module 1 ─── Quiz 1 ─── Triad 1 ─── Module 2 ─── Coaching 1 ─── Quiz 2
+  100%         95%          90%          85%           80%        Upcoming
+
+                                             ▲
+                                       YOU ARE HERE
+The final design can be more sophisticated, but this is the information architecture.
+C1. Completion of each cadence item
+For each specific cadence item:
+leaders who completed this item
+───────────────────────────────
+leaders to whom this item applies
+Example:
+Quiz 1 applies to 20 leaders.
+18 completed it:
+Quiz 1
+90%
+A future activity should show:
+Upcoming
+not:
+0%
+C2. Next programme requirement
+Do not create a separate KPI card.
+Show it within the cadence visual.
+Example:
+Next checkpoint:
+Triad Practice 2
+18 Oct 2026
+C3. Optional activity-type summary
+This is secondary, not the main visual.
+If useful, underneath the cadence map show:
+Activity Type	Completion to Date
+Modules	96%
+Quizzes	90%
+Triad / Peer Coaching	85%
+Coaching Sessions	92%
+Mentor Coaching	Not due yet
+
+
+Calculate only cadence items of that type that are due by today.
+Do not use all future programme activities in the denominator.
+D. GOALS
+D1. Leaders with Goals
+Display:
+15 / 20 leaders
+Calculation:
+leaders with ≥1 valid Sponsor-visible goal
+──────────────────────────────────────────
+eligible cohort leaders
+Do not combine people and goal counts into:
+4 / 10
+Those are different units.
+D2. Average Goal Progress
+For each leader with goals:
+1. Calculate the average progress of that leader's valid Sponsor-visible goals.
+2. Then average the resulting leader-level percentages.
+Example:
+Leader A = 40%
+Leader B = 60%
+Leader C = 80%
+
+Cohort average = 60%
+Do not treat a leader without a goal as 0%.
+The separate Leaders with Goals metric already shows goal adoption.
+E. ACTIONS
+Do not show Actions Complete on the Cohort Detail page.
+We will decide later whether Sponsor-visible actions belong on Leader Detail.
+F. SATISFACTION — IMPORTANT
+Do not blindly keep the existing generic Satisfaction metric.
+First inspect the backend and identify exactly which records currently feed the existing Sponsor satisfaction value.
+Determine whether it currently comes from:
+- 1:1 coaching session feedback
+- Triad feedback
+- Peer coaching feedback
+- Module feedback
+- Programme pulse
+- Multiple sources mixed together
+- Another source
+Report the finding before changing the calculation.
+Critical rule
+Do not mix:
+Coaching Session Satisfaction
++
+Triad Satisfaction
++
+Module Satisfaction
+into one generic average unless the product explicitly defines them as the same standardised measurement.
+If the current application has a dedicated standardised Programme Satisfaction / Programme Experience question, then use only that source.
+Display:
+Programme Satisfaction
+4.6 / 5 · 18 responses
+If the only available score is specifically coaching feedback, label it:
+Coaching Session Satisfaction
+4.7 / 5 · 12 responses
+If it is Triad feedback, label it accordingly.
+For this implementation
+Before displaying the metric, Codex/Replit must document:
+Current database source:
+Current table/view/RPC:
+Question/rating being averaged:
+Scale:
+Eligible responses:
+Privacy suppression rule:
+If the source cannot be confirmed, hide Satisfaction temporarily rather than displaying an ambiguous number.
+G. LEADER ROSTER
+Show exactly these core columns:
+Leader	Enrollment Status	On Track	Cadence to Date	Goal Progress
+Trang Trinh	Active	On Track	100%	60%
+Claire Dubois	Active	Not On Track	80%	45%
+Daniel Okafor	Active	On Track	95%	—
+Yuki Tanaka	Paused	—	70%	30%
+
+
+Clicking the row opens the dedicated Leader Detail page later.
+G1. Do not show in roster
+Remove:
+- Programme Position
+- Separate Overdue column
+- Actions
+- Sessions 0/0
+- Generic Progress
+- Raw Full Completion %
+G2. Cadence to Date per leader
+Definition:
+Of all required activities that this leader should have completed by today according to the programme cadence, what percentage are complete?
+
+Calculation:
+completed required items due by today
+─────────────────────────────────────
+required items due by today
+Example:
+Full programme contains:
+40 activities
+By Week 4 only:
+10 activities are due
+Leader completed:
+9
+Display:
+90%
+Do not calculate:
+9 / 40 = 22.5%
+because that measures whole-programme completion, not whether the leader is keeping up.
+If nothing is due:
+—
+or:
+No activities due yet
+not 100%.
+H. PAUSED LEADERS
+Enrollment lifecycle and cadence health must remain separate.
+Possible enrollment statuses:
+Active
+Paused
+Completed
+Withdrawn
+On Track is not an enrollment status.
+For a paused leader:
+Enrollment Status = Paused
+On Track = —
+Paused leaders should normally be excluded from the current On Track denominator while the pause is effective.
+Do not classify them automatically as Not On Track.
+I. DATA CONSISTENCY RULES
+These rules must apply everywhere.
+Rule 1
+NULL ≠ 0%
+If something cannot yet be calculated, return/display null.
+Rule 2
+0 / 0 must NEVER = 100%
+Rule 3
+Future cadence items:
+Upcoming
+not:
+0% complete
+Rule 4
+Do not mix different units into one ratio.
+Bad:
+4 leaders / 10 goals
+Good:
+Leaders with goals: 4 / 8
+Goals created: 10
+Rule 5
+Dashboard, Cohort and later Leader pages must use the same canonical cadence calculations.
+Do not calculate the same metric differently on different screens.
+J. PRIVACY
+Preserve the existing Sponsor privacy model.
+Sponsor must not gain access to:
+- coaching notes
+- session transcripts
+- private chat
+- private reflections
+- confidential goal wording unless explicitly Sponsor-visible
+- coach private observations
+- coach identity where the existing privacy model withholds it
+Do not weaken RLS, cohort suppression, or sponsor access controls.
+K. REQUIRED IMPLEMENTATION ORDER
+Please implement in this order:
+1. Inspect existing programme cadence schema.
+2. Inspect existing Sponsor RPCs/views/functions.
+3. Inspect exact Satisfaction source.
+4. Write tests for agreed calculations.
+5. Fix backend calculations.
+6. Fix Dashboard.
+7. Fix Cohort Detail.
+8. Build Programme Cadence visual.
+9. Update roster.
+10. Run regression/privacy tests.
+Do not start with cosmetic UI changes before calculation logic is verified.
+L. REQUIRED TEST SCENARIOS
+Create automated test fixtures/scenarios.
+Scenario 1 — Perfectly on track
+10 activities due.
+Leader completed 10.
+Expected:
+On Track = true
+Cadence to Date = 100%
+Scenario 2 — One requirement missed
+10 due.
+9 complete.
+One deadline passed.
+Expected:
+On Track = false
+Cadence to Date = 90%
+Scenario 3 — Future requirements
+40 activities exist in full programme.
+Only 10 are due by today.
+10 completed.
+Expected:
+On Track = true
+Cadence to Date = 100%
+NOT:
+25%
+Scenario 4 — Nothing due yet
+40 programme activities configured.
+None due yet.
+Expected:
+On Track = true
+Cadence to Date = NULL
+UI = No activities due yet / —
+NOT:
+Cadence = 100%
+Scenario 5 — Late activity recovered
+Quiz deadline passed and leader became Not On Track.
+Leader subsequently completes quiz.
+No other requirement overdue.
+Expected current status:
+On Track = true
+Historical late completion may remain recorded.
+Scenario 6 — Paused leader
+Expected:
+Enrollment Status = Paused
+On Track = NULL / —
+Exclude from active On Track denominator.
+M. COHORT EXAMPLE FOR VALIDATION
+Assume:
+20 total leaders
+18 active
+2 paused
+Of the 18 active:
+15 have no overdue requirement
+3 have ≥1 overdue requirement
+Expected:
+Total Leaders = 20
+On Track = 15 / 18
+On Track % = 83.3%
+Do not use 20 as the denominator for On Track because two leaders are paused.
+If valid Cadence to Date values for the 18 active leaders average to:
+91.2%
+display:
+Cadence Completion to Date
+91%
+N. REQUIRED DELIVERY REPORT
+When the batch is complete, report clearly:
+1. Files changed
+2. Database functions/RPCs changed
+3. Old calculation vs new calculation for every affected metric
+4. Exact source of Satisfaction
+5. Test results
+6. Screenshots of Sponsor Dashboard and Cohort Detail
+7. Any unresolved business-rule question
+8. Confirmation that Sponsor privacy/RLS has not been weakened
+Do not proceed to redesign Leader Detail in this batch.
+I would use this as the source-of-truth specification for the next batch. The particularly important part is that Replit/Codex should not simply change what the cards say: it must first verify the actual database cadence logic and fix the calculations underneath the UI.
