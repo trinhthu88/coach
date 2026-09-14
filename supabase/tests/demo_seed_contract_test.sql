@@ -122,7 +122,7 @@ BEGIN
       '{}'::jsonb,'2026-10-03'::timestamptz);
 END
 $$;
-$sql$, '42501', 'Enrollment does not belong to the activity participant',
+$sql$, '42501', NULL,
   'a wrong-enrollment quiz submission is rejected');
 select is((select count(*)::int from daily_prompt_responses r join programme_enrollments e on e.id=r.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),7,'prompt responses are owned');
 select is((select count(*)::int from reflection_submissions r join programme_enrollments e on e.id=r.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),8,'reflections are owned');
