@@ -1,6 +1,6 @@
 begin;
 
-select plan(16);
+select plan(15);
 create temporary table baseline_enrollments as select count(*)::integer n from public.programme_enrollments;
 grant select on baseline_enrollments to authenticated;
 
@@ -53,14 +53,6 @@ select set_config('request.jwt.claim.sub','aa000000-0000-0000-0000-000000000002'
 select results_eq(
  $$select processed,succeeded,unresolved,skipped from public.backfill_enrollment_schedule_snapshots()$$,
  $$select 4+n,1,2,1+n from baseline_enrollments$$, 'batch backfills valid rows and isolates invalid and partial rows');
-select is(
-  coalesce((
-    select string_agg(enrollment_id::text || ':' || reason, ',' order by enrollment_id)
-    from public.enrollment_schedule_backfill_audit
-  ), ''),
-  '',
-  'diagnostic'
-);
 select is((select count(*)::integer from public.enrollment_module_snapshots where enrollment_id='af000000-0000-0000-0000-000000000001'),1,'valid missing enrollment is backfilled');
 select results_eq(
  $$select id,module from public.enrollment_module_snapshots where enrollment_id='af000000-0000-0000-0000-000000000002' order by module$$,
