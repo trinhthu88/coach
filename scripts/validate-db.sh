@@ -15,6 +15,7 @@ isolation_test_output="$(mktemp)"
 lint_output="$(mktemp)"
 types_check_output="$(mktemp)"
 tsc_output="$(mktemp)"
+snapshot_diff_output="$(mktemp)"
 stack_started=false
 
 supabase_cli() {
@@ -38,7 +39,7 @@ run_guarded_local_seed() {
 
 cleanup() {
   local exit_code=$?
-  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$second_database_test_output" "$isolation_test_output" "$lint_output" "$types_check_output" "$tsc_output"
+  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$second_database_test_output" "$isolation_test_output" "$lint_output" "$types_check_output" "$tsc_output" "$snapshot_diff_output"
   if [[ "$stack_started" == true ]]; then
     supabase_cli stop --no-backup || true
   fi
@@ -190,7 +191,19 @@ supabase_cli db query --local --file "$snapshot_sql_file" > "$snapshot_before"
 printf '%s\n' '==> Re-running the guarded seed for idempotency'
 run_guarded_local_seed
 supabase_cli db query --local --file "$snapshot_sql_file" > "$snapshot_after"
-diff -u "$snapshot_before" "$snapshot_after"
+if ! diff -u "$snapshot_before" "$snapshot_after" >"$snapshot_diff_output" 2>&1; then
+  cat "$snapshot_diff_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Seed idempotency diff::%s\n' "$failure_line"
+    done < "$snapshot_diff_output"
+  fi
+  exit 1
+fi
 run_guarded_local_seed
 if ! supabase_cli test db --local supabase/tests >"$second_database_test_output" 2>&1; then
   cat "$second_database_test_output"
