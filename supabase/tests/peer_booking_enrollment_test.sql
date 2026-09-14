@@ -48,6 +48,7 @@ values
    'b1000000-0000-4000-8000-000000000001',
    'b1000000-0000-4000-8000-000000000022',
    'other enrollment history',now(),30,'completed');
+reset role;
 -- Preserve the one-ongoing-enrollment invariant while exercising the
 -- enrollment trigger: history is created while its receiver enrollment is
 -- ongoing, then that historical enrollment is closed before selection.
