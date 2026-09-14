@@ -9,39 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      session_activity_attributions: {
-        Row: {
-          id: string
-          enrollment_id: string
-          module: Database["public"]["Enums"]["programme_module_type"]
-          source_activity_type: string
-          source_activity_id: string
-          occurred_on: string
-          milestone_id: string | null
-          attributed_at: string
-        }
-        Insert: {
-          id?: string
-          enrollment_id: string
-          module: Database["public"]["Enums"]["programme_module_type"]
-          source_activity_type: string
-          source_activity_id: string
-          occurred_on: string
-          milestone_id?: string | null
-          attributed_at?: string
-        }
-        Update: {
-          id?: string
-          enrollment_id?: string
-          module?: Database["public"]["Enums"]["programme_module_type"]
-          source_activity_type?: string
-          source_activity_id?: string
-          occurred_on?: string
-          milestone_id?: string | null
-          attributed_at?: string
-        }
-        Relationships: []
-      }
       access_requests: {
         Row: {
           company: string | null
