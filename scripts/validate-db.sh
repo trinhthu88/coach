@@ -9,6 +9,7 @@ types_output="$(mktemp)"
 snapshot_before="$(mktemp)"
 snapshot_after="$(mktemp)"
 snapshot_sql_file="$(mktemp)"
+database_test_output="$(mktemp)"
 stack_started=false
 
 supabase_cli() {
@@ -32,7 +33,7 @@ run_guarded_local_seed() {
 
 cleanup() {
   local exit_code=$?
-  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file"
+  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output"
   if [[ "$stack_started" == true ]]; then
     supabase_cli stop --no-backup || true
   fi
@@ -123,7 +124,14 @@ DEMO_AUTH_TEST_PASSWORD="CI-local-${GITHUB_RUN_ID:-${RANDOM}}-Password!" \
   node scripts/validate-local-auth.mjs
 node supabase/tests/sponsor_isolation_test.mjs
 printf '%s\n' '==> Running database tests'
-supabase_cli test db --local supabase/tests
+if ! supabase_cli test db --local supabase/tests >"$database_test_output" 2>&1; then
+  cat "$database_test_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    cp "$database_test_output" "${RUNNER_TEMP}/clariva-generated-types.ts"
+  fi
+  exit 1
+fi
+cat "$database_test_output"
 cat > "$snapshot_sql_file" <<'SQL'
 SELECT table_name, row_count, md5(ids) AS id_hash
 FROM (
