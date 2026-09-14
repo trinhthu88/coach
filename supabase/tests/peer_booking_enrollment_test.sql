@@ -36,6 +36,10 @@ values
    'b1000000-0000-4000-8000-000000000001',
    'b1000000-0000-4000-8000-000000000012',current_date - 30,'active');
 
+select set_config('request.jwt.claim.sub','b1000000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+set local role authenticated;
+
 -- History on the other enrollment must not consume the selected entitlement.
 insert into public.peer_sessions
   (peer_coach_id, peer_coachee_id, enrollment_id, topic, start_time, duration_minutes, status)
@@ -53,10 +57,6 @@ where id='b1000000-0000-4000-8000-000000000022';
 update public.programme_enrollments
 set status='active'::public.enrollment_status
 where id='b1000000-0000-4000-8000-000000000021';
-
-select set_config('request.jwt.claim.sub','b1000000-0000-4000-8000-000000000001',true);
-select set_config('request.jwt.claim.role','authenticated',true);
-set local role authenticated;
 
 select is(
   public.can_book_peer_session(

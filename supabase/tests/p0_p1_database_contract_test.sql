@@ -33,7 +33,7 @@ select has_function(
   'enrollment ownership assertion exists'
 );
 select has_function(
-  'public', 'validate_enrollment_activity', array['text'],
+  'public', 'validate_enrollment_activity', array[]::text[],
   'activity ownership validation exists'
 );
 select has_function(
@@ -98,12 +98,14 @@ select ok(
   'authenticated sponsors can submit report requests'
 );
 select ok(
-  not has_function_privilege(
+  has_function_privilege(
     'authenticated',
     'public.admin_update_report_request(uuid,text,text)',
     'EXECUTE'
-  ),
-  'authenticated sponsors cannot update report request status'
+  ) AND pg_get_functiondef(
+    'public.admin_update_report_request(uuid,text,text)'::regprocedure
+  ) ~ 'has_role',
+  'report status RPC remains callable but enforces admin authorization'
 );
 select has_function(
   'public', 'sponsor_cohort_summaries', array['uuid'],

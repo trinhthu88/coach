@@ -9,8 +9,8 @@ insert into public.cohorts(id,name,programme_id,start_date,end_date) values ('a5
 insert into public.programme_enrollments(id,user_id,programme_id,cohort_id,start_date,end_date,status) values
  ('a5000000-0000-4000-8000-000000000031','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000010','a5000000-0000-4000-8000-000000000020','2026-01-01','2026-04-01','active'),
  ('a5000000-0000-4000-8000-000000000032','a5000000-0000-4000-8000-000000000003','a5000000-0000-4000-8000-000000000010','a5000000-0000-4000-8000-000000000020','2026-01-01','2026-04-01','active');
-insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status) values
- ('a5000000-0000-4000-8000-000000000041','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Action session','2026-02-01',60,'confirmed'),
+insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status,action_items) values
+  ('a5000000-0000-4000-8000-000000000041','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Action session','2026-02-01',60,'confirmed','[{"text":"Legacy linked action","done":true,"milestone_id":"a5000000-0000-4000-8000-000000000060"},{"text":"Broken date action","due_date":"not-a-date"}]'),
  ('a5000000-0000-4000-8000-000000000042','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000003','a5000000-0000-4000-8000-000000000032','Other action session','2026-02-02',60,'confirmed');
 insert into public.coachee_goals(id,coachee_id,enrollment_id,title) values
  ('a5000000-0000-4000-8000-000000000051','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Goal one'),
@@ -30,7 +30,6 @@ select throws_ok($$select public.save_enrollment_activity_actions('a5000000-0000
 select set_config('request.jwt.claim.sub','a5000000-0000-4000-8000-000000000001',true);
 select throws_ok($$select public.save_enrollment_activity_actions('a5000000-0000-4000-8000-000000000031','coaching','a5000000-0000-4000-8000-000000000041','[{"id":"a5000000-0000-4000-8000-000000000070","title":""}]')$$,'P0001','Action title is invalid','invalid action rejects the atomic save');
 select is((select title from public.enrollment_actions where id='a5000000-0000-4000-8000-000000000070'),'Ask for feedback','failed atomic save preserves prior action');
-update public.sessions set action_items='[{"text":"Legacy linked action","done":true,"milestone_id":"a5000000-0000-4000-8000-000000000060"},{"text":"Broken date action","due_date":"not-a-date"}]' where id='a5000000-0000-4000-8000-000000000041';
 select public.backfill_enrollment_actions();
 select public.backfill_enrollment_actions();
 select is((select count(*)::integer from public.enrollment_actions where source_activity_id='a5000000-0000-4000-8000-000000000041' and title='Legacy linked action'),1,'legacy import is idempotent by source identity and ordinal');
