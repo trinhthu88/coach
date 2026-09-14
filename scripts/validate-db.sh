@@ -267,8 +267,47 @@ if ! npx tsc --noEmit >"$tsc_output" 2>&1; then
 fi
 cat "$tsc_output"
 printf '%s\n' '==> Running lint'
-npm run lint
+if ! npm run lint >"$tsc_output" 2>&1; then
+  cat "$tsc_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Application lint::%s\n' "$failure_line"
+    done < "$tsc_output"
+  fi
+  exit 1
+fi
+cat "$tsc_output"
 printf '%s\n' '==> Running application tests'
-npm run test
+if ! npm run test >"$tsc_output" 2>&1; then
+  cat "$tsc_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Application tests::%s\n' "$failure_line"
+    done < "$tsc_output"
+  fi
+  exit 1
+fi
+cat "$tsc_output"
 printf '%s\n' '==> Building production frontend'
-npm run build
+if ! npm run build >"$tsc_output" 2>&1; then
+  cat "$tsc_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Production build::%s\n' "$failure_line"
+    done < "$tsc_output"
+  fi
+  exit 1
+fi
+cat "$tsc_output"
