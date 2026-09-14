@@ -61,6 +61,32 @@ eval "$(supabase_cli status -o env)"
 export VITE_SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}"
 export VITE_SUPABASE_ANON_KEY="${ANON_KEY:?local anon key unavailable}"
 export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?local service key unavailable}"
+printf '%s\n' '==> Normalizing local Auth fixture fields for GoTrue'
+psql --no-psqlrc --set=ON_ERROR_STOP=1 \
+  "${DB_URL:?local database URL unavailable}" <<'SQL'
+UPDATE auth.users
+SET
+  confirmation_token = coalesce(confirmation_token, ''),
+  recovery_token = coalesce(recovery_token, ''),
+  email_change_token_new = coalesce(email_change_token_new, ''),
+  email_change = coalesce(email_change, ''),
+  phone_change = coalesce(phone_change, ''),
+  phone_change_token = coalesce(phone_change_token, ''),
+  email_change_token_current = coalesce(email_change_token_current, ''),
+  reauthentication_token = coalesce(reauthentication_token, ''),
+  raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb),
+  raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb)
+WHERE confirmation_token IS NULL
+   OR recovery_token IS NULL
+   OR email_change_token_new IS NULL
+   OR email_change IS NULL
+   OR phone_change IS NULL
+   OR phone_change_token IS NULL
+   OR email_change_token_current IS NULL
+   OR reauthentication_token IS NULL
+   OR raw_app_meta_data IS NULL
+   OR raw_user_meta_data IS NULL;
+SQL
 expected_migrations="$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
 applied_migrations="$(psql --no-psqlrc --set=ON_ERROR_STOP=1 -Atqc \
   'SELECT count(*) FROM supabase_migrations.schema_migrations' \
