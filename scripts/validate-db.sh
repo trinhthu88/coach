@@ -70,6 +70,15 @@ eval "$(supabase_cli status -o env)"
 export VITE_SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}"
 export VITE_SUPABASE_ANON_KEY="${ANON_KEY:?local anon key unavailable}"
 export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?local service key unavailable}"
+if [[ "${TARGETED_PGTAP_ONLY:-true}" == true ]]; then
+  printf '%s\n' '==> Targeted affected-suite validation only'
+  node supabase/tests/sponsor_isolation_test.mjs
+  supabase_cli test db --local \
+    supabase/tests/enrollment_actions_test.sql \
+    supabase/tests/peer_booking_enrollment_test.sql \
+    supabase/tests/enrollment_schedule_backfill_test.sql
+  exit 0
+fi
 printf '%s\n' '==> Normalizing local Auth fixture fields for GoTrue'
 psql --no-psqlrc --set=ON_ERROR_STOP=1 \
   "${DB_URL:?local database URL unavailable}" <<'SQL'
