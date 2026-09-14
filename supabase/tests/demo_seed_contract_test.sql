@@ -120,7 +120,6 @@ BEGIN
       (select user_id from programme_enrollments where id='12121212-1212-4121-8121-000000000001'::uuid),
       '12121212-1212-4121-8121-000000000002'::uuid,
       '{}'::jsonb,'2026-10-03'::timestamptz);
-$$;
 END
 $$;
 $sql$, '42501', 'Enrollment does not belong to the activity participant',
