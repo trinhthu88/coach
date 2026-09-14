@@ -9,7 +9,12 @@ types_output="$(mktemp)"
 snapshot_before="$(mktemp)"
 snapshot_after="$(mktemp)"
 snapshot_sql_file="$(mktemp)"
+diagnostic_log=""
 stack_started=false
+if [[ -n "${RUNNER_TEMP:-}" ]]; then
+  diagnostic_log="${RUNNER_TEMP}/database-validation.log"
+  exec >"${diagnostic_log}" 2>&1
+fi
 
 supabase_cli() {
   if [[ -n "$SUPABASE_CLI_BIN" ]]; then
@@ -32,6 +37,9 @@ run_guarded_local_seed() {
 
 cleanup() {
   local exit_code=$?
+  if [[ "$exit_code" -ne 0 && -n "$diagnostic_log" ]]; then
+    cp "$diagnostic_log" "${RUNNER_TEMP}/clariva-generated-types.ts" || true
+  fi
   rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file"
   if [[ "$stack_started" == true ]]; then
     supabase_cli stop --no-backup || true
