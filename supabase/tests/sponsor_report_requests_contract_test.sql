@@ -1,10 +1,31 @@
 begin;
 select plan(10);
 
-select has_table('public', 'sponsor_report_requests');
-select has_column('public', 'sponsor_report_requests', 'organization_id');
-select has_column('public', 'sponsor_report_requests', 'cohort_id');
-select has_column('public', 'sponsor_report_requests', 'status');
+select has_table(
+  'public'::name,
+  'sponsor_report_requests'::name
+);
+
+select has_column(
+  'public'::name,
+  'sponsor_report_requests'::name,
+  'organization_id'::name,
+  'organization_id'
+);
+
+select has_column(
+  'public'::name,
+  'sponsor_report_requests'::name,
+  'cohort_id'::name,
+  'cohort_id'
+);
+
+select has_column(
+  'public'::name,
+  'sponsor_report_requests'::name,
+  'status'::name,
+  'status'
+);
 select ok(exists (
   select 1
   from pg_constraint
