@@ -83,6 +83,7 @@ cleanup() {
   exit "$exit_code"
 }
 trap cleanup EXIT
+trap 'printf "::error file=scripts/validate-db.sh,line=%s::failed command: %s\n" "$LINENO" "$BASH_COMMAND"' ERR
 
 printf '%s\n' '==> Supabase CLI version'
 supabase_cli --version
