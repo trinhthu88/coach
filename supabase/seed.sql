@@ -220,32 +220,40 @@ BEGIN
       VALUES(('77777777-7777-4777-8777-'||lpad(i::text,12,'0'))::uuid,u1,e1,w,'2026-10-01','2026-10-02')
       ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,completed_at=excluded.completed_at;
     INSERT INTO assignments(id,training_week_id,assignment_type,title,instructions,is_visible,due_offset_days,sort_order)
-      VALUES(('88888888-8888-4888-8888-'||lpad(i::text,12,'0'))::uuid,w,'reflection','Module reflection','Demo assignment',true,14,1)
-      ON CONFLICT(id) DO UPDATE SET title=excluded.title,is_visible=true;
+      VALUES(('88888888-8888-4888-8888-'||lpad(i::text,12,'0'))::uuid,w,'quiz','Module quiz','Demo quiz',true,14,1)
+      ON CONFLICT(id) DO UPDATE SET assignment_type=excluded.assignment_type,title=excluded.title,instructions=excluded.instructions,is_visible=true;
     INSERT INTO daily_prompts(id,training_week_id,day_offset,prompt_text)
       VALUES(('99999999-9999-4999-8999-'||lpad(i::text,12,'0'))::uuid,w,1,'What will you practise this week?')
       ON CONFLICT(id) DO UPDATE SET prompt_text=excluded.prompt_text;
     INSERT INTO programme_reflections(id,programme_id,reflection_number,title,instructions,appears_at_week,is_visible)
       VALUES(('aaaaaaaa-aaaa-4aaa-8aaa-'||lpad(i::text,12,'0'))::uuid,pb,i,format('Programme reflection %s',i),'Private reflection',i,true)
       ON CONFLICT(id) DO UPDATE SET title=excluded.title,is_visible=true;
-    SELECT id INTO a FROM assignments WHERE training_week_id=w LIMIT 1;
-    INSERT INTO assignment_submissions(id,assignment_id,user_id,enrollment_id,reflection_text)
-      VALUES(('bbbbbbbb-bbbb-4bbb-8bbb-'||lpad(i::text,12,'0'))::uuid,a,u1,e1,'Private assignment response')
-      ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id;
+    SELECT id INTO a FROM assignments
+      WHERE training_week_id=w AND assignment_type='quiz'::public.assignment_type LIMIT 1;
+    INSERT INTO quiz_questions(id,assignment_id,question_text,options,sort_order)
+      VALUES(('abababab-abab-4bab-8bab-'||lpad(i::text,12,'0'))::uuid,a,
+        'Which practice will you apply this week?',
+        '[{"id":"a","text":"Practise the skill","is_correct":true},{"id":"b","text":"Skip the practice","is_correct":false}]'::jsonb,
+        1)
+      ON CONFLICT(id) DO UPDATE SET assignment_id=excluded.assignment_id,options=excluded.options;
+    SELECT id INTO q FROM quiz_questions WHERE assignment_id=a ORDER BY id LIMIT 1;
+    INSERT INTO assignment_submissions(id,assignment_id,user_id,enrollment_id,answers)
+      VALUES(('bbbbbbbb-bbbb-4bbb-8bbb-'||lpad(i::text,12,'0'))::uuid,a,u1,e1,jsonb_build_object(q::text,'a'))
+      ON CONFLICT(id) DO NOTHING;
     IF i <= 2 THEN
-      INSERT INTO assignment_submissions(id,assignment_id,user_id,enrollment_id,reflection_text)
-        VALUES(('bbbbbbbb-bbbb-4bbb-8bbb-'||lpad((100+i)::text,12,'0'))::uuid,a,u2,e2,'B2 assignment response')
-        ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id;
+      INSERT INTO assignment_submissions(id,assignment_id,user_id,enrollment_id,answers)
+        VALUES(('bbbbbbbb-bbbb-4bbb-8bbb-'||lpad((100+i)::text,12,'0'))::uuid,a,u2,e2,jsonb_build_object(q::text,'a'))
+        ON CONFLICT(id) DO NOTHING;
     END IF;
     IF i <= 4 THEN
-      INSERT INTO assignment_submissions(id,assignment_id,user_id,enrollment_id,reflection_text)
-        VALUES(('bbbbbbbb-bbbb-4bbb-8bbb-'||lpad((200+i)::text,12,'0'))::uuid,a,u3,e3,'B3 assignment response')
-        ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id;
+      INSERT INTO assignment_submissions(id,assignment_id,user_id,enrollment_id,answers)
+        VALUES(('bbbbbbbb-bbbb-4bbb-8bbb-'||lpad((200+i)::text,12,'0'))::uuid,a,u3,e3,jsonb_build_object(q::text,'a'))
+        ON CONFLICT(id) DO NOTHING;
     END IF;
     IF i = 1 THEN
-      INSERT INTO assignment_submissions(id,assignment_id,user_id,enrollment_id,reflection_text)
-        VALUES('bbbbbbbb-bbbb-4bbb-8bbb-000000000301',a,u4,e4,'B4 assignment response')
-        ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id;
+      INSERT INTO assignment_submissions(id,assignment_id,user_id,enrollment_id,answers)
+        VALUES('bbbbbbbb-bbbb-4bbb-8bbb-000000000301',a,u4,e4,jsonb_build_object(q::text,'a'))
+        ON CONFLICT(id) DO NOTHING;
     END IF;
     INSERT INTO daily_prompt_responses(id,daily_prompt_id,user_id,enrollment_id,opened_at,response_text,responded_at)
       VALUES(('cccccccc-cccc-4ccc-8ccc-'||lpad(i::text,12,'0'))::uuid,
