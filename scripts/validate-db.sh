@@ -61,10 +61,6 @@ printf '%s\n' '==> Resetting local database, migrations, and configured seed dat
 # `db reset --local` applies every migration and then supabase/seed.sql.
 # PGOPTIONS is the seed's explicit local-only guard.
 PGOPTIONS='-c app.seed_environment=local' supabase_cli db reset --local
-[[ -x supabase/tests/sponsor_isolation_test.mjs ]] || {
-  printf '%s\n' 'sponsor_isolation_test.mjs must be executable' >&2
-  exit 1
-}
 # Read credentials from the local stack only; never use linked-project env vars.
 eval "$(supabase_cli status -o env)"
 export VITE_SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}"
