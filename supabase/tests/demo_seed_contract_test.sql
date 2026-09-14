@@ -75,7 +75,7 @@ select lives_ok($$
   insert into public.assignment_submissions(id,assignment_id,user_id,enrollment_id,answers,submitted_at)
     values('fbbbbbbb-bbbb-4bbb-8bbb-000000000001',
       'f8888888-8888-4888-8888-000000000001',
-      '12121212-1212-4121-8121-000000000001'::uuid,
+      (select user_id from programme_enrollments where id='12121212-1212-4121-8121-000000000001'::uuid),
       '12121212-1212-4121-8121-000000000001'::uuid,
       '{}'::jsonb,'2026-10-03'::timestamptz);
 $$, 'a quiz submission is accepted and attributed');
@@ -91,7 +91,7 @@ select lives_ok($$
   insert into public.assignment_submissions(id,assignment_id,user_id,enrollment_id,reflection_text,submitted_at)
     values('fbbbbbbb-bbbb-4bbb-8bbb-000000000002',
       'f8888888-8888-4888-8888-000000000002',
-      '12121212-1212-4121-8121-000000000001'::uuid,
+      (select user_id from programme_enrollments where id='12121212-1212-4121-8121-000000000001'::uuid),
       '12121212-1212-4121-8121-000000000001'::uuid,
       'Reflection is accepted without quiz attribution','2026-10-03'::timestamptz);
 $$, 'a reflection submission is accepted');
@@ -107,7 +107,7 @@ select throws_ok($$
   insert into public.assignment_submissions(id,assignment_id,user_id,enrollment_id,answers,submitted_at)
     values('fbbbbbbb-bbbb-4bbb-8bbb-000000000003',
       'f8888888-8888-4888-8888-000000000003',
-      '12121212-1212-4121-8121-000000000001'::uuid,
+      (select user_id from programme_enrollments where id='12121212-1212-4121-8121-000000000001'::uuid),
       '12121212-1212-4121-8121-000000000002'::uuid,
       '{}'::jsonb,'2026-10-03'::timestamptz);
 $$, '42501', 'Enrollment does not belong to the activity participant',
