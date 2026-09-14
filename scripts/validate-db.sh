@@ -128,8 +128,20 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   } >> "$GITHUB_OUTPUT"
 fi
 printf '%s\n' '==> Validating local demo Auth users'
-DEMO_AUTH_TEST_PASSWORD="CI-local-${GITHUB_RUN_ID:-${RANDOM}}-Password!" \
-  node scripts/validate-local-auth.mjs >"$targeted_auth_output" 2>&1
+if ! DEMO_AUTH_TEST_PASSWORD="CI-local-${GITHUB_RUN_ID:-${RANDOM}}-Password!" \
+  node scripts/validate-local-auth.mjs >"$targeted_auth_output" 2>&1; then
+  cat "$targeted_auth_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Targeted Auth validation::%s\n' "$failure_line"
+    done < "$targeted_auth_output"
+  fi
+  exit 1
+fi
 if [[ "${TARGETED_PGTAP_ONLY:-true}" == true ]]; then
   printf '%s\n' '==> Targeted affected-suite validation only'
   if ! node supabase/tests/sponsor_isolation_test.mjs >"$targeted_isolation_output" 2>&1; then
