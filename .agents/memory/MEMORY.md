@@ -6,3 +6,4 @@
 - [Supabase CLI package firewall](supabase-cli-package-firewall.md) — local DB validation can be blocked before startup when the required CLI archive is denied by the package firewall.
 - [Historical ownership retirement](historical-ownership-retirement.md) — preserve ambiguous legacy rows, record explicit retirement evidence, and exclude retired sources from repeatable readiness/backfill scans.
 - [GitHub integration push](github-integration-push.md) — preserve local commit SHAs through the Git Database API when shell credentials cannot push.
+- [Supabase Auth schema failure](supabase-auth-schema-failure.md) — SQL can see users while Auth admin and password-token endpoints return HTTP 500 schema errors.
