@@ -35,6 +35,18 @@ run_guarded_local_seed() {
       "${DB_URL:?local database URL unavailable}"
 }
 
+run_database_tests() {
+  local test_output
+  if ! test_output="$(supabase_cli test db --local supabase/tests 2>&1)"; then
+    printf '%s\n' "$test_output" >&2
+    while IFS= read -r line; do
+      [[ -z "$line" ]] || printf '::error file=supabase/tests/demo_seed_contract_test.sql::%s\n' "$line"
+    done < <(printf '%s\n' "$test_output" | tail -n 60)
+    return 1
+  fi
+  printf '%s\n' "$test_output"
+}
+
 cleanup() {
   local exit_code=$?
   if [[ "$exit_code" -ne 0 && -n "$diagnostic_log" ]]; then
@@ -105,7 +117,7 @@ VITE_SUPABASE_ANON_KEY="${ANON_KEY:?local anon key unavailable}" \
 SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?local service key unavailable}" \
   node supabase/tests/sponsor_isolation_test.mjs
 printf '%s\n' '==> Running database tests'
-supabase_cli test db --local supabase/tests
+run_database_tests
 cat > "$snapshot_sql_file" <<'SQL'
 SELECT table_name, row_count, md5(ids) AS id_hash
 FROM (
@@ -143,7 +155,7 @@ run_guarded_local_seed
 supabase_cli db query --local --file "$snapshot_sql_file" > "$snapshot_after"
 diff -u "$snapshot_before" "$snapshot_after"
 run_guarded_local_seed
-supabase_cli test db --local supabase/tests
+run_database_tests
 printf '%s\n' '==> Linting local database'
 supabase_cli db lint --local
 printf '%s\n' '==> Checking generated Supabase TypeScript types'
