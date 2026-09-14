@@ -58,6 +58,9 @@ printf '%s\n' '==> Running signed-client sponsor isolation test against local Su
 }
 # Read credentials from the local stack only; never use linked-project env vars.
 eval "$(supabase_cli status -o env)"
+export VITE_SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}"
+export VITE_SUPABASE_ANON_KEY="${ANON_KEY:?local anon key unavailable}"
+export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?local service key unavailable}"
 expected_migrations="$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
 applied_migrations="$(psql --no-psqlrc --set=ON_ERROR_STOP=1 -Atqc \
   'SELECT count(*) FROM supabase_migrations.schema_migrations' \
@@ -92,10 +95,7 @@ fi
 printf '%s\n' '==> Validating local demo Auth users'
 DEMO_AUTH_TEST_PASSWORD="CI-local-${GITHUB_RUN_ID:-${RANDOM}}-Password!" \
   node scripts/validate-local-auth.mjs
-VITE_SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}" \
-VITE_SUPABASE_ANON_KEY="${ANON_KEY:?local anon key unavailable}" \
-SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?local service key unavailable}" \
-  node supabase/tests/sponsor_isolation_test.mjs
+node supabase/tests/sponsor_isolation_test.mjs
 printf '%s\n' '==> Running database tests'
 supabase_cli test db --local supabase/tests
 cat > "$snapshot_sql_file" <<'SQL'
