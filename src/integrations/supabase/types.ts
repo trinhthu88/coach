@@ -9,39 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      session_activity_attributions: {
-        Row: {
-          id: string
-          enrollment_id: string
-          module: Database["public"]["Enums"]["programme_module_type"]
-          source_activity_type: string
-          source_activity_id: string
-          occurred_on: string
-          milestone_id: string | null
-          attributed_at: string
-        }
-        Insert: {
-          id?: string
-          enrollment_id: string
-          module: Database["public"]["Enums"]["programme_module_type"]
-          source_activity_type: string
-          source_activity_id: string
-          occurred_on: string
-          milestone_id?: string | null
-          attributed_at?: string
-        }
-        Update: {
-          id?: string
-          enrollment_id?: string
-          module?: Database["public"]["Enums"]["programme_module_type"]
-          source_activity_type?: string
-          source_activity_id?: string
-          occurred_on?: string
-          milestone_id?: string | null
-          attributed_at?: string
-        }
-        Relationships: []
-      }
       access_requests: {
         Row: {
           company: string | null
@@ -2681,6 +2648,39 @@ export type Database = {
           },
         ]
       }
+      session_activity_attributions: {
+        Row: {
+          id: string
+          enrollment_id: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          source_activity_type: string
+          source_activity_id: string
+          occurred_on: string
+          milestone_id: string | null
+          attributed_at: string
+        }
+        Insert: {
+          id?: string
+          enrollment_id: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          source_activity_type: string
+          source_activity_id: string
+          occurred_on: string
+          milestone_id?: string | null
+          attributed_at?: string
+        }
+        Update: {
+          id?: string
+          enrollment_id?: string
+          module?: Database["public"]["Enums"]["programme_module_type"]
+          source_activity_type?: string
+          source_activity_id?: string
+          occurred_on?: string
+          milestone_id?: string | null
+          attributed_at?: string
+        }
+        Relationships: []
+      }
       session_attachments: {
         Row: {
           created_at: string
@@ -2964,6 +2964,74 @@ export type Database = {
             foreignKeyName: "sponsor_profiles_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sponsor_report_requests: {
+        Row: {
+          id: string
+          organization_id: string
+          cohort_id: string
+          requested_by: string
+          status: string
+          request_notes: string | null
+          admin_notes: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          cohort_id: string
+          requested_by: string
+          status?: string
+          request_notes?: string | null
+          admin_notes?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          cohort_id?: string
+          requested_by?: string
+          status?: string
+          request_notes?: string | null
+          admin_notes?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsor_report_requests_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsor_report_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsor_report_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsor_report_requests_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
