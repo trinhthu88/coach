@@ -68,7 +68,9 @@ select is((select count(*)::int from training_progress tp join programme_enrollm
 select is((select count(*)::int from training_progress tp join programme_enrollments e on e.id=tp.enrollment_id
   where e.cohort_id='11111111-1111-4111-8111-111111111115' and e.user_id=(select user_id from programme_enrollments where cohort_id='11111111-1111-4111-8111-111111111115' order by id offset 3 limit 1)),1,'B4 training is behind');
 select is((select count(*)::int from assignment_submissions s join programme_enrollments e on e.id=s.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),11,'assignment submissions are owned');
-select lives_ok($$
+select lives_ok($sql$
+DO $$
+BEGIN
   insert into public.assignments(id,training_week_id,assignment_type,title,instructions,is_visible,due_offset_days,sort_order)
     values('f8888888-8888-4888-8888-000000000001',
       '66666666-6666-4666-8666-000000000001','quiz','Quiz attribution test','Test quiz',true,7,99);
@@ -78,13 +80,17 @@ select lives_ok($$
       (select user_id from programme_enrollments where id='12121212-1212-4121-8121-000000000001'::uuid),
       '12121212-1212-4121-8121-000000000001'::uuid,
       '{}'::jsonb,'2026-10-03'::timestamptz);
-$$, 'a quiz submission is accepted and attributed');
+END
+$$;
+$sql$, 'a quiz submission is accepted and attributed');
 select is((select count(*)::int from session_activity_attributions
   where source_activity_type='quiz'
     and source_activity_id='fbbbbbbb-bbbb-4bbb-8bbb-000000000001'
     and enrollment_id='12121212-1212-4121-8121-000000000001'::uuid),1,
   'a quiz submission creates exactly one quiz attribution');
-select lives_ok($$
+select lives_ok($sql$
+DO $$
+BEGIN
   insert into public.assignments(id,training_week_id,assignment_type,title,instructions,is_visible,due_offset_days,sort_order)
     values('f8888888-8888-4888-8888-000000000002',
       '66666666-6666-4666-8666-000000000001','reflection','Reflection attribution test','Test reflection',true,7,99);
@@ -94,13 +100,17 @@ select lives_ok($$
       (select user_id from programme_enrollments where id='12121212-1212-4121-8121-000000000001'::uuid),
       '12121212-1212-4121-8121-000000000001'::uuid,
       'Reflection is accepted without quiz attribution','2026-10-03'::timestamptz);
-$$, 'a reflection submission is accepted');
+END
+$$;
+$sql$, 'a reflection submission is accepted');
 select is((select count(*)::int from session_activity_attributions
   where source_activity_type='quiz'
     and source_activity_id='fbbbbbbb-bbbb-4bbb-8bbb-000000000002'
     and enrollment_id='12121212-1212-4121-8121-000000000001'::uuid),0,
   'a reflection submission creates no quiz attribution');
-select throws_ok($$
+select throws_ok($sql$
+DO $$
+BEGIN
   insert into public.assignments(id,training_week_id,assignment_type,title,instructions,is_visible,due_offset_days,sort_order)
     values('f8888888-8888-4888-8888-000000000003',
       '66666666-6666-4666-8666-000000000001','quiz','Wrong enrollment test','Test quiz',true,7,99);
@@ -110,7 +120,10 @@ select throws_ok($$
       (select user_id from programme_enrollments where id='12121212-1212-4121-8121-000000000001'::uuid),
       '12121212-1212-4121-8121-000000000002'::uuid,
       '{}'::jsonb,'2026-10-03'::timestamptz);
-$$, '42501', 'Enrollment does not belong to the activity participant',
+$$;
+END
+$$;
+$sql$, '42501', 'Enrollment does not belong to the activity participant',
   'a wrong-enrollment quiz submission is rejected');
 select is((select count(*)::int from daily_prompt_responses r join programme_enrollments e on e.id=r.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),7,'prompt responses are owned');
 select is((select count(*)::int from reflection_submissions r join programme_enrollments e on e.id=r.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),8,'reflections are owned');
