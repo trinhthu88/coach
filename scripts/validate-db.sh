@@ -14,6 +14,7 @@ second_database_test_output="$(mktemp)"
 isolation_test_output="$(mktemp)"
 lint_output="$(mktemp)"
 types_check_output="$(mktemp)"
+tsc_output="$(mktemp)"
 stack_started=false
 
 supabase_cli() {
@@ -37,7 +38,7 @@ run_guarded_local_seed() {
 
 cleanup() {
   local exit_code=$?
-  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$second_database_test_output" "$isolation_test_output" "$lint_output" "$types_check_output"
+  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$second_database_test_output" "$isolation_test_output" "$lint_output" "$types_check_output" "$tsc_output"
   if [[ "$stack_started" == true ]]; then
     supabase_cli stop --no-backup || true
   fi
@@ -251,7 +252,20 @@ if ! diff -u src/integrations/supabase/types.ts "$types_output" >"$types_check_o
   exit 1
 fi
 printf '%s\n' '==> Running TypeScript checks'
-npx tsc --noEmit
+if ! npx tsc --noEmit >"$tsc_output" 2>&1; then
+  cat "$tsc_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=TypeScript check::%s\n' "$failure_line"
+    done < "$tsc_output"
+  fi
+  exit 1
+fi
+cat "$tsc_output"
 printf '%s\n' '==> Running lint'
 npm run lint
 printf '%s\n' '==> Running application tests'
