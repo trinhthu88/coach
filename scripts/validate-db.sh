@@ -18,6 +18,9 @@ tsc_output="$(mktemp)"
 snapshot_diff_output="$(mktemp)"
 third_seed_output="$(mktemp)"
 second_seed_output="$(mktemp)"
+targeted_auth_output="$(mktemp)"
+targeted_isolation_output="$(mktemp)"
+targeted_pg_output="$(mktemp)"
 stack_started=false
 
 supabase_cli() {
@@ -41,7 +44,7 @@ run_guarded_local_seed() {
 
 cleanup() {
   local exit_code=$?
-  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$second_database_test_output" "$isolation_test_output" "$lint_output" "$types_check_output" "$tsc_output" "$snapshot_diff_output" "$third_seed_output" "$second_seed_output"
+  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$second_database_test_output" "$isolation_test_output" "$lint_output" "$types_check_output" "$tsc_output" "$snapshot_diff_output" "$third_seed_output" "$second_seed_output" "$targeted_auth_output" "$targeted_isolation_output" "$targeted_pg_output"
   if [[ "$stack_started" == true ]]; then
     supabase_cli stop --no-backup || true
   fi
@@ -126,14 +129,38 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
 fi
 printf '%s\n' '==> Validating local demo Auth users'
 DEMO_AUTH_TEST_PASSWORD="CI-local-${GITHUB_RUN_ID:-${RANDOM}}-Password!" \
-  node scripts/validate-local-auth.mjs
+  node scripts/validate-local-auth.mjs >"$targeted_auth_output" 2>&1
 if [[ "${TARGETED_PGTAP_ONLY:-true}" == true ]]; then
   printf '%s\n' '==> Targeted affected-suite validation only'
-  node supabase/tests/sponsor_isolation_test.mjs
-  supabase_cli test db --local \
+  if ! node supabase/tests/sponsor_isolation_test.mjs >"$targeted_isolation_output" 2>&1; then
+    cat "$targeted_isolation_output"
+    if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+      while IFS= read -r failure_line; do
+        [[ -z "$failure_line" ]] && continue
+        failure_line="${failure_line//'%'/'%25'}"
+        failure_line="${failure_line//$'\r'/'%0D'}"
+        failure_line="${failure_line//$'\n'/'%0A'}"
+        printf '::error title=Targeted sponsor isolation::%s\n' "$failure_line"
+      done < "$targeted_isolation_output"
+    fi
+    exit 1
+  fi
+  if ! supabase_cli test db --local \
     supabase/tests/enrollment_actions_test.sql \
     supabase/tests/peer_booking_enrollment_test.sql \
-    supabase/tests/enrollment_schedule_backfill_test.sql
+    supabase/tests/enrollment_schedule_backfill_test.sql >"$targeted_pg_output" 2>&1; then
+    cat "$targeted_pg_output"
+    if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+      while IFS= read -r failure_line; do
+        [[ -z "$failure_line" ]] && continue
+        failure_line="${failure_line//'%'/'%25'}"
+        failure_line="${failure_line//$'\r'/'%0D'}"
+        failure_line="${failure_line//$'\n'/'%0A'}"
+        printf '::error title=Targeted pgTAP suites::%s\n' "$failure_line"
+      done < "$targeted_pg_output"
+    fi
+    exit 1
+  fi
   exit 0
 fi
 printf '%s\n' '==> Local/test backfill readiness report'
