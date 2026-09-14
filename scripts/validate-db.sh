@@ -127,6 +127,12 @@ printf '%s\n' '==> Running database tests'
 if ! supabase_cli test db --local supabase/tests >"$database_test_output" 2>&1; then
   cat "$database_test_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Database validation::%s\n' "$failure_line"
+    done < <(grep -E '(^| )(not ok|ERROR|Error|error|failed|Failed)( |:|$)' "$database_test_output" | head -100 || true)
     cp "$database_test_output" "${RUNNER_TEMP}/clariva-generated-types.ts"
   fi
   exit 1
