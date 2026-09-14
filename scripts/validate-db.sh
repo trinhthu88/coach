@@ -10,6 +10,7 @@ snapshot_before="$(mktemp)"
 snapshot_after="$(mktemp)"
 snapshot_sql_file="$(mktemp)"
 database_test_output="$(mktemp)"
+second_database_test_output="$(mktemp)"
 isolation_test_output="$(mktemp)"
 stack_started=false
 
@@ -34,7 +35,7 @@ run_guarded_local_seed() {
 
 cleanup() {
   local exit_code=$?
-  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$isolation_test_output"
+  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$second_database_test_output" "$isolation_test_output"
   if [[ "$stack_started" == true ]]; then
     supabase_cli stop --no-backup || true
   fi
@@ -188,7 +189,20 @@ run_guarded_local_seed
 supabase_cli db query --local --file "$snapshot_sql_file" > "$snapshot_after"
 diff -u "$snapshot_before" "$snapshot_after"
 run_guarded_local_seed
-supabase_cli test db --local supabase/tests
+if ! supabase_cli test db --local supabase/tests >"$second_database_test_output" 2>&1; then
+  cat "$second_database_test_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Repeated database validation::%s\n' "$failure_line"
+    done < "$second_database_test_output"
+  fi
+  exit 1
+fi
+cat "$second_database_test_output"
 printf '%s\n' '==> Linting local database'
 supabase_cli db lint --local
 printf '%s\n' '==> Checking generated Supabase TypeScript types'
