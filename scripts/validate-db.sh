@@ -10,6 +10,7 @@ snapshot_before="$(mktemp)"
 snapshot_after="$(mktemp)"
 snapshot_sql_file="$(mktemp)"
 database_test_output="$(mktemp)"
+isolation_test_output="$(mktemp)"
 stack_started=false
 
 supabase_cli() {
@@ -33,7 +34,7 @@ run_guarded_local_seed() {
 
 cleanup() {
   local exit_code=$?
-  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output"
+  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$isolation_test_output"
   if [[ "$stack_started" == true ]]; then
     supabase_cli stop --no-backup || true
   fi
@@ -122,7 +123,19 @@ fi
 printf '%s\n' '==> Validating local demo Auth users'
 DEMO_AUTH_TEST_PASSWORD="CI-local-${GITHUB_RUN_ID:-${RANDOM}}-Password!" \
   node scripts/validate-local-auth.mjs
-node supabase/tests/sponsor_isolation_test.mjs
+if ! node supabase/tests/sponsor_isolation_test.mjs >"$isolation_test_output" 2>&1; then
+  cat "$isolation_test_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Sponsor isolation validation::%s\n' "$failure_line"
+    done < "$isolation_test_output"
+  fi
+  exit 1
+fi
 printf '%s\n' '==> Running database tests'
 if ! supabase_cli test db --local supabase/tests >"$database_test_output" 2>&1; then
   cat "$database_test_output"
