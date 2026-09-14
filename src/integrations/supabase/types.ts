@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      session_activity_attributions: {
+        Row: {
+          id: string
+          enrollment_id: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          source_activity_type: string
+          source_activity_id: string
+          occurred_on: string
+          milestone_id: string | null
+          attributed_at: string
+        }
+        Insert: {
+          id?: string
+          enrollment_id: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          source_activity_type: string
+          source_activity_id: string
+          occurred_on: string
+          milestone_id?: string | null
+          attributed_at?: string
+        }
+        Update: {
+          id?: string
+          enrollment_id?: string
+          module?: Database["public"]["Enums"]["programme_module_type"]
+          source_activity_type?: string
+          source_activity_id?: string
+          occurred_on?: string
+          milestone_id?: string | null
+          attributed_at?: string
+        }
+        Relationships: []
+      }
       access_requests: {
         Row: {
           company: string | null
@@ -3635,6 +3668,97 @@ export type Database = {
       }
     }
     Functions: {
+      admin_update_coach_configuration: {
+        Args: {
+          p_coach_id: string
+          p_full_name: string
+          p_profile_status: string
+          p_selectable_coach_ids?: string[]
+          p_enrollment_id?: string | null
+          p_programme_id?: string | null
+          p_cohort_id?: string | null
+          p_organization_id?: string | null
+        }
+        Returns: undefined
+      }
+      sponsor_list_report_requests: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          organization_id: string
+          cohort_id: string
+          requested_by: string
+          status: string
+          request_notes: string | null
+          admin_notes: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      sponsor_submit_report_request: {
+        Args: { p_cohort_id: string; p_request_notes?: string | null }
+        Returns: {
+          id: string
+          organization_id: string
+          cohort_id: string
+          requested_by: string
+          status: string
+          request_notes: string | null
+          admin_notes: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }
+      }
+      admin_list_report_requests: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          organization_id: string
+          cohort_id: string
+          requested_by: string
+          status: string
+          request_notes: string | null
+          admin_notes: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+          organization_name: string
+          cohort_name: string
+          requester_name: string
+        }[]
+      }
+      admin_update_report_request: {
+        Args: { p_request_id: string; p_status: string; p_admin_notes?: string | null }
+        Returns: {
+          id: string
+          organization_id: string
+          cohort_id: string
+          requested_by: string
+          status: string
+          request_notes: string | null
+          admin_notes: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }
+      }
+      attribute_activity_to_cadence_milestone: {
+        Args: {
+          p_enrollment_id: string
+          p_module: string
+          p_activity_id: string
+          p_occurred_on: string
+        }
+        Returns: string | null
+      }
+      resolve_current_enrollment: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: string | null
+      }
       admin_create_programme_enrollment: {
         Args: {
           p_cohort_id: string
@@ -4013,6 +4137,7 @@ export type Database = {
         Returns: boolean
       }
       is_active_coach_profile: { Args: { _id: string }; Returns: boolean }
+      is_coach_eligible: { Args: { p_coach_id: string }; Returns: boolean }
       is_allowlisted_pair: {
         Args: { _target: string; _viewer: string }
         Returns: boolean

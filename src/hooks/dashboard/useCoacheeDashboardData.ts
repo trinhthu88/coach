@@ -74,8 +74,9 @@ async function fetchCoacheeDashboardData(
   // Recommended (top-rated active coaches, max 3)
   const { data: recs } = await supabase
     .from("coach_profiles")
-    .select("id, title, specialties, rating_avg, years_experience, country_based, profiles!inner(full_name, avatar_url, bio)")
+    .select("id, title, specialties, rating_avg, years_experience, country_based, profiles!inner(full_name, avatar_url, bio, status)")
     .eq("approval_status", "active")
+    .eq("profiles.status", "active")
     .order("is_featured", { ascending: false })
     .order("rating_avg", { ascending: false })
     .limit(3);
@@ -86,8 +87,12 @@ async function fetchCoacheeDashboardData(
   if (favorites.length > 0) {
     const { data: favs } = await supabase
       .from("coach_profiles")
-      .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
-      .in("id", favorites);
+      .select("id, title, specialties, rating_avg, approval_status, profiles!inner(full_name, avatar_url, status)")
+      .in("id", favorites)
+      .eq("approval_status", "active")
+      .eq("profiles.status", "active");
+    // Inactive coaches are not discoverable, including through favorites.
+    // (The authoritative booking RPC applies the same check at write time.)
     favCoaches = (favs as unknown as CoachLite[]) || [];
   }
 

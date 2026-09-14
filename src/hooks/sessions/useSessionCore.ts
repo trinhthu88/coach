@@ -56,6 +56,7 @@ async function fetchSessionCore(
   // provider_notes/receiver_notes) but a no-op for `sessions` since the field
   // names already match.
   const raw = data as unknown as Record<string, unknown>;
+  if (!raw.enrollment_id) return null;
   const norm = {
     ...raw,
     coach_id: raw[coachField],
@@ -70,16 +71,22 @@ async function fetchSessionCore(
     .in("id", [norm.coach_id, norm.coachee_id]);
   const byId = new Map((profs || []).map((p) => [p.id, p]));
 
-  // Load milestones of the coachee (or peer-coachee) so action items can be linked
+  // Load only programme goals/milestones from this session's immutable enrollment.
+  // Historical sessions without an enrollment must not fall back to the user's
+  // current or other historical programme records.
   const coacheeId = norm.coachee_id;
-  const [{ data: gs }, { data: ms }] = await Promise.all([
-    supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId),
-    supabase
-      .from("coachee_milestones")
-      .select("id, title, goal_id")
-      .eq("coachee_id", coacheeId)
-      .order("created_at"),
-  ]);
+  const enrollmentId = norm.enrollment_id;
+  const [{ data: gs }, { data: ms }] = enrollmentId
+    ? await Promise.all([
+        supabase.from("coachee_goals").select("id, title").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId),
+        supabase
+          .from("coachee_milestones")
+          .select("id, title, goal_id")
+          .eq("coachee_id", coacheeId)
+          .eq("enrollment_id", enrollmentId)
+          .order("created_at"),
+      ])
+    : [{ data: [] }, { data: [] }];
   const goalById = new Map((gs || []).map((g) => [g.id, g.title]));
   const milestones = (ms || []).map((m) => ({
     id: m.id,
@@ -155,21 +162,22 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
       setSaving(true);
       const { error: actionsError } = await saveEnrollmentActions(session.enrollment_id, sourceActivityType, session.id, items);
       if (actionsError) { setSaving(false); return { error: actionsError }; }
-      const update: Record<string, unknown> = {};
-      if (opts.includeCoachNotes) update[coachNotesField] = coachNotes;
-      if (opts.includeMeetingUrl) update.meeting_url = meetingUrl || null;
-      if (opts.includeCoacheeNotes) update[coacheeNotesField] = coacheeNotes;
-      const { error } = Object.keys(update).length
-        ? await supabase
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .from(tableName as any)
-            .update(update)
-            .eq("id", session.id)
-        : { error: null };
+      const kind = isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching";
+      const updates: Array<[string, string]> = [];
+      if (opts.includeCoachNotes) updates.push([coachNotesField, coachNotes]);
+      if (opts.includeMeetingUrl) updates.push(["meeting_url", meetingUrl || ""]);
+      if (opts.includeCoacheeNotes) updates.push([coacheeNotesField, coacheeNotes]);
+      let error = null;
+      for (const [field, value] of updates) {
+        const result = await supabase.rpc("update_session_notes", {
+          p_session_id: session.id, p_kind: kind, p_field: field, p_value: value,
+        });
+        if (result.error) { error = result.error; break; }
+      }
       setSaving(false);
       return { error };
     },
-    [session, items, coachNotes, coacheeNotes, meetingUrl, tableName, coachNotesField, coacheeNotesField, sourceActivityType]
+    [session, items, coachNotes, coacheeNotes, meetingUrl, coachNotesField, coacheeNotesField, sourceActivityType, isPeer, isCoacheePeer]
   );
 
   const saveActionItems = useCallback(async () => {
@@ -189,11 +197,10 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
     async (trimmed: string) => {
       if (!session) return;
       setSaving(true);
-      const { error } = await supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from(tableName as any)
-        .update({ meeting_url: trimmed || null })
-        .eq("id", session.id);
+      const { error } = await supabase.rpc("update_session_notes", {
+        p_session_id: session.id, p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
+        p_field: "meeting_url", p_value: trimmed || "",
+      });
       setSaving(false);
       if (error) {
         toast.error(error.message);
@@ -202,17 +209,15 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
       toast.success(t("detail.toast.meetingLinkSaved"));
       load();
     },
-    [session, tableName, load, t]
+    [session, isPeer, isCoacheePeer, load, t]
   );
 
   const confirmSession = useCallback(async () => {
     if (!session) return;
-    // confirm-session only knows about `sessions`/`peer_sessions` — coachee_peer_sessions
-    // isn't wired into its Zoom-provisioning flow yet (see RULES.md §3 Relationship 5).
-    if (isCoacheePeer) return;
     setSaving(true);
-    const { error } = await supabase.functions.invoke("confirm-session", {
-      body: { session_id: session.id, is_peer: isPeer },
+    const { error } = await supabase.rpc("transition_session_status", {
+      p_session_id: session.id, p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
+      p_action: "confirm", p_reason: null,
     });
     setSaving(false);
     if (error) {
@@ -226,10 +231,10 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
   const cancelSession = useCallback(
     async (onDone: () => void, reason?: string) => {
       if (!session) return;
-      if (isCoacheePeer) return;
       setSaving(true);
-      const { error } = await supabase.functions.invoke("cancel-session", {
-        body: { session_id: session.id, is_peer: isPeer, reason },
+       const { error } = await supabase.rpc("transition_session_status", {
+        p_session_id: session.id, p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
+        p_action: "cancel", p_reason: reason || null,
       });
       setSaving(false);
       if (error) {
@@ -246,16 +251,16 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
   const completeSession = useCallback(async () => {
     if (!session) return;
     setSaving(true);
-    const { error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .from(tableName as any)
-      .update({ status: "completed" })
-      .eq("id", session.id);
+    const { error } = await supabase.rpc("transition_session_status", {
+      p_session_id: session.id,
+      p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
+      p_action: "complete", p_reason: null,
+    });
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(t("detail.toast.markedComplete"));
     load();
-  }, [session, tableName, load, t]);
+  }, [session, isPeer, isCoacheePeer, load, t]);
 
   const updateItem = useCallback((idx: number, patch: Partial<ActionItem>) => {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));

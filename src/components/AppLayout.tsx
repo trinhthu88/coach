@@ -132,6 +132,7 @@ const NAV: NavItem[] = [
   { to: "/admin/triads", labelKey: "nav.triads", icon: Users, roles: ["admin"], groupKey: "navGroups.programmes" },
 
   // Admin — Operations
+  { to: "/admin/sponsor-reports", labelKey: "nav.sponsorReports", icon: FileText, roles: ["admin"], groupKey: "navGroups.operations" },
   { to: "/admin/sessions", labelKey: "nav.sessions", icon: ClipboardList, roles: ["admin"], groupKey: "navGroups.operations" },
   { to: "/admin/analytics", labelKey: "nav.analytics", icon: BarChart3, roles: ["admin"], groupKey: "navGroups.operations" },
 ];

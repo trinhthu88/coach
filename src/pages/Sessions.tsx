@@ -261,12 +261,12 @@ function SessionCard({
   const markComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setCompleting(true);
-    const table = isCoacheePeer ? "coachee_peer_sessions" : isPeer ? "peer_sessions" : "sessions";
-    const { error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .from(table as any)
-      .update({ status: "completed" })
-      .eq("id", session.id);
+    const { error } = await supabase.rpc("transition_session_status", {
+      p_session_id: session.id,
+      p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
+      p_action: "complete",
+      p_reason: null,
+    });
     setCompleting(false);
     if (error) return toast.error(error.message);
     toast.success(t("list.toast.markedComplete"));

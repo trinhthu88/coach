@@ -39,8 +39,10 @@ export default function CoachDetail() {
     (async () => {
       const { data } = await supabase
         .from("coach_profiles")
-        .select("*, profiles!inner(full_name, avatar_url, bio, email)")
+        .select("*, profiles!inner(full_name, avatar_url, bio, email, status)")
         .eq("id", coachId)
+        .eq("approval_status", "active")
+        .eq("profiles.status", "active")
         .maybeSingle();
       setCoach(data as unknown as CoachDetail | null);
       setLoading(false);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { CoachListRow, CoachOpt, CoacheeRow, Status } from "./types";
+import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type CoachProfileRow = Database["public"]["Tables"]["coach_profiles"]["Row"];
@@ -145,11 +146,17 @@ export function useAdminRegistrations() {
       .filter((row): row is CoacheeRow => row !== null);
 
     const enrollmentByCoach = new Map<string, NonNullable<typeof programmeEnrollments>[number]>();
-    (programmeEnrollments || []).forEach((e) => {
-      // Only an explicitly ongoing enrollment is eligible; never select a
-      // historical "latest" row as a fallback.
-      if (!enrollmentByCoach.has(e.user_id)) enrollmentByCoach.set(e.user_id, e);
-    });
+    for (const userId of coachIds) {
+      const enrollmentId = resolveCurrentEnrollment(
+        (programmeEnrollments || []).filter((e) => e.user_id === userId).map((e) => ({
+          id: e.id,
+          status: e.status,
+          start_date: e.start_date,
+        })),
+      );
+      const enrollment = (programmeEnrollments || []).find((e) => e.id === enrollmentId);
+      if (enrollment) enrollmentByCoach.set(userId, enrollment);
+    }
 
     // Coach-as-coachee usage (completed coaching sessions where coach is the coachee)
     const coachAsCoacheeDone = new Map<string, number>();

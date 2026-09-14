@@ -16,15 +16,14 @@ import SponsorReport from "../SponsorReport";
 beforeEach(async () => { await i18n.changeLanguage("en"); calls.length = 0; });
 
 describe("SponsorReport privacy contract", () => {
-  it("renders only approved summary metrics and omits forbidden content", async () => {
+  it("renders a request-only workflow and omits forbidden content", async () => {
     render(<MemoryRouter><SponsorReport /></MemoryRouter>);
-    await waitFor(() => expect(screen.getByText("Your one-pager previews here")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Select a cohort to request a manually prepared report.")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("combobox"));
     fireEvent.click(screen.getByText("Q3 Leaders"));
-    fireEvent.click(screen.getByRole("button", { name: /generate report/i }));
-    await waitFor(() => expect(screen.getByText("Due adherence")).toBeInTheDocument());
-    expect(screen.getByText("Priya Shah")).toBeInTheDocument();
-    expect(screen.queryByText(/Goal reached|confidence|satisfaction|quiz/i)).not.toBeInTheDocument();
-    expect(calls).toEqual(["sponsor_cohort_summaries", "sponsor_organisation_summary", "sponsor_min_leaders_for_distribution", "sponsor_enrollment_summaries"]);
+    expect(screen.getByRole("button", { name: /request report/i })).toBeEnabled();
+    expect(screen.queryByText(/generate report|download|Priya Shah|confidence|satisfaction|quiz/i)).not.toBeInTheDocument();
+    expect(calls).toContain("sponsor_cohort_summaries");
+    expect(calls).toContain("sponsor_list_report_requests");
   });
 });
