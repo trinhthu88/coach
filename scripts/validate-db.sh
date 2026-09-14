@@ -13,7 +13,7 @@ diagnostic_log=""
 stack_started=false
 if [[ -n "${RUNNER_TEMP:-}" ]]; then
   diagnostic_log="${RUNNER_TEMP}/database-validation.log"
-  exec >"${diagnostic_log}" 2>&1
+  exec > >(tee "${diagnostic_log}") 2>&1
 fi
 
 supabase_cli() {
