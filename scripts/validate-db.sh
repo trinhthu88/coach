@@ -47,6 +47,18 @@ run_database_tests() {
   printf '%s\n' "$test_output"
 }
 
+run_database_reset() {
+  local reset_output
+  if ! reset_output="$(PGOPTIONS='-c app.seed_environment=local' supabase_cli db reset --local 2>&1)"; then
+    printf '%s\n' "$reset_output" >&2
+    while IFS= read -r line; do
+      [[ -z "$line" ]] || printf '::error file=supabase/seed.sql::%s\n' "$line"
+    done < <(printf '%s\n' "$reset_output" | tail -n 80)
+    return 1
+  fi
+  printf '%s\n' "$reset_output"
+}
+
 cleanup() {
   local exit_code=$?
   if [[ "$exit_code" -ne 0 && -n "$diagnostic_log" ]]; then
@@ -68,7 +80,7 @@ stack_started=true
 printf '%s\n' '==> Resetting local database, migrations, and configured seed data'
 # `db reset --local` applies every migration and then supabase/seed.sql.
 # PGOPTIONS is the seed's explicit local-only guard.
-PGOPTIONS='-c app.seed_environment=local' supabase_cli db reset --local
+run_database_reset
 printf '%s\n' '==> Local/test backfill readiness report'
 supabase_cli db query --local --file scripts/enrollment-backfill-readiness.sql
 printf '%s\n' '==> Running signed-client sponsor isolation test against local Supabase'
