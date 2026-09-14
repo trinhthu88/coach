@@ -9,12 +9,7 @@ types_output="$(mktemp)"
 snapshot_before="$(mktemp)"
 snapshot_after="$(mktemp)"
 snapshot_sql_file="$(mktemp)"
-diagnostic_log=""
 stack_started=false
-if [[ -n "${RUNNER_TEMP:-}" ]]; then
-  diagnostic_log="${RUNNER_TEMP}/database-validation.log"
-  exec > >(tee "${diagnostic_log}") 2>&1
-fi
 
 supabase_cli() {
   if [[ -n "$SUPABASE_CLI_BIN" ]]; then
@@ -35,47 +30,8 @@ run_guarded_local_seed() {
       "${DB_URL:?local database URL unavailable}"
 }
 
-run_database_tests() {
-  local test_output
-  if ! test_output="$(supabase_cli test db --local supabase/tests 2>&1)"; then
-    printf '%s\n' "$test_output" >&2
-    while IFS= read -r line; do
-      [[ -z "$line" ]] || printf '::error file=supabase/tests/demo_seed_contract_test.sql::%s\n' "$line"
-    done < <(printf '%s\n' "$test_output" | tail -n 60)
-    return 1
-  fi
-  printf '%s\n' "$test_output"
-}
-
-run_database_reset() {
-  local reset_output
-  if ! reset_output="$(PGOPTIONS='-c app.seed_environment=local' supabase_cli db reset --local 2>&1)"; then
-    printf '%s\n' "$reset_output" >&2
-    while IFS= read -r line; do
-      [[ -z "$line" ]] || printf '::error file=supabase/seed.sql::%s\n' "$line"
-    done < <(printf '%s\n' "$reset_output" | tail -n 80)
-    return 1
-  fi
-  printf '%s\n' "$reset_output"
-}
-
-run_readiness_query() {
-  local readiness_output
-  if ! readiness_output="$(supabase_cli db query --local --file scripts/enrollment-backfill-readiness.sql 2>&1)"; then
-    printf '%s\n' "$readiness_output" >&2
-    while IFS= read -r line; do
-      [[ -z "$line" ]] || printf '::error file=scripts/enrollment-backfill-readiness.sql::%s\n' "$line"
-    done < <(printf '%s\n' "$readiness_output" | tail -n 80)
-    return 1
-  fi
-  printf '%s\n' "$readiness_output"
-}
-
 cleanup() {
   local exit_code=$?
-  if [[ "$exit_code" -ne 0 && -n "$diagnostic_log" ]]; then
-    cp "$diagnostic_log" "${RUNNER_TEMP}/clariva-generated-types.ts" || true
-  fi
   rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file"
   if [[ "$stack_started" == true ]]; then
     supabase_cli stop --no-backup || true
@@ -83,7 +39,6 @@ cleanup() {
   exit "$exit_code"
 }
 trap cleanup EXIT
-trap 'printf "::error file=scripts/validate-db.sh,line=%s::failed command: %s\n" "$LINENO" "$BASH_COMMAND"' ERR
 
 printf '%s\n' '==> Supabase CLI version'
 supabase_cli --version
@@ -93,9 +48,9 @@ stack_started=true
 printf '%s\n' '==> Resetting local database, migrations, and configured seed data'
 # `db reset --local` applies every migration and then supabase/seed.sql.
 # PGOPTIONS is the seed's explicit local-only guard.
-run_database_reset
+PGOPTIONS='-c app.seed_environment=local' supabase_cli db reset --local
 printf '%s\n' '==> Local/test backfill readiness report'
-run_readiness_query
+supabase_cli db query --local --file scripts/enrollment-backfill-readiness.sql
 printf '%s\n' '==> Running signed-client sponsor isolation test against local Supabase'
 [[ -x supabase/tests/sponsor_isolation_test.mjs ]] || {
   printf '%s\n' 'sponsor_isolation_test.mjs must be executable' >&2
@@ -142,7 +97,7 @@ VITE_SUPABASE_ANON_KEY="${ANON_KEY:?local anon key unavailable}" \
 SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?local service key unavailable}" \
   node supabase/tests/sponsor_isolation_test.mjs
 printf '%s\n' '==> Running database tests'
-run_database_tests
+supabase_cli test db --local supabase/tests
 cat > "$snapshot_sql_file" <<'SQL'
 SELECT table_name, row_count, md5(ids) AS id_hash
 FROM (
@@ -180,7 +135,7 @@ run_guarded_local_seed
 supabase_cli db query --local --file "$snapshot_sql_file" > "$snapshot_after"
 diff -u "$snapshot_before" "$snapshot_after"
 run_guarded_local_seed
-run_database_tests
+supabase_cli test db --local supabase/tests
 printf '%s\n' '==> Linting local database'
 supabase_cli db lint --local
 printf '%s\n' '==> Checking generated Supabase TypeScript types'
