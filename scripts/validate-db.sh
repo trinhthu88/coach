@@ -188,10 +188,34 @@ FROM (
   UNION ALL SELECT 'private_notes', count(*), string_agg(session_id::text, ',' ORDER BY session_id) FROM public.coach_session_private_notes
 ) s GROUP BY table_name, row_count, ids ORDER BY table_name;
 SQL
-supabase_cli db query --local --file "$snapshot_sql_file" > "$snapshot_before"
+if ! supabase_cli db query --local --file "$snapshot_sql_file" >"$snapshot_before" 2>"$snapshot_diff_output"; then
+  cat "$snapshot_diff_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Initial snapshot query::%s\n' "$failure_line"
+    done < "$snapshot_diff_output"
+  fi
+  exit 1
+fi
 printf '%s\n' '==> Re-running the guarded seed for idempotency'
 run_guarded_local_seed
-supabase_cli db query --local --file "$snapshot_sql_file" > "$snapshot_after"
+if ! supabase_cli db query --local --file "$snapshot_sql_file" >"$snapshot_after" 2>"$snapshot_diff_output"; then
+  cat "$snapshot_diff_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Repeated snapshot query::%s\n' "$failure_line"
+    done < "$snapshot_diff_output"
+  fi
+  exit 1
+fi
 if ! diff -u "$snapshot_before" "$snapshot_after" >"$snapshot_diff_output" 2>&1; then
   cat "$snapshot_diff_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
