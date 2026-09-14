@@ -59,6 +59,18 @@ run_database_reset() {
   printf '%s\n' "$reset_output"
 }
 
+run_readiness_query() {
+  local readiness_output
+  if ! readiness_output="$(supabase_cli db query --local --file scripts/enrollment-backfill-readiness.sql 2>&1)"; then
+    printf '%s\n' "$readiness_output" >&2
+    while IFS= read -r line; do
+      [[ -z "$line" ]] || printf '::error file=scripts/enrollment-backfill-readiness.sql::%s\n' "$line"
+    done < <(printf '%s\n' "$readiness_output" | tail -n 80)
+    return 1
+  fi
+  printf '%s\n' "$readiness_output"
+}
+
 cleanup() {
   local exit_code=$?
   if [[ "$exit_code" -ne 0 && -n "$diagnostic_log" ]]; then
@@ -82,7 +94,7 @@ printf '%s\n' '==> Resetting local database, migrations, and configured seed dat
 # PGOPTIONS is the seed's explicit local-only guard.
 run_database_reset
 printf '%s\n' '==> Local/test backfill readiness report'
-supabase_cli db query --local --file scripts/enrollment-backfill-readiness.sql
+run_readiness_query
 printf '%s\n' '==> Running signed-client sponsor isolation test against local Supabase'
 [[ -x supabase/tests/sponsor_isolation_test.mjs ]] || {
   printf '%s\n' 'sponsor_isolation_test.mjs must be executable' >&2
