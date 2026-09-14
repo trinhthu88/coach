@@ -4,6 +4,7 @@ set -euo pipefail
 # Docker-capable local validation only. No command in this script links to,
 # resets, pushes to, or otherwise contacts a remote Supabase project.
 readonly SUPABASE_CLI_VERSION="${SUPABASE_CLI_VERSION:-2.117.0}"
+readonly SUPABASE_CLI_BIN="${SUPABASE_CLI_BIN:-}"
 types_output="$(mktemp)"
 snapshot_before="$(mktemp)"
 snapshot_after="$(mktemp)"
@@ -11,7 +12,13 @@ snapshot_sql_file="$(mktemp)"
 stack_started=false
 
 supabase_cli() {
-  npx --yes "supabase@${SUPABASE_CLI_VERSION}" "$@"
+  if [[ -n "$SUPABASE_CLI_BIN" ]]; then
+    "$SUPABASE_CLI_BIN" "$@"
+  elif [[ -x "$PWD/.local/bin/supabase" ]]; then
+    "$PWD/.local/bin/supabase" "$@"
+  else
+    npx --yes "supabase@${SUPABASE_CLI_VERSION}" "$@"
+  fi
 }
 
 run_guarded_local_seed() {
