@@ -142,7 +142,7 @@ if ! DEMO_AUTH_TEST_PASSWORD="CI-local-${GITHUB_RUN_ID:-${RANDOM}}-Password!" \
   fi
   exit 1
 fi
-if [[ "${TARGETED_PGTAP_ONLY:-true}" == true ]]; then
+if [[ "${TARGETED_PGTAP_ONLY:-false}" == true ]]; then
   printf '%s\n' '==> Targeted affected-suite validation only'
   if ! node supabase/tests/sponsor_isolation_test.mjs >"$targeted_isolation_output" 2>&1; then
     cat "$targeted_isolation_output"
