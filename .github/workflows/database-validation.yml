@@ -23,9 +23,13 @@ jobs:
     env:
       SUPABASE_CLI_VERSION: '2.117.0'
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: remediation/p0-p1
+- uses: actions/checkout@v4
+
+- name: Verify checked-out SHA
+  run: |
+    echo "Expected SHA: $GITHUB_SHA"
+    echo "Checked out SHA: $(git rev-parse HEAD)"
+    test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - uses: actions/setup-node@v4
         with:
           node-version: 24
