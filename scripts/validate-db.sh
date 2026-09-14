@@ -16,6 +16,8 @@ supabase_cli() {
     "$SUPABASE_CLI_BIN" "$@"
   elif [[ -x "$PWD/.local/bin/supabase" ]]; then
     "$PWD/.local/bin/supabase" "$@"
+  elif command -v supabase >/dev/null 2>&1; then
+    supabase "$@"
   else
     npx --yes "supabase@${SUPABASE_CLI_VERSION}" "$@"
   fi
@@ -56,6 +58,40 @@ printf '%s\n' '==> Running signed-client sponsor isolation test against local Su
 }
 # Read credentials from the local stack only; never use linked-project env vars.
 eval "$(supabase_cli status -o env)"
+expected_migrations="$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
+applied_migrations="$(psql --no-psqlrc --set=ON_ERROR_STOP=1 -Atqc \
+  'SELECT count(*) FROM supabase_migrations.schema_migrations' \
+  "${DB_URL:?local database URL unavailable}")"
+if [[ "$applied_migrations" != "$expected_migrations" ]]; then
+  printf 'Migration replay count mismatch: expected %s, applied %s\n' \
+    "$expected_migrations" "$applied_migrations" >&2
+  exit 1
+fi
+for migration_version in \
+  20260912090000 \
+  20260912100000 \
+  20260912110000 \
+  20260912120000 \
+  20260912130000 \
+  20260912140000; do
+  psql --no-psqlrc --set=ON_ERROR_STOP=1 -Atqc \
+    "SELECT 1 FROM supabase_migrations.schema_migrations WHERE version LIKE '${migration_version}%'" \
+    "${DB_URL:?local database URL unavailable}" | grep -qx '1' || {
+      printf 'Required P0/P1 migration was not recorded: %s\n' "$migration_version" >&2
+      exit 1
+    }
+done
+printf 'Migration replay verified: %s/%s repository migrations applied\n' \
+  "$applied_migrations" "$expected_migrations"
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+  {
+    printf 'migration_count=%s\n' "$applied_migrations"
+    printf 'migration_replay=passed\n'
+  } >> "$GITHUB_OUTPUT"
+fi
+printf '%s\n' '==> Validating local demo Auth users'
+DEMO_AUTH_TEST_PASSWORD="CI-local-${GITHUB_RUN_ID:-${RANDOM}}-Password!" \
+  node scripts/validate-local-auth.mjs
 VITE_SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}" \
 VITE_SUPABASE_ANON_KEY="${ANON_KEY:?local anon key unavailable}" \
 SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?local service key unavailable}" \
