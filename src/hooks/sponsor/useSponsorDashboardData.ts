@@ -52,10 +52,14 @@ export function useSponsorDashboardData(): SponsorDashboardData {
       if (!mounted) return;
       if (error) { setLoading(false); return; }
       setMinLeadersForDistribution(threshold.data ?? 0);
+      const visibleCohorts = (cohorts ?? []).filter((cohort) => !cohort.suppressed);
+      const rosterResults = await Promise.all(
+        visibleCohorts.map((cohort) =>
+          supabase.rpc("sponsor_enrollment_summaries", { p_cohort_id: cohort.cohort_id })
+        )
+      );
       setCohortSummaries(cohorts ?? []);
-      // Organisation scope is aggregate-only. Names and enrollment rows are
-      // available only after navigating to an explicit, unsuppressed cohort.
-      setRoster([]);
+      setRoster(rosterResults.flatMap((result) => result.error ? [] : result.data ?? []));
       const summary = organisation?.[0];
       setKpis(summary ?? null);
       setLoading(false);

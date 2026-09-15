@@ -36,13 +36,27 @@ beforeEach(async () => {
     coaching_completed_count: 8, mentoring_completed_count: 2, peer_completed_count: 0,
     triad_completed_count: 0, goal_count: 10, open_action_count: 2, completed_action_count: 2,
   }];
+  responses.sponsor_organisation_summary = [{
+    cohort_count: 1, enrollment_count: 5, active_count: 5, at_risk_count: 0,
+    completed_units: 20, required_units: 40,
+  }];
 });
 
 describe("SponsorDashboard privacy contract", () => {
   it("uses aggregate cohort data only and no forbidden metrics", async () => {
     render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
-    await waitFor(() => expect(screen.queryByText("Priya Shah")).not.toBeInTheDocument());
-    expect(calls).toEqual(["sponsor_cohort_summaries", "sponsor_organisation_summary", "sponsor_min_leaders_for_distribution"]);
+    await waitFor(() => expect(screen.getByText("Priya Shah")).toBeInTheDocument());
+    expect(screen.getByText("Tom Baker")).toBeInTheDocument();
+    expect(screen.getByText("Units used")).toBeInTheDocument();
+    expect(screen.getByText("20/40")).toBeInTheDocument();
+    expect(screen.queryByText("Booked / overdue")).not.toBeInTheDocument();
+    expect(screen.queryByText("Goals setup / total")).not.toBeInTheDocument();
+    expect(calls).toEqual([
+      "sponsor_cohort_summaries",
+      "sponsor_organisation_summary",
+      "sponsor_min_leaders_for_distribution",
+      "sponsor_enrollment_summaries",
+    ]);
     expect(screen.queryByText(/Goal reached|confidence|quiz/i)).not.toBeInTheDocument();
     expect(calls.some((name) => /sponsor_(kpis|roster|goal_growth|satisfaction|confidence|programme|engagement|coach)/.test(name))).toBe(false);
   });

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { format } from "date-fns";
 import {
   ArrowRight,
   BarChart3,
@@ -161,9 +162,6 @@ function CohortCard({
   const leaderCount = cohort.enrollment_count ?? 0;
   const onTrackPct = cohort.on_track_pct ?? 0;
   const completionPct = cohort.full_completion_pct ?? 0;
-  const riskCount = cohort.at_risk_count ?? 0;
-  const statusTotal = Math.max(1, leaderCount);
-
   return (
     <article className="group overflow-hidden rounded-[24px] border border-[#e6dfd4] bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_42px_-28px_rgba(20,80,90,.45)]">
       <div className="h-1 bg-gradient-to-r from-primary via-[#7dcfe3] to-transparent" />
@@ -181,6 +179,11 @@ function CohortCard({
           <span className="shrink-0 rounded-full bg-primary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
             {suppressed ? t("cohorts.suppressedLabel") : cohort.pace_status === "completed" ? t("cohorts.complete") : t("cohorts.active")}
           </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
+          <DateMetric label={t("cohorts.programmeDates.starts")} value={cohort.programme_start_date} fallback={t("cohorts.programmeDates.notSet")} />
+          <DateMetric label={t("cohorts.programmeDates.ends")} value={cohort.programme_end_date} fallback={t("cohorts.programmeDates.ongoing")} />
         </div>
 
         <div className="mt-6 flex items-end justify-between gap-3">
@@ -213,21 +216,8 @@ function CohortCard({
               <MiniMetric label={t("cohorts.avgGrowth")} value={cohort.goal_progress_pct == null ? "—" : `${Math.round(cohort.goal_progress_pct)}%`} />
               <MiniMetric label={t("cohorts.satisfaction")} value={cohort.satisfaction_avg == null ? "—" : cohort.satisfaction_avg.toFixed(1)} />
             </div>
-            <div className="mt-5">
-              <div className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                <span>{t("cohorts.statusMix")}</span>
-                <span>{riskCount ? t("cohorts.riskCount", { count: riskCount }) : t("cohorts.noRisk")}</span>
-              </div>
-              <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-                <div className="bg-success" style={{ width: `${(Math.max(0, cohort.on_track_count ?? 0) / statusTotal) * 100}%` }} />
-                <div className="bg-warning" style={{ width: `${(Math.max(0, cohort.scheduled_count ?? 0) / statusTotal) * 100}%` }} />
-                <div className="bg-destructive" style={{ width: `${(Math.max(0, cohort.behind_count ?? 0) / statusTotal) * 100}%` }} />
-                <div className="bg-secondary/25" style={{ width: `${(Math.max(0, cohort.completed_count ?? 0) / statusTotal) * 100}%` }} />
-              </div>
-            </div>
             <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-[11px] text-muted-foreground">
               <span>{t("cohorts.sessions")} <b className="text-foreground">{cohort.completed_units ?? 0} / {cohort.required_units ?? 0}</b></span>
-              <span>{t("cohorts.booked")} <b className="text-foreground">{cohort.booked_units ?? 0}</b></span>
               <span>{t("cohorts.goals")} <b className="text-foreground">{cohort.goal_setup_count ?? 0} / {cohort.goal_count ?? 0}</b></span>
               <span>{t("cohorts.actions")} <b className="text-foreground">{cohort.completed_action_count ?? 0} / {cohort.total_action_count ?? 0}</b></span>
             </div>
@@ -243,6 +233,17 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-[9px] font-bold uppercase tracking-[0.13em] text-muted-foreground">{label}</p>
       <p className="mt-1 font-display text-lg leading-none">{value}</p>
+    </div>
+  );
+}
+
+function DateMetric({ label, value, fallback }: { label: string; value: string | null; fallback: string }) {
+  return (
+    <div>
+      <p className="text-[9px] font-bold uppercase tracking-[0.13em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-[11px] font-medium text-foreground">
+        {value ? format(new Date(`${value}T12:00:00`), "MMM d, yyyy") : fallback}
+      </p>
     </div>
   );
 }

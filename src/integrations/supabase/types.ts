@@ -4396,6 +4396,8 @@ export type Database = {
           paused_count: number
           peer_completed_count: number
           programme_label: string
+          programme_end_date: string | null
+          programme_start_date: string | null
           required_units: number
           satisfaction_avg: number
           satisfaction_rated_count: number

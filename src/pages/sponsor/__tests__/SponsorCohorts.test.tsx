@@ -17,8 +17,8 @@ beforeEach(async () => {
   await i18n.changeLanguage("en"); calls.length = 0;
   responses.sponsor_enrollment_summaries = [...rows(id1, "Small cohort"), ...rows(id2, "Another cohort")];
   responses.sponsor_cohort_summaries = [
-    { cohort_id: id1, cohort_label: "Small cohort", programme_label: "Executive", enrollment_count: null, suppressed: true },
-    { cohort_id: id2, cohort_label: "Another cohort", programme_label: "Executive", enrollment_count: null, suppressed: true },
+    { cohort_id: id1, cohort_label: "Small cohort", programme_label: "Executive", programme_start_date: "2026-01-15", programme_end_date: "2026-12-15", enrollment_count: null, suppressed: true },
+    { cohort_id: id2, cohort_label: "Another cohort", programme_label: "Executive", programme_start_date: "2026-02-01", programme_end_date: null, enrollment_count: null, suppressed: true },
   ];
 });
 
@@ -29,6 +29,10 @@ describe("SponsorCohorts privacy contract", () => {
     expect(screen.getAllByText("Suppressed")).toHaveLength(2);
     expect(screen.queryByText(/enrollments/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /View cohort/i })[0]).toHaveAttribute("href", `/sponsor/cohorts/${id1}`);
+    expect(screen.getByText("Jan 15, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Dec 15, 2026")).toBeInTheDocument();
+    expect(screen.queryByText("Status mix")).not.toBeInTheDocument();
+    expect(screen.queryByText("Booked")).not.toBeInTheDocument();
     expect(calls.every((name) => name === "sponsor_enrollment_summaries" || name === "sponsor_cohort_summaries" || name === "sponsor_min_leaders_for_distribution" || name === "sponsor_organisation_summary")).toBe(true);
   });
 });

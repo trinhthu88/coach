@@ -100,6 +100,7 @@
         "leaders": "Leaders",
         "onTrack": "On track %",
         "sessionsPace": "Sessions pace",
+        "unitsUsed": "Units used",
         "avgGoalGrowth": "Avg goal growth",
         "satisfaction": "Satisfaction",
         "signal": "Signal"
@@ -232,6 +233,12 @@
     "leaderCount_one": "{{count}} leader",
     "leaderCount_other": "{{count}} leaders",
     "viewCohort": "View cohort",
+    "programmeDates": {
+      "starts": "Starts",
+      "ends": "Ends",
+      "notSet": "Not set",
+      "ongoing": "Ongoing"
+    },
     "statusMix": "Status mix",
     "onTrackPct": "On track",
     "sessions": "Sessions",

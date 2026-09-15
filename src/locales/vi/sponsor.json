@@ -99,6 +99,7 @@
         "leaders": "Lãnh đạo",
         "onTrack": "% đúng tiến độ",
         "sessionsPace": "Tốc độ session",
+        "unitsUsed": "Đơn vị đã dùng",
         "avgGoalGrowth": "Tăng trưởng mục tiêu TB",
         "satisfaction": "Mức độ hài lòng",
         "signal": "Tín hiệu"
@@ -219,6 +220,12 @@
     "leaderCount_one": "{{count}} lãnh đạo",
     "leaderCount_other": "{{count}} lãnh đạo",
     "viewCohort": "Xem nhóm",
+    "programmeDates": {
+      "starts": "Bắt đầu",
+      "ends": "Kết thúc",
+      "notSet": "Chưa đặt",
+      "ongoing": "Đang diễn ra"
+    },
     "statusMix": "Phân bổ trạng thái",
     "onTrackPct": "Đúng tiến độ",
     "sessions": "Session",

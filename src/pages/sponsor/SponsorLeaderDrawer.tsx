@@ -100,7 +100,6 @@ export function SponsorLeaderProfile({
               <KpiCard icon={Target} label={t("leaderDrawer.kpis.completion")} value={`${Math.round(completionPct)}%`} sub={`${leader.completed_units} / ${leader.required_units}`} />
               <KpiCard icon={CalendarCheck} label={t("leaderDrawer.kpis.adherence")} value={leader.due_adherence_pct == null ? "—" : `${Math.round(adherencePct)}%`} sub={paceLabel(leader.pace_status)} />
               <KpiCard icon={Activity} label={t("leaderDrawer.kpis.sessions")} value={`${leader.completed_units}`} sub={t("leaderDrawer.kpis.sessionsSub", { total: leader.required_units })} />
-              <KpiCard icon={CircleGauge} label={t("leaderDrawer.kpis.booked")} value={`${leader.booked_units}`} sub={t("leaderDrawer.kpis.bookedSub")} />
               <KpiCard icon={Goal} label={t("leaderDrawer.kpis.goals")} value={leader.goal_progress_pct == null ? "—" : `${Math.round(leader.goal_progress_pct)}%`} sub={t("leaderDrawer.kpis.goalsSub", { count: leader.goal_count })} />
               <KpiCard icon={Heart} label={t("leaderDrawer.kpis.satisfaction")} value={leader.satisfaction_avg == null ? "—" : leader.satisfaction_avg.toFixed(1)} sub={t("leaderDrawer.kpis.ratings", { count: leader.satisfaction_rated_count })} />
             </div>
