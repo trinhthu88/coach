@@ -217,6 +217,9 @@ BEGIN
   SELECT e.id,e.user_id INTO e3,u3 FROM programme_enrollments e WHERE e.cohort_id=cb ORDER BY e.id OFFSET 2 LIMIT 1;
   SELECT e.id,e.user_id INTO e4,u4 FROM programme_enrollments e WHERE e.cohort_id=cb ORDER BY e.id OFFSET 3 LIMIT 1;
   SELECT e.id,e.user_id INTO e5,u5 FROM programme_enrollments e WHERE e.cohort_id=cb ORDER BY e.id OFFSET 4 LIMIT 1;
+  INSERT INTO mentoring_allowlist(mentee_user_id,mentor_user_id,created_by)
+    VALUES(u2,mentor_provider,auth.uid()),(u4,mentor_provider,auth.uid())
+    ON CONFLICT(mentee_user_id,mentor_user_id) DO NOTHING;
   FOR i IN 1..4 LOOP
     w:=('66666666-6666-4666-8666-'||lpad(i::text,12,'0'))::uuid;
     INSERT INTO training_weeks(id,programme_id,week_number,title,skill_card_html,is_visible,unlock_date,sort_order)
