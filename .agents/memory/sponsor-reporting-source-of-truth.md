@@ -14,3 +14,9 @@ Sponsor cohort journeys should be returned as server-generated checkpoints from 
 **Why:** A cohort-level completion total cannot identify which week or checkpoint it belongs to, and counting all activity after the first due checkpoint makes the timeline look complete before the configured programme milestones are due.
 
 **How to apply:** Add checkpoint data to the sponsor-safe reporting contract and render only aggregate units/leaders per checkpoint; keep private activity content and goal wording out of the response.
+
+Hosted-data audits must verify the live migration ledger and cohort identifiers before comparing reports; the working-tree seed and migration set can be ahead of the connected database.
+
+**Why:** The live Clariva database used a different punctuation variant for the same cohort label and did not yet contain the newer source-of-truth migrations, while its independent completed activity still reconciled to the sponsor total.
+
+**How to apply:** Resolve the actual live cohort and enrollment IDs first, derive completion from status-bearing source records, and treat attribution rows as evidence that still requires duplicate/status review rather than as automatically unique completions.
