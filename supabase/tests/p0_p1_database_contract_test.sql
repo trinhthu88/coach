@@ -1,5 +1,5 @@
 begin;
-select plan(36);
+select plan(39);
 
 select ok(
   not exists (
@@ -151,9 +151,25 @@ select is(
   'organization enrollment count matches visible cohort summaries'
 );
 select is(
+  (select cohort_count from public.sponsor_organisation_summary()),
+  (select count(*)::integer from public.sponsor_cohort_summaries(null::uuid)),
+  'organization cohort count uses the sponsor-visible cohort population'
+);
+select is(
+  (select enrollment_count from public.sponsor_organisation_summary()),
+  (select coalesce(sum(enrollment_count), 0)::integer
+   from public.sponsor_cohort_summaries(null::uuid)),
+  'organization enrollment count uses the sponsor-visible enrollment population'
+);
+select is(
   (select required_units from public.sponsor_organisation_summary()),
   (select coalesce(sum(required_units), 0)::integer from public.sponsor_cohort_summaries(null::uuid)),
   'organization required units match visible cohort summaries'
+);
+select is(
+  (select required_units from public.sponsor_organisation_summary()),
+  0,
+  'organization required units preserve an eligible zero aggregate'
 );
 select is(
   (select completed_units from public.sponsor_organisation_summary()),
