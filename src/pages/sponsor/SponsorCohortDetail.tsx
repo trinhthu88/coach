@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronDown, LockKeyhole, Loader2, ShieldCheck } from "lucid
 import type { SponsorCohortSummary, SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import { useSponsorCohortData } from "@/hooks/sponsor/useSponsorCohortData";
 import { Pill } from "@/pages/admin/_shared";
-import { STATUS_LABEL_KEY, STATUS_TONE, initials } from "./sponsorUtils";
+import { STATUS_LABEL_KEY, STATUS_TONE, cohortLifecycleStatus, effectiveSponsorStatus, initials } from "./sponsorUtils";
 import { SponsorFlagDialog } from "./SponsorFlagDialog";
 
 const SKY = "#3db4d0";
@@ -13,7 +13,6 @@ const NAVY = "#062f3e";
 const PAPER = "#f6f3ee";
 const CARD = "#fffdf9";
 const LINE = "#e6e0d6";
-const AMBER = "#e8874a";
 const GREEN = "#17663f";
 const PLUM = "#7a5aa8";
 const TEAL = "#2c8fa8";
@@ -37,7 +36,7 @@ export default function SponsorCohortDetail() {
     const direction = sortDir === "asc" ? 1 : -1;
     return [...filtered].sort((left, right) => {
       if (sortKey === "name") return direction * left.learner_display_name.localeCompare(right.learner_display_name);
-      if (sortKey === "status") return direction * left.enrollment_status.localeCompare(right.enrollment_status);
+      if (sortKey === "status") return direction * effectiveSponsorStatus(left).localeCompare(effectiveSponsorStatus(right));
       return direction * (moduleMetric(right, sortKey) - moduleMetric(left, sortKey));
     });
   }, [filter, roster, sortDir, sortKey]);
@@ -86,7 +85,7 @@ export default function SponsorCohortDetail() {
           <SuppressedState min={minLeadersForDistribution || 5} />
         ) : (
           <>
-            <ProgressStrip kpis={kpis} progress={progress} t={t} />
+            <ProgressStrip kpis={kpis} progress={progress} status={status} t={t} />
 
             <div className="mt-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(198px,1fr))]">
               <ModuleCard label={t("cohortDetail.modules.coaching")} color={SKY} completed={kpis?.coaching_completed_units} expected={kpis?.coaching_expected_units} entitled={kpis?.coaching_entitled_units} required={kpis?.coaching_required_per_leader} completedLeaders={kpis?.coaching_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
@@ -145,7 +144,7 @@ export default function SponsorCohortDetail() {
   );
 }
 
-function ProgressStrip({ kpis, progress, t }: { kpis: SponsorCohortSummary | null; progress: ProgrammeProgress; t: (key: string, options?: Record<string, unknown>) => string }) {
+function ProgressStrip({ kpis, progress, status, t }: { kpis: SponsorCohortSummary | null; progress: ProgrammeProgress; status: "upcoming" | "active" | "complete"; t: (key: string, options?: Record<string, unknown>) => string }) {
   return (
     <div className="mt-[18px] flex flex-wrap items-center gap-[26px] rounded-[14px] border px-[22px] py-[18px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap gap-[26px]">
@@ -154,8 +153,12 @@ function ProgressStrip({ kpis, progress, t }: { kpis: SponsorCohortSummary | nul
       </div>
       <div className="min-w-[220px] flex-1">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-[11.5px] font-semibold text-[#062f3e]">{t("cohortDetail.progressStrip.week", { current: progress.currentWeek, total: progress.totalWeeks })}</span>
-          <span className="text-[11px] text-[#9a938a]">{t("cohortDetail.progressStrip.remaining", { count: progress.remainingWeeks })}</span>
+          <span className="text-[11.5px] font-semibold text-[#062f3e]">
+            {status === "complete"
+              ? t("cohortDetail.progressStrip.complete")
+              : t("cohortDetail.progressStrip.week", { current: progress.currentWeek, total: progress.totalWeeks })}
+          </span>
+          {status !== "complete" && <span className="text-[11px] text-[#9a938a]">{t("cohortDetail.progressStrip.remaining", { count: progress.remainingWeeks })}</span>}
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eee8de]">
           <div className="h-full rounded-full bg-[#3db4d0]" style={{ width: `${progress.percent}%` }} />
@@ -273,12 +276,7 @@ function ProgrammeJourney({ journey, t }: { journey: SponsorJourneyCheckpoint[];
       ) : (
         <div className="mt-5 overflow-x-auto pb-1">
           <div className="min-w-[900px]">
-            <div className="flex gap-2">
-              <JourneyPhase label={t("leaderDrawer.reference.foundationPhase")} tone="green" />
-              <JourneyPhase label={t("leaderDrawer.reference.practicePhase")} tone="teal" />
-              <JourneyPhase label={t("leaderDrawer.reference.embeddingPhase")} tone="paper" />
-            </div>
-            <div className="mt-2.5 flex items-stretch gap-0.5">
+            <div className="flex items-stretch gap-0.5">
               {journey.map((checkpoint) => <JourneyCheckpoint key={`${checkpoint.due_on}-${checkpoint.checkpoint_number}`} checkpoint={checkpoint} t={t} />)}
             </div>
           </div>
@@ -321,11 +319,6 @@ function parseJourney(value: unknown): SponsorJourneyCheckpoint[] {
       state: state as SponsorJourneyCheckpoint["state"],
     }];
   });
-}
-
-function JourneyPhase({ label, tone }: { label: string; tone: "green" | "teal" | "paper" }) {
-  const styles = tone === "green" ? "bg-[#eef4f1] text-[#17663f]" : tone === "teal" ? "bg-[#e4f3f7] text-[#2c8fa8]" : "bg-[#f1ece4] text-[#6a6560]";
-  return <div className={`flex-1 rounded-lg px-3 py-1.5 text-[9.5px] font-bold uppercase tracking-[.16em] ${styles}`}>{label}</div>;
 }
 
 function JourneyLegend({ color, label }: { color: string; label: string }) {
@@ -381,7 +374,7 @@ function ProgrammeDetails({ kpis, progress, t }: { kpis: SponsorCohortSummary | 
       [t("cohortDetail.details.paused"), value(kpis?.paused_count)],
       [t("cohortDetail.details.completed"), value(kpis?.completed_count)],
       [t("cohortDetail.details.startEnd"), `${formatDate(kpis?.programme_start_date)} — ${formatDate(kpis?.programme_end_date)}`],
-      [t("cohortDetail.details.currentWeek"), t("cohortDetail.progressStrip.week", { current: progress.currentWeek, total: progress.totalWeeks })],
+      [t("cohortDetail.details.currentWeek"), programmeStatus(kpis) === "complete" ? t("cohortDetail.progressStrip.complete") : t("cohortDetail.progressStrip.week", { current: progress.currentWeek, total: progress.totalWeeks })],
     ]},
     { title: t("cohortDetail.details.coaching"), rows: [
       [t("cohortDetail.modules.coaching"), moduleDetail(kpis?.coaching_completed_units, kpis?.coaching_expected_units, kpis?.coaching_entitled_units, kpis?.coaching_required_per_leader)],
@@ -469,7 +462,7 @@ function RosterSection({ rows, allRows, filter, counts, sortKey, sortDir, onFilt
               <button key={row.enrollment_id} type="button" onClick={() => onSelect(row)} className={`grid w-full grid-cols-[minmax(0,1.5fr)_repeat(5,minmax(0,1fr))_108px] items-center gap-3 border-b border-[#eee8de] px-1.5 py-[11px] text-left transition-colors hover:bg-[#f2ede4] ${matchesFilter(row, "attention") ? "bg-[#fdf6f2]" : ""}`}>
                 <span className="flex min-w-0 items-center gap-2.5"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#e4f3f7] text-[10px] font-bold text-[#2c8fa8]">{initials(row.learner_display_name)}</span><span className="truncate text-[13px] font-medium">{row.learner_display_name}</span></span>
                 {values.map((cell) => <RosterMetric key={cell.key} value={cell.value} text={cell.text} color={cell.color} />)}
-                <Pill tone={STATUS_TONE[row.enrollment_status]} className="w-fit text-[9.5px] uppercase tracking-[.08em]">{t(`status.${STATUS_LABEL_KEY[row.enrollment_status]}`)}</Pill>
+                <Pill tone={STATUS_TONE[effectiveSponsorStatus(row)]} className="w-fit text-[9.5px] uppercase tracking-[.08em]">{t(`status.${STATUS_LABEL_KEY[effectiveSponsorStatus(row)]}`)}</Pill>
               </button>
             );
           })}
@@ -506,7 +499,7 @@ function moduleMetric(row: SponsorRosterRow, key: SortKey) {
 
 function matchesFilter(row: SponsorRosterRow, filter: FilterKey) {
   if (filter === "all") return true;
-  if (filter === "attention") return row.enrollment_status === "at_risk" || row.pace_status === "behind" || !moduleComplete(row.coaching_completed_units, row.coaching_required_units) || !moduleComplete(row.training_completed_units, row.training_required_units);
+  if (filter === "attention") return effectiveSponsorStatus(row) === "at_risk" || row.pace_status === "behind" || !moduleComplete(row.coaching_completed_units, row.coaching_required_units) || !moduleComplete(row.training_completed_units, row.training_required_units);
   if (filter === "pace") return row.pace_status === "behind";
   if (filter === "coaching") return !moduleComplete(row.coaching_completed_units, row.coaching_required_units);
   return !moduleComplete(row.training_completed_units, row.training_required_units);
@@ -520,11 +513,7 @@ function programmeProgress(kpis: SponsorCohortSummary | null): ProgrammeProgress
 }
 
 function programmeStatus(kpis: SponsorCohortSummary | null) {
-  const start = kpis?.programme_start_date ? new Date(kpis.programme_start_date).getTime() : NaN;
-  const end = kpis?.programme_end_date ? new Date(kpis.programme_end_date).getTime() : NaN;
-  if (Number.isFinite(start) && Date.now() < start) return "upcoming";
-  if (Number.isFinite(end) && Date.now() > end) return "complete";
-  return "active";
+  return cohortLifecycleStatus(kpis?.programme_start_date ?? null, kpis?.programme_end_date ?? null);
 }
 
 type ProgrammeProgress = { currentWeek: number; totalWeeks: number; remainingWeeks: number; percent: number };
@@ -542,10 +531,6 @@ function formatDate(value: string | null | undefined) {
 }
 
 function value(value: number | null | undefined) {
-  return value == null ? "—" : String(value);
-}
-
-function countValue(value: number | null | undefined) {
   return value == null ? "—" : String(value);
 }
 
@@ -572,11 +557,6 @@ function percent(value: number | null | undefined) {
 
 function decimal(value: number | null | undefined) {
   return value == null ? "—" : value.toFixed(2);
-}
-
-function unitDetail(kpis: SponsorCohortSummary | null) {
-  if (kpis?.completed_units == null || kpis.required_units == null) return "Programme unit detail is not included in the sponsor-safe summary.";
-  return `${kpis.completed_units} of ${kpis.required_units} programme units completed`;
 }
 
 function SuppressedState({ min }: { min: number }) {

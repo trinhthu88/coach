@@ -1,17 +1,28 @@
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 
-export const STATUS_TONE: Record<SponsorRosterRow["enrollment_status"], "success" | "warning" | "destructive" | "muted"> = {
+export type SponsorEnrollmentStatus = SponsorRosterRow["enrollment_status"];
+
+export const STATUS_TONE: Record<SponsorEnrollmentStatus, "success" | "warning" | "destructive" | "muted"> = {
   active: "success",
   completed: "muted",
   paused: "warning",
   at_risk: "destructive",
 };
-export const STATUS_LABEL_KEY: Record<SponsorRosterRow["enrollment_status"], string> = {
+export const STATUS_LABEL_KEY: Record<SponsorEnrollmentStatus, string> = {
   active: "active",
   completed: "completed",
   paused: "paused",
   at_risk: "atRisk",
 };
+
+/** Prefer the explicit local-contract status, while remaining compatible with the hosted legacy RPC. */
+export function effectiveSponsorStatus(row: Pick<SponsorRosterRow, "enrollment_status" | "effective_enrollment_status">): SponsorEnrollmentStatus {
+  return row.effective_enrollment_status ?? row.enrollment_status;
+}
+
+export function storedSponsorStatus(row: Pick<SponsorRosterRow, "enrollment_status" | "stored_enrollment_status">): SponsorEnrollmentStatus {
+  return row.stored_enrollment_status ?? row.enrollment_status;
+}
 
 export function initials(name: string) {
   return name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2);

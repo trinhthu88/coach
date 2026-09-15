@@ -11,7 +11,7 @@ import type {
   SponsorProgrammeEngagementRow,
   SponsorCoachUtilisationRow,
 } from "@/hooks/sponsor/useSponsorDashboardData";
-import { STATUS_TONE, STATUS_LABEL_KEY, initials, type HealthSignal } from "./sponsorUtils";
+import { STATUS_TONE, STATUS_LABEL_KEY, effectiveSponsorStatus, initials, type HealthSignal } from "./sponsorUtils";
 
 export function HealthSignalPill({ signal }: { signal: HealthSignal }) {
   const { t } = useTranslation("sponsor");
@@ -212,7 +212,7 @@ export function RosterTable({
     const dir = sortDir === "asc" ? 1 : -1;
     const sorted = [...rows];
     if (sortKey === "status") {
-      sorted.sort((a, b) => dir * a.enrollment_status.localeCompare(b.enrollment_status));
+       sorted.sort((a, b) => dir * effectiveSponsorStatus(a).localeCompare(effectiveSponsorStatus(b)));
     } else if (sortKey === "sessions") {
       sorted.sort((a, b) => dir * (a.completed_units - b.completed_units));
     }
@@ -262,7 +262,7 @@ export function RosterTable({
                 </div>
               </td>
               {showCohortColumn && <td className="px-2 py-2.5 text-muted-foreground hidden sm:table-cell">{r.cohort_label || "—"}</td>}
-              <td className="px-2 py-2.5"><Pill tone={STATUS_TONE[r.enrollment_status]}>{t(`status.${STATUS_LABEL_KEY[r.enrollment_status]}`)}</Pill></td>
+              <td className="px-2 py-2.5"><Pill tone={STATUS_TONE[effectiveSponsorStatus(r)]}>{t(`status.${STATUS_LABEL_KEY[effectiveSponsorStatus(r)]}`)}</Pill></td>
               <td className="px-2 py-2.5 hidden md:table-cell">
                 <div className="w-24"><MiniBar pct={r.full_completion_pct ?? 0} tone="primary" /></div>
               </td>

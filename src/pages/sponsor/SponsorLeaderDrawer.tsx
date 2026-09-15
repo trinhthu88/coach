@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Pill } from "@/pages/admin/_shared";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
-import { STATUS_LABEL_KEY, STATUS_TONE, initials } from "./sponsorUtils";
+import { STATUS_LABEL_KEY, STATUS_TONE, cohortLifecycleStatus, effectiveSponsorStatus, initials, storedSponsorStatus } from "./sponsorUtils";
 import { SponsorFlagDialog } from "./SponsorFlagDialog";
 
 const CARD = "#fffdf9";
@@ -47,11 +47,12 @@ export function SponsorLeaderProfile({ leader, onBack }: { leader: SponsorRoster
   const { t } = useTranslation("sponsor");
   const completion = clamp(leader.full_completion_pct ?? 0);
   const adherence = clamp(leader.due_adherence_pct ?? 0);
-  const progress = timelineProgress(leader.enrollment_start_date, leader.enrollment_end_date);
-  const currentWeek = Math.max(1, Math.min(12, Math.floor(progress / (100 / 12)) + 1));
-  const weeks = journeyWeeks(currentWeek, leader.enrollment_start_date, leader.enrollment_end_date);
   const attention = attentionItems(leader, t);
-  const statusKey = STATUS_LABEL_KEY[leader.enrollment_status];
+  const effectiveStatus = effectiveSponsorStatus(leader);
+  const storedStatus = storedSponsorStatus(leader);
+  const effectiveStatusKey = STATUS_LABEL_KEY[effectiveStatus];
+  const storedStatusKey = STATUS_LABEL_KEY[storedStatus];
+  const lifecycle = cohortLifecycleStatus(leader.programme_start_date, leader.programme_end_date);
 
   return (
     <div className="min-h-full overflow-hidden bg-[#f6f3ee]" style={{ color: NAVY }}>
@@ -70,10 +71,10 @@ export function SponsorLeaderProfile({ leader, onBack }: { leader: SponsorRoster
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-6">
-            <HeaderMeta label={t("leaderDrawer.reference.enrolment")} value={t(`status.${statusKey}`)} />
-            <HeaderMeta label={t("leaderDrawer.reference.position")} value={t("leaderDrawer.reference.weekOf", { current: currentWeek, total: 12 })} />
+            <HeaderMeta label={t("leaderDrawer.reference.sponsorStatus")} value={t(`status.${effectiveStatusKey}`)} />
+            <HeaderMeta label={t("leaderDrawer.reference.recordedStatus")} value={t(`status.${storedStatusKey}`)} />
             <HeaderMeta label={t("leaderDrawer.reference.dates")} value={`${formatDate(leader.enrollment_start_date)} – ${formatDate(leader.enrollment_end_date)}`} />
-            <Pill tone={STATUS_TONE[leader.enrollment_status]} className="text-[10px] uppercase tracking-[.1em]">{t(`status.${statusKey}`)}</Pill>
+            <Pill tone={STATUS_TONE[effectiveStatus]} className="text-[10px] uppercase tracking-[.1em]">{t(`status.${effectiveStatusKey}`)}</Pill>
           </div>
         </header>
 
@@ -81,17 +82,17 @@ export function SponsorLeaderProfile({ leader, onBack }: { leader: SponsorRoster
         <div className="mt-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
           <LeaderKpi label={t("leaderDrawer.reference.overallCompletion")} value={percent(completion)} color={NAVY} />
           <LeaderKpi label={t("leaderDrawer.reference.activitiesCompleted")} value={`${leader.completed_units} / ${leader.required_units}`} color={NAVY} />
-          <LeaderKpi label={t("leaderDrawer.reference.coachingSessions")} value={countValue(leader.coaching_completed_count)} color={NAVY} />
+          <LeaderKpi label={t("leaderDrawer.reference.coachingSessions")} value={countValue(leader.coaching_completed_units)} color={NAVY} />
           <LeaderKpi label={t("leaderDrawer.reference.goalProgress")} value={leader.goal_progress_pct == null ? "—" : percent(leader.goal_progress_pct)} color={TEAL} />
           <LeaderKpi label={t("leaderDrawer.reference.satisfaction")} value={leader.satisfaction_avg == null ? "—" : leader.satisfaction_avg.toFixed(1)} color={GREEN} />
           <LeaderKpi label={t("leaderDrawer.reference.overdue")} value={String(leader.overdue_units ?? 0)} color={RED} />
         </div>
 
-        <JourneySection currentWeek={currentWeek} weeks={weeks} t={t} />
+        <JourneySection status={lifecycle} start={leader.programme_start_date} end={leader.programme_end_date} t={t} />
 
         <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
           <ProgressParticipation leader={leader} completion={completion} adherence={adherence} t={t} />
-          <CoachingUtilisation leader={leader} t={t} />
+          <ModuleParticipation leader={leader} t={t} />
         </div>
 
         <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
@@ -128,40 +129,24 @@ function LeaderKpi({ label, value, color }: { label: string; value: string; colo
   return <div className="rounded-[14px] border p-[18px]" style={{ background: CARD, borderColor: LINE }}><div className="font-display text-[32px] font-light leading-none" style={{ color }}>{value}</div><div className="mt-[11px] text-[9.5px] font-bold uppercase tracking-[.16em] text-[#6a6560]">{label}</div></div>;
 }
 
-function JourneySection({ currentWeek, weeks, t }: { currentWeek: number; weeks: JourneyWeek[]; t: (key: string, options?: Record<string, unknown>) => string }) {
+function JourneySection({ status, start, end, t }: { status: "upcoming" | "active" | "complete"; start: string | null; end: string | null; t: (key: string, options?: Record<string, unknown>) => string }) {
   return (
     <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div><h2 className="font-serif text-[19px] font-normal">{t("leaderDrawer.reference.journeyTitle")}</h2><p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("leaderDrawer.reference.journeySubtitle", { current: currentWeek, total: 12 })}</p></div>
-        <div className="flex flex-wrap gap-3.5 text-[10.5px] text-[#6a6560]"><Legend color={GREEN} label={t("leaderDrawer.reference.completed")} /><Legend color={SKY} label={t("leaderDrawer.reference.dueNow")} /><Legend color="#c9543a" label={t("leaderDrawer.reference.overdueState")} /><Legend color="#cfc7bb" label={t("leaderDrawer.reference.upcoming")} /></div>
+        <div><h2 className="font-serif text-[19px] font-normal">{t("leaderDrawer.reference.journeyTitle")}</h2><p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("leaderDrawer.reference.journeySubtitle")}</p></div>
+        <span className="rounded-full bg-[#e4f3f7] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#2c8fa8]">{t(`cohortDetail.programmeDetails.status.${status}`)}</span>
       </div>
-      <div className="mt-[22px] overflow-x-auto pb-1">
-        <div className="min-w-[1020px]">
-          <div className="flex gap-2"><Phase label={t("leaderDrawer.reference.foundationPhase")} tone="green" /><Phase label={t("leaderDrawer.reference.practicePhase")} tone="teal" /><Phase label={t("leaderDrawer.reference.embeddingPhase")} tone="paper" /></div>
-          <div className="mt-2.5 flex items-stretch gap-0.5">{weeks.map((week) => <WeekColumn key={week.number} week={week} t={t} />)}</div>
-        </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <JourneyMeta label={t("cohortDetail.details.startEnd")} value={`${formatDate(start)} – ${formatDate(end)}`} />
+        <JourneyMeta label={t("leaderDrawer.reference.journeySource")} value={t("leaderDrawer.reference.journeySourceValue")} />
       </div>
-      <p className="mt-[18px] border-t border-[#eee8de] pt-3.5 text-[11.5px] leading-relaxed text-[#6a6560]">{t("leaderDrawer.reference.journeyWithheld")}</p>
+      <p className="mt-4 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-4 text-[11px] leading-relaxed text-[#6a6560]">{t("leaderDrawer.reference.journeyWithheld")}</p>
     </section>
   );
 }
 
-function Phase({ label, tone }: { label: string; tone: "green" | "teal" | "paper" }) {
-  const styles = tone === "green" ? "bg-[#eef4f1] text-[#17663f]" : tone === "teal" ? "bg-[#e4f3f7] text-[#2c8fa8]" : "bg-[#f1ece4] text-[#6a6560]";
-  return <div className={`flex-1 rounded-lg px-3 py-1.5 text-[9.5px] font-bold uppercase tracking-[.16em] ${styles}`}>{label}</div>;
-}
-
-function WeekColumn({ week, t }: { week: JourneyWeek; t: (key: string) => string }) {
-  const colors = week.state === "completed" ? { number: "#6a6560", dot: GREEN, border: "transparent", bg: "transparent", line: "#9ed3e0" } : week.state === "current" ? { number: NAVY, dot: SKY, border: "#bde3ee", bg: "#f0fafc", line: "#9ed3e0" } : { number: "#9a938a", dot: "#fffdf9", border: "transparent", bg: "transparent", line: "#e6e0d6" };
-  return (
-    <div className="min-w-0 flex-1 rounded-xl border px-1.5 pb-3 pt-2.5" style={{ background: colors.bg, borderColor: colors.border }}>
-      <div className="flex h-5 items-center justify-center">{week.state === "current" && <span className="rounded-full bg-[#3db4d0] px-2 py-1 text-[8.5px] font-bold uppercase tracking-[.1em] text-[#062f3e]">{t("leaderDrawer.reference.youAreHere")}</span>}</div>
-      <div className="mt-1 text-center text-[10px] font-bold uppercase tracking-[.12em]" style={{ color: colors.number }}>{t("leaderDrawer.reference.week", { number: week.number })}</div>
-      <div className="mt-0.5 text-center text-[9.5px] text-[#9a938a]">{week.date}</div>
-      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center"><span className="h-0.5" style={{ background: week.number === 1 ? "transparent" : colors.line }} /><span className="h-[11px] w-[11px] rounded-full border-2" style={{ background: colors.dot, borderColor: colors.dot, boxShadow: week.state === "current" ? "0 0 0 5px rgba(61,180,208,.22)" : "none" }} /><span className="h-0.5" style={{ background: week.number === 12 ? "transparent" : colors.line }} /></div>
-      <div className="mt-3"><div className="rounded-lg border border-dashed border-[#ddd6cc] bg-white/60 px-1.5 py-1.5 text-center text-[9px] leading-[1.35] text-[#8a837a]">{week.state === "upcoming" ? t("leaderDrawer.reference.upcomingDetail") : t("leaderDrawer.reference.weeklyDetailWithheld")}</div></div>
-    </div>
-  );
+function JourneyMeta({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] px-3.5 py-3"><div className="text-[9.5px] font-bold uppercase tracking-[.14em] text-[#9a938a]">{label}</div><div className="mt-1.5 text-[11.5px] font-semibold text-[#062f3e]">{value}</div></div>;
 }
 
 function ProgressParticipation({ leader, completion, adherence, t }: { leader: SponsorRosterRow; completion: number; adherence: number; t: (key: string) => string }) {
@@ -176,18 +161,36 @@ function ProgressParticipation({ leader, completion, adherence, t }: { leader: S
   );
 }
 
-function CoachingUtilisation({ leader, t }: { leader: SponsorRosterRow; t: (key: string, options?: Record<string, unknown>) => string }) {
-  const completed = leader.coaching_completed_count ?? 0;
+function ModuleParticipation({ leader, t }: { leader: SponsorRosterRow; t: (key: string, options?: Record<string, unknown>) => string }) {
+  const modules = [
+    { key: "coaching", label: t("cohortDetail.modules.coaching"), completed: leader.coaching_completed_units, required: leader.coaching_required_units, due: leader.coaching_due_units, color: SKY },
+    { key: "training", label: t("cohortDetail.modules.training"), completed: leader.training_completed_units, required: leader.training_required_units, due: leader.training_due_units, color: NAVY },
+    { key: "peer", label: t("cohortDetail.modules.peer"), completed: leader.peer_completed_units, required: leader.peer_required_units, due: leader.peer_due_units, color: TEAL },
+    { key: "mentoring", label: t("cohortDetail.modules.mentoring"), completed: leader.mentoring_completed_units, required: leader.mentoring_required_units, due: leader.mentoring_due_units, color: GREEN },
+    { key: "triads", label: t("cohortDetail.modules.triads"), completed: leader.triad_completed_units, required: leader.triad_required_units, due: leader.triad_due_units, color: AMBER },
+  ];
   return (
     <section className="rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
-      <div className="flex items-baseline justify-between gap-2.5"><h2 className="font-serif text-[17px] font-normal">{t("leaderDrawer.reference.coachingUtilisation")}</h2><span className="text-[10.5px] text-[#9a938a]">{t("leaderDrawer.reference.aggregateOnly")}</span></div>
-      <div className="mt-5 flex gap-1.5">{Array.from({ length: 6 }, (_, index) => <div key={index} className="flex-1 text-center"><div className={`h-2.5 rounded-full border ${index < Math.min(completed, 6) ? "border-[#2c8fa8] bg-[#2c8fa8]" : "border-dashed border-[#ddd6cc] bg-transparent"}`} /><div className="mt-2 text-[9.5px] font-semibold text-[#9a938a]">{index < completed ? "✓" : "—"}</div></div>)}</div>
-      <div className="mt-[22px] grid grid-cols-2 gap-x-[18px] gap-y-3.5">{[
-        [t("leaderDrawer.reference.completed"), countValue(completed), NAVY],
-        [t("leaderDrawer.reference.dueToDate"), t("leaderDrawer.reference.notAvailable"), NAVY],
-        [t("leaderDrawer.reference.remaining"), t("leaderDrawer.reference.notAvailable"), "#6a6560"],
-        [t("leaderDrawer.reference.nextSession"), t("leaderDrawer.reference.notShared"), "#6a6560"],
-      ].map(([label, value, color]) => <div key={label} className="flex items-baseline justify-between gap-2.5 border-b border-[#eee8de] pb-2"><span className="text-[11.5px] text-[#6a6560]">{label}</span><span className="font-serif text-[19px] font-light" style={{ color }}>{value}</span></div>)}</div>
+      <div className="flex items-baseline justify-between gap-2.5"><h2 className="font-serif text-[17px] font-normal">{t("leaderDrawer.reference.moduleProgress")}</h2><span className="text-[10.5px] text-[#9a938a]">{t("leaderDrawer.reference.aggregateOnly")}</span></div>
+      <div className="mt-5 flex flex-col gap-4">
+        {modules.map((module) => {
+          const pct = modulePct(module.completed, module.required);
+          return (
+            <div key={module.key}>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[11.5px] font-medium text-[#062f3e]">{module.label}</span>
+                <span className="text-[10.5px] text-[#6a6560]">{moduleCount(module.completed, module.required)}</span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#eee8de]">
+                <div className="h-full rounded-full" style={{ width: `${pct ?? 0}%`, background: module.color }} />
+              </div>
+              <div className="mt-1 text-[9.5px] text-[#9a938a]">
+                {module.due == null ? t("leaderDrawer.reference.notAvailable") : t("leaderDrawer.reference.dueUnits", { count: module.due })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
       <div className="mt-[18px] rounded-[10px] bg-[#e4f3f7] px-[15px] py-[13px] text-[11px] leading-relaxed text-[#6a6560]">{t("leaderDrawer.reference.attendanceOnly")}</div>
     </section>
   );
@@ -217,38 +220,13 @@ function UnavailableTrend({ text }: { text: string }) {
   return <div className="mt-3 flex min-h-[56px] items-center justify-center rounded-lg border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-3 text-center text-[10.5px] leading-relaxed text-[#9a938a]"><LockKeyhole className="mr-2 h-3.5 w-3.5 shrink-0" />{text}</div>;
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
-  return <span className="inline-flex items-center gap-1.5"><span className="h-[9px] w-[9px] rounded-full" style={{ background: color }} />{label}</span>;
-}
-
-type JourneyWeek = { number: number; date: string; state: "completed" | "current" | "upcoming" };
-
-function journeyWeeks(currentWeek: number, start: string | null | undefined, end: string | null | undefined): JourneyWeek[] {
-  const startMs = start ? new Date(start).getTime() : NaN;
-  const endMs = end ? new Date(end).getTime() : NaN;
-  return Array.from({ length: 12 }, (_, index) => {
-    const weekStart = Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
-      ? new Date(startMs + ((endMs - startMs) * index) / 11)
-      : null;
-    const date = weekStart ? weekStart.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : `W${index + 1}`;
-    return { number: index + 1, date, state: index + 1 < currentWeek ? "completed" : index + 1 === currentWeek ? "current" : "upcoming" };
-  });
-}
-
 function attentionItems(leader: SponsorRosterRow, t: (key: string, options?: Record<string, unknown>) => string) {
   return [
-    leader.enrollment_status === "at_risk" ? t("leaderDrawer.attention.atRisk") : null,
+    effectiveSponsorStatus(leader) === "at_risk" ? t("leaderDrawer.attention.atRisk") : null,
     leader.overdue_units > 0 ? t("leaderDrawer.attention.overdue", { count: leader.overdue_units }) : null,
     leader.open_action_count > 0 ? t("leaderDrawer.attention.actions", { count: leader.open_action_count }) : null,
     leader.due_adherence_pct != null && leader.due_adherence_pct < 70 && leader.due_units > 0 ? t("leaderDrawer.attention.adherence") : null,
   ].filter((item): item is string => Boolean(item));
-}
-
-function timelineProgress(start: string, end: string) {
-  const startMs = new Date(start).getTime();
-  const endMs = new Date(end).getTime();
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return 50;
-  return clamp(((Date.now() - startMs) / (endMs - startMs)) * 100);
 }
 
 function formatDate(value: string | null | undefined) {
@@ -263,6 +241,14 @@ function percent(value: number | null | undefined) {
 
 function countValue(value: number | null | undefined) {
   return value == null ? "—" : String(value);
+}
+
+function moduleCount(completed: number | null | undefined, required: number | null | undefined) {
+  return completed == null || required == null ? "—" : `${completed}/${required}`;
+}
+
+function modulePct(completed: number | null | undefined, required: number | null | undefined) {
+  return completed == null || required == null || required === 0 ? null : clamp((completed / required) * 100);
 }
 
 function clamp(value: number) {

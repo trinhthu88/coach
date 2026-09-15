@@ -4455,6 +4455,7 @@ export type Database = {
           enrollment_id: string
           enrollment_start_date: string
           enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+           effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
           full_completion_pct: number
           goal_count: number
           goal_progress_pct: number
@@ -4479,6 +4480,7 @@ export type Database = {
           satisfaction_avg: number
           satisfaction_rated_count: number
           schedule_coverage_pct: number
+           stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
           total_action_count: number
           triad_completed_count: number
            triad_completed_units: number

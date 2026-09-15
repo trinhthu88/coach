@@ -12,6 +12,8 @@ RETURNS TABLE (
   cohort_id uuid,
   cohort_label text,
   enrollment_status public.enrollment_status,
+  stored_enrollment_status public.enrollment_status,
+  effective_enrollment_status public.enrollment_status,
   required_units integer,
   completed_units integer,
   due_units integer,
@@ -167,6 +169,14 @@ AS $$
                   ELSE 'at_risk'::public.enrollment_status END
       ELSE e.status
     END,
+     e.status,
+     CASE
+       WHEN e.status = 'active' AND e.programme_end_date < current_date
+         THEN CASE WHEN pr.pace_status = 'completed'
+                   THEN 'completed'::public.enrollment_status
+                   ELSE 'at_risk'::public.enrollment_status END
+       ELSE e.status
+     END,
     coalesce(pr.required_units, 0), coalesce(pr.completed_units, 0),
     coalesce(pr.due_units, 0), pr.due_adherence_pct, pr.pace_status,
     coalesce(x.coaching, 0), coalesce(x.mentoring, 0),

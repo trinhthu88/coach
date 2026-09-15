@@ -141,7 +141,7 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getByText("Complete")).toBeInTheDocument();
     expect(screen.getByText(/Mar 1, 2026/)).toBeInTheDocument();
     expect(screen.getByText(/Jul 5, 2026/)).toBeInTheDocument();
-    expect(screen.getByText("Week 7 of 18")).toBeInTheDocument();
+    expect(screen.getByText("Programme complete")).toBeInTheDocument();
     expect(screen.getAllByText("0/48").length).toBeGreaterThan(0);
     expect(screen.getByText("0 of 12 leaders meet the requirement · 48 expected by now · 4 per leader")).toBeInTheDocument();
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
