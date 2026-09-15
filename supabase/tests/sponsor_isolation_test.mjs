@@ -53,6 +53,20 @@ async function createAuthUser(email) {
   return data.user.id;
 }
 
+async function insertCoachingSessionAsLeader(email, session) {
+  const client = createClient(URL, ANON_KEY, { auth: { persistSession: false } });
+  const { error: signInErr } = await client.auth.signInWithPassword({ email, password: PASSWORD });
+  if (signInErr) throw signInErr;
+
+  try {
+    const { data, error } = await client.from("sessions").insert(session).select().single();
+    if (error) throw error;
+    return data;
+  } finally {
+    await client.auth.signOut();
+  }
+}
+
 async function makeSponsor(label, programmeId) {
   const email = `sponsor-isolation-${RUN_ID}-${label}@example.test`;
   const userId = await createAuthUser(email);
@@ -128,21 +142,24 @@ async function makeLeader(label, orgId, cohortId, programmeId, coachId) {
       start_rating: 20, current_rating: 60, target_rating: 80 });
   if (ratingErr) throw ratingErr;
 
-  const { data: session, error: sessErr } = await admin
-    .from("sessions")
-    .insert({
-      enrollment_id: enrollment.id,
-      coach_id: coachId,
-      coachee_id: userId,
-      topic: `Isolation test session ${label}`,
-      start_time: new Date(Date.now() - 5 * 86400000).toISOString(),
-      duration_minutes: 30,
-      status: "completed",
-      coachee_rating: 5,
-    })
-    .select()
-    .single();
-  if (sessErr) throw sessErr;
+  const { error: allowlistErr } = await admin
+    .from("coachee_coach_allowlist")
+    .upsert(
+      { coachee_id: userId, coach_id: coachId },
+      { onConflict: "coachee_id,coach_id" }
+    );
+  if (allowlistErr) throw allowlistErr;
+
+  const session = await insertCoachingSessionAsLeader(email, {
+    enrollment_id: enrollment.id,
+    coach_id: coachId,
+    coachee_id: userId,
+    topic: `Isolation test session ${label}`,
+    start_time: new Date(Date.now() - 5 * 86400000).toISOString(),
+    duration_minutes: 30,
+    status: "completed",
+    coachee_rating: 5,
+  });
   created.sessionIds.push(session.id);
 
   return { userId, enrollmentId: enrollment.id };
@@ -229,6 +246,17 @@ async function main() {
 
   const coachId = await createAuthUser(`coach-isolation-${RUN_ID}@example.test`);
   await admin.from("profiles").update({ status: "active" }).eq("id", coachId);
+  const { error: coachRoleErr } = await admin
+    .from("user_roles")
+    .upsert({ user_id: coachId, role: "coach" }, { onConflict: "user_id,role" });
+  if (coachRoleErr) throw coachRoleErr;
+  const { error: coachProfileErr } = await admin
+    .from("coach_profiles")
+    .upsert(
+      { id: coachId, title: "Isolation test coach", approval_status: "active" },
+      { onConflict: "id" }
+    );
+  if (coachProfileErr) throw coachProfileErr;
 
   console.log("\nCreating sponsor A + org A + leader A...");
   const sponsorA = await makeSponsor("a", programme.id);
