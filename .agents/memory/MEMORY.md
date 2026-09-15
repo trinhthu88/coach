@@ -7,4 +7,5 @@
 - [Historical ownership retirement](historical-ownership-retirement.md) — preserve ambiguous legacy rows, record explicit retirement evidence, and exclude retired sources from repeatable readiness/backfill scans.
 - [GitHub integration push](github-integration-push.md) — preserve local commit SHAs through the Git Database API when shell credentials cannot push.
 - [Supabase Auth schema failure](supabase-auth-schema-failure.md) — SQL can see users while Auth admin and password-token endpoints return HTTP 500 schema errors.
+- [Supabase migration versioning](supabase-mcp-migration-versioning.md) — supported MCP apply assigns current timestamp versions instead of preserving migration filenames; verify the ledger before rollout.
 - [Training timeline enrollment scope](training-timeline-scope.md) — timeline readers must use the selected enrollment; active-programme joins can mix training across programmes.
