@@ -80,6 +80,8 @@ BEGIN
   END IF;
   INSERT INTO profiles(id,email,full_name,status) VALUES(admin_id,'admin@demo.clariva.club','Local Demo Admin','active') ON CONFLICT(id) DO NOTHING;
   INSERT INTO user_roles(user_id,role) VALUES(admin_id,'admin') ON CONFLICT(user_id,role) DO NOTHING;
+  PERFORM set_config('request.jwt.claim.sub',admin_id::text,true);
+  PERFORM set_config('request.jwt.claim.role','authenticated',true);
   FOR i IN 1..2 LOOP
     fixture_email:=format('provider.%s@demo.clariva.club',i); nm:=format('Demo Provider %s',i);
     SELECT id INTO uid FROM auth.users WHERE lower(auth.users.email)=lower(fixture_email) LIMIT 1;
@@ -130,7 +132,6 @@ BEGIN
         ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id,cohort_id=excluded.cohort_id,status=excluded.status;
       PERFORM generate_enrollment_schedule(eid);
     END IF;
-    IF i=5 THEN UPDATE programme_enrollments SET status='paused' WHERE id=eid; END IF;
     IF i <> 10 THEN
     INSERT INTO coachee_goals(id,coachee_id,enrollment_id,title,description,status,target_date,sort_order)
       VALUES(('22222222-2222-4222-8222-'||lpad(i::text,12,'0'))::uuid,uid,eid,format('Demo goal %s',i),'Private goal detail','active',end_date,1)
@@ -143,6 +144,9 @@ BEGIN
       VALUES(('44444444-4444-4444-8444-'||lpad(i::text,12,'0'))::uuid,eid,gid,uid,'Demo action','Private action detail',CASE WHEN i=3 THEN 'open' ELSE 'completed' END,start_date+30)
       ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status=excluded.status;
     END IF;
+    INSERT INTO public.coachee_coach_allowlist(coachee_id,coach_id,created_by)
+      VALUES(uid,coach,admin_id)
+      ON CONFLICT(coachee_id,coach_id) DO NOTHING;
     INSERT INTO sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
       VALUES(('55555555-5555-4555-8555-'||lpad(i::text,12,'0'))::uuid,eid,coach,uid,'Demo coaching session',
         CASE WHEN i=4 THEN '2026-11-20'::date WHEN i=10 THEN '2027-02-01'::date ELSE '2026-09-20'::date END,60,
@@ -186,6 +190,8 @@ BEGIN
         ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status=excluded.status;
     END LOOP;
   END LOOP;
+  UPDATE programme_enrollments SET status='paused'
+    WHERE id='12121212-1212-4121-8121-000000000005'::uuid;
 END $coverage$;
 
 -- Programme B content and activity matrix. IDs are fixed so a second local
