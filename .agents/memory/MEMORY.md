@@ -13,3 +13,4 @@
 - [Sponsor lifecycle semantics](sponsor-lifecycle-semantics.md) — derive cohort labels from dates; keep mixed pace as a separate progress signal.
 - [Demo activity attribution](demo-activity-attribution.md) — pre-trigger demo activity needs ownership-safe cadence attribution before progress metrics can consume it.
 - [Sponsor detail design contract](sponsor-detail-design-contract.md) — when weekly sponsor activity is unavailable, keep the reference layout and show an explicit withheld state instead of fabricating detail.
+- [Sponsor reporting source of truth](sponsor-reporting-source-of-truth.md) — current Admin module requirements define sponsor denominators; historical enrollment activity defines completion numerators.

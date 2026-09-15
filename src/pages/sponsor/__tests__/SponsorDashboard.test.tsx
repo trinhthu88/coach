@@ -31,14 +31,14 @@ beforeEach(async () => {
   responses.sponsor_enrollment_summaries = [enrollment("e1", "Priya Shah"), enrollment("e2", "Tom Baker", "at_risk")];
   responses.sponsor_cohort_summaries = [{
     cohort_id: cohortId, cohort_label: "Q3 Leaders", programme_label: "Executive",
-    enrollment_count: 5, suppressed: false, required_units: 40, completed_units: 20,
+    enrollment_count: 12, suppressed: false, required_units: 192, completed_units: 113,
     due_units: 20, due_adherence_pct: 100, pace_status: "on_track",
     coaching_completed_count: 8, mentoring_completed_count: 2, peer_completed_count: 0,
     triad_completed_count: 0, goal_count: 10, open_action_count: 2, completed_action_count: 2,
   }];
   responses.sponsor_organisation_summary = [{
-    cohort_count: 1, enrollment_count: 5, active_count: 5, at_risk_count: 0,
-    completed_units: 20, required_units: 40,
+    cohort_count: 1, enrollment_count: 12, active_count: 0, at_risk_count: 5,
+    completed_units: 113, required_units: 192,
   }];
 });
 
@@ -48,7 +48,7 @@ describe("SponsorDashboard privacy contract", () => {
     await waitFor(() => expect(screen.getByText("Priya Shah")).toBeInTheDocument());
     expect(screen.getByText("Tom Baker")).toBeInTheDocument();
     expect(screen.getByText("Units used")).toBeInTheDocument();
-    expect(screen.getByText("20/40")).toBeInTheDocument();
+    expect(screen.getByText("113/192")).toBeInTheDocument();
     expect(screen.queryByText("Booked / overdue")).not.toBeInTheDocument();
     expect(screen.queryByText("Goals setup / total")).not.toBeInTheDocument();
     expect(calls).toEqual([

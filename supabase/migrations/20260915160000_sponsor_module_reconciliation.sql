@@ -80,11 +80,40 @@ AS $$
            WHERE ec.cohort_id = p_cohort_id
              AND ec_c.organization_id = a.organization_id)
           >= public.sponsor_min_leaders_for_distribution()
-  ), module_rows AS (
-    SELECT e.id AS enrollment_id, g.module, g.required_units,
-           g.completed_units, g.due_units, g.booked_units, g.pace_status
+  ), configured_modules AS (
+    SELECT e.id AS enrollment_id, pm.module,
+      CASE
+        WHEN coalesce((pm.config->>'required')::boolean, false)
+          THEN coalesce(public.programme_config_integer(pm.config, 'required_units'), 0)
+        ELSE 0
+      END AS required_units
     FROM eligible e
-    LEFT JOIN LATERAL public.get_enrollment_progress(e.id, current_date) g ON true
+    JOIN public.programme_modules pm
+      ON pm.programme_id = e.programme_id
+     AND pm.enabled
+  ), module_values AS (
+    SELECT cm.enrollment_id, cm.module, cm.required_units,
+      coalesce(g.completed_units, 0)::integer AS completed_activity_units,
+      least(coalesce(g.completed_units, 0), cm.required_units)::integer AS completed_units,
+      least(coalesce(g.due_units, 0), cm.required_units)::integer AS due_units,
+      least(
+        coalesce(g.booked_units, 0),
+        greatest(cm.required_units - least(coalesce(g.completed_units, 0), cm.required_units), 0)
+      )::integer AS booked_units
+    FROM configured_modules cm
+    LEFT JOIN LATERAL public.get_enrollment_progress(cm.enrollment_id, current_date) g
+      ON g.module = cm.module
+  ), module_rows AS (
+    SELECT mv.*,
+      CASE
+        WHEN mv.required_units = 0 OR mv.completed_units >= mv.required_units THEN 'completed'
+        WHEN mv.due_units = 0 THEN 'not_yet_due'
+        WHEN mv.completed_units >= mv.due_units THEN
+          CASE WHEN mv.completed_units > mv.due_units THEN 'ahead' ELSE 'on_track' END
+        WHEN mv.completed_units + mv.booked_units >= mv.due_units THEN 'scheduled'
+        ELSE 'behind'
+      END AS pace_status
+    FROM module_values mv
   ), module_rollup AS (
     SELECT enrollment_id,
       max(required_units) FILTER (WHERE module = 'coaching')::integer coaching_required_units,
@@ -122,10 +151,10 @@ AS $$
     GROUP BY enrollment_id
   ), completed AS (
     SELECT enrollment_id,
-      coalesce(sum(completed_units) FILTER (WHERE module = 'coaching'), 0)::integer coaching,
-      coalesce(sum(completed_units) FILTER (WHERE module = 'mentoring'), 0)::integer mentoring,
-      coalesce(sum(completed_units) FILTER (WHERE module = 'peer_coaching'), 0)::integer peer,
-      coalesce(sum(completed_units) FILTER (WHERE module = 'triads'), 0)::integer triad
+       coalesce(sum(completed_activity_units) FILTER (WHERE module = 'coaching'), 0)::integer coaching,
+       coalesce(sum(completed_activity_units) FILTER (WHERE module = 'mentoring'), 0)::integer mentoring,
+       coalesce(sum(completed_activity_units) FILTER (WHERE module = 'peer_coaching'), 0)::integer peer,
+       coalesce(sum(completed_activity_units) FILTER (WHERE module = 'triads'), 0)::integer triad
     FROM module_rows
     GROUP BY enrollment_id
   ), goals AS (

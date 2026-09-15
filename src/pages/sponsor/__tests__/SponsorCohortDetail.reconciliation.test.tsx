@@ -8,7 +8,7 @@ const coaching = [4, 4, 4, 3, 3, 2, 2, 1, 4, 3, 2, 0];
 const training = [6, 6, 5, 4, 3, 2, 1, 0, 6, 4, 2, 1];
 const peer = [2, 2, 2, 2, 1, 1, 0, 0, 2, 1, 0, 0];
 const mentoring = [2, 2, 2, 1, 1, 0, 2, 0, 2, 1, 0, 0];
-const triads = [2, 2, 2, 2, 1, 1, 0, 0, 2, 1, 0, 0];
+const triads = [2, 2, 2, 1, 1, 1, 2, 2, 2, 0, 0, 0];
 const roster = Array.from({ length: 12 }, (_, index) => ({
   enrollment_id: `enrollment-${index + 1}`,
   learner_display_name: `Leader C${index + 1}`,
@@ -146,5 +146,13 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
     expect(screen.getAllByText("4/4").length).toBeGreaterThan(0);
     expect(screen.getAllByText("3/6").length).toBeGreaterThan(0);
+
+    expect(summary.coaching_entitled_units).toBe(4 * roster.length);
+    expect(summary.peer_entitled_units).toBe(2 * roster.length);
+    expect(summary.mentoring_entitled_units).toBe(2 * roster.length);
+    expect(summary.triad_entitled_units).toBe(2 * roster.length);
+    expect(summary.training_entitled_units).toBe(6 * roster.length);
+    expect(summary.completed_units).toBe(roster.reduce((total, row) => total + row.completed_units, 0));
+    expect(summary.completed_units).toBeLessThanOrEqual(summary.required_units);
   });
 });

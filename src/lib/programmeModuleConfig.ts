@@ -25,8 +25,9 @@ function isIsoDate(value: unknown): value is string {
 }
 
 export function normalizeModuleScheduleConfig(config: Record<string, unknown>): Record<string, unknown> {
+  const { weeks: _legacyWeeks, ...withoutLegacyWeeks } = config;
   return {
-    ...config,
+    ...withoutLegacyWeeks,
     required: config.required === true,
     required_units: config.required_units ?? 0,
     weight: config.weight ?? null,
