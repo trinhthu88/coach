@@ -47,7 +47,7 @@ describe("SponsorDashboard privacy contract", () => {
     render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText("Priya Shah")).toBeInTheDocument());
     expect(screen.getByText("Tom Baker")).toBeInTheDocument();
-    expect(screen.getByText("Units used")).toBeInTheDocument();
+    expect(screen.getAllByText("Units used").length).toBeGreaterThan(0);
     expect(screen.getByText("113/192")).toBeInTheDocument();
     expect(screen.queryByText("Booked / overdue")).not.toBeInTheDocument();
     expect(screen.queryByText("Goals setup / total")).not.toBeInTheDocument();

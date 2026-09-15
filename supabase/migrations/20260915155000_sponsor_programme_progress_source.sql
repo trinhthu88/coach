@@ -172,7 +172,13 @@ AS $$
   ), module_values AS (
     SELECT s.module, s.required_units,
       coalesce(c.completed_activity_units, 0)::integer AS completed_activity_units,
-      coalesce(c.completed_activity_units, 0)::integer AS completed_units,
+      -- completed_units is entitlement-relative and must never exceed
+      -- required_units: a leader who does more sessions than required is
+      -- real over-utilisation, not a bigger denominator, and showing e.g.
+      -- "40/4" as if 4 were still the ceiling is exactly the incoherent
+      -- numerator-vs-denominator bug this table exists to prevent.
+      -- completed_activity_units above stays the true uncapped count.
+      least(coalesce(c.completed_activity_units, 0), s.required_units)::integer AS completed_units,
       s.due_units,
       least(
         coalesce(c.raw_booked_units, 0),
@@ -378,7 +384,11 @@ AS $$
   ), totals AS (
     SELECT d.due_on, d.checkpoint_label,
       sum(l.required_units)::integer AS required_units,
-      sum(l.completed_units)::integer AS completed_units,
+      -- Capped per leader before summing: a leader who did more sessions
+      -- than this checkpoint requires is over-utilisation, not extra
+      -- entitlement, and must not inflate the checkpoint's numerator past
+      -- its own denominator.
+      sum(least(l.completed_units, l.required_units))::integer AS completed_units,
       count(*)::integer AS total_leaders,
       count(*) FILTER (
         WHERE l.required_units > 0 AND l.completed_units >= l.required_units

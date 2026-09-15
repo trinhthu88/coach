@@ -84,7 +84,7 @@
       "leadersEnrolled": "Lãnh đạo đã đăng ký",
       "onTrack": "Đúng tiến độ",
       "atRisk": "Có nguy cơ",
-      "sessionsUsed": "Session đã dùng",
+      "sessionsUsed": "Đơn vị đã dùng",
       "avgSatisfaction": "Mức hài lòng TB",
       "atRiskInline_other": "{{count}} người có rủi ro cần được chú ý",
       "budgetUsed": "Ngân sách đã dùng",
@@ -214,7 +214,7 @@
       "leadersEnrolled": "Lãnh đạo đã đăng ký",
       "onTrack": "Đúng tiến độ",
       "atRisk": "Có nguy cơ",
-      "sessionsUsed": "Session đã dùng",
+      "sessionsUsed": "Đơn vị đã dùng",
       "avgGoalGrowth": "Tăng trưởng mục tiêu TB"
     },
     "active": "Đang hoạt động",
@@ -491,7 +491,7 @@
     "kpis": {
       "enrolled": "Đã đăng ký",
       "leadersSuffix": "lãnh đạo",
-      "sessionsUsed": "Session đã dùng",
+      "sessionsUsed": "Đơn vị đã dùng",
       "avgRating": "Đánh giá TB",
       "outOfFive": "/ 5.0",
       "atRisk": "Có nguy cơ"
