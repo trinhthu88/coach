@@ -209,6 +209,7 @@
       "subtitle": "Tổng hợp trên mọi thứ bạn tài trợ, sau đó chia theo từng nhóm."
     },
     "rolledUpLabel": "Tổng hợp · tất cả các nhóm",
+    "backToDashboard": "Quay lại trang tổng quan",
     "kpis": {
       "leadersEnrolled": "Lãnh đạo đã đăng ký",
       "onTrack": "Đúng tiến độ",
@@ -282,6 +283,19 @@
     },
     "healthMatrix": {
       "label": "Bảng sức khỏe theo nhóm"
+    },
+    "reference": {
+      "flagTeam": "Báo cho đội ngũ Clariva",
+      "leaders": "lãnh đạo",
+      "onTrack": "Đúng tiến độ",
+      "atRisk": "Có nguy cơ",
+      "completion": "Hoàn thành",
+      "satisfaction": "Mức hài lòng",
+      "roster": "Danh sách",
+      "clickRow": "nhấn vào một dòng",
+      "pace": "Tiến độ",
+      "units": "Đơn vị",
+      "lastActive": "Hoạt động gần nhất"
     }
   },
   "leaderDrawer": {
@@ -304,7 +318,11 @@
     "programmeProgress": "Tiến độ chương trình",
     "canSeeTitle": "Đây là tất cả những gì bạn có thể thấy",
     "withheldIntro": "Những mục sau tồn tại trong Clariva nhưng bị ẩn khỏi hồ sơ này:",
-    "sameViewNote": "Mỗi lãnh đạo đều thấy chính góc nhìn về bản thân mà bạn đang thấy."
+    "sameViewNote": "Mỗi lãnh đạo đều thấy chính góc nhìn về bản thân mà bạn đang thấy.",
+    "reference": {
+      "flagTeam": "Báo cho đội ngũ Clariva",
+      "weeklyWithheld": "Hoạt động theo module từng tuần không nằm trong bản tóm tắt an toàn dành cho nhà tài trợ."
+    }
   },
   "report": {
     "period": {

@@ -303,6 +303,19 @@
     },
     "healthMatrix": {
       "label": "Cohort health matrix"
+    },
+    "reference": {
+      "flagTeam": "Flag to Clariva team",
+      "leaders": "leaders",
+      "onTrack": "On track",
+      "atRisk": "At risk",
+      "completion": "Completion",
+      "satisfaction": "Satisfaction",
+      "roster": "Roster",
+      "clickRow": "click a row",
+      "pace": "Pace",
+      "units": "Units",
+      "lastActive": "Last active"
     }
   },
   "leaderDrawer": {
@@ -386,7 +399,11 @@
     "programmeProgress": "Programme progress",
     "canSeeTitle": "This is everything you can see",
     "withheldIntro": "The following exist in Clariva and are withheld from this profile:",
-    "sameViewNote": "Every leader can see the same view of themselves that you see."
+    "sameViewNote": "Every leader can see the same view of themselves that you see.",
+    "reference": {
+      "flagTeam": "Flag to Clariva team",
+      "weeklyWithheld": "Weekly module activity is not included in this sponsor-safe summary."
+    }
   },
   "report": {
     "period": {

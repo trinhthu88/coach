@@ -11,3 +11,4 @@
 - [Training timeline enrollment scope](training-timeline-scope.md) — timeline readers must use the selected enrollment; active-programme joins can mix training across programmes.
 - [Sponsor aggregation population](sponsor-aggregation-population.md) — organization counts include sponsor-visible suppressed cohorts; detailed metrics stay threshold-aware.
 - [Demo activity attribution](demo-activity-attribution.md) — pre-trigger demo activity needs ownership-safe cadence attribution before progress metrics can consume it.
+- [Sponsor detail design contract](sponsor-detail-design-contract.md) — when weekly sponsor activity is unavailable, keep the reference layout and show an explicit withheld state instead of fabricating detail.
