@@ -20,8 +20,8 @@ export function effectiveSponsorStatus(row: Pick<SponsorRosterRow, "enrollment_s
   return row.effective_enrollment_status ?? row.enrollment_status;
 }
 
-export function storedSponsorStatus(row: Pick<SponsorRosterRow, "enrollment_status" | "stored_enrollment_status">): SponsorEnrollmentStatus {
-  return row.stored_enrollment_status ?? row.enrollment_status;
+export function storedSponsorStatus(row: Pick<SponsorRosterRow, "stored_enrollment_status">): SponsorEnrollmentStatus | null {
+  return row.stored_enrollment_status ?? null;
 }
 
 export function initials(name: string) {

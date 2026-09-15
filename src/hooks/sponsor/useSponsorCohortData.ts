@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { SponsorRosterRow, SponsorCohortSummary } from "./useSponsorDashboardData";
+import {
+  applyCohortModuleProgress,
+  applyModuleProgress,
+  type SponsorRosterRow,
+  type SponsorCohortSummary,
+} from "./useSponsorDashboardData";
 
 export interface SponsorCohortData {
   kpis: SponsorCohortSummary | null;
@@ -33,10 +38,19 @@ export function useSponsorCohortData(cohortId: string): SponsorCohortData {
       const aggregate = cohortRes.data?.[0];
       setMinLeadersForDistribution(thresholdRes.data ?? 0);
       setCohortLabel(aggregate?.cohort_label ?? rows[0]?.cohort_label ?? null);
-       setSuppressed(aggregate?.suppressed ?? true);
-       setRoster(rows);
-       setKpis(aggregate ?? null);
-      setLoading(false);
+      setSuppressed(aggregate?.suppressed ?? true);
+
+      Promise.all(rows.map(async (row) => {
+        const { data, error } = await supabase.rpc("get_enrollment_progress", {
+          p_enrollment_id: row.enrollment_id,
+        });
+        return applyModuleProgress(row, error ? [] : Array.isArray(data) ? data : []);
+      })).then((enrichedRows) => {
+        if (!mounted) return;
+        setRoster(enrichedRows);
+        setKpis(aggregate ? applyCohortModuleProgress(aggregate, enrichedRows) : null);
+        setLoading(false);
+      });
     });
     return () => { mounted = false; };
   }, [cohortId]);

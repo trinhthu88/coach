@@ -46,14 +46,9 @@ const summary = {
   programme_label: "Emerging Leaders",
   programme_start_date: "2026-03-01",
   programme_end_date: "2026-07-05",
-  programme_total_weeks: 18,
-  programme_current_week: 7,
   enrollment_count: 12,
   suppressed: false,
   required_units: 192,
-  programme_journey: [
-    { checkpoint_number: 1, due_on: "2026-03-01", label: "Training week 1", required_units: 12, completed_units: 0, completed_leaders: 0, total_leaders: 12, state: "overdue" },
-  ],
   completed_units: 0,
   due_units: 192,
   due_adherence_pct: 0,
@@ -74,31 +69,11 @@ const summary = {
   schedule_coverage_pct: 0,
   on_track_pct: 0,
   coaching_completed_count: 0,
-  coaching_required_per_leader: 4,
-  coaching_entitled_units: 48,
   coaching_completed_units: 0,
-  coaching_expected_units: 48,
-  coaching_completed_leaders: 0,
-  training_required_per_leader: 6,
-  training_entitled_units: 72,
   training_completed_units: 0,
-  training_expected_units: 72,
-  training_completed_leaders: 0,
-  peer_required_per_leader: 2,
-  peer_entitled_units: 24,
   peer_completed_units: 0,
-  peer_expected_units: 24,
-  peer_completed_leaders: 0,
-  mentoring_required_per_leader: 2,
-  mentoring_entitled_units: 24,
   mentoring_completed_units: 0,
-  mentoring_expected_units: 24,
-  mentoring_completed_leaders: 0,
-  triad_required_per_leader: 2,
-  triad_entitled_units: 24,
   triad_completed_units: 0,
-  triad_expected_units: 24,
-  triad_completed_leaders: 0,
   goal_count: 0,
   open_action_count: 0,
   completed_action_count: 0,
@@ -117,6 +92,14 @@ vi.mock("@/integrations/supabase/client", () => ({
         ? roster
         : name === "sponsor_cohort_summaries"
           ? [summary]
+            : name === "get_enrollment_progress"
+              ? [
+                { module: "coaching", completed_units: 0, due_units: 4, required_units: 4 },
+                { module: "training", completed_units: 0, due_units: 6, required_units: 6 },
+                { module: "peer_coaching", completed_units: 0, due_units: 2, required_units: 2 },
+                { module: "mentoring", completed_units: 0, due_units: 2, required_units: 2 },
+                { module: "triads", completed_units: 0, due_units: 2, required_units: 2 },
+              ]
           : 5,
       error: null,
     }),
@@ -128,7 +111,7 @@ vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: { id: "sponsor
 import SponsorCohortDetail from "../SponsorCohortDetail";
 
 describe("Sponsor Cohort C reconciliation", () => {
-  it("shows completed lifecycle and the same module denominators in cards, journey, and roster", async () => {
+  it("shows completed lifecycle and canonical module denominators in cards and roster", async () => {
     render(
       <MemoryRouter initialEntries={[`/sponsor/cohorts/${cohortId}`]}>
         <Routes>
@@ -143,17 +126,11 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getByText(/Jul 5, 2026/)).toBeInTheDocument();
     expect(screen.getByText("Programme complete")).toBeInTheDocument();
     expect(screen.getAllByText("0/48").length).toBeGreaterThan(0);
-    expect(screen.getByText("0 of 12 leaders meet the requirement · 48 expected by now · 4 per leader")).toBeInTheDocument();
+    expect(screen.getByText("0 of 12 leaders meet the requirement · 48 due so far")).toBeInTheDocument();
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
-    expect(screen.getByText("0/12")).toBeInTheDocument();
     expect(screen.getAllByText("0/4").length).toBeGreaterThan(0);
     expect(screen.getAllByText("0/6").length).toBeGreaterThan(0);
 
-    expect(summary.coaching_entitled_units).toBe(4 * roster.length);
-    expect(summary.peer_entitled_units).toBe(2 * roster.length);
-    expect(summary.mentoring_entitled_units).toBe(2 * roster.length);
-    expect(summary.triad_entitled_units).toBe(2 * roster.length);
-    expect(summary.training_entitled_units).toBe(6 * roster.length);
     expect(summary.required_units).toBe(roster.reduce((total, row) => total + row.required_units, 0));
     expect(summary.due_units).toBe(roster.reduce((total, row) => total + row.due_units, 0));
     expect(summary.coaching_completed_units).toBe(0);

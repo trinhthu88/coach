@@ -51,7 +51,6 @@ export function SponsorLeaderProfile({ leader, onBack }: { leader: SponsorRoster
   const effectiveStatus = effectiveSponsorStatus(leader);
   const storedStatus = storedSponsorStatus(leader);
   const effectiveStatusKey = STATUS_LABEL_KEY[effectiveStatus];
-  const storedStatusKey = STATUS_LABEL_KEY[storedStatus];
   const lifecycle = cohortLifecycleStatus(leader.programme_start_date, leader.programme_end_date);
 
   return (
@@ -72,7 +71,7 @@ export function SponsorLeaderProfile({ leader, onBack }: { leader: SponsorRoster
           </div>
           <div className="flex flex-wrap items-center gap-6">
             <HeaderMeta label={t("leaderDrawer.reference.sponsorStatus")} value={t(`status.${effectiveStatusKey}`)} />
-            <HeaderMeta label={t("leaderDrawer.reference.recordedStatus")} value={t(`status.${storedStatusKey}`)} />
+            {storedStatus && <HeaderMeta label={t("leaderDrawer.reference.recordedStatus")} value={t(`status.${STATUS_LABEL_KEY[storedStatus]}`)} />}
             <HeaderMeta label={t("leaderDrawer.reference.dates")} value={`${formatDate(leader.enrollment_start_date)} – ${formatDate(leader.enrollment_end_date)}`} />
             <Pill tone={STATUS_TONE[effectiveStatus]} className="text-[10px] uppercase tracking-[.1em]">{t(`status.${effectiveStatusKey}`)}</Pill>
           </div>

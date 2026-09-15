@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronDown, LockKeyhole, Loader2, ShieldCheck } from "lucid
 import type { SponsorCohortSummary, SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import { useSponsorCohortData } from "@/hooks/sponsor/useSponsorCohortData";
 import { Pill } from "@/pages/admin/_shared";
-import { STATUS_LABEL_KEY, STATUS_TONE, cohortLifecycleStatus, effectiveSponsorStatus, initials } from "./sponsorUtils";
+import { STATUS_LABEL_KEY, STATUS_TONE, cohortLifecycleStatus, cohortProgress, effectiveSponsorStatus, initials } from "./sponsorUtils";
 import { SponsorFlagDialog } from "./SponsorFlagDialog";
 
 const SKY = "#3db4d0";
@@ -30,7 +30,10 @@ export default function SponsorCohortDetail() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const progress = useMemo(() => programmeProgress(kpis), [kpis]);
+  const progress = useMemo(
+    () => cohortProgress(kpis?.programme_start_date ?? null, kpis?.programme_end_date ?? null),
+    [kpis?.programme_end_date, kpis?.programme_start_date],
+  );
   const visibleRoster = useMemo(() => {
     const filtered = roster.filter((row) => matchesFilter(row, filter));
     const direction = sortDir === "asc" ? 1 : -1;
@@ -88,16 +91,16 @@ export default function SponsorCohortDetail() {
             <ProgressStrip kpis={kpis} progress={progress} status={status} t={t} />
 
             <div className="mt-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(198px,1fr))]">
-              <ModuleCard label={t("cohortDetail.modules.coaching")} color={SKY} completed={kpis?.coaching_completed_units} expected={kpis?.coaching_expected_units} entitled={kpis?.coaching_entitled_units} required={kpis?.coaching_required_per_leader} completedLeaders={kpis?.coaching_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
-              <ModuleCard label={t("cohortDetail.modules.training")} color={NAVY} completed={kpis?.training_completed_units} expected={kpis?.training_expected_units} entitled={kpis?.training_entitled_units} required={kpis?.training_required_per_leader} completedLeaders={kpis?.training_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
-              <ModuleCard label={t("cohortDetail.modules.peer")} color={TEAL} completed={kpis?.peer_completed_units} expected={kpis?.peer_expected_units} entitled={kpis?.peer_entitled_units} required={kpis?.peer_required_per_leader} completedLeaders={kpis?.peer_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
-              <ModuleCard label={t("cohortDetail.modules.mentoring")} color={GREEN} completed={kpis?.mentoring_completed_units} expected={kpis?.mentoring_expected_units} entitled={kpis?.mentoring_entitled_units} required={kpis?.mentoring_required_per_leader} completedLeaders={kpis?.mentoring_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
-              <ModuleCard label={t("cohortDetail.modules.triads")} color={PLUM} completed={kpis?.triad_completed_units} expected={kpis?.triad_expected_units} entitled={kpis?.triad_entitled_units} required={kpis?.triad_required_per_leader} completedLeaders={kpis?.triad_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              <ModuleCard label={t("cohortDetail.modules.coaching")} color={SKY} completed={kpis?.coaching_completed_units} due={kpis?.coaching_due_units} required={kpis?.coaching_required_units} completedLeaders={kpis?.coaching_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              <ModuleCard label={t("cohortDetail.modules.training")} color={NAVY} completed={kpis?.training_completed_units} due={kpis?.training_due_units} required={kpis?.training_required_units} completedLeaders={kpis?.training_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              <ModuleCard label={t("cohortDetail.modules.peer")} color={TEAL} completed={kpis?.peer_completed_units} due={kpis?.peer_due_units} required={kpis?.peer_required_units} completedLeaders={kpis?.peer_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              <ModuleCard label={t("cohortDetail.modules.mentoring")} color={GREEN} completed={kpis?.mentoring_completed_units} due={kpis?.mentoring_due_units} required={kpis?.mentoring_required_units} completedLeaders={kpis?.mentoring_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              <ModuleCard label={t("cohortDetail.modules.triads")} color={PLUM} completed={kpis?.triad_completed_units} due={kpis?.triad_due_units} required={kpis?.triad_required_units} completedLeaders={kpis?.triad_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
             </div>
 
             <AttentionSection kpis={kpis} counts={filterCounts} filter={filter} onFilter={setFilter} t={t} />
 
-            <ProgrammeJourney journey={parseJourney(kpis?.programme_journey)} t={t} />
+            <ProgrammeJourney t={t} />
 
             <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
               <button
@@ -111,7 +114,7 @@ export default function SponsorCohortDetail() {
                   <ChevronDown className={`h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`} />
                 </span>
               </button>
-              {detailsOpen && <ProgrammeDetails kpis={kpis} progress={progress} t={t} />}
+               {detailsOpen && <ProgrammeDetails kpis={kpis} t={t} />}
             </section>
 
             <RosterSection
@@ -144,7 +147,7 @@ export default function SponsorCohortDetail() {
   );
 }
 
-function ProgressStrip({ kpis, progress, status, t }: { kpis: SponsorCohortSummary | null; progress: ProgrammeProgress; status: "upcoming" | "active" | "complete"; t: (key: string, options?: Record<string, unknown>) => string }) {
+function ProgressStrip({ kpis, progress, status, t }: { kpis: SponsorCohortSummary | null; progress: ReturnType<typeof cohortProgress>; status: "upcoming" | "active" | "complete"; t: (key: string, options?: Record<string, unknown>) => string }) {
   return (
     <div className="mt-[18px] flex flex-wrap items-center gap-[26px] rounded-[14px] border px-[22px] py-[18px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap gap-[26px]">
@@ -156,12 +159,16 @@ function ProgressStrip({ kpis, progress, status, t }: { kpis: SponsorCohortSumma
           <span className="text-[11.5px] font-semibold text-[#062f3e]">
             {status === "complete"
               ? t("cohortDetail.progressStrip.complete")
-              : t("cohortDetail.progressStrip.week", { current: progress.currentWeek, total: progress.totalWeeks })}
+              : status === "upcoming"
+                ? t("cohortDetail.programmeDetails.status.upcoming")
+                : progress
+                  ? t("cohortDetail.programmeDetails.dayOf", { elapsed: progress.elapsed, total: progress.total })
+                  : t("cohortDetail.reference.programmeUnavailable")}
           </span>
-          {status !== "complete" && <span className="text-[11px] text-[#9a938a]">{t("cohortDetail.progressStrip.remaining", { count: progress.remainingWeeks })}</span>}
+          {status === "active" && progress && <span className="text-[11px] text-[#9a938a]">{t("cohortDetail.progressStrip.daysRemaining", { count: Math.max(0, progress.total - progress.elapsed) })}</span>}
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eee8de]">
-          <div className="h-full rounded-full bg-[#3db4d0]" style={{ width: `${progress.percent}%` }} />
+           <div className="h-full rounded-full bg-[#3db4d0]" style={{ width: `${progress?.pct ?? 0}%` }} />
         </div>
       </div>
     </div>
@@ -176,8 +183,7 @@ function ModuleCard({
   label,
   color,
   completed,
-  expected,
-  entitled,
+  due,
   required,
   completedLeaders,
   leaderCount,
@@ -186,15 +192,14 @@ function ModuleCard({
   label: string;
   color: string;
   completed?: number | null;
-  expected?: number | null;
-  entitled?: number | null;
+  due?: number | null;
   required?: number | null;
   completedLeaders?: number | null;
   leaderCount?: number | null;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  const hasData = completed != null && entitled != null;
-  const percentage = hasData && entitled > 0 ? Math.round((completed / entitled) * 100) : 0;
+  const hasData = completed != null && required != null;
+  const percentage = hasData && required > 0 ? Math.min(100, Math.round((completed / required) * 100)) : 0;
   return (
     <div className="flex min-h-[190px] flex-col gap-3 rounded-[14px] border p-[18px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex items-center justify-between gap-2">
@@ -203,7 +208,7 @@ function ModuleCard({
       </div>
       <div className="flex-1">
         <div className="flex items-end gap-2">
-          <span className="font-display text-[32px] font-light leading-[.9]">{hasData ? `${completed}/${entitled}` : "—"}</span>
+           <span className="font-display text-[32px] font-light leading-[.9]">{hasData ? `${completed}/${required}` : "—"}</span>
           <span className="mb-0.5 text-[9.5px] font-bold uppercase tracking-[.08em] text-[#6a6560]">{t("cohortDetail.modules.completedOf")}</span>
         </div>
         <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-[#eee8de]">
@@ -214,14 +219,13 @@ function ModuleCard({
             ? t("cohortDetail.modules.detail", {
               leaders: completedLeaders ?? 0,
               totalLeaders: leaderCount ?? 0,
-              expected: expected ?? 0,
-              required: required ?? 0,
+               due: due ?? 0,
             })
             : t("cohortDetail.modules.aggregateOnly")}
         </div>
       </div>
       <div className="border-t border-[#eee8de] pt-2.5 text-[10.5px] text-[#9a938a]">
-        {hasData ? t("cohortDetail.modules.percent", { value: percentage }) : t("cohortDetail.modules.notAvailable")}
+         {hasData ? t("cohortDetail.modules.percent", { value: percentage }) : t("cohortDetail.modules.notAvailable")}
       </div>
     </div>
   );
@@ -256,7 +260,7 @@ function AttentionSection({ kpis, counts, filter, onFilter, t }: { kpis: Sponsor
   );
 }
 
-function ProgrammeJourney({ journey, t }: { journey: SponsorJourneyCheckpoint[]; t: (key: string, options?: Record<string, unknown>) => string }) {
+function ProgrammeJourney({ t }: { t: (key: string, options?: Record<string, unknown>) => string }) {
   return (
     <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -269,19 +273,9 @@ function ProgrammeJourney({ journey, t }: { journey: SponsorJourneyCheckpoint[];
         <JourneyLegend color="#c9543a" label={t("leaderDrawer.reference.overdueState")} />
         <JourneyLegend color="#cfc7bb" label={t("leaderDrawer.reference.upcoming")} />
       </div>
-      {journey.length === 0 ? (
-        <p className="mt-5 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-5 text-center text-[11px] leading-relaxed text-[#6a6560]">
-          {t("cohortDetail.journey.notAvailable")}
-        </p>
-      ) : (
-        <div className="mt-5 overflow-x-auto pb-1">
-          <div className="min-w-[900px]">
-            <div className="flex items-stretch gap-0.5">
-              {journey.map((checkpoint) => <JourneyCheckpoint key={`${checkpoint.due_on}-${checkpoint.checkpoint_number}`} checkpoint={checkpoint} t={t} />)}
-            </div>
-          </div>
-        </div>
-      )}
+      <p className="mt-5 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-5 text-center text-[11px] leading-relaxed text-[#6a6560]">
+        {t("cohortDetail.journey.notAvailable")}
+      </p>
       <p className="mt-[18px] border-t border-[#eee8de] pt-3.5 text-[11.5px] leading-relaxed text-[#6a6560]">
         {t("cohortDetail.journey.aggregateNote")}
       </p>
@@ -289,84 +283,11 @@ function ProgrammeJourney({ journey, t }: { journey: SponsorJourneyCheckpoint[];
   );
 }
 
-type SponsorJourneyCheckpoint = {
-  checkpoint_number: number;
-  due_on: string;
-  label: string;
-  required_units: number;
-  completed_units: number;
-  completed_leaders: number;
-  total_leaders: number;
-  state: "completed" | "current" | "upcoming" | "overdue";
-};
-
-function parseJourney(value: unknown): SponsorJourneyCheckpoint[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((entry) => {
-    if (!entry || typeof entry !== "object") return [];
-    const item = entry as Record<string, unknown>;
-    const state = item.state;
-    if (!["completed", "current", "upcoming", "overdue"].includes(String(state))) return [];
-    if (typeof item.due_on !== "string" || typeof item.checkpoint_number !== "number") return [];
-    return [{
-      checkpoint_number: item.checkpoint_number,
-      due_on: item.due_on,
-      label: typeof item.label === "string" ? item.label : "Programme checkpoint",
-      required_units: typeof item.required_units === "number" ? item.required_units : 0,
-      completed_units: typeof item.completed_units === "number" ? item.completed_units : 0,
-      completed_leaders: typeof item.completed_leaders === "number" ? item.completed_leaders : 0,
-      total_leaders: typeof item.total_leaders === "number" ? item.total_leaders : 0,
-      state: state as SponsorJourneyCheckpoint["state"],
-    }];
-  });
-}
-
 function JourneyLegend({ color, label }: { color: string; label: string }) {
   return <span className="inline-flex items-center gap-1.5"><span className="h-[9px] w-[9px] rounded-full" style={{ background: color }} />{label}</span>;
 }
 
-function JourneyCheckpoint({ checkpoint, t }: { checkpoint: SponsorJourneyCheckpoint; t: (key: string, options?: Record<string, unknown>) => string }) {
-  const colors = checkpoint.state === "completed"
-    ? { number: "#6a6560", dot: GREEN, border: "transparent", bg: "transparent", line: "#9ed3e0" }
-    : checkpoint.state === "current"
-      ? { number: NAVY, dot: SKY, border: "#bde3ee", bg: "#f0fafc", line: "#9ed3e0" }
-      : checkpoint.state === "overdue"
-        ? { number: "#a8341c", dot: "#c9543a", border: "#f0d5cc", bg: "#fdf6f2", line: "#e6b9ab" }
-        : { number: "#9a938a", dot: "#fffdf9", border: "transparent", bg: "transparent", line: "#e6e0d6" };
-  const pct = checkpoint.required_units > 0
-    ? Math.min(100, Math.round((checkpoint.completed_units / checkpoint.required_units) * 100))
-    : 0;
-  const stateLabel = checkpoint.state === "completed"
-    ? t("leaderDrawer.reference.completed")
-    : checkpoint.state === "current"
-      ? t("leaderDrawer.reference.youAreHere")
-      : checkpoint.state === "overdue"
-        ? t("leaderDrawer.reference.overdueState")
-        : t("leaderDrawer.reference.upcoming");
-  return (
-    <div className="min-w-0 flex-1 rounded-xl border px-1.5 pb-3 pt-2.5" style={{ background: colors.bg, borderColor: colors.border }}>
-      <div className="flex h-5 items-center justify-center text-center">
-        <span className="text-[8.5px] font-bold uppercase tracking-[.08em]" style={{ color: colors.number }}>{stateLabel}</span>
-      </div>
-      <div className="mt-1 text-center text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: colors.number }}>
-        {t("cohortDetail.journey.checkpoint", { number: checkpoint.checkpoint_number })}
-      </div>
-      <div className="mt-0.5 truncate text-center text-[9.5px] text-[#9a938a]" title={checkpoint.label}>{checkpoint.label}</div>
-      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center">
-        <span className="h-0.5" style={{ background: checkpoint.checkpoint_number === 1 ? "transparent" : colors.line }} />
-        <span className="h-[11px] w-[11px] rounded-full border-2" style={{ background: colors.dot, borderColor: colors.dot }} />
-        <span className="h-0.5" style={{ background: colors.line }} />
-      </div>
-      <div className="mt-3 text-center text-[10px] font-semibold text-[#062f3e]">{checkpoint.completed_units}/{checkpoint.required_units}</div>
-      <div className="mt-1 h-1 overflow-hidden rounded-full bg-[#eee8de]"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: checkpoint.state === "overdue" ? "#c9543a" : SKY }} /></div>
-      <div className="mt-2 text-center text-[9px] leading-[1.35] text-[#8a837a]">
-        {t("cohortDetail.journey.leaders", { completed: checkpoint.completed_leaders, total: checkpoint.total_leaders })}
-      </div>
-    </div>
-  );
-}
-
-function ProgrammeDetails({ kpis, progress, t }: { kpis: SponsorCohortSummary | null; progress: ProgrammeProgress; t: (key: string, options?: Record<string, unknown>) => string }) {
+function ProgrammeDetails({ kpis, t }: { kpis: SponsorCohortSummary | null; t: (key: string, options?: Record<string, unknown>) => string }) {
   const groups = [
     { title: t("cohortDetail.details.enrollment"), rows: [
       [t("cohortDetail.details.enrolled"), value(kpis?.enrollment_count)],
@@ -374,20 +295,19 @@ function ProgrammeDetails({ kpis, progress, t }: { kpis: SponsorCohortSummary | 
       [t("cohortDetail.details.paused"), value(kpis?.paused_count)],
       [t("cohortDetail.details.completed"), value(kpis?.completed_count)],
       [t("cohortDetail.details.startEnd"), `${formatDate(kpis?.programme_start_date)} — ${formatDate(kpis?.programme_end_date)}`],
-      [t("cohortDetail.details.currentWeek"), programmeStatus(kpis) === "complete" ? t("cohortDetail.progressStrip.complete") : t("cohortDetail.progressStrip.week", { current: progress.currentWeek, total: progress.totalWeeks })],
     ]},
     { title: t("cohortDetail.details.coaching"), rows: [
-      [t("cohortDetail.modules.coaching"), moduleDetail(kpis?.coaching_completed_units, kpis?.coaching_expected_units, kpis?.coaching_entitled_units, kpis?.coaching_required_per_leader)],
+       [t("cohortDetail.modules.coaching"), moduleDetail(kpis?.coaching_completed_units, kpis?.coaching_due_units, kpis?.coaching_required_units)],
       [t("cohortDetail.details.satisfaction"), decimal(kpis?.satisfaction_avg)],
     ]},
     { title: t("cohortDetail.details.training"), rows: [
-      [t("cohortDetail.modules.training"), moduleDetail(kpis?.training_completed_units, kpis?.training_expected_units, kpis?.training_entitled_units, kpis?.training_required_per_leader)],
+       [t("cohortDetail.modules.training"), moduleDetail(kpis?.training_completed_units, kpis?.training_due_units, kpis?.training_required_units)],
       [t("cohortDetail.details.completion"), percent(kpis?.full_completion_pct)],
     ]},
     { title: t("cohortDetail.details.peerMentoringTriads"), rows: [
-      [t("cohortDetail.modules.peer"), moduleDetail(kpis?.peer_completed_units, kpis?.peer_expected_units, kpis?.peer_entitled_units, kpis?.peer_required_per_leader)],
-      [t("cohortDetail.modules.mentoring"), moduleDetail(kpis?.mentoring_completed_units, kpis?.mentoring_expected_units, kpis?.mentoring_entitled_units, kpis?.mentoring_required_per_leader)],
-      [t("cohortDetail.modules.triads"), moduleDetail(kpis?.triad_completed_units, kpis?.triad_expected_units, kpis?.triad_entitled_units, kpis?.triad_required_per_leader)],
+       [t("cohortDetail.modules.peer"), moduleDetail(kpis?.peer_completed_units, kpis?.peer_due_units, kpis?.peer_required_units)],
+       [t("cohortDetail.modules.mentoring"), moduleDetail(kpis?.mentoring_completed_units, kpis?.mentoring_due_units, kpis?.mentoring_required_units)],
+       [t("cohortDetail.modules.triads"), moduleDetail(kpis?.triad_completed_units, kpis?.triad_due_units, kpis?.triad_required_units)],
     ]},
     { title: t("cohortDetail.details.programme"), rows: [
       [t("cohortDetail.details.requiredUnits"), value(kpis?.required_units)],
@@ -505,18 +425,9 @@ function matchesFilter(row: SponsorRosterRow, filter: FilterKey) {
   return !moduleComplete(row.training_completed_units, row.training_required_units);
 }
 
-function programmeProgress(kpis: SponsorCohortSummary | null): ProgrammeProgress {
-  const totalWeeks = kpis?.programme_total_weeks ?? 0;
-  const currentWeek = kpis?.programme_current_week ?? 0;
-  if (totalWeeks <= 0) return { currentWeek: 0, totalWeeks: 0, remainingWeeks: 0, percent: 0 };
-  return { currentWeek, totalWeeks, remainingWeeks: Math.max(0, totalWeeks - currentWeek), percent: Math.round((currentWeek / totalWeeks) * 100) };
-}
-
 function programmeStatus(kpis: SponsorCohortSummary | null) {
   return cohortLifecycleStatus(kpis?.programme_start_date ?? null, kpis?.programme_end_date ?? null);
 }
-
-type ProgrammeProgress = { currentWeek: number; totalWeeks: number; remainingWeeks: number; percent: number };
 
 function statusClass(status: string) {
   if (status === "complete") return "bg-[#eee8de] text-[#5a5550]";
@@ -546,9 +457,9 @@ function moduleComplete(completed: number | null | undefined, required: number |
   return required == null || required === 0 || (completed ?? 0) >= required;
 }
 
-function moduleDetail(completed: number | null | undefined, expected: number | null | undefined, entitled: number | null | undefined, required: number | null | undefined) {
-  if (completed == null || expected == null || entitled == null || required == null) return "—";
-  return `${completed}/${expected} expected · ${completed}/${entitled} total · ${required} per leader`;
+function moduleDetail(completed: number | null | undefined, due: number | null | undefined, required: number | null | undefined) {
+  if (completed == null || due == null || required == null) return "—";
+  return `${completed}/${required} complete · ${due} due so far`;
 }
 
 function percent(value: number | null | undefined) {

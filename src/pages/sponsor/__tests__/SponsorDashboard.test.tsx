@@ -56,6 +56,8 @@ describe("SponsorDashboard privacy contract", () => {
       "sponsor_organisation_summary",
       "sponsor_min_leaders_for_distribution",
       "sponsor_enrollment_summaries",
+      "get_enrollment_progress",
+      "get_enrollment_progress",
     ]);
     expect(screen.queryByText(/Goal reached|confidence|quiz/i)).not.toBeInTheDocument();
     expect(calls.some((name) => /sponsor_(kpis|roster|goal_growth|satisfaction|confidence|programme|engagement|coach)/.test(name))).toBe(false);

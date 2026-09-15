@@ -309,7 +309,8 @@
       "active": "Đang hoạt động",
       "week": "Tuần {{current}} trên {{total}}",
       "complete": "Chương trình đã hoàn thành",
-      "remaining": "còn {{count}} tuần"
+      "remaining": "còn {{count}} tuần",
+      "daysRemaining": "còn {{count}} ngày"
     },
     "journey": {
       "label": "Hành trình chương trình",
@@ -329,8 +330,8 @@
       "completedSessions": "đã hoàn thành",
       "completedOf": "hoàn thành",
       "completion": "hoàn thành",
-      "detail": "{{leaders}} / {{totalLeaders}} lãnh đạo đạt yêu cầu · {{expected}} dự kiến đến nay · {{required}} cho mỗi lãnh đạo",
-      "percent": "{{value}}% định mức của nhóm đã hoàn thành",
+      "detail": "{{leaders}} / {{totalLeaders}} lãnh đạo đạt yêu cầu · {{due}} đơn vị đến hạn",
+      "percent": "{{value}}% số đơn vị module được cấu hình đã hoàn thành",
       "notAvailable": "Không có trong bản tóm tắt an toàn cho nhà tài trợ",
       "aggregateOnly": "Chi tiết module không có trong bản tóm tắt an toàn cho nhà tài trợ."
     },

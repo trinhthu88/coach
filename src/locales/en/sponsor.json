@@ -327,7 +327,8 @@
       "active": "Active",
       "week": "Week {{current}} of {{total}}",
       "complete": "Programme complete",
-      "remaining": "{{count}} weeks remaining"
+      "remaining": "{{count}} weeks remaining",
+      "daysRemaining": "{{count}} days remaining"
     },
     "journey": {
       "label": "Programme journey",
@@ -347,8 +348,8 @@
       "completedSessions": "completed",
       "completedOf": "complete",
       "completion": "completion",
-      "detail": "{{leaders}} of {{totalLeaders}} leaders meet the requirement · {{expected}} expected by now · {{required}} per leader",
-      "percent": "{{value}}% of cohort entitlement completed",
+      "detail": "{{leaders}} of {{totalLeaders}} leaders meet the requirement · {{due}} due so far",
+      "percent": "{{value}}% of configured module units completed",
       "notAvailable": "Not included in sponsor-safe summary",
       "aggregateOnly": "Module-level detail is not included in the sponsor-safe summary."
     },
