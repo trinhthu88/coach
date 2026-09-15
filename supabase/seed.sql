@@ -158,9 +158,13 @@ BEGIN
           CASE WHEN i=10 THEN NULL ELSE 4 END);
     END IF;
     IF i=4 THEN
-      INSERT INTO sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
-        VALUES('55555555-5555-4555-8555-000000000041',eid,coach,uid,'A4 completed coverage','2026-09-20',60,'completed',4)
-        ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status='completed';
+      IF NOT EXISTS (
+        SELECT 1 FROM sessions
+        WHERE id='55555555-5555-4555-8555-000000000041'::uuid
+      ) THEN
+        INSERT INTO sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
+          VALUES('55555555-5555-4555-8555-000000000041',eid,coach,uid,'A4 completed coverage','2026-09-20',60,'completed',4);
+      END IF;
     END IF;
     IF i <> 10 THEN
     INSERT INTO goal_checkins(id,enrollment_id,goal_id,source_activity_type,source_activity_id,previous_rating,new_rating,note,actor_user_id)
@@ -184,14 +188,18 @@ BEGIN
     SELECT pe.id,pe.user_id INTO e,u FROM programme_enrollments pe WHERE pe.cohort_id='11111111-1111-4111-8111-111111111114' ORDER BY pe.id OFFSET (i-1) LIMIT 1;
     n:=CASE WHEN i=1 THEN 4 WHEN i=2 THEN 3 WHEN i=3 THEN 2 WHEN i=4 THEN 3 ELSE 2 END;
     FOR sid IN 1..n LOOP
-      INSERT INTO sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
-        VALUES(('56565656-5656-4565-8565-'||lpad(((i*10)+sid)::text,12,'0'))::uuid,e,coach,u,
-          format('A%s coaching coverage',i),'2026-09-05'::date+((sid-1)*7),60,
-          CASE WHEN i=4 AND sid=n THEN 'confirmed'::session_status
-               WHEN i IN (3,5) AND sid=n THEN 'cancelled'::session_status
-               ELSE 'completed'::session_status END,
-          CASE WHEN sid<n THEN 4 ELSE NULL END)
-        ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status=excluded.status;
+      IF NOT EXISTS (
+        SELECT 1 FROM sessions
+        WHERE id=('56565656-5656-4565-8565-'||lpad(((i*10)+sid)::text,12,'0'))::uuid
+      ) THEN
+        INSERT INTO sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
+          VALUES(('56565656-5656-4565-8565-'||lpad(((i*10)+sid)::text,12,'0'))::uuid,e,coach,u,
+            format('A%s coaching coverage',i),'2026-09-05'::date+((sid-1)*7),60,
+            CASE WHEN i=4 AND sid=n THEN 'confirmed'::session_status
+                 WHEN i IN (3,5) AND sid=n THEN 'cancelled'::session_status
+                 ELSE 'completed'::session_status END,
+            CASE WHEN sid<n THEN 4 ELSE NULL END);
+      END IF;
     END LOOP;
   END LOOP;
   UPDATE programme_enrollments SET status='paused'
@@ -297,10 +305,20 @@ BEGIN
     VALUES('eeeeeeee-eeee-4eee-8eee-000000000003',e2,mentor_provider,u2,'B peer practice','2026-10-15',60,'completed',5),
           ('eeeeeeee-eeee-4eee-8eee-000000000004',e3,mentor_provider,u3,'B peer practice','2026-11-15',60,'confirmed',NULL)
     ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status=excluded.status;
-  INSERT INTO mentoring_sessions(id,enrollment_id,mentor_id,mentee_id,topic,start_time,duration_minutes,status,prep_file_path,mentee_notes)
-    VALUES('eeeeeeee-eeee-4eee-8eee-000000000005',e2,mentor_provider,u2,'B mentoring','2026-10-20',60,'completed','demo/prep.txt','Private mentoring note'),
-          ('eeeeeeee-eeee-4eee-8eee-000000000006',e4,mentor_provider,u4,'B mentoring booked','2026-11-20',60,'confirmed','demo/prep.txt',NULL)
-    ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status=excluded.status;
+  IF NOT EXISTS (
+    SELECT 1 FROM mentoring_sessions
+    WHERE id='eeeeeeee-eeee-4eee-8eee-000000000005'::uuid
+  ) THEN
+    INSERT INTO mentoring_sessions(id,enrollment_id,mentor_id,mentee_id,topic,start_time,duration_minutes,status,prep_file_path,mentee_notes)
+      VALUES('eeeeeeee-eeee-4eee-8eee-000000000005',e2,mentor_provider,u2,'B mentoring','2026-10-20',60,'completed','demo/prep.txt','Private mentoring note');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM mentoring_sessions
+    WHERE id='eeeeeeee-eeee-4eee-8eee-000000000006'::uuid
+  ) THEN
+    INSERT INTO mentoring_sessions(id,enrollment_id,mentor_id,mentee_id,topic,start_time,duration_minutes,status,prep_file_path,mentee_notes)
+      VALUES('eeeeeeee-eeee-4eee-8eee-000000000006',e4,mentor_provider,u4,'B mentoring booked','2026-11-20',60,'confirmed','demo/prep.txt',NULL);
+  END IF;
   INSERT INTO coach_session_private_notes(session_id,coach_id,body)
     SELECT id,coach_id,'Private coaching note for privacy assertions'
     FROM sessions WHERE id IN (
