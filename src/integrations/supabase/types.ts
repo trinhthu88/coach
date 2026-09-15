@@ -4412,7 +4412,9 @@ export type Database = {
            peer_required_per_leader: number
           programme_label: string
           programme_end_date: string | null
+           programme_current_week: number
           programme_start_date: string | null
+           programme_total_weeks: number
           required_units: number
           satisfaction_avg: number
           satisfaction_rated_count: number

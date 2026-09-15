@@ -433,11 +433,9 @@ function matchesFilter(row: SponsorRosterRow, filter: FilterKey) {
 }
 
 function programmeProgress(kpis: SponsorCohortSummary | null): ProgrammeProgress {
-  const start = kpis?.programme_start_date ? new Date(kpis.programme_start_date).getTime() : NaN;
-  const end = kpis?.programme_end_date ? new Date(kpis.programme_end_date).getTime() : NaN;
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return { currentWeek: 0, totalWeeks: 0, remainingWeeks: 0, percent: 0 };
-  const totalWeeks = Math.max(1, Math.ceil((end - start) / 604800000));
-  const currentWeek = Math.max(0, Math.min(totalWeeks, Math.floor((Date.now() - start) / 604800000) + 1));
+  const totalWeeks = kpis?.programme_total_weeks ?? 0;
+  const currentWeek = kpis?.programme_current_week ?? 0;
+  if (totalWeeks <= 0) return { currentWeek: 0, totalWeeks: 0, remainingWeeks: 0, percent: 0 };
   return { currentWeek, totalWeeks, remainingWeeks: Math.max(0, totalWeeks - currentWeek), percent: Math.round((currentWeek / totalWeeks) * 100) };
 }
 

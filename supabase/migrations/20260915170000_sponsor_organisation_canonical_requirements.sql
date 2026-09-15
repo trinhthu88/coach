@@ -47,40 +47,12 @@ AS $$
     SELECT e.*, c.end_date AS cohort_end_date
     FROM public.programme_enrollments e
     JOIN cohorts c ON c.id = e.cohort_id
-  ), configured_modules AS (
-    SELECT e.id AS enrollment_id, pm.module,
-      CASE
-        WHEN coalesce((pm.config->>'required')::boolean, false)
-          THEN coalesce(public.programme_config_integer(pm.config, 'required_units'), 0)
-        ELSE 0
-      END AS required_units
-    FROM eligible e
-    JOIN public.programme_modules pm
-      ON pm.programme_id = e.programme_id
-     AND pm.enabled
-  ), module_values AS (
-    SELECT cm.enrollment_id, cm.module, cm.required_units,
-      coalesce(g.completed_units, 0)::integer AS completed_activity_units,
-      least(coalesce(g.completed_units, 0), cm.required_units)::integer AS completed_units,
-      least(coalesce(g.due_units, 0), cm.required_units)::integer AS due_units,
-      least(
-        coalesce(g.booked_units, 0),
-        greatest(cm.required_units - least(coalesce(g.completed_units, 0), cm.required_units), 0)
-      )::integer AS booked_units
-    FROM configured_modules cm
-    LEFT JOIN LATERAL public.get_enrollment_progress(cm.enrollment_id, current_date) g
-      ON g.module = cm.module
   ), module_rows AS (
-    SELECT mv.*,
-      CASE
-        WHEN mv.required_units = 0 OR mv.completed_units >= mv.required_units THEN 'completed'
-        WHEN mv.due_units = 0 THEN 'not_yet_due'
-        WHEN mv.completed_units >= mv.due_units THEN
-          CASE WHEN mv.completed_units > mv.due_units THEN 'ahead' ELSE 'on_track' END
-        WHEN mv.completed_units + mv.booked_units >= mv.due_units THEN 'scheduled'
-        ELSE 'behind'
-      END AS pace_status
-    FROM module_values mv
+    SELECT e.id AS enrollment_id, g.module, g.required_units,
+      g.completed_activity_units, g.completed_units, g.due_units,
+      g.booked_units, g.pace_status
+    FROM eligible e
+    LEFT JOIN LATERAL public.get_sponsor_programme_progress(e.id, current_date) g ON true
   ), progress AS (
     SELECT e.id, e.status, e.cohort_end_date,
       coalesce(sum(mr.required_units), 0)::integer required_units,

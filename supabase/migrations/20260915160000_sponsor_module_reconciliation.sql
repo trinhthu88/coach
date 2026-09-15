@@ -1,7 +1,7 @@
 -- Extend the existing sponsor-safe reporting contract with module-level
--- denominators and completed-leader counts. The source remains
--- get_enrollment_progress(), so cards, rosters, and exports use the same
--- authoritative enrollment snapshots.
+-- denominators, schedule expectations, and completed-leader counts. Sponsor
+-- progress is sourced from current Admin programme configuration plus
+-- attributed leader activity; enrollment snapshots are not sponsor denominators.
 
 DROP FUNCTION IF EXISTS public.sponsor_enrollment_summaries(uuid);
 CREATE OR REPLACE FUNCTION public.sponsor_enrollment_summaries(p_cohort_id uuid)
@@ -80,40 +80,12 @@ AS $$
            WHERE ec.cohort_id = p_cohort_id
              AND ec_c.organization_id = a.organization_id)
           >= public.sponsor_min_leaders_for_distribution()
-  ), configured_modules AS (
-    SELECT e.id AS enrollment_id, pm.module,
-      CASE
-        WHEN coalesce((pm.config->>'required')::boolean, false)
-          THEN coalesce(public.programme_config_integer(pm.config, 'required_units'), 0)
-        ELSE 0
-      END AS required_units
-    FROM eligible e
-    JOIN public.programme_modules pm
-      ON pm.programme_id = e.programme_id
-     AND pm.enabled
-  ), module_values AS (
-    SELECT cm.enrollment_id, cm.module, cm.required_units,
-      coalesce(g.completed_units, 0)::integer AS completed_activity_units,
-      least(coalesce(g.completed_units, 0), cm.required_units)::integer AS completed_units,
-      least(coalesce(g.due_units, 0), cm.required_units)::integer AS due_units,
-      least(
-        coalesce(g.booked_units, 0),
-        greatest(cm.required_units - least(coalesce(g.completed_units, 0), cm.required_units), 0)
-      )::integer AS booked_units
-    FROM configured_modules cm
-    LEFT JOIN LATERAL public.get_enrollment_progress(cm.enrollment_id, current_date) g
-      ON g.module = cm.module
   ), module_rows AS (
-    SELECT mv.*,
-      CASE
-        WHEN mv.required_units = 0 OR mv.completed_units >= mv.required_units THEN 'completed'
-        WHEN mv.due_units = 0 THEN 'not_yet_due'
-        WHEN mv.completed_units >= mv.due_units THEN
-          CASE WHEN mv.completed_units > mv.due_units THEN 'ahead' ELSE 'on_track' END
-        WHEN mv.completed_units + mv.booked_units >= mv.due_units THEN 'scheduled'
-        ELSE 'behind'
-      END AS pace_status
-    FROM module_values mv
+    SELECT e.id AS enrollment_id, g.module, g.required_units,
+      g.completed_activity_units, g.completed_units, g.due_units,
+      g.booked_units, g.pace_status
+    FROM eligible e
+    LEFT JOIN LATERAL public.get_sponsor_programme_progress(e.id, current_date) g ON true
   ), module_rollup AS (
     SELECT enrollment_id,
       max(required_units) FILTER (WHERE module = 'coaching')::integer coaching_required_units,
@@ -216,19 +188,19 @@ AS $$
       ELSE round(a.completed_action_count * 100.0 / a.total_action_count, 1) END,
     sat.avg_rating, coalesce(sat.rated_count, 0),
     coalesce(mr.coaching_required_units, 0),
-    least(coalesce(mr.coaching_completed_units, 0), coalesce(mr.coaching_required_units, 0)),
+     coalesce(mr.coaching_completed_units, 0),
     coalesce(mr.coaching_due_units, 0),
     coalesce(mr.mentoring_required_units, 0),
-    least(coalesce(mr.mentoring_completed_units, 0), coalesce(mr.mentoring_required_units, 0)),
+     coalesce(mr.mentoring_completed_units, 0),
     coalesce(mr.mentoring_due_units, 0),
     coalesce(mr.peer_required_units, 0),
-    least(coalesce(mr.peer_completed_units, 0), coalesce(mr.peer_required_units, 0)),
+     coalesce(mr.peer_completed_units, 0),
     coalesce(mr.peer_due_units, 0),
     coalesce(mr.triad_required_units, 0),
-    least(coalesce(mr.triad_completed_units, 0), coalesce(mr.triad_required_units, 0)),
+     coalesce(mr.triad_completed_units, 0),
     coalesce(mr.triad_due_units, 0),
     coalesce(mr.training_required_units, 0),
-    least(coalesce(mr.training_completed_units, 0), coalesce(mr.training_required_units, 0)),
+     coalesce(mr.training_completed_units, 0),
     coalesce(mr.training_due_units, 0)
   FROM eligible e
   LEFT JOIN progress pr ON pr.enrollment_id = e.id
@@ -248,6 +220,8 @@ RETURNS TABLE (
   programme_label text,
   programme_start_date date,
   programme_end_date date,
+  programme_total_weeks integer,
+  programme_current_week integer,
   enrollment_count integer,
   suppressed boolean,
   required_units integer,
@@ -408,6 +382,14 @@ AS $$
   )
   SELECT cohort_id, cohort_label, programme_label, programme_start_date,
     programme_end_date,
+    greatest(1, ceil((programme_end_date - programme_start_date) / 7.0)::integer),
+    CASE
+      WHEN current_date < programme_start_date THEN 0
+      ELSE least(
+        greatest(1, ceil((programme_end_date - programme_start_date) / 7.0)::integer),
+        greatest(0, ((current_date - programme_start_date) / 7) + 1)
+      )
+    END,
     CASE WHEN n < public.sponsor_min_leaders_for_distribution() THEN NULL ELSE n END,
     n < public.sponsor_min_leaders_for_distribution(),
     CASE WHEN n < public.sponsor_min_leaders_for_distribution() THEN NULL ELSE required_units END,

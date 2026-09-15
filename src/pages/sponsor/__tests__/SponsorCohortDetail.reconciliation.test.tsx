@@ -51,6 +51,8 @@ const summary = {
   programme_label: "Emerging Leaders",
   programme_start_date: "2026-03-01",
   programme_end_date: "2026-07-05",
+  programme_total_weeks: 18,
+  programme_current_week: 7,
   enrollment_count: 12,
   suppressed: false,
   required_units: 192,
@@ -141,6 +143,7 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getByText("Complete")).toBeInTheDocument();
     expect(screen.getByText(/Mar 1, 2026/)).toBeInTheDocument();
     expect(screen.getByText(/Jul 5, 2026/)).toBeInTheDocument();
+    expect(screen.getByText("Week 7 of 18")).toBeInTheDocument();
     expect(screen.getAllByText("32/48").length).toBeGreaterThan(0);
     expect(screen.getByText("4 of 12 leaders meet the requirement · 48 expected by now · 4 per leader")).toBeInTheDocument();
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
@@ -152,6 +155,13 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(summary.mentoring_entitled_units).toBe(2 * roster.length);
     expect(summary.triad_entitled_units).toBe(2 * roster.length);
     expect(summary.training_entitled_units).toBe(6 * roster.length);
+    expect(summary.required_units).toBe(roster.reduce((total, row) => total + row.required_units, 0));
+    expect(summary.due_units).toBe(roster.reduce((total, row) => total + row.due_units, 0));
+    expect(summary.coaching_completed_units).toBe(roster.reduce((total, row) => total + row.coaching_completed_units, 0));
+    expect(summary.training_completed_units).toBe(roster.reduce((total, row) => total + row.training_completed_units, 0));
+    expect(summary.peer_completed_units).toBe(roster.reduce((total, row) => total + row.peer_completed_units, 0));
+    expect(summary.mentoring_completed_units).toBe(roster.reduce((total, row) => total + row.mentoring_completed_units, 0));
+    expect(summary.triad_completed_units).toBe(roster.reduce((total, row) => total + row.triad_completed_units, 0));
     expect(summary.completed_units).toBe(roster.reduce((total, row) => total + row.completed_units, 0));
     expect(summary.completed_units).toBeLessThanOrEqual(summary.required_units);
   });
