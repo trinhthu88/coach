@@ -1409,6 +1409,7 @@ export type Database = {
       }
       enrollment_module_snapshots: {
         Row: {
+          config: Json
           created_at: string
           distribution_mode: string
           distribution_settings: Json
@@ -1423,6 +1424,7 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          config?: Json
           created_at?: string
           distribution_mode?: string
           distribution_settings?: Json
@@ -1437,6 +1439,7 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          config?: Json
           created_at?: string
           distribution_mode?: string
           distribution_settings?: Json
@@ -3865,22 +3868,22 @@ export type Database = {
           unresolved: number
         }[]
       }
-      book_peer_session: {
+      book_coachee_peer_session: {
         Args: {
           p_duration_minutes: number
           p_enrollment_id: string
-          p_peer_coach_id: string
+          p_provider_id: string
           p_slot_id?: string
           p_start_time: string
           p_topic: string
         }
         Returns: string
       }
-      book_coachee_peer_session: {
+      book_peer_session: {
         Args: {
           p_duration_minutes: number
           p_enrollment_id: string
-          p_provider_id: string
+          p_peer_coach_id: string
           p_slot_id?: string
           p_start_time: string
           p_topic: string
@@ -3896,20 +3899,38 @@ export type Database = {
         }
         Returns: number
       }
-      can_book_mentoring_session: {
-        Args: { p_mentee_id: string; p_mentor_id: string }
-        Returns: boolean
-      }
-      can_book_mentoring_session_reason: {
-        Args: { p_mentee_id: string; p_mentor_id: string }
-        Returns: string
-      }
-      can_book_peer_session: {
-        Args: { p_enrollment_id: string; p_peer_coach_id: string }
-        Returns: boolean
-      }
       can_book_coachee_peer_session: {
         Args: { p_enrollment_id: string; p_provider_id: string }
+        Returns: boolean
+      }
+      can_book_mentoring_session:
+        | {
+            Args: { p_mentee_id: string; p_mentor_id: string }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_enrollment_id: string
+              p_mentee_id: string
+              p_mentor_id: string
+            }
+            Returns: boolean
+          }
+      can_book_mentoring_session_reason:
+        | {
+            Args: { p_mentee_id: string; p_mentor_id: string }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_enrollment_id: string
+              p_mentee_id: string
+              p_mentor_id: string
+            }
+            Returns: string
+          }
+      can_book_peer_session: {
+        Args: { p_enrollment_id: string; p_peer_coach_id: string }
         Returns: boolean
       }
       can_book_session:
@@ -3945,10 +3966,12 @@ export type Database = {
         Args: { p_mentor_id: string }
         Returns: boolean
       }
-      check_can_book_mentoring_session_reason: {
-        Args: { p_mentor_id: string }
-        Returns: string
-      }
+      check_can_book_mentoring_session_reason:
+        | { Args: { p_mentor_id: string }; Returns: string }
+        | {
+            Args: { p_enrollment_id: string; p_mentor_id: string }
+            Returns: string
+          }
       check_can_book_mentoring_session_reason_for_enrollment: {
         Args: { p_enrollment_id: string; p_mentor_id: string }
         Returns: string
@@ -3967,13 +3990,21 @@ export type Database = {
           used_count: number
         }[]
       }
-      check_mentoring_session_usage: {
-        Args: never
-        Returns: {
-          limit_count: number
-          used_count: number
-        }[]
-      }
+      check_mentoring_session_usage:
+        | {
+            Args: never
+            Returns: {
+              limit_count: number
+              used_count: number
+            }[]
+          }
+        | {
+            Args: { p_enrollment_id: string }
+            Returns: {
+              limit_count: number
+              used_count: number
+            }[]
+          }
       coach_has_client: {
         Args: { _coach_id: string; _coachee_id: string }
         Returns: boolean
@@ -4030,6 +4061,13 @@ export type Database = {
           provider_id: string
         }[]
       }
+      enrollment_module_config: {
+        Args: {
+          p_enrollment_id: string
+          p_module: Database["public"]["Enums"]["programme_module_type"]
+        }
+        Returns: Json
+      }
       generate_enrollment_schedule: {
         Args: { p_enrollment_id: string }
         Returns: undefined
@@ -4048,11 +4086,26 @@ export type Database = {
           used_this_month: number
         }[]
       }
+      get_coachee_peer_session_usage: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          receive_limit: number
+          used_count: number
+        }[]
+      }
       get_coachee_session_usage_for_enrollment: {
         Args: { p_enrollment_id: string }
         Returns: {
           monthly_limit: number
           used_this_month: number
+        }[]
+      }
+      get_enrollment_programme_modules: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          config: Json
+          enabled: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
         }[]
       }
       get_enrollment_progress: {
@@ -4066,14 +4119,6 @@ export type Database = {
           module: Database["public"]["Enums"]["programme_module_type"]
           pace_status: string
           required_units: number
-        }[]
-      }
-      get_enrollment_programme_modules: {
-        Args: { p_enrollment_id: string }
-        Returns: {
-          config: Json
-          enabled: boolean
-          module: Database["public"]["Enums"]["programme_module_type"]
         }[]
       }
       get_enrollment_training_weeks: {
@@ -4109,7 +4154,7 @@ export type Database = {
         Returns: number
       }
       get_mentoring_session_usage: {
-        Args: { p_user_id: string }
+        Args: { p_enrollment_id: string }
         Returns: {
           limit_count: number
           used_count: number
@@ -4237,6 +4282,10 @@ export type Database = {
       only_enrollment_candidate: {
         Args: { p_on?: string; p_programme_id?: string; p_user_id: string }
         Returns: string
+      }
+      programme_config_integer: {
+        Args: { p_config: Json; p_key: string }
+        Returns: number
       }
       record_goal_checkin: {
         Args: {
