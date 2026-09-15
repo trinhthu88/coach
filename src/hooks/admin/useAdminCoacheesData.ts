@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import type { Row, Status } from "@/pages/admin/coachees/coacheeDisplay";
+import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
 
 export interface ProgrammeOpt {
   id: string;
@@ -47,7 +48,7 @@ export function useAdminCoacheesData() {
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at, spoken_languages"),
       supabase.from("sessions").select("coachee_id, enrollment_id, status"),
-      supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date"),
+      supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date, status"),
       supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
       supabase.from("cohorts").select("id, name"),
       supabase.from("organizations").select("id, name").order("name"),
@@ -64,8 +65,21 @@ export function useAdminCoacheesData() {
       const p = profById.get(id);
       if (p) coachNameById.set(id, p.full_name);
     });
-    const enrByUser = new Map<string, Pick<Tables<"programme_enrollments">, "id" | "user_id" | "programme_id" | "cohort_id" | "organization_id" | "start_date">>();
-    (enrolls || []).forEach((e) => enrByUser.set(e.user_id, e));
+    const enrById = new Map((enrolls || []).map((e) => [e.id, e]));
+    const enrByUser = new Map<string, NonNullable<typeof enrolls>[number]>();
+    for (const userId of coacheeIds) {
+      const enrollmentId = resolveCurrentEnrollment(
+        (enrolls || []).filter((e) => e.user_id === userId).map((e) => ({
+          id: e.id,
+          status: e.status,
+          start_date: e.start_date,
+        })),
+      );
+      if (enrollmentId) {
+        const enrollment = enrById.get(enrollmentId);
+        if (enrollment) enrByUser.set(userId, enrollment);
+      }
+    }
     const progById = new Map((progs || []).map((p) => [p.id, p]));
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const orgById = new Map((orgsData || []).map((o) => [o.id, o.name]));

@@ -18,7 +18,7 @@ import {
   Loader2, Search, FileDown, Eye, Star, Users, Pencil, Save,
 } from "lucide-react";
 import { getFriendlyErrorMessage } from "@/lib/errors";
-import { requestAdminEnrollment } from "@/lib/enrollmentTransition";
+import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
 
 function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
   if (!startDate || !durationMonths) return null;
@@ -33,7 +33,6 @@ import { format } from "date-fns";
 import { AdminPageHeader, Kpi, Pill, Avatar, TablePager } from "./_shared";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import PendingAccessRequests from "@/components/PendingAccessRequests";
-import type { Tables } from "@/integrations/supabase/types";
 
 type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 const STATUS_KEYS: Status[] = ["pending_approval", "active", "rejected", "suspended", "reach_limit"];
@@ -176,7 +175,17 @@ export default function AdminCoaches() {
     });
 
     const enrollByUser = new Map<string, NonNullable<typeof enrolls>[number]>();
-    (enrolls || []).forEach((e) => { if (!enrollByUser.has(e.user_id)) enrollByUser.set(e.user_id, e); });
+    for (const userId of coachIds) {
+      const enrollmentId = resolveCurrentEnrollment(
+        (enrolls || []).filter((e) => e.user_id === userId).map((e) => ({
+          id: e.id,
+          status: e.status,
+          start_date: e.start_date,
+        })),
+      );
+      const enrollment = (enrolls || []).find((e) => e.id === enrollmentId);
+      if (enrollment) enrollByUser.set(userId, enrollment);
+    }
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const progById = new Map((progsData || []).map((p) => [p.id, p]));
 
@@ -278,52 +287,26 @@ export default function AdminCoaches() {
     }
     setSaving(true);
     try {
-      // 1. Profile + coach_profiles status
-      await supabase.from("profiles").update({
-        full_name: editing.full_name,
-        status: editing.status,
-      }).eq("id", editing.id);
-      await supabase.from("coach_profiles").update({
-        approval_status: editing.status as Tables<"coach_profiles">["approval_status"],
-        ...(editing.status === "active" ? { last_approved_at: new Date().toISOString() } : {}),
-      }).eq("id", editing.id);
-
-      // Session limits are managed by the programme module configuration.
-
-      // 2. Assigned coaches diff
       const original = rows.find(r => r.id === editing.id);
-      const oldIds = new Set((original?.assigned_coaches || []).map(c => c.id));
-      const newIds = new Set(editing.assigned_coaches.map(c => c.id));
-      const toAdd = [...newIds].filter(i => !oldIds.has(i));
-      const toRemove = [...oldIds].filter(i => !newIds.has(i));
-      if (toAdd.length) {
-        await supabase.from("coach_as_coachee_allowlist").insert(
-          toAdd.map(sid => ({ coach_user_id: editing.id, selectable_coach_id: sid }))
-        );
-      }
-      for (const sid of toRemove) {
-        await supabase.from("coach_as_coachee_allowlist").delete()
-          .eq("coach_user_id", editing.id).eq("selectable_coach_id", sid);
-      }
-
-      // 3. Programme enrollment is immutable while ongoing. Any changed
-      // programme or cohort is submitted to the RPC, which returns a conflict
-      // rather than changing the current enrollment.
       const enrollmentChanged = !editing.enrollment_id ||
         editing.programme_id !== original?.programme_id ||
         editing.cohort_id !== original?.cohort_id;
-      if (editing.programme_id && enrollmentChanged) {
-        const organizationId = cohorts.find((cohort) => cohort.id === editing.cohort_id)?.organization_id;
-        if (!editing.cohort_id || !organizationId) throw new Error("A cohort with an organization is required for enrollment.");
-        const creation = await requestAdminEnrollment({
-          userId: editing.id,
-          programmeId: editing.programme_id,
-          cohortId: editing.cohort_id,
-          organizationId,
-        });
-        if (creation.kind === "conflict") throw new Error("This user already has an ongoing enrollment. Review it before creating another enrollment.");
-        if (creation.kind === "error") throw creation.error;
+      const organizationId = cohorts.find((cohort) => cohort.id === editing.cohort_id)?.organization_id;
+      if (enrollmentChanged && (!editing.cohort_id || !organizationId)) {
+        throw new Error("A cohort with an organization is required for enrollment.");
       }
+
+      const { error: updateError } = await supabase.rpc("admin_update_coach_configuration", {
+        p_coach_id: editing.id,
+        p_full_name: editing.full_name,
+        p_profile_status: editing.status,
+        p_selectable_coach_ids: editing.assigned_coaches.map((coach) => coach.id),
+        p_enrollment_id: enrollmentChanged ? null : editing.enrollment_id,
+        p_programme_id: enrollmentChanged ? editing.programme_id : null,
+        p_cohort_id: enrollmentChanged ? editing.cohort_id : null,
+        p_organization_id: enrollmentChanged ? organizationId : null,
+      });
+      if (updateError) throw updateError;
 
       toast.success(t("coaches.coachUpdated"));
       setEditing(null);

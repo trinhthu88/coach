@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
 
 export interface ProgrammeOption {
   id: string;
@@ -59,13 +60,22 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
       setLoading(true);
 
       const [{ data: enrollments }, { data: trainingWeeks }] = await Promise.all([
-        supabase.from("programme_enrollments").select("id, user_id").eq("programme_id", programmeId).eq("status", "active"),
+        supabase.from("programme_enrollments").select("id, user_id, status, start_date").eq("programme_id", programmeId),
         supabase.from("training_weeks").select("id, week_number, title").eq("programme_id", programmeId).eq("is_visible", true).order("week_number"),
       ]);
       if (!mounted) return;
 
-      const enrollmentIds = (enrollments ?? []).map((e) => e.id as string);
-      const enrolledIds = [...new Set((enrollments ?? []).map((e) => e.user_id as string))];
+      const currentByUser = new Map<string, string>();
+      for (const userId of [...new Set((enrollments ?? []).map((e) => e.user_id as string))]) {
+        const id = resolveCurrentEnrollment(
+          (enrollments ?? []).filter((e) => e.user_id === userId).map((e) => ({
+            id: e.id as string, status: e.status, start_date: e.start_date,
+          })),
+        );
+        if (id) currentByUser.set(userId, id);
+      }
+      const enrollmentIds = [...currentByUser.values()];
+      const enrolledIds = [...currentByUser.keys()];
       const weekIds = (trainingWeeks ?? []).map((w) => w.id as string);
 
       if (enrolledIds.length === 0 || weekIds.length === 0) {
@@ -167,7 +177,7 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
       (promptResponses ?? []).forEach((r) => bump(r.user_id, r.responded_at));
 
       const cutoff = Date.now() - 7 * DAY_MS;
-      const enrollmentByUser = new Map((enrollments ?? []).map((e) => [e.user_id as string, e.id as string]));
+      const enrollmentByUser = currentByUser;
       const flags: ProgrammeRedFlag[] = enrolledIds
         .filter((id) => !lastActiveByUser.has(id) || (lastActiveByUser.get(id) ?? 0) < cutoff)
         .map((id) => ({

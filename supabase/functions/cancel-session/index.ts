@@ -5,18 +5,6 @@ import { buildCorsHeaders } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionCancelledEmail } from "../_shared/email-templates/session-cancelled.tsx";
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const parts = token.split(".");
-  if (parts.length < 2) return null;
-  try {
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    return JSON.parse(atob(padded));
-  } catch {
-    return null;
-  }
-}
-
 function formatWhen(startTimeISO: string, durationMinutes: number): string {
   const start = new Date(startTimeISO);
   const dateFmt = new Intl.DateTimeFormat("en-US", {
@@ -46,8 +34,9 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace(/^Bearer\s+/i, "");
-    const claims = decodeJwtPayload(token);
-    const callerId = typeof claims?.sub === "string" ? claims.sub : null;
+    const authClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!);
+    const { data: { user } } = await authClient.auth.getUser(token);
+    const callerId = user?.id ?? null;
     if (!callerId) {
       return new Response(JSON.stringify({ error: "Invalid session" }), {
         status: 401,

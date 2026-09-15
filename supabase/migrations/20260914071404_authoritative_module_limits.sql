@@ -463,6 +463,7 @@ CREATE POLICY "CoacheePeerSessions: receiver create own"
 -- Mentoring: the selected mentee enrollment is authoritative for received
 -- limits. The mentor's one ongoing enrollment is used for given limits when
 -- available; the legacy mentor limit remains the safe fallback for history.
+DROP FUNCTION IF EXISTS public.get_mentoring_session_usage(uuid);
 CREATE OR REPLACE FUNCTION public.get_mentoring_session_usage(p_enrollment_id uuid)
 RETURNS TABLE(limit_count integer, used_count integer)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public, pg_temp AS $$

@@ -54,9 +54,10 @@ export function useCoachAsCoacheeAllowlist() {
     if (ids.length) {
       const { data, error: coachesError } = await supabase
         .from("coach_profiles")
-        .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url)")
+        .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url, status)")
         .in("id", ids)
-        .eq("approval_status", "active");
+        .eq("approval_status", "active")
+        .eq("profiles.status", "active");
       if (coachesError) {
         setError(getFriendlyErrorMessage(coachesError, t));
         setLoading(false);
@@ -98,8 +99,9 @@ export function useOptedInPeerCoaches() {
     setError(null);
     const { data, error: fetchError } = await supabase
       .from("coach_profiles")
-      .select("id, title, specialties, rating_avg, peer_coaching_opt_in, profiles!inner(full_name, avatar_url)")
+      .select("id, title, specialties, rating_avg, peer_coaching_opt_in, profiles!inner(full_name, avatar_url, status)")
       .eq("approval_status", "active")
+      .eq("profiles.status", "active")
       .eq("peer_coaching_opt_in", true)
       .neq("id", user.id);
     if (fetchError) {

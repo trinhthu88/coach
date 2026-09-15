@@ -15,6 +15,9 @@ insert into public.user_roles (user_id, role)
 values ('b1000000-0000-4000-8000-000000000002','coach');
 insert into public.coach_profiles (id, approval_status, peer_coaching_opt_in)
 values ('b1000000-0000-4000-8000-000000000002','active',true);
+update public.profiles
+set status='active'::public.user_status
+where id='b1000000-0000-4000-8000-000000000002';
 
 insert into public.programmes (id, name)
 values
@@ -36,14 +39,16 @@ values
    'b1000000-0000-4000-8000-000000000001',
    'b1000000-0000-4000-8000-000000000012',current_date - 30,'active');
 
+select set_config('request.jwt.claim.sub','b1000000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+set local role authenticated;
+
 -- History on the other enrollment must not consume the selected entitlement.
-insert into public.peer_sessions
-  (peer_coach_id, peer_coachee_id, enrollment_id, topic, start_time, duration_minutes, status)
-values
-  ('b1000000-0000-4000-8000-000000000002',
-   'b1000000-0000-4000-8000-000000000001',
-   'b1000000-0000-4000-8000-000000000022',
-   'other enrollment history',now(),30,'completed');
+select public.book_peer_session(
+  'b1000000-0000-4000-8000-000000000002',
+  'b1000000-0000-4000-8000-000000000022',
+  'other enrollment history',now(),30,null);
+reset role;
 -- Preserve the one-ongoing-enrollment invariant while exercising the
 -- enrollment trigger: history is created while its receiver enrollment is
 -- ongoing, then that historical enrollment is closed before selection.
@@ -53,10 +58,6 @@ where id='b1000000-0000-4000-8000-000000000022';
 update public.programme_enrollments
 set status='active'::public.enrollment_status
 where id='b1000000-0000-4000-8000-000000000021';
-
-select set_config('request.jwt.claim.sub','b1000000-0000-4000-8000-000000000001',true);
-select set_config('request.jwt.claim.role','authenticated',true);
-set local role authenticated;
 
 select is(
   public.can_book_peer_session(

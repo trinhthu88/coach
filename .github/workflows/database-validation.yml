@@ -1,11 +1,17 @@
 name: Database validation
 
 on:
+  push:
+    branches:
+      - remediation/p0-p1
   pull_request:
+    branches:
+      - remediation/p0-p1
     paths:
       - 'supabase/**'
       - 'src/integrations/supabase/types.ts'
       - 'scripts/validate-db.sh'
+      - 'scripts/validate-local-auth.mjs'
       - 'package*.json'
       - '.github/workflows/database-validation.yml'
   workflow_dispatch:
@@ -16,14 +22,51 @@ jobs:
     timeout-minutes: 45
     env:
       SUPABASE_CLI_VERSION: '2.117.0'
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout triggering commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify checked-out SHA
+        env:
+          EXPECTED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          echo "Expected SHA: $EXPECTED_SHA"
+          echo "Checked out SHA: $(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      - name: Verify Supabase CLI
+        run: |
+          command -v supabase
+          supabase --version
+
       - run: npm ci
-      - run: npm run validate:db
+
+      - name: Replay migrations and run database validation
+        env:
+          SUPABASE_CLI_BIN: supabase
+        run: npm run validate:db
+
+      - name: Capture Supabase diagnostics on failure
+        if: failure()
+        run: |
+          supabase status || true
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
+          for container in $(docker ps -aq --filter name=supabase_); do
+            docker logs --tail 200 "$container" || true
+          done
 
       - name: Preserve generated schema types for review
         if: always()

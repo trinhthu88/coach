@@ -117,9 +117,11 @@ export default function BookSession() {
           supabase
             .from("coach_profiles")
             .select(
-              "id, title, specialties, years_experience, country_based, nationality, rating_avg, sessions_completed, diplomas_certifications, peer_coaching_opt_in, profiles!inner(full_name, avatar_url, bio)"
+               "id, title, specialties, years_experience, country_based, nationality, rating_avg, sessions_completed, diplomas_certifications, peer_coaching_opt_in, approval_status, profiles!inner(full_name, avatar_url, bio, status)"
             )
             .eq("id", coachId)
+            .eq("approval_status", "active")
+            .eq("profiles.status", "active")
             .maybeSingle(),
           slotQuery,
         ]);

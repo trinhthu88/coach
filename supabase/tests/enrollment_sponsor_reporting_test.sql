@@ -58,7 +58,7 @@ select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regpro
   'enrollment percentages are capped');
 select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'booked_units',
   'booked units remain distinct from completed units');
-select ok(pg_get_functiondef('public.get_enrollment_progress(uuid,date)'::regprocedure) ~ 'least\(count',
+select ok(pg_get_functiondef('public.get_enrollment_progress(uuid,date)'::regprocedure) ~ 'least\(raw_booked',
   'booked units are bounded to remaining required units');
 select ok(pg_get_functiondef('public.sponsor_enrollment_summaries(uuid)'::regprocedure) ~ 'greatest\(0, coalesce\(pr.due_units',
   'overdue remains due minus completed even when booked');
