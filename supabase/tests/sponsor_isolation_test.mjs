@@ -203,6 +203,9 @@ async function checkDirectAccess(email, leaderId, enrollmentId, programmeId) {
 async function cleanup() {
   console.log("\nCleaning up fixtures...");
   for (const id of created.sessionIds) await admin.from("sessions").delete().eq("id", id);
+  for (const id of created.enrollmentIds) {
+    await admin.from("session_activity_attributions").delete().eq("enrollment_id", id);
+  }
   for (const id of created.goalIds) await admin.from("coachee_goal_ratings").delete().eq("goal_id", id);
   for (const id of created.goalIds) await admin.from("coachee_goals").delete().eq("id", id);
   for (const id of created.enrollmentIds) await admin.from("programme_enrollments").delete().eq("id", id);

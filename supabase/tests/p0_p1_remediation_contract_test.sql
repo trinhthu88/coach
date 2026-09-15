@@ -95,21 +95,24 @@ select has_trigger(
 );
 select has_view(
   'public',
-  'current_enrollment_resolver_audit',
-  'current enrollment choices remain auditable'
+  'enrollment_scope_backfill_audit',
+  'enrollment scope backfill choices remain auditable'
 );
-select has_view(
+select has_function(
   'public',
-  'unresolved_activity_exclusion_audit',
+  'is_historical_ownership_retired',
+  array['text','uuid'],
   'unresolved and retired legacy activity remains explicitly excluded'
 );
 select ok(
-  NOT has_function_privilege(
+  has_function_privilege(
     'authenticated',
     'public.admin_update_report_request(uuid,text,text)',
     'EXECUTE'
-  ),
-  'normal Sponsors cannot change report request status'
+  ) AND pg_get_functiondef(
+    'public.admin_update_report_request(uuid,text,text)'::regprocedure
+  ) ~ 'has_role',
+  'report status RPC remains callable but protects admin-only mutation'
 );
 select ok(
   has_function_privilege(

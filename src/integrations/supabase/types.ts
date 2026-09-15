@@ -9,39 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      session_activity_attributions: {
-        Row: {
-          id: string
-          enrollment_id: string
-          module: Database["public"]["Enums"]["programme_module_type"]
-          source_activity_type: string
-          source_activity_id: string
-          occurred_on: string
-          milestone_id: string | null
-          attributed_at: string
-        }
-        Insert: {
-          id?: string
-          enrollment_id: string
-          module: Database["public"]["Enums"]["programme_module_type"]
-          source_activity_type: string
-          source_activity_id: string
-          occurred_on: string
-          milestone_id?: string | null
-          attributed_at?: string
-        }
-        Update: {
-          id?: string
-          enrollment_id?: string
-          module?: Database["public"]["Enums"]["programme_module_type"]
-          source_activity_type?: string
-          source_activity_id?: string
-          occurred_on?: string
-          milestone_id?: string | null
-          attributed_at?: string
-        }
-        Relationships: []
-      }
       access_requests: {
         Row: {
           company: string | null
@@ -2681,6 +2648,54 @@ export type Database = {
           },
         ]
       }
+      session_activity_attributions: {
+        Row: {
+          attributed_at: string
+          enrollment_id: string
+          id: string
+          milestone_id: string | null
+          module: Database["public"]["Enums"]["programme_module_type"]
+          occurred_on: string
+          source_activity_id: string
+          source_activity_type: string
+        }
+        Insert: {
+          attributed_at?: string
+          enrollment_id: string
+          id?: string
+          milestone_id?: string | null
+          module: Database["public"]["Enums"]["programme_module_type"]
+          occurred_on: string
+          source_activity_id: string
+          source_activity_type: string
+        }
+        Update: {
+          attributed_at?: string
+          enrollment_id?: string
+          id?: string
+          milestone_id?: string | null
+          module?: Database["public"]["Enums"]["programme_module_type"]
+          occurred_on?: string
+          source_activity_id?: string
+          source_activity_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_activity_attributions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_activity_attributions_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "enrollment_module_milestones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_attachments: {
         Row: {
           created_at: string
@@ -2964,6 +2979,74 @@ export type Database = {
             foreignKeyName: "sponsor_profiles_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sponsor_report_requests: {
+        Row: {
+          admin_notes: string | null
+          cohort_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          request_notes: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          cohort_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          request_notes?: string | null
+          requested_by: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          cohort_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          request_notes?: string | null
+          requested_by?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsor_report_requests_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsor_report_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsor_report_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sponsor_report_requests_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -3668,97 +3751,6 @@ export type Database = {
       }
     }
     Functions: {
-      admin_update_coach_configuration: {
-        Args: {
-          p_coach_id: string
-          p_full_name: string
-          p_profile_status: string
-          p_selectable_coach_ids?: string[]
-          p_enrollment_id?: string | null
-          p_programme_id?: string | null
-          p_cohort_id?: string | null
-          p_organization_id?: string | null
-        }
-        Returns: undefined
-      }
-      sponsor_list_report_requests: {
-        Args: Record<string, never>
-        Returns: {
-          id: string
-          organization_id: string
-          cohort_id: string
-          requested_by: string
-          status: string
-          request_notes: string | null
-          admin_notes: string | null
-          updated_by: string | null
-          created_at: string
-          updated_at: string
-        }[]
-      }
-      sponsor_submit_report_request: {
-        Args: { p_cohort_id: string; p_request_notes?: string | null }
-        Returns: {
-          id: string
-          organization_id: string
-          cohort_id: string
-          requested_by: string
-          status: string
-          request_notes: string | null
-          admin_notes: string | null
-          updated_by: string | null
-          created_at: string
-          updated_at: string
-        }
-      }
-      admin_list_report_requests: {
-        Args: Record<string, never>
-        Returns: {
-          id: string
-          organization_id: string
-          cohort_id: string
-          requested_by: string
-          status: string
-          request_notes: string | null
-          admin_notes: string | null
-          updated_by: string | null
-          created_at: string
-          updated_at: string
-          organization_name: string
-          cohort_name: string
-          requester_name: string
-        }[]
-      }
-      admin_update_report_request: {
-        Args: { p_request_id: string; p_status: string; p_admin_notes?: string | null }
-        Returns: {
-          id: string
-          organization_id: string
-          cohort_id: string
-          requested_by: string
-          status: string
-          request_notes: string | null
-          admin_notes: string | null
-          updated_by: string | null
-          created_at: string
-          updated_at: string
-        }
-      }
-      attribute_activity_to_cadence_milestone: {
-        Args: {
-          p_enrollment_id: string
-          p_module: string
-          p_activity_id: string
-          p_occurred_on: string
-        }
-        Returns: string | null
-      }
-      resolve_current_enrollment: {
-        Args: {
-          p_user_id: string
-        }
-        Returns: string | null
-      }
       admin_create_programme_enrollment: {
         Args: {
           p_cohort_id: string
@@ -3790,6 +3782,58 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_list_report_requests: {
+        Args: never
+        Returns: {
+          admin_notes: string
+          cohort_id: string
+          cohort_name: string
+          created_at: string
+          id: string
+          organization_id: string
+          organization_name: string
+          request_notes: string
+          requested_by: string
+          requester_name: string
+          status: string
+          updated_at: string
+          updated_by: string
+        }[]
+      }
+      admin_update_coach_configuration: {
+        Args: {
+          p_coach_id: string
+          p_cohort_id?: string
+          p_enrollment_id?: string
+          p_full_name: string
+          p_organization_id?: string
+          p_profile_status: string
+          p_programme_id?: string
+          p_selectable_coach_ids?: string[]
+        }
+        Returns: undefined
+      }
+      admin_update_report_request: {
+        Args: { p_admin_notes?: string; p_request_id: string; p_status: string }
+        Returns: {
+          admin_notes: string | null
+          cohort_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          request_notes: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sponsor_report_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assert_enrollment_schedule_backfill_ready: {
         Args: never
         Returns: undefined
@@ -3801,6 +3845,15 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      attribute_activity_to_cadence_milestone: {
+        Args: {
+          p_activity_id: string
+          p_enrollment_id: string
+          p_module: string
+          p_occurred_on: string
+        }
+        Returns: string
       }
       backfill_enrollment_actions: { Args: never; Returns: number }
       backfill_enrollment_schedule_snapshots: {
@@ -4137,11 +4190,11 @@ export type Database = {
         Returns: boolean
       }
       is_active_coach_profile: { Args: { _id: string }; Returns: boolean }
-      is_coach_eligible: { Args: { p_coach_id: string }; Returns: boolean }
       is_allowlisted_pair: {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
+      is_coach_eligible: { Args: { p_coach_id: string }; Returns: boolean }
       is_historical_ownership_retired: {
         Args: { p_domain: string; p_record_id: string }
         Returns: boolean
@@ -4210,6 +4263,10 @@ export type Database = {
       }
       refresh_all_progress_pct: { Args: never; Returns: number }
       remove_own_coachee: { Args: { _coachee_id: string }; Returns: boolean }
+      resolve_current_enrollment: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       save_enrollment_activity_actions: {
         Args: {
           p_actions: Json
@@ -4304,6 +4361,27 @@ export type Database = {
           triad_completed_count: number
         }[]
       }
+      sponsor_list_report_requests: {
+        Args: never
+        Returns: {
+          admin_notes: string | null
+          cohort_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          request_notes: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "sponsor_report_requests"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       sponsor_min_leaders_for_distribution: { Args: never; Returns: number }
       sponsor_organisation_summary: {
         Args: never
@@ -4346,6 +4424,45 @@ export type Database = {
           cohort_id: string
           rated_session_count: number
         }[]
+      }
+      sponsor_submit_report_request: {
+        Args: { p_cohort_id: string; p_request_notes?: string }
+        Returns: {
+          admin_notes: string | null
+          cohort_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          request_notes: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sponsor_report_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      transition_session_status: {
+        Args: {
+          p_action: string
+          p_kind: string
+          p_reason?: string
+          p_session_id: string
+        }
+        Returns: Database["public"]["Enums"]["session_status"]
+      }
+      update_session_notes: {
+        Args: {
+          p_field: string
+          p_kind: string
+          p_session_id: string
+          p_value: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
