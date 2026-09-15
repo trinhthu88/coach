@@ -302,6 +302,8 @@
     "srLabelSuffix": "leader detail",
     "backToRoster": "Back to roster",
     "description": "Sponsor-safe participation, progress, and outcome summary.",
+    "notFound": "Leader detail unavailable",
+    "notFoundDescription": "This leader is not available in the selected sponsor-safe cohort view.",
     "overview": "At a glance",
     "ongoing": "ongoing",
     "kpis": {

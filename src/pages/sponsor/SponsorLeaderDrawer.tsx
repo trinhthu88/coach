@@ -37,6 +37,25 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
   const { t } = useTranslation("sponsor");
   if (!leader) return null;
 
+  return (
+    <Sheet open={!!leader} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent side="right" className="w-full max-w-2xl overflow-y-auto border-l border-[#e6dfd4] bg-[#fcfaf7] p-0">
+        <SheetTitle className="sr-only">{leader.learner_display_name} — {t("leaderDrawer.srLabelSuffix")}</SheetTitle>
+        <SheetDescription className="sr-only">{t("leaderDrawer.description")}</SheetDescription>
+        <SponsorLeaderProfile leader={leader} onBack={onClose} />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+export function SponsorLeaderProfile({
+  leader,
+  onBack,
+}: {
+  leader: SponsorRosterRow;
+  onBack: () => void;
+}) {
+  const { t } = useTranslation("sponsor");
   const completionPct = clamp(leader.full_completion_pct ?? 0);
   const adherencePct = clamp(leader.due_adherence_pct ?? 0);
   const coveragePct = clamp(leader.schedule_coverage_pct ?? 0);
@@ -49,36 +68,32 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
   ].filter((item): item is string => Boolean(item));
 
   return (
-    <Sheet open={!!leader} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <SheetContent side="right" className="w-full max-w-2xl overflow-y-auto border-l border-[#e6dfd4] bg-[#fcfaf7] p-0">
-        <SheetTitle className="sr-only">{leader.learner_display_name} — {t("leaderDrawer.srLabelSuffix")}</SheetTitle>
-        <SheetDescription className="sr-only">{t("leaderDrawer.description")}</SheetDescription>
-
-        <header className="relative overflow-hidden bg-secondary px-6 pb-7 pt-5 text-white sm:px-8">
-          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full border-[26px] border-white/5" />
-          <button onClick={onClose} className="relative mb-7 inline-flex items-center gap-1.5 text-[11px] font-semibold text-white/60 transition-colors hover:text-white">
-            <X className="h-3.5 w-3.5" /> {t("leaderDrawer.backToRoster")}
-          </button>
-          <div className="relative flex items-start justify-between gap-5">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[20px] bg-white/15 font-display text-2xl font-light text-white">
-                {initials(leader.learner_display_name)}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate font-display text-[1.65rem] font-light leading-tight">{leader.learner_display_name}</p>
-                <p className="mt-1 truncate text-[11px] text-white/60">{leader.cohort_label || "—"} · {leader.programme_label}</p>
-                <p className="mt-1 text-[10px] text-white/45">
-                  {formatDate(leader.enrollment_start_date)} — {leader.enrollment_end_date ? formatDate(leader.enrollment_end_date) : t("leaderDrawer.ongoing")}
-                </p>
-              </div>
+    <div className="min-h-full overflow-hidden bg-[#fcfaf7]">
+      <header className="relative overflow-hidden bg-secondary px-6 pb-7 pt-5 text-white sm:px-8 lg:px-12">
+        <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full border-[26px] border-white/5" />
+        <button onClick={onBack} className="relative mb-7 inline-flex items-center gap-1.5 text-[11px] font-semibold text-white/60 transition-colors hover:text-white">
+          <X className="h-3.5 w-3.5" /> {t("leaderDrawer.backToRoster")}
+        </button>
+        <div className="relative flex items-start justify-between gap-5">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[20px] bg-white/15 font-display text-2xl font-light text-white">
+              {initials(leader.learner_display_name)}
             </div>
-            <Pill tone={STATUS_TONE[leader.enrollment_status]}>
-              {t(`status.${STATUS_LABEL_KEY[leader.enrollment_status]}`)}
-            </Pill>
+            <div className="min-w-0">
+              <p className="truncate font-display text-[1.65rem] font-light leading-tight">{leader.learner_display_name}</p>
+              <p className="mt-1 truncate text-[11px] text-white/60">{leader.cohort_label || "—"} · {leader.programme_label}</p>
+              <p className="mt-1 text-[10px] text-white/45">
+                {formatDate(leader.enrollment_start_date)} — {leader.enrollment_end_date ? formatDate(leader.enrollment_end_date) : t("leaderDrawer.ongoing")}
+              </p>
+            </div>
           </div>
-        </header>
+          <Pill tone={STATUS_TONE[leader.enrollment_status]}>
+            {t(`status.${STATUS_LABEL_KEY[leader.enrollment_status]}`)}
+          </Pill>
+        </div>
+      </header>
 
-        <div className="space-y-6 px-5 py-6 sm:px-8">
+      <div className="mx-auto max-w-6xl space-y-6 px-5 py-6 sm:px-8 lg:px-12 lg:py-8">
           <section>
             <SectionEyebrow icon={Sparkles} label={t("leaderDrawer.overview")} />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -174,9 +189,8 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
             </ul>
             <p className="mt-4 text-[10px] italic text-muted-foreground">{t("leaderDrawer.sameViewNote")}</p>
           </section>
-        </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </div>
   );
 }
 
