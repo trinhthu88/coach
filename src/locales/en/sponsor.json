@@ -210,13 +210,24 @@
       "subtitle": "Rolled up across everything you sponsor, then split by cohort."
     },
     "rolledUpLabel": "Rolled up · all cohorts",
+    "rolledUpDescription": "A privacy-safe view of participation and progress across every cohort in your organisation.",
+    "backToDashboard": "Back to dashboard",
+    "cardEyebrow": "Your cohorts",
+    "cardTitle": "Programme groups",
+    "cardCount": "cohorts",
     "kpis": {
       "leadersEnrolled": "Leaders enrolled",
       "onTrack": "On track",
       "atRisk": "At risk",
-      "sessionsUsed": "Sessions used",
-      "avgGoalGrowth": "Avg goal growth"
+      "sessionsUsed": "Units used",
+      "avgGoalGrowth": "Avg goal growth",
+      "onTrackSub": "of {{total}} leaders",
+      "atRiskSub": "enrollment status",
+      "sessionsSub": "completed / allocated"
     },
+    "active": "Active",
+    "complete": "Complete",
+    "suppressedLabel": "Suppressed",
     "unnamedCohort": "Unnamed cohort",
     "leaderCount_one": "{{count}} leader",
     "leaderCount_other": "{{count}} leaders",
@@ -226,6 +237,14 @@
     "sessions": "Sessions",
     "avgGrowth": "Avg growth",
     "growthPct": "{{n}}% progressing",
+    "completion": "Completion",
+    "satisfaction": "Rating",
+    "booked": "Booked",
+    "goals": "Goals set",
+    "actions": "Actions",
+    "riskCount_one": "{{count}} at risk",
+    "riskCount_other": "{{count}} at risk",
+    "noRisk": "No leaders at risk",
     "suppressed": "Suppressed <{{min}}",
     "noRatingsYet": "No ratings yet",
     "suppressedNote": "Breakdowns suppressed — under {{min}} leaders. View rolled up across all cohorts above.",
@@ -282,6 +301,65 @@
   "leaderDrawer": {
     "srLabelSuffix": "leader detail",
     "backToRoster": "Back to roster",
+    "description": "Sponsor-safe participation, progress, and outcome summary.",
+    "overview": "At a glance",
+    "ongoing": "ongoing",
+    "kpis": {
+      "completion": "Completion",
+      "adherence": "Cadence",
+      "sessions": "Units completed",
+      "sessionsSub": "of {{total}} allocated",
+      "booked": "Booked",
+      "bookedSub": "upcoming units",
+      "goals": "Goal progress",
+      "goalsSub": "{{count}} goals set",
+      "satisfaction": "Satisfaction",
+      "ratings": "{{count}} rated sessions"
+    },
+    "journey": {
+      "title": "Programme journey",
+      "started": "Started",
+      "inProgress": "In progress",
+      "current": "Current pace",
+      "complete": "Complete"
+    },
+    "progress": {
+      "completion": "Programme completion",
+      "adherence": "Due-to-date adherence",
+      "coverage": "Schedule coverage",
+      "goal": "Goal progress"
+    },
+    "participation": {
+      "title": "Participation & activity",
+      "coaching": "Coaching",
+      "mentoring": "Mentoring",
+      "peer": "Peer practice",
+      "triads": "Triads",
+      "note": "Counts show sponsor-safe participation only. Session notes and private coaching content are not included."
+    },
+    "coaching": {
+      "title": "Coaching usage",
+      "completed": "completed",
+      "note": "The sponsor-safe summary returns completed coaching activity, but not a coaching-only allocation denominator."
+    },
+    "goal": {
+      "title": "Goal progress",
+      "current": "Current self-rated progress",
+      "note": "Goal wording and personal reflections remain private. This view shows only the aggregate progress signal returned by the sponsor contract."
+    },
+    "satisfaction": {
+      "title": "Satisfaction",
+      "rated": "Based on {{count}} rated sessions.",
+      "none": "No rated sessions yet."
+    },
+    "attention": {
+      "title": "Attention items",
+      "atRisk": "Enrollment is marked at risk.",
+      "overdue": "{{count}} units are overdue.",
+      "actions": "{{count}} open actions remain.",
+      "adherence": "Due-to-date adherence is below 70%.",
+      "none": "No attention items from the sponsor-safe data available."
+    },
     "withheld": {
       "sessionNotes": "Session notes and coaching summaries",
       "chatMessages": "Chat messages between leader and coach",

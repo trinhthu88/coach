@@ -10,3 +10,4 @@
 - [Supabase migration versioning](supabase-mcp-migration-versioning.md) — supported MCP apply assigns current timestamp versions instead of preserving migration filenames; verify the ledger before rollout.
 - [Training timeline enrollment scope](training-timeline-scope.md) — timeline readers must use the selected enrollment; active-programme joins can mix training across programmes.
 - [Sponsor aggregation population](sponsor-aggregation-population.md) — organization counts include sponsor-visible suppressed cohorts; detailed metrics stay threshold-aware.
+- [Demo activity attribution](demo-activity-attribution.md) — pre-trigger demo activity needs ownership-safe cadence attribution before progress metrics can consume it.

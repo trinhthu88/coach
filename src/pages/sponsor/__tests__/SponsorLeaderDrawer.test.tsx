@@ -1,0 +1,58 @@
+import { describe, expect, it, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import "@/i18n/config";
+import i18n from "@/i18n/config";
+import { SponsorLeaderDrawer } from "../SponsorLeaderDrawer";
+import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
+
+const leader = {
+  enrollment_id: "enrollment-1",
+  learner_display_name: "Priya Shah",
+  programme_label: "Executive Coaching",
+  cohort_id: "cohort-1",
+  cohort_label: "Leadership cohort",
+  enrollment_status: "active",
+  enrollment_start_date: "2026-01-01",
+  enrollment_end_date: "2026-12-31",
+  required_units: 24,
+  completed_units: 12,
+  due_units: 12,
+  booked_units: 2,
+  overdue_units: 0,
+  full_completion_pct: 50,
+  due_adherence_pct: 100,
+  schedule_coverage_pct: 100,
+  pace_status: "on_track",
+  coaching_completed_count: 5,
+  mentoring_completed_count: 2,
+  peer_completed_count: 1,
+  triad_completed_count: 0,
+  goal_count: 2,
+  goal_setup: true,
+  goal_progress_pct: 68,
+  open_action_count: 1,
+  total_action_count: 3,
+  completed_action_count: 2,
+  action_completion_pct: 66.7,
+  satisfaction_avg: 4.4,
+  satisfaction_rated_count: 4,
+} as SponsorRosterRow;
+
+describe("SponsorLeaderDrawer", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("renders the sponsor-safe leader detail hierarchy without private content", () => {
+    render(<SponsorLeaderDrawer leader={leader} onClose={() => undefined} />);
+
+    expect(screen.getByText("Priya Shah")).toBeInTheDocument();
+    expect(screen.getByText("At a glance")).toBeInTheDocument();
+    expect(screen.getByText("Programme journey")).toBeInTheDocument();
+    expect(screen.getByText("Participation & activity")).toBeInTheDocument();
+    expect(screen.getByText("Attention items")).toBeInTheDocument();
+    expect(screen.getByText("This is everything you can see")).toBeInTheDocument();
+    expect(screen.queryByText("A confidential coaching note")).not.toBeInTheDocument();
+    expect(screen.queryByText("Priya's private goal wording")).not.toBeInTheDocument();
+  });
+});
