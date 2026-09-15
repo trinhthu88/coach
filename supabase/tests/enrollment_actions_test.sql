@@ -4,13 +4,28 @@ insert into auth.users(id,email,raw_user_meta_data) values
  ('a5000000-0000-4000-8000-000000000001','actions-learner@example.test','{"full_name":"Action learner"}'),
  ('a5000000-0000-4000-8000-000000000002','actions-provider@example.test','{"full_name":"Action provider"}'),
  ('a5000000-0000-4000-8000-000000000003','actions-outsider@example.test','{"full_name":"Action outsider"}');
+insert into public.user_roles(user_id,role)
+values ('a5000000-0000-4000-8000-000000000002','coach');
+insert into public.coach_profiles(id,approval_status,peer_coaching_opt_in)
+values ('a5000000-0000-4000-8000-000000000002','active',true);
 insert into public.programmes(id,name,duration_months) values ('a5000000-0000-4000-8000-000000000010','Action test',3);
+insert into public.programme_modules(programme_id,module,enabled,config)
+values ('a5000000-0000-4000-8000-000000000010','coaching',true,
+  '{"required":true,"required_units":1,"receive_limit":4,"distribution_mode":"flexible"}');
 insert into public.cohorts(id,name,programme_id,start_date,end_date) values ('a5000000-0000-4000-8000-000000000020','Action cohort','a5000000-0000-4000-8000-000000000010','2026-01-01','2026-04-01');
 insert into public.programme_enrollments(id,user_id,programme_id,cohort_id,start_date,end_date,status) values
  ('a5000000-0000-4000-8000-000000000031','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000010','a5000000-0000-4000-8000-000000000020','2026-01-01','2026-04-01','active'),
  ('a5000000-0000-4000-8000-000000000032','a5000000-0000-4000-8000-000000000003','a5000000-0000-4000-8000-000000000010','a5000000-0000-4000-8000-000000000020','2026-01-01','2026-04-01','active');
+insert into public.coachee_coach_allowlist(coachee_id,coach_id)
+values
+ ('a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000002'),
+ ('a5000000-0000-4000-8000-000000000003','a5000000-0000-4000-8000-000000000002');
+select set_config('request.jwt.claim.sub','a5000000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status,action_items) values
-  ('a5000000-0000-4000-8000-000000000041','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Action session','2026-02-01',60,'confirmed','[{"text":"Legacy linked action","done":true,"milestone_id":"a5000000-0000-4000-8000-000000000060"},{"text":"Broken date action","due_date":"not-a-date"}]'),
+  ('a5000000-0000-4000-8000-000000000041','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Action session','2026-02-01',60,'confirmed','[{"text":"Legacy linked action","done":true,"milestone_id":"a5000000-0000-4000-8000-000000000060"},{"text":"Broken date action","due_date":"not-a-date"}]');
+select set_config('request.jwt.claim.sub','a5000000-0000-4000-8000-000000000003',true);
+insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status,action_items) values
   ('a5000000-0000-4000-8000-000000000042','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000003','a5000000-0000-4000-8000-000000000032','Other action session','2026-02-02',60,'confirmed','[]');
 insert into public.coachee_goals(id,coachee_id,enrollment_id,title) values
  ('a5000000-0000-4000-8000-000000000051','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Goal one'),

@@ -21,6 +21,9 @@ values ('a3000000-0000-0000-0000-000000000003', 'coach');
 
 insert into public.coach_profiles (id, approval_status, peer_coaching_opt_in)
 values ('a3000000-0000-0000-0000-000000000003', 'active', true);
+update public.profiles
+set peer_coaching_opt_in = true
+where id = 'a2000000-0000-0000-0000-000000000002';
 
 insert into public.programmes (id, name, duration_months)
 values ('c1000000-0000-0000-0000-000000000001', 'Schedule progress test programme', 3);
@@ -54,14 +57,21 @@ values
 
 insert into public.programme_modules (programme_id, module, enabled, config)
 values
-  ('c1000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":3,"distribution_mode":"flexible","distribution_settings":{}}'),
-  ('c1000000-0000-0000-0000-000000000001', 'peer_coaching', true, '{"required":true,"required_units":3,"distribution_mode":"evenly_distributed","distribution_settings":{}}'),
-  ('c1000000-0000-0000-0000-000000000001', 'mentoring', true, '{"required":true,"required_units":3,"distribution_mode":"monthly_frequency","distribution_settings":{"interval_months":1}}'),
-  ('c1000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":3,"distribution_mode":"custom","distribution_settings":{"milestones":[{"due_on":"2026-01-15","required_units":1},{"due_on":"2026-03-15","window_end_on":"2026-03-20","required_units":2}]}}'),
+  ('c1000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":3,"receive_limit":3,"distribution_mode":"flexible","distribution_settings":{}}'),
+  ('c1000000-0000-0000-0000-000000000001', 'peer_coaching', true, '{"required":true,"required_units":3,"receive_limit":3,"monthly_limit":3,"distribution_mode":"evenly_distributed","distribution_settings":{}}'),
+  ('c1000000-0000-0000-0000-000000000001', 'mentoring', true, '{"required":true,"required_units":3,"receive_limit":3,"distribution_mode":"monthly_frequency","distribution_settings":{"interval_months":1}}'),
+  ('c1000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":3,"max_triads":3,"distribution_mode":"custom","distribution_settings":{"milestones":[{"due_on":"2026-01-15","required_units":1},{"due_on":"2026-03-15","window_end_on":"2026-03-20","required_units":2}]}}'),
   ('c1000000-0000-0000-0000-000000000001', 'training', true, jsonb_build_object('required', true, 'required_units', 2, 'distribution_mode', 'training_linked', 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f1000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000002')))),
   ('c1000000-0000-0000-0000-000000000001', 'quiz', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}'),
   ('c1000000-0000-0000-0000-000000000001', 'daily_prompt', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}'),
   ('c1000000-0000-0000-0000-000000000001', 'assessment', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}');
+
+insert into public.coachee_coach_allowlist(coachee_id, coach_id)
+values ('a1000000-0000-0000-0000-000000000001','a3000000-0000-0000-0000-000000000003');
+insert into public.mentor_profiles(coach_user_id,is_active,bio)
+values ('a3000000-0000-0000-0000-000000000003',true,'Schedule test mentor');
+insert into public.mentoring_allowlist(mentee_user_id,mentor_user_id)
+values ('a1000000-0000-0000-0000-000000000001','a3000000-0000-0000-0000-000000000003');
 
 select public.generate_enrollment_schedule('e1000000-0000-0000-0000-000000000001');
 
@@ -265,6 +275,8 @@ select throws_ok(
   'training-linked schedules reject training weeks from another programme'
 );
 
+select set_config('request.jwt.claim.sub', 'a1000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
 insert into public.sessions (coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id)
 values
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Past completed coaching', '2026-01-20 10:00:00+00', 60, 'completed', 'e1000000-0000-0000-0000-000000000001'),
