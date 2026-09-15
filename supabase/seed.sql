@@ -147,12 +147,16 @@ BEGIN
     INSERT INTO public.coachee_coach_allowlist(coachee_id,coach_id,created_by)
       VALUES(uid,coach,admin_id)
       ON CONFLICT(coachee_id,coach_id) DO NOTHING;
-    INSERT INTO sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
-      VALUES(('55555555-5555-4555-8555-'||lpad(i::text,12,'0'))::uuid,eid,coach,uid,'Demo coaching session',
-        CASE WHEN i=4 THEN '2026-11-20'::date WHEN i=10 THEN '2027-02-01'::date ELSE '2026-09-20'::date END,60,
-        CASE WHEN i IN (4,10) THEN 'confirmed'::session_status ELSE 'completed'::session_status END,
-        CASE WHEN i=10 THEN NULL ELSE 4 END)
-      ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status=excluded.status;
+    IF NOT EXISTS (
+      SELECT 1 FROM sessions
+      WHERE id=('55555555-5555-4555-8555-'||lpad(i::text,12,'0'))::uuid
+    ) THEN
+      INSERT INTO sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
+        VALUES(('55555555-5555-4555-8555-'||lpad(i::text,12,'0'))::uuid,eid,coach,uid,'Demo coaching session',
+          CASE WHEN i=4 THEN '2026-11-20'::date WHEN i=10 THEN '2027-02-01'::date ELSE '2026-09-20'::date END,60,
+          CASE WHEN i IN (4,10) THEN 'confirmed'::session_status ELSE 'completed'::session_status END,
+          CASE WHEN i=10 THEN NULL ELSE 4 END);
+    END IF;
     IF i=4 THEN
       INSERT INTO sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
         VALUES('55555555-5555-4555-8555-000000000041',eid,coach,uid,'A4 completed coverage','2026-09-20',60,'completed',4)
