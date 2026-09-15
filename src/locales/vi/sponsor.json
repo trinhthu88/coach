@@ -286,6 +286,10 @@
     },
     "reference": {
       "flagTeam": "Báo cho đội ngũ Clariva",
+      "programmeUnavailable": "Chưa có thông tin chương trình",
+      "show": "Hiện",
+      "hide": "Ẩn",
+      "of": "trên",
       "leaders": "lãnh đạo",
       "onTrack": "Đúng tiến độ",
       "atRisk": "Có nguy cơ",
@@ -296,7 +300,63 @@
       "pace": "Tiến độ",
       "units": "Đơn vị",
       "lastActive": "Hoạt động gần nhất"
-    }
+    },
+    "progressStrip": {
+      "enrolled": "Đã đăng ký",
+      "active": "Đang hoạt động",
+      "week": "Tuần {{current}} trên {{total}}",
+      "remaining": "còn {{count}} tuần"
+    },
+    "modules": {
+      "coaching": "Coaching",
+      "training": "Đào tạo / Học tập",
+      "peer": "Coaching đồng đẳng",
+      "mentoring": "Mentoring",
+      "triads": "Nhóm triad",
+      "completedSessions": "đã hoàn thành",
+      "completion": "hoàn thành",
+      "aggregateOnly": "Tóm tắt an toàn dành cho nhà tài trợ không bao gồm mẫu số theo module."
+    },
+    "attention": {
+      "label": "Cần chú ý",
+      "hint": "Lọc danh sách bên dưới",
+      "leaders": "Lãnh đạo cần chú ý",
+      "flagged": "Được đánh dấu trong tóm tắt nhóm",
+      "behind": "Chậm hơn tiến độ chương trình",
+      "pace": "So với tuần hiện tại của chương trình",
+      "coaching": "Chưa hoàn thành coaching",
+      "coachingSub": "Chưa có hoạt động coaching hiển thị cho nhà tài trợ",
+      "learning": "Hoàn thành học tập dưới 60%",
+      "learningSub": "Theo các đơn vị của chương trình",
+      "note": "Được xây dựng chỉ từ số liệu tóm tắt của nhóm. Ghi chú coaching, phản ánh và tin nhắn không bao giờ được chia sẻ với nhà tài trợ."
+    },
+    "details": {
+      "enrollment": "Đăng ký",
+      "programme": "Chương trình",
+      "modules": "Module",
+      "enrolled": "Đã đăng ký",
+      "active": "Đang hoạt động",
+      "paused": "Tạm dừng",
+      "completed": "Đã hoàn thành",
+      "startEnd": "Bắt đầu — kết thúc",
+      "currentWeek": "Tuần hiện tại",
+      "requiredUnits": "Đơn vị được cấp",
+      "completedUnits": "Đơn vị đã hoàn thành",
+      "dueUnits": "Đơn vị đến hạn",
+      "overdueUnits": "Đơn vị quá hạn",
+      "completion": "Hoàn thành chương trình",
+      "satisfaction": "Mức hài lòng trung bình",
+      "withheld": "Xu hướng tương tác theo tuần chưa có — cần một luồng báo cáo nhóm an toàn, hiện chưa thuộc hợp đồng dữ liệu."
+    },
+    "filters": {
+      "all": "Tất cả lãnh đạo {{count}}",
+      "attention": "Cần chú ý {{count}}",
+      "pace": "Chậm tiến độ {{count}}",
+      "coaching": "Chưa hoàn thành coaching {{count}}",
+      "learning": "Học tập dưới 60% {{count}}",
+      "empty": "Không có lãnh đạo phù hợp với bộ lọc này."
+    },
+    "rosterNote": "Tỷ lệ phần trăm là mức hoàn thành chương trình theo các đơn vị hiển thị cho nhà tài trợ. Các cột số lượng module là hoạt động đã hoàn thành; hợp đồng dữ liệu hiện tại không bao gồm định mức module."
   },
   "leaderDrawer": {
     "srLabelSuffix": "chi tiết lãnh đạo",

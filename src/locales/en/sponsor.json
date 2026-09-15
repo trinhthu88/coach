@@ -306,6 +306,10 @@
     },
     "reference": {
       "flagTeam": "Flag to Clariva team",
+      "programmeUnavailable": "Programme details unavailable",
+      "show": "Show",
+      "hide": "Hide",
+      "of": "of",
       "leaders": "leaders",
       "onTrack": "On track",
       "atRisk": "At risk",
@@ -316,7 +320,63 @@
       "pace": "Pace",
       "units": "Units",
       "lastActive": "Last active"
-    }
+    },
+    "progressStrip": {
+      "enrolled": "Enrolled",
+      "active": "Active",
+      "week": "Week {{current}} of {{total}}",
+      "remaining": "{{count}} weeks remaining"
+    },
+    "modules": {
+      "coaching": "Coaching",
+      "training": "Training / Learning",
+      "peer": "Peer coaching",
+      "mentoring": "Mentoring",
+      "triads": "Triads",
+      "completedSessions": "completed",
+      "completion": "completion",
+      "aggregateOnly": "Module-level denominator is not included in the sponsor-safe summary."
+    },
+    "attention": {
+      "label": "Needs attention",
+      "hint": "Filters the roster below",
+      "leaders": "Leaders needing attention",
+      "flagged": "Flagged by cohort summary",
+      "behind": "Behind expected programme pace",
+      "pace": "Against the current programme week",
+      "coaching": "Coaching not yet completed",
+      "coachingSub": "No sponsor-visible coaching completions",
+      "learning": "Learning completion below 60%",
+      "learningSub": "Of programme units",
+      "note": "Built from cohort summary figures only. Coaching notes, reflections and messages are never shared with sponsors."
+    },
+    "details": {
+      "enrollment": "Enrollment",
+      "programme": "Programme",
+      "modules": "Modules",
+      "enrolled": "Enrolled",
+      "active": "Active",
+      "paused": "Paused",
+      "completed": "Completed",
+      "startEnd": "Start — end",
+      "currentWeek": "Current week",
+      "requiredUnits": "Units entitled",
+      "completedUnits": "Units completed",
+      "dueUnits": "Units due so far",
+      "overdueUnits": "Units overdue",
+      "completion": "Programme completion",
+      "satisfaction": "Average satisfaction",
+      "withheld": "Weekly engagement trend is not available yet — it needs a privacy-safe cohort reporting feed that is not part of the current data contract."
+    },
+    "filters": {
+      "all": "All leaders {{count}}",
+      "attention": "Needs attention {{count}}",
+      "pace": "Behind pace {{count}}",
+      "coaching": "Coaching not completed {{count}}",
+      "learning": "Learning below 60% {{count}}",
+      "empty": "No leaders match this filter."
+    },
+    "rosterNote": "Percentages show programme completion against sponsor-visible units. Module count columns show completed sponsor-visible activity; module entitlements are not included in the current data contract."
   },
   "leaderDrawer": {
     "srLabelSuffix": "leader detail",
