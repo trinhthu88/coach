@@ -20,7 +20,7 @@ export default function SponsorCohortDetail() {
     <PageHeader eyebrow={t("cohortDetail.header.eyebrow")} title={t("cohortDetail.header.title")} emphasis={cohortLabel ?? "—"} subtitle={t("cohortDetail.header.subtitle")} />
     {suppressed && <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">Aggregate detail is suppressed to protect privacy.</div>}
     {!suppressed && <div className="grid gap-3 sm:grid-cols-4">
-       <Kpi label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.leaders_enrolled ?? 0} />
+       <Kpi label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.enrollment_count ?? 0} />
       <Kpi label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} />
       <Kpi label={t("dashboard.kpis.sessionsUsed")} value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`} />
        <Kpi label="Booked / overdue" value={`${kpis?.booked_units ?? 0} / ${kpis?.overdue_units ?? 0}`} />

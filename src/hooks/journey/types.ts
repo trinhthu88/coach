@@ -1,4 +1,5 @@
 import type { Tables } from "@/integrations/supabase/types";
+import type { EnrollmentActionItem } from "@/lib/enrollmentActions";
 
 export type Goal = Pick<
   Tables<"coachee_goals">,
@@ -14,8 +15,8 @@ export type GoalRating = Tables<"coachee_goal_ratings">;
 
 export type SessionGoalRating = Tables<"goal_checkins"> & { session_id: string; rating: number | null; coachee_id: string };
 
-export type SessionRow = Tables<"sessions">;
-export type PeerSessionRow = Tables<"peer_sessions">;
+export type SessionRow = Tables<"sessions"> & { enrollment_actions: EnrollmentActionItem[] };
+export type PeerSessionRow = Tables<"peer_sessions"> & { enrollment_actions: EnrollmentActionItem[] };
 
 export interface ProgrammeInfo {
   enrollmentId: string;

@@ -82,7 +82,7 @@ export default function AdminSessions() {
     setLoading(true);
     const [{ data: sessions }, { data: peerSessions }] = await Promise.all([
       supabase.from("sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, coach_id, coachee_id, created_at, coachee_rating, coachee_rating_comment").order("start_time", { ascending: false }),
-      supabase.from("peer_sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, provider_notes, receiver_notes, peer_coach_id, peer_coachee_id, created_at, receiver_rating, receiver_rating_comment").order("start_time", { ascending: false }),
+      supabase.from("peer_sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, peer_coach_id, peer_coachee_id, created_at, coachee_rating, coachee_rating_comment").order("start_time", { ascending: false }),
     ]);
 
     type RawRow = (Tables<"sessions"> | Tables<"peer_sessions">) & {
@@ -96,6 +96,10 @@ export default function AdminSessions() {
       kind: "peer" as const,
       coach_id: s.peer_coach_id,
       coachee_id: s.peer_coachee_id,
+      coach_notes: s.coach_notes,
+      coachee_notes: s.coachee_notes,
+      coachee_rating: s.coachee_rating,
+      coachee_rating_comment: s.coachee_rating_comment,
     })) as unknown as RawRow[];
     const all = [...coaching, ...peer].sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
 
@@ -179,8 +183,8 @@ export default function AdminSessions() {
             .update({
               ...commonUpdate,
               ...(isCancelling ? {} : { status: editing.status as Tables<"peer_sessions">["status"] }),
-              provider_notes: editing.coach_notes,
-              receiver_notes: editing.coachee_notes,
+              coach_notes: editing.coach_notes,
+              coachee_notes: editing.coachee_notes,
             })
             .eq("id", editing.id)
         : await supabase

@@ -22,6 +22,10 @@ interface EnrollmentOwnedActivity {
   enrollment_actions?: EnrollmentActionItem[];
 }
 
+type EnrichedEnrollmentActivity<T extends EnrollmentOwnedActivity> = Omit<T, "enrollment_actions"> & {
+  enrollment_actions: EnrollmentActionItem[];
+};
+
 interface StoredEnrollmentAction {
   id: string;
   enrollment_id: string;
@@ -38,7 +42,7 @@ interface StoredEnrollmentAction {
 export async function withEnrollmentActions<T extends EnrollmentOwnedActivity>(
   activities: T[],
   sourceActivityType: EnrollmentActionSource,
-): Promise<T[]> {
+): Promise<EnrichedEnrollmentActivity<T>[]> {
   const unscopedActivity = activities.find((activity) => !activity.enrollment_id);
   if (unscopedActivity) {
     throw new Error(
@@ -52,7 +56,9 @@ export async function withEnrollmentActions<T extends EnrollmentOwnedActivity>(
       .filter((id): id is string => Boolean(id)),
   )];
 
-  if (enrollmentIds.length === 0) return activities.map((activity) => ({ ...activity, enrollment_actions: [] }));
+  if (enrollmentIds.length === 0) {
+    return activities.map((activity) => ({ ...activity, enrollment_actions: [] }));
+  }
 
   const sourceIds = activities.map((activity) => activity.id);
   const baseQuery = supabase

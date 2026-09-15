@@ -32,9 +32,9 @@ async function fetchJourneySessions(coacheeId: string, includePeer: boolean, enr
           .order("start_time", { ascending: false })
       : Promise.resolve({ data: [] as PeerSessionRow[] }),
   ]);
-  const coachingSessions = await withEnrollmentActions(s || [], "coaching") as SessionRow[];
+  const coachingSessions = await withEnrollmentActions(s || [], "coaching");
   const peerSessions = includePeer
-    ? await withEnrollmentActions(peerResult.data || [], "peer_coaching") as PeerSessionRow[]
+    ? await withEnrollmentActions(peerResult.data || [], "peer_coaching")
     : [];
 
   const ids = new Set<string>();
@@ -113,8 +113,8 @@ export function useJourneySessions(coacheeId: string | undefined, options: Optio
     if (!sess) return;
     const items = [...(sess.enrollment_actions ?? [])];
     const cur = items[idx];
-    const norm = typeof cur === "string" ? { text: cur, done: false } : { ...(cur as object) };
-    (norm as { done?: boolean }).done = !(norm as { done?: boolean }).done;
+    if (!cur) return;
+    const norm = { ...cur, done: !cur.done };
     items[idx] = norm;
 
     // Optimistic update, reverted via refresh() in onError above (matches

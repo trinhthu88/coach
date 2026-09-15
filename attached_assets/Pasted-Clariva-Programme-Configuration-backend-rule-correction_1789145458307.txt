@@ -1,0 +1,101 @@
+Clariva Programme Configuration — backend rule correction + responsive admin redesign
+Work from the current production/main architecture. Do not redesign the enrollment-scoped architecture or weaken any existing enrollment, sponsor privacy, RLS, peer-cohort, or final enforcement rules.
+The current Programme Modules admin screen exposes several misleading/dead settings. Correct the underlying business logic first, then redesign the UI.
+Coaching
+Keep:
+- enabled
+- can give
+- can receive
+- maximum sessions given
+- maximum sessions received
+- Required / Optional
+- required coaching sessions
+- distribution mode
+Maximum values are hard caps. Required sessions are programme-completion targets. Required must not exceed the relevant maximum.
+Mentoring
+Same model:
+- can give / receive
+- max given / received
+- Required / Optional
+- required mentoring sessions
+- distribution
+Important: current programme_modules mentoring give_limit / receive_limit are stored but not used by booking, while separate mentoring limits are enforced elsewhere. Resolve this duplication safely. Establish one authoritative programme-level rule for new enrollment snapshots and booking enforcement, while preserving compatibility with existing production records. Do not silently reinterpret historical data.
+Peer Coaching
+Configure:
+- can give
+- can receive
+- maximum sessions given
+- maximum sessions received
+- Required / Optional
+- required peer coaching sessions
+- distribution
+Replace the ambiguous current monthly limit as the primary capacity control. Preserve existing same-cohort and enrollment-validity enforcement.
+Triads
+Configure:
+- maximum triad sessions per participant
+- Required / Optional
+- required triad sessions
+- distribution
+Remove/hide configurable Group size from the admin UI unless the backend truly supports it. Keep the existing valid Clariva triad structure.
+Rename Max triads to Maximum triad sessions per participant and make it an actual enforced cap.
+Required vs Optional
+Correct backend behavior:
+Required module:
+- contributes required milestones
+- counts toward full completion
+- counts toward due-to-date adherence
+- can make participant behind
+Optional module:
+- remains enabled/available
+- can still have maximum usage limits
+- creates no required completion obligation
+- does not reduce programme completion when unused
+- does not make participant behind
+Fix the authoritative progress calculation accordingly.
+Required units
+Keep the underlying required-units model because it drives schedules/progress, but use module-specific admin wording:
+- Required coaching sessions
+- Required mentoring sessions
+- Required peer coaching sessions
+- Required triad sessions
+Weight
+Hide Weight from normal admin configuration for now. Preserve stored historical/database values. Do not delete schema support. It currently has no active weighted-progress consumer.
+Validation
+Add validation:
+- all limits are non-negative integers
+- required targets are non-negative integers
+- when required, target must be > 0
+- required target must not exceed applicable maximum
+- invalid combinations cannot be saved
+UI redesign
+Redesign module cards responsively.
+Collapsed card should show a concise summary such as:
+Required · 4 sessions · Max 6 · Monthly
+Detailed settings open through Configure/expand.
+Group settings into:
+1. Participation
+2. Limits
+3. Programme requirement
+4. Scheduling
+Add short explanatory helper text for unfamiliar settings.
+Responsive:
+- max 2 module cards per row on normal desktop
+- 1 column on narrow widths
+- expanded settings use 2 columns when space allows, 1 column on mobile
+- do not compress labels/inputs like the current screen
+Testing
+Add/update tests covering:
+- Required vs Optional progress behavior
+- required ≤ maximum validation
+- coaching limits
+- mentoring limits
+- peer coaching limits
+- triad limits
+- booking/session creation cannot exceed caps
+- optional modules do not reduce completion/adherence
+- existing enrollment snapshots remain immutable
+- historical enrollment behavior is preserved
+- RLS/privacy/enrollment isolation regressions
+- responsive component behavior where practical
+Run full frontend, TypeScript, lint, build, database validation and relevant enrollment/progress tests.
+Do not deploy or publish automatically. Return the implementation summary, migrations if any, test results, and any migration/backward-compatibility risks before deployment.

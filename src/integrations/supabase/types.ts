@@ -124,7 +124,7 @@ export type Database = {
           answers: Json
           assignment_id: string
           correct_count: number | null
-          enrollment_id: string | null
+          enrollment_id: string
           id: string
           reflection_text: string | null
           score_pct: number | null
@@ -136,7 +136,7 @@ export type Database = {
           answers?: Json
           assignment_id: string
           correct_count?: number | null
-          enrollment_id?: string | null
+          enrollment_id: string
           id?: string
           reflection_text?: string | null
           score_pct?: number | null
@@ -148,7 +148,7 @@ export type Database = {
           answers?: Json
           assignment_id?: string
           correct_count?: number | null
-          enrollment_id?: string | null
+          enrollment_id?: string
           id?: string
           reflection_text?: string | null
           score_pct?: number | null
@@ -755,7 +755,7 @@ export type Database = {
           created_at: string
           current_rating: number | null
           current_updated_at: string
-          enrollment_id: string | null
+          enrollment_id: string
           goal_id: string
           id: string
           start_rating: number | null
@@ -767,7 +767,7 @@ export type Database = {
           created_at?: string
           current_rating?: number | null
           current_updated_at?: string
-          enrollment_id?: string | null
+          enrollment_id: string
           goal_id: string
           id?: string
           start_rating?: number | null
@@ -779,7 +779,7 @@ export type Database = {
           created_at?: string
           current_rating?: number | null
           current_updated_at?: string
-          enrollment_id?: string | null
+          enrollment_id?: string
           goal_id?: string
           id?: string
           start_rating?: number | null
@@ -912,7 +912,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           duration_minutes: number
-          enrollment_id: string | null
+          enrollment_id: string
           id: string
           meeting_url: string | null
           peer_provider_id: string
@@ -937,7 +937,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
-          enrollment_id?: string | null
+          enrollment_id: string
           id?: string
           meeting_url?: string | null
           peer_provider_id: string
@@ -962,7 +962,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number
-          enrollment_id?: string | null
+          enrollment_id?: string
           id?: string
           meeting_url?: string | null
           peer_provider_id?: string
@@ -1164,7 +1164,7 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           daily_prompt_id: string
-          enrollment_id: string | null
+          enrollment_id: string
           id: string
           opened_at: string | null
           responded_at: string | null
@@ -1175,7 +1175,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           daily_prompt_id: string
-          enrollment_id?: string | null
+          enrollment_id: string
           id?: string
           opened_at?: string | null
           responded_at?: string | null
@@ -1186,7 +1186,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           daily_prompt_id?: string
-          enrollment_id?: string | null
+          enrollment_id?: string
           id?: string
           opened_at?: string | null
           responded_at?: string | null
@@ -1794,7 +1794,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           duration_minutes: number
-          enrollment_id: string | null
+          enrollment_id: string
           feedback_submitted_at: string | null
           id: string
           meeting_url: string | null
@@ -1819,7 +1819,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
-          enrollment_id?: string | null
+          enrollment_id: string
           feedback_submitted_at?: string | null
           id?: string
           meeting_url?: string | null
@@ -1844,7 +1844,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number
-          enrollment_id?: string | null
+          enrollment_id?: string
           feedback_submitted_at?: string | null
           id?: string
           meeting_url?: string | null
@@ -2602,7 +2602,7 @@ export type Database = {
       reflection_submissions: {
         Row: {
           confidence_score: number
-          enrollment_id: string | null
+          enrollment_id: string
           id: string
           reflection_id: string
           submitted_at: string
@@ -2610,7 +2610,7 @@ export type Database = {
         }
         Insert: {
           confidence_score: number
-          enrollment_id?: string | null
+          enrollment_id: string
           id?: string
           reflection_id: string
           submitted_at?: string
@@ -2618,7 +2618,7 @@ export type Database = {
         }
         Update: {
           confidence_score?: number
-          enrollment_id?: string | null
+          enrollment_id?: string
           id?: string
           reflection_id?: string
           submitted_at?: string
@@ -3152,7 +3152,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
-          enrollment_id: string | null
+          enrollment_id: string
           id: string
           pdf_downloaded_at: string | null
           training_week_id: string
@@ -3162,7 +3162,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
-          enrollment_id?: string | null
+          enrollment_id: string
           id?: string
           pdf_downloaded_at?: string | null
           training_week_id: string
@@ -3172,7 +3172,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
-          enrollment_id?: string | null
+          enrollment_id?: string
           id?: string
           pdf_downloaded_at?: string | null
           training_week_id?: string
@@ -3333,8 +3333,8 @@ export type Database = {
           assigned_by: string
           cohort_id: string | null
           created_at: string
-          enrollment_1_id: string | null
-          enrollment_2_id: string | null
+          enrollment_1_id: string
+          enrollment_2_id: string
           enrollment_3_id: string | null
           group_language: string
           id: string
@@ -3352,8 +3352,8 @@ export type Database = {
           assigned_by?: string
           cohort_id?: string | null
           created_at?: string
-          enrollment_1_id?: string | null
-          enrollment_2_id?: string | null
+          enrollment_1_id: string
+          enrollment_2_id: string
           enrollment_3_id?: string | null
           group_language?: string
           id?: string
@@ -3371,8 +3371,8 @@ export type Database = {
           assigned_by?: string
           cohort_id?: string | null
           created_at?: string
-          enrollment_1_id?: string | null
-          enrollment_2_id?: string | null
+          enrollment_1_id?: string
+          enrollment_2_id?: string
           enrollment_3_id?: string | null
           group_language?: string
           id?: string
@@ -3581,8 +3581,8 @@ export type Database = {
       }
       triad_sessions: {
         Row: {
-          coach_enrollment_id: string | null
-          coachee_enrollment_id: string | null
+          coach_enrollment_id: string
+          coachee_enrollment_id: string
           created_at: string
           id: string
           meeting_url: string | null
@@ -3600,8 +3600,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          coach_enrollment_id?: string | null
-          coachee_enrollment_id?: string | null
+          coach_enrollment_id: string
+          coachee_enrollment_id: string
           created_at?: string
           id?: string
           meeting_url?: string | null
@@ -3619,8 +3619,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          coach_enrollment_id?: string | null
-          coachee_enrollment_id?: string | null
+          coach_enrollment_id?: string
+          coachee_enrollment_id?: string
           created_at?: string
           id?: string
           meeting_url?: string | null
@@ -3876,6 +3876,17 @@ export type Database = {
         }
         Returns: string
       }
+      book_coachee_peer_session: {
+        Args: {
+          p_duration_minutes: number
+          p_enrollment_id: string
+          p_provider_id: string
+          p_slot_id?: string
+          p_start_time: string
+          p_topic: string
+        }
+        Returns: string
+      }
       bulk_create_availability: {
         Args: {
           _coach_id: string
@@ -3895,6 +3906,10 @@ export type Database = {
       }
       can_book_peer_session: {
         Args: { p_enrollment_id: string; p_peer_coach_id: string }
+        Returns: boolean
+      }
+      can_book_coachee_peer_session: {
+        Args: { p_enrollment_id: string; p_provider_id: string }
         Returns: boolean
       }
       can_book_session:
@@ -3932,6 +3947,10 @@ export type Database = {
       }
       check_can_book_mentoring_session_reason: {
         Args: { p_mentor_id: string }
+        Returns: string
+      }
+      check_can_book_mentoring_session_reason_for_enrollment: {
+        Args: { p_enrollment_id: string; p_mentor_id: string }
         Returns: string
       }
       check_can_book_session:
@@ -4049,6 +4068,14 @@ export type Database = {
           required_units: number
         }[]
       }
+      get_enrollment_programme_modules: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          config: Json
+          enabled: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+        }[]
+      }
       get_enrollment_training_weeks: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -4083,6 +4110,13 @@ export type Database = {
       }
       get_mentoring_session_usage: {
         Args: { p_user_id: string }
+        Returns: {
+          limit_count: number
+          used_count: number
+        }[]
+      }
+      get_mentoring_session_usage_for_enrollment: {
+        Args: { p_enrollment_id: string }
         Returns: {
           limit_count: number
           used_count: number

@@ -1,0 +1,62 @@
+Programme creation/editing UX
+Replace the current popup/modal programme editor with a dedicated full-page programme configuration screen.
+When the admin clicks:
+- Create Programme
+- Edit Programme
+navigate to a dedicated route/page instead of opening a modal.
+Example behavior:
+- /admin/programmes/new
+- /admin/programmes/:programmeId/edit
+Do not keep the programme configuration inside a dialog.
+The page should feel like a structured programme builder with clear sections and enough horizontal space for configuration.
+Suggested page structure:
+Header
+- Back to Programmes
+- Programme name
+- Status
+- Save
+- Cancel
+Section 1 — Programme information
+- Programme name
+- Description
+- Duration
+- Status
+- Visual colour if still needed
+Section 2 — Programme modules
+Show module cards for:
+- Coaching
+- Mentoring
+- Peer Coaching
+- Triads
+- Training
+- Quiz
+- Assessment
+- Daily Prompt
+Each card can be enabled/disabled and expanded for configuration.
+Section 3 — Programme summary
+Show a live summary of the configured programme:
+- enabled modules
+- required modules
+- required sessions/activities
+- maximum allowed sessions
+- distribution method
+- programme duration
+Section 4 — Validation
+Before save, clearly flag configuration conflicts such as:
+- required sessions greater than maximum allowed
+- required module with zero required sessions
+- missing scheduling information
+- invalid custom milestones
+Responsive behavior
+The dedicated programme page must be fully responsive.
+- desktop: use full available content width
+- module cards: maximum 2 per row
+- tablet: 1–2 depending on width
+- mobile: 1 card per row
+- expanded module settings should use 2 columns when space allows and 1 column on narrow screens
+- do not compress multiple form controls into narrow columns
+The goal is to make programme configuration understandable and comfortable to use, not to fit everything inside a popup.
+Navigation safety
+If the admin has unsaved changes and tries to leave the page, show an unsaved-changes confirmation.
+Saving should return the admin to the programme list or programme detail page with a success confirmation.
+Do not change the existing enrollment architecture while implementing this page.

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/context/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 import type { SessionStatus } from "@/lib/sessionStatusMeta";
-import { withEnrollmentActions } from "@/lib/enrollmentActions";
+import { withEnrollmentActions, type EnrollmentActionItem } from "@/lib/enrollmentActions";
 
 export type SessionKind =
   | "coaching"
@@ -32,9 +32,13 @@ export interface SessionRow {
 }
 
 async function fetchSessionsData(userId: string, role: AppRole): Promise<SessionRow[]> {
-  let sess: Tables<"sessions">[] = [];
-  let peer: Tables<"peer_sessions">[] = [];
-  let coacheePeer: Tables<"coachee_peer_sessions">[] = [];
+  type Enriched<T extends { id: string; enrollment_id?: string | null }> = T & {
+    enrollment_actions: EnrollmentActionItem[];
+  };
+  let sess: Enriched<Tables<"sessions">>[] = [];
+  let peer: Enriched<Tables<"peer_sessions">>[] = [];
+  let coacheePeer: Enriched<Tables<"coachee_peer_sessions">>[] = [];
+  let mentoring: Enriched<Tables<"mentoring_sessions">>[] = [];
 
   if (role === "coach" || role === "coachee") {
     const col = role === "coach" ? "coach_id" : "coachee_id";
@@ -43,7 +47,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       .select("*")
       .eq(col, userId)
       .order("start_time", { ascending: false });
-    sess = await withEnrollmentActions(data || [], "coaching") as Tables<"sessions">[];
+    sess = await withEnrollmentActions(data || [], "coaching");
   }
 
   if (role === "coach") {
@@ -52,7 +56,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       .select("*")
       .or(`peer_coach_id.eq.${userId},peer_coachee_id.eq.${userId}`)
       .order("start_time", { ascending: false });
-    peer = await withEnrollmentActions(data || [], "peer_coaching") as Tables<"peer_sessions">[];
+    peer = await withEnrollmentActions(data || [], "peer_coaching");
   }
 
   if (role === "coachee") {
@@ -61,21 +65,20 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       .select("*")
       .or(`peer_provider_id.eq.${userId},peer_receiver_id.eq.${userId}`)
       .order("start_time", { ascending: false });
-    coacheePeer = await withEnrollmentActions(data || [], "coachee_peer_coaching") as Tables<"coachee_peer_sessions">[];
+    coacheePeer = await withEnrollmentActions(data || [], "coachee_peer_coaching");
   }
 
   // Mentoring: a mentee can be either role (coach or coachee, RULES.md §3
   // Relationship 4), and a coach can also be a mentor giving sessions —
   // so this queries both mentor_id and mentee_id rather than switching
   // column by role the way the blocks above do.
-  let mentoring: Tables<"mentoring_sessions">[] = [];
   if (role === "coach" || role === "coachee") {
     const { data } = await supabase
       .from("mentoring_sessions")
       .select("*")
       .or(`mentor_id.eq.${userId},mentee_id.eq.${userId}`)
       .order("start_time", { ascending: false });
-    mentoring = await withEnrollmentActions(data || [], "mentoring") as Tables<"mentoring_sessions">[];
+    mentoring = await withEnrollmentActions(data || [], "mentoring");
   }
 
   const allRows = [
@@ -124,7 +127,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     ...s,
     coach: byId.get(s.coach_id) || null,
     coachee: byId.get(s.coachee_id) || null,
-  })) as SessionRow[];
+  }));
 }
 
 export function useSessionsData(userId: string | undefined, role: AppRole | null) {

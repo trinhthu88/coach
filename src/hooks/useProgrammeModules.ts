@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 export type ProgrammeModuleType =
   | "coaching"
@@ -20,15 +21,19 @@ interface ProgrammeModule {
 
 export function useProgrammeModules() {
   const { user, role } = useAuth();
+  const { selectedEnrollment, selectedEnrollmentId, loading: enrollmentLoading } = useEnrollmentContext(user?.id);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["programme-modules", user?.id],
+    queryKey: ["programme-modules", user?.id, selectedEnrollmentId ?? null],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_my_programme_modules");
+      if (!selectedEnrollmentId) return [];
+      const { data, error } = await supabase.rpc("get_enrollment_programme_modules", {
+        p_enrollment_id: selectedEnrollmentId,
+      });
       if (error) throw error;
       return (data ?? []) as ProgrammeModule[];
     },
-    enabled: !!user && role !== "admin" && role !== "sponsor",
+    enabled: !!user && !!selectedEnrollmentId && role !== "admin" && role !== "sponsor",
     staleTime: 60_000,
   });
 
@@ -48,7 +53,9 @@ export function useProgrammeModules() {
 
   return {
     modules,
-    loading: !!user && isLoading,
+    loading: !!user && (enrollmentLoading || isLoading),
+    enrollmentId: selectedEnrollment?.id ?? selectedEnrollmentId ?? null,
+    enrollmentLoading,
     hasModule,
     hasDirection,
     getConfig,

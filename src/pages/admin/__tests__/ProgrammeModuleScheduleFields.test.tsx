@@ -34,7 +34,6 @@ describe("ProgrammeModuleScheduleFields", () => {
 
     fireEvent.click(screen.getByRole("switch", { name: "Required or optional" }));
     fireEvent.change(screen.getByLabelText("Required units"), { target: { value: "3" } });
-    fireEvent.change(screen.getByLabelText("Weight (optional)"), { target: { value: "2.5" } });
     fireEvent.change(screen.getByLabelText("Schedule"), { target: { value: "monthly_frequency" } });
     fireEvent.change(screen.getByLabelText("Interval (months)"), { target: { value: "2" } });
 
@@ -42,7 +41,6 @@ describe("ProgrammeModuleScheduleFields", () => {
       legacy_limit: 7,
       required: true,
       required_units: 3,
-      weight: 2.5,
       distribution_mode: "monthly_frequency",
       distribution_settings: { keep_me: true, interval_months: 2 },
     });

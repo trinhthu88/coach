@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 export interface TimelineWeek {
   id: string;
@@ -35,18 +36,24 @@ interface RawTriadRound {
     member_1_id: string;
     member_2_id: string;
     member_3_id: string | null;
+    enrollment_1_id: string;
+    enrollment_2_id: string;
+    enrollment_3_id: string | null;
     triad_sessions: { status: string; proposed_start_time: string | null; created_at: string }[];
   }[];
 }
 
-async function fetchTimeline(userId: string, hasTriads: boolean): Promise<TimelineWeek[]> {
-  const { data: weeksData, error } = await supabase.rpc("get_my_training_weeks");
+async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: boolean): Promise<TimelineWeek[]> {
+  const { data: weeksData, error } = await supabase.rpc("get_enrollment_training_weeks", {
+    p_enrollment_id: enrollmentId,
+  });
   if (error) throw error;
   const weeks = (weeksData || []) as RawWeek[];
   if (weeks.length === 0) return [];
 
   const weekIds = weeks.map((w) => w.id);
   const weekNumbers = weeks.map((w) => w.week_number);
+  const programmeId = await getProgrammeIdForEnrollment(enrollmentId);
 
   const [{ data: assignments }, { data: prompts }, { data: reflections }, { data: triadRounds }] = await Promise.all([
     supabase
@@ -59,7 +66,11 @@ async function fetchTimeline(userId: string, hasTriads: boolean): Promise<Timeli
     // Reflections are a separate system keyed by appears_at_week, not an
     // assignment_type any more — RLS already scopes this to reflections for
     // programmes the user is enrolled in whose week has unlocked.
-    supabase.from("programme_reflections").select("id, appears_at_week").in("appears_at_week", weekNumbers),
+    supabase
+      .from("programme_reflections")
+      .select("id, appears_at_week")
+      .eq("programme_id", programmeId)
+      .in("appears_at_week", weekNumbers),
     // Triad rounds link to a training week directly; each round holds at
     // most one group (and one current session) for this user, found via
     // "Triad groups: member read" RLS.
@@ -67,7 +78,7 @@ async function fetchTimeline(userId: string, hasTriads: boolean): Promise<Timeli
       ? supabase
           .from("triad_rounds")
           .select(
-            "id, training_week_id, triad_groups(member_1_id, member_2_id, member_3_id, triad_sessions(status, proposed_start_time, created_at))",
+            "id, training_week_id, triad_groups(member_1_id, member_2_id, member_3_id, enrollment_1_id, enrollment_2_id, enrollment_3_id, triad_sessions(status, proposed_start_time, created_at))",
           )
           .in("training_week_id", weekIds)
       : Promise.resolve({ data: [] as RawTriadRound[] }),
@@ -79,13 +90,28 @@ async function fetchTimeline(userId: string, hasTriads: boolean): Promise<Timeli
 
   const [{ data: submissions }, { data: responses }, { data: reflectionSubs }] = await Promise.all([
     assignmentIds.length
-      ? supabase.from("assignment_submissions").select("assignment_id, score_pct").eq("user_id", userId).in("assignment_id", assignmentIds)
+      ? supabase
+          .from("assignment_submissions")
+          .select("assignment_id, score_pct")
+          .eq("user_id", userId)
+          .eq("enrollment_id", enrollmentId)
+          .in("assignment_id", assignmentIds)
       : Promise.resolve({ data: [] as { assignment_id: string; score_pct: number | null }[] }),
     promptIds.length
-      ? supabase.from("daily_prompt_responses").select("daily_prompt_id, responded_at").eq("user_id", userId).in("daily_prompt_id", promptIds)
+      ? supabase
+          .from("daily_prompt_responses")
+          .select("daily_prompt_id, responded_at")
+          .eq("user_id", userId)
+          .eq("enrollment_id", enrollmentId)
+          .in("daily_prompt_id", promptIds)
       : Promise.resolve({ data: [] as { daily_prompt_id: string; responded_at: string | null }[] }),
     reflectionIds.length
-      ? supabase.from("reflection_submissions").select("reflection_id").eq("user_id", userId).in("reflection_id", reflectionIds)
+      ? supabase
+          .from("reflection_submissions")
+          .select("reflection_id")
+          .eq("user_id", userId)
+          .eq("enrollment_id", enrollmentId)
+          .in("reflection_id", reflectionIds)
       : Promise.resolve({ data: [] as { reflection_id: string }[] }),
   ]);
 
@@ -114,7 +140,10 @@ async function fetchTimeline(userId: string, hasTriads: boolean): Promise<Timeli
         const rounds = ((triadRounds || []) as RawTriadRound[]).filter((r) => r.training_week_id === w.id);
         const mySessions = rounds
           .flatMap((r) => r.triad_groups)
-          .filter((g) => [g.member_1_id, g.member_2_id, g.member_3_id].includes(userId))
+          .filter((g) =>
+            [g.enrollment_1_id, g.enrollment_2_id, g.enrollment_3_id].includes(enrollmentId)
+            && [g.member_1_id, g.member_2_id, g.member_3_id].includes(userId)
+          )
           .flatMap((g) => g.triad_sessions);
         if (mySessions.length === 0) triadStatus = "not_scheduled";
         else if (mySessions.some((s) => s.status === "completed" || (s.proposed_start_time && s.proposed_start_time < today)))
@@ -158,15 +187,28 @@ async function fetchTimeline(userId: string, hasTriads: boolean): Promise<Timeli
  * doesn't need to duplicate that check to decide whether to run.
  */
 export function useProgrammeTimeline(userId: string | undefined) {
-  const { hasModule } = useProgrammeModules();
+  const { hasModule, enrollmentId } = useProgrammeModules();
+  const { selectedEnrollment } = useEnrollmentContext(userId);
   const hasTriads = hasModule("triads");
+  const selectedId = selectedEnrollment?.id ?? enrollmentId;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["programme-timeline", userId, hasTriads],
-    queryFn: () => fetchTimeline(userId as string, hasTriads),
-    enabled: !!userId,
+    queryKey: ["programme-timeline", userId, selectedId ?? null, hasTriads],
+    queryFn: () => fetchTimeline(userId as string, selectedId as string, hasTriads),
+    enabled: !!userId && !!selectedId,
     staleTime: 30_000,
   });
 
   return { weeks: data ?? [], loading: isLoading };
+}
+
+async function getProgrammeIdForEnrollment(enrollmentId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("programme_enrollments")
+    .select("programme_id")
+    .eq("id", enrollmentId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.programme_id) throw new Error("Selected enrollment has no programme");
+  return data.programme_id;
 }

@@ -69,6 +69,12 @@ export default function MentoringBookSession() {
 
   useEffect(() => {
     if (!mentorId) return;
+    if (!enrollmentId) {
+      setLoading(false);
+      setEligible(false);
+      setIneligibleReason("no_enrollment");
+      return;
+    }
     setLoading(true);
     setLoadError(false);
     (async () => {
@@ -132,8 +138,13 @@ export default function MentoringBookSession() {
           setBookerBusy([...toBusy(mySess), ...toBusy(myPeer), ...toBusy(myMentoring)]);
 
           const [{ data: reason }, { data: usageRows }] = await Promise.all([
-            supabase.rpc("check_can_book_mentoring_session_reason", { p_mentor_id: mentorId }),
-            supabase.rpc("check_mentoring_session_usage"),
+            supabase.rpc("check_can_book_mentoring_session_reason_for_enrollment", {
+              p_mentor_id: mentorId,
+              p_enrollment_id: enrollmentId,
+            }),
+            supabase.rpc("get_mentoring_session_usage_for_enrollment", {
+              p_enrollment_id: enrollmentId,
+            }),
           ]);
           setEligible((reason ?? "forbidden") === "ok");
           setIneligibleReason(reason ?? null);
@@ -146,7 +157,7 @@ export default function MentoringBookSession() {
         setLoading(false);
       }
     })();
-  }, [mentorId, user, retryKey]);
+  }, [mentorId, user, enrollmentId, retryKey]);
 
   const datesWithSlots = useMemo(() => new Set(slots.map((s) => s.slot_date)), [slots]);
   const week = useMemo(() => Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)), [weekStart]);

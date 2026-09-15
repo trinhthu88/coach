@@ -96,6 +96,11 @@ export default function BookSession() {
     setLoading(true);
     setLoadError(false);
     (async () => {
+      const activeEnrollmentId = enrollmentId;
+      if (!activeEnrollmentId) {
+        setLoading(false);
+        return;
+      }
       try {
         const today = new Date().toISOString().slice(0, 10);
         const slotQuery = supabase
@@ -162,7 +167,7 @@ export default function BookSession() {
             // (open opt-in pool, see RULES.md) — not covered by can_book_session(), which
             // only governs the two curated-allowlist relationships on `sessions`.
             const { data: u } = await supabase.rpc("get_peer_session_usage", {
-              p_enrollment_id: enrollmentId,
+              p_enrollment_id: activeEnrollmentId,
             });
             const row = Array.isArray(u) ? u[0] : u;
              // null = unlimited (the programme has no peer monthly_limit set) —
@@ -172,7 +177,7 @@ export default function BookSession() {
             setUsage({ monthly_limit: peerLimit, used_this_month: peerUsed });
              const { data: canPeerBook } = await supabase.rpc("can_book_peer_session", {
                p_peer_coach_id: coachId,
-               p_enrollment_id: enrollmentId,
+               p_enrollment_id: activeEnrollmentId,
              });
              setEligible(canPeerBook ?? false);
           } else {
@@ -183,14 +188,14 @@ export default function BookSession() {
                 supabase
                   .from("programme_enrollments")
                   .select("id, programme_id")
-                  .eq("id", enrollmentId)
+                  .eq("id", activeEnrollmentId)
                   .eq("user_id", user.id)
                   .maybeSingle(),
                 supabase
                   .from("sessions")
                   .select("id", { count: "exact", head: true })
                   .eq("coachee_id", user.id)
-                  .eq("enrollment_id", enrollmentId)
+                  .eq("enrollment_id", activeEnrollmentId)
                   .eq("status", "completed"),
               ]);
               const { data: module } = enrollment
@@ -215,14 +220,14 @@ export default function BookSession() {
                 supabase
                   .from("programme_enrollments")
                   .select("id, programme_id")
-                  .eq("id", enrollmentId)
+                  .eq("id", activeEnrollmentId)
                   .eq("user_id", user.id)
                   .maybeSingle(),
                 supabase
                   .from("sessions")
                   .select("id", { count: "exact", head: true })
                   .eq("coachee_id", user.id)
-                  .eq("enrollment_id", enrollmentId)
+                  .eq("enrollment_id", activeEnrollmentId)
                   .eq("status", "completed"),
               ]);
               const { data: module } = enrollment
@@ -244,7 +249,7 @@ export default function BookSession() {
             // supabase/migrations/20260810150000_can_book_session_rpc.sql.
             const { data: canBook } = await supabase.rpc("check_can_book_session", {
               p_coach_id: coachId,
-              p_enrollment_id: enrollmentId,
+              p_enrollment_id: activeEnrollmentId,
             });
             setEligible(canBook ?? false);
           }

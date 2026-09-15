@@ -51,7 +51,10 @@ async function fetchCoacheeDashboardData(
       .eq("enrollment_id", enrollmentId)
       .order("start_time", { ascending: false }),
   ]);
-  const list = await withEnrollmentActions(ses || [], "coaching") as SessionLite[];
+  const list = (await withEnrollmentActions(ses || [], "coaching")).map((session) => ({
+    ...session,
+    action_items: session.enrollment_actions,
+  }));
 
   const coachIds = Array.from(new Set(list.map((s) => s.coach_id)));
   let coachesById: Record<string, ProfileLite> = {};

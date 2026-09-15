@@ -70,7 +70,12 @@ export function GrowWorksheet({
     setEnrollmentId(activity?.enrollment_id ?? null);
     if (!activity) { setItems([]); return; }
     const [normalized] = await withEnrollmentActions([activity], sourceType);
-    setItems(normalized.enrollment_actions ?? []);
+    setItems((normalized.enrollment_actions ?? []).map((item) => ({
+      ...item,
+      done: !!item.done,
+      due_date: item.due_date ?? null,
+      milestone_id: item.milestone_id ?? null,
+    })));
   }, [parentTable, parentId, sourceType]);
 
   useEffect(() => {
