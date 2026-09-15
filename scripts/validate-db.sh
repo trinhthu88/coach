@@ -102,12 +102,12 @@ if [[ "$applied_migrations" != "$expected_migrations" ]]; then
   exit 1
 fi
 for migration_version in \
-  20260912090000 \
-  20260912100000 \
-  20260912110000 \
-  20260912120000 \
-  20260912130000 \
-  20260912140000; do
+  20260914071400 \
+  20260914071401 \
+  20260914071403 \
+  20260914071405 \
+  20260914071406 \
+  20260914071407; do
   psql --no-psqlrc --set=ON_ERROR_STOP=1 -Atqc \
     "SELECT 1 FROM supabase_migrations.schema_migrations WHERE version LIKE '${migration_version}%'" \
     "${DB_URL:?local database URL unavailable}" | grep -qx '1' || {
