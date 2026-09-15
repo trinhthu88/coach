@@ -1,0 +1,87 @@
+Please fix the remaining Sponsor Dashboard production blocker only.
+
+Current state:
+- Migration ledger is fully repaired and clean.
+- Production schema verification passed.
+- Sponsor dashboard, cohort detail, leader detail, privacy isolation, cross-organization isolation, and satisfaction RPC checks passed.
+- Do NOT modify or re-run migration history unless a genuine schema fix requires a new migration.
+- Do NOT restore retired RPCs:
+  - `sponsor_programme_engagement`
+  - `sponsor_goal_growth_summary`
+  - `sponsor_coach_utilisation`
+
+The remaining failing production smoke tests are:
+
+1. Dashboard organization cohort count consistency = `false`
+2. Dashboard organization enrollment count consistency = `null`
+
+Problem:
+The sponsor organization summary does not reconcile with the cohort summaries used by the Sponsor Dashboard.
+
+Your task:
+
+1. Trace the exact RPC/function/data path used for:
+   - organization-level sponsor dashboard summary
+   - cohort summary/counts shown in the dashboard
+   - enrollment counts
+
+2. Compare the aggregation logic side by side, especially:
+   - organization ID scoping
+   - cohort visibility/scoping
+   - active/archive/deleted cohort handling
+   - enrollment status filters
+   - current vs historical enrollments
+   - multiple enrollments for the same learner
+   - `COUNT(*)` vs `COUNT(DISTINCT ...)`
+   - joins that can duplicate enrollment rows
+   - nullable aggregates / missing joins that could cause the enrollment consistency assertion to return `null`
+
+3. Identify the actual root cause before changing code. Do not patch the smoke test to make it pass.
+
+4. Fix the source-of-truth logic so the organization summary and cohort summaries use the same privacy-safe enrollment/cohort population.
+
+5. Preserve all existing sponsor privacy rules. Do not expose organization-wide leader identities or confidential coaching/session data.
+
+6. Add or update regression tests covering the exact inconsistency found.
+
+7. Run the focused sponsor tests first:
+   - organization cohort count reconciliation
+   - organization enrollment count reconciliation
+   - foreign-organization isolation
+   - dashboard RPC
+   - cohort detail RPC
+   - leader detail RPC
+
+8. If those all pass, continue the previously stopped production-safe/read-only smoke tests:
+   - enrollment-scoped progress
+   - admin current-enrollment resolution
+   - coach eligibility
+   - coaching cap checks
+   - mentoring cap checks
+   - peer cap checks
+   - coachee-peer cap checks
+   - triad cap checks
+   - progress-unit bounds
+   - booked-unit bounds
+   - remaining sponsor consistency checks
+
+Important constraints:
+- Do not create/delete production fixtures.
+- Do not weaken RLS or privacy contracts.
+- Do not manually edit `supabase_migrations.schema_migrations`.
+- Do not run unrelated migrations.
+- Do not make frontend cosmetic changes.
+- Do not resurrect retired reporting surfaces.
+- If a database change is necessary, create the smallest new forward-only migration and explain why it is required.
+- Stop immediately if the proposed fix would change sponsor privacy semantics.
+
+Final report must include:
+- Root cause
+- Files/functions changed
+- Exact logic before vs after
+- Whether a new migration was required
+- Tests run and pass/fail counts
+- Production smoke-test results
+- Whether the Sponsor rollout can now be declared fully live
+
+Work only on this blocker until it is resolved.
