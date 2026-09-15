@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
 import type { SponsorCohortSummary } from "@/hooks/sponsor/useSponsorDashboardData";
 import { cn } from "@/lib/utils";
+import { cohortLifecycleStatus } from "./sponsorUtils";
 
 export default function SponsorCohorts() {
   const { t } = useTranslation("sponsor");
@@ -162,6 +163,7 @@ function CohortCard({
   const leaderCount = cohort.enrollment_count ?? 0;
   const onTrackPct = cohort.on_track_pct ?? 0;
   const completionPct = cohort.full_completion_pct ?? 0;
+  const lifecycle = cohortLifecycleStatus(cohort.programme_start_date, cohort.programme_end_date);
   return (
     <article className="group overflow-hidden rounded-[24px] border border-[#e6dfd4] bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_42px_-28px_rgba(20,80,90,.45)]">
       <div className="h-1 bg-gradient-to-r from-primary via-[#7dcfe3] to-transparent" />
@@ -177,7 +179,7 @@ function CohortCard({
             </h3>
           </div>
           <span className="shrink-0 rounded-full bg-primary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-            {suppressed ? t("cohorts.suppressedLabel") : cohort.pace_status === "completed" ? t("cohorts.complete") : t("cohorts.active")}
+            {suppressed ? t("cohorts.suppressedLabel") : lifecycle === "complete" ? t("cohorts.complete") : lifecycle === "upcoming" ? t("cohorts.upcoming") : t("cohorts.active")}
           </span>
         </div>
 

@@ -89,14 +89,16 @@ export default function SponsorCohortDetail() {
             <ProgressStrip kpis={kpis} progress={progress} t={t} />
 
             <div className="mt-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(198px,1fr))]">
-              <ModuleCard label={t("cohortDetail.modules.coaching")} color={SKY} value={countValue(kpis?.coaching_completed_count)} valueLabel={t("cohortDetail.modules.completedSessions")} detail={t("cohortDetail.modules.aggregateOnly")} />
-              <ModuleCard label={t("cohortDetail.modules.training")} color={NAVY} value={percent(kpis?.full_completion_pct)} valueLabel={t("cohortDetail.modules.completion")} detail={unitDetail(kpis)} />
-              <ModuleCard label={t("cohortDetail.modules.peer")} color={TEAL} value={countValue(kpis?.peer_completed_count)} valueLabel={t("cohortDetail.modules.completedSessions")} detail={t("cohortDetail.modules.aggregateOnly")} />
-              <ModuleCard label={t("cohortDetail.modules.mentoring")} color={GREEN} value={countValue(kpis?.mentoring_completed_count)} valueLabel={t("cohortDetail.modules.completedSessions")} detail={t("cohortDetail.modules.aggregateOnly")} />
-              <ModuleCard label={t("cohortDetail.modules.triads")} color={PLUM} value={countValue(kpis?.triad_completed_count)} valueLabel={t("cohortDetail.modules.completedSessions")} detail={t("cohortDetail.modules.aggregateOnly")} />
+              <ModuleCard label={t("cohortDetail.modules.coaching")} color={SKY} completed={kpis?.coaching_completed_units} expected={kpis?.coaching_expected_units} entitled={kpis?.coaching_entitled_units} required={kpis?.coaching_required_per_leader} completedLeaders={kpis?.coaching_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              <ModuleCard label={t("cohortDetail.modules.training")} color={NAVY} completed={kpis?.training_completed_units} expected={kpis?.training_expected_units} entitled={kpis?.training_entitled_units} required={kpis?.training_required_per_leader} completedLeaders={kpis?.training_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              <ModuleCard label={t("cohortDetail.modules.peer")} color={TEAL} completed={kpis?.peer_completed_units} expected={kpis?.peer_expected_units} entitled={kpis?.peer_entitled_units} required={kpis?.peer_required_per_leader} completedLeaders={kpis?.peer_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              <ModuleCard label={t("cohortDetail.modules.mentoring")} color={GREEN} completed={kpis?.mentoring_completed_units} expected={kpis?.mentoring_expected_units} entitled={kpis?.mentoring_entitled_units} required={kpis?.mentoring_required_per_leader} completedLeaders={kpis?.mentoring_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              <ModuleCard label={t("cohortDetail.modules.triads")} color={PLUM} completed={kpis?.triad_completed_units} expected={kpis?.triad_expected_units} entitled={kpis?.triad_entitled_units} required={kpis?.triad_required_per_leader} completedLeaders={kpis?.triad_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
             </div>
 
             <AttentionSection kpis={kpis} counts={filterCounts} filter={filter} onFilter={setFilter} t={t} />
+
+            <ProgrammeJourney kpis={kpis} t={t} />
 
             <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
               <button
@@ -167,7 +169,29 @@ function MiniMetric({ value, label }: { value: number; label: string }) {
   return <div><div className="font-display text-2xl font-light leading-none">{value}</div><div className="mt-1.5 text-[9.5px] font-bold uppercase tracking-[.14em] text-[#9a938a]">{label}</div></div>;
 }
 
-function ModuleCard({ label, color, value, valueLabel, detail }: { label: string; color: string; value: string; valueLabel: string; detail: string }) {
+function ModuleCard({
+  label,
+  color,
+  completed,
+  expected,
+  entitled,
+  required,
+  completedLeaders,
+  leaderCount,
+  t,
+}: {
+  label: string;
+  color: string;
+  completed?: number | null;
+  expected?: number | null;
+  entitled?: number | null;
+  required?: number | null;
+  completedLeaders?: number | null;
+  leaderCount?: number | null;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  const hasData = completed != null && entitled != null;
+  const percentage = hasData && entitled > 0 ? Math.round((completed / entitled) * 100) : 0;
   return (
     <div className="flex min-h-[190px] flex-col gap-3 rounded-[14px] border p-[18px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex items-center justify-between gap-2">
@@ -176,15 +200,26 @@ function ModuleCard({ label, color, value, valueLabel, detail }: { label: string
       </div>
       <div className="flex-1">
         <div className="flex items-end gap-2">
-          <span className="font-display text-[32px] font-light leading-[.9]">{value}</span>
-          <span className="mb-0.5 text-[9.5px] font-bold uppercase tracking-[.08em] text-[#6a6560]">{valueLabel}</span>
+          <span className="font-display text-[32px] font-light leading-[.9]">{hasData ? `${completed}/${entitled}` : "—"}</span>
+          <span className="mb-0.5 text-[9.5px] font-bold uppercase tracking-[.08em] text-[#6a6560]">{t("cohortDetail.modules.completedOf")}</span>
         </div>
         <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-[#eee8de]">
-          <div className="h-full rounded-full" style={{ width: value === "—" ? "0%" : "100%", background: color }} />
+          <div className="h-full rounded-full" style={{ width: `${percentage}%`, background: color }} />
         </div>
-        <div className="mt-2 text-[11px] leading-[1.5] text-[#6a6560]">{detail}</div>
+        <div className="mt-2 text-[11px] leading-[1.5] text-[#6a6560]">
+          {hasData
+            ? t("cohortDetail.modules.detail", {
+              leaders: completedLeaders ?? 0,
+              totalLeaders: leaderCount ?? 0,
+              expected: expected ?? 0,
+              required: required ?? 0,
+            })
+            : t("cohortDetail.modules.aggregateOnly")}
+        </div>
       </div>
-      <div className="border-t border-[#eee8de] pt-2.5 text-[10.5px] text-[#9a938a]"> {value === "—" ? "Not included in sponsor-safe summary" : "Aggregate cohort figure"}</div>
+      <div className="border-t border-[#eee8de] pt-2.5 text-[10.5px] text-[#9a938a]">
+        {hasData ? t("cohortDetail.modules.percent", { value: percentage }) : t("cohortDetail.modules.notAvailable")}
+      </div>
     </div>
   );
 }
@@ -218,6 +253,46 @@ function AttentionSection({ kpis, counts, filter, onFilter, t }: { kpis: Sponsor
   );
 }
 
+function ProgrammeJourney({ kpis, t }: { kpis: SponsorCohortSummary | null; t: (key: string, options?: Record<string, unknown>) => string }) {
+  const leaderCount = kpis?.enrollment_count ?? 0;
+  const items = [
+    { label: t("cohortDetail.modules.coaching"), completed: kpis?.coaching_completed_units, entitled: kpis?.coaching_entitled_units, leaders: kpis?.coaching_completed_leaders, color: SKY },
+    { label: t("cohortDetail.modules.training"), completed: kpis?.training_completed_units, entitled: kpis?.training_entitled_units, leaders: kpis?.training_completed_leaders, color: NAVY },
+    { label: t("cohortDetail.modules.peer"), completed: kpis?.peer_completed_units, entitled: kpis?.peer_entitled_units, leaders: kpis?.peer_completed_leaders, color: TEAL },
+    { label: t("cohortDetail.modules.mentoring"), completed: kpis?.mentoring_completed_units, entitled: kpis?.mentoring_entitled_units, leaders: kpis?.mentoring_completed_leaders, color: GREEN },
+    { label: t("cohortDetail.modules.triads"), completed: kpis?.triad_completed_units, entitled: kpis?.triad_entitled_units, leaders: kpis?.triad_completed_leaders, color: PLUM },
+  ];
+  return (
+    <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="font-serif text-[17px] font-normal">{t("cohortDetail.journey.label")}</h2>
+        <span className="text-[10.5px] text-[#9a938a]">{t("cohortDetail.journey.privacyNote")}</span>
+      </div>
+      <div className="mt-5 grid gap-3 md:grid-cols-5">
+        {items.map((item) => {
+          const complete = item.completed != null && item.entitled != null;
+          const pct = complete && item.entitled > 0 ? Math.round((item.completed / item.entitled) * 100) : 0;
+          return (
+            <div key={item.label} className="rounded-xl border border-[#eee8de] bg-[#fff] p-3.5">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-[2px]" style={{ background: item.color }} />
+                <span className="text-[10px] font-bold uppercase tracking-[.12em] text-[#6a6560]">{item.label}</span>
+              </div>
+              <div className="mt-4 font-display text-xl font-light">{complete ? `${item.completed}/${item.entitled}` : "—"}</div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eee8de]">
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: item.color }} />
+              </div>
+              <p className="mt-2 text-[10.5px] leading-relaxed text-[#6a6560]">
+                {complete ? t("cohortDetail.journey.progress", { leaders: item.leaders ?? 0, totalLeaders: leaderCount }) : t("cohortDetail.modules.notAvailable")}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function ProgrammeDetails({ kpis, progress, t }: { kpis: SponsorCohortSummary | null; progress: ProgrammeProgress; t: (key: string, options?: Record<string, unknown>) => string }) {
   const groups = [
     { title: t("cohortDetail.details.enrollment"), rows: [
@@ -228,19 +303,25 @@ function ProgrammeDetails({ kpis, progress, t }: { kpis: SponsorCohortSummary | 
       [t("cohortDetail.details.startEnd"), `${formatDate(kpis?.programme_start_date)} — ${formatDate(kpis?.programme_end_date)}`],
       [t("cohortDetail.details.currentWeek"), t("cohortDetail.progressStrip.week", { current: progress.currentWeek, total: progress.totalWeeks })],
     ]},
+    { title: t("cohortDetail.details.coaching"), rows: [
+      [t("cohortDetail.modules.coaching"), moduleDetail(kpis?.coaching_completed_units, kpis?.coaching_expected_units, kpis?.coaching_entitled_units, kpis?.coaching_required_per_leader)],
+      [t("cohortDetail.details.satisfaction"), decimal(kpis?.satisfaction_avg)],
+    ]},
+    { title: t("cohortDetail.details.training"), rows: [
+      [t("cohortDetail.modules.training"), moduleDetail(kpis?.training_completed_units, kpis?.training_expected_units, kpis?.training_entitled_units, kpis?.training_required_per_leader)],
+      [t("cohortDetail.details.completion"), percent(kpis?.full_completion_pct)],
+    ]},
+    { title: t("cohortDetail.details.peerMentoringTriads"), rows: [
+      [t("cohortDetail.modules.peer"), moduleDetail(kpis?.peer_completed_units, kpis?.peer_expected_units, kpis?.peer_entitled_units, kpis?.peer_required_per_leader)],
+      [t("cohortDetail.modules.mentoring"), moduleDetail(kpis?.mentoring_completed_units, kpis?.mentoring_expected_units, kpis?.mentoring_entitled_units, kpis?.mentoring_required_per_leader)],
+      [t("cohortDetail.modules.triads"), moduleDetail(kpis?.triad_completed_units, kpis?.triad_expected_units, kpis?.triad_entitled_units, kpis?.triad_required_per_leader)],
+    ]},
     { title: t("cohortDetail.details.programme"), rows: [
       [t("cohortDetail.details.requiredUnits"), value(kpis?.required_units)],
       [t("cohortDetail.details.completedUnits"), value(kpis?.completed_units)],
       [t("cohortDetail.details.dueUnits"), value(kpis?.due_units)],
       [t("cohortDetail.details.overdueUnits"), value(kpis?.overdue_units)],
       [t("cohortDetail.details.completion"), percent(kpis?.full_completion_pct)],
-    ]},
-    { title: t("cohortDetail.details.modules"), rows: [
-      [t("cohortDetail.modules.coaching"), countValue(kpis?.coaching_completed_count)],
-      [t("cohortDetail.modules.peer"), countValue(kpis?.peer_completed_count)],
-      [t("cohortDetail.modules.mentoring"), countValue(kpis?.mentoring_completed_count)],
-      [t("cohortDetail.modules.triads"), countValue(kpis?.triad_completed_count)],
-      [t("cohortDetail.details.satisfaction"), decimal(kpis?.satisfaction_avg)],
     ]},
   ];
   return (
@@ -326,29 +407,29 @@ function RosterMetric({ value, text, color }: { value: number | null; text: stri
 
 function moduleValues(row: SponsorRosterRow) {
   return [
-    { key: "coaching", value: null, text: countValue(row.coaching_completed_count), color: SKY },
-    { key: "training", value: row.full_completion_pct, text: percent(row.full_completion_pct), color: NAVY },
-    { key: "peer", value: null, text: countValue(row.peer_completed_count), color: TEAL },
-    { key: "mentoring", value: null, text: countValue(row.mentoring_completed_count), color: GREEN },
-    { key: "triads", value: null, text: countValue(row.triad_completed_count), color: PLUM },
+    { key: "coaching", value: modulePct(row.coaching_completed_units, row.coaching_required_units), text: moduleCount(row.coaching_completed_units, row.coaching_required_units), color: SKY },
+    { key: "training", value: modulePct(row.training_completed_units, row.training_required_units), text: moduleCount(row.training_completed_units, row.training_required_units), color: NAVY },
+    { key: "peer", value: modulePct(row.peer_completed_units, row.peer_required_units), text: moduleCount(row.peer_completed_units, row.peer_required_units), color: TEAL },
+    { key: "mentoring", value: modulePct(row.mentoring_completed_units, row.mentoring_required_units), text: moduleCount(row.mentoring_completed_units, row.mentoring_required_units), color: GREEN },
+    { key: "triads", value: modulePct(row.triad_completed_units, row.triad_required_units), text: moduleCount(row.triad_completed_units, row.triad_required_units), color: PLUM },
   ];
 }
 
 function moduleMetric(row: SponsorRosterRow, key: SortKey) {
-  if (key === "training") return row.full_completion_pct ?? 0;
-  if (key === "coaching") return row.coaching_completed_count ?? 0;
-  if (key === "peer") return row.peer_completed_count ?? 0;
-  if (key === "mentoring") return row.mentoring_completed_count ?? 0;
-  if (key === "triads") return row.triad_completed_count ?? 0;
+  if (key === "training") return row.training_completed_units ?? 0;
+  if (key === "coaching") return row.coaching_completed_units ?? 0;
+  if (key === "peer") return row.peer_completed_units ?? 0;
+  if (key === "mentoring") return row.mentoring_completed_units ?? 0;
+  if (key === "triads") return row.triad_completed_units ?? 0;
   return 0;
 }
 
 function matchesFilter(row: SponsorRosterRow, filter: FilterKey) {
   if (filter === "all") return true;
-  if (filter === "attention") return row.enrollment_status === "at_risk" || row.pace_status === "behind" || (row.coaching_completed_count ?? 0) === 0;
+  if (filter === "attention") return row.enrollment_status === "at_risk" || row.pace_status === "behind" || !moduleComplete(row.coaching_completed_units, row.coaching_required_units) || !moduleComplete(row.training_completed_units, row.training_required_units);
   if (filter === "pace") return row.pace_status === "behind";
-  if (filter === "coaching") return (row.coaching_completed_count ?? 0) === 0;
-  return (row.full_completion_pct ?? 0) < 60;
+  if (filter === "coaching") return !moduleComplete(row.coaching_completed_units, row.coaching_required_units);
+  return !moduleComplete(row.training_completed_units, row.training_required_units);
 }
 
 function programmeProgress(kpis: SponsorCohortSummary | null): ProgrammeProgress {
@@ -388,6 +469,23 @@ function value(value: number | null | undefined) {
 
 function countValue(value: number | null | undefined) {
   return value == null ? "—" : String(value);
+}
+
+function moduleCount(completed: number | null | undefined, required: number | null | undefined) {
+  return completed == null || required == null || required === 0 ? "—" : `${completed}/${required}`;
+}
+
+function modulePct(completed: number | null | undefined, required: number | null | undefined) {
+  return completed == null || required == null || required === 0 ? null : Math.round((completed / required) * 100);
+}
+
+function moduleComplete(completed: number | null | undefined, required: number | null | undefined) {
+  return required == null || required === 0 || (completed ?? 0) >= required;
+}
+
+function moduleDetail(completed: number | null | undefined, expected: number | null | undefined, entitled: number | null | undefined, required: number | null | undefined) {
+  if (completed == null || expected == null || entitled == null || required == null) return "—";
+  return `${completed}/${expected} expected · ${completed}/${entitled} total · ${required} per leader`;
 }
 
 function percent(value: number | null | undefined) {

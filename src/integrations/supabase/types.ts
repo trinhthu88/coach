@@ -4373,6 +4373,11 @@ export type Database = {
           behind_count: number
           booked_units: number
           coaching_completed_count: number
+           coaching_completed_leaders: number
+           coaching_completed_units: number
+           coaching_entitled_units: number
+           coaching_expected_units: number
+           coaching_required_per_leader: number
           cohort_id: string
           cohort_label: string
           completed_action_count: number
@@ -4387,6 +4392,11 @@ export type Database = {
           goal_progress_pct: number
           goal_setup_count: number
           mentoring_completed_count: number
+           mentoring_completed_leaders: number
+           mentoring_completed_units: number
+           mentoring_entitled_units: number
+           mentoring_expected_units: number
+           mentoring_required_per_leader: number
           not_yet_due_count: number
           on_track_count: number
           on_track_pct: number
@@ -4395,6 +4405,11 @@ export type Database = {
           pace_status: string
           paused_count: number
           peer_completed_count: number
+           peer_completed_leaders: number
+           peer_completed_units: number
+           peer_entitled_units: number
+           peer_expected_units: number
+           peer_required_per_leader: number
           programme_label: string
           programme_end_date: string | null
           programme_start_date: string | null
@@ -4406,6 +4421,16 @@ export type Database = {
           suppressed: boolean
           total_action_count: number
           triad_completed_count: number
+           triad_completed_leaders: number
+           triad_completed_units: number
+           triad_entitled_units: number
+           triad_expected_units: number
+           triad_required_per_leader: number
+           training_completed_leaders: number
+           training_completed_units: number
+           training_entitled_units: number
+           training_expected_units: number
+           training_required_per_leader: number
         }[]
       }
       sponsor_enrollment_summaries: {
@@ -4414,6 +4439,9 @@ export type Database = {
           action_completion_pct: number
           booked_units: number
           coaching_completed_count: number
+           coaching_completed_units: number
+           coaching_due_units: number
+           coaching_required_units: number
           cohort_id: string
           cohort_label: string
           completed_action_count: number
@@ -4430,10 +4458,16 @@ export type Database = {
           goal_setup: boolean
           learner_display_name: string
           mentoring_completed_count: number
+           mentoring_completed_units: number
+           mentoring_due_units: number
+           mentoring_required_units: number
           open_action_count: number
           overdue_units: number
           pace_status: string
           peer_completed_count: number
+           peer_completed_units: number
+           peer_due_units: number
+           peer_required_units: number
           programme_end_date: string
           programme_id: string
           programme_label: string
@@ -4444,6 +4478,12 @@ export type Database = {
           schedule_coverage_pct: number
           total_action_count: number
           triad_completed_count: number
+           triad_completed_units: number
+           triad_due_units: number
+           triad_required_units: number
+           training_completed_units: number
+           training_due_units: number
+           training_required_units: number
         }[]
       }
       sponsor_list_report_requests: {

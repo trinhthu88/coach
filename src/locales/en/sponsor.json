@@ -227,6 +227,7 @@
       "sessionsSub": "completed / allocated"
     },
     "active": "Active",
+    "upcoming": "Upcoming",
     "complete": "Complete",
     "suppressedLabel": "Suppressed",
     "unnamedCohort": "Unnamed cohort",
@@ -327,6 +328,12 @@
       "week": "Week {{current}} of {{total}}",
       "remaining": "{{count}} weeks remaining"
     },
+    "journey": {
+      "label": "Programme journey",
+      "progress": "{{leaders}} of {{totalLeaders}} leaders complete · cohort activity shown only in aggregate",
+      "privacyNote": "Privacy-safe cohort progress",
+      "notAvailable": "Not included in sponsor-safe summary"
+    },
     "modules": {
       "coaching": "Coaching",
       "training": "Training / Learning",
@@ -334,8 +341,12 @@
       "mentoring": "Mentoring",
       "triads": "Triads",
       "completedSessions": "completed",
+      "completedOf": "complete",
       "completion": "completion",
-      "aggregateOnly": "Module-level denominator is not included in the sponsor-safe summary."
+      "detail": "{{leaders}} of {{totalLeaders}} leaders meet the requirement · {{expected}} expected by now · {{required}} per leader",
+      "percent": "{{value}}% of cohort entitlement completed",
+      "notAvailable": "Not included in sponsor-safe summary",
+      "aggregateOnly": "Module-level detail is not included in the sponsor-safe summary."
     },
     "attention": {
       "label": "Needs attention",
@@ -353,7 +364,9 @@
     "details": {
       "enrollment": "Enrollment",
       "programme": "Programme",
-      "modules": "Modules",
+      "coaching": "Coaching",
+      "training": "Training / learning",
+      "peerMentoringTriads": "Peer, mentoring and triads",
       "enrolled": "Enrolled",
       "active": "Active",
       "paused": "Paused",
@@ -366,7 +379,7 @@
       "overdueUnits": "Units overdue",
       "completion": "Programme completion",
       "satisfaction": "Average satisfaction",
-      "withheld": "Weekly engagement trend is not available yet — it needs a privacy-safe cohort reporting feed that is not part of the current data contract."
+      "withheld": "Weekly engagement trend, private notes, reflections and coaching content remain withheld. The figures above are derived from sponsor-safe module snapshots and visible aggregate activity."
     },
     "filters": {
       "all": "All leaders {{count}}",
@@ -376,7 +389,7 @@
       "learning": "Learning below 60% {{count}}",
       "empty": "No leaders match this filter."
     },
-    "rosterNote": "Percentages show programme completion against sponsor-visible units. Module count columns show completed sponsor-visible activity; module entitlements are not included in the current data contract."
+    "rosterNote": "Each module cell shows completed / required units for that leader. Cohort cards and the programme journey use the same module requirements and sponsor-safe aggregate totals."
   },
   "leaderDrawer": {
     "srLabelSuffix": "leader detail",

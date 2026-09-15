@@ -217,6 +217,9 @@
       "sessionsUsed": "Session đã dùng",
       "avgGoalGrowth": "Tăng trưởng mục tiêu TB"
     },
+    "active": "Đang hoạt động",
+    "upcoming": "Sắp diễn ra",
+    "complete": "Đã hoàn thành",
     "unnamedCohort": "Nhóm chưa đặt tên",
     "leaderCount_one": "{{count}} lãnh đạo",
     "leaderCount_other": "{{count}} lãnh đạo",
@@ -307,6 +310,11 @@
       "week": "Tuần {{current}} trên {{total}}",
       "remaining": "còn {{count}} tuần"
     },
+    "journey": {
+      "label": "Hành trình chương trình",
+      "progress": "{{leaders}} / {{totalLeaders}} lãnh đạo hoàn thành · chỉ hiển thị tổng hợp theo nhóm",
+      "privacyNote": "Tiến độ nhóm bảo vệ riêng tư"
+    },
     "modules": {
       "coaching": "Coaching",
       "training": "Đào tạo / Học tập",
@@ -314,8 +322,12 @@
       "mentoring": "Mentoring",
       "triads": "Nhóm triad",
       "completedSessions": "đã hoàn thành",
+      "completedOf": "hoàn thành",
       "completion": "hoàn thành",
-      "aggregateOnly": "Tóm tắt an toàn dành cho nhà tài trợ không bao gồm mẫu số theo module."
+      "detail": "{{leaders}} / {{totalLeaders}} lãnh đạo đạt yêu cầu · {{expected}} dự kiến đến nay · {{required}} cho mỗi lãnh đạo",
+      "percent": "{{value}}% định mức của nhóm đã hoàn thành",
+      "notAvailable": "Không có trong bản tóm tắt an toàn cho nhà tài trợ",
+      "aggregateOnly": "Chi tiết module không có trong bản tóm tắt an toàn cho nhà tài trợ."
     },
     "attention": {
       "label": "Cần chú ý",
@@ -333,7 +345,9 @@
     "details": {
       "enrollment": "Đăng ký",
       "programme": "Chương trình",
-      "modules": "Module",
+      "coaching": "Coaching",
+      "training": "Đào tạo / học tập",
+      "peerMentoringTriads": "Peer, mentoring và triad",
       "enrolled": "Đã đăng ký",
       "active": "Đang hoạt động",
       "paused": "Tạm dừng",
@@ -346,7 +360,7 @@
       "overdueUnits": "Đơn vị quá hạn",
       "completion": "Hoàn thành chương trình",
       "satisfaction": "Mức hài lòng trung bình",
-      "withheld": "Xu hướng tương tác theo tuần chưa có — cần một luồng báo cáo nhóm an toàn, hiện chưa thuộc hợp đồng dữ liệu."
+      "withheld": "Xu hướng hàng tuần, ghi chú riêng tư, phản hồi và nội dung coaching vẫn được ẩn. Các số liệu trên được tính từ snapshot module an toàn và hoạt động tổng hợp được phép hiển thị."
     },
     "filters": {
       "all": "Tất cả lãnh đạo {{count}}",
@@ -356,7 +370,7 @@
       "learning": "Học tập dưới 60% {{count}}",
       "empty": "Không có lãnh đạo phù hợp với bộ lọc này."
     },
-    "rosterNote": "Tỷ lệ phần trăm là mức hoàn thành chương trình theo các đơn vị hiển thị cho nhà tài trợ. Các cột số lượng module là hoạt động đã hoàn thành; hợp đồng dữ liệu hiện tại không bao gồm định mức module."
+    "rosterNote": "Mỗi ô module hiển thị số đơn vị đã hoàn thành / yêu cầu của lãnh đạo đó. Thẻ nhóm và hành trình chương trình dùng cùng định mức module và số liệu tổng hợp an toàn."
   },
   "leaderDrawer": {
     "srLabelSuffix": "chi tiết lãnh đạo",

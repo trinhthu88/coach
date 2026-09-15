@@ -37,3 +37,12 @@ export function cohortProgress(start: string | null, end: string | null): { elap
   const elapsed = Math.max(0, Math.min(total, Math.round((Date.now() - startMs) / 86400000)));
   return { elapsed, total, pct: (elapsed / total) * 100 };
 }
+
+/** Lifecycle is date-derived; pace can still be mixed inside a completed cohort. */
+export function cohortLifecycleStatus(start: string | null, end: string | null): "upcoming" | "active" | "complete" {
+  const startMs = start ? new Date(start).getTime() : NaN;
+  const endMs = end ? new Date(end).getTime() : NaN;
+  if (Number.isFinite(startMs) && Date.now() < startMs) return "upcoming";
+  if (Number.isFinite(endMs) && Date.now() > endMs) return "complete";
+  return "active";
+}

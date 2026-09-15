@@ -35,4 +35,26 @@ describe("SponsorCohorts privacy contract", () => {
     expect(screen.queryByText("Booked")).not.toBeInTheDocument();
     expect(calls.every((name) => name === "sponsor_enrollment_summaries" || name === "sponsor_cohort_summaries" || name === "sponsor_min_leaders_for_distribution" || name === "sponsor_organisation_summary")).toBe(true);
   });
+
+  it("keeps an in-progress cohort marked active even when its pace is mixed", async () => {
+    responses.sponsor_cohort_summaries = [{
+      cohort_id: id2,
+      cohort_label: "Cohort B",
+      programme_label: "Executive",
+      programme_start_date: "2026-01-15",
+      programme_end_date: "2026-12-15",
+      enrollment_count: 12,
+      suppressed: false,
+      pace_status: "behind",
+      full_completion_pct: 42,
+      on_track_pct: 50,
+      at_risk_count: 2,
+      completed_count: 0,
+    }];
+
+    render(<MemoryRouter><SponsorCohorts /></MemoryRouter>);
+
+    await waitFor(() => expect(screen.getByText("Cohort B")).toBeInTheDocument());
+    expect(screen.getByText("Active")).toBeInTheDocument();
+  });
 });
