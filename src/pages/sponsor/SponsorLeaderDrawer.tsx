@@ -1,6 +1,7 @@
 import {
   Activity,
   AlertTriangle,
+  ArrowLeft,
   CalendarCheck,
   CheckCircle2,
   CircleGauge,
@@ -11,7 +12,6 @@ import {
   Sparkles,
   Target,
   TrendingUp,
-  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -72,7 +72,7 @@ export function SponsorLeaderProfile({
       <header className="relative overflow-hidden bg-secondary px-6 pb-7 pt-5 text-white sm:px-8 lg:px-12">
         <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full border-[26px] border-white/5" />
         <button onClick={onBack} className="relative mb-7 inline-flex items-center gap-1.5 text-[11px] font-semibold text-white/60 transition-colors hover:text-white">
-          <X className="h-3.5 w-3.5" /> {t("leaderDrawer.backToRoster")}
+          <ArrowLeft className="h-3.5 w-3.5" /> {t("leaderDrawer.backToRoster")}
         </button>
         <div className="relative flex items-start justify-between gap-5">
           <div className="flex min-w-0 items-center gap-4">

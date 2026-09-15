@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { format, differenceInCalendarDays, addDays } from "date-fns";
 import {
   Users, CheckCircle2, AlertTriangle, CalendarCheck,
@@ -16,13 +16,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { SectionCard, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
-import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import {
   RosterTable,
   HealthSignalPill,
 } from "@/pages/sponsor/_shared";
 import { healthSignal } from "@/pages/sponsor/sponsorUtils";
-import { SponsorLeaderDrawer } from "./SponsorLeaderDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -41,11 +39,11 @@ interface OrgBannerData {
 export default function SponsorDashboard() {
   const { t } = useTranslation("sponsor");
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     kpis, roster, cohortSummaries, loading,
   } = useSponsorDashboardData();
   const [org, setOrg] = useState<OrgBannerData | null>(null);
-  const [selectedLeader, setSelectedLeader] = useState<SponsorRosterRow | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [contactMessage, setContactMessage] = useState("");
   const [contactSending, setContactSending] = useState(false);
@@ -458,7 +456,12 @@ export default function SponsorDashboard() {
           <p className="mb-3 text-[10px] text-muted-foreground">
             {t("dashboard.roster.note")}
           </p>
-          <RosterTable rows={roster} onSelect={setSelectedLeader} showCohortColumn sortable={false} />
+          <RosterTable
+            rows={roster}
+            onSelect={(leader) => navigate(`/sponsor/cohorts/${leader.cohortId}/leaders/${leader.enrollment_id}`)}
+            showCohortColumn
+            sortable={false}
+          />
           <p className="mt-3 text-[10px] italic text-muted-foreground">
             {t("dashboard.roster.footnote")}
           </p>
@@ -496,9 +499,6 @@ export default function SponsorDashboard() {
           <Link to="/sponsor/cohorts"><Layers className="h-3.5 w-3.5" /> {t("dashboard.quickActions.compareCohorts")}</Link>
         </Button>
       </div>
-
-      {/* Leader detail drawer */}
-      <SponsorLeaderDrawer leader={selectedLeader} onClose={() => setSelectedLeader(null)} />
 
       <Dialog open={contactOpen} onOpenChange={setContactOpen}>
         <DialogContent>
