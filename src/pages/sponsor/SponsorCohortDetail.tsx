@@ -98,7 +98,7 @@ export default function SponsorCohortDetail() {
 
             <AttentionSection kpis={kpis} counts={filterCounts} filter={filter} onFilter={setFilter} t={t} />
 
-            <ProgrammeJourney kpis={kpis} t={t} />
+            <ProgrammeJourney journey={parseJourney(kpis?.programme_journey)} t={t} />
 
             <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
               <button
@@ -253,43 +253,123 @@ function AttentionSection({ kpis, counts, filter, onFilter, t }: { kpis: Sponsor
   );
 }
 
-function ProgrammeJourney({ kpis, t }: { kpis: SponsorCohortSummary | null; t: (key: string, options?: Record<string, unknown>) => string }) {
-  const leaderCount = kpis?.enrollment_count ?? 0;
-  const items = [
-    { label: t("cohortDetail.modules.coaching"), completed: kpis?.coaching_completed_units, entitled: kpis?.coaching_entitled_units, leaders: kpis?.coaching_completed_leaders, color: SKY },
-    { label: t("cohortDetail.modules.training"), completed: kpis?.training_completed_units, entitled: kpis?.training_entitled_units, leaders: kpis?.training_completed_leaders, color: NAVY },
-    { label: t("cohortDetail.modules.peer"), completed: kpis?.peer_completed_units, entitled: kpis?.peer_entitled_units, leaders: kpis?.peer_completed_leaders, color: TEAL },
-    { label: t("cohortDetail.modules.mentoring"), completed: kpis?.mentoring_completed_units, entitled: kpis?.mentoring_entitled_units, leaders: kpis?.mentoring_completed_leaders, color: GREEN },
-    { label: t("cohortDetail.modules.triads"), completed: kpis?.triad_completed_units, entitled: kpis?.triad_entitled_units, leaders: kpis?.triad_completed_leaders, color: PLUM },
-  ];
+function ProgrammeJourney({ journey, t }: { journey: SponsorJourneyCheckpoint[]; t: (key: string, options?: Record<string, unknown>) => string }) {
   return (
     <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-serif text-[17px] font-normal">{t("cohortDetail.journey.label")}</h2>
         <span className="text-[10.5px] text-[#9a938a]">{t("cohortDetail.journey.privacyNote")}</span>
       </div>
-      <div className="mt-5 grid gap-3 md:grid-cols-5">
-        {items.map((item) => {
-          const complete = item.completed != null && item.entitled != null;
-          const pct = complete && item.entitled > 0 ? Math.round((item.completed / item.entitled) * 100) : 0;
-          return (
-            <div key={item.label} className="rounded-xl border border-[#eee8de] bg-[#fff] p-3.5">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-[2px]" style={{ background: item.color }} />
-                <span className="text-[10px] font-bold uppercase tracking-[.12em] text-[#6a6560]">{item.label}</span>
-              </div>
-              <div className="mt-4 font-display text-xl font-light">{complete ? `${item.completed}/${item.entitled}` : "—"}</div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eee8de]">
-                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: item.color }} />
-              </div>
-              <p className="mt-2 text-[10.5px] leading-relaxed text-[#6a6560]">
-                {complete ? t("cohortDetail.journey.progress", { leaders: item.leaders ?? 0, totalLeaders: leaderCount }) : t("cohortDetail.modules.notAvailable")}
-              </p>
-            </div>
-          );
-        })}
+      <div className="mt-4 flex flex-wrap gap-3.5 text-[10.5px] text-[#6a6560]">
+        <JourneyLegend color={GREEN} label={t("leaderDrawer.reference.completed")} />
+        <JourneyLegend color={SKY} label={t("leaderDrawer.reference.youAreHere")} />
+        <JourneyLegend color="#c9543a" label={t("leaderDrawer.reference.overdueState")} />
+        <JourneyLegend color="#cfc7bb" label={t("leaderDrawer.reference.upcoming")} />
       </div>
+      {journey.length === 0 ? (
+        <p className="mt-5 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-5 text-center text-[11px] leading-relaxed text-[#6a6560]">
+          {t("cohortDetail.journey.notAvailable")}
+        </p>
+      ) : (
+        <div className="mt-5 overflow-x-auto pb-1">
+          <div className="min-w-[900px]">
+            <div className="flex gap-2">
+              <JourneyPhase label={t("leaderDrawer.reference.foundationPhase")} tone="green" />
+              <JourneyPhase label={t("leaderDrawer.reference.practicePhase")} tone="teal" />
+              <JourneyPhase label={t("leaderDrawer.reference.embeddingPhase")} tone="paper" />
+            </div>
+            <div className="mt-2.5 flex items-stretch gap-0.5">
+              {journey.map((checkpoint) => <JourneyCheckpoint key={`${checkpoint.due_on}-${checkpoint.checkpoint_number}`} checkpoint={checkpoint} t={t} />)}
+            </div>
+          </div>
+        </div>
+      )}
+      <p className="mt-[18px] border-t border-[#eee8de] pt-3.5 text-[11.5px] leading-relaxed text-[#6a6560]">
+        {t("cohortDetail.journey.aggregateNote")}
+      </p>
     </section>
+  );
+}
+
+type SponsorJourneyCheckpoint = {
+  checkpoint_number: number;
+  due_on: string;
+  label: string;
+  required_units: number;
+  completed_units: number;
+  completed_leaders: number;
+  total_leaders: number;
+  state: "completed" | "current" | "upcoming" | "overdue";
+};
+
+function parseJourney(value: unknown): SponsorJourneyCheckpoint[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const item = entry as Record<string, unknown>;
+    const state = item.state;
+    if (!["completed", "current", "upcoming", "overdue"].includes(String(state))) return [];
+    if (typeof item.due_on !== "string" || typeof item.checkpoint_number !== "number") return [];
+    return [{
+      checkpoint_number: item.checkpoint_number,
+      due_on: item.due_on,
+      label: typeof item.label === "string" ? item.label : "Programme checkpoint",
+      required_units: typeof item.required_units === "number" ? item.required_units : 0,
+      completed_units: typeof item.completed_units === "number" ? item.completed_units : 0,
+      completed_leaders: typeof item.completed_leaders === "number" ? item.completed_leaders : 0,
+      total_leaders: typeof item.total_leaders === "number" ? item.total_leaders : 0,
+      state: state as SponsorJourneyCheckpoint["state"],
+    }];
+  });
+}
+
+function JourneyPhase({ label, tone }: { label: string; tone: "green" | "teal" | "paper" }) {
+  const styles = tone === "green" ? "bg-[#eef4f1] text-[#17663f]" : tone === "teal" ? "bg-[#e4f3f7] text-[#2c8fa8]" : "bg-[#f1ece4] text-[#6a6560]";
+  return <div className={`flex-1 rounded-lg px-3 py-1.5 text-[9.5px] font-bold uppercase tracking-[.16em] ${styles}`}>{label}</div>;
+}
+
+function JourneyLegend({ color, label }: { color: string; label: string }) {
+  return <span className="inline-flex items-center gap-1.5"><span className="h-[9px] w-[9px] rounded-full" style={{ background: color }} />{label}</span>;
+}
+
+function JourneyCheckpoint({ checkpoint, t }: { checkpoint: SponsorJourneyCheckpoint; t: (key: string, options?: Record<string, unknown>) => string }) {
+  const colors = checkpoint.state === "completed"
+    ? { number: "#6a6560", dot: GREEN, border: "transparent", bg: "transparent", line: "#9ed3e0" }
+    : checkpoint.state === "current"
+      ? { number: NAVY, dot: SKY, border: "#bde3ee", bg: "#f0fafc", line: "#9ed3e0" }
+      : checkpoint.state === "overdue"
+        ? { number: "#a8341c", dot: "#c9543a", border: "#f0d5cc", bg: "#fdf6f2", line: "#e6b9ab" }
+        : { number: "#9a938a", dot: "#fffdf9", border: "transparent", bg: "transparent", line: "#e6e0d6" };
+  const pct = checkpoint.required_units > 0
+    ? Math.min(100, Math.round((checkpoint.completed_units / checkpoint.required_units) * 100))
+    : 0;
+  const stateLabel = checkpoint.state === "completed"
+    ? t("leaderDrawer.reference.completed")
+    : checkpoint.state === "current"
+      ? t("leaderDrawer.reference.youAreHere")
+      : checkpoint.state === "overdue"
+        ? t("leaderDrawer.reference.overdueState")
+        : t("leaderDrawer.reference.upcoming");
+  return (
+    <div className="min-w-0 flex-1 rounded-xl border px-1.5 pb-3 pt-2.5" style={{ background: colors.bg, borderColor: colors.border }}>
+      <div className="flex h-5 items-center justify-center text-center">
+        <span className="text-[8.5px] font-bold uppercase tracking-[.08em]" style={{ color: colors.number }}>{stateLabel}</span>
+      </div>
+      <div className="mt-1 text-center text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: colors.number }}>
+        {t("cohortDetail.journey.checkpoint", { number: checkpoint.checkpoint_number })}
+      </div>
+      <div className="mt-0.5 truncate text-center text-[9.5px] text-[#9a938a]" title={checkpoint.label}>{checkpoint.label}</div>
+      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center">
+        <span className="h-0.5" style={{ background: checkpoint.checkpoint_number === 1 ? "transparent" : colors.line }} />
+        <span className="h-[11px] w-[11px] rounded-full border-2" style={{ background: colors.dot, borderColor: colors.dot }} />
+        <span className="h-0.5" style={{ background: colors.line }} />
+      </div>
+      <div className="mt-3 text-center text-[10px] font-semibold text-[#062f3e]">{checkpoint.completed_units}/{checkpoint.required_units}</div>
+      <div className="mt-1 h-1 overflow-hidden rounded-full bg-[#eee8de]"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: checkpoint.state === "overdue" ? "#c9543a" : SKY }} /></div>
+      <div className="mt-2 text-center text-[9px] leading-[1.35] text-[#8a837a]">
+        {t("cohortDetail.journey.leaders", { completed: checkpoint.completed_leaders, total: checkpoint.total_leaders })}
+      </div>
+    </div>
   );
 }
 

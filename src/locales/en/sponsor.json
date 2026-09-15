@@ -332,7 +332,10 @@
       "label": "Programme journey",
       "progress": "{{leaders}} of {{totalLeaders}} leaders complete · cohort activity shown only in aggregate",
       "privacyNote": "Privacy-safe cohort progress",
-      "notAvailable": "Not included in sponsor-safe summary"
+      "notAvailable": "No current Admin checkpoints are available for this programme.",
+      "aggregateNote": "Each checkpoint compares the current Admin requirement with completed leader activity. Individual notes, messages, reflections, and goal wording remain private.",
+      "checkpoint": "Checkpoint {{number}}",
+      "leaders": "{{completed}} of {{total}} leaders complete"
     },
     "modules": {
       "coaching": "Coaching",

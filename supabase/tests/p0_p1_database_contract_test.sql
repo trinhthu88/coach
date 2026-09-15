@@ -1,5 +1,5 @@
 begin;
-select plan(39);
+select plan(42);
 
 select ok(
   not exists (
@@ -43,6 +43,10 @@ select has_function(
 select has_function(
   'public', 'generate_enrollment_schedule', array['uuid'],
   'enrollment schedule RPC exists'
+);
+select has_function(
+  'public', 'get_sponsor_programme_journey', array['uuid', 'date'],
+  'sponsor programme journey RPC exists'
 );
 
 select has_trigger('public', 'sessions', 'sessions_enrollment_activity_scope', 'coaching activity is enrollment-scoped');
@@ -140,6 +144,13 @@ select lives_ok(
   $$select * from public.sponsor_organisation_summary()$$,
   'sponsor organization summary executes for the seeded sponsor'
 );
+select lives_ok(
+  $$select public.get_sponsor_programme_journey(
+    '11111111-1111-4111-8111-111111111119'::uuid,
+    current_date
+  )$$,
+  'sponsor programme journey executes for Cohort C'
+);
 select is(
   (select cohort_count from public.sponsor_organisation_summary()),
   (select count(*)::integer from public.sponsor_cohort_summaries(null::uuid)),
@@ -168,8 +179,8 @@ select is(
 );
 select is(
   (select required_units from public.sponsor_organisation_summary()),
-  0,
-  'organization required units preserve an eligible zero aggregate'
+  192,
+  'organization required units use the Admin-configured Cohort C entitlement'
 );
 select is(
   (select completed_units from public.sponsor_organisation_summary()),
@@ -190,6 +201,35 @@ select is(
   (select total_action_count from public.sponsor_organisation_summary()),
   (select coalesce(sum(total_action_count), 0)::integer from public.sponsor_cohort_summaries(null::uuid)),
   'organization action totals match visible cohort summaries'
+);
+select ok(
+  (
+    select c.enrollment_count = 12
+      and c.required_units = 192
+      and c.completed_units = 0
+      and c.coaching_required_per_leader = 4
+      and c.coaching_entitled_units = 48
+      and c.coaching_completed_units = 0
+      and c.mentoring_required_per_leader = 2
+      and c.mentoring_entitled_units = 24
+      and c.mentoring_completed_units = 0
+      and c.peer_required_per_leader = 2
+      and c.peer_entitled_units = 24
+      and c.peer_completed_units = 0
+      and c.triad_required_per_leader = 2
+      and c.triad_entitled_units = 24
+      and c.triad_completed_units = 0
+      and c.training_required_per_leader = 6
+      and c.training_entitled_units = 72
+      and c.training_completed_units = 0
+      and c.goal_count = 0
+      and c.total_action_count = 0
+      and c.full_completion_pct = 0
+    from public.sponsor_cohort_summaries(
+      '11111111-1111-4111-8111-111111111119'::uuid
+    ) c
+  ),
+  'Cohort C has the Admin requirements and zero activity/goals'
 );
 
 select * from finish();

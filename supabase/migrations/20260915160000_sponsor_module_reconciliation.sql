@@ -222,6 +222,7 @@ RETURNS TABLE (
   programme_end_date date,
   programme_total_weeks integer,
   programme_current_week integer,
+  programme_journey jsonb,
   enrollment_count integer,
   suppressed boolean,
   required_units integer,
@@ -390,6 +391,8 @@ AS $$
         greatest(0, ((current_date - programme_start_date) / 7) + 1)
       )
     END,
+    CASE WHEN n < public.sponsor_min_leaders_for_distribution() THEN NULL
+      ELSE public.get_sponsor_programme_journey(cohort_id, current_date) END,
     CASE WHEN n < public.sponsor_min_leaders_for_distribution() THEN NULL ELSE n END,
     n < public.sponsor_min_leaders_for_distribution(),
     CASE WHEN n < public.sponsor_min_leaders_for_distribution() THEN NULL ELSE required_units END,

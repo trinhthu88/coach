@@ -8,3 +8,9 @@ Sponsor denominators and entitlements must come from the current enabled Admin `
 **Why:** Enrollment snapshots preserve historical schedule timing, but using them for current sponsor denominators lets stale configuration produce contradictory Admin and Sponsor totals. A separate legacy training-week count also caused the Admin “4 weeks” display to disagree with six actual content weeks and six required units.
 
 **How to apply:** Keep snapshot data for due/expected timing, but join sponsor cohort, roster, and organization rollups to current enabled module configuration for requirements. Remove or ignore legacy standalone training-week fields; validate selected training content against the configured units.
+
+Sponsor cohort journeys should be returned as server-generated checkpoints from the current Admin schedule, with activity filtered to modules scheduled by each checkpoint. Client-side date math or distributing aggregate completion across weeks is not a valid substitute.
+
+**Why:** A cohort-level completion total cannot identify which week or checkpoint it belongs to, and counting all activity after the first due checkpoint makes the timeline look complete before the configured programme milestones are due.
+
+**How to apply:** Add checkpoint data to the sponsor-safe reporting contract and render only aggregate units/leaders per checkpoint; keep private activity content and goal wording out of the response.

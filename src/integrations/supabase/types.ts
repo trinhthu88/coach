@@ -4413,6 +4413,7 @@ export type Database = {
           programme_label: string
           programme_end_date: string | null
            programme_current_week: number
+           programme_journey: Json
           programme_start_date: string | null
            programme_total_weeks: number
           required_units: number

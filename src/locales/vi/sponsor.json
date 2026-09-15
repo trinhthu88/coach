@@ -313,7 +313,11 @@
     "journey": {
       "label": "Hành trình chương trình",
       "progress": "{{leaders}} / {{totalLeaders}} lãnh đạo hoàn thành · chỉ hiển thị tổng hợp theo nhóm",
-      "privacyNote": "Tiến độ nhóm bảo vệ riêng tư"
+      "privacyNote": "Tiến độ nhóm bảo vệ riêng tư",
+      "notAvailable": "Chưa có mốc Admin hiện tại cho chương trình này.",
+      "aggregateNote": "Mỗi mốc so sánh yêu cầu Admin hiện tại với hoạt động hoàn thành thực tế của người học. Ghi chú, tin nhắn, phản hồi và nội dung mục tiêu cá nhân vẫn được giữ riêng tư.",
+      "checkpoint": "Mốc {{number}}",
+      "leaders": "{{completed}} trên {{total}} người hoàn thành"
     },
     "modules": {
       "coaching": "Coaching",

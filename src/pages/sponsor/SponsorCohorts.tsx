@@ -212,16 +212,13 @@ function CohortCard({
           </div>
         ) : (
           <>
-            <div className="mt-6 grid grid-cols-2 gap-3 rounded-2xl bg-[#fbf9f6] p-4 sm:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 gap-3 rounded-2xl bg-[#fbf9f6] p-4 sm:grid-cols-3">
               <MiniMetric label={t("cohorts.completion")} value={`${Math.round(completionPct)}%`} />
               <MiniMetric label={t("cohorts.onTrackPct")} value={`${Math.round(onTrackPct)}%`} />
-              <MiniMetric label={t("cohorts.avgGrowth")} value={cohort.goal_progress_pct == null ? "—" : `${Math.round(cohort.goal_progress_pct)}%`} />
               <MiniMetric label={t("cohorts.satisfaction")} value={cohort.satisfaction_avg == null ? "—" : cohort.satisfaction_avg.toFixed(1)} />
             </div>
             <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-[11px] text-muted-foreground">
               <span>{t("cohorts.sessions")} <b className="text-foreground">{cohort.completed_units ?? 0} / {cohort.required_units ?? 0}</b></span>
-              <span>{t("cohorts.goals")} <b className="text-foreground">{cohort.goal_setup_count ?? 0} / {cohort.goal_count ?? 0}</b></span>
-              <span>{t("cohorts.actions")} <b className="text-foreground">{cohort.completed_action_count ?? 0} / {cohort.total_action_count ?? 0}</b></span>
             </div>
           </>
         )}

@@ -358,23 +358,16 @@ BEGIN
     ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,completed_at=excluded.completed_at;
 END $matrix$;
 
--- Cohort C is a completed blended programme with twelve leaders. Its
--- activities intentionally vary by leader so sponsor cards, journey figures,
--- attention filters, and roster cells all reconcile to the same rows.
+-- Cohort C is a completed blended programme with twelve leaders and no
+-- leader-level completions or goals yet. Sponsor progress must therefore stay
+-- at zero against the Admin-defined entitlement.
 DO $cohort_c$
 DECLARE
   org uuid := '11111111-1111-4111-8111-111111111111';
   pc uuid := '11111111-1111-4111-8111-111111111118';
   cc uuid := '11111111-1111-4111-8111-111111111119';
-  uid uuid; eid uuid; coach uuid; mentor uuid; w uuid; gid uuid;
-  uids uuid[] := '{}'; eids uuid[] := '{}';
-  i int; j int; gidx int; base int; n int;
-  coaching_counts int[] := ARRAY[4,4,4,3,3,2,2,1,4,3,2,0];
-  training_counts int[] := ARRAY[6,6,5,4,3,2,1,0,6,4,2,1];
-  peer_counts int[] := ARRAY[2,2,2,2,1,1,0,0,2,1,0,0];
-  mentoring_counts int[] := ARRAY[2,2,2,1,1,0,2,0,2,1,0,0];
-  triad_counts int[] := ARRAY[2,2,2,2,1,1,0,0,2,1,0,0];
-  triad_group_counts int[] := ARRAY[2,1,2,0];
+  uid uuid; eid uuid; coach uuid; mentor uuid; w uuid;
+  i int;
 BEGIN
   SELECT p.id INTO coach FROM profiles p JOIN user_roles r ON r.user_id=p.id
     WHERE r.role='coach' ORDER BY p.id LIMIT 1;
@@ -403,10 +396,40 @@ BEGIN
       (pc,'triads',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":20}')
     ON CONFLICT(programme_id,module) DO UPDATE SET enabled=excluded.enabled,config=excluded.config;
 
+  -- Make the fixture idempotently reflect the zero-activity scenario. This
+  -- only targets the named demo cohort; it never removes other users' data.
+  DELETE FROM public.session_activity_attributions a
+    USING public.programme_enrollments e
+    WHERE a.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.enrollment_actions a
+    USING public.programme_enrollments e
+    WHERE a.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.coachee_goals g
+    USING public.programme_enrollments e
+    WHERE g.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.sessions s
+    USING public.programme_enrollments e
+    WHERE s.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.peer_sessions s
+    USING public.programme_enrollments e
+    WHERE s.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.coachee_peer_sessions s
+    USING public.programme_enrollments e
+    WHERE s.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.mentoring_sessions s
+    USING public.programme_enrollments e
+    WHERE s.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.training_progress p
+    USING public.programme_enrollments e
+    WHERE p.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.triad_sessions s
+    USING public.triad_groups g
+    WHERE s.triad_group_id=g.id AND g.cohort_id=cc;
+  DELETE FROM public.triad_groups WHERE cohort_id=cc;
+
   FOR i IN 1..12 LOOP
     uid:=('13131313-1313-4131-8131-'||lpad(i::text,12,'0'))::uuid;
     eid:=('14141414-1414-4141-8141-'||lpad(i::text,12,'0'))::uuid;
-    uids:=array_append(uids,uid); eids:=array_append(eids,eid);
     INSERT INTO auth.users(id,instance_id,aud,role,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
       VALUES(uid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',
         format('leader.c%s@demo.clariva.club',i),now(),
@@ -422,9 +445,7 @@ BEGIN
       ON CONFLICT(id) DO UPDATE SET approval_status='active';
     INSERT INTO programme_enrollments(id,user_id,coachee_id,programme_id,cohort_id,organization_id,start_date,end_date,status)
       VALUES(eid,uid,uid,pc,cc,org,'2026-03-01','2026-07-05',
-        CASE WHEN i IN (1,2,3,9) THEN 'completed'::enrollment_status
-             WHEN i IN (4,7,11) THEN 'paused'::enrollment_status
-             ELSE 'at_risk'::enrollment_status END)
+        'at_risk'::enrollment_status)
       ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id,cohort_id=excluded.cohort_id,
         start_date=excluded.start_date,end_date=excluded.end_date,status=excluded.status;
     PERFORM generate_enrollment_schedule(eid);
@@ -432,66 +453,6 @@ BEGIN
       VALUES(uid,coach,auth.uid()) ON CONFLICT(coachee_id,coach_id) DO NOTHING;
     INSERT INTO mentoring_allowlist(mentee_user_id,mentor_user_id,created_by)
       VALUES(uid,mentor,auth.uid()) ON CONFLICT(mentee_user_id,mentor_user_id) DO NOTHING;
-    INSERT INTO coachee_goals(id,coachee_id,enrollment_id,title,description,status,target_date,sort_order)
-      VALUES(('23232323-2323-4232-8232-'||lpad(i::text,12,'0'))::uuid,uid,eid,
-        format('Emerging Leaders goal %s',i),'Private goal detail','active','2026-07-05',1)
-      ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status='active';
-  END LOOP;
-
-  FOR i IN 1..12 LOOP
-    eid:=eids[i]; uid:=uids[i];
-    n:=coaching_counts[i];
-    FOR j IN 1..n LOOP
-      INSERT INTO sessions(id,enrollment_id,coach_id,coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
-        VALUES(('57575757-5757-4575-8575-'||lpad((i*10+j)::text,12,'0'))::uuid,eid,coach,uid,
-          format('C%s coaching session %s',i,j),'2026-03-10'::date+((j-1)*21),60,'completed',
-          CASE WHEN j=1 THEN 5 ELSE 4 END)
-        ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status='completed',
-          start_time=excluded.start_time,coachee_rating=excluded.coachee_rating;
-    END LOOP;
-    n:=training_counts[i];
-    FOR j IN 1..n LOOP
-      w:=('67676767-6767-4676-8676-'||lpad(j::text,12,'0'))::uuid;
-      INSERT INTO training_progress(id,user_id,enrollment_id,training_week_id,viewed_at,completed_at)
-        VALUES(('78787878-7878-4787-8787-'||lpad((i*10+j)::text,12,'0'))::uuid,uid,eid,w,
-          '2026-03-05'::date+((j-1)*21),'2026-03-07'::date+((j-1)*21))
-        ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,completed_at=excluded.completed_at;
-    END LOOP;
-    n:=peer_counts[i];
-    FOR j IN 1..n LOOP
-      INSERT INTO peer_sessions(id,enrollment_id,peer_coach_id,peer_coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
-        VALUES(('79797979-7979-4797-8797-'||lpad((i*10+j)::text,12,'0'))::uuid,eid,mentor,uid,
-          format('C%s peer practice %s',i,j),'2026-04-01'::date+((j-1)*28),60,'completed',4)
-        ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status='completed';
-    END LOOP;
-    n:=mentoring_counts[i];
-    FOR j IN 1..n LOOP
-      INSERT INTO mentoring_sessions(id,enrollment_id,mentor_id,mentee_id,topic,start_time,duration_minutes,status,prep_file_path)
-        VALUES(('80808080-8080-4808-8808-'||lpad((i*10+j)::text,12,'0'))::uuid,eid,mentor,uid,
-          format('C%s mentoring %s',i,j),'2026-04-10'::date+((j-1)*35),60,'completed','demo/c-prep.txt')
-        ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status='completed';
-    END LOOP;
-  END LOOP;
-
-  FOR gidx IN 1..4 LOOP
-    base:=(gidx-1)*3+1;
-    gid:=('81818181-8181-4818-8818-'||lpad(gidx::text,12,'0'))::uuid;
-    INSERT INTO triad_groups(id,cohort_id,programme_id,name,member_1_id,member_2_id,member_3_id,enrollment_1_id,enrollment_2_id,enrollment_3_id)
-      VALUES(gid,cc,pc,format('C Triad %s',gidx),uids[base],uids[base+1],uids[base+2],
-        eids[base],eids[base+1],eids[base+2])
-      ON CONFLICT(id) DO UPDATE SET enrollment_1_id=excluded.enrollment_1_id,
-        enrollment_2_id=excluded.enrollment_2_id,enrollment_3_id=excluded.enrollment_3_id;
-    FOR j IN 1..triad_group_counts[gidx] LOOP
-      INSERT INTO triad_sessions(id,triad_group_id,proposed_start_time,proposed_end_time,proposed_by,
-        member_1_response,member_2_response,member_3_response,coach_enrollment_id,coachee_enrollment_id,
-        observer_enrollment_id,status,notes)
-        VALUES(('82828282-8282-4828-8828-'||lpad((gidx*10+j)::text,12,'0'))::uuid,gid,
-          '2026-05-01'::timestamptz+((j-1)*30*interval '1 day'),
-          '2026-05-01'::timestamptz+((j-1)*30*interval '1 day')+interval '1 hour',
-          'system','accepted','accepted','accepted',eids[base],eids[base+1],eids[base+2],
-          'completed','Private triad notes')
-        ON CONFLICT(id) DO UPDATE SET status='completed',triad_group_id=excluded.triad_group_id;
-    END LOOP;
   END LOOP;
 END $cohort_c$;
 COMMIT;
