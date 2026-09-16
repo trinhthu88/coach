@@ -43,6 +43,12 @@ AS $$
       ON pm.programme_id = e.programme_id
      AND pm.enabled
   )
+  SELECT cm.module, cm.required_units, NULL::date, 0, NULL::uuid
+  FROM configured_modules cm
+  WHERE cm.required_units > 0
+
+  UNION ALL
+
   SELECT cm.module, cm.required_units, cm.end_date, cm.required_units, NULL::uuid
   FROM configured_modules cm
   WHERE cm.required_units > 0 AND cm.distribution_mode = 'flexible'
