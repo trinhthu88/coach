@@ -4419,12 +4419,12 @@ export type Database = {
           on_track_pct: number
           overdue_units: number
           pace_status: string
+          paused_count: number
           peer_booked_units: number
           peer_completed_leaders: number
           peer_completed_units: number
           peer_due_units: number
           peer_required_units: number
-          paused_count: number
           programme_end_date: string | null
           programme_journey: Json | null
           programme_label: string
