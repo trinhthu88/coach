@@ -337,7 +337,14 @@
       "notAvailable": "No current Admin checkpoints are available for this programme.",
       "aggregateNote": "Each checkpoint compares the current Admin requirement with completed leader activity. Individual notes, messages, reflections, and goal wording remain private.",
       "scope": "Configured scope: {{modules}}",
-      "leaders": "{{completed}} of {{total}} leaders complete"
+      "leaders": "{{completed}} of {{total}} leaders complete",
+      "cumulative": "Cumulative completion at this date",
+      "states": {
+        "upcoming": "Upcoming",
+        "current": "Current",
+        "completed": "Completed",
+        "overdue": "Overdue"
+      }
     },
     "modules": {
       "coaching": "Coaching",

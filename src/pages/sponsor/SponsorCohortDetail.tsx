@@ -285,37 +285,45 @@ function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, o
     ))
     : [];
   return (
-    <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
+    <section className="mt-4 overflow-hidden rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-serif text-[17px] font-normal">{t("cohortDetail.journey.label")}</h2>
         <span className="text-[10.5px] text-[#9a938a]">{t("cohortDetail.journey.privacyNote")}</span>
       </div>
       {checkpoints.length ? (
-        <div className="mt-5 grid gap-3">
-          {checkpoints.map((checkpoint) => {
-            const color = checkpoint.state === "completed" ? GREEN : checkpoint.state === "overdue" ? "#c9543a" : checkpoint.state === "current" ? SKY : "#cfc7bb";
-            return (
-              <div key={`${checkpoint.due_on}-${checkpoint.checkpoint_number}`} className="flex items-start gap-3 rounded-xl border border-[#eee8de] bg-[#f6f3ee] px-4 py-3.5">
-                <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="text-[11.5px] font-semibold text-[#062f3e]">
-                      {checkpoint.label || moduleScopeLabel(checkpoint.module_scope, t)}
-                    </span>
-                    <span className="text-[10px] text-[#9a938a]">{formatDate(checkpoint.due_on)}</span>
-                  </div>
-                  {checkpoint.label && checkpoint.module_scope?.length ? (
-                    <div className="mt-1 text-[10px] text-[#9a938a]">
-                      {t("cohortDetail.journey.scope", { modules: moduleScopeLabel(checkpoint.module_scope, t) })}
+        <div className="mt-5 overflow-x-auto pb-2 [scrollbar-color:#cfc7bb_transparent]">
+          <ol className="relative grid min-w-[760px] auto-cols-[minmax(174px,1fr)] grid-flow-col">
+            <div className="pointer-events-none absolute left-[8%] right-[8%] top-[166px] h-px bg-[#dcd5ca]" aria-hidden="true" />
+            {checkpoints.map((checkpoint) => {
+              const color = journeyStateColor(checkpoint.state);
+              const title = checkpoint.label || moduleScopeLabel(checkpoint.module_scope, t);
+              return (
+                <li key={`${checkpoint.due_on}-${checkpoint.checkpoint_number}`} className="relative flex min-w-0 flex-col items-center px-1.5">
+                  <div className={`relative z-10 flex h-[148px] w-full flex-col rounded-xl border p-3.5 transition-colors ${checkpoint.state === "current" ? "border-[#8bd3e3] bg-[#f1fbfd] shadow-[0_8px_24px_rgba(44,143,168,.1)]" : "border-[#eee8de] bg-[#f6f3ee]"}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[9px] font-bold uppercase tracking-[.15em]" style={{ color }}>{t(`cohortDetail.journey.states.${checkpoint.state}`)}</span>
+                      <span className="shrink-0 text-right text-[10px] text-[#9a938a]">{formatDate(checkpoint.due_on)}</span>
                     </div>
-                  ) : null}
-                  <div className="mt-1 text-[10.5px] text-[#6a6560]">
-                    {checkpoint.completed_units} / {checkpoint.required_units} units · {t("cohortDetail.journey.leaders", { completed: checkpoint.completed_leaders, total: checkpoint.total_leaders })}
+                    <div className="mt-3 line-clamp-2 min-h-[32px] text-[12px] font-semibold leading-[1.35] text-[#062f3e]">{title}</div>
+                    {checkpoint.label && checkpoint.module_scope?.length ? (
+                      <div className="mt-1 line-clamp-1 text-[9.5px] text-[#9a938a]">
+                        {t("cohortDetail.journey.scope", { modules: moduleScopeLabel(checkpoint.module_scope, t) })}
+                      </div>
+                    ) : <div className="mt-1 h-[14px]" aria-hidden="true" />}
+                    <div className="mt-auto border-t border-[#e7e0d6] pt-2.5">
+                      <div className="text-[15px] font-semibold leading-none text-[#062f3e]">{checkpoint.completed_units} / {checkpoint.required_units}</div>
+                      <div className="mt-1 text-[9.5px] text-[#6a6560]">{t("cohortDetail.journey.cumulative")}</div>
+                      <div className="mt-1 text-[9.5px] text-[#9a938a]">{t("cohortDetail.journey.leaders", { completed: checkpoint.completed_leaders, total: checkpoint.total_leaders })}</div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                  <span className="relative z-20 mt-[11px] grid h-4 w-4 place-items-center rounded-full border-[3px] bg-white" style={{ borderColor: color }} aria-hidden="true">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+                  </span>
+                  <span className="mt-2 h-[11px]" aria-hidden="true" />
+                </li>
+              );
+            })}
+          </ol>
         </div>
       ) : (
         <p className="mt-5 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-5 text-center text-[11px] leading-relaxed text-[#6a6560]">
@@ -327,6 +335,13 @@ function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, o
       </p>
     </section>
   );
+}
+
+function journeyStateColor(state: SponsorJourneyCheckpoint["state"]) {
+  if (state === "completed") return GREEN;
+  if (state === "overdue") return "#c9543a";
+  if (state === "current") return SKY;
+  return "#cfc7bb";
 }
 
 function moduleScopeLabel(scope: string[] | null | undefined, t: (key: string, options?: Record<string, unknown>) => string) {

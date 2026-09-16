@@ -319,7 +319,14 @@
       "notAvailable": "Chưa có mốc Admin hiện tại cho chương trình này.",
       "aggregateNote": "Mỗi mốc so sánh yêu cầu Admin hiện tại với hoạt động hoàn thành thực tế của người học. Ghi chú, tin nhắn, phản hồi và nội dung mục tiêu cá nhân vẫn được giữ riêng tư.",
       "scope": "Phạm vi đã cấu hình: {{modules}}",
-      "leaders": "{{completed}} trên {{total}} người hoàn thành"
+      "leaders": "{{completed}} trên {{total}} người hoàn thành",
+      "cumulative": "Tiến độ tích lũy tại ngày này",
+      "states": {
+        "upcoming": "Sắp tới",
+        "current": "Hiện tại",
+        "completed": "Đã hoàn thành",
+        "overdue": "Quá hạn"
+      }
     },
     "modules": {
       "coaching": "Coaching",

@@ -174,6 +174,8 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getByText("0 of 12 leaders meet the requirement · 48 due so far")).toBeInTheDocument();
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
     expect(screen.getByText("Configured scope: Coaching")).toBeInTheDocument();
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
+    expect(screen.getByText("Cumulative completion at this date")).toBeInTheDocument();
     expect(screen.getAllByText("0/4").length).toBeGreaterThan(0);
     expect(screen.getAllByText("0/6").length).toBeGreaterThan(0);
 
