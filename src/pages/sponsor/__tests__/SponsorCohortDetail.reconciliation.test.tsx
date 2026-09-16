@@ -99,7 +99,7 @@ const summary = {
       checkpoint_number: 2,
       due_on: "2026-04-01",
       label: null,
-      module_scope: ["training"],
+      module_scope: ["mentoring", "peer_coaching", "training", "triads"],
       required_units: 120,
       completed_units: 0,
       completed_leaders: 0,
@@ -188,6 +188,9 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
     expect(screen.getByText("Coaching checkpoint")).toBeInTheDocument();
     expect(screen.getAllByText("Training / Learning").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Mentoring").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Peer coaching").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Triads").length).toBeGreaterThan(1);
     expect(screen.getAllByText(/Apr 1, 2026/)).toHaveLength(1);
     expect(screen.getByText("Overdue")).toBeInTheDocument();
     expect(screen.getByText("Cumulative programme units at this date")).toBeInTheDocument();
