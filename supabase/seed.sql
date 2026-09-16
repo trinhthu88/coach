@@ -398,8 +398,8 @@ BEGIN
       (pc,'triads',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":20}')
     ON CONFLICT(programme_id,module) DO UPDATE SET enabled=excluded.enabled,config=excluded.config;
 
-  -- Make the fixture idempotently reflect the zero-activity scenario. This
-  -- only targets the named demo cohort; it never removes other users' data.
+  -- Reset the named demo cohort's historical activity before rebuilding its
+  -- deterministic participation fixture; never remove other users' data.
   DELETE FROM public.session_activity_attributions a
     USING public.programme_enrollments e
     WHERE a.enrollment_id=e.id AND e.cohort_id=cc;
@@ -586,16 +586,22 @@ BEGIN
           format('Leader C%s leadership goal',k),'active',eid,true);
     END LOOP;
 
-    INSERT INTO enrollment_actions(enrollment_id,title,owner_user_id,status,completed_at) VALUES
-      ('14141414-1414-4141-8141-000000000001','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000001','completed',now()),
-      ('14141414-1414-4141-8141-000000000001','Share triad reflection with peer group','13131313-1313-4131-8131-000000000001','completed',now()),
-      ('14141414-1414-4141-8141-000000000002','Draft delegation plan','13131313-1313-4131-8131-000000000002','completed',now()),
-      ('14141414-1414-4141-8141-000000000002','Schedule follow-up peer session','13131313-1313-4131-8131-000000000002','open',NULL),
-      ('14141414-1414-4141-8141-000000000003','Review mentoring notes','13131313-1313-4131-8131-000000000003','open',NULL),
-      ('14141414-1414-4141-8141-000000000004','Book next coaching session','13131313-1313-4131-8131-000000000004','open',NULL),
-      ('14141414-1414-4141-8141-000000000009','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000009','completed',now()),
-      ('14141414-1414-4141-8141-000000000009','Share triad reflection with peer group','13131313-1313-4131-8131-000000000009','completed',now()),
-      ('14141414-1414-4141-8141-000000000010','Book next peer session','13131313-1313-4131-8131-000000000010','open',NULL);
+    INSERT INTO enrollment_actions(id,enrollment_id,title,owner_user_id,status,completed_at) VALUES
+      ('17171717-1717-4171-8171-000000000001','14141414-1414-4141-8141-000000000001','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000001','completed',now()),
+      ('17171717-1717-4171-8171-000000000002','14141414-1414-4141-8141-000000000001','Share triad reflection with peer group','13131313-1313-4131-8131-000000000001','completed',now()),
+      ('17171717-1717-4171-8171-000000000003','14141414-1414-4141-8141-000000000002','Draft delegation plan','13131313-1313-4131-8131-000000000002','completed',now()),
+      ('17171717-1717-4171-8171-000000000004','14141414-1414-4141-8141-000000000002','Schedule follow-up peer session','13131313-1313-4131-8131-000000000002','open',NULL),
+      ('17171717-1717-4171-8171-000000000005','14141414-1414-4141-8141-000000000003','Review mentoring notes','13131313-1313-4131-8131-000000000003','open',NULL),
+      ('17171717-1717-4171-8171-000000000006','14141414-1414-4141-8141-000000000004','Book next coaching session','13131313-1313-4131-8131-000000000004','open',NULL),
+      ('17171717-1717-4171-8171-000000000007','14141414-1414-4141-8141-000000000009','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000009','completed',now()),
+      ('17171717-1717-4171-8171-000000000008','14141414-1414-4141-8141-000000000009','Share triad reflection with peer group','13131313-1313-4131-8131-000000000009','completed',now()),
+      ('17171717-1717-4171-8171-000000000009','14141414-1414-4141-8141-000000000010','Book next peer session','13131313-1313-4131-8131-000000000010','open',NULL)
+      ON CONFLICT(id) DO UPDATE SET
+        enrollment_id=excluded.enrollment_id,
+        title=excluded.title,
+        owner_user_id=excluded.owner_user_id,
+        status=excluded.status,
+        completed_at=excluded.completed_at;
   END;
 END $cohort_c$;
 COMMIT;
