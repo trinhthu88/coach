@@ -338,7 +338,8 @@
       "aggregateNote": "Each checkpoint compares the current Admin requirement with completed leader activity. Individual notes, messages, reflections, and goal wording remain private.",
       "scope": "Configured scope: {{modules}}",
       "leaders": "{{completed}} of {{total}} leaders complete",
-      "cumulative": "Cumulative completion at this date",
+      "cumulative": "Cumulative programme units at this date",
+      "youAreHere": "You are here",
       "states": {
         "upcoming": "Upcoming",
         "current": "Current",

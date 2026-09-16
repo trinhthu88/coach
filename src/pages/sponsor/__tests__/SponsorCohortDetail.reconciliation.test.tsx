@@ -83,17 +83,30 @@ const summary = {
   goal_progress_pct: null,
   satisfaction_avg: null,
   satisfaction_rated_count: 0,
-  programme_journey: [{
-    checkpoint_number: 1,
-    due_on: "2026-04-01",
-    label: "Coaching checkpoint",
-    module_scope: ["coaching"],
-    required_units: 48,
-    completed_units: 0,
-    completed_leaders: 0,
-    total_leaders: 12,
-    state: "overdue",
-  }],
+  programme_journey: [
+    {
+      checkpoint_number: 1,
+      due_on: "2026-04-01",
+      label: "Coaching checkpoint",
+      module_scope: ["coaching"],
+      required_units: 48,
+      completed_units: 0,
+      completed_leaders: 0,
+      total_leaders: 12,
+      state: "overdue",
+    },
+    {
+      checkpoint_number: 2,
+      due_on: "2026-04-01",
+      label: null,
+      module_scope: ["training"],
+      required_units: 120,
+      completed_units: 0,
+      completed_leaders: 0,
+      total_leaders: 12,
+      state: "overdue",
+    },
+  ],
 };
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -173,9 +186,11 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getAllByText("0/48").length).toBeGreaterThan(0);
     expect(screen.getByText("0 of 12 leaders meet the requirement · 48 due so far")).toBeInTheDocument();
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
-    expect(screen.getByText("Configured scope: Coaching")).toBeInTheDocument();
+    expect(screen.getByText("Coaching checkpoint")).toBeInTheDocument();
+    expect(screen.getAllByText("Training / Learning").length).toBeGreaterThan(1);
+    expect(screen.getAllByText(/Apr 1, 2026/)).toHaveLength(1);
     expect(screen.getByText("Overdue")).toBeInTheDocument();
-    expect(screen.getByText("Cumulative completion at this date")).toBeInTheDocument();
+    expect(screen.getByText("Cumulative programme units at this date")).toBeInTheDocument();
     expect(screen.getAllByText("0/4").length).toBeGreaterThan(0);
     expect(screen.getAllByText("0/6").length).toBeGreaterThan(0);
 
