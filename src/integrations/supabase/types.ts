@@ -4233,6 +4233,10 @@ export type Database = {
         }[]
       }
       get_sponsor_org: { Args: { _user_id: string }; Returns: string }
+      get_sponsor_programme_journey: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: Json
+      }
       get_todays_prompt: {
         Args: never
         Returns: {
