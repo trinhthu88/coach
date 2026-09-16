@@ -4379,6 +4379,14 @@ export type Database = {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
+      sponsor_canonical_activity: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          occurred_on: string
+          status: string
+        }[]
+      }
       sponsor_canonical_cohort_progress: {
         Args: { p_as_of?: string; p_cohort_id?: string | null }
         Returns: {
@@ -4482,6 +4490,16 @@ export type Database = {
           triad_completed_units: number
           triad_due_units: number
           triad_required_units: number
+        }[]
+      }
+      sponsor_canonical_module_schedule: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          due_on: string | null
+          milestone_units: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          training_week_id: string | null
         }[]
       }
       sponsor_canonical_organisation_progress: {
