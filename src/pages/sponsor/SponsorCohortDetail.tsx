@@ -85,7 +85,7 @@ export default function SponsorCohortDetail() {
         </header>
 
         {suppressed ? (
-          <SuppressedState min={minLeadersForDistribution || 5} />
+          <SuppressedState min={minLeadersForDistribution} />
         ) : (
           <>
             <ProgressStrip kpis={kpis} progress={progress} status={status} t={t} />
@@ -497,13 +497,16 @@ function decimal(value: number | null | undefined) {
 }
 
 function SuppressedState({ min }: { min: number }) {
+  const thresholdCopy = min > 0
+    ? `This cohort has fewer than ${min} leaders. A detailed breakdown could identify individuals, so Clariva shows only privacy-safe rolled-up totals.`
+    : "A detailed breakdown could identify individuals, so Clariva shows only privacy-safe rolled-up totals.";
   return (
     <section className="mt-6 rounded-[18px] border border-dashed border-[#d6cfc4] bg-[#f6f3ee] p-6">
       <div className="flex items-start gap-3">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[#ede9e1] text-[#6a6560]"><LockKeyhole className="h-4 w-4" /></span>
         <div>
           <h2 className="font-serif text-[21px] font-normal">Cohort detail is withheld</h2>
-          <p className="mt-2 max-w-[58ch] text-[12.5px] leading-relaxed text-[#6a6560]">This cohort has fewer than {min} leaders. A detailed breakdown could identify individuals, so Clariva shows only privacy-safe rolled-up totals.</p>
+          <p className="mt-2 max-w-[58ch] text-[12.5px] leading-relaxed text-[#6a6560]">{thresholdCopy}</p>
         </div>
       </div>
     </section>
