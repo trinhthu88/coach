@@ -4418,7 +4418,7 @@ export type Database = {
           on_track_count: number
           on_track_pct: number
           overdue_units: number
-          pace_status: string | null
+          pace_status: string
           peer_booked_units: number
           peer_completed_leaders: number
           peer_completed_units: number
