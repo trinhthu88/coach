@@ -4388,9 +4388,9 @@ export type Database = {
         }[]
       }
       sponsor_canonical_cohort_progress: {
-        Args: { p_as_of?: string; p_cohort_id?: string | null }
+        Args: { p_as_of?: string; p_cohort_id?: string }
         Returns: {
-          active_count: number | null
+          active_count: number
           ahead_count: number | null
           at_risk_count: number | null
           behind_count: number | null
