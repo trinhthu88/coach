@@ -263,7 +263,8 @@ function AttentionSection({ kpis, counts, filter, onFilter, t }: { kpis: Sponsor
 type SponsorJourneyCheckpoint = {
   checkpoint_number: number;
   due_on: string;
-  label: string;
+  label: string | null;
+  module_scope: string[] | null;
   required_units: number;
   completed_units: number;
   completed_leaders: number;
@@ -273,7 +274,15 @@ type SponsorJourneyCheckpoint = {
 
 function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, options?: Record<string, unknown>) => string }) {
   const checkpoints = Array.isArray(journey)
-    ? journey.filter((item): item is SponsorJourneyCheckpoint => Boolean(item && typeof item === "object" && "checkpoint_number" in item && "due_on" in item && "state" in item))
+    ? journey.filter((item): item is SponsorJourneyCheckpoint => Boolean(
+      item
+      && typeof item === "object"
+      && "checkpoint_number" in item
+      && "due_on" in item
+      && "state" in item
+      && "required_units" in item
+      && "completed_units" in item,
+    ))
     : [];
   return (
     <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
@@ -290,9 +299,16 @@ function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, o
                 <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="text-[11.5px] font-semibold text-[#062f3e]">{checkpoint.label || t("cohortDetail.journey.checkpoint", { number: checkpoint.checkpoint_number })}</span>
+                    <span className="text-[11.5px] font-semibold text-[#062f3e]">
+                      {checkpoint.label || moduleScopeLabel(checkpoint.module_scope, t)}
+                    </span>
                     <span className="text-[10px] text-[#9a938a]">{formatDate(checkpoint.due_on)}</span>
                   </div>
+                  {checkpoint.label && checkpoint.module_scope?.length ? (
+                    <div className="mt-1 text-[10px] text-[#9a938a]">
+                      {t("cohortDetail.journey.scope", { modules: moduleScopeLabel(checkpoint.module_scope, t) })}
+                    </div>
+                  ) : null}
                   <div className="mt-1 text-[10.5px] text-[#6a6560]">
                     {checkpoint.completed_units} / {checkpoint.required_units} units · {t("cohortDetail.journey.leaders", { completed: checkpoint.completed_leaders, total: checkpoint.total_leaders })}
                   </div>
@@ -311,6 +327,17 @@ function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, o
       </p>
     </section>
   );
+}
+
+function moduleScopeLabel(scope: string[] | null | undefined, t: (key: string, options?: Record<string, unknown>) => string) {
+  const labels: Record<string, string> = {
+    coaching: t("cohortDetail.modules.coaching"),
+    training: t("cohortDetail.modules.training"),
+    peer_coaching: t("cohortDetail.modules.peer"),
+    mentoring: t("cohortDetail.modules.mentoring"),
+    triads: t("cohortDetail.modules.triads"),
+  };
+  return (scope ?? []).map((module) => labels[module] ?? module).join(" · ");
 }
 
 function ProgrammeDetails({ kpis, t }: { kpis: SponsorCohortSummary | null; t: (key: string, options?: Record<string, unknown>) => string }) {

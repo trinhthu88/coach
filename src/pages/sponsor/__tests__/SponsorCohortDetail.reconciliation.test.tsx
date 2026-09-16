@@ -87,6 +87,7 @@ const summary = {
     checkpoint_number: 1,
     due_on: "2026-04-01",
     label: "Coaching checkpoint",
+    module_scope: ["coaching"],
     required_units: 48,
     completed_units: 0,
     completed_leaders: 0,
@@ -172,6 +173,7 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getAllByText("0/48").length).toBeGreaterThan(0);
     expect(screen.getByText("0 of 12 leaders meet the requirement · 48 due so far")).toBeInTheDocument();
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
+    expect(screen.getByText("Configured scope: Coaching")).toBeInTheDocument();
     expect(screen.getAllByText("0/4").length).toBeGreaterThan(0);
     expect(screen.getAllByText("0/6").length).toBeGreaterThan(0);
 

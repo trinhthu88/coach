@@ -336,7 +336,7 @@
       "privacyNote": "Privacy-safe cohort progress",
       "notAvailable": "No current Admin checkpoints are available for this programme.",
       "aggregateNote": "Each checkpoint compares the current Admin requirement with completed leader activity. Individual notes, messages, reflections, and goal wording remain private.",
-      "checkpoint": "Checkpoint {{number}}",
+      "scope": "Configured scope: {{modules}}",
       "leaders": "{{completed}} of {{total}} leaders complete"
     },
     "modules": {
