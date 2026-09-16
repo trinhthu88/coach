@@ -4428,7 +4428,7 @@ export type Database = {
           programme_end_date: string
           programme_journey: Json
           programme_label: string
-          programme_start_date: string | null
+          programme_start_date: string
           progress_source_complete: boolean
           required_units: number
           schedule_coverage_pct: number
