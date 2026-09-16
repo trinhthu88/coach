@@ -506,13 +506,39 @@ BEGIN
       eid := ('14141414-1414-4141-8141-'||lpad(i::text,12,'0'))::uuid;
 
       FOR j IN 1..coaching_units[i] LOOP
-        INSERT INTO sessions(coach_id,coachee_id,topic,start_time,duration_minutes,status,enrollment_id)
-          VALUES(coach,uid,'Emerging Leaders coaching session',coaching_due[j]::timestamptz,60,'completed',eid);
+        INSERT INTO sessions(
+          id,coach_id,coachee_id,topic,start_time,duration_minutes,status,enrollment_id
+        )
+          VALUES(
+            ('19191919-1919-4191-8191-'||lpad((i * 10 + j)::text,12,'0'))::uuid,
+            coach,uid,'Emerging Leaders coaching session',coaching_due[j]::timestamptz,60,'completed',eid
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            coach_id=excluded.coach_id,
+            coachee_id=excluded.coachee_id,
+            topic=excluded.topic,
+            start_time=excluded.start_time,
+            duration_minutes=excluded.duration_minutes,
+            status=excluded.status,
+            enrollment_id=excluded.enrollment_id;
       END LOOP;
 
       FOR j IN 1..peer_units[i] LOOP
-        INSERT INTO peer_sessions(peer_coach_id,peer_coachee_id,topic,start_time,duration_minutes,status,enrollment_id)
-          VALUES(peer_coach_id,uid,'Emerging Leaders peer coaching',pair_due[j]::timestamptz,45,'completed',eid);
+        INSERT INTO peer_sessions(
+          id,peer_coach_id,peer_coachee_id,topic,start_time,duration_minutes,status,enrollment_id
+        )
+          VALUES(
+            ('1a1a1a1a-1a1a-41a1-81a1-'||lpad((i * 10 + j)::text,12,'0'))::uuid,
+            peer_coach_id,uid,'Emerging Leaders peer coaching',pair_due[j]::timestamptz,45,'completed',eid
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            peer_coach_id=excluded.peer_coach_id,
+            peer_coachee_id=excluded.peer_coachee_id,
+            topic=excluded.topic,
+            start_time=excluded.start_time,
+            duration_minutes=excluded.duration_minutes,
+            status=excluded.status,
+            enrollment_id=excluded.enrollment_id;
       END LOOP;
 
       FOR j IN 1..mentoring_units[i] LOOP
@@ -534,9 +560,20 @@ BEGIN
       END LOOP;
 
       FOR j IN 1..training_units[i] LOOP
-        INSERT INTO training_progress(user_id,enrollment_id,training_week_id,viewed_at,completed_at)
-          VALUES(uid,eid,('67676767-6767-4676-8676-'||lpad(j::text,12,'0'))::uuid,
-            week_due[j]::timestamptz,(week_due[j]+1)::timestamptz);
+        INSERT INTO training_progress(
+          id,user_id,enrollment_id,training_week_id,viewed_at,completed_at
+        )
+          VALUES(
+            ('1b1b1b1b-1b1b-41b1-81b1-'||lpad((i * 10 + j)::text,12,'0'))::uuid,
+            uid,eid,('67676767-6767-4676-8676-'||lpad(j::text,12,'0'))::uuid,
+            week_due[j]::timestamptz,(week_due[j]+1)::timestamptz
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            user_id=excluded.user_id,
+            enrollment_id=excluded.enrollment_id,
+            training_week_id=excluded.training_week_id,
+            viewed_at=excluded.viewed_at,
+            completed_at=excluded.completed_at;
       END LOOP;
     END LOOP;
   END;
@@ -563,26 +600,71 @@ BEGIN
     -- Leaders 1, 2 and 3 each earn their first triad unit together.
     INSERT INTO triad_groups(id,cohort_id,programme_id,member_1_id,member_2_id,member_3_id,enrollment_1_id,enrollment_2_id,enrollment_3_id)
       VALUES(g1,cc,pc,u1,u2,u3,e1,e2,e3);
-    INSERT INTO triad_sessions(triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id,observer_enrollment_id)
-      VALUES(g1,'2026-05-03'::timestamptz,'completed',e1,e2,e3);
+    INSERT INTO triad_sessions(
+      id,triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id,observer_enrollment_id
+    )
+      VALUES(
+        '1c1c1c1c-1c1c-41c1-81c1-000000000001',
+        g1,'2026-05-03'::timestamptz,'completed',e1,e2,e3
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        triad_group_id=excluded.triad_group_id,
+        start_time=excluded.start_time,
+        status=excluded.status,
+        coach_enrollment_id=excluded.coach_enrollment_id,
+        coachee_enrollment_id=excluded.coachee_enrollment_id,
+        observer_enrollment_id=excluded.observer_enrollment_id;
 
     -- Leaders 1 and 2 each earn their second (final) triad unit.
     INSERT INTO triad_groups(id,cohort_id,programme_id,member_1_id,member_2_id,enrollment_1_id,enrollment_2_id)
       VALUES(g2,cc,pc,u1,u2,e1,e2);
-    INSERT INTO triad_sessions(triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id)
-      VALUES(g2,'2026-07-05'::timestamptz,'completed',e1,e2);
+    INSERT INTO triad_sessions(
+      id,triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id
+    )
+      VALUES(
+        '1c1c1c1c-1c1c-41c1-81c1-000000000002',
+        g2,'2026-07-05'::timestamptz,'completed',e1,e2
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        triad_group_id=excluded.triad_group_id,
+        start_time=excluded.start_time,
+        status=excluded.status,
+        coach_enrollment_id=excluded.coach_enrollment_id,
+        coachee_enrollment_id=excluded.coachee_enrollment_id;
 
     -- Leaders 4 and 9 each earn their first triad unit.
     INSERT INTO triad_groups(id,cohort_id,programme_id,member_1_id,member_2_id,enrollment_1_id,enrollment_2_id)
       VALUES(g3,cc,pc,u4,u9,e4,e9);
-    INSERT INTO triad_sessions(triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id)
-      VALUES(g3,'2026-05-03'::timestamptz,'completed',e4,e9);
+    INSERT INTO triad_sessions(
+      id,triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id
+    )
+      VALUES(
+        '1c1c1c1c-1c1c-41c1-81c1-000000000003',
+        g3,'2026-05-03'::timestamptz,'completed',e4,e9
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        triad_group_id=excluded.triad_group_id,
+        start_time=excluded.start_time,
+        status=excluded.status,
+        coach_enrollment_id=excluded.coach_enrollment_id,
+        coachee_enrollment_id=excluded.coachee_enrollment_id;
 
     -- Leaders 9 and 10 each earn their second/first triad unit.
     INSERT INTO triad_groups(id,cohort_id,programme_id,member_1_id,member_2_id,enrollment_1_id,enrollment_2_id)
       VALUES(g4,cc,pc,u9,u10,e9,e10);
-    INSERT INTO triad_sessions(triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id)
-      VALUES(g4,'2026-07-05'::timestamptz,'completed',e9,e10);
+    INSERT INTO triad_sessions(
+      id,triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id
+    )
+      VALUES(
+        '1c1c1c1c-1c1c-41c1-81c1-000000000004',
+        g4,'2026-07-05'::timestamptz,'completed',e9,e10
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        triad_group_id=excluded.triad_group_id,
+        start_time=excluded.start_time,
+        status=excluded.status,
+        coach_enrollment_id=excluded.coach_enrollment_id,
+        coachee_enrollment_id=excluded.coachee_enrollment_id;
   END;
 
   -- Goals/actions only where a leader has real coaching engagement above —
