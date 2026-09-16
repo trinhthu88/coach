@@ -4391,10 +4391,10 @@ export type Database = {
         Args: { p_as_of?: string; p_cohort_id?: string }
         Returns: {
           active_count: number
-          ahead_count: number | null
-          at_risk_count: number | null
-          behind_count: number | null
-          booked_units: number | null
+          ahead_count: number
+          at_risk_count: number
+          behind_count: number
+          booked_units: number
           coaching_booked_units: number | null
           coaching_completed_leaders: number | null
           coaching_completed_units: number | null
