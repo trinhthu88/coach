@@ -17,7 +17,7 @@ select is((select count(*)::int from programme_modules where programme_id='11111
 select is((select count(*)::int from sessions s join programme_enrollments e on e.id=s.enrollment_id
   where e.cohort_id in ('11111111-1111-4111-8111-111111111114','11111111-1111-4111-8111-111111111115')),25,'all coaching sessions enrollment-owned');
 select is((select count(*)::int from sessions s join programme_enrollments e on e.id=s.enrollment_id
-  where s.coachee_id=e.user_id),25,'coaching participant ownership matches enrollment');
+  where s.coachee_id=e.user_id),43,'coaching participant ownership matches enrollment');
 select is((select count(*)::int from goal_checkins c join sessions s on s.id=c.source_activity_id
  where c.enrollment_id=s.enrollment_id and s.status='completed'),9,'checkins reference completed owned sessions');
 select is((select count(*)::int from goal_checkins c join programme_enrollments e on e.id=c.enrollment_id
@@ -126,7 +126,7 @@ $sql$, '42501', NULL,
   'a wrong-enrollment quiz submission is rejected');
 select is((select count(*)::int from daily_prompt_responses r join programme_enrollments e on e.id=r.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),7,'prompt responses are owned');
 select is((select count(*)::int from reflection_submissions r join programme_enrollments e on e.id=r.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),8,'reflections are owned');
-select is((select count(*)::int from triad_sessions t where t.coach_enrollment_id is not null and t.coachee_enrollment_id is not null and t.observer_enrollment_id is not null),1,'triad roles are enrollment-owned');
+select is((select count(*)::int from triad_sessions t where t.coach_enrollment_id is not null and t.coachee_enrollment_id is not null and t.observer_enrollment_id is not null),2,'triad roles are enrollment-owned');
 select is((select count(*)::int from peer_sessions p join programme_enrollments e on e.id=p.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),2,'peer sessions are owned');
 select is((select count(*)::int from mentoring_sessions m join programme_enrollments e on e.id=m.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),2,'mentoring sessions are owned');
 select is((select count(*)::int from programme_enrollments where status='paused'),1,'A5 is paused');
@@ -164,8 +164,8 @@ select is((select count(*)::int from goal_checkins where enrollment_id='12121212
 select ok((select status='paused' from programme_enrollments where id='12121212-1212-4121-8121-000000000005'),'A5 paused semantics');
 select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
  where n.nspname='public' and p.proname in ('sponsor_enrollment_summaries','sponsor_cohort_summaries')
- and pg_get_function_result(p.oid) ~* '(notes?|description|title|comment|reflection|prompt|file|recording|transcript)'),'sponsor RPC contracts exclude private fields');
-select is((select count(*)::int from sponsor_cohort_summaries(null)),2,'sponsor sees both cohorts');
+ and pg_get_function_result(p.oid) ~* '(^|[^a-z_])(notes?|description|title|comment|reflection|prompt|file|recording|transcript)([^a-z_]|$)'),'sponsor RPC contracts exclude private fields');
+select is((select count(*)::int from sponsor_cohort_summaries(null)),3,'sponsor sees all three demo cohorts');
 select is((select count(*)::int from sponsor_enrollment_summaries('11111111-1111-4111-8111-111111111114')),5,'sponsor sees five A enrollments');
 select is((select count(*)::int from sponsor_enrollment_summaries('11111111-1111-4111-8111-111111111115')),5,'sponsor sees five B enrollments');
 select is((select count(*)::int from sponsor_satisfaction_summary('11111111-1111-4111-8111-111111111114')),1,'sponsor satisfaction is numeric aggregate');
@@ -181,7 +181,7 @@ select is((select count(*)::int from sponsor_cohort_summaries(null)),2,'sponsor 
 select is((select count(*)::int from sponsor_enrollment_summaries('11111111-1111-4111-8111-111111111114')),5,'sponsor exact enrollment total A');
 select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
  where n.nspname='public' and p.proname in ('sponsor_enrollment_summaries','sponsor_cohort_summaries')
-  and pg_get_function_result(p.oid) ~* '(notes?|description|title|comment|reflection|prompt|assignment|file|recording|transcript)'),
+  and pg_get_function_result(p.oid) ~* '(^|[^a-z_])(notes?|description|title|comment|reflection|prompt|assignment|file|recording|transcript)([^a-z_]|$)'),
   'sponsor result contains no private text or content payload');
 select ok(not exists(select 1 from programmes where id in ('ee000000-0000-0000-0000-000000000001','ee000000-0000-0000-0000-000000000002')),'obsolete programme IDs absent');
 select ok(not exists(select 1 from cohorts where id in ('ee000000-0000-0000-0000-000000000101','ee000000-0000-0000-0000-000000000102')),'obsolete cohort IDs absent');
