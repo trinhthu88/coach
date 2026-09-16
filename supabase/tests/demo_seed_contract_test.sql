@@ -177,7 +177,7 @@ select is((select avg_rating from sponsor_satisfaction_summary('11111111-1111-41
   (select round(avg(s.coachee_rating)::numeric,2) from sessions s join programme_enrollments e on e.id=s.enrollment_id
    where e.cohort_id='11111111-1111-4111-8111-111111111114' and s.status='completed' and s.coachee_rating is not null),
   'sponsor satisfaction average reconciles');
-select is((select count(*)::int from sponsor_cohort_summaries(null)),2,'sponsor exact cohort total');
+select is((select count(*)::int from sponsor_cohort_summaries(null)),3,'sponsor exact cohort total');
 select is((select count(*)::int from sponsor_enrollment_summaries('11111111-1111-4111-8111-111111111114')),5,'sponsor exact enrollment total A');
 select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
  where n.nspname='public' and p.proname in ('sponsor_enrollment_summaries','sponsor_cohort_summaries')

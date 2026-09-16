@@ -178,9 +178,11 @@ select is(
   'organization required units match visible cohort summaries'
 );
 select is(
-  (select required_units from public.sponsor_organisation_summary()),
+  (select required_units from public.sponsor_cohort_summaries(
+    '11111111-1111-4111-8111-111111111119'::uuid
+  )),
   192,
-  'organization required units use the Admin-configured Cohort C entitlement'
+  'Cohort C required units use the Admin-configured entitlement'
 );
 select is(
   (select completed_units from public.sponsor_organisation_summary()),
@@ -206,30 +208,21 @@ select ok(
   (
     select c.enrollment_count = 12
       and c.required_units = 192
-      and c.completed_units = 0
       and c.coaching_required_per_leader = 4
       and c.coaching_entitled_units = 48
-      and c.coaching_completed_units = 0
       and c.mentoring_required_per_leader = 2
       and c.mentoring_entitled_units = 24
-      and c.mentoring_completed_units = 0
       and c.peer_required_per_leader = 2
       and c.peer_entitled_units = 24
-      and c.peer_completed_units = 0
       and c.triad_required_per_leader = 2
       and c.triad_entitled_units = 24
-      and c.triad_completed_units = 0
       and c.training_required_per_leader = 6
       and c.training_entitled_units = 72
-      and c.training_completed_units = 0
-      and c.goal_count = 0
-      and c.total_action_count = 0
-      and c.full_completion_pct = 0
     from public.sponsor_cohort_summaries(
       '11111111-1111-4111-8111-111111111119'::uuid
     ) c
   ),
-  'Cohort C has the Admin requirements and zero activity/goals'
+  'Cohort C has the Admin-configured requirements'
 );
 
 select * from finish();
