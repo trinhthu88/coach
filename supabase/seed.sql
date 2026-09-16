@@ -516,8 +516,21 @@ BEGIN
       END LOOP;
 
       FOR j IN 1..mentoring_units[i] LOOP
-        INSERT INTO mentoring_sessions(mentor_id,mentee_id,topic,start_time,duration_minutes,status,enrollment_id)
-          VALUES(mentor,uid,'Emerging Leaders mentoring',pair_due[j]::timestamptz,45,'completed',eid);
+        INSERT INTO mentoring_sessions(
+          id,mentor_id,mentee_id,topic,start_time,duration_minutes,status,enrollment_id
+        )
+          VALUES(
+            ('18181818-1818-4181-8181-'||lpad((i * 10 + j)::text,12,'0'))::uuid,
+            mentor,uid,'Emerging Leaders mentoring',pair_due[j]::timestamptz,45,'completed',eid
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            mentor_id=excluded.mentor_id,
+            mentee_id=excluded.mentee_id,
+            topic=excluded.topic,
+            start_time=excluded.start_time,
+            duration_minutes=excluded.duration_minutes,
+            status=excluded.status,
+            enrollment_id=excluded.enrollment_id;
       END LOOP;
 
       FOR j IN 1..training_units[i] LOOP
