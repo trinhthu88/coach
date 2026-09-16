@@ -4425,8 +4425,8 @@ export type Database = {
           peer_completed_units: number
           peer_due_units: number
           peer_required_units: number
-          programme_end_date: string | null
-          programme_journey: Json | null
+          programme_end_date: string
+          programme_journey: Json
           programme_label: string
           programme_start_date: string | null
           progress_source_complete: boolean
