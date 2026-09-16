@@ -119,13 +119,13 @@ select is(
      where programme_id = '11111111-1111-4111-8111-111111111118' and module = 'training'),
   6, 'all six Training Content weeks are selected into the training schedule');
 
--- Over-utilisation regression (invariant 6): a leader who has MORE
--- attributed completed activity than their module requires must never push
--- completed_units past required_units for that module. Leader C1 already
+-- Over-utilisation regression (invariant 6): raw completed activity remains
+-- visible even when it exceeds the configured requirement. Leader C1 already
 -- has coaching 4/4 (Emerging Leaders' coachee_session_limit also happens to
 -- be 4, so a 5th real booking would rightly be rejected at the sessions
 -- table itself) -- attribute one more coaching unit directly to prove the
--- *sponsor reporting* cap holds independently of that booking limit.
+-- Sponsor reporting numerator is not capped independently of that booking
+-- limit. Percentage fields remain capped by the reporting contract.
 reset role;
 insert into session_activity_attributions (enrollment_id, module, source_activity_type, source_activity_id, occurred_on)
 values ('14141414-1414-4141-8141-000000000001'::uuid, 'coaching', 'coaching', gen_random_uuid(), '2026-07-05'::date);
@@ -137,10 +137,10 @@ set local role authenticated;
 select is(
   (select coaching_completed_units from sponsor_enrollment_summaries('11111111-1111-4111-8111-111111111119')
      where learner_display_name = 'Leader C1'),
-  4, 'a 5th real coaching session for an already-complete leader does not push completed_units past required_units');
+  5, 'a 5th real coaching activity remains visible in the raw completed total');
 select is(
   (select coaching_completed_units from sponsor_cohort_summaries('11111111-1111-4111-8111-111111111119')),
-  18, 'the extra session does not inflate the cohort coaching card total either');
+  19, 'the cohort coaching card reconciles to the uncapped raw activity total');
 
 select * from finish();
 rollback;

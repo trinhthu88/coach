@@ -272,5 +272,101 @@ select is(
   'completion percentage is null when no requirement exists'
 );
 
+-- Raw historical activity is not capped at the Admin requirement. Only the
+-- percentage and booked/schedule capacity fields remain bounded.
+reset role;
+insert into public.session_activity_attributions (
+  enrollment_id, module, source_activity_type, source_activity_id, occurred_on
+)
+values (
+  '14141414-1414-4141-8141-000000000001'::uuid,
+  'coaching',
+  'coaching',
+  gen_random_uuid(),
+  '2026-07-05'::date
+);
+set local role authenticated;
+select is(
+  (select coaching_completed_units
+   from public.sponsor_canonical_enrollment_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)
+   where learner_display_name = 'Leader C1'),
+  5,
+  'leader raw completed coaching activity can exceed its four-unit requirement'
+);
+select is(
+  (select completed_units
+   from public.sponsor_canonical_enrollment_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)
+   where learner_display_name = 'Leader C1'),
+  17,
+  'leader raw completed total reconciles to uncapped module activity'
+);
+select ok(
+  (select full_completion_pct <= 100
+   from public.sponsor_canonical_enrollment_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)
+   where learner_display_name = 'Leader C1'),
+  'leader completion percentage remains capped at 100 percent'
+);
+select is(
+  (select coaching_completed_units
+   from public.sponsor_canonical_cohort_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)),
+  19,
+  'cohort raw coaching total includes the extra attributed activity'
+);
+select is(
+  (select completed_units
+   from public.sponsor_canonical_cohort_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)),
+  (select sum(completed_units)::integer
+   from public.sponsor_canonical_enrollment_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)),
+  'cohort raw completed total reconciles to uncapped leader totals'
+);
+select is(
+  (select completed_units
+   from public.sponsor_canonical_cohort_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)),
+  74,
+  'cohort raw completed total increases from 73 to 74'
+);
+select ok(
+  (select full_completion_pct <= 100
+   from public.sponsor_canonical_cohort_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)),
+  'cohort completion percentage remains capped at 100 percent'
+);
+select is(
+  (select coaching_completed_units
+   from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
+  (select sum(coaching_completed_units)::integer
+   from public.sponsor_canonical_cohort_progress('2026-07-05'::date)
+   where not suppressed),
+  'organisation raw coaching total reconciles to visible cohort totals'
+);
+select ok(
+  (select full_completion_pct <= 100
+   from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
+  'organisation completion percentage remains capped at 100 percent'
+);
+select is(
+  (select peer_completed_units
+   from public.sponsor_canonical_cohort_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)),
+  9,
+  'peer coaching remains counted once after raw overutilisation activity'
+);
+
 select * from finish();
 rollback;

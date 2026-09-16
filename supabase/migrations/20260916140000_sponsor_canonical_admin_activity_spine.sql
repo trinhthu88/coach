@@ -237,10 +237,7 @@ AS $$
   ), module_values AS (
     SELECT m.module, m.required_units,
       coalesce(c.completed_activity_units, 0)::integer AS completed_activity_units,
-      least(
-        coalesce(c.completed_activity_units, 0),
-        m.required_units
-      )::integer AS completed_units,
+      coalesce(c.completed_activity_units, 0)::integer AS completed_units,
       m.due_units,
       least(
         coalesce(c.raw_booked_units, 0),
