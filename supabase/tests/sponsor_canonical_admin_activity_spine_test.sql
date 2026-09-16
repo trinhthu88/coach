@@ -4,13 +4,13 @@ select plan(38);
 
 select ok(
   pg_get_functiondef(
-    'public.get_sponsor_programme_progress(uuid,date)'::regprocedure
+    'public.sponsor_canonical_module_schedule(uuid)'::regprocedure
   ) ~ 'programme_modules',
   'canonical progress reads current Admin programme_modules'
 );
 select ok(
   pg_get_functiondef(
-    'public.get_sponsor_programme_progress(uuid,date)'::regprocedure
+    'public.sponsor_canonical_activity(uuid)'::regprocedure
   ) ~ 'session_activity_attributions',
   'canonical progress reads attributed leader activity'
 );
@@ -132,6 +132,7 @@ select is(
    where not suppressed),
   'organisation required units equal the visible cohort rollup'
 );
+reset role;
 select is(
   (select enrollment_count
    from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
@@ -141,6 +142,7 @@ select is(
    where c.organization_id = '11111111-1111-4111-8111-111111111111'::uuid),
   'organisation population includes all sponsor-visible cohort enrollments'
 );
+set local role authenticated;
 
 -- A temporary Admin change must affect Sponsor denominators immediately,
 -- without rebuilding historical enrollment snapshots.
