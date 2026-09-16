@@ -4395,54 +4395,55 @@ export type Database = {
           at_risk_count: number
           behind_count: number
           booked_units: number
-          coaching_booked_units: number | null
-          coaching_completed_leaders: number | null
-          coaching_completed_units: number | null
-          coaching_due_units: number | null
-          coaching_required_units: number | null
+          coaching_booked_units: number
+          coaching_completed_leaders: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
           cohort_id: string
           cohort_label: string
-          completed_count: number | null
-          completed_pace_count: number | null
-          completed_units: number | null
+          completed_count: number
+          completed_pace_count: number
+          completed_units: number
           due_adherence_pct: number | null
-          due_units: number | null
-          enrollment_count: number | null
+          due_units: number
+          enrollment_count: number
           full_completion_pct: number | null
-          mentoring_booked_units: number | null
-          mentoring_completed_leaders: number | null
-          mentoring_completed_units: number | null
-          mentoring_due_units: number | null
-          mentoring_required_units: number | null
-          not_yet_due_count: number | null
-          on_track_count: number | null
+          mentoring_booked_units: number
+          mentoring_completed_leaders: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          not_yet_due_count: number
+          on_track_count: number
           on_track_pct: number | null
+          overdue_units: number
           pace_status: string | null
-          peer_booked_units: number | null
-          peer_completed_leaders: number | null
-          peer_completed_units: number | null
-          peer_due_units: number | null
-          peer_required_units: number | null
-          paused_count: number | null
+          peer_booked_units: number
+          peer_completed_leaders: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          paused_count: number
           programme_end_date: string | null
           programme_journey: Json | null
           programme_label: string
           programme_start_date: string | null
           progress_source_complete: boolean
-          required_units: number | null
+          required_units: number
           schedule_coverage_pct: number | null
-          scheduled_count: number | null
+          scheduled_count: number
           suppressed: boolean
-          training_booked_units: number | null
-          training_completed_leaders: number | null
-          training_completed_units: number | null
-          training_due_units: number | null
-          training_required_units: number | null
-          triad_booked_units: number | null
-          triad_completed_leaders: number | null
-          triad_completed_units: number | null
-          triad_due_units: number | null
-          triad_required_units: number | null
+          training_booked_units: number
+          training_completed_leaders: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_leaders: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
         }[]
       }
       sponsor_canonical_enrollment_progress: {
