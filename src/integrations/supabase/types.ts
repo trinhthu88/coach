@@ -4447,7 +4447,7 @@ export type Database = {
         }[]
       }
       sponsor_canonical_enrollment_progress: {
-        Args: { p_as_of?: string; p_cohort_id?: string | null }
+        Args: { p_as_of?: string; p_cohort_id?: string }
         Returns: {
           booked_units: number
           cohort_id: string
