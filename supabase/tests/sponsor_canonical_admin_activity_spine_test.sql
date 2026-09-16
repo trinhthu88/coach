@@ -341,7 +341,7 @@ select is(
   (select coaching_completed_units
    from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
   (select sum(coaching_completed_units)::integer
-   from public.sponsor_canonical_cohort_progress('2026-07-05'::date)
+   from public.sponsor_canonical_cohort_progress(NULL::uuid, '2026-07-05'::date)
    where not suppressed),
   'organisation raw coaching total reconciles to visible cohort totals'
 );
