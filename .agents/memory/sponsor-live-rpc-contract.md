@@ -1,10 +1,10 @@
 ---
 name: Sponsor live RPC contract
-description: Hosted Sponsor reporting exposes aggregate legacy metrics and canonical per-enrollment progress, but not module rollups or journey checkpoints.
+description: Hosted Sponsor reporting keeps legacy summaries and now exposes additive canonical module rollups, enrollment progress, and configured journey checkpoints.
 ---
 
-The hosted Sponsor contract provides cohort and organisation aggregates, legacy category completion counts, dates, health/pace metrics, and enrollment totals. Module-level required/completed/due values come from the canonical per-enrollment progress function; hosted Sponsor summaries do not currently expose Training-specific rollups, stored enrollment status, or journey checkpoints.
+The hosted Sponsor contract keeps the existing cohort and organisation summaries for privacy-scoped metadata, legacy category counts, dates, health/pace metrics, and enrollment totals. The forward-only canonical contract now also provides Sponsor-authorized enrollment progress, five-module cohort rollups including Training, organisation rollups, stored/effective status, and configured programme journey checkpoints.
 
-**Why:** Local Sponsor migrations can make generated TypeScript appear richer than the deployed database. Rendering those undeployed fields produces blank or misleading Sponsor numbers.
+**Why:** Local Sponsor migrations can make generated TypeScript appear richer than the deployed database. The additive hosted contract is now the authoritative source for module and journey fields while preserving existing RPC behavior.
 
-**How to apply:** Treat hosted RPC signatures as authoritative. Use sponsor summaries for privacy-scoped metadata and aggregates, enrich visible roster rows from canonical enrollment progress when needed, and show an explicit unavailable state rather than infer weeks or checkpoints. Additive hosted fields must preserve existing RPCs and suppression thresholds.
+**How to apply:** Use canonical enrollment, cohort, and organisation RPC results for all progress denominators and numerators; merge legacy summaries only for supporting metadata such as goals or satisfaction. Keep journey rendering date/checkpoint driven, preserve existing RPCs, and keep suppressed cohorts detail-free.

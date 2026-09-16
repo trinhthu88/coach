@@ -20,6 +20,12 @@ beforeEach(async () => {
     { cohort_id: id1, cohort_label: "Small cohort", programme_label: "Executive", programme_start_date: "2026-01-15", programme_end_date: "2026-12-15", enrollment_count: null, suppressed: true },
     { cohort_id: id2, cohort_label: "Another cohort", programme_label: "Executive", programme_start_date: "2026-02-01", programme_end_date: null, enrollment_count: null, suppressed: true },
   ];
+  responses.sponsor_canonical_cohort_progress = responses.sponsor_cohort_summaries;
+  responses.sponsor_canonical_organisation_progress = [{
+    cohort_count: 2, enrollment_count: null, required_units: null, completed_units: null, due_units: null,
+    booked_units: null, overdue_units: null, full_completion_pct: null, due_adherence_pct: null,
+    schedule_coverage_pct: null, suppressed_cohort_count: 2, progress_source_complete: false,
+  }];
 });
 
 describe("SponsorCohorts privacy contract", () => {
@@ -33,7 +39,7 @@ describe("SponsorCohorts privacy contract", () => {
     expect(screen.getByText("Dec 15, 2026")).toBeInTheDocument();
     expect(screen.queryByText("Status mix")).not.toBeInTheDocument();
     expect(screen.queryByText("Booked")).not.toBeInTheDocument();
-    expect(calls.every((name) => name === "sponsor_enrollment_summaries" || name === "sponsor_cohort_summaries" || name === "sponsor_min_leaders_for_distribution" || name === "sponsor_organisation_summary")).toBe(true);
+    expect(calls.every((name) => name === "sponsor_enrollment_summaries" || name === "sponsor_canonical_enrollment_progress" || name === "sponsor_cohort_summaries" || name === "sponsor_canonical_cohort_progress" || name === "sponsor_min_leaders_for_distribution" || name === "sponsor_organisation_summary" || name === "sponsor_canonical_organisation_progress")).toBe(true);
   });
 
   it("keeps an in-progress cohort marked active even when its pace is mixed", async () => {
@@ -51,6 +57,7 @@ describe("SponsorCohorts privacy contract", () => {
       at_risk_count: 2,
       completed_count: 0,
     }];
+    responses.sponsor_canonical_cohort_progress = responses.sponsor_cohort_summaries;
 
     render(<MemoryRouter><SponsorCohorts /></MemoryRouter>);
 

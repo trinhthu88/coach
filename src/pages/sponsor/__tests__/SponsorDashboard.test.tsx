@@ -40,6 +40,29 @@ beforeEach(async () => {
     cohort_count: 1, enrollment_count: 12, active_count: 0, at_risk_count: 5,
     completed_units: 113, required_units: 192,
   }];
+  responses.sponsor_canonical_enrollment_progress = [
+    { ...enrollment("e1", "Priya Shah"), stored_enrollment_status: "active", effective_enrollment_status: "active", progress_available: true, coaching_required_units: 4, coaching_completed_units: 4, coaching_due_units: 4, coaching_booked_units: 0, training_required_units: 2, training_completed_units: 0, training_due_units: 2, training_booked_units: 0, peer_required_units: 1, peer_completed_units: 0, peer_due_units: 1, peer_booked_units: 0, mentoring_required_units: 1, mentoring_completed_units: 0, mentoring_due_units: 1, mentoring_booked_units: 0, triad_required_units: 0, triad_completed_units: 0, triad_due_units: 0, triad_booked_units: 0 },
+    { ...enrollment("e2", "Tom Baker", "at_risk"), stored_enrollment_status: "at_risk", effective_enrollment_status: "at_risk", progress_available: true, coaching_required_units: 4, coaching_completed_units: 0, coaching_due_units: 4, coaching_booked_units: 0, training_required_units: 2, training_completed_units: 0, training_due_units: 2, training_booked_units: 0, peer_required_units: 1, peer_completed_units: 0, peer_due_units: 1, peer_booked_units: 0, mentoring_required_units: 1, mentoring_completed_units: 0, mentoring_due_units: 1, mentoring_booked_units: 0, triad_required_units: 0, triad_completed_units: 0, triad_due_units: 0, triad_booked_units: 0 },
+  ];
+  responses.sponsor_canonical_cohort_progress = [{
+    ...responses.sponsor_cohort_summaries[0],
+    coaching_required_units: 48, coaching_completed_units: 8, coaching_due_units: 20, coaching_booked_units: 0, coaching_completed_leaders: 2,
+    training_required_units: 24, training_completed_units: 0, training_due_units: 12, training_booked_units: 0, training_completed_leaders: 0,
+    peer_required_units: 12, peer_completed_units: 0, peer_due_units: 6, peer_booked_units: 0, peer_completed_leaders: 0,
+    mentoring_required_units: 12, mentoring_completed_units: 2, mentoring_due_units: 6, mentoring_booked_units: 0, mentoring_completed_leaders: 1,
+    triad_required_units: 0, triad_completed_units: 0, triad_due_units: 0, triad_booked_units: 0, triad_completed_leaders: 0,
+    programme_journey: [], progress_source_complete: true,
+  }];
+  responses.sponsor_canonical_organisation_progress = [{
+    cohort_count: 1, enrollment_count: 12, required_units: 192, completed_units: 113, due_units: 20, booked_units: 0,
+    overdue_units: 0, full_completion_pct: 58.9, due_adherence_pct: 100, schedule_coverage_pct: 100,
+    coaching_required_units: 48, coaching_completed_units: 8, coaching_due_units: 20, coaching_booked_units: 0,
+    training_required_units: 24, training_completed_units: 0, training_due_units: 12, training_booked_units: 0,
+    peer_required_units: 12, peer_completed_units: 0, peer_due_units: 6, peer_booked_units: 0,
+    mentoring_required_units: 12, mentoring_completed_units: 2, mentoring_due_units: 6, mentoring_booked_units: 0,
+    triad_required_units: 0, triad_completed_units: 0, triad_due_units: 0, triad_booked_units: 0,
+    suppressed_cohort_count: 0, progress_source_complete: true,
+  }];
 });
 
 describe("SponsorDashboard privacy contract", () => {
@@ -53,11 +76,12 @@ describe("SponsorDashboard privacy contract", () => {
     expect(screen.queryByText("Goals setup / total")).not.toBeInTheDocument();
     expect(calls).toEqual([
       "sponsor_cohort_summaries",
+      "sponsor_canonical_cohort_progress",
       "sponsor_organisation_summary",
+      "sponsor_canonical_organisation_progress",
       "sponsor_min_leaders_for_distribution",
       "sponsor_enrollment_summaries",
-      "get_enrollment_progress",
-      "get_enrollment_progress",
+      "sponsor_canonical_enrollment_progress",
     ]);
     expect(screen.queryByText(/Goal reached|confidence|quiz/i)).not.toBeInTheDocument();
     expect(calls.some((name) => /sponsor_(kpis|roster|goal_growth|satisfaction|confidence|programme|engagement|coach)/.test(name))).toBe(false);

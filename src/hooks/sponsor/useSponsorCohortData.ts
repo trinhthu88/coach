@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  applyCohortModuleProgress,
-  applyModuleProgress,
   type SponsorRosterRow,
   type SponsorCohortSummary,
 } from "./useSponsorDashboardData";
@@ -31,26 +29,24 @@ export function useSponsorCohortData(cohortId: string): SponsorCohortData {
     Promise.all([
       supabase.rpc("sponsor_enrollment_summaries", { p_cohort_id: cohortId }),
       supabase.rpc("sponsor_cohort_summaries", { p_cohort_id: cohortId }),
+      supabase.rpc("sponsor_canonical_enrollment_progress", { p_cohort_id: cohortId }),
+      supabase.rpc("sponsor_canonical_cohort_progress", { p_cohort_id: cohortId }),
       supabase.rpc("sponsor_min_leaders_for_distribution"),
-    ]).then(([summaryRes, cohortRes, thresholdRes]) => {
+    ]).then(([summaryRes, cohortRes, canonicalRowsRes, canonicalCohortRes, thresholdRes]) => {
       if (!mounted) return;
-      const rows = summaryRes.data ?? [];
-      const aggregate = cohortRes.data?.[0];
+      const canonicalById = new Map((Array.isArray(canonicalRowsRes.data) ? canonicalRowsRes.data : []).map((row) => [row.enrollment_id, row]));
+      const rows = (summaryRes.data ?? []).map((row) => ({ ...row, ...canonicalById.get(row.enrollment_id) })) as SponsorRosterRow[];
+      const legacyAggregate = cohortRes.data?.[0];
+      const aggregate = Array.isArray(canonicalCohortRes.data) && canonicalCohortRes.data[0]
+        ? { ...(legacyAggregate ?? {}), ...canonicalCohortRes.data[0] } as SponsorCohortSummary
+        : null;
       setMinLeadersForDistribution(thresholdRes.data ?? 0);
       setCohortLabel(aggregate?.cohort_label ?? rows[0]?.cohort_label ?? null);
       setSuppressed(aggregate?.suppressed ?? true);
-
-      Promise.all(rows.map(async (row) => {
-        const { data, error } = await supabase.rpc("get_enrollment_progress", {
-          p_enrollment_id: row.enrollment_id,
-        });
-        return applyModuleProgress(row, error ? [] : Array.isArray(data) ? data : []);
-      })).then((enrichedRows) => {
-        if (!mounted) return;
-        setRoster(enrichedRows);
-        setKpis(aggregate ? applyCohortModuleProgress(aggregate, enrichedRows) : null);
-        setLoading(false);
-      });
+      if (!mounted) return;
+      setRoster(rows);
+      setKpis(aggregate);
+      setLoading(false);
     });
     return () => { mounted = false; };
   }, [cohortId]);

@@ -4363,6 +4363,152 @@ export type Database = {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
+      sponsor_canonical_cohort_progress: {
+        Args: { p_as_of?: string; p_cohort_id?: string | null }
+        Returns: {
+          active_count: number | null
+          ahead_count: number | null
+          at_risk_count: number | null
+          behind_count: number | null
+          booked_units: number | null
+          coaching_booked_units: number | null
+          coaching_completed_leaders: number | null
+          coaching_completed_units: number | null
+          coaching_due_units: number | null
+          coaching_required_units: number | null
+          cohort_id: string
+          cohort_label: string
+          completed_count: number | null
+          completed_pace_count: number | null
+          completed_units: number | null
+          due_adherence_pct: number | null
+          due_units: number | null
+          enrollment_count: number | null
+          full_completion_pct: number | null
+          mentoring_booked_units: number | null
+          mentoring_completed_leaders: number | null
+          mentoring_completed_units: number | null
+          mentoring_due_units: number | null
+          mentoring_required_units: number | null
+          not_yet_due_count: number | null
+          on_track_count: number | null
+          on_track_pct: number | null
+          pace_status: string | null
+          peer_booked_units: number | null
+          peer_completed_leaders: number | null
+          peer_completed_units: number | null
+          peer_due_units: number | null
+          peer_required_units: number | null
+          paused_count: number | null
+          programme_end_date: string | null
+          programme_journey: Json | null
+          programme_label: string
+          programme_start_date: string | null
+          progress_source_complete: boolean
+          required_units: number | null
+          schedule_coverage_pct: number | null
+          scheduled_count: number | null
+          suppressed: boolean
+          training_booked_units: number | null
+          training_completed_leaders: number | null
+          training_completed_units: number | null
+          training_due_units: number | null
+          training_required_units: number | null
+          triad_booked_units: number | null
+          triad_completed_leaders: number | null
+          triad_completed_units: number | null
+          triad_due_units: number | null
+          triad_required_units: number | null
+        }[]
+      }
+      sponsor_canonical_enrollment_progress: {
+        Args: { p_as_of?: string; p_cohort_id?: string | null }
+        Returns: {
+          booked_units: number
+          cohort_id: string
+          cohort_label: string
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          completed_units: number
+          due_adherence_pct: number | null
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          enrollment_end_date: string
+          enrollment_id: string
+          enrollment_start_date: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_completion_pct: number | null
+          learner_display_name: string
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          pace_status: string
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string | null
+          programme_id: string
+          programme_label: string
+          programme_start_date: string | null
+          progress_available: boolean
+          required_units: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
+      sponsor_canonical_organisation_progress: {
+        Args: { p_as_of?: string }
+        Returns: {
+          booked_units: number | null
+          coaching_booked_units: number | null
+          coaching_completed_units: number | null
+          coaching_due_units: number | null
+          coaching_required_units: number | null
+          cohort_count: number
+          completed_units: number | null
+          due_adherence_pct: number | null
+          due_units: number | null
+          enrollment_count: number | null
+          full_completion_pct: number | null
+          mentoring_booked_units: number | null
+          mentoring_completed_units: number | null
+          mentoring_due_units: number | null
+          mentoring_required_units: number | null
+          overdue_units: number | null
+          peer_booked_units: number | null
+          peer_completed_units: number | null
+          peer_due_units: number | null
+          peer_required_units: number | null
+          progress_source_complete: boolean | null
+          required_units: number | null
+          schedule_coverage_pct: number | null
+          suppressed_cohort_count: number
+          training_booked_units: number | null
+          training_completed_units: number | null
+          training_due_units: number | null
+          training_required_units: number | null
+          triad_booked_units: number | null
+          triad_completed_units: number | null
+          triad_due_units: number | null
+          triad_required_units: number | null
+        }[]
+      }
+      sponsor_canonical_programme_journey: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: Json
+      }
       sponsor_cohort_summaries: {
         Args: { p_cohort_id?: string }
         Returns: {

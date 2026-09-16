@@ -83,6 +83,16 @@ const summary = {
   goal_progress_pct: null,
   satisfaction_avg: null,
   satisfaction_rated_count: 0,
+  programme_journey: [{
+    checkpoint_number: 1,
+    due_on: "2026-04-01",
+    label: "Coaching checkpoint",
+    required_units: 48,
+    completed_units: 0,
+    completed_leaders: 0,
+    total_leaders: 12,
+    state: "overdue",
+  }],
 };
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -92,14 +102,48 @@ vi.mock("@/integrations/supabase/client", () => ({
         ? roster
         : name === "sponsor_cohort_summaries"
           ? [summary]
-            : name === "get_enrollment_progress"
-              ? [
-                { module: "coaching", completed_units: 0, due_units: 4, required_units: 4 },
-                { module: "training", completed_units: 0, due_units: 6, required_units: 6 },
-                { module: "peer_coaching", completed_units: 0, due_units: 2, required_units: 2 },
-                { module: "mentoring", completed_units: 0, due_units: 2, required_units: 2 },
-                { module: "triads", completed_units: 0, due_units: 2, required_units: 2 },
-              ]
+            : name === "sponsor_canonical_enrollment_progress"
+              ? roster.map((row) => ({
+                ...row,
+                stored_enrollment_status: "at_risk",
+                effective_enrollment_status: "completed",
+                progress_available: true,
+                coaching_booked_units: 0,
+                training_booked_units: 0,
+                peer_booked_units: 0,
+                mentoring_booked_units: 0,
+                triad_booked_units: 0,
+              }))
+              : name === "sponsor_canonical_cohort_progress"
+                ? [{
+                  ...summary,
+                  coaching_required_units: 48,
+                  coaching_completed_units: 0,
+                  coaching_due_units: 48,
+                  coaching_booked_units: 0,
+                  coaching_completed_leaders: 0,
+                  training_required_units: 72,
+                  training_completed_units: 0,
+                  training_due_units: 72,
+                  training_booked_units: 0,
+                  training_completed_leaders: 0,
+                  peer_required_units: 24,
+                  peer_completed_units: 0,
+                  peer_due_units: 24,
+                  peer_booked_units: 0,
+                  peer_completed_leaders: 0,
+                  mentoring_required_units: 24,
+                  mentoring_completed_units: 0,
+                  mentoring_due_units: 24,
+                  mentoring_booked_units: 0,
+                  mentoring_completed_leaders: 0,
+                  triad_required_units: 24,
+                  triad_completed_units: 0,
+                  triad_due_units: 24,
+                  triad_booked_units: 0,
+                  triad_completed_leaders: 0,
+                  progress_source_complete: true,
+                }]
           : 5,
       error: null,
     }),

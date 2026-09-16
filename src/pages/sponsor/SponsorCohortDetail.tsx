@@ -100,7 +100,7 @@ export default function SponsorCohortDetail() {
 
             <AttentionSection kpis={kpis} counts={filterCounts} filter={filter} onFilter={setFilter} t={t} />
 
-            <ProgrammeJourney t={t} />
+            <ProgrammeJourney journey={kpis?.programme_journey} t={t} />
 
             <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
               <button
@@ -260,31 +260,57 @@ function AttentionSection({ kpis, counts, filter, onFilter, t }: { kpis: Sponsor
   );
 }
 
-function ProgrammeJourney({ t }: { t: (key: string, options?: Record<string, unknown>) => string }) {
+type SponsorJourneyCheckpoint = {
+  checkpoint_number: number;
+  due_on: string;
+  label: string;
+  required_units: number;
+  completed_units: number;
+  completed_leaders: number;
+  total_leaders: number;
+  state: "upcoming" | "current" | "completed" | "overdue";
+};
+
+function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, options?: Record<string, unknown>) => string }) {
+  const checkpoints = Array.isArray(journey)
+    ? journey.filter((item): item is SponsorJourneyCheckpoint => Boolean(item && typeof item === "object" && "checkpoint_number" in item && "due_on" in item && "state" in item))
+    : [];
   return (
     <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-serif text-[17px] font-normal">{t("cohortDetail.journey.label")}</h2>
         <span className="text-[10.5px] text-[#9a938a]">{t("cohortDetail.journey.privacyNote")}</span>
       </div>
-      <div className="mt-4 flex flex-wrap gap-3.5 text-[10.5px] text-[#6a6560]">
-        <JourneyLegend color={GREEN} label={t("leaderDrawer.reference.completed")} />
-        <JourneyLegend color={SKY} label={t("leaderDrawer.reference.youAreHere")} />
-        <JourneyLegend color="#c9543a" label={t("leaderDrawer.reference.overdueState")} />
-        <JourneyLegend color="#cfc7bb" label={t("leaderDrawer.reference.upcoming")} />
-      </div>
-      <p className="mt-5 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-5 text-center text-[11px] leading-relaxed text-[#6a6560]">
-        {t("cohortDetail.journey.notAvailable")}
-      </p>
+      {checkpoints.length ? (
+        <div className="mt-5 grid gap-3">
+          {checkpoints.map((checkpoint) => {
+            const color = checkpoint.state === "completed" ? GREEN : checkpoint.state === "overdue" ? "#c9543a" : checkpoint.state === "current" ? SKY : "#cfc7bb";
+            return (
+              <div key={`${checkpoint.due_on}-${checkpoint.checkpoint_number}`} className="flex items-start gap-3 rounded-xl border border-[#eee8de] bg-[#f6f3ee] px-4 py-3.5">
+                <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-[11.5px] font-semibold text-[#062f3e]">{checkpoint.label || t("cohortDetail.journey.checkpoint", { number: checkpoint.checkpoint_number })}</span>
+                    <span className="text-[10px] text-[#9a938a]">{formatDate(checkpoint.due_on)}</span>
+                  </div>
+                  <div className="mt-1 text-[10.5px] text-[#6a6560]">
+                    {checkpoint.completed_units} / {checkpoint.required_units} units · {t("cohortDetail.journey.leaders", { completed: checkpoint.completed_leaders, total: checkpoint.total_leaders })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-5 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-5 text-center text-[11px] leading-relaxed text-[#6a6560]">
+          {t("cohortDetail.journey.notAvailable")}
+        </p>
+      )}
       <p className="mt-[18px] border-t border-[#eee8de] pt-3.5 text-[11.5px] leading-relaxed text-[#6a6560]">
         {t("cohortDetail.journey.aggregateNote")}
       </p>
     </section>
   );
-}
-
-function JourneyLegend({ color, label }: { color: string; label: string }) {
-  return <span className="inline-flex items-center gap-1.5"><span className="h-[9px] w-[9px] rounded-full" style={{ background: color }} />{label}</span>;
 }
 
 function ProgrammeDetails({ kpis, t }: { kpis: SponsorCohortSummary | null; t: (key: string, options?: Record<string, unknown>) => string }) {
