@@ -4450,12 +4450,12 @@ export type Database = {
         Args: { p_as_of?: string; p_cohort_id?: string }
         Returns: {
           booked_units: number
-          cohort_id: string
-          cohort_label: string
           coaching_booked_units: number
           coaching_completed_units: number
           coaching_due_units: number
           coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
           completed_units: number
           due_adherence_pct: number | null
           due_units: number
