@@ -14,3 +14,9 @@ When creating a commit through GitHub's Git Database API, include the exact term
 **Why:** Git commit hashes include the raw commit-message bytes, not just the displayed text. The API otherwise omits the terminal newline.
 
 **How to apply:** Compare the remote tree and commit SHA with local Git before updating the branch ref; never accept a metadata-only match as sufficient.
+
+When GitHub reports the fetched remote tip as the local merge base, do not merge or rebase just because a push was rejected; the safe operation is a normal fast-forward push.
+
+**Why:** A push rejection can come from invalid shell credentials or a connector that can create Git objects but cannot execute `UpdateRef`; rewriting an already-linear history would add avoidable risk.
+
+**How to apply:** Fetch first, report both exclusive commit sets, then retry a non-forced push through an authorized path. If REST returns 404 and GraphQL returns `FORBIDDEN` for `UpdateRef`, stop without changing the branch or dispatching CI.
