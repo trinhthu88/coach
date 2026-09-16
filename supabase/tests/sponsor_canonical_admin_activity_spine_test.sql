@@ -1,6 +1,6 @@
 begin;
 
-select plan(25);
+select plan(38);
 
 select ok(
   pg_get_functiondef(
@@ -246,32 +246,6 @@ select is(
   'suppressed cohorts expose no enrollment detail rows'
 );
 
--- A visible leader with no enabled required modules keeps count fields at
--- zero but percentages unavailable; this distinguishes zero from unknown.
-reset role;
-update public.programme_modules
-set enabled = false
-where programme_id = '11111111-1111-4111-8111-111111111118'::uuid;
-set local role authenticated;
-select is(
-  (select required_units
-   from public.sponsor_canonical_enrollment_progress(
-     '11111111-1111-4111-8111-111111111119'::uuid,
-     '2026-07-05'::date)
-   where learner_display_name = 'Leader C1'),
-  0,
-  'no enabled required modules produce a known zero denominator'
-);
-select is(
-  (select full_completion_pct
-   from public.sponsor_canonical_enrollment_progress(
-     '11111111-1111-4111-8111-111111111119'::uuid,
-     '2026-07-05'::date)
-   where learner_display_name = 'Leader C1'),
-  NULL::numeric,
-  'completion percentage is null when no requirement exists'
-);
-
 -- Raw historical activity is not capped at the Admin requirement. Only the
 -- percentage and booked/schedule capacity fields remain bounded.
 reset role;
@@ -312,6 +286,16 @@ select ok(
    where learner_display_name = 'Leader C1'),
   'leader completion percentage remains capped at 100 percent'
 );
+select ok(
+  (select coaching_booked_units <= greatest(
+      coaching_required_units - coaching_completed_units, 0
+    )
+   from public.sponsor_canonical_enrollment_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)
+   where learner_display_name = 'Leader C1'),
+  'leader booked capacity remains bounded after raw completion exceeds requirement'
+);
 select is(
   (select coaching_completed_units
    from public.sponsor_canonical_cohort_progress(
@@ -346,6 +330,13 @@ select ok(
      '2026-07-05'::date)),
   'cohort completion percentage remains capped at 100 percent'
 );
+select ok(
+  (select schedule_coverage_pct <= 100
+   from public.sponsor_canonical_cohort_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)),
+  'cohort schedule coverage percentage remains capped at 100 percent'
+);
 select is(
   (select coaching_completed_units
    from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
@@ -359,6 +350,11 @@ select ok(
    from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
   'organisation completion percentage remains capped at 100 percent'
 );
+select ok(
+  (select schedule_coverage_pct <= 100
+   from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
+  'organisation schedule coverage percentage remains capped at 100 percent'
+);
 select is(
   (select peer_completed_units
    from public.sponsor_canonical_cohort_progress(
@@ -366,6 +362,32 @@ select is(
      '2026-07-05'::date)),
   9,
   'peer coaching remains counted once after raw overutilisation activity'
+);
+
+-- A visible leader with no enabled required modules keeps count fields at
+-- zero but percentages unavailable; this distinguishes zero from unknown.
+reset role;
+update public.programme_modules
+set enabled = false
+where programme_id = '11111111-1111-4111-8111-111111111118'::uuid;
+set local role authenticated;
+select is(
+  (select required_units
+   from public.sponsor_canonical_enrollment_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)
+   where learner_display_name = 'Leader C1'),
+  0,
+  'no enabled required modules produce a known zero denominator'
+);
+select is(
+  (select full_completion_pct
+   from public.sponsor_canonical_enrollment_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)
+   where learner_display_name = 'Leader C1'),
+  NULL::numeric,
+  'completion percentage is null when no requirement exists'
 );
 
 select * from finish();
