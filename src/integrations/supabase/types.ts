@@ -4237,6 +4237,18 @@ export type Database = {
         Args: { p_as_of?: string; p_cohort_id: string }
         Returns: Json
       }
+      get_sponsor_programme_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_activity_units: number
+          completed_units: number
+          due_units: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          pace_status: string
+          required_units: number
+        }[]
+      }
       get_todays_prompt: {
         Args: never
         Returns: {
