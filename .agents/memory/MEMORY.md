@@ -4,6 +4,7 @@
 - [Demo pace fixtures](demo-pace-fixtures.md) — validate seeded pace through fixed-date progress RPC results, not inferred activity row counts.
 - [Local Supabase health failure](local-supabase-health-failure.md) — DB validation may stop before migrations because Docker cannot execute the container health check.
 - [Supabase CLI package firewall](supabase-cli-package-firewall.md) — local DB validation can be blocked before startup when the required CLI archive is denied by the package firewall.
+- [Supabase validation environment](supabase-validation-environment.md) — if the linked schema lags the repository, do not mutate its ledger; isolated branch validation may be unavailable.
 - [Historical ownership retirement](historical-ownership-retirement.md) — preserve ambiguous legacy rows, record explicit retirement evidence, and exclude retired sources from repeatable readiness/backfill scans.
 - [GitHub integration push](github-integration-push.md) — preserve local commit SHAs through the Git Database API when shell credentials cannot push.
 - [Supabase Auth schema failure](supabase-auth-schema-failure.md) — SQL can see users while Auth admin and password-token endpoints return HTTP 500 schema errors.
