@@ -4405,10 +4405,10 @@ export type Database = {
           completed_count: number
           completed_pace_count: number
           completed_units: number
-          due_adherence_pct: number | null
+          due_adherence_pct: number
           due_units: number
           enrollment_count: number
-          full_completion_pct: number | null
+          full_completion_pct: number
           mentoring_booked_units: number
           mentoring_completed_leaders: number
           mentoring_completed_units: number
@@ -4416,7 +4416,7 @@ export type Database = {
           mentoring_required_units: number
           not_yet_due_count: number
           on_track_count: number
-          on_track_pct: number | null
+          on_track_pct: number
           overdue_units: number
           pace_status: string | null
           peer_booked_units: number
@@ -4431,7 +4431,7 @@ export type Database = {
           programme_start_date: string | null
           progress_source_complete: boolean
           required_units: number
-          schedule_coverage_pct: number | null
+          schedule_coverage_pct: number
           scheduled_count: number
           suppressed: boolean
           training_booked_units: number
