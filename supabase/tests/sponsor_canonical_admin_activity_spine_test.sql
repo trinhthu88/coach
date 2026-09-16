@@ -120,7 +120,7 @@ select is(
   (select completed_units
    from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
   (select sum(completed_units)::integer
-   from public.sponsor_canonical_cohort_progress('2026-07-05'::date)
+   from public.sponsor_canonical_cohort_progress(NULL::uuid, '2026-07-05'::date)
    where not suppressed),
   'organisation completed units equal the visible cohort rollup'
 );
@@ -128,7 +128,7 @@ select is(
   (select required_units
    from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
   (select sum(required_units)::integer
-   from public.sponsor_canonical_cohort_progress('2026-07-05'::date)
+   from public.sponsor_canonical_cohort_progress(NULL::uuid, '2026-07-05'::date)
    where not suppressed),
   'organisation required units equal the visible cohort rollup'
 );
