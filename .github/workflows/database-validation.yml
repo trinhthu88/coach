@@ -3,10 +3,10 @@ name: Database validation
 on:
   push:
     branches:
-      - remediation/p0-p1
+      - remediation-p0-p1-retimestamp
   pull_request:
     branches:
-      - remediation/p0-p1
+      - remediation-p0-p1-retimestamp
     paths:
       - 'supabase/**'
       - 'src/integrations/supabase/types.ts'
@@ -20,6 +20,9 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    concurrency:
+      group: sponsor-p0-database-validation-${{ github.ref }}
+      cancel-in-progress: false
     env:
       SUPABASE_CLI_VERSION: '2.117.0'
 
@@ -58,6 +61,13 @@ jobs:
         env:
           SUPABASE_CLI_BIN: supabase
         run: npm run validate:db
+
+      - name: Verify required Sponsor P0 suites were collected
+        run: |
+          test -f supabase/tests/sponsor_canonical_admin_activity_spine_test.sql
+          test -f supabase/tests/sponsor_cohort_c_reconciliation_test.sql
+          test "$(grep -Ec '^select (is|ok|lives_ok|isnt|matches)\(' supabase/tests/sponsor_canonical_admin_activity_spine_test.sql)" = "38"
+          grep -q '^select plan(38);' supabase/tests/sponsor_canonical_admin_activity_spine_test.sql
 
       - name: Capture Supabase diagnostics on failure
         if: failure()
