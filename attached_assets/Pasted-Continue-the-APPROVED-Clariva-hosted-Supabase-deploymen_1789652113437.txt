@@ -1,0 +1,234 @@
+Continue the APPROVED Clariva hosted Supabase deployment reconciliation.
+
+Current live status:
+
+- Root cause confirmed: deployment drift.
+- Original Sponsor outage is fixed:
+  sponsor_canonical_cohort_progress()
+  BEFORE: HTTP 500 / PostgreSQL 57014 statement timeout
+  AFTER: HTTP 200 with real Cohort C data.
+- No repository files changed.
+- 19 previously missing migrations were successfully deployed.
+- Hosted migration state is now 203 / 212 expected entries.
+- 9 migrations remain missing.
+
+Remaining migrations:
+
+20260916113000
+20260916140000
+20260916141000
+20260917100000
+20260917110000
+20260917120000
+20260917130000
+20260917140000
+20260917150000
+
+Important known fact:
+
+20260916113000 is a NO-OP on the hosted DB because its intended schema fix is already present there under a prior out-of-band migration version.
+
+The correct next action is:
+
+supabase migration repair --status applied 20260916113000
+
+followed by:
+
+supabase db push --linked
+
+This has already been approved conceptually as part of the live migration-ledger reconciliation.
+
+==================================================
+STEP 1 — RECONFIRM TARGET
+==================================================
+
+Confirm the linked hosted Supabase project is still:
+
+ygufjhhpguauwwmfvczy
+
+Do not proceed if the linked project differs.
+
+==================================================
+STEP 2 — VERIFY 20260916113000 IS TRULY A NO-OP
+==================================================
+
+Before repairing the ledger, re-check the hosted schema effect of:
+
+20260916113000
+
+Confirm its intended change already exists live.
+
+Report the exact object/function/schema effect proving this.
+
+Do not mark it applied if any part of the intended effect is actually missing.
+
+==================================================
+STEP 3 — REPAIR THAT SINGLE LEDGER ENTRY
+==================================================
+
+If confirmed already present, execute:
+
+supabase migration repair --status applied 20260916113000
+
+This is migration-history bookkeeping only.
+
+Do not repair any other migration in this step.
+
+Afterward verify:
+- 20260916113000 now appears applied
+- exactly 8 migrations remain pending
+- no unexpected migration state appeared
+
+==================================================
+STEP 4 — PUSH REMAINING 8 MIGRATIONS
+==================================================
+
+Run:
+
+supabase db push --linked
+
+Expected remaining migrations:
+
+20260916140000
+20260916141000
+20260917100000
+20260917110000
+20260917120000
+20260917130000
+20260917140000
+20260917150000
+
+Apply in repository order.
+
+Do not edit old migrations.
+
+Do not skip any unless the CLI stops on a proven already-present schema effect.
+
+If a migration fails because an equivalent object already exists from out-of-band deployment:
+- STOP
+- inspect exact schema equivalence
+- report before repairing/skipping anything further.
+
+==================================================
+STEP 5 — VERIFY FINAL MIGRATION PARITY
+==================================================
+
+After successful push, verify:
+
+- all 212 expected migration entries are accounted for
+- no local-only migrations remain
+- no missing canonical Sponsor or Learner objects remain
+- historical remote-only aliases may remain documented, but should no longer block deployment
+
+==================================================
+STEP 6 — VERIFY SPONSOR LIVE
+==================================================
+
+Using a real authenticated Demo Sponsor session, verify each live data path individually:
+
+1. Sponsor Dashboard
+2. Sponsor Cohorts
+3. Sponsor Cohort Detail
+4. Sponsor Leader Detail
+
+Check relevant RPCs:
+
+- sponsor_canonical_organisation_progress
+- sponsor_canonical_cohort_progress
+- sponsor_canonical_enrollment_metadata
+- sponsor_canonical_leader_progress
+- sponsor_canonical_leader_journey
+- sponsor_canonical_leader_experience
+
+Confirm:
+- HTTP 200
+- no timeout
+- expected real data
+- no privacy regression
+- no missing function errors
+
+==================================================
+STEP 7 — VERIFY LEARNER CANONICAL RPCs ARE NOW LIVE
+==================================================
+
+Confirm these functions now exist in hosted PostgREST/OpenAPI:
+
+- learner_canonical_progress
+- learner_canonical_module_progress
+- learner_canonical_journey
+- learner_canonical_experience
+
+Using a real authenticated learner:
+
+- own enrollment returns data
+- another learner's enrollment returns 0 rows / empty result
+- anonymous access is rejected
+- Sponsor cannot access learner-only RPCs
+
+==================================================
+STEP 8 — SPONSOR ↔ LEARNER PARITY
+==================================================
+
+For at least:
+
+- Emerging Leaders C1
+- Emerging Leaders C4
+
+compare live Sponsor and Learner facts:
+
+- programme
+- cohort
+- start date
+- end date
+- training required/completed
+- coaching required/completed
+- peer coaching required/completed
+- mentoring required/completed
+- triads required/completed
+- overall progress
+- pace/current stage
+- journey checkpoints
+
+All shared factual values must match.
+
+==================================================
+STEP 9 — VERIFY THE TWO SEPT-17 MIGRATIONS SPECIFICALLY
+==================================================
+
+Confirm live:
+
+20260917140000_learner_canonical_self_view.sql
+- learner canonical RPCs exist and are callable only by the intended learner context
+
+20260917150000_sponsor_cohort_progress_rollup_performance.sql
+- sponsor_canonical_cohort_progress_one exists
+- wrapper uses the performance implementation
+- helper remains inaccessible directly to PUBLIC / anon / authenticated if intended
+- sponsor_canonical_cohort_progress remains fast and returns 200
+
+==================================================
+STEP 10 — FINAL REPORT
+==================================================
+
+Return:
+
+1. exact repair command executed
+2. proof 20260916113000 was already functionally present
+3. exact db push command executed
+4. migrations applied
+5. final migration parity
+6. Sponsor Dashboard verification
+7. Sponsor Cohorts verification
+8. Cohort Detail verification
+9. Leader Detail verification
+10. learner_canonical_* live verification
+11. Sponsor/Learner parity results
+12. auth/privacy verification
+13. any remaining drift or blockers
+14. explicit confirmation whether hosted DB deployment is now COMPLETE
+15. explicit confirmation whether it is safe to resume Learner UX/layout work
+
+Do not modify frontend code.
+Do not change business logic.
+Do not change grants/RLS except as defined by the existing migrations.
+Do not reopen the local Docker health-check issue.
