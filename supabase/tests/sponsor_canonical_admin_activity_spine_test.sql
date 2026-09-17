@@ -203,14 +203,15 @@ values (
 );
 set local role authenticated;
 select is(
-  (select min((point->>'due_on')::date)
+   (select (point->>'due_on')::date
    from jsonb_array_elements(
      public.sponsor_canonical_programme_journey(
        '11111111-1111-4111-8111-111111111119'::uuid,
        '2026-03-15'::date
      )
    ) point
-   where point->'module_scope' @> '["training"]'::jsonb),
+    where point->'module_scope' @> '["training"]'::jsonb
+      and point->>'label' = 'Emerging Leaders module 1'),
   '2026-03-15'::date,
   'canonical journey uses the configured Training cohort override'
 );
@@ -234,7 +235,7 @@ where cohort_id = '11111111-1111-4111-8111-111111111119'::uuid
 update public.training_weeks
 set unlock_date = '2027-01-01'::date
 where id = '67676767-6767-4676-8676-000000000001'::uuid;
-set local role authenticated;
+reset role;
 select is(
   (select due_on
    from public.sponsor_canonical_module_schedule(
@@ -245,6 +246,7 @@ select is(
   '2026-03-01'::date,
   'training-linked Sponsor dates use the Cohort calendar, not the programme week unlock date'
 );
+set local role authenticated;
 
 -- Enrollment dates are intentionally different from Cohort C dates here.
 -- Sponsor schedule checkpoints must still follow the Cohort calendar.
@@ -253,7 +255,7 @@ update public.programme_enrollments
 set start_date = '2026-04-15'::date,
     end_date = '2026-06-15'::date
 where id = '14141414-1414-4141-8141-000000000001'::uuid;
-set local role authenticated;
+reset role;
 select is(
   (select min(due_on)
    from public.sponsor_canonical_module_schedule(
@@ -274,6 +276,7 @@ select is(
   '2026-07-05'::date,
   'canonical schedule uses Cohort end date when enrollment dates differ'
 );
+set local role authenticated;
 
 -- A late enrollment is evaluated against the already-running Cohort timeline.
 -- Leader C7 has no coaching activity, so the first Cohort checkpoint is behind
