@@ -28,7 +28,7 @@ export function ProgrammeProgressCard() {
     error: progressError,
   } = useLearnerCanonicalProgress(enrollmentId);
   const receiveEnabled = hasDirection("coaching", "receive");
-  const { goals } = useJourneyGoals(user?.id);
+  const { goals, error: goalsError } = useJourneyGoals(user?.id, { enrollmentId });
 
   if (modulesLoading || trainingLoading || progressLoading) {
     return (
@@ -200,7 +200,9 @@ export function ProgrammeProgressCard() {
             to={journeyPath}
             className="mt-2 block rounded-[20px] border border-[#e8e2d8] bg-card px-[22px] py-[18px] text-[12.5px] text-muted-foreground transition-colors hover:border-primary/40"
           >
-            {activeGoals.length > 0
+             {goalsError
+               ? t("progressCard.goalsLoadError")
+               : activeGoals.length > 0
               ? t("progressCard.goalsSummary", { count: activeGoals.length })
               : t("progressCard.goalsSummaryEmpty")}
           </Link>

@@ -83,7 +83,7 @@ const experiencePayload = {
   learning_breakdown: [
     { key: "quizzes", label: "Quizzes", required_units: 6, due_units: 4, completed_units: 3, progress_available: true, status: "current" },
   ],
-  coaching_utilisation: { required_units: 4, completed_units: 2, due_units: 3, booked_units: 0, utilisation_pct: 50 },
+  coaching_utilisation: { required_units: 4, completed_units: 2, due_units: 3, booked_units: 0, utilisation_pct: 50, next_session_at: "2026-04-01T10:00:00Z" },
 };
 
 describe("useLearnerCanonicalProgress", () => {
@@ -136,6 +136,7 @@ describe("useLearnerCanonicalProgress", () => {
       due_units: 3,
       booked_units: 0,
       utilisation_pct: 50,
+      next_session_at: "2026-04-01T10:00:00Z",
     });
     expect(result.current.error).toBeNull();
   });

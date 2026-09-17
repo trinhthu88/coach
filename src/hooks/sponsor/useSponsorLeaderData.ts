@@ -46,6 +46,7 @@ export type SponsorLeaderExperience = {
     due_units: number | null;
     booked_units: number | null;
     utilisation_pct: number | null;
+    next_session_at: string | null;
   } | null;
 };
 
@@ -195,6 +196,7 @@ function parseExperience(value: unknown): SponsorLeaderExperience {
       due_units: asNumber(coaching.due_units),
       booked_units: asNumber(coaching.booked_units),
       utilisation_pct: asNumber(coaching.utilisation_pct),
+      next_session_at: typeof coaching.next_session_at === "string" ? coaching.next_session_at : null,
     },
   };
 }
@@ -230,11 +232,15 @@ export function useSponsorLeaderData(enrollmentId: string, cohortId?: string): S
         return;
       }
 
-      const [progress, journey, experience] = await Promise.all([
+      // Progress and journey are the required canonical payloads. Experience
+      // is optional enrichment and runs after them so three heavy
+      // enrollment-scoped RPCs do not compete for the database statement
+      // timeout at the same time.
+      const [progress, journey] = await Promise.all([
         supabase.rpc("sponsor_canonical_enrollment_metadata", metadataParams),
         supabase.rpc("sponsor_canonical_leader_journey", { p_enrollment_id: enrollmentId }),
-        supabase.rpc("sponsor_canonical_leader_experience", { p_enrollment_id: enrollmentId }),
       ]);
+      const experience = await supabase.rpc("sponsor_canonical_leader_experience", { p_enrollment_id: enrollmentId });
       const rpcErrors = [progress.error, journey.error];
       const needsSessionRefresh = allowSessionRefresh && rpcErrors.some((rpcError) =>
         rpcError?.code === "42501" || rpcError?.code === "401" || rpcError?.status === 401

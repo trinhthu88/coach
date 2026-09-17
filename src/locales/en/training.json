@@ -95,6 +95,7 @@
     "goalsSummary_one": "{{count}} active goal",
     "goalsSummary_other": "{{count}} active goals",
     "goalsSummaryEmpty": "No active goals yet — set one from My development.",
+    "goalsLoadError": "Goals could not be loaded for this enrollment.",
     "loadError": "Programme progress could not be loaded.",
     "enrollmentRequired": "Programme progress is unavailable until an enrollment is selected.",
     "trainingActivity": "Training activity",

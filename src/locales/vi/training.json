@@ -94,6 +94,7 @@
     "goalsLabel": "Mục tiêu",
     "goalsSummary_other": "{{count}} mục tiêu đang hoạt động",
     "goalsSummaryEmpty": "Chưa có mục tiêu nào — hãy đặt một mục tiêu từ trang Phát triển của tôi.",
+    "goalsLoadError": "Không thể tải mục tiêu cho đăng ký này.",
     "loadError": "Không thể tải tiến độ chương trình.",
     "enrollmentRequired": "Không thể xem tiến độ cho đến khi chọn một đợt tham gia.",
     "trainingActivity": "Hoạt động đào tạo",

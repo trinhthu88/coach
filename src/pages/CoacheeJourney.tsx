@@ -45,11 +45,11 @@ import { ProgrammeJourneyCheckpoints } from "./journey/ProgrammeJourneyCheckpoin
 export default function CoacheeJourney() {
   const { t } = useTranslation("journey");
   const { user } = useAuth();
-  const goalsApi = useJourneyGoals(user?.id);
-  const ratingsApi = useJourneyRatings(user?.id);
-  const sessionsApi = useJourneySessions(user?.id, { includePeer: false });
-  const reflectionsApi = useJourneyReflections(user?.id);
   const programmeApi = useJourneyProgramme(user?.id);
+  const goalsApi = useJourneyGoals(user?.id, { enrollmentId: programmeApi.programme?.enrollmentId });
+  const ratingsApi = useJourneyRatings(user?.id, programmeApi.programme?.enrollmentId);
+  const sessionsApi = useJourneySessions(user?.id, { includePeer: false, enrollmentId: programmeApi.programme?.enrollmentId });
+  const reflectionsApi = useJourneyReflections(user?.id);
 
   const { goals, milestones, toggleMilestone } = goalsApi;
   const { ratings, sessionRatings, saveRating } = ratingsApi;

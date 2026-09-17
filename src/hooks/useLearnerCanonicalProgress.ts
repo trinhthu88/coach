@@ -62,6 +62,7 @@ export interface LearnerExperience {
     due_units: number | null;
     booked_units: number | null;
     utilisation_pct: number | null;
+    next_session_at: string | null;
   } | null;
 }
 
@@ -174,6 +175,7 @@ function parseExperience(value: unknown): LearnerExperience {
             due_units: asNumber(coaching.due_units),
             booked_units: asNumber(coaching.booked_units),
             utilisation_pct: asNumber(coaching.utilisation_pct),
+            next_session_at: typeof coaching.next_session_at === "string" ? coaching.next_session_at : null,
           },
   };
 }

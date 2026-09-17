@@ -9,11 +9,18 @@ interface JourneyGoalsData {
   milestones: Milestone[];
 }
 
+interface JourneyGoalsOptions {
+  enrollmentId?: string | null;
+  onChanged?: () => void;
+}
+
 async function fetchJourneyGoals(coacheeId: string, enrollmentId: string): Promise<JourneyGoalsData> {
-  const [{ data: g }, { data: m }] = await Promise.all([
+  const [{ data: g, error: goalsError }, { data: m, error: milestonesError }] = await Promise.all([
     supabase.from("coachee_goals").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("created_at"),
     supabase.from("coachee_milestones").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("created_at"),
   ]);
+  if (goalsError) throw goalsError;
+  if (milestonesError) throw milestonesError;
   return { goals: g || [], milestones: m || [] };
 }
 
@@ -23,13 +30,13 @@ async function fetchJourneyGoals(coacheeId: string, enrollmentId: string): Promi
  * on the same `coachee_goals` / `coachee_milestones` tables keyed by
  * `coacheeId` (a coach viewing their own journey passes their own id).
  */
-export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () => void) {
+export function useJourneyGoals(coacheeId: string | undefined, options: JourneyGoalsOptions = {}) {
   const queryClient = useQueryClient();
-  const { selectedEnrollment } = useEnrollmentContext(coacheeId);
+  const { selectedEnrollment } = useEnrollmentContext(coacheeId, options.enrollmentId);
   const enrollmentId = selectedEnrollment?.id;
   const queryKey = ["journey-goals", coacheeId, enrollmentId];
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey,
     queryFn: () => fetchJourneyGoals(coacheeId as string, enrollmentId as string),
     enabled: !!coacheeId && !!enrollmentId,
@@ -41,7 +48,7 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
   // useJourneyGoals(user?.id) with one arg) but the param is kept for API
   // compatibility — when present, it fully replaces the refresh, matching
   // the pre-migration behavior.
-  const notifyChanged = () => (onChanged ? Promise.resolve(onChanged()) : refresh());
+  const notifyChanged = () => (options.onChanged ? Promise.resolve(options.onChanged()) : refresh());
 
   const addGoalMutation = useMutation({
     mutationFn: async (payload: { title: string; description: string | null; target_date: string | null }) => {
@@ -158,6 +165,7 @@ export function useJourneyGoals(coacheeId: string | undefined, onChanged?: () =>
     goals: data?.goals ?? [],
     milestones: data?.milestones ?? [],
     loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
     refresh,
     addGoal,
     deleteGoal,

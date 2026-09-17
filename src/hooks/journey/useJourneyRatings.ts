@@ -37,9 +37,9 @@ async function fetchJourneyRatings(coacheeId: string, enrollmentId: string): Pro
  * rating snapshots (`session_goal_ratings`) that feed the goal wheel.
  * Shared between the coachee and coach "my journey" views.
  */
-export function useJourneyRatings(coacheeId: string | undefined) {
+export function useJourneyRatings(coacheeId: string | undefined, initialEnrollmentId?: string | null) {
   const queryClient = useQueryClient();
-  const { selectedEnrollment } = useEnrollmentContext(coacheeId);
+  const { selectedEnrollment } = useEnrollmentContext(coacheeId, initialEnrollmentId);
   const enrollmentId = selectedEnrollment?.id;
   const queryKey = ["journey-ratings", coacheeId, enrollmentId];
 

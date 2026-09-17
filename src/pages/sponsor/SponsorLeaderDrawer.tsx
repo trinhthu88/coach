@@ -111,7 +111,7 @@ export function SponsorLeaderProfile({
             leader={leader}
             completion={completion}
             adherence={adherence}
-            weeklyParticipation={experience.weeklyParticipation}
+             journey={journey}
             coachingUtilisation={experience.coachingUtilisation}
             t={t}
           />
@@ -234,14 +234,14 @@ function ProgressParticipation({
   leader,
   completion,
   adherence,
-  weeklyParticipation,
+  journey,
   coachingUtilisation,
   t,
 }: {
   leader: SponsorLeaderProfileData;
   completion: number;
   adherence: number;
-  weeklyParticipation: SponsorLeaderWeeklyParticipation[];
+  journey: SponsorLeaderJourneyPoint[];
   coachingUtilisation: SponsorLeaderExperience["coachingUtilisation"];
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
@@ -256,35 +256,47 @@ function ProgressParticipation({
         <SmallMetric value={String(leader.overdue_units)} label={t("leaderDrawer.reference.overdueRequired")} color={RED} />
       </div>
       <p className="mt-3 text-[10.5px] leading-relaxed text-[#9a938a]">{t("leaderDrawer.reference.extraActivityNote")}</p>
-      <div className="mt-[18px] flex flex-wrap gap-7 border-t border-[#eee8de] pt-4">
-        <SmallMetric
-          value={coachingUtilisation?.utilisation_pct == null ? "—" : percent(coachingUtilisation.utilisation_pct)}
-          label={t("leaderDrawer.reference.coachingUtilisation")}
-          color={TEAL}
-        />
-        <SmallMetric
-          value={coachingUtilisation?.booked_units == null ? "—" : String(coachingUtilisation.booked_units)}
-          label={t("leaderDrawer.reference.booked")}
-        />
+      <div className="mt-[18px] border-t border-[#eee8de] pt-4">
+        <div className="flex flex-wrap gap-7">
+          <SmallMetric value={countValue(leader.coaching_required_units)} label={t("leaderDrawer.reference.allocated")} />
+          <SmallMetric value={moduleCount(leader.coaching_completed_units, leader.coaching_required_units)} label={t("leaderDrawer.reference.completed")} color={GREEN} />
+          <SmallMetric
+            value={String(Math.max((leader.coaching_required_units ?? 0) - (leader.coaching_completed_units ?? 0), 0))}
+            label={t("leaderDrawer.reference.remaining")}
+            color={TEAL}
+          />
+          <SmallMetric
+            value={String(coachingUtilisation?.booked_units ?? leader.coaching_booked_units ?? 0)}
+            label={t("leaderDrawer.reference.booked")}
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#f6f3ee] px-3 py-2.5 text-[10.5px] text-[#6a6560]">
+          <span className="font-semibold text-[#062f3e]">{t("leaderDrawer.reference.nextSession")}</span>
+          <span>
+            {coachingUtilisation?.next_session_at
+              ? formatDateTime(coachingUtilisation.next_session_at)
+              : t("leaderDrawer.reference.noSessionBooked")}
+          </span>
+        </div>
       </div>
       <div className="mt-[18px] border-t border-[#eee8de] pt-4">
         <div className="text-[9.5px] font-bold uppercase tracking-[.14em] text-[#9a938a]">{t("leaderDrawer.reference.trendTitle")}</div>
-        {weeklyParticipation.length === 0 ? (
+        {journey.length === 0 ? (
           <UnavailableTrend text={t("leaderDrawer.reference.trendWithheld")} />
         ) : (
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {weeklyParticipation.map((week) => {
-              const pct = modulePct(week.completed_units, week.required_units);
+            {journey.map((point) => {
+              const pct = modulePct(point.completed_units, point.required_units);
               return (
-                <div key={week.week_number} className={`rounded-lg border px-2.5 py-2 ${week.is_current ? "border-[#3db4d0] bg-[#e4f3f7]" : "border-[#eee8de] bg-[#f6f3ee]"}`}>
+                <div key={point.checkpoint_number} className={`rounded-lg border px-2.5 py-2 ${point.state === "current" ? "border-[#3db4d0] bg-[#e4f3f7]" : "border-[#eee8de] bg-[#f6f3ee]"}`}>
                   <div className="flex items-center justify-between gap-1 text-[9px] font-bold uppercase tracking-[.08em] text-[#9a938a]">
-                    <span>{t("leaderDrawer.reference.week", { number: week.week_number })}</span>
-                    <span style={{ color: journeyStateColor(week.state) }}>{t(`leaderDrawer.journeyStates.${week.state}`)}</span>
+                    <span>{t("leaderDrawer.reference.checkpoint", { number: point.checkpoint_number })}</span>
+                    <span style={{ color: journeyStateColor(point.state) }}>{t(`leaderDrawer.journeyStates.${point.state}`)}</span>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eee8de]">
                     <div className="h-full rounded-full bg-[#2c8fa8]" style={{ width: `${pct ?? 0}%` }} />
                   </div>
-                  <div className="mt-1.5 text-[10px] text-[#6a6560]">{week.completed_units}/{week.required_units}</div>
+                  <div className="mt-1.5 text-[10px] text-[#6a6560]">{point.completed_units}/{point.required_units}</div>
                 </div>
               );
             })}
@@ -338,11 +350,11 @@ function ModuleParticipation({
           <h3 className="text-[11.5px] font-semibold text-[#062f3e]">{t("leaderDrawer.reference.learningBreakdown")}</h3>
           <span className="text-[10px] text-[#9a938a]">{t("leaderDrawer.reference.privacySafe")}</span>
         </div>
-        {learningBreakdown.length === 0 ? (
+        {learningBreakdown.filter((item) => item.progress_available && item.required_units > 0).length === 0 ? (
           <UnavailableTrend text={t("leaderDrawer.reference.learningUnavailable")} />
         ) : (
           <div className="mt-3 flex flex-col gap-3">
-            {learningBreakdown.map((item) => {
+            {learningBreakdown.filter((item) => item.progress_available && item.required_units > 0).map((item) => {
               const pct = modulePct(item.completed_units, item.required_units);
               return (
                 <div key={item.key}>
@@ -406,6 +418,13 @@ function formatDate(value: string | null | undefined) {
   if (!value) return "—";
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatDateTime(value: string) {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
 function percent(value: number | null | undefined) {

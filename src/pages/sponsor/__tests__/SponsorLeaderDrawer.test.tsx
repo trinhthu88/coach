@@ -153,13 +153,14 @@ describe("SponsorLeaderDrawer", () => {
             due_units: 2,
             booked_units: 1,
             utilisation_pct: 50,
+            next_session_at: null,
           },
         }}
       />
     );
 
-    expect(screen.getByText("Checkpoint 1")).toBeInTheDocument();
-    expect(screen.getByText("Checkpoint 2")).toBeInTheDocument();
+    expect(screen.getAllByText("Checkpoint 1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Checkpoint 2").length).toBeGreaterThan(0);
     expect(screen.queryByText("Coaching checkpoint")).not.toBeInTheDocument();
     expect(screen.queryByText("Practice checkpoint")).not.toBeInTheDocument();
     expect(screen.getAllByText("Overdue").length).toBeGreaterThan(0);
@@ -172,7 +173,7 @@ describe("SponsorLeaderDrawer", () => {
     expect(screen.getByText("Skill Cards")).toBeInTheDocument();
     expect(screen.getByText("Quizzes")).toBeInTheDocument();
     expect(screen.getByText("Reflections")).toBeInTheDocument();
-    expect(screen.getByText("Daily Prompts")).toBeInTheDocument();
+    expect(screen.queryByText("Daily Prompts")).not.toBeInTheDocument();
     expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
   });
 });
