@@ -100,6 +100,15 @@
     "completedUnits": "Đã hoàn thành {{completed}} / {{required}}",
     "completedUnitsNoRequirement": "Đã hoàn thành {{completed}}",
     "dueAdherence": "Đã hoàn thành {{pct}}% trong {{due}} mục đến hạn",
+    "overallProgress": "Đã hoàn thành {{completed}} / {{required}} hoạt động ({{pct}}%)",
+    "learningBreakdown": "Chi tiết học tập",
+    "learningStatus": {
+      "completed": "Đã hoàn thành",
+      "current": "Đang thực hiện",
+      "overdue": "Quá hạn",
+      "upcoming": "Sắp tới",
+      "unavailable": "Không theo dõi"
+    },
     "modules": {
       "coaching": "Khai vấn",
       "peer_coaching": "Khai vấn đồng cấp",

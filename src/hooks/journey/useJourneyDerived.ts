@@ -42,14 +42,19 @@ export function useGoalRatingRows(goals: Goal[], ratings: Record<string, GoalRat
   return { ratingRows, avgGoalProgress };
 }
 
-/** Elapsed/total weeks for a programme enrollment, derived from its start/end dates. */
+/**
+ * Elapsed/total weeks for a programme enrollment, derived from its actual
+ * start/end dates only. Returns null (render an explicit "unavailable"
+ * state) rather than guessing a duration when end_date is missing — this
+ * used to fabricate `start + (durationMonths || 3) * 30 days`, inventing a
+ * default 3-month programme out of nothing. Every caller already handles a
+ * null result with a "—" fallback, so no caller needed that guess.
+ */
 export function useProgrammeWeeks(programme: ProgrammeInfo | null | undefined, now: Date) {
   return useMemo(() => {
-    if (!programme?.startDate) return null;
+    if (!programme?.startDate || !programme.endDate) return null;
     const start = new Date(programme.startDate);
-    const end = programme.endDate
-      ? new Date(programme.endDate)
-      : new Date(start.getTime() + (programme.durationMonths || 3) * 30 * 86400000);
+    const end = new Date(programme.endDate);
     const totalWeeks = Math.max(1, differenceInCalendarWeeks(end, start, { weekStartsOn: 1 }));
     const elapsedWeeks = Math.max(0, Math.min(totalWeeks, differenceInCalendarWeeks(now, start, { weekStartsOn: 1 })));
     return { start, end, totalWeeks, elapsedWeeks };

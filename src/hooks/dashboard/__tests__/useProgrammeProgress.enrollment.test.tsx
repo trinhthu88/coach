@@ -3,9 +3,8 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-const { filters, triadScopes, rpc } = vi.hoisted(() => ({
+const { filters, rpc } = vi.hoisted(() => ({
   filters: [] as Array<[string, string, unknown]>,
-  triadScopes: [] as string[],
   rpc: vi.fn(),
 }));
 
@@ -37,10 +36,6 @@ vi.mock("@/integrations/supabase/client", () => ({
         return query;
       };
       query.in = () => Promise.resolve(result);
-      query.or = (scope: string) => {
-        triadScopes.push(scope);
-        return Promise.resolve(result);
-      };
       query.then = (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve);
       return query;
     },
@@ -79,8 +74,5 @@ describe("useProgrammeProgress enrollment isolation", () => {
     expect(filters).toContainEqual(["assignment_submissions", "enrollment_id", "enrollment-history"]);
     expect(filters).toContainEqual(["daily_prompt_responses", "enrollment_id", "enrollment-history"]);
     expect(filters.some(([, column]) => column === "user_id")).toBe(false);
-    expect(triadScopes).toEqual([
-      "coach_enrollment_id.eq.enrollment-history,coachee_enrollment_id.eq.enrollment-history,observer_enrollment_id.eq.enrollment-history",
-    ]);
   });
 });

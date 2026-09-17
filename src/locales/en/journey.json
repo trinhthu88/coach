@@ -32,6 +32,17 @@
     "assignedCoaches": "Assigned coaches",
     "sponsorDisclaimer": "If your organization sponsors this programme, they can see your participation, progress, and completion status — never your session notes, chat messages, or personal reflections."
   },
+  "programmeJourney": {
+    "title": "Programme journey",
+    "checkpoint": "Checkpoint {{number}}",
+    "unitsOf": "{{completed}}/{{required}} complete",
+    "states": {
+      "completed": "Completed",
+      "current": "Current",
+      "overdue": "Overdue",
+      "upcoming": "Upcoming"
+    }
+  },
   "programmeTimeline": {
     "heading": "Programme timeline",
     "overallProgress": "{{done}}/{{total}} weeks completed",

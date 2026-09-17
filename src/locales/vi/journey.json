@@ -33,6 +33,17 @@
     "assignedCoaches": "Coach được phân công",
     "sponsorDisclaimer": "Nếu tổ chức của bạn tài trợ chương trình này, họ có thể xem sự tham gia, tiến độ và trạng thái hoàn thành của bạn — không bao giờ xem ghi chú buổi session, tin nhắn trò chuyện hoặc suy ngẫm cá nhân của bạn."
   },
+  "programmeJourney": {
+    "title": "Hành trình chương trình",
+    "checkpoint": "Mốc {{number}}",
+    "unitsOf": "Đã hoàn thành {{completed}}/{{required}}",
+    "states": {
+      "completed": "Đã hoàn thành",
+      "current": "Hiện tại",
+      "overdue": "Quá hạn",
+      "upcoming": "Sắp tới"
+    }
+  },
   "programmeTimeline": {
     "heading": "Dòng thời gian chương trình",
     "overallProgress": "Đã hoàn thành {{done}}/{{total}} tuần",

@@ -40,6 +40,7 @@ import { SessionsBlock } from "./journey/SessionsBlock";
 import { GoalDialog } from "./journey/GoalDialog";
 import { CoacheeProgrammeCard } from "./journey/CoacheeProgrammeCard";
 import { ProgrammeTimeline } from "./journey/ProgrammeTimeline";
+import { ProgrammeJourneyCheckpoints } from "./journey/ProgrammeJourneyCheckpoints";
 
 export default function CoacheeJourney() {
   const { t } = useTranslation("journey");
@@ -182,6 +183,7 @@ export default function CoacheeJourney() {
         sessionsCompletedCount={sessionsCompletedCount}
         avgGoalProgress={avgGoalProgress}
       />
+      <ProgrammeJourneyCheckpoints enrollmentId={programme?.enrollmentId} />
 
       <Tabs defaultValue="home">
         <TabsList>

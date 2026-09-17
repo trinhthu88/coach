@@ -101,6 +101,15 @@
     "completedUnits": "{{completed}} of {{required}} completed",
     "completedUnitsNoRequirement": "{{completed}} completed",
     "dueAdherence": "{{pct}}% of {{due}} due completed",
+    "overallProgress": "{{completed}} of {{required}} activities complete ({{pct}}%)",
+    "learningBreakdown": "Learning breakdown",
+    "learningStatus": {
+      "completed": "Completed",
+      "current": "In progress",
+      "overdue": "Overdue",
+      "upcoming": "Upcoming",
+      "unavailable": "Not tracked"
+    },
     "modules": {
       "coaching": "Coaching",
       "peer_coaching": "Peer coaching",

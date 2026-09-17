@@ -38,6 +38,7 @@ import { SessionsBlock } from "./journey/SessionsBlock";
 import { GoalDialog } from "./journey/GoalDialog";
 import { CoachProgrammeCard } from "./journey/CoachProgrammeCard";
 import { ProgrammeTimeline } from "./journey/ProgrammeTimeline";
+import { ProgrammeJourneyCheckpoints } from "./journey/ProgrammeJourneyCheckpoints";
 
 function Metric({
   label,
@@ -175,6 +176,7 @@ export default function CoachMyJourney() {
         sessionsCompletedCount={sessionsCompletedCount}
         avgGoalProgress={avgGoalProgress}
       />
+      <ProgrammeJourneyCheckpoints enrollmentId={programme?.enrollmentId} />
 
       <Tabs defaultValue="home">
         <TabsList>
