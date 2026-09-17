@@ -122,25 +122,23 @@ const canonicalCohort = {
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: (name: string) => Promise.resolve({
-      data: name === "sponsor_enrollment_summaries"
-        ? roster
-        : name === "sponsor_cohort_summaries"
-          ? [summary]
-          : name === "sponsor_canonical_enrollment_progress"
-            ? roster.map((row) => ({
-              ...row,
-              stored_enrollment_status: "active",
-              effective_enrollment_status: "active",
-              progress_available: true,
-              coaching_booked_units: 0,
-              training_booked_units: 0,
-              peer_booked_units: 0,
-              mentoring_booked_units: 0,
-              triad_booked_units: 0,
-            }))
-            : name === "sponsor_canonical_cohort_progress"
-              ? [canonicalCohort]
-              : 5,
+      data: name === "sponsor_canonical_enrollment_metadata"
+        ? roster.map((row) => ({
+          ...row,
+          stored_enrollment_status: "active",
+          effective_enrollment_status: "active",
+          progress_available: true,
+          coaching_booked_units: 0,
+          training_booked_units: 0,
+          peer_booked_units: 0,
+          mentoring_booked_units: 0,
+          triad_booked_units: 0,
+        }))
+          : name === "sponsor_canonical_cohort_progress"
+            ? [canonicalCohort]
+            : name === "sponsor_min_leaders_for_distribution"
+              ? 5
+              : undefined,
       error: null,
     }),
   },

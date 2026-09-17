@@ -26,7 +26,7 @@ describe("SponsorReport privacy contract", () => {
     fireEvent.click(screen.getByText("Q3 Leaders"));
     expect(screen.getByRole("button", { name: /request report/i })).toBeEnabled();
     expect(screen.queryByText(/generate report|download|Priya Shah|confidence|satisfaction|quiz/i)).not.toBeInTheDocument();
-    expect(calls).toContain("sponsor_cohort_summaries");
+    expect(calls).toContain("sponsor_canonical_cohort_progress");
     expect(calls).toContain("sponsor_list_report_requests");
   });
 });

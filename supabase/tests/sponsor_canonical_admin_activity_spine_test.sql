@@ -1,6 +1,6 @@
 begin;
 
-select plan(45);
+select plan(50);
 
 select ok(
   pg_get_functiondef(
@@ -479,6 +479,81 @@ select is(
      '2026-07-05'::date)),
   9,
   'peer coaching remains counted once after raw overutilisation activity'
+);
+
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_canonical_activity(uuid)'::regprocedure
+  ) ~ 'training_week_activity'
+    AND pg_get_functiondef(
+      'public.sponsor_canonical_activity(uuid)'::regprocedure
+    ) !~ 'assignment_type',
+  'training activity rolls up selected learning records by week without a hard-coded assignment type'
+);
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_canonical_enrollment_metadata(uuid,uuid,date)'::regprocedure
+  ) !~ 'g\.title|g\.description|a\.title|a\.description|reflection_text|response_text',
+  'canonical enrollment metadata exposes aggregates without private goal, action, or response wording'
+);
+select ok(
+  pg_get_function_result(
+    'public.sponsor_canonical_enrollment_metadata(uuid,uuid,date)'::regprocedure
+  ) ~ 'goal_count'
+    AND pg_get_function_result(
+      'public.sponsor_canonical_enrollment_metadata(uuid,uuid,date)'::regprocedure
+    ) ~ 'satisfaction_avg'
+    AND pg_get_function_result(
+      'public.sponsor_canonical_enrollment_metadata(uuid,uuid,date)'::regprocedure
+    ) ~ 'total_action_count',
+  'canonical enrollment metadata has sponsor-safe goals, actions, and satisfaction aggregates'
+);
+
+-- Leader C1 already completed every selected training week. Adding a response
+-- to one of those weeks must not create a second Training unit.
+reset role;
+delete from public.daily_prompt_responses
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'::uuid;
+delete from public.daily_prompts
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa0'::uuid;
+insert into public.daily_prompts (
+  id, training_week_id, day_offset, prompt_text
+)
+values (
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa0'::uuid,
+  '67676767-6767-4676-8676-000000000001'::uuid,
+  1,
+  'Sponsor test prompt'
+);
+insert into public.daily_prompt_responses (
+  id, daily_prompt_id, user_id, enrollment_id, responded_at
+)
+values (
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'::uuid,
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa0'::uuid,
+  '13131313-1313-4131-8131-000000000001'::uuid,
+  '14141414-1414-4141-8141-000000000001'::uuid,
+  '2026-07-05 12:00:00+00'::timestamptz
+);
+set local role authenticated;
+select is(
+  (select training_completed_units
+   from public.sponsor_canonical_enrollment_progress(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     '2026-07-05'::date)
+   where learner_display_name = 'Leader C1'),
+  6,
+  'a daily-prompt response in an already completed week does not add a second Training unit'
+);
+select is(
+  (select training_completed_units
+   from public.sponsor_canonical_enrollment_metadata(
+     '11111111-1111-4111-8111-111111111119'::uuid,
+     NULL::uuid,
+     '2026-07-05'::date)
+   where learner_display_name = 'Leader C1'),
+  6,
+  'canonical sponsor metadata preserves one Training unit per completed week'
 );
 
 -- A visible leader with no enabled required modules keeps count fields at

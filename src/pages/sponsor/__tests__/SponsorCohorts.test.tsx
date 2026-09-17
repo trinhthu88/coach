@@ -39,7 +39,7 @@ describe("SponsorCohorts privacy contract", () => {
     expect(screen.getByText("Dec 15, 2026")).toBeInTheDocument();
     expect(screen.queryByText("Status mix")).not.toBeInTheDocument();
     expect(screen.queryByText("Booked")).not.toBeInTheDocument();
-    expect(calls.every((name) => name === "sponsor_enrollment_summaries" || name === "sponsor_canonical_enrollment_progress" || name === "sponsor_cohort_summaries" || name === "sponsor_canonical_cohort_progress" || name === "sponsor_min_leaders_for_distribution" || name === "sponsor_organisation_summary" || name === "sponsor_canonical_organisation_progress")).toBe(true);
+    expect(calls.every((name) => name === "sponsor_canonical_enrollment_metadata" || name === "sponsor_canonical_cohort_progress" || name === "sponsor_min_leaders_for_distribution" || name === "sponsor_canonical_organisation_progress")).toBe(true);
   });
 
   it("keeps an in-progress cohort marked active even when its pace is mixed", async () => {

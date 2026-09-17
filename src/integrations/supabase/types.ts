@@ -4493,6 +4493,62 @@ export type Database = {
           triad_required_units: number
         }[]
       }
+      sponsor_canonical_enrollment_metadata: {
+        Args: { p_as_of?: string; p_cohort_id?: string; p_enrollment_id?: string }
+        Returns: {
+          action_completion_pct: number | null
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_action_count: number
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          enrollment_end_date: string
+          enrollment_id: string
+          enrollment_start_date: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_completion_pct: number
+          goal_count: number
+          goal_progress_pct: number | null
+          goal_setup: boolean
+          learner_display_name: string
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          open_action_count: number
+          overdue_units: number
+          pace_status: string
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_id: string
+          programme_label: string
+          programme_start_date: string
+          progress_available: boolean
+          required_units: number
+          satisfaction_avg: number | null
+          satisfaction_rated_count: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          total_action_count: number
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
       sponsor_canonical_leader_experience: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json

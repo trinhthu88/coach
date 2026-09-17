@@ -2,17 +2,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-type HostedEnrollmentSummary = Database["public"]["Functions"]["sponsor_enrollment_summaries"]["Returns"][number];
-type HostedCohortSummary = Database["public"]["Functions"]["sponsor_cohort_summaries"]["Returns"][number];
-type HostedOrganisationSummary = Database["public"]["Functions"]["sponsor_organisation_summary"]["Returns"][number];
-type HostedCanonicalEnrollment = Database["public"]["Functions"]["sponsor_canonical_enrollment_progress"]["Returns"][number];
+type HostedCanonicalEnrollment = Database["public"]["Functions"]["sponsor_canonical_enrollment_metadata"]["Returns"][number];
 type HostedCanonicalCohort = Database["public"]["Functions"]["sponsor_canonical_cohort_progress"]["Returns"][number];
 type HostedCanonicalOrganisation = Database["public"]["Functions"]["sponsor_canonical_organisation_progress"]["Returns"][number];
 
-export type SponsorEnrollmentSummary = HostedEnrollmentSummary & HostedCanonicalEnrollment;
-export type SponsorCohortSummary = HostedCohortSummary & HostedCanonicalCohort;
+export type SponsorEnrollmentSummary = HostedCanonicalEnrollment;
+export type SponsorCohortSummary = HostedCanonicalCohort;
 export type SponsorRosterRow = SponsorEnrollmentSummary;
-export type SponsorKpis = HostedOrganisationSummary & HostedCanonicalOrganisation;
+export type SponsorKpis = HostedCanonicalOrganisation;
 export type SponsorGoalGrowth = {
   hit_target_count: number; meaningful_progress_count: number; just_started_count: number;
   flat_declined_count: number; pct_progressing: number;
@@ -35,32 +32,6 @@ interface SponsorDashboardData {
   loading: boolean;
 }
 
-/**
- * All sponsor-facing data comes from the sponsor_* SECURITY DEFINER
- * functions — never a direct table query. Each is scoped server-side to
- * the caller's own organization; there is no client-supplied org id to
- * get wrong.
- *
- * This still calls both the legacy sponsor_{enrollment,cohort}_summaries /
- * sponsor_organisation_summary RPCs and their sponsor_canonical_* siblings,
- * spreading legacy first so canonical always wins any field both define
- * (locked in by SponsorDashboard.test.tsx's precedence test). The legacy
- * calls are not vestigial: they are the only source for fields the
- * canonical progress engine doesn't model at all —
- *   - goals: goal_count, goal_setup, goal_progress_pct
- *   - actions: open/completed/total_action_count, action_completion_pct
- *   - satisfaction/ratings: satisfaction_avg, satisfaction_rated_count
- *   - schedule_coverage_pct at the individual-enrollment level
- * There is no sponsor_canonical_* equivalent for any of these today; adding
- * one is backend work (a new canonical RPC or an extension of the existing
- * ones) that hasn't been scoped, not something to duplicate client-side.
- * (Legacy's per-module *_completed_count fields — coaching_completed_count
- * etc. — are numerically identical to canonical's *_completed_units: both
- * trace back to the same get_sponsor_programme_progress().completed_units
- * expression under two column names. Nothing in the frontend reads the
- * _completed_count fields, so they aren't a reason to keep the legacy
- * calls either.)
- */
 export function useSponsorDashboardData(): SponsorDashboardData {
   const [kpis, setKpis] = useState<SponsorKpis | null>(null);
   const [roster, setRoster] = useState<SponsorEnrollmentSummary[]>([]);
@@ -71,35 +42,35 @@ export function useSponsorDashboardData(): SponsorDashboardData {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [{ data: legacyCohorts, error: cohortError }, { data: canonicalCohorts }, { data: legacyOrganisation }, { data: canonicalOrganisation }, threshold] = await Promise.all([
-        supabase.rpc("sponsor_cohort_summaries"),
+      const [
+        { data: canonicalCohorts, error: cohortError },
+        { data: canonicalOrganisation, error: organisationError },
+        threshold,
+      ] = await Promise.all([
         supabase.rpc("sponsor_canonical_cohort_progress"),
-        supabase.rpc("sponsor_organisation_summary"),
         supabase.rpc("sponsor_canonical_organisation_progress"),
         supabase.rpc("sponsor_min_leaders_for_distribution"),
       ]);
       if (!mounted) return;
-      if (cohortError || !Array.isArray(canonicalCohorts) || !Array.isArray(canonicalOrganisation)) { setLoading(false); return; }
+      if (cohortError || organisationError || !Array.isArray(canonicalCohorts) || !Array.isArray(canonicalOrganisation)) {
+        setLoading(false);
+        return;
+      }
       setMinLeadersForDistribution(threshold.data ?? 0);
-      const cohorts = canonicalCohorts.map((cohort) => ({
-        ...(legacyCohorts ?? []).find((legacy) => legacy.cohort_id === cohort.cohort_id),
-        ...cohort,
-      })) as SponsorCohortSummary[];
+      const cohorts = canonicalCohorts as SponsorCohortSummary[];
       const visibleCohorts = cohorts.filter((cohort) => !cohort.suppressed);
       const rosterResults = await Promise.all(visibleCohorts.map(async (cohort) => {
-        const [{ data: legacyRows, error: legacyError }, { data: canonicalRows, error: canonicalError }] = await Promise.all([
-          supabase.rpc("sponsor_enrollment_summaries", { p_cohort_id: cohort.cohort_id }),
-          supabase.rpc("sponsor_canonical_enrollment_progress", { p_cohort_id: cohort.cohort_id }),
-        ]);
-        if (legacyError || canonicalError) return [];
-        const canonicalById = new Map((canonicalRows ?? []).map((row) => [row.enrollment_id, row]));
-        return (legacyRows ?? []).map((row) => ({ ...row, ...canonicalById.get(row.enrollment_id) })) as SponsorRosterRow[];
+        const { data, error } = await supabase.rpc("sponsor_canonical_enrollment_metadata", {
+          p_cohort_id: cohort.cohort_id,
+        });
+        if (error || !Array.isArray(data)) return [];
+        return data as SponsorRosterRow[];
       }));
       const rosterRows = rosterResults.flat();
-       if (!mounted) return;
+      if (!mounted) return;
       setCohortSummaries(cohorts);
       setRoster(rosterRows);
-      setKpis({ ...(legacyOrganisation?.[0] ?? {}), ...canonicalOrganisation[0] } as SponsorKpis);
+      setKpis(canonicalOrganisation[0] as SponsorKpis);
       setLoading(false);
     })();
     return () => {

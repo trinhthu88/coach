@@ -3,8 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { SponsorRosterRow } from "./useSponsorDashboardData";
 
-type HostedLeaderProgress = Database["public"]["Functions"]["sponsor_canonical_leader_progress"]["Returns"][number];
-type HostedLeaderEngagement = Database["public"]["Functions"]["sponsor_leader_engagement_summary"]["Returns"][number];
+type HostedLeaderProgress = Database["public"]["Functions"]["sponsor_canonical_enrollment_metadata"]["Returns"][number];
 
 export type SponsorLeaderJourneyPoint = {
   checkpoint_number: number;
@@ -213,32 +212,15 @@ export function useSponsorLeaderData(enrollmentId: string): SponsorLeaderData {
     setState((current) => ({ ...current, loading: true, error: null }));
 
     Promise.all([
-      supabase.rpc("sponsor_canonical_leader_progress", { p_enrollment_id: enrollmentId }),
+      supabase.rpc("sponsor_canonical_enrollment_metadata", { p_enrollment_id: enrollmentId }),
       supabase.rpc("sponsor_canonical_leader_journey", { p_enrollment_id: enrollmentId }),
-      supabase.rpc("sponsor_leader_engagement_summary", { p_enrollment_id: enrollmentId }),
       supabase.rpc("sponsor_canonical_leader_experience", { p_enrollment_id: enrollmentId }),
-    ]).then(([progress, journey, engagement, experience]) => {
+    ]).then(([progress, journey, experience]) => {
       if (!mounted) return;
       const leaderRow = progress.data?.[0] as HostedLeaderProgress | undefined;
-      const engagementRow = engagement.data?.[0] as HostedLeaderEngagement | undefined;
-      const leader = leaderRow
-        ? {
-            ...leaderRow,
-            ...(engagementRow ?? {
-              goal_count: null,
-              goal_progress_pct: null,
-              open_action_count: null,
-              completed_action_count: null,
-              total_action_count: null,
-              action_completion_pct: null,
-              satisfaction_avg: null,
-              satisfaction_rated_count: null,
-            }),
-          } as SponsorLeaderProfileData
-        : null;
+      const leader = leaderRow ? leaderRow as SponsorLeaderProfileData : null;
       const error = progress.error?.message
         ?? journey.error?.message
-        ?? engagement.error?.message
         ?? experience.error?.message
         ?? null;
       setState({

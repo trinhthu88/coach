@@ -44,6 +44,7 @@ beforeEach(async () => {
     { ...enrollment("e1", "Priya Shah"), stored_enrollment_status: "active", effective_enrollment_status: "active", progress_available: true, coaching_required_units: 4, coaching_completed_units: 4, coaching_due_units: 4, coaching_booked_units: 0, training_required_units: 2, training_completed_units: 0, training_due_units: 2, training_booked_units: 0, peer_required_units: 1, peer_completed_units: 0, peer_due_units: 1, peer_booked_units: 0, mentoring_required_units: 1, mentoring_completed_units: 0, mentoring_due_units: 1, mentoring_booked_units: 0, triad_required_units: 0, triad_completed_units: 0, triad_due_units: 0, triad_booked_units: 0 },
     { ...enrollment("e2", "Tom Baker", "at_risk"), stored_enrollment_status: "at_risk", effective_enrollment_status: "at_risk", progress_available: true, coaching_required_units: 4, coaching_completed_units: 0, coaching_due_units: 4, coaching_booked_units: 0, training_required_units: 2, training_completed_units: 0, training_due_units: 2, training_booked_units: 0, peer_required_units: 1, peer_completed_units: 0, peer_due_units: 1, peer_booked_units: 0, mentoring_required_units: 1, mentoring_completed_units: 0, mentoring_due_units: 1, mentoring_booked_units: 0, triad_required_units: 0, triad_completed_units: 0, triad_due_units: 0, triad_booked_units: 0 },
   ];
+  responses.sponsor_canonical_enrollment_metadata = responses.sponsor_canonical_enrollment_progress;
   responses.sponsor_canonical_cohort_progress = [{
     ...responses.sponsor_cohort_summaries[0],
     coaching_required_units: 48, coaching_completed_units: 8, coaching_due_units: 20, coaching_booked_units: 0, coaching_completed_leaders: 2,
@@ -75,37 +76,21 @@ describe("SponsorDashboard privacy contract", () => {
     expect(screen.queryByText("Booked / overdue")).not.toBeInTheDocument();
     expect(screen.queryByText("Goals setup / total")).not.toBeInTheDocument();
     expect(calls).toEqual([
-      "sponsor_cohort_summaries",
       "sponsor_canonical_cohort_progress",
-      "sponsor_organisation_summary",
       "sponsor_canonical_organisation_progress",
       "sponsor_min_leaders_for_distribution",
-      "sponsor_enrollment_summaries",
-      "sponsor_canonical_enrollment_progress",
+      "sponsor_canonical_enrollment_metadata",
     ]);
     expect(screen.queryByText(/Goal reached|confidence|quiz/i)).not.toBeInTheDocument();
     expect(calls.some((name) => /sponsor_(kpis|roster|goal_growth|satisfaction|confidence|programme|engagement|coach)/.test(name))).toBe(false);
   });
 
-  it("prefers canonical progress figures over legacy ones whenever they disagree", async () => {
-    // The dashboard still round-trips to the legacy summary RPCs for
-    // supplementary fields canonical doesn't model yet (goal/action counts,
-    // status breakdowns), but canonical must win on every field both
-    // sources compute — legacy is never allowed to be the numbers of
-    // record. Give legacy a deliberately wrong, distinguishable value here
-    // so a regression that flips the merge order would fail loudly.
-    responses.sponsor_organisation_summary = [{
-      ...(responses.sponsor_organisation_summary as Array<Record<string, unknown>>)[0],
-      completed_units: 999, required_units: 999,
-    }];
-    responses.sponsor_cohort_summaries = [{
-      ...(responses.sponsor_cohort_summaries as Array<Record<string, unknown>>)[0],
-      completed_units: 999, required_units: 999,
-    }];
+  it("uses the canonical cohort and organisation values without legacy merges", async () => {
     render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText("Priya Shah")).toBeInTheDocument());
     expect(screen.getByText("113 / 192")).toBeInTheDocument();
     expect(screen.getByText("113/192")).toBeInTheDocument();
-    expect(screen.queryByText(/999/)).not.toBeInTheDocument();
+    expect(calls).not.toContain("sponsor_cohort_summaries");
+    expect(calls).not.toContain("sponsor_organisation_summary");
   });
 });

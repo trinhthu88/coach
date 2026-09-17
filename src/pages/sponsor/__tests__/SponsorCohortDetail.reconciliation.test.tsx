@@ -112,12 +112,8 @@ const summary = {
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: (name: string) => Promise.resolve({
-      data: name === "sponsor_enrollment_summaries"
-        ? roster
-        : name === "sponsor_cohort_summaries"
-          ? [summary]
-            : name === "sponsor_canonical_enrollment_progress"
-              ? roster.map((row) => ({
+      data: name === "sponsor_canonical_enrollment_metadata"
+        ? roster.map((row) => ({
                 ...row,
                 stored_enrollment_status: "at_risk",
                 effective_enrollment_status: "completed",
@@ -128,7 +124,7 @@ vi.mock("@/integrations/supabase/client", () => ({
                 mentoring_booked_units: 0,
                 triad_booked_units: 0,
               }))
-              : name === "sponsor_canonical_cohort_progress"
+            : name === "sponsor_canonical_cohort_progress"
                 ? [{
                   ...summary,
                   coaching_required_units: 48,
