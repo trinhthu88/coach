@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function ProtectedRoute({ children, role: requiredRole, roles: requiredRoles, module }: Props) {
-  const { user, role, profile, isLoading } = useAuth();
+  const { user, session, role, profile, isLoading } = useAuth();
   const location = useLocation();
   const { t } = useTranslation("common");
   // Always called (not after an early return) so hook order stays stable across renders.
@@ -34,7 +34,10 @@ export function ProtectedRoute({ children, role: requiredRole, roles: requiredRo
     );
   }
 
-  if (!user) {
+  // The session is the source of truth for Supabase authorization. Do not
+  // leave protected screens mounted from a stale user/profile snapshot after
+  // the access token has disappeared or the session has been revoked.
+  if (!user || !session || session.user.id !== user.id) {
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 

@@ -395,6 +395,11 @@
   "leaderDrawer": {
     "srLabelSuffix": "chi tiết lãnh đạo",
     "backToRoster": "Về danh sách",
+    "loadError": "Không thể tải chi tiết lãnh đạo",
+    "loadErrorDescription": "Clariva không thể tải chi tiết an toàn dành cho nhà tài trợ của lãnh đạo này. Quyền truy cập và cài đặt riêng tư của bạn không thay đổi. Vui lòng quay lại danh sách và thử lại.",
+    "retry": "Thử lại",
+    "notFound": "Không tìm thấy chi tiết lãnh đạo",
+    "notFoundDescription": "Lãnh đạo này không có trong chế độ xem nhóm an toàn dành cho nhà tài trợ đã chọn.",
     "withheld": {
       "sessionNotes": "Ghi chú session và tóm tắt coaching",
       "chatMessages": "Tin nhắn trò chuyện giữa lãnh đạo và coach",

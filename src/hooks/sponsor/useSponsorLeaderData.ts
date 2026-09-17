@@ -107,6 +107,7 @@ export interface SponsorLeaderData {
   experience: SponsorLeaderExperience;
   loading: boolean;
   error: string | null;
+  retry: () => void;
 }
 
 type ExperiencePayload = {
@@ -198,24 +199,55 @@ function parseExperience(value: unknown): SponsorLeaderExperience {
   };
 }
 
-export function useSponsorLeaderData(enrollmentId: string): SponsorLeaderData {
+export function useSponsorLeaderData(enrollmentId: string, cohortId?: string): SponsorLeaderData {
+  const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<SponsorLeaderData>({
     leader: null,
     journey: [],
     experience: { weeklyParticipation: [], learningBreakdown: [], coachingUtilisation: null },
     loading: true,
     error: null,
+    retry: () => undefined,
   });
 
   useEffect(() => {
     let mounted = true;
     setState((current) => ({ ...current, loading: true, error: null }));
 
-    Promise.all([
-      supabase.rpc("sponsor_canonical_enrollment_metadata", { p_enrollment_id: enrollmentId }),
-      supabase.rpc("sponsor_canonical_leader_journey", { p_enrollment_id: enrollmentId }),
-      supabase.rpc("sponsor_canonical_leader_experience", { p_enrollment_id: enrollmentId }),
-    ]).then(([progress, journey, experience]) => {
+    const metadataParams = cohortId
+      ? { p_cohort_id: cohortId, p_enrollment_id: enrollmentId }
+      : { p_enrollment_id: enrollmentId };
+
+    const load = async (allowSessionRefresh: boolean) => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (!session) {
+        if (!mounted) return;
+        setState((current) => ({
+          ...current,
+          loading: false,
+          error: sessionError?.message ?? "Sponsor session is unavailable",
+        }));
+        return;
+      }
+
+      const [progress, journey, experience] = await Promise.all([
+        supabase.rpc("sponsor_canonical_enrollment_metadata", metadataParams),
+        supabase.rpc("sponsor_canonical_leader_journey", { p_enrollment_id: enrollmentId }),
+        supabase.rpc("sponsor_canonical_leader_experience", { p_enrollment_id: enrollmentId }),
+      ]);
+      const rpcErrors = [progress.error, journey.error, experience.error];
+      const needsSessionRefresh = allowSessionRefresh && rpcErrors.some((rpcError) =>
+        rpcError?.code === "42501" || rpcError?.code === "401" || rpcError?.status === 401
+      );
+
+      if (needsSessionRefresh) {
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        if (refreshedSession) {
+          await load(false);
+          return;
+        }
+      }
+
       if (!mounted) return;
       const leaderRow = progress.data?.[0] as HostedLeaderProgress | undefined;
       const leader = leaderRow ? leaderRow as SponsorLeaderProfileData : null;
@@ -223,6 +255,15 @@ export function useSponsorLeaderData(enrollmentId: string): SponsorLeaderData {
         ?? journey.error?.message
         ?? experience.error?.message
         ?? null;
+      if (error) {
+        console.error("Sponsor leader detail failed to load", {
+          cohortId,
+          enrollmentId,
+          metadataError: progress.error,
+          journeyError: journey.error,
+          experienceError: experience.error,
+        });
+      }
       setState({
         leader,
         journey: parseJourney(journey.data),
@@ -230,8 +271,15 @@ export function useSponsorLeaderData(enrollmentId: string): SponsorLeaderData {
         loading: false,
         error,
       });
-    }).catch((error: unknown) => {
+    };
+
+    load(true).catch((error: unknown) => {
       if (!mounted) return;
+      console.error("Sponsor leader detail request failed", {
+        cohortId,
+        enrollmentId,
+        cause: error,
+      });
       setState((current) => ({
         ...current,
         loading: false,
@@ -242,7 +290,10 @@ export function useSponsorLeaderData(enrollmentId: string): SponsorLeaderData {
     return () => {
       mounted = false;
     };
-  }, [enrollmentId]);
+  }, [cohortId, enrollmentId, reloadToken]);
 
-  return state;
+  return {
+    ...state,
+    retry: () => setReloadToken((token) => token + 1),
+  };
 }
