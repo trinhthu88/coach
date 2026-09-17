@@ -12,6 +12,7 @@ import { PeerCoachingCard } from "./dashboard/cards/PeerCoachingCard";
 import { TriadsCard } from "./dashboard/cards/TriadsCard";
 import { MyGoalCard } from "./dashboard/cards/MyGoalCard";
 import { MyFeedbackCard } from "./dashboard/cards/MyFeedbackCard";
+import { RecentDevelopmentCard } from "./dashboard/cards/RecentDevelopmentCard";
 
 export default function Dashboard() {
   const { t } = useTranslation("dashboard");
@@ -70,6 +71,7 @@ export default function Dashboard() {
         <PeerCoachingCard />
         <TriadsCard />
         <MyFeedbackCard />
+        <RecentDevelopmentCard />
       </section>
     </div>
   );

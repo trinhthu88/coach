@@ -461,6 +461,11 @@
       "nextUpLabel": "Next up:",
       "openJourney": "Open my journey"
     },
+    "recentDevelopment": {
+      "title": "Recent development",
+      "empty": "Nothing in your development history yet.",
+      "openJourney": "Open my journey"
+    },
     "myFeedback": {
       "title": "Feedback & development",
       "loadError": "Feedback could not be loaded.",

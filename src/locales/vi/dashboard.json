@@ -450,6 +450,11 @@
       "nextUpLabel": "Tiếp theo:",
       "openJourney": "Mở hành trình của tôi"
     },
+    "recentDevelopment": {
+      "title": "Phát triển gần đây",
+      "empty": "Chưa có lịch sử phát triển nào.",
+      "openJourney": "Mở hành trình của tôi"
+    },
     "myFeedback": {
       "title": "Phản hồi & phát triển",
       "loadError": "Không thể tải phản hồi.",
