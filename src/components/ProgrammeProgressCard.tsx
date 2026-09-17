@@ -6,9 +6,8 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
-import { useEnrollmentProgress, type EnrollmentProgressModule } from "@/hooks/useEnrollmentProgress";
+import { useLearnerCanonicalProgress, type LearnerModuleProgress } from "@/hooks/useLearnerCanonicalProgress";
 import { useProgrammeProgress } from "@/hooks/dashboard/useProgrammeProgress";
-import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { DailyPromptCard } from "@/components/training/DailyPromptCard";
 
@@ -17,9 +16,18 @@ export function ProgrammeProgressCard() {
   const { user, role } = useAuth();
   const { hasModule, hasDirection, loading: modulesLoading } = useProgrammeModules();
   const { enrollmentId, summary, loading: trainingLoading } = useProgrammeProgress(user?.id);
-  const { modules: moduleProgress, loading: progressLoading, error: progressError } = useEnrollmentProgress(enrollmentId);
+  // Programme name/dates, overall progress, and per-module required/completed
+  // counts all come from the same canonical engine Sponsor Leader Detail
+  // reads (learner_canonical_* mirrors sponsor_canonical_leader_* one-to-one)
+  // — this dashboard must never compute these facts a second, different way.
+  const {
+    progress,
+    modules: moduleProgress,
+    experience,
+    loading: progressLoading,
+    error: progressError,
+  } = useLearnerCanonicalProgress(enrollmentId);
   const receiveEnabled = hasDirection("coaching", "receive");
-  const { programme } = useJourneyProgramme(user?.id);
   const { goals } = useJourneyGoals(user?.id);
 
   if (modulesLoading || trainingLoading || progressLoading) {
