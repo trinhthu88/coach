@@ -1047,6 +1047,7 @@ export type Database = {
           body: string
           coachee_id: string
           created_at: string
+          enrollment_id: string | null
           id: string
           mood: string | null
           updated_at: string
@@ -1055,6 +1056,7 @@ export type Database = {
           body: string
           coachee_id: string
           created_at?: string
+          enrollment_id?: string | null
           id?: string
           mood?: string | null
           updated_at?: string
@@ -1063,11 +1065,20 @@ export type Database = {
           body?: string
           coachee_id?: string
           created_at?: string
+          enrollment_id?: string | null
           id?: string
           mood?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coachee_reflections_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cohort_week_overrides: {
         Row: {
