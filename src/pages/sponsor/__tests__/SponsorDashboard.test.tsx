@@ -86,4 +86,26 @@ describe("SponsorDashboard privacy contract", () => {
     expect(screen.queryByText(/Goal reached|confidence|quiz/i)).not.toBeInTheDocument();
     expect(calls.some((name) => /sponsor_(kpis|roster|goal_growth|satisfaction|confidence|programme|engagement|coach)/.test(name))).toBe(false);
   });
+
+  it("prefers canonical progress figures over legacy ones whenever they disagree", async () => {
+    // The dashboard still round-trips to the legacy summary RPCs for
+    // supplementary fields canonical doesn't model yet (goal/action counts,
+    // status breakdowns), but canonical must win on every field both
+    // sources compute — legacy is never allowed to be the numbers of
+    // record. Give legacy a deliberately wrong, distinguishable value here
+    // so a regression that flips the merge order would fail loudly.
+    responses.sponsor_organisation_summary = [{
+      ...(responses.sponsor_organisation_summary as Array<Record<string, unknown>>)[0],
+      completed_units: 999, required_units: 999,
+    }];
+    responses.sponsor_cohort_summaries = [{
+      ...(responses.sponsor_cohort_summaries as Array<Record<string, unknown>>)[0],
+      completed_units: 999, required_units: 999,
+    }];
+    render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText("Priya Shah")).toBeInTheDocument());
+    expect(screen.getByText("113 / 192")).toBeInTheDocument();
+    expect(screen.getByText("113/192")).toBeInTheDocument();
+    expect(screen.queryByText(/999/)).not.toBeInTheDocument();
+  });
 });
