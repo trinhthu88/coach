@@ -4295,6 +4295,74 @@ export type Database = {
         Returns: boolean
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
+      learner_canonical_experience: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      learner_canonical_journey: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      learner_canonical_module_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          full_completion_pct: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          pace_status: string
+          required_units: number
+        }[]
+      }
+      learner_canonical_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          enrollment_end_date: string
+          enrollment_id: string
+          enrollment_start_date: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_completion_pct: number
+          learner_display_name: string
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          pace_status: string
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_id: string
+          programme_label: string
+          programme_start_date: string
+          progress_available: boolean
+          required_units: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
       only_enrollment_candidate: {
         Args: { p_on?: string; p_programme_id?: string; p_user_id: string }
         Returns: string
