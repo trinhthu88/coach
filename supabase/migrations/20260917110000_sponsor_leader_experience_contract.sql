@@ -178,7 +178,7 @@ AS $$
       'daily_prompts'::text,
       dp.id,
       CASE WHEN lw.effective_unlock_date IS NULL THEN NULL
-        ELSE lw.effective_unlock_date + (dp.day_number - 1)
+        ELSE lw.effective_unlock_date + (dp.day_offset - 1)
       END,
       dpr.responded_at IS NOT NULL
     FROM learning_weeks lw
