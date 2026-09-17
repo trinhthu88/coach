@@ -18,3 +18,4 @@
 - [Sponsor status contract](sponsor-status-contract.md) — keep stored enrollment state distinct from the effective Sponsor lifecycle shown to sponsors.
 - [Sponsor live RPC contract](sponsor-live-rpc-contract.md) — hosted summaries omit module rollups and journey checkpoints; canonical enrollment progress is the safe detail source.
 - [Sponsor journey reconciliation](sponsor-journey-reconciliation.md) — journey checkpoints need typed activity joins, per-module caps, checkpoint-date as-of history, and real Admin scope labels.
+- [Supabase generated type parity](supabase-generated-type-parity.md) — generated RPC types are exact-schema output, including alphabetical ordering and inferred nullability.
