@@ -1,0 +1,77 @@
+Continue the Clariva Sponsor CI remediation from the current branch state.
+
+Repository:
+https://github.com/trinhthu88/coach.git
+
+Current relevant migration:
+supabase/migrations/20260917150000_sponsor_cohort_progress_rollup_performance.sql
+
+Relevant commit:
+f91ff44261e68520c02a35280872aa778d27234b
+
+GitHub Actions:
+- Database Validation run 35221603126 = FAILED
+- CI run 35221603106 = PASSED
+
+Objective:
+Diagnose and fix ONLY the Database Validation failure associated with the Sponsor cohort-progress performance optimization.
+
+Do NOT redesign Sponsor architecture.
+Do NOT modify unrelated learner/coachee functionality.
+Do NOT apply anything to hosted Supabase yet.
+
+Canonical Sponsor architecture that must remain intact:
+- Program/Admin = scope and requirements
+- Cohort = timing and calendar
+- Enrollment = learner-specific context
+- Activity = completion evidence
+
+Expected implementation architecture:
+1. sponsor_canonical_cohort_progress_one(uuid,date)
+   = bounded one-cohort implementation.
+
+2. sponsor_canonical_cohort_progress(uuid,date)
+   = public wrapper over Sponsor-visible cohorts.
+   It should invoke sponsor_canonical_cohort_progress_one once per cohort using a bounded/LATERAL pattern and retain optional p_cohort_id filtering.
+
+3. sponsor_canonical_organisation_progress(date)
+   = aggregate/roll-up of sponsor_canonical_cohort_progress(NULL,p_as_of), not a separate direct global enrollment computation.
+
+Tasks:
+1. Inspect GitHub Actions run 35221603126 and obtain the exact failing database validation step/test/error.
+2. Reproduce that failure locally if possible.
+3. Determine whether the failure is:
+   - SQL correctness,
+   - migration replay/order,
+   - pgTAP assertion,
+   - statement timeout/performance,
+   - function ownership/signature/security,
+   - generated schema/type mismatch,
+   - or another concrete issue.
+4. Make the MINIMUM forward-only fix.
+5. Do not alter or rewrite already-applied historical migrations.
+6. Add a new forward-only migration if a database change is required.
+7. Preserve all existing Sponsor privacy/threshold contracts.
+8. Run the exact relevant database validation/tests locally.
+9. Run migration replay from a clean database if the repository’s validation workflow does so.
+10. Run the Sponsor performance test, including:
+    - all-cohort sponsor_canonical_cohort_progress
+    - sponsor_canonical_organisation_progress
+    under the existing 8-second statement timeout.
+11. Run relevant frontend/tests only if your change touches generated contracts/types.
+12. Show:
+    - exact root cause,
+    - files changed,
+    - SQL/function behavior before vs after,
+    - test commands,
+    - full test results,
+    - git diff summary.
+13. Commit the fix with a focused commit message.
+14. Push to remediation-p0-p1-retimestamp.
+15. Check the new GitHub Database Validation run.
+16. STOP after reporting whether GitHub Database Validation is green.
+
+CRITICAL:
+Do not deploy/apply the migration to hosted Supabase unless the GitHub Database Validation workflow is fully green.
+Do not start learner/coachee work yet.
+Do not make unrelated cleanup changes.
