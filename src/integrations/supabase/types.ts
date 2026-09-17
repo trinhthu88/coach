@@ -4464,7 +4464,7 @@ export type Database = {
           enrollment_id: string
           enrollment_start_date: string
           enrollment_status: Database["public"]["Enums"]["enrollment_status"]
-          full_completion_pct: number | null
+          full_completion_pct: number
           learner_display_name: string
           mentoring_booked_units: number
           mentoring_completed_units: number
@@ -4513,10 +4513,10 @@ export type Database = {
           coaching_required_units: number | null
           cohort_count: number
           completed_units: number | null
-          due_adherence_pct: number | null
+          due_adherence_pct: number
           due_units: number | null
           enrollment_count: number | null
-          full_completion_pct: number | null
+          full_completion_pct: number
           mentoring_booked_units: number | null
           mentoring_completed_units: number | null
           mentoring_due_units: number | null
@@ -4528,7 +4528,7 @@ export type Database = {
           peer_required_units: number | null
           progress_source_complete: boolean | null
           required_units: number | null
-          schedule_coverage_pct: number | null
+          schedule_coverage_pct: number
           suppressed_cohort_count: number
           training_booked_units: number | null
           training_completed_units: number | null
