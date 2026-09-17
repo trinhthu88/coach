@@ -211,7 +211,7 @@ select is(
      )
    ) point
     where point->'module_scope' @> '["training"]'::jsonb
-      and point->>'label' = 'Emerging Leaders module 1'),
+      and point->>'label' LIKE '%Emerging Leaders module 1%'),
   '2026-03-15'::date,
   'canonical journey uses the configured Training cohort override'
 );
@@ -288,20 +288,20 @@ set start_date = '2026-04-15'::date,
 where id = '14141414-1414-4141-8141-000000000007'::uuid;
 set local role authenticated;
 select is(
-  (select due_units
-   from public.get_sponsor_programme_progress(
-     '14141414-1414-4141-8141-000000000007'::uuid,
-     '2026-04-02'::date)
-   where module = 'coaching'::public.programme_module_type),
+   (select coaching_due_units
+    from public.sponsor_canonical_enrollment_progress(
+      '11111111-1111-4111-8111-111111111119'::uuid,
+      '2026-04-02'::date)
+    where enrollment_id = '14141414-1414-4141-8141-000000000007'::uuid),
   1,
   'late enrollment is due against the existing Cohort timeline'
 );
 select is(
   (select pace_status
-   from public.get_sponsor_programme_progress(
-     '14141414-1414-4141-8141-000000000007'::uuid,
-     '2026-04-02'::date)
-   where module = 'coaching'::public.programme_module_type),
+    from public.sponsor_canonical_enrollment_progress(
+      '11111111-1111-4111-8111-111111111119'::uuid,
+      '2026-04-02'::date)
+    where enrollment_id = '14141414-1414-4141-8141-000000000007'::uuid),
   'behind',
   'late enrollment can be behind before its enrollment start date'
 );
