@@ -1,0 +1,419 @@
+You are working on the Clariva repository:
+
+https://github.com/trinhthu88/coach.git
+
+Continue on the current branch:
+
+`remediation-p0-p1-retimestamp`
+
+Do not redesign the architecture and do not reopen already completed source-of-truth work.
+
+## Objective
+
+Finalize the remaining Learner Development Journey work that Codex did not complete before running out of usage.
+
+The canonical architecture is already established:
+
+- Program/Admin = requirements / WHAT
+- Cohort = timing / WHEN
+- Enrollment = learner context / WHO
+- Activity records = completion evidence / WHAT happened
+- One learner + one enrollment = one truth
+
+Existing canonical work that must be preserved:
+
+- enrollment-scoped private reflections
+- `coachee_reflections.enrollment_id`
+- deterministic historical reflection backfill
+- reflection enrollment integrity validation
+- `useJourneyReflections()` enrollment isolation
+- `useEnrollmentDevelopmentJourney()`
+- `DevelopmentJourneyEvent`
+- canonical goal / milestone / check-in events
+- `enrollment_actions`
+- coaching events
+- peer-coaching events
+- mentoring events
+- triad events
+- training events
+- programme reflections
+- private reflections
+- learner-visible feedback
+- Dashboard `RecentDevelopmentCard`
+- Recent Development must remain only a slice of the same canonical Development Journey projection
+
+Do NOT create a new development-event persistence table.
+
+Do NOT create duplicate business logic.
+
+Do NOT resurrect retired Sponsor reporting RPCs.
+
+---
+
+# 1. Integrate the canonical Development Journey into the learner Journey page
+
+Current problem:
+
+`useEnrollmentDevelopmentJourney()` exists and powers Dashboard Recent Development, but the full `CoacheeJourney` page does not yet render the same canonical event stream as the learner's chronological Development Journey.
+
+Implement a proper full Development Journey section in the learner Journey page.
+
+Use:
+
+`useEnrollmentDevelopmentJourney(enrollmentId, learnerId)`
+
+as the single data source.
+
+The full timeline should show chronological events from the canonical projection, including where available:
+
+- goal created
+- goal check-in / rating update
+- milestone added
+- milestone completed
+- action agreed
+- action completed
+- coaching completed
+- coaching reflection
+- peer coaching completed
+- peer feedback
+- mentoring completed
+- mentoring reflection
+- mentor feedback
+- triad completed
+- training completion
+- quiz submitted
+- programme reflection
+- private reflection
+
+Do not independently query or recalculate these events in the UI.
+
+Dashboard Recent Development must remain:
+
+`canonicalEvents.slice(0, N)`
+
+from this same projection.
+
+Avoid duplicating the existing Goals / Actions / Reflections interfaces. The Development Journey is a chronological history/read model, not a replacement for the deeper editing/workspace sections.
+
+---
+
+# 2. Finalize the learner Sessions view
+
+The current learner Journey Sessions section is effectively coaching-only.
+
+Replace it with one unified learner Sessions view representing the selected enrollment.
+
+It must support:
+
+- All
+- Coaching
+- Peer Coaching
+- Mentoring
+- Triad
+
+Each session must come from its canonical activity table.
+
+Do not copy records into a new common sessions table.
+
+Normalize them only at the read/display boundary.
+
+For every normalized session expose at least:
+
+- id
+- activity type
+- date/time
+- status
+- title/topic where available
+- relevant role/context
+- canonical source id
+- canonical source type
+
+Respect privacy/RLS.
+
+Do not expose:
+
+- coach-private notes
+- admin-private information
+- feedback the learner is not authorized to read
+
+The learner should be able to understand their entire programme participation from one Sessions section.
+
+---
+
+# 3. Enrich Triad activity with real programme context
+
+Current canonical triad events are too generic:
+
+`Triad completed`
+
+Inspect the current triad schema carefully.
+
+Use actual configured data where available, particularly:
+
+- `triad_rounds`
+- round number/name
+- `training_week_id`
+- related training week number/title
+- participant role if meaningful
+
+Improve canonical triad display semantics so an event can show, for example:
+
+`Triad — Round 2`
+
+or when reliably available:
+
+`Triad — Week 4 / Round 2`
+
+Do NOT infer a round/week from dates.
+
+Do NOT invent programme phases.
+
+Do NOT hard-code programme-specific labels.
+
+Only use existing canonical relationships.
+
+If the current schema cannot reliably resolve one of these labels, leave that part out instead of guessing.
+
+The enrichment should be reusable by both:
+
+- Development Journey
+- unified Sessions view
+
+Do not implement two separate triad interpretation rules.
+
+---
+
+# 4. Validate the reflection migration properly
+
+The migration already exists:
+
+`supabase/migrations/20260917190000_coachee_reflections_enrollment_scope.sql`
+
+Do not replace it unless an actual defect is discovered.
+
+Verify it from the database source of truth.
+
+Run the normal Clariva migration replay/database validation process.
+
+Verify:
+
+- migration replays successfully from clean schema history
+- `coachee_reflections.enrollment_id` exists
+- FK exists
+- index exists
+- validation trigger exists
+- deterministic backfill behaves correctly
+- ambiguous historical rows remain NULL
+- rows with exactly one valid historical enrollment are assigned correctly
+- new reflection cannot reference another learner's enrollment
+
+If DB validation reveals an actual migration-order/history issue, fix it using a forward-only migration rather than rewriting already-applied migration history.
+
+---
+
+# 5. Regenerate authoritative Supabase types
+
+After successful database replay:
+
+regenerate `src/integrations/supabase/types.ts` from the validated schema.
+
+Do not manually maintain generated schema types if regeneration is available.
+
+Confirm `coachee_reflections.enrollment_id` and its relationship are present in the generated result.
+
+---
+
+# 6. Historical NULL reflection behavior
+
+Keep historical unresolved reflections safe.
+
+Rules:
+
+- programme-specific Development Journey must only show reflections where:
+  `enrollment_id = selected enrollment`
+- do not show `enrollment_id IS NULL` reflections inside a programme timeline
+- do not guess ownership
+- do not assign ambiguous history merely so the UI has more data
+
+If there is an existing global/private-journal surface where unassigned historical reflections can legitimately be shown, preserve that behavior only if it does not violate programme isolation.
+
+---
+
+# 7. Cross-role and privacy regression
+
+Re-run tests proving that the same selected enrollment remains internally consistent.
+
+For the same learner + enrollment:
+
+- learner overall progress must equal canonical Sponsor value where semantically equivalent
+- module required/completed counts must agree
+- goal progress must use the existing canonical start/current/target formula
+- action counts must use `enrollment_actions`
+- Development Journey events must remain learner-private where appropriate
+
+Sponsor must not receive:
+
+- private reflection text
+- coaching notes
+- private feedback
+- goal details beyond allowed aggregate contract
+- raw learner event history
+
+Do not weaken Sponsor privacy rules to make tests easier.
+
+---
+
+# 8. Tests to add/update
+
+At minimum cover:
+
+### Development Journey
+
+- full learner timeline consumes `useEnrollmentDevelopmentJourney`
+- Dashboard Recent Development and full Journey derive from the same projection
+- no fabricated events when canonical records do not exist
+- selected enrollment isolation
+
+### Unified Sessions
+
+Test all four activity types:
+
+- Coaching
+- Peer Coaching
+- Mentoring
+- Triad
+
+Test:
+
+- All filter
+- type filters
+- enrollment isolation
+- completed/upcoming status preservation
+- privacy-sensitive fields are not exposed
+
+### Triads
+
+Test:
+
+- round label derived from real `triad_rounds`
+- training week shown only when real relationship exists
+- no guessed week/round
+- no incorrect cross-enrollment triad event
+
+### Reflections
+
+Retain/extend existing tests for:
+
+- coachee + enrollment filtering
+- separate cache keys between enrollment A/B
+- new reflection carries selected enrollment
+- unresolved historical NULL rows do not leak into programme timeline
+
+---
+
+# 9. Validation
+
+Before declaring completion, run and report the exact results of:
+
+- migration replay / `npm run validate:db` or repository canonical DB-validation command
+- pgTAP/database tests
+- `npm test` / Vitest
+- `npx tsc --noEmit`
+- `npm run lint`
+- `npm run build`
+- `git diff --check`
+
+Do not say "passed" if a command did not run successfully.
+
+If an environment limitation prevents a test, clearly distinguish:
+
+- implementation failure
+- repository failure
+- local environment/tooling limitation
+
+Do not silently skip validation.
+
+---
+
+# 10. Important implementation constraints
+
+Do not:
+
+- create a second Development Journey calculation
+- create a duplicate event table
+- create fake demo values in React
+- infer missing programme structure
+- infer triad week from calendar position
+- use Sponsor RPCs from learner UI
+- resurrect retired Sponsor RPCs
+- merge different enrollments
+- show historical NULL reflections as if they belong to the selected enrollment
+- expose coach/admin-private fields
+- rewrite working canonical progress logic
+
+Reuse current canonical hooks/tables wherever possible.
+
+Prefer small additive shared read-model helpers over page-specific duplicate logic.
+
+---
+
+# Final report required
+
+When finished, return a concise implementation report containing:
+
+## Completed
+
+List each completed item.
+
+## Files changed
+
+Group into:
+
+- migrations/database
+- generated types
+- canonical hooks/read models
+- UI/components
+- tests
+
+## Development Journey
+
+Confirm explicitly that:
+
+`Dashboard Recent Development = first N events of the exact same canonical projection used by the full learner Development Journey.`
+
+## Unified Sessions
+
+Show which canonical table supplies each type:
+
+| Type | Canonical source |
+|---|---|
+| Coaching | ... |
+| Peer Coaching | ... |
+| Mentoring | ... |
+| Triad | ... |
+
+## Triad enrichment
+
+Explain exactly where Round and Week come from.
+
+## Historical reflections
+
+Report:
+
+- number deterministically backfilled if validated
+- number still NULL if known
+- how unresolved rows are handled
+
+## Privacy
+
+State what learner-visible information is included and which private data remains excluded.
+
+## Validation
+
+Give exact pass/fail counts and commands.
+
+## Remaining issues
+
+List only genuinely unresolved issues.
+
+Do not redesign anything else in Clariva during this task.
