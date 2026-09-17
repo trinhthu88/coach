@@ -14,7 +14,14 @@ export interface SponsorCohortData {
   loading: boolean;
 }
 
-/** Fetches a UUID-scoped, server-authorized sponsor cohort summary. */
+/**
+ * Fetches a UUID-scoped, server-authorized sponsor cohort summary.
+ *
+ * Same legacy+canonical dual-fetch as useSponsorDashboardData (canonical
+ * spread last so it always wins on overlap) — see that hook's doc comment
+ * for exactly which fields still have no canonical equivalent and why the
+ * legacy RPCs can't be dropped yet.
+ */
 export function useSponsorCohortData(cohortId: string): SponsorCohortData {
   const [kpis, setKpis] = useState<SponsorCohortSummary | null>(null);
   const [roster, setRoster] = useState<SponsorRosterRow[]>([]);

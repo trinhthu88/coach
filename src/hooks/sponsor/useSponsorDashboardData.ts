@@ -40,6 +40,22 @@ interface SponsorDashboardData {
  * functions — never a direct table query. Each is scoped server-side to
  * the caller's own organization; there is no client-supplied org id to
  * get wrong.
+ *
+ * This still calls both the legacy sponsor_{enrollment,cohort}_summaries /
+ * sponsor_organisation_summary RPCs and their sponsor_canonical_* siblings,
+ * spreading legacy first so canonical always wins any field both define
+ * (locked in by SponsorDashboard.test.tsx's precedence test). The legacy
+ * calls are not vestigial: they are the only source for fields the
+ * canonical progress engine doesn't model at all —
+ *   - goals: goal_count, goal_setup, goal_progress_pct
+ *   - actions: open/completed/total_action_count, action_completion_pct
+ *   - satisfaction/ratings: satisfaction_avg, satisfaction_rated_count
+ *   - per-module completed *session counts* (coaching_completed_count etc.,
+ *     distinct from the canonical *_completed_units unit counts)
+ *   - schedule_coverage_pct at the individual-enrollment level
+ * There is no sponsor_canonical_* equivalent for any of these today; adding
+ * one is backend work (a new canonical RPC or an extension of the existing
+ * ones) that hasn't been scoped, not something to duplicate client-side.
  */
 export function useSponsorDashboardData(): SponsorDashboardData {
   const [kpis, setKpis] = useState<SponsorKpis | null>(null);
