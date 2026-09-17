@@ -1,0 +1,200 @@
+-- Sponsor Leader Detail canonical contract: enrollment scoping, no
+-- cross-enrollment leakage, current-Admin/real-activity sourcing, and
+-- privacy-safe output for sponsor_canonical_leader_progress,
+-- sponsor_canonical_leader_journey and sponsor_leader_engagement_summary.
+--
+-- Reuses the Emerging Leaders / Cohort C fixture from seed.sql: Leader C1
+-- (enrollment 14141414-1414-4141-8141-000000000001) finishes every
+-- requirement (coaching 4/4, peer 2/2, mentoring 2/2, triads 2/2,
+-- training 6/6); Leader C2 (…000002) does not. These numbers are already
+-- hand-reconciled and guarded by sponsor_cohort_c_reconciliation_test.sql
+-- and sponsor_canonical_admin_activity_spine_test.sql; this file reuses
+-- them as ground truth since sponsor_canonical_leader_progress calls the
+-- exact same get_sponsor_programme_progress/sponsor_canonical_activity
+-- primitives, not a new formula.
+begin;
+
+select plan(26);
+
+-- Source of truth: current Admin config + real attributed activity, same
+-- primitives as the cohort/organisation rollups — not a new formula.
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_canonical_leader_progress(uuid,date)'::regprocedure
+  ) ~ 'get_sponsor_programme_progress',
+  'leader progress uses the current Admin/activity source'
+);
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_canonical_leader_journey(uuid,date)'::regprocedure
+  ) ~ 'sponsor_canonical_module_schedule'
+    AND pg_get_functiondef(
+      'public.sponsor_canonical_leader_journey(uuid,date)'::regprocedure
+    ) ~ 'sponsor_canonical_activity',
+  'leader journey uses the current Admin schedule and real activity source'
+);
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_leader_engagement_summary(uuid)'::regprocedure
+  ) ~ 'coachee_goals' AND pg_get_functiondef(
+    'public.sponsor_leader_engagement_summary(uuid)'::regprocedure
+  ) ~ 'enrollment_actions',
+  'leader engagement summary reads real goal/action rows'
+);
+
+-- Privacy: never select coach identity, notes, reflections or comments.
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_canonical_leader_progress(uuid,date)'::regprocedure
+  ) !~ 'coach_id|coach_notes|coach_private_notes|coachee_notes',
+  'leader progress never selects coach identity or session notes'
+);
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_leader_engagement_summary(uuid)'::regprocedure
+  ) !~ 'coach_id|coach_notes|coach_private_notes|coachee_notes|coachee_rating_comment|\.title|\.description',
+  'leader engagement summary never selects coach identity, notes, or goal/action wording'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '11111111-1111-4111-8111-111111111116',
+  true
+);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+
+-- Correct enrollment scoping: exactly one row for the requested leader.
+select is(
+  (select count(*)::integer
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+  1,
+  'leader progress returns exactly one row for the requested enrollment'
+);
+select is(
+  (select learner_display_name
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+  'Leader C1',
+  'leader progress identifies the requested enrollment, not another one'
+);
+
+-- Real historical activity, current Admin denominators (ground truth
+-- shared with the existing Cohort C reconciliation suite).
+select is(
+  (select coaching_completed_units
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+  4, 'Leader C1 coaching completed units reconcile to the seed fixture');
+select is(
+  (select peer_completed_units
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+  2, 'Leader C1 peer coaching completed units reconcile to the seed fixture');
+select is(
+  (select mentoring_completed_units
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+  2, 'Leader C1 mentoring completed units reconcile to the seed fixture');
+select is(
+  (select triad_completed_units
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+  2, 'Leader C1 triad completed units reconcile to the seed fixture');
+select is(
+  (select training_completed_units
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+  6, 'Leader C1 training completed units reconcile to the seed fixture');
+select is(
+  (select effective_enrollment_status
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+  'completed'::public.enrollment_status,
+  'Leader C1 (finished every requirement) shows completed, not stuck at raw at_risk status');
+
+-- No cross-enrollment leakage: querying Leader C2 returns exactly C2's own
+-- identity (never C1's), and querying C1 never contains C2's identity —
+-- proves the WHERE e.id = p_enrollment_id filter is doing real scoping
+-- work, not silently returning cohort-wide rows.
+select is(
+  (select learner_display_name
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000002'::uuid, '2026-07-05'::date)),
+  'Leader C2',
+  'querying Leader C2''s enrollment id returns Leader C2''s own identity, not Leader C1''s'
+);
+select is(
+  (select count(*)::integer
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)
+   where learner_display_name = 'Leader C2'),
+  0, 'Leader C1''s result never contains Leader C2''s identity');
+
+-- Goals/actions/satisfaction aggregate scoping and null-vs-zero semantics.
+select is(
+  (select open_action_count from public.sponsor_leader_engagement_summary(
+     '14141414-1414-4141-8141-000000000001'::uuid)),
+  0, 'Leader C1 has zero open actions (both seeded actions are completed)');
+select is(
+  (select completed_action_count from public.sponsor_leader_engagement_summary(
+     '14141414-1414-4141-8141-000000000001'::uuid)),
+  2, 'Leader C1 completed-action count reconciles to the seed fixture');
+select is(
+  (select action_completion_pct from public.sponsor_leader_engagement_summary(
+     '14141414-1414-4141-8141-000000000001'::uuid)),
+  100.0, 'Leader C1 action completion is a real 100%, not a coerced default');
+select is(
+  (select goal_count from public.sponsor_leader_engagement_summary(
+     '14141414-1414-4141-8141-000000000001'::uuid)),
+  0, 'Leader C1 has a real zero goal count (no goals fixture), not null');
+select is(
+  (select goal_progress_pct from public.sponsor_leader_engagement_summary(
+     '14141414-1414-4141-8141-000000000001'::uuid)),
+  NULL::numeric,
+  'Leader C1 goal progress is null (unavailable, no rated goal), never coerced to zero'
+);
+select is(
+  (select count(*)::integer from public.sponsor_leader_engagement_summary(
+     '14141414-1414-4141-8141-000000000002'::uuid)),
+  1, 'Leader C2''s engagement summary is independently scoped and also returns exactly one row'
+);
+
+-- Individual Journey: same four checkpoint states as the Cohort Journey,
+-- derived from the same canonical schedule, never invented.
+select ok(
+  (select bool_and(point->>'state' IN ('upcoming', 'current', 'completed', 'overdue'))
+   from jsonb_array_elements(
+     public.sponsor_canonical_leader_journey(
+       '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)
+   ) point),
+  'leader journey checkpoints only ever use the canonical four states'
+);
+select ok(
+  (select count(*) > 0
+   from jsonb_array_elements(
+     public.sponsor_canonical_leader_journey(
+       '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)
+   )),
+  'leader journey produces real checkpoints from the current Admin schedule'
+);
+
+-- Not found / not authorized: a nonexistent enrollment id returns nothing,
+-- not an error and not fabricated data.
+select is(
+  (select count(*)::integer from public.sponsor_canonical_leader_progress(
+     '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-05'::date)),
+  0, 'a nonexistent enrollment id returns no rows');
+select is(
+  (select count(*)::integer from public.sponsor_leader_engagement_summary(
+     '00000000-0000-0000-0000-000000000000'::uuid)),
+  0, 'engagement summary returns no rows for a nonexistent enrollment');
+select is(
+  public.sponsor_canonical_leader_journey(
+    '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-05'::date),
+  '[]'::jsonb,
+  'journey is an empty array, not fabricated checkpoints, for a nonexistent enrollment');
+
+select * from finish();
+rollback;
