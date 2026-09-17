@@ -1,12 +1,37 @@
 begin;
 
-select plan(38);
+select plan(41);
 
 select ok(
   pg_get_functiondef(
     'public.sponsor_canonical_module_schedule(uuid)'::regprocedure
   ) ~ 'programme_modules',
   'canonical progress reads current Admin programme_modules'
+);
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_canonical_module_schedule(uuid)'::regprocedure
+  ) ~ 'public\.cohorts'
+    AND pg_get_functiondef(
+      'public.sponsor_canonical_module_schedule(uuid)'::regprocedure
+    ) !~ 'e\.start_date|e\.end_date|enrollment_module_snapshots|enrollment_module_milestones'
+    AND (
+      SELECT bool_and(
+        pg_get_functiondef(rpc) !~ 'enrollment_module_snapshots|enrollment_module_milestones'
+      )
+      FROM unnest(ARRAY[
+        'public.get_sponsor_programme_progress(uuid,date)'::regprocedure,
+        'public.get_sponsor_programme_journey(uuid,date)'::regprocedure,
+        'public.sponsor_canonical_enrollment_progress(uuid,date)'::regprocedure,
+        'public.sponsor_canonical_programme_journey(uuid,date)'::regprocedure,
+        'public.sponsor_canonical_cohort_progress(uuid,date)'::regprocedure,
+        'public.sponsor_canonical_organisation_progress(date)'::regprocedure,
+        'public.sponsor_canonical_leader_progress(uuid,date)'::regprocedure,
+        'public.sponsor_canonical_leader_journey(uuid,date)'::regprocedure,
+        'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
+      ]) AS functions(rpc)
+    ),
+  'canonical Sponsor schedule and progress RPCs use Cohort/calendar sources, not enrollment snapshots'
 );
 select ok(
   pg_get_functiondef(
@@ -198,6 +223,35 @@ select ok(
      )
    ) point),
   'canonical journey labels are derived from configured module or training scope'
+);
+
+-- Enrollment dates are intentionally different from Cohort C dates here.
+-- Sponsor schedule checkpoints must still follow the Cohort calendar.
+reset role;
+update public.programme_enrollments
+set start_date = '2026-04-15'::date,
+    end_date = '2026-06-15'::date
+where id = '14141414-1414-4141-8141-000000000001'::uuid;
+set local role authenticated;
+select is(
+  (select min(due_on)
+   from public.sponsor_canonical_module_schedule(
+     '14141414-1414-4141-8141-000000000001'::uuid
+   )
+   where module = 'coaching'::public.programme_module_type
+     and due_on IS NOT NULL),
+  '2026-04-01'::date,
+  'canonical schedule uses Cohort start date when enrollment dates differ'
+);
+select is(
+  (select max(due_on)
+   from public.sponsor_canonical_module_schedule(
+     '14141414-1414-4141-8141-000000000001'::uuid
+   )
+   where module = 'coaching'::public.programme_module_type
+     and due_on IS NOT NULL),
+  '2026-07-05'::date,
+  'canonical schedule uses Cohort end date when enrollment dates differ'
 );
 
 -- An empty cohort is suppressed: population is not exposed as a detail

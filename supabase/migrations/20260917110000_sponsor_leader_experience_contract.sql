@@ -94,13 +94,12 @@ AS $$
       coalesce(
         cwo.unlock_date,
         CASE WHEN e.cohort_id IS NOT NULL
-          THEN (pe.start_date + ((tw.week_number - 1) * interval '7 days'))::date
+          THEN (e.programme_start_date + ((tw.week_number - 1) * interval '7 days'))::date
           ELSE NULL
         END,
         tw.unlock_date
       ) AS effective_unlock_date
     FROM eligible e
-    JOIN public.programme_enrollments pe ON pe.id = e.enrollment_id
     JOIN public.training_weeks tw ON tw.programme_id = e.programme_id
     LEFT JOIN public.cohort_week_overrides cwo
       ON cwo.cohort_id = e.cohort_id

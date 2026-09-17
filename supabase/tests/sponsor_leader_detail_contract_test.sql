@@ -14,7 +14,7 @@
 -- primitives, not a new formula.
 begin;
 
-select plan(31);
+select plan(33);
 
 -- Source of truth: current Admin config + real attributed activity, same
 -- primitives as the cohort/organisation rollups — not a new formula.
@@ -66,6 +66,12 @@ select ok(
       'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
     ) ~ 'training_progress|assignment_submissions|reflection_submissions|daily_prompt_responses',
   'leader experience uses canonical schedule/activity and enrollment-owned learning completion'
+);
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
+  ) !~ 'pe\.start_date|enrollment_module_snapshots|enrollment_module_milestones',
+  'leader experience learning weeks do not use enrollment dates or schedule snapshots'
 );
 select ok(
   pg_get_functiondef(
@@ -220,6 +226,32 @@ select ok(
     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date
   ) ? 'learning_breakdown',
   'leader experience includes the configured learning breakdown'
+);
+
+-- With no training-week unlock dates, the learning-week fallback must use the
+-- Cohort calendar even when this learner's enrollment dates differ.
+reset role;
+update public.programme_enrollments
+set start_date = '2026-04-15'::date,
+    end_date = '2026-06-15'::date
+where id = '14141414-1414-4141-8141-000000000001'::uuid;
+update public.training_weeks
+set unlock_date = NULL
+where programme_id = '11111111-1111-4111-8111-111111111118'::uuid;
+delete from public.cohort_week_overrides
+where cohort_id = '11111111-1111-4111-8111-111111111119'::uuid;
+set local role authenticated;
+select is(
+  (select (point->>'due_units')::integer
+   from jsonb_array_elements(
+     (public.sponsor_canonical_leader_experience(
+       '14141414-1414-4141-8141-000000000001'::uuid,
+       '2026-03-08'::date
+     ))->'learning_breakdown'
+   ) point
+   where point->>'key' = 'skill_cards'),
+  2,
+  'leader experience learning-week fallback uses Cohort start date when enrollment dates differ'
 );
 
 -- Not found / not authorized: a nonexistent enrollment id returns nothing,

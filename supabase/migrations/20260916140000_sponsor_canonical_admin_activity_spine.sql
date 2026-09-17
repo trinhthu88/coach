@@ -25,8 +25,11 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
   WITH enrollment AS (
-    SELECT e.programme_id, e.cohort_id, e.start_date, e.end_date
+    SELECT e.programme_id, e.cohort_id,
+      c.start_date AS cohort_start_date,
+      c.end_date AS cohort_end_date
     FROM public.programme_enrollments e
+    JOIN public.cohorts c ON c.id = e.cohort_id
     WHERE e.id = p_enrollment_id
   ), configured_modules AS (
     SELECT pm.module,
@@ -37,7 +40,7 @@ AS $$
       END AS required_units,
       coalesce(nullif(pm.config->>'distribution_mode', ''), 'flexible') AS distribution_mode,
       coalesce(pm.config->'distribution_settings', '{}'::jsonb) AS distribution_settings,
-      e.programme_id, e.cohort_id, e.start_date, e.end_date
+      e.programme_id, e.cohort_id, e.cohort_start_date, e.cohort_end_date
     FROM enrollment e
     JOIN public.programme_modules pm
       ON pm.programme_id = e.programme_id
@@ -49,18 +52,18 @@ AS $$
 
   UNION ALL
 
-  SELECT cm.module, cm.required_units, cm.end_date, cm.required_units, NULL::uuid
+    SELECT cm.module, cm.required_units, cm.cohort_end_date, cm.required_units, NULL::uuid
   FROM configured_modules cm
   WHERE cm.required_units > 0 AND cm.distribution_mode = 'flexible'
 
   UNION ALL
 
   SELECT cm.module, cm.required_units,
-    cm.start_date + CASE
-      WHEN units.sequence_no = cm.required_units THEN cm.end_date - cm.start_date
-      WHEN cm.end_date > cm.start_date THEN greatest(
+      cm.cohort_start_date + CASE
+        WHEN units.sequence_no = cm.required_units THEN cm.cohort_end_date - cm.cohort_start_date
+        WHEN cm.cohort_end_date > cm.cohort_start_date THEN greatest(
         1,
-        ((cm.end_date - cm.start_date) * units.sequence_no / cm.required_units)
+          ((cm.cohort_end_date - cm.cohort_start_date) * units.sequence_no / cm.required_units)
       )
       ELSE 0
     END,
@@ -73,8 +76,8 @@ AS $$
 
   SELECT cm.module, cm.required_units,
     least(
-      cm.end_date,
-      (cm.start_date + ((units.sequence_no - 1)
+      cm.cohort_end_date,
+      (cm.cohort_start_date + ((units.sequence_no - 1)
         * coalesce(public.programme_config_integer(cm.distribution_settings, 'interval_months'), 1)
         * interval '1 month'))::date
     ),
@@ -100,11 +103,11 @@ AS $$
 
   SELECT cm.module, cm.required_units,
     least(
-      cm.end_date,
+      cm.cohort_end_date,
       coalesce(
         cwo.unlock_date,
         coalesce(tw.unlock_date,
-          (cm.start_date + ((tw.week_number - 1) * interval '7 days'))::date)
+          (cm.cohort_start_date + ((tw.week_number - 1) * interval '7 days'))::date)
       )
     ),
     1, tw.id
