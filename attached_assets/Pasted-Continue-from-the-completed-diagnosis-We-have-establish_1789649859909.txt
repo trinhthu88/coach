@@ -1,0 +1,126 @@
+Continue from the completed diagnosis.
+
+We have established that GitHub Database Validation run 35221603126 did NOT reach migration replay or Sponsor pgTAP/performance tests.
+
+Local reproduction:
+npm run validate:db
+
+fails during:
+supabase start
+
+with:
+LegacyHealthCheckTimeoutError
+supabase_db_ygufjhhpguauwwmfvczy container is not ready: unhealthy
+
+PostgreSQL itself reports "ready to accept connections", but the Supabase CLI legacy health check still reports the database container unhealthy and tears the stack down.
+
+IMPORTANT:
+Do NOT modify the Sponsor SQL migration.
+Do NOT create a Sponsor SQL workaround.
+Do NOT deploy anything to hosted Supabase.
+Do NOT weaken or remove database validation.
+
+Objective:
+Diagnose the Supabase local-stack/CI startup failure, make the minimum infrastructure/test-harness correction if justified, and then run the existing Sponsor migration unchanged through the full database validation.
+
+Proceed in this order:
+
+1. Inspect the exact database validation implementation:
+   - package.json scripts
+   - GitHub Actions Database Validation workflow
+   - scripts invoked by npm run validate:db
+   - Supabase CLI installation/version logic
+   - Docker/Supabase startup configuration
+
+2. Record versions:
+   - node --version
+   - npm --version
+   - supabase --version
+   - docker --version
+   - docker compose version
+   - architecture/platform
+   - versions expected/pinned by the repository or workflow
+
+3. Reproduce with maximum useful diagnostics:
+   - supabase stop --no-backup if appropriate
+   - clean stale project containers/networks only if safe
+   - supabase start --debug
+   - docker ps -a
+   - docker inspect supabase_db_ygufjhhpguauwwmfvczy
+   - inspect the container Health.Status and Health.Log
+   - docker logs supabase_db_ygufjhhpguauwwmfvczy
+   - check whether PostgreSQL remains alive and accepting connections
+   - inspect disk/memory/resource exhaustion if relevant
+
+4. Determine the concrete reason the Supabase CLI health check disagrees with PostgreSQL readiness.
+
+Investigate specifically:
+   A. Supabase CLI version regression / changed legacy health-check behavior
+   B. CLI version mismatch between previous green validation runs and the failing run
+   C. Docker health-check command itself returning non-zero
+   D. startup timing / timeout regression
+   E. stale containers, volumes, networks, or project state
+   F. resource exhaustion, disk space, or memory
+   G. Docker architecture/platform issue
+   H. configuration introduced by recent repository commits
+   I. service dependency failure making the DB container health status unhealthy even though postgres accepts connections
+
+5. Compare against the most recent known-green Database Validation workflow/run on this same branch/repository:
+   - identify the Supabase CLI version used
+   - identify relevant workflow/script differences
+   - identify Docker/environment differences visible from repository history
+
+6. Check git history around the validation infrastructure:
+   git log --oneline -- .github package.json package-lock.json scripts supabase/config.toml
+   and inspect relevant diffs.
+
+7. Only if evidence identifies an infrastructure/test-harness bug:
+   make the smallest deterministic fix.
+
+Preferred examples:
+   - pin a known-good Supabase CLI version if an unpinned/latest CLI caused the regression
+   - correct an actual invalid health/startup configuration
+   - improve deterministic startup cleanup if stale state is demonstrably the cause
+
+Do NOT:
+   - arbitrarily increase timeouts without proving startup is merely slow
+   - ignore unhealthy containers
+   - append `|| true`
+   - skip `supabase start`
+   - skip migration replay
+   - disable database tests
+   - modify Sponsor functions to work around CI
+
+8. After the startup problem is fixed, run from a clean state:
+   npm run validate:db
+
+The complete validation must reach:
+   - all migrations replayed
+   - Sponsor database suite collected
+   - pgTAP tests
+   - Sponsor cohort progress performance test
+   - all-cohort sponsor_canonical_cohort_progress
+   - sponsor_canonical_organisation_progress
+   - existing 8-second statement timeout assertions
+
+9. If the unchanged Sponsor migration then fails SQL/performance tests, STOP and diagnose that new concrete failure separately. Do not mix the infrastructure fix with a speculative SQL fix.
+
+10. Before committing, report:
+   - exact startup root cause
+   - Supabase CLI version before/after
+   - why PostgreSQL could say ready while Docker/Supabase considered it unhealthy
+   - files changed
+   - whether the change is CI/test infrastructure only
+   - complete `npm run validate:db` result
+   - migration count
+   - pgTAP result
+   - Sponsor performance test result
+
+11. If and only if validation is fully green:
+   - commit the minimal infrastructure fix
+   - push to remediation-p0-p1-retimestamp
+   - watch the new GitHub Database Validation run
+   - report the run URL and final status
+
+STOP after that.
+Do not apply anything to hosted Supabase yet.

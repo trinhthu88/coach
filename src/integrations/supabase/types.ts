@@ -4514,6 +4514,65 @@ export type Database = {
           triad_required_units: number
         }[]
       }
+      sponsor_canonical_cohort_progress_one: {
+        Args: { p_as_of?: string; p_cohort_id?: string }
+        Returns: {
+          active_count: number
+          ahead_count: number
+          at_risk_count: number
+          behind_count: number
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_leaders: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_count: number
+          completed_pace_count: number
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          enrollment_count: number
+          full_completion_pct: number
+          mentoring_booked_units: number
+          mentoring_completed_leaders: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          not_yet_due_count: number
+          on_track_count: number
+          on_track_pct: number
+          overdue_units: number
+          pace_status: string
+          paused_count: number
+          peer_booked_units: number
+          peer_completed_leaders: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_journey: Json
+          programme_label: string
+          programme_start_date: string
+          progress_source_complete: boolean
+          required_units: number
+          schedule_coverage_pct: number
+          scheduled_count: number
+          suppressed: boolean
+          training_booked_units: number
+          training_completed_leaders: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_leaders: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
       sponsor_canonical_enrollment_metadata: {
         Args: {
           p_as_of?: string
