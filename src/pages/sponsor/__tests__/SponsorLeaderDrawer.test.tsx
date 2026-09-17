@@ -56,7 +56,7 @@ describe("SponsorLeaderDrawer", () => {
     expect(screen.queryByText("Priya's private goal wording")).not.toBeInTheDocument();
   });
 
-  it("renders the enrollment-scoped journey, weekly trend, and learning breakdown", () => {
+  it("renders the enrollment-scoped journey, checkpoint trend, and learning breakdown", () => {
     render(
       <SponsorLeaderProfile
         leader={{
@@ -166,6 +166,7 @@ describe("SponsorLeaderDrawer", () => {
     expect(screen.getAllByText("Overdue").length).toBeGreaterThan(0);
     expect(screen.getByText("Required activities")).toBeInTheDocument();
     expect(screen.getByText("Overdue required")).toBeInTheDocument();
+    expect(screen.getByText("Coaching utilisation")).toBeInTheDocument();
     expect(screen.getByText("Completed required activities")).toBeInTheDocument();
     expect(screen.getAllByText("9 / 16").length).toBeGreaterThan(0);
     expect(screen.getByText("You are here")).toBeInTheDocument();
@@ -174,6 +175,8 @@ describe("SponsorLeaderDrawer", () => {
     expect(screen.getByText("Quizzes")).toBeInTheDocument();
     expect(screen.getByText("Reflections")).toBeInTheDocument();
     expect(screen.queryByText("Daily Prompts")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("CP1: 63%")).toBeInTheDocument();
+    expect(screen.getByLabelText("CP2: 56%")).toBeInTheDocument();
     expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
   });
 });

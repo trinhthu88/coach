@@ -307,7 +307,6 @@ type SponsorJourneyCheckpoint = {
 };
 
 type SponsorTimelineCheckpoint = SponsorJourneyCheckpoint & {
-  labels: string[];
 };
 
 function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, options?: Record<string, unknown>) => string }) {
@@ -342,11 +341,9 @@ function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, o
                         <span className="text-[9px] font-bold uppercase tracking-[.15em]" style={{ color }}>{t(`cohortDetail.journey.states.${checkpoint.state}`)}</span>
                         <span className="shrink-0 text-right text-[10px] text-[#9a938a]">{formatDate(checkpoint.due_on)}</span>
                       </div>
-                      {checkpoint.labels.length ? (
-                        <div className="mt-3 min-h-[34px] break-words text-[12px] font-semibold leading-[1.35] text-[#062f3e]">
-                          {checkpoint.labels.join(" · ")}
-                        </div>
-                      ) : <div className="min-h-[34px]" aria-hidden="true" />}
+                      <div className="mt-3 min-h-[34px] break-words text-[12px] font-semibold leading-[1.35] text-[#062f3e]">
+                        {t("leaderDrawer.reference.checkpoint", { number: checkpoint.checkpoint_number })}
+                      </div>
                       <div className="mt-3 flex flex-wrap content-start gap-1.5">
                         {(checkpoint.module_scope ?? []).map((module) => (
                           <span key={module} className="max-w-full rounded-full border border-[#d8e9ed] bg-white px-2 py-1 text-[9px] font-semibold leading-[1.25] text-[#2c8fa8]">
@@ -392,24 +389,18 @@ function groupJourneyCheckpoints(checkpoints: SponsorJourneyCheckpoint[]): Spons
   const grouped = new Map<string, SponsorTimelineCheckpoint>();
   for (const checkpoint of checkpoints) {
     const existing = grouped.get(checkpoint.due_on);
-    const labels = checkpoint.label?.trim()
-      ? [checkpoint.label.trim()]
-      : [];
     if (!existing) {
       grouped.set(checkpoint.due_on, {
         ...checkpoint,
-        labels,
         module_scope: uniqueStrings(checkpoint.module_scope ?? []),
       });
       continue;
     }
 
-    const mergedLabels = uniqueStrings([...existing.labels, ...labels]);
     const mergedScope = uniqueStrings([...(existing.module_scope ?? []), ...(checkpoint.module_scope ?? [])]);
     const representative = checkpoint.checkpoint_number >= existing.checkpoint_number ? checkpoint : existing;
     grouped.set(checkpoint.due_on, {
       ...representative,
-      labels: mergedLabels,
       module_scope: mergedScope,
     });
   }

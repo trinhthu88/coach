@@ -182,7 +182,8 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getAllByText("0/48").length).toBeGreaterThan(0);
     expect(screen.getByText("0 of 12 leaders meet the requirement · 48 due so far")).toBeInTheDocument();
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
-    expect(screen.getByText("Coaching checkpoint")).toBeInTheDocument();
+    expect(screen.getByText("Checkpoint 2")).toBeInTheDocument();
+    expect(screen.queryByText("Coaching checkpoint")).not.toBeInTheDocument();
     expect(screen.getAllByText("Training / Learning").length).toBeGreaterThan(1);
     expect(screen.getAllByText("Mentoring").length).toBeGreaterThan(1);
     expect(screen.getAllByText("Peer coaching").length).toBeGreaterThan(1);
