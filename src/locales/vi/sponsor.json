@@ -392,7 +392,7 @@
     },
     "rosterNote": "Mỗi ô module hiển thị số đơn vị đã hoàn thành / yêu cầu của lãnh đạo đó. Thẻ nhóm và hành trình chương trình dùng cùng định mức module và số liệu tổng hợp an toàn."
   },
-  "leaderDrawer": {
+    "leaderDrawer": {
     "srLabelSuffix": "chi tiết lãnh đạo",
     "backToRoster": "Về danh sách",
     "loadError": "Không thể tải chi tiết lãnh đạo",
@@ -418,6 +418,13 @@
     "canSeeTitle": "Đây là tất cả những gì bạn có thể thấy",
     "withheldIntro": "Những mục sau tồn tại trong Clariva nhưng bị ẩn khỏi hồ sơ này:",
     "sameViewNote": "Mỗi lãnh đạo đều thấy chính góc nhìn về bản thân mà bạn đang thấy.",
+    "progress": {
+      "completion": "Hoàn thành chương trình",
+      "completedRequired": "Hoạt động bắt buộc đã hoàn thành",
+      "adherence": "Đúng tiến độ đến hạn",
+      "coverage": "Phạm vi lịch",
+      "goal": "Tiến độ mục tiêu"
+    },
     "reference": {
       "flagTeam": "Báo cho đội ngũ Clariva",
       "weeklyWithheld": "Hoạt động theo module từng tuần không nằm trong bản tóm tắt an toàn dành cho nhà tài trợ.",
@@ -430,10 +437,13 @@
       "weekOf": "Tuần {{current}} trên {{total}}",
       "overallCompletion": "Hoàn thành tổng thể",
       "activitiesCompleted": "Hoạt động đã hoàn thành",
+      "requiredActivities": "Hoạt động bắt buộc",
       "coachingSessions": "Session coaching",
       "goalProgress": "Tiến độ mục tiêu",
       "satisfaction": "Mức hài lòng",
       "overdue": "Quá hạn",
+      "overdueRequired": "Hoạt động bắt buộc quá hạn",
+      "extraActivityNote": "Các hoạt động vượt ngoài yêu cầu cấu hình không được tính vào tổng hoàn thành, đến hạn hoặc quá hạn.",
       "journeyTitle": "Hành trình chương trình",
       "journeySubtitle": "Cấu trúc chương trình lấy từ cấu hình Admin và đăng ký của lãnh đạo đã chọn.",
       "completed": "Đã hoàn thành",

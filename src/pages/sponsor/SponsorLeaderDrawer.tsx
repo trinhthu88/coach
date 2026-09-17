@@ -178,29 +178,49 @@ function JourneySection({
       {journey.length === 0 ? (
         <p className="mt-4 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-4 text-[11px] leading-relaxed text-[#6a6560]">{t("leaderDrawer.reference.journeyWithheld")}</p>
       ) : (
-        <ol className="mt-4 space-y-2.5">
-          {journey.map((point) => (
-            <li
-              key={`${point.checkpoint_number}-${point.due_on}`}
-              className={`relative rounded-xl border px-4 py-3 ${point.state === "current" ? "border-[#3db4d0] bg-[#e4f3f7]" : "border-[#eee8de] bg-[#f6f3ee]"}`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  {point.state === "current" && <span className="h-2 w-2 shrink-0 rounded-full bg-[#2c8fa8]" aria-label={t("leaderDrawer.reference.currentPosition")} />}
-                  <span className="truncate text-[11.5px] font-semibold text-[#062f3e]">{point.label || t("leaderDrawer.reference.checkpoint", { number: point.checkpoint_number })}</span>
-                </div>
-                <span className="shrink-0 text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: journeyStateColor(point.state) }}>
-                  {t(`leaderDrawer.journeyStates.${point.state}`)}
-                </span>
-              </div>
-              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#6a6560]">
-                <span>{formatDate(point.due_on)}</span>
-                <span>{point.completed_units}/{point.required_units}</span>
-                {point.state === "current" && <span className="font-semibold text-[#2c8fa8]">{t("leaderDrawer.reference.youAreHere")}</span>}
-              </div>
-            </li>
-          ))}
-        </ol>
+        <div className="mt-5 overflow-x-auto pb-2 [scrollbar-color:#cfc7bb_transparent]">
+          <div className="relative min-w-[760px]">
+            <ol className="relative grid auto-cols-[minmax(210px,1fr)] grid-flow-col items-stretch">
+              {journey.map((point) => {
+                const color = journeyStateColor(point.state);
+                return (
+                  <li key={`${point.checkpoint_number}-${point.due_on}`} className="relative flex min-w-0 flex-col px-1.5">
+                    <div className={`relative z-10 flex min-h-[260px] flex-1 flex-col rounded-xl border p-4 transition-colors ${point.state === "current" ? "border-[#8bd3e3] bg-[#f1fbfd] shadow-[0_8px_24px_rgba(44,143,168,.1)]" : "border-[#eee8de] bg-[#f6f3ee]"}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[9px] font-bold uppercase tracking-[.15em]" style={{ color }}>
+                          {t(`cohortDetail.journey.states.${point.state}`)}
+                        </span>
+                        <span className="shrink-0 text-right text-[10px] text-[#9a938a]">{formatDate(point.due_on)}</span>
+                      </div>
+                      <div className="mt-3 min-h-[34px] break-words text-[12px] font-semibold leading-[1.35] text-[#062f3e]">
+                        {t("leaderDrawer.reference.checkpoint", { number: point.checkpoint_number })}
+                      </div>
+                      <div className="mt-3 flex flex-wrap content-start gap-1.5">
+                        {point.module_scope.map((module) => (
+                          <span key={module} className="max-w-full rounded-full border border-[#d8e9ed] bg-white px-2 py-1 text-[9px] font-semibold leading-[1.25] text-[#2c8fa8]">
+                            {moduleScopeLabel(module, t)}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="mt-auto border-t border-[#e7e0d6] pt-3">
+                        <div className="text-[15px] font-semibold leading-none text-[#062f3e]">{point.completed_units} / {point.required_units}</div>
+                        <div className="mt-1 text-[9.5px] text-[#6a6560]">{t("cohortDetail.journey.cumulative")}</div>
+                        {point.state === "current" && <div className="mt-1 text-[9.5px] font-semibold text-[#2c8fa8]">{t("leaderDrawer.reference.youAreHere")}</div>}
+                      </div>
+                    </div>
+                    <div className="relative mt-4 h-[36px] shrink-0">
+                      <span className="absolute left-0 right-1/2 top-1/2 h-px bg-[#dcd5ca]" aria-hidden="true" />
+                      <span className="absolute left-1/2 right-0 top-1/2 h-px bg-[#dcd5ca]" aria-hidden="true" />
+                      <span className="absolute left-1/2 top-1/2 z-20 grid h-4 w-4 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-[3px] bg-white" style={{ borderColor: color }} aria-hidden="true">
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </div>
       )}
     </section>
   );
@@ -229,8 +249,13 @@ function ProgressParticipation({
     <section className="rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
       <span className="sr-only">{t("leaderDrawer.participation.title")}</span>
       <h2 className="font-serif text-[17px] font-normal">{t("leaderDrawer.reference.progressTitle")}</h2>
-      <div className="mt-[18px] flex flex-col gap-3.5"><ProgressRow label={t("leaderDrawer.progress.completion")} value={percent(completion)} pct={completion} color={NAVY} /><ProgressRow label={t("leaderDrawer.progress.adherence")} value={leader.due_adherence_pct == null ? "—" : percent(adherence)} pct={adherence} color={TEAL} empty={leader.due_adherence_pct == null} /></div>
-      <div className="mt-[18px] flex gap-7 border-t border-[#eee8de] pt-4"><SmallMetric value={`${leader.due_units} / ${leader.required_units}`} label={t("leaderDrawer.reference.activitiesDue")} /><SmallMetric value={String(leader.overdue_units)} label={t("leaderDrawer.reference.overdue")} color={RED} /></div>
+      <div className="mt-[18px] flex flex-col gap-3.5"><ProgressRow label={t("leaderDrawer.progress.completedRequired")} value={`${leader.completed_units} / ${leader.required_units}`} pct={completion} color={NAVY} /><ProgressRow label={t("leaderDrawer.progress.adherence")} value={leader.due_adherence_pct == null ? "—" : percent(adherence)} pct={adherence} color={TEAL} empty={leader.due_adherence_pct == null} /></div>
+      <div className="mt-[18px] flex flex-wrap gap-7 border-t border-[#eee8de] pt-4">
+        <SmallMetric value={String(leader.required_units)} label={t("leaderDrawer.reference.requiredActivities")} />
+        <SmallMetric value={String(leader.due_units)} label={t("leaderDrawer.reference.activitiesDue")} />
+        <SmallMetric value={String(leader.overdue_units)} label={t("leaderDrawer.reference.overdueRequired")} color={RED} />
+      </div>
+      <p className="mt-3 text-[10.5px] leading-relaxed text-[#9a938a]">{t("leaderDrawer.reference.extraActivityNote")}</p>
       <div className="mt-[18px] flex flex-wrap gap-7 border-t border-[#eee8de] pt-4">
         <SmallMetric
           value={coachingUtilisation?.utilisation_pct == null ? "—" : percent(coachingUtilisation.utilisation_pct)}
@@ -397,6 +422,17 @@ function moduleCount(completed: number | null | undefined, required: number | nu
 
 function modulePct(completed: number | null | undefined, required: number | null | undefined) {
   return completed == null || required == null || required === 0 ? null : clamp((completed / required) * 100);
+}
+
+function moduleScopeLabel(module: string, t: (key: string, options?: Record<string, unknown>) => string) {
+  const labels: Record<string, string> = {
+    coaching: t("cohortDetail.modules.coaching"),
+    training: t("cohortDetail.modules.training"),
+    peer_coaching: t("cohortDetail.modules.peer"),
+    mentoring: t("cohortDetail.modules.mentoring"),
+    triads: t("cohortDetail.modules.triads"),
+  };
+  return labels[module] ?? module;
 }
 
 function clamp(value: number) {

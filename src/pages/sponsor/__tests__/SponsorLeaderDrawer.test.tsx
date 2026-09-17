@@ -59,17 +59,49 @@ describe("SponsorLeaderDrawer", () => {
   it("renders the enrollment-scoped journey, weekly trend, and learning breakdown", () => {
     render(
       <SponsorLeaderProfile
-        leader={leader}
+        leader={{
+          ...leader,
+          required_units: 16,
+          completed_units: 9,
+          due_units: 16,
+          overdue_units: 7,
+          coaching_required_units: 8,
+          coaching_completed_units: 5,
+          coaching_due_units: 8,
+          training_required_units: 4,
+          training_completed_units: 3,
+          training_due_units: 4,
+          peer_required_units: 2,
+          peer_completed_units: 1,
+          peer_due_units: 2,
+          mentoring_required_units: 1,
+          mentoring_completed_units: 0,
+          mentoring_due_units: 1,
+          triad_required_units: 1,
+          triad_completed_units: 0,
+          triad_due_units: 1,
+        }}
         onBack={() => undefined}
-        journey={[{
-          checkpoint_number: 2,
-          due_on: "2026-05-01",
-          label: "Practice",
-          module_scope: ["training"],
-          required_units: 2,
-          completed_units: 1,
-          state: "current",
-        }]}
+        journey={[
+          {
+            checkpoint_number: 1,
+            due_on: "2026-04-01",
+            label: "Coaching checkpoint",
+            module_scope: ["coaching"],
+            required_units: 8,
+            completed_units: 5,
+            state: "overdue",
+          },
+          {
+            checkpoint_number: 2,
+            due_on: "2026-05-01",
+            label: "Practice checkpoint",
+            module_scope: ["training", "peer_coaching"],
+            required_units: 16,
+            completed_units: 9,
+            state: "current",
+          },
+        ]}
         experience={{
           weeklyParticipation: [{
             week_number: 2,
@@ -126,6 +158,15 @@ describe("SponsorLeaderDrawer", () => {
       />
     );
 
+    expect(screen.getByText("Checkpoint 1")).toBeInTheDocument();
+    expect(screen.getByText("Checkpoint 2")).toBeInTheDocument();
+    expect(screen.queryByText("Coaching checkpoint")).not.toBeInTheDocument();
+    expect(screen.queryByText("Practice checkpoint")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Overdue").length).toBeGreaterThan(0);
+    expect(screen.getByText("Required activities")).toBeInTheDocument();
+    expect(screen.getByText("Overdue required")).toBeInTheDocument();
+    expect(screen.getByText("Completed required activities")).toBeInTheDocument();
+    expect(screen.getAllByText("9 / 16").length).toBeGreaterThan(0);
     expect(screen.getByText("You are here")).toBeInTheDocument();
     expect(screen.getByText("Training & learning")).toBeInTheDocument();
     expect(screen.getByText("Skill Cards")).toBeInTheDocument();

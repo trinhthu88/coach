@@ -235,7 +235,7 @@ export function useSponsorLeaderData(enrollmentId: string, cohortId?: string): S
         supabase.rpc("sponsor_canonical_leader_journey", { p_enrollment_id: enrollmentId }),
         supabase.rpc("sponsor_canonical_leader_experience", { p_enrollment_id: enrollmentId }),
       ]);
-      const rpcErrors = [progress.error, journey.error, experience.error];
+      const rpcErrors = [progress.error, journey.error];
       const needsSessionRefresh = allowSessionRefresh && rpcErrors.some((rpcError) =>
         rpcError?.code === "42501" || rpcError?.code === "401" || rpcError?.status === 401
       );
@@ -253,8 +253,14 @@ export function useSponsorLeaderData(enrollmentId: string, cohortId?: string): S
       const leader = leaderRow ? leaderRow as SponsorLeaderProfileData : null;
       const error = progress.error?.message
         ?? journey.error?.message
-        ?? experience.error?.message
         ?? null;
+      if (experience.error && !error) {
+        console.warn("Sponsor leader experience is unavailable; rendering canonical progress without optional detail", {
+          cohortId,
+          enrollmentId,
+          experienceError: experience.error,
+        });
+      }
       if (error) {
         console.error("Sponsor leader detail failed to load", {
           cohortId,

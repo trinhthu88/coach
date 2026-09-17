@@ -442,6 +442,7 @@
     },
     "progress": {
       "completion": "Programme completion",
+      "completedRequired": "Completed required activities",
       "adherence": "Due-to-date adherence",
       "coverage": "Schedule coverage",
       "goal": "Goal progress"
@@ -507,10 +508,13 @@
       "weekOf": "Week {{current}} of {{total}}",
       "overallCompletion": "Overall completion",
       "activitiesCompleted": "Activities completed",
+      "requiredActivities": "Required activities",
       "coachingSessions": "Coaching sessions",
       "goalProgress": "Goal progress",
       "satisfaction": "Satisfaction",
       "overdue": "Overdue",
+      "overdueRequired": "Overdue required",
+      "extraActivityNote": "Extra activities beyond the configured requirement are excluded from completion, due, and overdue totals.",
       "journeyTitle": "Programme journey",
       "journeySubtitle": "Programme structure comes from Admin configuration and the selected leader's enrollment.",
       "completed": "Completed",

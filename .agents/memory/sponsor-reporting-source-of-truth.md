@@ -3,11 +3,11 @@ name: Sponsor reporting source of truth
 description: Canonical Admin-to-Sponsor rules for programme requirements, training schedules, and historical completion.
 ---
 
-Sponsor denominators and entitlements must come from the current enabled Admin `programme_modules` configuration, specifically each module's `required_units`. Completion numerators and completed-session totals must come from historical activity/progress for the enrolled leaders without being capped; cap only percentages and remaining booked capacity against the configured requirement. Training-linked modules must use the selected `training_week_ids`, with exactly one selected week per required unit.
+Sponsor denominators and entitlements must come from the current enabled Admin `programme_modules` configuration, specifically each module's `required_units`. Preserve raw activity counts only as internal audit evidence; sponsor-facing completed-required units must be capped per module before aggregate completion, adherence, overdue, or journey totals are calculated. Training-linked modules must use the selected `training_week_ids`, with exactly one selected week per required unit.
 
-**Why:** Enrollment snapshots preserve historical schedule timing, but using them for current sponsor denominators lets stale configuration produce contradictory Admin and Sponsor totals. A separate legacy training-week count also caused the Admin “4 weeks” display to disagree with six actual content weeks and six required units.
+**Why:** Enrollment snapshots preserve historical schedule timing, but using them for current sponsor denominators lets stale configuration produce contradictory Admin and Sponsor totals. Raw extras in one module can otherwise erase overdue required units from another module and render impossible values such as 4/2.
 
-**How to apply:** Keep snapshot data for due/expected timing, but join sponsor cohort, roster, and organization rollups to current enabled module configuration for requirements. Remove or ignore legacy standalone training-week fields; validate selected training content against the configured units.
+**How to apply:** Keep snapshot data for due/expected timing, but join sponsor cohort, roster, and organization rollups to current enabled module configuration for requirements. Cap each module's completed count before summing, while retaining raw counts only for diagnostics; remove or ignore legacy standalone training-week fields.
 
 Sponsor cohort journeys should be returned as server-generated checkpoints from the current Admin schedule, with activity filtered to modules scheduled by each checkpoint. Client-side date math or distributing aggregate completion across weeks is not a valid substitute.
 
