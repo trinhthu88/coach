@@ -1,6 +1,6 @@
 begin;
 
-select plan(41);
+select plan(45);
 
 select ok(
   pg_get_functiondef(
@@ -14,7 +14,7 @@ select ok(
   ) ~ 'public\.cohorts'
     AND pg_get_functiondef(
       'public.sponsor_canonical_module_schedule(uuid)'::regprocedure
-    ) !~ 'e\.start_date|e\.end_date|enrollment_module_snapshots|enrollment_module_milestones'
+    ) !~ 'e\.start_date|e\.end_date|tw\.unlock_date|enrollment_module_snapshots|enrollment_module_milestones'
     AND (
       SELECT bool_and(
         pg_get_functiondef(rpc) !~ 'enrollment_module_snapshots|enrollment_module_milestones'
@@ -225,6 +225,27 @@ select ok(
   'canonical journey labels are derived from configured module or training scope'
 );
 
+-- Programme-level training-week unlock dates do not move Sponsor dates. A
+-- Cohort override remains authoritative for the Cohort-specific exception.
+reset role;
+delete from public.cohort_week_overrides
+where cohort_id = '11111111-1111-4111-8111-111111111119'::uuid
+  and training_week_id = '67676767-6767-4676-8676-000000000001'::uuid;
+update public.training_weeks
+set unlock_date = '2027-01-01'::date
+where id = '67676767-6767-4676-8676-000000000001'::uuid;
+set local role authenticated;
+select is(
+  (select due_on
+   from public.sponsor_canonical_module_schedule(
+     '14141414-1414-4141-8141-000000000001'::uuid
+   )
+   where module = 'training'::public.programme_module_type
+     and training_week_id = '67676767-6767-4676-8676-000000000001'::uuid),
+  '2026-03-01'::date,
+  'training-linked Sponsor dates use the Cohort calendar, not the programme week unlock date'
+);
+
 -- Enrollment dates are intentionally different from Cohort C dates here.
 -- Sponsor schedule checkpoints must still follow the Cohort calendar.
 reset role;
@@ -252,6 +273,46 @@ select is(
      and due_on IS NOT NULL),
   '2026-07-05'::date,
   'canonical schedule uses Cohort end date when enrollment dates differ'
+);
+
+-- A late enrollment is evaluated against the already-running Cohort timeline.
+-- Leader C7 has no coaching activity, so the first Cohort checkpoint is behind
+-- even though its enrollment starts after that checkpoint.
+reset role;
+update public.programme_enrollments
+set start_date = '2026-04-15'::date,
+    end_date = '2026-06-15'::date
+where id = '14141414-1414-4141-8141-000000000007'::uuid;
+set local role authenticated;
+select is(
+  (select due_units
+   from public.get_sponsor_programme_progress(
+     '14141414-1414-4141-8141-000000000007'::uuid,
+     '2026-04-02'::date)
+   where module = 'coaching'::public.programme_module_type),
+  1,
+  'late enrollment is due against the existing Cohort timeline'
+);
+select is(
+  (select pace_status
+   from public.get_sponsor_programme_progress(
+     '14141414-1414-4141-8141-000000000007'::uuid,
+     '2026-04-02'::date)
+   where module = 'coaching'::public.programme_module_type),
+  'behind',
+  'late enrollment can be behind before its enrollment start date'
+);
+select is(
+  (select min((point->>'due_on')::date)
+   from jsonb_array_elements(
+     public.sponsor_canonical_programme_journey(
+       '11111111-1111-4111-8111-111111111119'::uuid,
+       '2026-04-02'::date
+     )
+   ) point
+   where point->'module_scope' @> '["coaching"]'::jsonb),
+  '2026-04-01'::date,
+  'Sponsor journey checkpoints remain anchored to the Cohort start date'
 );
 
 -- An empty cohort is suppressed: population is not exposed as a detail

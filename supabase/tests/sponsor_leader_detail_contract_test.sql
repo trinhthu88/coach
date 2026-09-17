@@ -70,7 +70,7 @@ select ok(
 select ok(
   pg_get_functiondef(
     'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
-  ) !~ 'pe\.start_date|enrollment_module_snapshots|enrollment_module_milestones',
+  ) !~ 'pe\.start_date|tw\.unlock_date|enrollment_module_snapshots|enrollment_module_milestones',
   'leader experience learning weeks do not use enrollment dates or schedule snapshots'
 );
 select ok(
