@@ -49,7 +49,7 @@ export default function CoacheeJourney() {
   const goalsApi = useJourneyGoals(user?.id, { enrollmentId: programmeApi.programme?.enrollmentId });
   const ratingsApi = useJourneyRatings(user?.id, programmeApi.programme?.enrollmentId);
   const sessionsApi = useJourneySessions(user?.id, { includePeer: false, enrollmentId: programmeApi.programme?.enrollmentId });
-  const reflectionsApi = useJourneyReflections(user?.id);
+  const reflectionsApi = useJourneyReflections(user?.id, programmeApi.programme?.enrollmentId);
 
   const { goals, milestones, toggleMilestone } = goalsApi;
   const { ratings, sessionRatings, saveRating } = ratingsApi;
