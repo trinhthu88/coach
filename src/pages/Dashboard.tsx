@@ -10,6 +10,8 @@ import { MentoringGiveCard } from "./dashboard/cards/MentoringGiveCard";
 import { MentoringReceiveCard } from "./dashboard/cards/MentoringReceiveCard";
 import { PeerCoachingCard } from "./dashboard/cards/PeerCoachingCard";
 import { TriadsCard } from "./dashboard/cards/TriadsCard";
+import { MyGoalCard } from "./dashboard/cards/MyGoalCard";
+import { MyFeedbackCard } from "./dashboard/cards/MyFeedbackCard";
 
 export default function Dashboard() {
   const { t } = useTranslation("dashboard");
@@ -61,11 +63,13 @@ export default function Dashboard() {
       <ProgrammeProgressCard />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <MyGoalCard />
         <MyCoachCard />
         <MentoringGiveCard />
         <MentoringReceiveCard />
         <PeerCoachingCard />
         <TriadsCard />
+        <MyFeedbackCard />
       </section>
     </div>
   );

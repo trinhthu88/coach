@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Goal, Milestone } from "@/hooks/journey/types";
 import type { FlatAction } from "@/hooks/journey/useFlatActionItems";
 import type { GoalRatingRow } from "./GoalWheel";
+import { goalProgressPct } from "@/hooks/journey/useJourneyDerived";
 import { ACCENTS, initials } from "./journeyDisplay";
 import { RatingSlider } from "./RatingSlider";
 import { ActionRow } from "./ActionRow";
@@ -17,7 +18,6 @@ export function GoalAccordion({
   goal,
   milestones,
   actions,
-  pct,
   accent,
   onToggle,
   onToggleAction,
@@ -34,7 +34,6 @@ export function GoalAccordion({
   goal: Goal;
   milestones: Milestone[];
   actions: FlatAction[];
-  pct: number;
   accent: (typeof ACCENTS)[number];
   onToggle: (m: Milestone) => void;
   onToggleAction: (a: FlatAction) => void;
@@ -55,7 +54,8 @@ export function GoalAccordion({
   const [newMs, setNewMs] = useState("");
   const [newDate, setNewDate] = useState("");
 
-  const goalDone = pct === 100 && milestones.length > 0;
+  const pct = goalProgressPct(rating?.start ?? null, rating?.current ?? null, rating?.target ?? null);
+  const goalDone = pct === 100;
 
   const addMs = async () => {
     if (!newMs.trim()) return;
@@ -98,9 +98,9 @@ export function GoalAccordion({
         ) : (
           <span className="min-w-0 flex-1 truncate text-sm font-semibold">{goal.title}</span>
         )}
-        <span className="shrink-0 text-xs text-muted-foreground">{pct}%</span>
+        <span className="shrink-0 text-xs text-muted-foreground">{pct == null ? "—" : `${pct}%`}</span>
         <div className="hidden h-1 w-14 overflow-hidden rounded-full bg-background sm:block">
-          <div className={cn("h-full", accent.fill)} style={{ width: `${pct}%` }} />
+          <div className={cn("h-full", accent.fill)} style={{ width: `${pct ?? 0}%` }} />
         </div>
         {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
       </button>

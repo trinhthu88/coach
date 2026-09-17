@@ -49,13 +49,17 @@ async function fetchLearnerFeedback(userId: string): Promise<LearnerFeedbackItem
   const [{ data: mentoring, error: mentoringError }, { data: peer, error: peerError }] = await Promise.all([
     supabase
       .from("mentoring_feedback")
-      .select("id, mentor_id, overall_notes, submitted_at, " + COMPETENCY_KEYS.join(", "))
+      .select(
+        "id, mentor_id, overall_notes, submitted_at, ethical_practice, coaching_mindset, maintains_agreements, trust_safety, maintains_presence, listens_actively, evokes_awareness, facilitates_growth"
+      )
       .eq("mentee_id", userId)
       .order("submitted_at", { ascending: false })
       .limit(10),
     supabase
       .from("peer_session_competency_feedback")
-      .select("id, peer_coachee_id, feedback_note, created_at, " + COMPETENCY_KEYS.join(", "))
+      .select(
+        "id, peer_coachee_id, feedback_note, created_at, ethical_practice, coaching_mindset, maintains_agreements, trust_safety, maintains_presence, listens_actively, evokes_awareness, facilitates_growth"
+      )
       .eq("peer_coach_id", userId)
       .order("created_at", { ascending: false })
       .limit(10),

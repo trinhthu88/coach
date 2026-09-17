@@ -72,11 +72,12 @@ export default function CoacheeJourney() {
   );
 
   const { overallPct } = useMilestoneProgress(milestones);
-  const goalProgress = (goalId: string) => {
-    const ms = milestones.filter((m) => m.goal_id === goalId);
-    if (!ms.length) return 0;
-    return Math.round((ms.filter((m) => m.is_done).length / ms.length) * 100);
-  };
+  const { ratingRows, avgGoalProgress } = useGoalRatingRows(goals, ratings);
+  // Canonical Start→Target rating progress — the same formula and the same
+  // per-goal values Sponsor's goal_progress_pct aggregates. Never the
+  // milestone-completion ratio, which is a different fact (see milestones
+  // list inside each goal's expanded card).
+  const goalProgress = (goalId: string) => ratingRows.find((r) => r.goalId === goalId)?.progress ?? null;
 
   const { allActionItems, grouped, aiTotal, aiDone, aiOverdue } = useFlatActionItems(sessions);
 
@@ -87,8 +88,6 @@ export default function CoacheeJourney() {
   const past = sessions.filter((s) => new Date(s.start_time) < now || ["cancelled", "completed"].includes(s.status));
 
   const coachSummaries = useCoachSummaries(sessions, coachNames, now);
-
-  const { ratingRows, avgGoalProgress } = useGoalRatingRows(goals, ratings);
   const programmeWeeks = useProgrammeWeeks(programme, now);
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
   const { isGoalLocked } = useGoalLock(sessions);
@@ -139,7 +138,7 @@ export default function CoacheeJourney() {
           {avgGoalProgress == null ? <span aria-label="Unrated">—</span> : <ProgressRing value={avgGoalProgress} tone="warning" />}
           <p className="text-sm font-semibold">{t("coacheeJourney.progressRings.goalsOnTrack")}</p>
           <p className="text-xs text-muted-foreground">
-            {t("coacheeJourney.progressRings.goalsOnTrackSub", { count: goals.filter((g) => goalProgress(g.id) >= 50).length, total: goals.length })}
+            {t("coacheeJourney.progressRings.goalsOnTrackSub", { count: goals.filter((g) => (goalProgress(g.id) ?? 0) >= 50).length, total: goals.length })}
           </p>
         </Card>
          <Card className="surface-card hover-lift flex flex-col items-center gap-2 p-6">
@@ -238,7 +237,6 @@ export default function CoacheeJourney() {
                   goal={g}
                   milestones={milestones.filter((m) => m.goal_id === g.id)}
                   actions={allActionItems}
-                  pct={goalProgress(g.id)}
                   accent={ACCENTS[i % ACCENTS.length]}
                   onToggle={toggleMilestone}
                   onToggleAction={toggleAction}
@@ -284,9 +282,9 @@ export default function CoacheeJourney() {
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                         {g.title}
                       </p>
-                      <p className="mt-1 text-2xl font-semibold">{pct}%</p>
+                      <p className="mt-1 text-2xl font-semibold">{pct == null ? "—" : `${pct}%`}</p>
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className={cn("h-full", ac.fill)} style={{ width: `${pct}%` }} />
+                        <div className={cn("h-full", ac.fill)} style={{ width: `${pct ?? 0}%` }} />
                       </div>
                     </Card>
                   );
@@ -299,7 +297,6 @@ export default function CoacheeJourney() {
                     goal={g}
                     milestones={milestones.filter((m) => m.goal_id === g.id)}
                     actions={allActionItems}
-                    pct={goalProgress(g.id)}
                     accent={ACCENTS[i % ACCENTS.length]}
                     onToggle={toggleMilestone}
                     onToggleAction={toggleAction}

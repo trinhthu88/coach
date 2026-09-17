@@ -445,6 +445,30 @@
     "upcomingHint": "Across all session types"
   },
   "cards": {
+    "myGoal": {
+      "title": "My goal",
+      "enrollmentRequired": "Select an enrollment to see your goal.",
+      "loadError": "Your goal could not be loaded.",
+      "empty": "No goals have been created for this programme yet.",
+      "targetDate": "Target {{date}}",
+      "progressLabel": "progress",
+      "additionalGoals_one": "+{{count}} more active goal",
+      "additionalGoals_other": "+{{count}} more active goals",
+      "actionsLoadError": "Actions could not be loaded.",
+      "noActions": "No open actions.",
+      "actionsSummary": "{{completed}} completed · {{open}} open",
+      "overdueSuffix": " · {{count}} overdue",
+      "nextUpLabel": "Next up:",
+      "openJourney": "Open my journey"
+    },
+    "myFeedback": {
+      "title": "Feedback & development",
+      "loadError": "Feedback could not be loaded.",
+      "empty": "No learner-visible feedback yet.",
+      "someone": "Someone",
+      "fromMentor": "Mentor feedback from {{name}}",
+      "fromPeer": "Peer feedback from {{name}}"
+    },
     "coachingGive": {
       "title": "My clients",
       "pendingBadge": "{{count}} pending",

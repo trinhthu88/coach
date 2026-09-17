@@ -1,0 +1,52 @@
+import { useTranslation } from "react-i18next";
+import { format } from "date-fns";
+import { MessageSquareHeart } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
+import { DashboardCardShell, CardEmptyHint } from "./shared";
+
+/**
+ * Learner-visible feedback only — mentoring_feedback (RLS: mentee can read)
+ * and peer_session_competency_feedback where this learner was rated as the
+ * peer coach (RLS: both participants can read). coach_session_feedback is
+ * never queried here: its RLS grants only the authoring coach and admins,
+ * so there is no learner-safe way to surface it.
+ */
+export function MyFeedbackCard() {
+  const { t } = useTranslation("dashboard");
+  const { user } = useAuth();
+  const { feedback, loading, error } = useLearnerFeedback(user?.id);
+
+  return (
+    <DashboardCardShell icon={MessageSquareHeart} title={t("cards.myFeedback.title")} loading={loading}>
+      {error ? (
+        <CardEmptyHint text={t("cards.myFeedback.loadError")} />
+      ) : feedback.length === 0 ? (
+        <CardEmptyHint text={t("cards.myFeedback.empty")} />
+      ) : (
+        <ul className="space-y-2.5">
+          {feedback.slice(0, 3).map((item) => (
+            <li key={`${item.kind}-${item.id}`} className="rounded-lg border border-border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold">
+                  {item.kind === "mentoring"
+                    ? t("cards.myFeedback.fromMentor", { name: item.fromName ?? t("cards.myFeedback.someone") })
+                    : t("cards.myFeedback.fromPeer", { name: item.fromName ?? t("cards.myFeedback.someone") })}
+                </p>
+                <span className="shrink-0 text-[10px] text-muted-foreground">
+                  {format(new Date(item.submittedAt), "MMM d")}
+                </span>
+              </div>
+              {item.kind === "mentoring" && item.overallNotes && (
+                <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{item.overallNotes}</p>
+              )}
+              {item.kind === "peer_competency" && item.note && (
+                <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{item.note}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </DashboardCardShell>
+  );
+}

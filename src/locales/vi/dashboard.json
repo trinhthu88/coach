@@ -435,6 +435,29 @@
     "upcomingHint": "Trên tất cả loại session"
   },
   "cards": {
+    "myGoal": {
+      "title": "Mục tiêu của tôi",
+      "enrollmentRequired": "Chọn một đợt tham gia để xem mục tiêu của bạn.",
+      "loadError": "Không thể tải mục tiêu của bạn.",
+      "empty": "Chưa có mục tiêu nào được tạo cho chương trình này.",
+      "targetDate": "Hạn {{date}}",
+      "progressLabel": "tiến độ",
+      "additionalGoals_other": "+{{count}} mục tiêu đang hoạt động khác",
+      "actionsLoadError": "Không thể tải hành động.",
+      "noActions": "Không có hành động nào đang mở.",
+      "actionsSummary": "{{completed}} đã hoàn thành · {{open}} đang mở",
+      "overdueSuffix": " · {{count}} quá hạn",
+      "nextUpLabel": "Tiếp theo:",
+      "openJourney": "Mở hành trình của tôi"
+    },
+    "myFeedback": {
+      "title": "Phản hồi & phát triển",
+      "loadError": "Không thể tải phản hồi.",
+      "empty": "Chưa có phản hồi nào hiển thị cho bạn.",
+      "someone": "Ai đó",
+      "fromMentor": "Phản hồi từ mentor {{name}}",
+      "fromPeer": "Phản hồi từ đồng cấp {{name}}"
+    },
     "coachingGive": {
       "title": "Coachee của tôi",
       "pendingBadge": "{{count}} chờ duyệt",

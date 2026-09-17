@@ -19,6 +19,8 @@ export interface GoalRatingRow {
   start: number | null;
   current: number | null;
   target: number | null;
+  /** Canonical Start→Target progress — see goalProgressPct in useJourneyDerived. */
+  progress: number | null;
 }
 
 export interface SessionRatingSeries {

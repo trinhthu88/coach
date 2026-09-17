@@ -86,11 +86,10 @@ export default function CoachMyJourney() {
   const { allActionItems, grouped, aiTotal, aiDone, aiOverdue } = useFlatActionItems(sessions);
 
   const { overallPct } = useMilestoneProgress(milestones);
-  const goalProgress = (goalId: string) => {
-    const ms = milestones.filter((m) => m.goal_id === goalId);
-    if (!ms.length) return 0;
-    return Math.round((ms.filter((m) => m.is_done).length / ms.length) * 100);
-  };
+  const { ratingRows, avgGoalProgress } = useGoalRatingRows(goals, ratings);
+  // Canonical Start→Target rating progress — same formula and per-goal
+  // values Sponsor's goal_progress_pct aggregates, not milestone ratio.
+  const goalProgress = (goalId: string) => ratingRows.find((r) => r.goalId === goalId)?.progress ?? null;
 
   const now = new Date();
   const upcoming = sessions
@@ -104,7 +103,6 @@ export default function CoachMyJourney() {
 
   const coachSummaries = useCoachSummaries(sessions, coachNames, now);
 
-  const { ratingRows, avgGoalProgress } = useGoalRatingRows(goals, ratings);
   const programmeWeeks = useProgrammeWeeks(programme, now);
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
   const { isGoalLocked } = useGoalLock(sessions);
@@ -225,7 +223,6 @@ export default function CoachMyJourney() {
                   goal={g}
                   milestones={milestones.filter((m) => m.goal_id === g.id)}
                   actions={allActionItems}
-                  pct={goalProgress(g.id)}
                   accent={ACCENTS[i % ACCENTS.length]}
                   onToggle={toggleMilestone}
                   onToggleAction={toggleAction}
@@ -264,19 +261,19 @@ export default function CoachMyJourney() {
                 {goals.map((g, i) => {
                   const ac = ACCENTS[i % ACCENTS.length];
                   const pct = goalProgress(g.id);
-                  const goalDone = pct === 100 && milestones.filter((m) => m.goal_id === g.id).length > 0;
+                  const goalDone = pct === 100;
                   return (
                     <Card key={g.id} className="p-4">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1">
                         {goalDone && <Check className="h-3 w-3 text-success" strokeWidth={3} />}
                         {g.title}
                       </p>
-                      <p className="mt-1 text-2xl font-semibold">{pct}%</p>
+                      <p className="mt-1 text-2xl font-semibold">{pct == null ? "—" : `${pct}%`}</p>
                       {g.target_date && (
                         <p className="text-[10px] text-muted-foreground">{t("goalAccordion.targetOn", { date: format(new Date(g.target_date), "MMM d, yyyy") })}</p>
                       )}
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className={cn("h-full", ac.fill)} style={{ width: `${pct}%` }} />
+                        <div className={cn("h-full", ac.fill)} style={{ width: `${pct ?? 0}%` }} />
                       </div>
                     </Card>
                   );
@@ -289,7 +286,6 @@ export default function CoachMyJourney() {
                     goal={g}
                     milestones={milestones.filter((m) => m.goal_id === g.id)}
                     actions={allActionItems}
-                    pct={goalProgress(g.id)}
                     accent={ACCENTS[i % ACCENTS.length]}
                     onToggle={toggleMilestone}
                     onToggleAction={toggleAction}
