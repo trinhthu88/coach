@@ -53,9 +53,10 @@ describe("MyFeedbackCard", () => {
           submittedAt: "2026-06-01T00:00:00Z",
           overallNotes: "Notes",
           competencies: [],
-          // @ts-expect-error -- simulating an accidental private field leak
+          // Simulating an accidental private-field leak from the caller —
+          // this mock is intentionally untyped, matching the loose shape a
+          // real bug would actually produce.
           quality_rating: 2,
-          // @ts-expect-error -- simulating an accidental private field leak
           flag_notes: "confidential coach note",
         },
       ],

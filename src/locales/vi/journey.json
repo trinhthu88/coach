@@ -120,6 +120,46 @@
     "peerCoachPrefix": "Coach đồng cấp",
     "coachPrefix": "Coach"
   },
+  "developmentSessions": {
+    "allSessionsHeader": "Tất cả session chương trình",
+    "empty": "Chưa có session khai vấn, khai vấn đồng cấp, cố vấn hoặc triad nào cho chương trình này.",
+    "timeTbd": "Chưa có giờ",
+    "withCounterpart": "Cùng với {{name}}",
+    "filters": {
+      "all": "Tất cả",
+      "coaching": "Khai vấn",
+      "peer_coaching": "Khai vấn đồng cấp",
+      "mentoring": "Cố vấn",
+      "triad": "Triad"
+    },
+    "types": {
+      "coaching": "Khai vấn",
+      "peer_coaching": "Khai vấn đồng cấp",
+      "mentoring": "Cố vấn",
+      "triad": "Triad"
+    },
+    "status": {
+      "completed": "Đã hoàn thành",
+      "confirmed": "Đã xác nhận",
+      "pending_coach_approval": "Chờ duyệt",
+      "cancelled": "Đã hủy",
+      "proposed": "Đã đề xuất"
+    }
+  },
+  "developmentJourney": {
+    "title": "Hành trình phát triển",
+    "empty": "Chưa có gì diễn ra trong chương trình này — mục tiêu, session và suy ngẫm sẽ xuất hiện ở đây khi chúng diễn ra.",
+    "reflectionTypes": {
+      "programme_reflection": "Suy ngẫm chương trình",
+      "coaching_reflection": "Suy ngẫm khai vấn",
+      "mentoring_reflection": "Suy ngẫm cố vấn",
+      "private_reflection": "Suy ngẫm riêng tư"
+    },
+    "feedbackTypes": {
+      "mentoring": "Phản hồi từ mentor",
+      "peer_competency": "Phản hồi từ đồng cấp"
+    }
+  },
   "journeyPage": {
     "eyebrow": "Tiến độ",
     "titleLead": "Hành trình",
@@ -129,7 +169,8 @@
       "goals": "Mục tiêu & cột mốc",
       "actions": "Hành động cần làm ({{count}})",
       "sessions": "Session ({{count}})",
-      "reflections": "Suy ngẫm ({{count}})"
+      "reflections": "Suy ngẫm ({{count}})",
+      "feedback": "Phản hồi ({{count}})"
     },
     "actionItemsHeader": "Hành động cần làm",
     "reflectionBanner": {

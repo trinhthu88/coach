@@ -3869,6 +3869,13 @@ export type Database = {
         }
         Returns: string
       }
+      backfill_coachee_reflection_enrollment_scope: {
+        Args: never
+        Returns: {
+          ambiguous_count: number
+          resolved_count: number
+        }[]
+      }
       backfill_enrollment_actions: { Args: never; Returns: number }
       backfill_enrollment_schedule_snapshots: {
         Args: { p_limit?: number }
@@ -3972,6 +3979,47 @@ export type Database = {
       can_message_session: {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
+      }
+      canonical_learning_breakdown: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      canonical_module_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_activity_units: number
+          completed_units: number
+          due_units: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          overdue_units: number
+          pace_status: string
+          required_units: number
+        }[]
+      }
+      canonical_training_learning_items: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          completed_on: string
+          completed_units: number
+          due_on: string
+          item_id: string
+          item_type: string
+          required_units: number
+          training_week_id: string
+        }[]
+      }
+      canonical_training_learning_summary: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          completed_due_units: number
+          completed_units: number
+          configured_required_units: number
+          due_units: number
+          overdue_units: number
+          required_units: number
+          requirement_mismatch: boolean
+        }[]
       }
       check_can_book_mentoring_session: {
         Args: { p_mentor_id: string }
@@ -4307,6 +4355,10 @@ export type Database = {
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
       learner_canonical_experience: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      learner_canonical_experience_legacy: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
@@ -4695,8 +4747,20 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
+      sponsor_canonical_leader_experience_base: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      sponsor_canonical_leader_experience_legacy: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
       sponsor_canonical_leader_journey: {
         Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      sponsor_canonical_leader_next_booking: {
+        Args: { p_enrollment_id: string }
         Returns: Json
       }
       sponsor_canonical_leader_progress: {

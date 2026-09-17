@@ -41,6 +41,11 @@ import { GoalDialog } from "./journey/GoalDialog";
 import { CoacheeProgrammeCard } from "./journey/CoacheeProgrammeCard";
 import { ProgrammeTimeline } from "./journey/ProgrammeTimeline";
 import { ProgrammeJourneyCheckpoints } from "./journey/ProgrammeJourneyCheckpoints";
+import { DevelopmentJourneyTimeline } from "./journey/DevelopmentJourneyTimeline";
+import { useEnrollmentDevelopmentJourney } from "@/hooks/journey/useEnrollmentDevelopmentJourney";
+import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
+import { useEnrollmentSessions } from "@/hooks/journey/useEnrollmentSessions";
+import { DevelopmentSessionsList } from "./journey/DevelopmentSessionsList";
 
 export default function CoacheeJourney() {
   const { t } = useTranslation("journey");
@@ -50,6 +55,9 @@ export default function CoacheeJourney() {
   const ratingsApi = useJourneyRatings(user?.id, programmeApi.programme?.enrollmentId);
   const sessionsApi = useJourneySessions(user?.id, { includePeer: false, enrollmentId: programmeApi.programme?.enrollmentId });
   const reflectionsApi = useJourneyReflections(user?.id, programmeApi.programme?.enrollmentId);
+  const developmentJourney = useEnrollmentDevelopmentJourney(programmeApi.programme?.enrollmentId, user?.id);
+  const learnerFeedback = useLearnerFeedback(user?.id);
+  const allSessions = useEnrollmentSessions(programmeApi.programme?.enrollmentId, user?.id);
 
   const { goals, milestones, toggleMilestone } = goalsApi;
   const { ratings, sessionRatings, saveRating } = ratingsApi;
@@ -184,6 +192,11 @@ export default function CoacheeJourney() {
       />
       <ProgrammeJourneyCheckpoints enrollmentId={programme?.enrollmentId} />
 
+      <div>
+        <SectionHeader title={t("developmentJourney.title")} />
+        <DevelopmentJourneyTimeline events={developmentJourney.events} loading={developmentJourney.loading} />
+      </div>
+
       <Tabs defaultValue="home">
         <TabsList>
           <TabsTrigger value="home">{t("journeyPage.tabs.overview")}</TabsTrigger>
@@ -191,6 +204,7 @@ export default function CoacheeJourney() {
           <TabsTrigger value="actions">{t("journeyPage.tabs.actions", { count: aiTotal })}</TabsTrigger>
           <TabsTrigger value="sessions">{t("journeyPage.tabs.sessions", { count: sessions.length })}</TabsTrigger>
           <TabsTrigger value="reflections">{t("journeyPage.tabs.reflections", { count: reflections.length })}</TabsTrigger>
+          <TabsTrigger value="feedback">{t("journeyPage.tabs.feedback", { count: learnerFeedback.feedback.length })}</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
@@ -330,16 +344,42 @@ export default function CoacheeJourney() {
         </TabsContent>
 
         {/* SESSIONS */}
-        <TabsContent value="sessions" className="mt-4 space-y-4">
+        <TabsContent value="sessions" className="mt-4 space-y-6">
           <SessionsBlock title="Upcoming" items={upcoming} coachNames={coachNames} />
           <SessionsBlock title="Completed" items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} coachNames={coachNames} />
+
+          <div>
+            <SectionHeader title={t("developmentSessions.allSessionsHeader")} />
+            <DevelopmentSessionsList sessions={allSessions.sessions} loading={allSessions.loading} />
+          </div>
         </TabsContent>
 
         {/* REFLECTIONS */}
         <TabsContent value="reflections" className="mt-4 space-y-4">
+          {developmentJourney.events.filter((e) => e.type === "reflection" && e.subtype !== "private_reflection").length > 0 && (
+            <div className="space-y-2">
+              {developmentJourney.events
+                .filter((e) => e.type === "reflection" && e.subtype !== "private_reflection")
+                .map((e) => (
+                  <Card key={e.id} className="p-4">
+                    <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                      {t(`developmentJourney.reflectionTypes.${e.subtype}`)}
+                    </span>
+                    {e.summary && <p className="mt-2 whitespace-pre-wrap text-sm">{e.summary}</p>}
+                    <p className="mt-2 text-[10px] text-muted-foreground">
+                      {format(new Date(e.occurredAt), "EEE, MMM d, yyyy")}
+                    </p>
+                  </Card>
+                ))}
+            </div>
+          )}
+
           <Card className="p-4">
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <BookOpen className="h-4 w-4 text-primary" /> New reflection
+              <span className="ml-auto inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                {t("developmentJourney.reflectionTypes.private_reflection")}
+              </span>
             </div>
             <Input
               placeholder="Mood (optional, e.g. focused, stuck, proud)…"
@@ -381,6 +421,33 @@ export default function CoacheeJourney() {
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        {/* FEEDBACK */}
+        <TabsContent value="feedback" className="mt-4 space-y-3">
+          {learnerFeedback.feedback.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground">
+              No learner-visible feedback yet.
+            </p>
+          ) : (
+            learnerFeedback.feedback.map((item) => (
+              <Card key={`${item.kind}-${item.id}`} className="p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                    {t(`developmentJourney.feedbackTypes.${item.kind}`)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{format(new Date(item.submittedAt), "MMM d, yyyy")}</span>
+                </div>
+                <p className="mt-2 text-sm font-semibold">{item.fromName ?? "Someone"}</p>
+                {item.kind === "mentoring" && item.overallNotes && (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{item.overallNotes}</p>
+                )}
+                {item.kind === "peer_competency" && item.note && (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{item.note}</p>
+                )}
               </Card>
             ))
           )}

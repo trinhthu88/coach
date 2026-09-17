@@ -44,7 +44,9 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     supabase.from("mentoring_sessions").select("id, topic, status, start_time, mentee_notes").eq("enrollment_id", enrollmentId),
     supabase
       .from("triad_sessions")
-      .select("id, status, start_time, proposed_start_time")
+      .select(
+        "id, status, start_time, proposed_start_time, triad_groups(round_number, triad_rounds(title, training_weeks(week_number)))"
+      )
       .or(`coach_enrollment_id.eq.${enrollmentId},coachee_enrollment_id.eq.${enrollmentId},observer_enrollment_id.eq.${enrollmentId}`),
     supabase
       .from("training_progress")
@@ -281,13 +283,29 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
 
   for (const t of triadRes.data ?? []) {
     if (t.status === "completed") {
+      // Round/week context only when the canonical relationship actually
+      // resolves one (triad_sessions -> triad_groups -> triad_rounds
+      // [-> training_weeks]) — a missing group/round/week link keeps the
+      // generic "Triad completed" title rather than guessing a number.
+      const group = t.triad_groups as
+        | { round_number: number | null; triad_rounds: { title: string | null; training_weeks: { week_number: number } | null } | null }
+        | null;
+      const roundNumber = group?.round_number ?? null;
+      const weekNumber = group?.triad_rounds?.training_weeks?.week_number ?? null;
+      const title =
+        roundNumber != null && weekNumber != null
+          ? `Triad — Week ${weekNumber} / Round ${roundNumber}`
+          : roundNumber != null
+            ? `Triad — Round ${roundNumber}`
+            : "Triad completed";
       events.push({
         id: `triad-${t.id}`,
         enrollmentId,
         occurredAt: t.start_time ?? t.proposed_start_time ?? new Date().toISOString(),
         type: "triad",
         subtype: "session_completed",
-        title: "Triad completed",
+        title,
+        summary: group?.triad_rounds?.title ?? null,
         status: t.status,
         sourceId: t.id,
         sourceType: "triad_sessions",

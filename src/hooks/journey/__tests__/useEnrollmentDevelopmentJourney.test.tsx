@@ -197,8 +197,8 @@ describe("useEnrollmentDevelopmentJourney", () => {
       buildFromMock(
         {
           triad_sessions: [
-            { id: "t1", status: "completed", start_time: "2026-10-14T10:00:00Z", proposed_start_time: null },
-            { id: "t2", status: "confirmed", start_time: null, proposed_start_time: "2026-11-01T10:00:00Z" },
+            { id: "t1", status: "completed", start_time: "2026-10-14T10:00:00Z", proposed_start_time: null, triad_groups: null },
+            { id: "t2", status: "confirmed", start_time: null, proposed_start_time: "2026-11-01T10:00:00Z", triad_groups: null },
           ],
         },
         calls
@@ -208,6 +208,61 @@ describe("useEnrollmentDevelopmentJourney", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.events.filter((e) => e.type === "triad")).toHaveLength(1);
     expect(result.current.events[0].sourceId).toBe("t1");
+  });
+
+  it("enriches a triad event with configured week/round context when the canonical relationship resolves one", async () => {
+    from.mockImplementation(
+      buildFromMock(
+        {
+          triad_sessions: [
+            {
+              id: "t1",
+              status: "completed",
+              start_time: "2026-10-14T10:00:00Z",
+              proposed_start_time: null,
+              triad_groups: { round_number: 2, triad_rounds: { title: "Round 2: Delegation practice", training_weeks: { week_number: 4 } } },
+            },
+          ],
+        },
+        calls
+      )
+    );
+    const { result } = renderHook(() => useEnrollmentDevelopmentJourney(ENROLLMENT, COACHEE), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const triadEvent = result.current.events.find((e) => e.type === "triad");
+    expect(triadEvent?.title).toBe("Triad — Week 4 / Round 2");
+    expect(triadEvent?.summary).toBe("Round 2: Delegation practice");
+  });
+
+  it("falls back to the generic title when only a round number resolves, and never fabricates one when nothing resolves", async () => {
+    from.mockImplementation(
+      buildFromMock(
+        {
+          triad_sessions: [
+            {
+              id: "t1",
+              status: "completed",
+              start_time: "2026-10-14T10:00:00Z",
+              proposed_start_time: null,
+              triad_groups: { round_number: 3, triad_rounds: { title: "Round 3", training_weeks: null } },
+            },
+            {
+              id: "t2",
+              status: "completed",
+              start_time: "2026-10-20T10:00:00Z",
+              proposed_start_time: null,
+              triad_groups: null,
+            },
+          ],
+        },
+        calls
+      )
+    );
+    const { result } = renderHook(() => useEnrollmentDevelopmentJourney(ENROLLMENT, COACHEE), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const triadEvents = result.current.events.filter((e) => e.type === "triad");
+    expect(triadEvents.find((e) => e.sourceId === "t1")?.title).toBe("Triad — Round 3");
+    expect(triadEvents.find((e) => e.sourceId === "t2")?.title).toBe("Triad completed");
   });
 
   it("produces training, quiz, programme-reflection, and private-reflection events", async () => {

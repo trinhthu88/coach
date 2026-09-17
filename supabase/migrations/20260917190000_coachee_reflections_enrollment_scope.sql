@@ -22,10 +22,18 @@ CREATE INDEX coachee_reflections_enrollment_idx
 -- (start_date <= created_at::date, and end_date is null or >=
 -- created_at::date) on the day the reflection was written. Rows with zero
 -- or multiple candidate enrollments are left NULL rather than guessed.
-DO $backfill$
+--
+-- Defined as a named, idempotent function (not an inline DO block) so it is
+-- both the migration's one-time historical backfill AND directly callable
+-- from pgTAP — re-running it is always safe because it only ever touches
+-- rows where enrollment_id IS NULL.
+CREATE OR REPLACE FUNCTION public.backfill_coachee_reflection_enrollment_scope()
+RETURNS TABLE (resolved_count integer, ambiguous_count integer)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
 DECLARE
-  updated_count integer;
-  ambiguous_count integer;
+  v_resolved integer;
+  v_ambiguous integer;
 BEGIN
   WITH candidates AS (
     SELECT
@@ -47,9 +55,9 @@ BEGIN
   SET enrollment_id = u.enrollment_id
   FROM unambiguous u
   WHERE r.id = u.reflection_id;
-  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  GET DIAGNOSTICS v_resolved = ROW_COUNT;
 
-  SELECT count(DISTINCT reflection_id) INTO ambiguous_count
+  SELECT count(DISTINCT reflection_id) INTO v_ambiguous
   FROM (
     SELECT r.id AS reflection_id, count(*) AS candidate_count
     FROM public.coachee_reflections r
@@ -62,9 +70,15 @@ BEGIN
     HAVING count(*) > 1
   ) ambiguous;
 
-  RAISE NOTICE 'coachee_reflections enrollment backfill: % rows resolved, % rows left null (multiple candidate enrollments)', updated_count, ambiguous_count;
+  RAISE NOTICE 'coachee_reflections enrollment backfill: % rows resolved, % rows left null (multiple candidate enrollments)', v_resolved, v_ambiguous;
+  RETURN QUERY SELECT v_resolved, v_ambiguous;
 END;
-$backfill$;
+$$;
+
+REVOKE ALL ON FUNCTION public.backfill_coachee_reflection_enrollment_scope()
+  FROM PUBLIC, anon, authenticated;
+
+SELECT public.backfill_coachee_reflection_enrollment_scope();
 
 -- New rows must carry an enrollment the same coachee actually owns — the
 -- same integrity check enrollment_actions/enrollment_goals already enforce
