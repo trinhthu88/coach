@@ -50,12 +50,16 @@ interface SponsorDashboardData {
  *   - goals: goal_count, goal_setup, goal_progress_pct
  *   - actions: open/completed/total_action_count, action_completion_pct
  *   - satisfaction/ratings: satisfaction_avg, satisfaction_rated_count
- *   - per-module completed *session counts* (coaching_completed_count etc.,
- *     distinct from the canonical *_completed_units unit counts)
  *   - schedule_coverage_pct at the individual-enrollment level
  * There is no sponsor_canonical_* equivalent for any of these today; adding
  * one is backend work (a new canonical RPC or an extension of the existing
  * ones) that hasn't been scoped, not something to duplicate client-side.
+ * (Legacy's per-module *_completed_count fields — coaching_completed_count
+ * etc. — are numerically identical to canonical's *_completed_units: both
+ * trace back to the same get_sponsor_programme_progress().completed_units
+ * expression under two column names. Nothing in the frontend reads the
+ * _completed_count fields, so they aren't a reason to keep the legacy
+ * calls either.)
  */
 export function useSponsorDashboardData(): SponsorDashboardData {
   const [kpis, setKpis] = useState<SponsorKpis | null>(null);
