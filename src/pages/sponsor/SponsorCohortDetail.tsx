@@ -198,8 +198,15 @@ function ModuleCard({
   leaderCount?: number | null;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  const hasData = completed != null && required != null;
-  const percentage = hasData && required > 0 ? Math.min(100, Math.round((completed / required) * 100)) : 0;
+  // required === 0 means the module isn't part of this programme's
+  // configuration at all (Admin left it disabled) — that's a different
+  // condition from completed/required being null (sponsor-safe suppression
+  // withheld the figures), and each needs its own explanation rather than
+  // both collapsing into a misleading "0/0".
+  const isMissing = completed == null || required == null;
+  const isNotApplicable = !isMissing && required === 0;
+  const hasData = !isMissing && required > 0;
+  const percentage = hasData ? Math.min(100, Math.round((completed / required) * 100)) : 0;
   return (
     <div className="flex min-h-[190px] flex-col gap-3 rounded-[14px] border p-[18px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex items-center justify-between gap-2">
@@ -221,11 +228,17 @@ function ModuleCard({
               totalLeaders: leaderCount ?? 0,
                due: due ?? 0,
             })
-            : t("cohortDetail.modules.aggregateOnly")}
+            : isNotApplicable
+              ? t("cohortDetail.modules.notApplicable")
+              : t("cohortDetail.modules.aggregateOnly")}
         </div>
       </div>
       <div className="border-t border-[#eee8de] pt-2.5 text-[10.5px] text-[#9a938a]">
-         {hasData ? t("cohortDetail.modules.percent", { value: percentage }) : t("cohortDetail.modules.notAvailable")}
+         {hasData
+           ? t("cohortDetail.modules.percent", { value: percentage })
+           : isNotApplicable
+             ? t("cohortDetail.modules.notApplicable")
+             : t("cohortDetail.modules.notAvailable")}
       </div>
     </div>
   );
@@ -575,7 +588,7 @@ function moduleComplete(completed: number | null | undefined, required: number |
 }
 
 function moduleDetail(completed: number | null | undefined, due: number | null | undefined, required: number | null | undefined) {
-  if (completed == null || due == null || required == null) return "—";
+  if (completed == null || due == null || required == null || required === 0) return "—";
   return `${completed}/${required} complete · ${due} due so far`;
 }
 

@@ -341,7 +341,8 @@
       "detail": "{{leaders}} / {{totalLeaders}} lãnh đạo đạt yêu cầu · {{due}} đơn vị đến hạn",
       "percent": "{{value}}% số đơn vị module được cấu hình đã hoàn thành",
       "notAvailable": "Không có trong bản tóm tắt an toàn cho nhà tài trợ",
-      "aggregateOnly": "Chi tiết module không có trong bản tóm tắt an toàn cho nhà tài trợ."
+      "aggregateOnly": "Chi tiết module không có trong bản tóm tắt an toàn cho nhà tài trợ.",
+      "notApplicable": "Không thuộc cấu hình của chương trình này"
     },
     "attention": {
       "label": "Cần chú ý",

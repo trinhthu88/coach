@@ -359,7 +359,8 @@
       "detail": "{{leaders}} of {{totalLeaders}} leaders meet the requirement · {{due}} due so far",
       "percent": "{{value}}% of configured module units completed",
       "notAvailable": "Not included in sponsor-safe summary",
-      "aggregateOnly": "Module-level detail is not included in the sponsor-safe summary."
+      "aggregateOnly": "Module-level detail is not included in the sponsor-safe summary.",
+      "notApplicable": "Not part of this programme's configuration"
     },
     "attention": {
       "label": "Needs attention",
