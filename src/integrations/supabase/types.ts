@@ -4457,7 +4457,7 @@ export type Database = {
           cohort_id: string
           cohort_label: string
           completed_units: number
-          due_adherence_pct: number | null
+          due_adherence_pct: number
           due_units: number
           effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
           enrollment_end_date: string
