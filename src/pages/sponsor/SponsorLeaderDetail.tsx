@@ -1,15 +1,14 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { useSponsorCohortData } from "@/hooks/sponsor/useSponsorCohortData";
+import { useSponsorLeaderData } from "@/hooks/sponsor/useSponsorLeaderData";
 import { SponsorLeaderProfile } from "./SponsorLeaderDrawer";
 
 export default function SponsorLeaderDetail() {
   const { cohortId = "", enrollmentId = "" } = useParams<{ cohortId: string; enrollmentId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation("sponsor");
-  const { roster, cohortLabel, loading } = useSponsorCohortData(cohortId);
-  const leader = roster.find((row) => row.enrollment_id === enrollmentId);
+  const { leader, journey, experience, loading } = useSponsorLeaderData(enrollmentId);
 
   if (loading) {
     return (
@@ -23,7 +22,7 @@ export default function SponsorLeaderDetail() {
     return (
       <div className="space-y-5">
         <Link to={`/sponsor/cohorts/${cohortId}`} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-          <ArrowLeft className="h-3.5 w-3.5" /> {cohortLabel || t("cohortDetail.header.title")}
+          <ArrowLeft className="h-3.5 w-3.5" /> {t("cohortDetail.header.title")}
         </Link>
         <div className="rounded-2xl border border-border bg-card p-8 text-center">
           <p className="font-display text-2xl">{t("leaderDrawer.notFound")}</p>
@@ -33,5 +32,12 @@ export default function SponsorLeaderDetail() {
     );
   }
 
-  return <SponsorLeaderProfile leader={leader} onBack={() => navigate(`/sponsor/cohorts/${cohortId}`)} />;
+  return (
+    <SponsorLeaderProfile
+      leader={leader}
+      journey={journey}
+      experience={experience}
+      onBack={() => navigate(`/sponsor/cohorts/${cohortId}`)}
+    />
+  );
 }

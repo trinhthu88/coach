@@ -9,6 +9,13 @@ import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Pill } from "@/pages/admin/_shared";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
+import type {
+  SponsorLeaderExperience,
+  SponsorLeaderJourneyPoint,
+  SponsorLeaderLearningItem,
+  SponsorLeaderProfileData,
+  SponsorLeaderWeeklyParticipation,
+} from "@/hooks/sponsor/useSponsorLeaderData";
 import { STATUS_LABEL_KEY, STATUS_TONE, cohortLifecycleStatus, effectiveSponsorStatus, initials, storedSponsorStatus } from "./sponsorUtils";
 import { SponsorFlagDialog } from "./SponsorFlagDialog";
 
@@ -43,7 +50,17 @@ export function SponsorLeaderDrawer({ leader, onClose }: Props) {
   );
 }
 
-export function SponsorLeaderProfile({ leader, onBack }: { leader: SponsorRosterRow; onBack: () => void }) {
+export function SponsorLeaderProfile({
+  leader,
+  onBack,
+  journey = [],
+  experience = { weeklyParticipation: [], learningBreakdown: [], coachingUtilisation: null },
+}: {
+  leader: SponsorLeaderProfileData;
+  onBack: () => void;
+  journey?: SponsorLeaderJourneyPoint[];
+  experience?: SponsorLeaderExperience;
+}) {
   const { t } = useTranslation("sponsor");
   const completion = clamp(leader.full_completion_pct ?? 0);
   const adherence = clamp(leader.due_adherence_pct ?? 0);
@@ -87,11 +104,18 @@ export function SponsorLeaderProfile({ leader, onBack }: { leader: SponsorRoster
           <LeaderKpi label={t("leaderDrawer.reference.overdue")} value={String(leader.overdue_units ?? 0)} color={RED} />
         </div>
 
-        <JourneySection status={lifecycle} start={leader.programme_start_date} end={leader.programme_end_date} t={t} />
+        <JourneySection status={lifecycle} start={leader.programme_start_date} end={leader.programme_end_date} journey={journey} t={t} />
 
         <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
-          <ProgressParticipation leader={leader} completion={completion} adherence={adherence} t={t} />
-          <ModuleParticipation leader={leader} t={t} />
+          <ProgressParticipation
+            leader={leader}
+            completion={completion}
+            adherence={adherence}
+            weeklyParticipation={experience.weeklyParticipation}
+            coachingUtilisation={experience.coachingUtilisation}
+            t={t}
+          />
+          <ModuleParticipation leader={leader} learningBreakdown={experience.learningBreakdown} t={t} />
         </div>
 
         <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
@@ -128,7 +152,19 @@ function LeaderKpi({ label, value, color }: { label: string; value: string; colo
   return <div className="rounded-[14px] border p-[18px]" style={{ background: CARD, borderColor: LINE }}><div className="font-display text-[32px] font-light leading-none" style={{ color }}>{value}</div><div className="mt-[11px] text-[9.5px] font-bold uppercase tracking-[.16em] text-[#6a6560]">{label}</div></div>;
 }
 
-function JourneySection({ status, start, end, t }: { status: "upcoming" | "active" | "complete"; start: string | null; end: string | null; t: (key: string, options?: Record<string, unknown>) => string }) {
+function JourneySection({
+  status,
+  start,
+  end,
+  journey,
+  t,
+}: {
+  status: "upcoming" | "active" | "complete";
+  start: string | null;
+  end: string | null;
+  journey: SponsorLeaderJourneyPoint[];
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
   return (
     <section className="mt-4 rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -139,7 +175,33 @@ function JourneySection({ status, start, end, t }: { status: "upcoming" | "activ
         <JourneyMeta label={t("cohortDetail.details.startEnd")} value={`${formatDate(start)} – ${formatDate(end)}`} />
         <JourneyMeta label={t("leaderDrawer.reference.journeySource")} value={t("leaderDrawer.reference.journeySourceValue")} />
       </div>
-      <p className="mt-4 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-4 text-[11px] leading-relaxed text-[#6a6560]">{t("leaderDrawer.reference.journeyWithheld")}</p>
+      {journey.length === 0 ? (
+        <p className="mt-4 rounded-xl border border-dashed border-[#ddd6cc] bg-[#f6f3ee] px-4 py-4 text-[11px] leading-relaxed text-[#6a6560]">{t("leaderDrawer.reference.journeyWithheld")}</p>
+      ) : (
+        <ol className="mt-4 space-y-2.5">
+          {journey.map((point) => (
+            <li
+              key={`${point.checkpoint_number}-${point.due_on}`}
+              className={`relative rounded-xl border px-4 py-3 ${point.state === "current" ? "border-[#3db4d0] bg-[#e4f3f7]" : "border-[#eee8de] bg-[#f6f3ee]"}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  {point.state === "current" && <span className="h-2 w-2 shrink-0 rounded-full bg-[#2c8fa8]" aria-label={t("leaderDrawer.reference.currentPosition")} />}
+                  <span className="truncate text-[11.5px] font-semibold text-[#062f3e]">{point.label || t("leaderDrawer.reference.checkpoint", { number: point.checkpoint_number })}</span>
+                </div>
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-[.1em]" style={{ color: journeyStateColor(point.state) }}>
+                  {t(`leaderDrawer.journeyStates.${point.state}`)}
+                </span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#6a6560]">
+                <span>{formatDate(point.due_on)}</span>
+                <span>{point.completed_units}/{point.required_units}</span>
+                {point.state === "current" && <span className="font-semibold text-[#2c8fa8]">{t("leaderDrawer.reference.youAreHere")}</span>}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
     </section>
   );
 }
@@ -148,19 +210,75 @@ function JourneyMeta({ label, value }: { label: string; value: string }) {
   return <div className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] px-3.5 py-3"><div className="text-[9.5px] font-bold uppercase tracking-[.14em] text-[#9a938a]">{label}</div><div className="mt-1.5 text-[11.5px] font-semibold text-[#062f3e]">{value}</div></div>;
 }
 
-function ProgressParticipation({ leader, completion, adherence, t }: { leader: SponsorRosterRow; completion: number; adherence: number; t: (key: string) => string }) {
+function ProgressParticipation({
+  leader,
+  completion,
+  adherence,
+  weeklyParticipation,
+  coachingUtilisation,
+  t,
+}: {
+  leader: SponsorLeaderProfileData;
+  completion: number;
+  adherence: number;
+  weeklyParticipation: SponsorLeaderWeeklyParticipation[];
+  coachingUtilisation: SponsorLeaderExperience["coachingUtilisation"];
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
   return (
     <section className="rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
       <span className="sr-only">{t("leaderDrawer.participation.title")}</span>
       <h2 className="font-serif text-[17px] font-normal">{t("leaderDrawer.reference.progressTitle")}</h2>
       <div className="mt-[18px] flex flex-col gap-3.5"><ProgressRow label={t("leaderDrawer.progress.completion")} value={percent(completion)} pct={completion} color={NAVY} /><ProgressRow label={t("leaderDrawer.progress.adherence")} value={leader.due_adherence_pct == null ? "—" : percent(adherence)} pct={adherence} color={TEAL} empty={leader.due_adherence_pct == null} /></div>
       <div className="mt-[18px] flex gap-7 border-t border-[#eee8de] pt-4"><SmallMetric value={`${leader.due_units} / ${leader.required_units}`} label={t("leaderDrawer.reference.activitiesDue")} /><SmallMetric value={String(leader.overdue_units)} label={t("leaderDrawer.reference.overdue")} color={RED} /></div>
-      <div className="mt-[18px] border-t border-[#eee8de] pt-4"><div className="text-[9.5px] font-bold uppercase tracking-[.14em] text-[#9a938a]">{t("leaderDrawer.reference.trendTitle")}</div><UnavailableTrend text={t("leaderDrawer.reference.trendWithheld")} /></div>
+      <div className="mt-[18px] flex flex-wrap gap-7 border-t border-[#eee8de] pt-4">
+        <SmallMetric
+          value={coachingUtilisation?.utilisation_pct == null ? "—" : percent(coachingUtilisation.utilisation_pct)}
+          label={t("leaderDrawer.reference.coachingUtilisation")}
+          color={TEAL}
+        />
+        <SmallMetric
+          value={coachingUtilisation?.booked_units == null ? "—" : String(coachingUtilisation.booked_units)}
+          label={t("leaderDrawer.reference.booked")}
+        />
+      </div>
+      <div className="mt-[18px] border-t border-[#eee8de] pt-4">
+        <div className="text-[9.5px] font-bold uppercase tracking-[.14em] text-[#9a938a]">{t("leaderDrawer.reference.trendTitle")}</div>
+        {weeklyParticipation.length === 0 ? (
+          <UnavailableTrend text={t("leaderDrawer.reference.trendWithheld")} />
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {weeklyParticipation.map((week) => {
+              const pct = modulePct(week.completed_units, week.required_units);
+              return (
+                <div key={week.week_number} className={`rounded-lg border px-2.5 py-2 ${week.is_current ? "border-[#3db4d0] bg-[#e4f3f7]" : "border-[#eee8de] bg-[#f6f3ee]"}`}>
+                  <div className="flex items-center justify-between gap-1 text-[9px] font-bold uppercase tracking-[.08em] text-[#9a938a]">
+                    <span>{t("leaderDrawer.reference.week", { number: week.week_number })}</span>
+                    <span style={{ color: journeyStateColor(week.state) }}>{t(`leaderDrawer.journeyStates.${week.state}`)}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eee8de]">
+                    <div className="h-full rounded-full bg-[#2c8fa8]" style={{ width: `${pct ?? 0}%` }} />
+                  </div>
+                  <div className="mt-1.5 text-[10px] text-[#6a6560]">{week.completed_units}/{week.required_units}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
 
-function ModuleParticipation({ leader, t }: { leader: SponsorRosterRow; t: (key: string, options?: Record<string, unknown>) => string }) {
+function ModuleParticipation({
+  leader,
+  learningBreakdown,
+  t,
+}: {
+  leader: SponsorLeaderProfileData;
+  learningBreakdown: SponsorLeaderLearningItem[];
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
   const modules = [
     { key: "coaching", label: t("cohortDetail.modules.coaching"), completed: leader.coaching_completed_units, required: leader.coaching_required_units, due: leader.coaching_due_units, color: SKY },
     { key: "training", label: t("cohortDetail.modules.training"), completed: leader.training_completed_units, required: leader.training_required_units, due: leader.training_due_units, color: NAVY },
@@ -189,6 +307,37 @@ function ModuleParticipation({ leader, t }: { leader: SponsorRosterRow; t: (key:
             </div>
           );
         })}
+      </div>
+      <div className="mt-5 border-t border-[#eee8de] pt-4">
+        <div className="flex items-baseline justify-between gap-2.5">
+          <h3 className="text-[11.5px] font-semibold text-[#062f3e]">{t("leaderDrawer.reference.learningBreakdown")}</h3>
+          <span className="text-[10px] text-[#9a938a]">{t("leaderDrawer.reference.privacySafe")}</span>
+        </div>
+        {learningBreakdown.length === 0 ? (
+          <UnavailableTrend text={t("leaderDrawer.reference.learningUnavailable")} />
+        ) : (
+          <div className="mt-3 flex flex-col gap-3">
+            {learningBreakdown.map((item) => {
+              const pct = modulePct(item.completed_units, item.required_units);
+              return (
+                <div key={item.key}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[10.5px] text-[#6a6560]">{item.label}</span>
+                    <span className="text-[10px] text-[#6a6560]">
+                      {item.progress_available ? `${item.completed_units}/${item.required_units}` : t("leaderDrawer.reference.notAvailable")}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#eee8de]">
+                    <div className="h-full rounded-full bg-[#3db4d0]" style={{ width: `${pct ?? 0}%` }} />
+                  </div>
+                  <div className="mt-1 text-[9.5px] text-[#9a938a]">
+                    {item.progress_available ? t("leaderDrawer.reference.dueUnits", { count: item.due_units }) : t("leaderDrawer.reference.notAvailable")}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
       <div className="mt-[18px] rounded-[10px] bg-[#e4f3f7] px-[15px] py-[13px] text-[11px] leading-relaxed text-[#6a6560]">{t("leaderDrawer.reference.attendanceOnly")}</div>
     </section>
@@ -252,4 +401,11 @@ function modulePct(completed: number | null | undefined, required: number | null
 
 function clamp(value: number) {
   return Math.max(0, Math.min(100, value));
+}
+
+function journeyStateColor(state: SponsorLeaderJourneyPoint["state"] | SponsorLeaderWeeklyParticipation["state"]) {
+  if (state === "completed") return GREEN;
+  if (state === "current") return TEAL;
+  if (state === "overdue") return RED;
+  return "#9a938a";
 }

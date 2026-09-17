@@ -14,7 +14,7 @@
 -- primitives, not a new formula.
 begin;
 
-select plan(26);
+select plan(31);
 
 -- Source of truth: current Admin config + real attributed activity, same
 -- primitives as the cohort/organisation rollups — not a new formula.
@@ -54,6 +54,24 @@ select ok(
     'public.sponsor_leader_engagement_summary(uuid)'::regprocedure
   ) !~ 'coach_id|coach_notes|coach_private_notes|coachee_notes|coachee_rating_comment|\.title|\.description',
   'leader engagement summary never selects coach identity, notes, or goal/action wording'
+);
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
+  ) ~ 'sponsor_canonical_module_schedule'
+    AND pg_get_functiondef(
+      'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
+    ) ~ 'sponsor_canonical_activity'
+    AND pg_get_functiondef(
+      'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
+    ) ~ 'training_progress|assignment_submissions|reflection_submissions|daily_prompt_responses',
+  'leader experience uses canonical schedule/activity and enrollment-owned learning completion'
+);
+select ok(
+  pg_get_functiondef(
+    'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
+  ) !~ 'response_text|reflection_text|answers|coach_id|coach_notes|coachee_rating_comment',
+  'leader experience never returns private learning responses or coaching content'
 );
 
 select set_config(
@@ -185,6 +203,25 @@ select ok(
   'leader journey produces real checkpoints from the current Admin schedule'
 );
 
+-- Experience contract: weekly activity and learning breakdowns remain
+-- enrollment-scoped, use the canonical four states, and return a stable
+-- empty object for an unauthorized/nonexistent enrollment.
+select ok(
+  (select bool_and(point->>'state' IN ('upcoming', 'current', 'completed', 'overdue'))
+   from jsonb_array_elements(
+     (public.sponsor_canonical_leader_experience(
+       '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date
+     ))->'weekly_participation'
+   ) point),
+  'leader experience weekly participation uses the canonical four states'
+);
+select ok(
+  public.sponsor_canonical_leader_experience(
+    '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date
+  ) ? 'learning_breakdown',
+  'leader experience includes the configured learning breakdown'
+);
+
 -- Not found / not authorized: a nonexistent enrollment id returns nothing,
 -- not an error and not fabricated data.
 select is(
@@ -200,6 +237,11 @@ select is(
     '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-06'::date),
   '[]'::jsonb,
   'journey is an empty array, not fabricated checkpoints, for a nonexistent enrollment');
+select is(
+  public.sponsor_canonical_leader_experience(
+    '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-06'::date),
+  '{}'::jsonb,
+  'experience is an empty object, not fabricated detail, for a nonexistent enrollment');
 
 select * from finish();
 rollback;

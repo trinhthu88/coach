@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import "@/i18n/config";
 import i18n from "@/i18n/config";
-import { SponsorLeaderDrawer } from "../SponsorLeaderDrawer";
+import { SponsorLeaderDrawer, SponsorLeaderProfile } from "../SponsorLeaderDrawer";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 
 const leader = {
@@ -54,5 +54,84 @@ describe("SponsorLeaderDrawer", () => {
     expect(screen.getByText("This is everything you can see")).toBeInTheDocument();
     expect(screen.queryByText("A confidential coaching note")).not.toBeInTheDocument();
     expect(screen.queryByText("Priya's private goal wording")).not.toBeInTheDocument();
+  });
+
+  it("renders the enrollment-scoped journey, weekly trend, and learning breakdown", () => {
+    render(
+      <SponsorLeaderProfile
+        leader={leader}
+        onBack={() => undefined}
+        journey={[{
+          checkpoint_number: 2,
+          due_on: "2026-05-01",
+          label: "Practice",
+          module_scope: ["training"],
+          required_units: 2,
+          completed_units: 1,
+          state: "current",
+        }]}
+        experience={{
+          weeklyParticipation: [{
+            week_number: 2,
+            week_start: "2026-04-27",
+            week_end: "2026-05-03",
+            required_units: 2,
+            due_units: 2,
+            completed_units: 1,
+            activity_units: 1,
+            state: "current",
+            is_current: true,
+          }],
+          learningBreakdown: [{
+            key: "quizzes",
+            label: "Quizzes",
+            required_units: 2,
+            due_units: 1,
+            completed_units: 1,
+            progress_available: true,
+            status: "current",
+          }, {
+            key: "reflections",
+            label: "Reflections",
+            required_units: 1,
+            due_units: 1,
+            completed_units: 0,
+            progress_available: true,
+            status: "overdue",
+          }, {
+            key: "skill_cards",
+            label: "Skill Cards",
+            required_units: 1,
+            due_units: 1,
+            completed_units: 1,
+            progress_available: true,
+            status: "completed",
+          }, {
+            key: "daily_prompts",
+            label: "Daily Prompts",
+            required_units: 0,
+            due_units: 0,
+            completed_units: 0,
+            progress_available: false,
+            status: "unavailable",
+          }],
+          coachingUtilisation: {
+            required_units: 4,
+            completed_units: 2,
+            due_units: 2,
+            booked_units: 1,
+            utilisation_pct: 50,
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("You are here")).toBeInTheDocument();
+    expect(screen.getByText("Training & learning")).toBeInTheDocument();
+    expect(screen.getByText("Skill Cards")).toBeInTheDocument();
+    expect(screen.getByText("Quizzes")).toBeInTheDocument();
+    expect(screen.getByText("Reflections")).toBeInTheDocument();
+    expect(screen.getByText("Daily Prompts")).toBeInTheDocument();
+    expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
   });
 });
