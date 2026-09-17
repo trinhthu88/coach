@@ -4493,11 +4493,11 @@ export type Database = {
           triad_required_units: number
         }[]
       }
-      sponsor_canonical_leader_journey: {
+      sponsor_canonical_leader_experience: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
-      sponsor_canonical_leader_experience: {
+      sponsor_canonical_leader_journey: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
