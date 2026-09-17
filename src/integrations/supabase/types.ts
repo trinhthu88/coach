@@ -4496,11 +4496,11 @@ export type Database = {
       sponsor_canonical_module_schedule: {
         Args: { p_enrollment_id: string }
         Returns: {
-          due_on: string | null
+          due_on: string
           milestone_units: number
           module: Database["public"]["Enums"]["programme_module_type"]
           required_units: number
-          training_week_id: string | null
+          training_week_id: string
         }[]
       }
       sponsor_canonical_organisation_progress: {
