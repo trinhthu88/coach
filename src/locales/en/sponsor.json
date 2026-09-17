@@ -370,7 +370,7 @@
       "pace": "Against the current programme week",
       "coaching": "Coaching not yet completed",
       "coachingSub": "No sponsor-visible coaching completions",
-      "learning": "Learning completion below 60%",
+      "learning": "Learning not yet completed",
       "learningSub": "Of programme units",
       "note": "Built from cohort summary figures only. Coaching notes, reflections and messages are never shared with sponsors."
     },
@@ -399,7 +399,7 @@
       "attention": "Needs attention {{count}}",
       "pace": "Behind pace {{count}}",
       "coaching": "Coaching not completed {{count}}",
-      "learning": "Learning below 60% {{count}}",
+      "learning": "Learning not completed {{count}}",
       "empty": "No leaders match this filter."
     },
     "rosterNote": "Each module cell shows completed / required units for that leader. Cohort cards and the programme journey use the same module requirements and sponsor-safe aggregate totals."

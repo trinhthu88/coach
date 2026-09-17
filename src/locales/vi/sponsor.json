@@ -352,7 +352,7 @@
       "pace": "So với tuần hiện tại của chương trình",
       "coaching": "Chưa hoàn thành coaching",
       "coachingSub": "Chưa có hoạt động coaching hiển thị cho nhà tài trợ",
-      "learning": "Hoàn thành học tập dưới 60%",
+      "learning": "Chưa hoàn thành học tập",
       "learningSub": "Theo các đơn vị của chương trình",
       "note": "Được xây dựng chỉ từ số liệu tóm tắt của nhóm. Ghi chú coaching, phản ánh và tin nhắn không bao giờ được chia sẻ với nhà tài trợ."
     },
@@ -381,7 +381,7 @@
       "attention": "Cần chú ý {{count}}",
       "pace": "Chậm tiến độ {{count}}",
       "coaching": "Chưa hoàn thành coaching {{count}}",
-      "learning": "Học tập dưới 60% {{count}}",
+      "learning": "Chưa hoàn thành học tập {{count}}",
       "empty": "Không có lãnh đạo phù hợp với bộ lọc này."
     },
     "rosterNote": "Mỗi ô module hiển thị số đơn vị đã hoàn thành / yêu cầu của lãnh đạo đó. Thẻ nhóm và hành trình chương trình dùng cùng định mức module và số liệu tổng hợp an toàn."
