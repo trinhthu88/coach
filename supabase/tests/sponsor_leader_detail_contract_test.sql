@@ -68,49 +68,54 @@ set local role authenticated;
 select is(
   (select count(*)::integer
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   1,
   'leader progress returns exactly one row for the requested enrollment'
 );
 select is(
   (select learner_display_name
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   'Leader C1',
   'leader progress identifies the requested enrollment, not another one'
 );
 
 -- Real historical activity, current Admin denominators (ground truth
--- shared with the existing Cohort C reconciliation suite).
+-- shared with the existing Cohort C reconciliation suite). Uses
+-- 2026-07-06, one day after Cohort C's own 2026-07-05 end_date: the
+-- status-recalculation branch below needs programme_end_date strictly
+-- less than p_as_of to fire, and every seeded activity is already dated
+-- on or before the cohort's end date, so this date change doesn't affect
+-- any completed/due unit counts.
 select is(
   (select coaching_completed_units
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   4, 'Leader C1 coaching completed units reconcile to the seed fixture');
 select is(
   (select peer_completed_units
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   2, 'Leader C1 peer coaching completed units reconcile to the seed fixture');
 select is(
   (select mentoring_completed_units
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   2, 'Leader C1 mentoring completed units reconcile to the seed fixture');
 select is(
   (select triad_completed_units
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   2, 'Leader C1 triad completed units reconcile to the seed fixture');
 select is(
   (select training_completed_units
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   6, 'Leader C1 training completed units reconcile to the seed fixture');
 select is(
   (select effective_enrollment_status
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)),
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   'completed'::public.enrollment_status,
   'Leader C1 (finished every requirement) shows completed, not stuck at raw at_risk status');
 
@@ -121,14 +126,14 @@ select is(
 select is(
   (select learner_display_name
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000002'::uuid, '2026-07-05'::date)),
+     '14141414-1414-4141-8141-000000000002'::uuid, '2026-07-06'::date)),
   'Leader C2',
   'querying Leader C2''s enrollment id returns Leader C2''s own identity, not Leader C1''s'
 );
 select is(
   (select count(*)::integer
    from public.sponsor_canonical_leader_progress(
-     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)
    where learner_display_name = 'Leader C2'),
   0, 'Leader C1''s result never contains Leader C2''s identity');
 
@@ -148,7 +153,7 @@ select is(
 select is(
   (select goal_count from public.sponsor_leader_engagement_summary(
      '14141414-1414-4141-8141-000000000001'::uuid)),
-  0, 'Leader C1 has a real zero goal count (no goals fixture), not null');
+  1, 'Leader C1 goal count reconciles to the seed fixture (one seeded leadership goal)');
 select is(
   (select goal_progress_pct from public.sponsor_leader_engagement_summary(
      '14141414-1414-4141-8141-000000000001'::uuid)),
@@ -167,7 +172,7 @@ select ok(
   (select bool_and(point->>'state' IN ('upcoming', 'current', 'completed', 'overdue'))
    from jsonb_array_elements(
      public.sponsor_canonical_leader_journey(
-       '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)
+       '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)
    ) point),
   'leader journey checkpoints only ever use the canonical four states'
 );
@@ -175,7 +180,7 @@ select ok(
   (select count(*) > 0
    from jsonb_array_elements(
      public.sponsor_canonical_leader_journey(
-       '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)
+       '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)
    )),
   'leader journey produces real checkpoints from the current Admin schedule'
 );
@@ -184,7 +189,7 @@ select ok(
 -- not an error and not fabricated data.
 select is(
   (select count(*)::integer from public.sponsor_canonical_leader_progress(
-     '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-05'::date)),
+     '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-06'::date)),
   0, 'a nonexistent enrollment id returns no rows');
 select is(
   (select count(*)::integer from public.sponsor_leader_engagement_summary(
@@ -192,7 +197,7 @@ select is(
   0, 'engagement summary returns no rows for a nonexistent enrollment');
 select is(
   public.sponsor_canonical_leader_journey(
-    '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-05'::date),
+    '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-06'::date),
   '[]'::jsonb,
   'journey is an empty array, not fabricated checkpoints, for a nonexistent enrollment');
 
