@@ -20,3 +20,4 @@
 - [Sponsor journey reconciliation](sponsor-journey-reconciliation.md) — journey checkpoints need typed activity joins, per-module caps, checkpoint-date as-of history, and real Admin scope labels.
 - [Supabase generated type parity](supabase-generated-type-parity.md) — generated RPC types are exact-schema output, including alphabetical ordering and inferred nullability.
 - [Sponsor RPC smoke tests](sponsor-rpc-authenticated-smoke-tests.md) — raw SQL without a sponsor JWT can return zero; validate Sponsor reporting through an authenticated session.
+- [Hosted demo fixture alignment](hosted-demo-fixture-alignment.md) — resolve live Sponsor identity from the target cohort organization; hosted demo identities may differ from repository seed aliases.
