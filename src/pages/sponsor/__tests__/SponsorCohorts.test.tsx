@@ -21,6 +21,7 @@ beforeEach(async () => {
     { cohort_id: id2, cohort_label: "Another cohort", programme_label: "Executive", programme_start_date: "2026-02-01", programme_end_date: null, enrollment_count: null, suppressed: true },
   ];
   responses.sponsor_canonical_cohort_progress = responses.sponsor_cohort_summaries;
+  responses.sponsor_canonical_enrollment_metadata = [];
   responses.sponsor_canonical_organisation_progress = [{
     cohort_count: 2, enrollment_count: null, required_units: null, completed_units: null, due_units: null,
     booked_units: null, overdue_units: null, full_completion_pct: null, due_adherence_pct: null,

@@ -6,6 +6,7 @@ import i18n from "@/i18n/config";
 
 const calls: string[] = [];
 const responses: Record<string, unknown> = {};
+const rpcErrors: Record<string, Error | null> = {};
 const cohortId = "11111111-1111-4111-8111-111111111111";
 const enrollment = (id: string, name: string, status = "active") => ({
   enrollment_id: id, learner_display_name: name, programme_label: "Executive",
@@ -18,7 +19,10 @@ const enrollment = (id: string, name: string, status = "active") => ({
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: (fn: string) => { calls.push(fn); return Promise.resolve({ data: responses[fn], error: null }); },
+    rpc: (fn: string) => {
+      calls.push(fn);
+      return Promise.resolve({ data: responses[fn], error: rpcErrors[fn] ?? null });
+    },
     from: () => ({ select: () => ({ maybeSingle: async () => ({ data: { name: "Acme Corp" } }) }) }),
   },
 }));
@@ -28,6 +32,7 @@ import SponsorDashboard from "../SponsorDashboard";
 beforeEach(async () => {
   await i18n.changeLanguage("en");
   calls.length = 0;
+  Object.keys(rpcErrors).forEach((key) => delete rpcErrors[key]);
   responses.sponsor_enrollment_summaries = [enrollment("e1", "Priya Shah"), enrollment("e2", "Tom Baker", "at_risk")];
   responses.sponsor_cohort_summaries = [{
     cohort_id: cohortId, cohort_label: "Q3 Leaders", programme_label: "Executive",
@@ -92,5 +97,26 @@ describe("SponsorDashboard privacy contract", () => {
     expect(screen.getByText("113/192")).toBeInTheDocument();
     expect(calls).not.toContain("sponsor_cohort_summaries");
     expect(calls).not.toContain("sponsor_organisation_summary");
+  });
+
+  it("surfaces a canonical cohort timeout instead of rendering an empty dashboard", async () => {
+    rpcErrors.sponsor_canonical_cohort_progress = new Error("statement timeout");
+
+    render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Sponsor data could not be loaded")).toBeInTheDocument();
+    expect(screen.getByText("Try again")).toBeInTheDocument();
+    expect(screen.queryByText("No leaders enrolled yet.")).not.toBeInTheDocument();
+  });
+
+  it("surfaces enrollment metadata failures instead of silently dropping roster rows", async () => {
+    rpcErrors.sponsor_canonical_enrollment_metadata = new Error("statement timeout");
+
+    render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Sponsor data could not be loaded")).toBeInTheDocument();
+    expect(screen.getByText("Try again")).toBeInTheDocument();
   });
 });

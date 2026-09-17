@@ -12,6 +12,8 @@ export interface SponsorCohortData {
   cohortLabel: string | null;
   suppressed: boolean;
   loading: boolean;
+  error: string | null;
+  retry: () => void;
 }
 
 export function useSponsorCohortData(cohortId: string): SponsorCohortData {
@@ -21,16 +23,36 @@ export function useSponsorCohortData(cohortId: string): SponsorCohortData {
   const [suppressed, setSuppressed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [minLeadersForDistribution, setMinLeadersForDistribution] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
+    setError(null);
     Promise.all([
       supabase.rpc("sponsor_canonical_enrollment_metadata", { p_cohort_id: cohortId }),
       supabase.rpc("sponsor_canonical_cohort_progress", { p_cohort_id: cohortId }),
       supabase.rpc("sponsor_min_leaders_for_distribution"),
     ]).then(([summaryRes, canonicalCohortRes, thresholdRes]) => {
       if (!mounted) return;
+      if (
+        summaryRes.error ||
+        canonicalCohortRes.error ||
+        thresholdRes.error ||
+        !Array.isArray(summaryRes.data) ||
+        !Array.isArray(canonicalCohortRes.data)
+      ) {
+        console.error("Sponsor cohort canonical data failed to load", {
+          cohortId,
+          metadataError: summaryRes.error,
+          cohortError: canonicalCohortRes.error,
+          thresholdError: thresholdRes.error,
+        });
+        setError("load");
+        setLoading(false);
+        return;
+      }
       const rows = (Array.isArray(summaryRes.data) ? summaryRes.data : []) as SponsorRosterRow[];
       const aggregate = Array.isArray(canonicalCohortRes.data) && canonicalCohortRes.data[0]
         ? canonicalCohortRes.data[0] as SponsorCohortSummary
@@ -42,9 +64,23 @@ export function useSponsorCohortData(cohortId: string): SponsorCohortData {
       setRoster(rows);
       setKpis(aggregate);
       setLoading(false);
+    }).catch((cause) => {
+      if (!mounted) return;
+      console.error("Sponsor cohort data request failed", { cohortId, cause });
+      setError("load");
+      setLoading(false);
     });
     return () => { mounted = false; };
-  }, [cohortId]);
+  }, [cohortId, reloadToken]);
 
-  return { kpis, roster, minLeadersForDistribution, cohortLabel, suppressed, loading };
+  return {
+    kpis,
+    roster,
+    minLeadersForDistribution,
+    cohortLabel,
+    suppressed,
+    loading,
+    error,
+    retry: () => setReloadToken((token) => token + 1),
+  };
 }

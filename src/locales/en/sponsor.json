@@ -55,6 +55,11 @@
   },
   "dashboard": {
     "compareAllCohorts": "Compare all cohorts",
+    "dataError": {
+      "title": "Sponsor data could not be loaded",
+      "description": "Clariva could not retrieve the current sponsor-safe reporting data. Your access and privacy settings are unchanged. Please try again.",
+      "retry": "Try again"
+    },
     "header": {
       "eyebrow": "Programme",
       "title": "Your leaders,",

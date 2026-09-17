@@ -55,6 +55,11 @@
   },
   "dashboard": {
     "compareAllCohorts": "So sánh tất cả các nhóm",
+    "dataError": {
+      "title": "Không thể tải dữ liệu nhà tài trợ",
+      "description": "Clariva không thể tải dữ liệu báo cáo an toàn hiện tại. Quyền truy cập và cài đặt riêng tư của bạn không thay đổi. Vui lòng thử lại.",
+      "retry": "Thử lại"
+    },
     "header": {
       "eyebrow": "Chương trình",
       "title": "Các lãnh đạo của bạn,",

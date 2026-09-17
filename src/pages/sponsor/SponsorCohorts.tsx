@@ -16,16 +16,28 @@ import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData
 import type { SponsorCohortSummary } from "@/hooks/sponsor/useSponsorDashboardData";
 import { cn } from "@/lib/utils";
 import { cohortLifecycleStatus } from "./sponsorUtils";
+import { SponsorDataErrorState } from "./SponsorDataErrorState";
 
 export default function SponsorCohorts() {
   const { t } = useTranslation("sponsor");
-  const { kpis, cohortSummaries, minLeadersForDistribution, loading } = useSponsorDashboardData();
+  const { kpis, cohortSummaries, minLeadersForDistribution, loading, error, retry } = useSponsorDashboardData();
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <SponsorDataErrorState
+        title={t("dashboard.dataError.title")}
+        description={t("dashboard.dataError.description")}
+        retryLabel={t("dashboard.dataError.retry")}
+        onRetry={retry}
+      />
     );
   }
 

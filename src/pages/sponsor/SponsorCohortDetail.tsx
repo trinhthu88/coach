@@ -7,6 +7,7 @@ import { useSponsorCohortData } from "@/hooks/sponsor/useSponsorCohortData";
 import { Pill } from "@/pages/admin/_shared";
 import { STATUS_LABEL_KEY, STATUS_TONE, cohortLifecycleStatus, cohortProgress, effectiveSponsorStatus, initials } from "./sponsorUtils";
 import { SponsorFlagDialog } from "./SponsorFlagDialog";
+import { SponsorDataErrorState } from "./SponsorDataErrorState";
 
 const SKY = "#3db4d0";
 const NAVY = "#062f3e";
@@ -24,7 +25,16 @@ export default function SponsorCohortDetail() {
   const { cohortId = "" } = useParams<{ cohortId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation("sponsor");
-  const { kpis, roster, cohortLabel, suppressed, minLeadersForDistribution, loading } = useSponsorCohortData(cohortId);
+  const {
+    kpis,
+    roster,
+    cohortLabel,
+    suppressed,
+    minLeadersForDistribution,
+    loading,
+    error,
+    retry,
+  } = useSponsorCohortData(cohortId);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -54,6 +64,17 @@ export default function SponsorCohortDetail() {
 
   if (loading) {
     return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
+  if (error) {
+    return (
+      <SponsorDataErrorState
+        title={t("dashboard.dataError.title")}
+        description={t("dashboard.dataError.description")}
+        retryLabel={t("dashboard.dataError.retry")}
+        onRetry={retry}
+      />
+    );
   }
 
   const status = programmeStatus(kpis);

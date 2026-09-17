@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { SponsorDataErrorState } from "./SponsorDataErrorState";
 
 interface OrgBannerData {
   name: string;
@@ -41,7 +42,7 @@ export default function SponsorDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const {
-    kpis, roster, cohortSummaries, loading,
+    kpis, roster, cohortSummaries, loading, error, retry,
   } = useSponsorDashboardData();
   const [org, setOrg] = useState<OrgBannerData | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
@@ -191,6 +192,17 @@ export default function SponsorDashboard() {
       <div className="flex items-center justify-center py-24">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <SponsorDataErrorState
+        title={t("dashboard.dataError.title")}
+        description={t("dashboard.dataError.description")}
+        retryLabel={t("dashboard.dataError.retry")}
+        onRetry={retry}
+      />
     );
   }
 
