@@ -5032,6 +5032,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      validate_training_learning_requirements: {
+        Args: { p_programme_id?: string }
+        Returns: {
+          active_required_child_units: number
+          programme_id: string
+          requirement_mismatch: boolean
+          stored_required_units: number
+        }[]
+      }
     }
     Enums: {
       alert_severity: "info" | "warning" | "critical"

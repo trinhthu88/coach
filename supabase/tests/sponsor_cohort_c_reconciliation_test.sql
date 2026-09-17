@@ -16,7 +16,7 @@
 --      'active'; an 'at_risk' enrollment that went on to finish every
 --      requirement stayed 'at_risk' forever.
 begin;
-select plan(23);
+select plan(26);
 
 select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111116', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
@@ -53,6 +53,33 @@ select is(
   (select triad_completed_units from sponsor_cohort_summaries('11111111-1111-4111-8111-111111111119')), 9, 'triad completed units');
 select is(
   (select training_completed_units from sponsor_cohort_summaries('11111111-1111-4111-8111-111111111119')), 30, 'training completed units');
+select is(
+  (select training_completed_units
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000002'::uuid,
+     '2026-07-06'::date
+   )),
+  5,
+  'Leader C2 canonical Training completion is five active Skill Cards');
+select is(
+  (select training_required_units
+   from public.sponsor_canonical_leader_progress(
+     '14141414-1414-4141-8141-000000000002'::uuid,
+     '2026-07-06'::date
+   )),
+  6,
+  'Leader C2 canonical Training requirement is six active Skill Cards');
+select is(
+  (select (point->>'completed_units')::integer
+   from jsonb_array_elements(
+     (public.sponsor_canonical_leader_experience(
+       '14141414-1414-4141-8141-000000000002'::uuid,
+       '2026-07-06'::date
+     ))->'learning_breakdown'
+   ) point
+   where point->>'key' = 'skill_cards'),
+  5,
+  'Leader C2 learning breakdown renders Skill Cards as 5/6');
 select is(
   (select required_units from sponsor_cohort_summaries('11111111-1111-4111-8111-111111111119')), 192, 'entitlement is admin requirement x leaders (16 x 12)');
 select is(
