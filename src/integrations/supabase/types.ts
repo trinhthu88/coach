@@ -4476,10 +4476,10 @@ export type Database = {
           peer_completed_units: number
           peer_due_units: number
           peer_required_units: number
-          programme_end_date: string | null
+          programme_end_date: string
           programme_id: string
           programme_label: string
-          programme_start_date: string | null
+          programme_start_date: string
           progress_available: boolean
           required_units: number
           stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
@@ -4506,38 +4506,38 @@ export type Database = {
       sponsor_canonical_organisation_progress: {
         Args: { p_as_of?: string }
         Returns: {
-          booked_units: number | null
-          coaching_booked_units: number | null
-          coaching_completed_units: number | null
-          coaching_due_units: number | null
-          coaching_required_units: number | null
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
           cohort_count: number
-          completed_units: number | null
+          completed_units: number
           due_adherence_pct: number
-          due_units: number | null
-          enrollment_count: number | null
+          due_units: number
+          enrollment_count: number
           full_completion_pct: number
-          mentoring_booked_units: number | null
-          mentoring_completed_units: number | null
-          mentoring_due_units: number | null
-          mentoring_required_units: number | null
-          overdue_units: number | null
-          peer_booked_units: number | null
-          peer_completed_units: number | null
-          peer_due_units: number | null
-          peer_required_units: number | null
-          progress_source_complete: boolean | null
-          required_units: number | null
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          progress_source_complete: boolean
+          required_units: number
           schedule_coverage_pct: number
           suppressed_cohort_count: number
-          training_booked_units: number | null
-          training_completed_units: number | null
-          training_due_units: number | null
-          training_required_units: number | null
-          triad_booked_units: number | null
-          triad_completed_units: number | null
-          triad_due_units: number | null
-          triad_required_units: number | null
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
         }[]
       }
       sponsor_canonical_programme_journey: {
@@ -4592,10 +4592,10 @@ export type Database = {
            peer_expected_units: number
            peer_required_per_leader: number
           programme_label: string
-          programme_end_date: string | null
+          programme_end_date: string
            programme_current_week: number
            programme_journey: Json
-          programme_start_date: string | null
+          programme_start_date: string
            programme_total_weeks: number
           required_units: number
           satisfaction_avg: number
