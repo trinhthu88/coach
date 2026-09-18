@@ -29,6 +29,7 @@ const defaultProgrammeProgress = () => ({
       weeks: [],
       currentWeek: null,
       currentQuizAssignmentId: null,
+      quizAssignmentIdByWeek: {},
     },
     loading: false,
   });

@@ -16,6 +16,9 @@ export interface ProgrammeProgressSummary {
   /** The current week's quiz assignment id, if it has one — for the
    * "Take quiz" action button. Null once no quiz module or no quiz that week. */
   currentQuizAssignmentId: string | null;
+  /** Each week's visible quiz assignment id (week id → assignment id), so
+   * every unlocked week — not just the current one — can link to its quiz. */
+  quizAssignmentIdByWeek: Record<string, string>;
 }
 
 export interface RawWeek {
@@ -45,6 +48,7 @@ const EMPTY: ProgrammeProgressSummary = {
   weeks: [],
   currentWeek: null,
   currentQuizAssignmentId: null,
+  quizAssignmentIdByWeek: {},
 };
 
 async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSummary> {
@@ -115,8 +119,11 @@ async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSum
 
   const currentWeek =
     weeks.find((w) => !w.locked && !w.completed_at) ?? [...weeks].reverse().find((w) => !w.locked) ?? null;
-  const currentQuizAssignmentId =
-    (currentWeek && (assignments || []).find((a) => a.training_week_id === currentWeek.id)?.id) || null;
+  const quizAssignmentIdByWeek: Record<string, string> = {};
+  for (const a of assignments || []) {
+    if (a.training_week_id && !quizAssignmentIdByWeek[a.training_week_id]) quizAssignmentIdByWeek[a.training_week_id] = a.id;
+  }
+  const currentQuizAssignmentId = (currentWeek && quizAssignmentIdByWeek[currentWeek.id]) || null;
 
   return {
     weeksTotal: weeks.length,
@@ -126,6 +133,7 @@ async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSum
     weeks,
     currentWeek,
     currentQuizAssignmentId,
+    quizAssignmentIdByWeek,
   };
 }
 
