@@ -7,33 +7,37 @@ select has_function(
   array['uuid[]', 'date']
 );
 
--- The admin aggregate must expose the canonical field, never the legacy cache.
+-- The Admin completion number is the canonical engine's, not a second
+-- (weighted snapshot) calculation.
 select ok(
   pg_get_functiondef(
     'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-  ) ~ 'full_completion_pct',
-  'admin progress returns canonical full_completion_pct'
+  ) ~ 'admin_canonical_enrollment_progress',
+  'admin progress projects the canonical completion engine'
 );
 select ok(
   pg_get_functiondef(
     'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-  ) ~ 'required_module_count <> module_count',
-  'modules with no required units produce no overall value'
+  ) !~ 'enrollment_module_snapshots|get_enrollment_progress|weight',
+  'admin progress no longer reads snapshot progress or module weights'
 );
 select ok(
   pg_get_functiondef(
-    'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-  ) ~ 'valid_weight_count <> module_count',
-  'missing or invalid weights produce no overall value'
-);
-select ok(
-  pg_get_functiondef(
-    'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-  ) ~ 'weight_sum <> 100'
+    'public.admin_canonical_enrollment_progress(uuid[],date)'::regprocedure
+  ) ~ 'canonical_enrollment_progress'
     and pg_get_functiondef(
-      'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-    ) ~ 'weighted_value',
-  'exactly 100 valid weight points are required and weighted values are isolated per enrollment'
+      'public.admin_canonical_enrollment_progress(uuid[],date)'::regprocedure
+    ) ~ 'has_role',
+  'admin canonical progress is the shared construction behind an admin check'
+);
+select ok(
+  pg_get_functiondef(
+    'public.learner_canonical_progress(uuid,date)'::regprocedure
+  ) ~ 'canonical_enrollment_progress'
+    and pg_get_functiondef(
+      'public.sponsor_canonical_enrollment_progress(uuid,date)'::regprocedure
+    ) ~ 'canonical_enrollment_progress',
+  'Learner and Sponsor progress use the same construction'
 );
 
 select * from finish();

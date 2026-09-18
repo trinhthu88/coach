@@ -204,5 +204,35 @@ describe("programme profile architecture", () => {
     expect(read("hooks/useLearnerCanonicalProgress.ts")).toMatch(/rpc\("learner_canonical_journey"/);
     expect(read("hooks/sponsor/useSponsorLeaderData.ts")).toMatch(/rpc\("sponsor_canonical_leader_journey"/);
   });
+
+  it("Admin Dashboard, Analytics and Alerts read completion and status from the canonical engine", () => {
+    for (const file of ["pages/admin/AdminDashboard.tsx", "pages/admin/AdminAnalytics.tsx", "pages/admin/AdminAlerts.tsx"]) {
+      const text = read(file);
+      expect(text, file).toMatch(/fetchAdminCanonicalProgress\(/);
+      // No second Admin completion engine, no stored-status "at risk", no snapshot reads.
+      expect(text, file).not.toMatch(/get_admin_enrollment_progress|enrollment_module_(snapshots|milestones)|progress_pct/);
+      expect(text, file).not.toMatch(/\.status === "at_risk"/);
+    }
+    expect(read("lib/adminCanonicalProgress.ts")).toMatch(/rpc\("admin_canonical_enrollment_progress"/);
+    // Alerts count overdue actions from the original action records, not a session subset.
+    expect(read("pages/admin/AdminAlerts.tsx")).toMatch(/from\("enrollment_actions"\)/);
+    expect(read("pages/admin/AdminAlerts.tsx")).not.toMatch(/withEnrollmentActions/);
+  });
+
+  it("no surface calls a retired engine or reads a derived snapshot / deprecated cache", () => {
+    const retired = /rpc\(\s*"(get_enrollment_progress|get_admin_enrollment_progress|sponsor_(cohort|enrollment)_summaries[a-z_]*|sponsor_organisation_summary[a-z_]*|sponsor_metric_rows[a-z_]*|sponsor_[a-z]+_cadence_items|sponsor_leader_engagement_summary|sponsor_enrollment_next_session|sponsor_leader_programme_history)"/;
+    const snapshotReads = /from\("(enrollment_module_snapshots|enrollment_module_milestones)"\)|["'\s,]progress_pct["'\s,]/;
+    const offenders = files.filter((f) => !f.endsWith("integrations/supabase/types.ts") && (retired.test(readFileSync(f, "utf8")) || snapshotReads.test(readFileSync(f, "utf8"))));
+    expect(offenders.map((f) => relative(SRC, f))).toEqual([]);
+  });
+
+  it("schedule mismatch state comes from one canonical source for every role", () => {
+    const hook = read("hooks/useCanonicalScheduleState.ts");
+    expect(hook).toMatch(/learner_canonical_schedule_state/);
+    expect(hook).toMatch(/sponsor_canonical_leader_schedule_state/);
+    expect(hook).toMatch(/admin_canonical_schedule_state/);
+    expect(read("components/programme/LearnerProgrammeJourney.tsx")).toMatch(/useCanonicalScheduleState\("learner"/);
+    expect(read("pages/sponsor/SponsorLeaderDrawer.tsx")).toMatch(/useCanonicalScheduleState\("sponsor"/);
+  });
 });
 

@@ -1,6 +1,6 @@
 begin;
 
-select plan(21);
+select plan(22);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -342,7 +342,9 @@ values
   ('a7000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'Past response', '2026-01-26 10:00:00+00', 'e1000000-0000-0000-0000-000000000001'),
   ('a7000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'Future response', '2026-03-26 10:00:00+00', 'e1000000-0000-0000-0000-000000000001');
 
-set local role authenticated;
+-- get_enrollment_progress is the HISTORICAL snapshot engine: it is no
+-- longer client-callable (20260918170000_single_source_of_truth), so its
+-- historical semantics are checked as the database owner.
 select set_config('request.jwt.claim.sub', 'a1000000-0000-0000-0000-000000000001', true);
 
 select results_eq(
@@ -388,8 +390,15 @@ select is(
 select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000004', true);
 select is_empty(
   $$select * from public.get_enrollment_progress('e1000000-0000-0000-0000-000000000001', date '2026-04-01')$$,
-  'an unrelated authenticated user cannot read enrollment progress'
+  'an unrelated user cannot read enrollment progress'
 );
+set local role authenticated;
+select throws_ok(
+  $$select * from public.get_enrollment_progress('e1000000-0000-0000-0000-000000000001', date '2026-04-01')$$,
+  '42501', null,
+  'clients cannot call the historical snapshot engine at all'
+);
+reset role;
 
 select * from finish();
 rollback;

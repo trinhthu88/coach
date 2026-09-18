@@ -204,8 +204,9 @@ select is(
 -- contract tests): reuses the current Admin config / real activity engines,
 -- and never selects coach identity or private notes.
 select ok(
-  pg_get_functiondef('public.learner_canonical_progress(uuid,date)'::regprocedure) ~ 'canonical_module_progress'
-    AND pg_get_functiondef('public.learner_canonical_progress(uuid,date)'::regprocedure) !~ 'enrollment_module_snapshots',
+  pg_get_functiondef('public.learner_canonical_progress(uuid,date)'::regprocedure) ~ 'canonical_enrollment_progress'
+    AND pg_get_functiondef('public.canonical_enrollment_progress(uuid,date)'::regprocedure) ~ 'canonical_module_progress'
+    AND pg_get_functiondef('public.canonical_enrollment_progress(uuid,date)'::regprocedure) !~ 'enrollment_module_snapshots',
   'learner progress uses the current Admin/activity source, not enrollment snapshots'
 );
 select ok(

@@ -39,11 +39,15 @@ select ok(
     ) ~ 'sponsor_canonical_activity',
   'leader journey uses the current Admin schedule and real activity source'
 );
+-- The engagement summary projects the one canonical goal/action rule
+-- (canonical_enrollment_engagement → canonical_goal_progress / enrollment_actions).
 select ok(
   pg_get_functiondef(
     'public.sponsor_leader_engagement_summary(uuid)'::regprocedure
-  ) ~ 'coachee_goals' AND pg_get_functiondef(
-    'public.sponsor_leader_engagement_summary(uuid)'::regprocedure
+  ) ~ 'canonical_enrollment_engagement' AND pg_get_functiondef(
+    'public.canonical_enrollment_engagement(uuid)'::regprocedure
+  ) ~ 'canonical_goal_progress' AND pg_get_functiondef(
+    'public.canonical_enrollment_engagement(uuid)'::regprocedure
   ) ~ 'enrollment_actions',
   'leader engagement summary reads real goal/action rows'
 );

@@ -5,6 +5,12 @@ import i18n from "@/i18n/config";
 import { SponsorLeaderDrawer, SponsorLeaderProfile } from "../SponsorLeaderDrawer";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 
+// Schedule-mismatch state (cohort_programme_schedule_state) — aligned here.
+vi.mock("@/hooks/useCanonicalScheduleState", () => ({
+  useCanonicalScheduleState: () => ({ rows: [], mismatches: [], loading: false, error: null }),
+}));
+
+
 const leader = {
   enrollment_id: "enrollment-1",
   learner_display_name: "Priya Shah",

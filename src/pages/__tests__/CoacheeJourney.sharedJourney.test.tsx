@@ -4,6 +4,12 @@ import { MemoryRouter } from "react-router-dom";
 import { canonicalExperience, canonicalJourney, canonicalProgress, ENROLLMENT_ID } from "@/test/fixtures/canonicalEnrollment";
 import { reflectionFeedFixture } from "@/test/fixtures/reflectionFeed";
 
+// Schedule-mismatch state (cohort_programme_schedule_state) — aligned here.
+vi.mock("@/hooks/useCanonicalScheduleState", () => ({
+  useCanonicalScheduleState: () => ({ rows: [], mismatches: [], loading: false, error: null }),
+}));
+
+
 const state = vi.hoisted(() => ({
   feedbackError: null as string | null,
   feedback: [] as unknown[],

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import {
+
   canonicalEngagement,
   canonicalExperience,
   canonicalJourney,
@@ -85,6 +86,11 @@ vi.mock("@/hooks/journey/useLearnerReflectionFeed", () => ({
 }));
 vi.mock("@/hooks/journey/useEnrollmentSessions", () => ({
   useEnrollmentSessions: () => state.sessions,
+}));
+
+// Schedule-mismatch state (cohort_programme_schedule_state) — aligned here.
+vi.mock("@/hooks/useCanonicalScheduleState", () => ({
+  useCanonicalScheduleState: () => ({ rows: [], mismatches: [], loading: false, error: null }),
 }));
 
 import "@/i18n/config";

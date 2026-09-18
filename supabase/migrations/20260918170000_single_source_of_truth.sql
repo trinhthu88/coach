@@ -161,7 +161,7 @@ AS $$
     AND auth.uid() IS NOT NULL;
 $$;
 
-CREATE OR REPLACE FUNCTION public.sponsor_canonical_enrollment_progress(p_cohort_id uuid, p_as_of date DEFAULT CURRENT_DATE)
+CREATE OR REPLACE FUNCTION public.sponsor_canonical_enrollment_progress(p_cohort_id uuid DEFAULT NULL::uuid, p_as_of date DEFAULT CURRENT_DATE)
 RETURNS TABLE(enrollment_id uuid, learner_display_name text, programme_label text, cohort_id uuid, cohort_label text, programme_id uuid, enrollment_start_date date, enrollment_end_date date, programme_start_date date, programme_end_date date, enrollment_status enrollment_status, stored_enrollment_status enrollment_status, effective_enrollment_status enrollment_status, required_units integer, completed_units integer, due_units integer, booked_units integer, overdue_units integer, full_completion_pct numeric, due_adherence_pct numeric, pace_status text, progress_available boolean, coaching_required_units integer, coaching_completed_units integer, coaching_due_units integer, coaching_booked_units integer, training_required_units integer, training_completed_units integer, training_due_units integer, training_booked_units integer, peer_required_units integer, peer_completed_units integer, peer_due_units integer, peer_booked_units integer, mentoring_required_units integer, mentoring_completed_units integer, mentoring_due_units integer, mentoring_booked_units integer, triad_required_units integer, triad_completed_units integer, triad_due_units integer, triad_booked_units integer)
 LANGUAGE sql
 STABLE
@@ -426,14 +426,32 @@ COMMENT ON FUNCTION public.get_enrollment_progress(uuid, date) IS
   'HISTORICAL snapshot progress engine. Not client-callable; the canonical completion source is canonical_enrollment_progress.';
 
 REVOKE EXECUTE ON FUNCTION public.get_enrollment_progress(uuid, date) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.sponsor_leader_cadence_items(uuid, date) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.sponsor_cohort_cadence_items(uuid, date) FROM PUBLIC, anon, authenticated;
-
--- Superseded Sponsor reporting RPCs that no surface uses.
-REVOKE EXECUTE ON FUNCTION public.sponsor_cohort_summaries_legacy(uuid) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.sponsor_organisation_summary_legacy() FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.sponsor_metric_rows(uuid, date) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.sponsor_metric_rows_legacy(uuid, date) FROM PUBLIC, anon, authenticated;
+-- Snapshot cadence readers and superseded Sponsor reporting RPCs that no
+-- surface uses. These exist on hosted production but are not created by any
+-- migration in this repository (schema drift), so they are handled only when
+-- present: revoked from clients, never dropped blindly.
+DO $retire$
+DECLARE
+  fn text;
+BEGIN
+  FOREACH fn IN ARRAY ARRAY[
+    'public.sponsor_leader_cadence_items(uuid,date)',
+    'public.sponsor_cohort_cadence_items(uuid,date)',
+    'public.sponsor_cohort_summaries_legacy(uuid)',
+    'public.sponsor_organisation_summary_legacy()',
+    'public.sponsor_metric_rows(uuid,date)',
+    'public.sponsor_metric_rows_legacy(uuid,date)',
+    'public.sponsor_enrollment_next_session(uuid)',
+    'public.sponsor_leader_programme_history(uuid)'
+  ] LOOP
+    IF to_regprocedure(fn) IS NOT NULL THEN
+      EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon, authenticated', fn);
+      EXECUTE format('COMMENT ON FUNCTION %s IS %L', fn,
+        'RETIRED — not client-callable; not created by the repository migration chain. Canonical sources: canonical_enrollment_progress, canonical_enrollment_journey.');
+    END IF;
+  END LOOP;
+END
+$retire$;
 
 -- ---------------------------------------------------------------------------
 -- 4. One goal / action engagement rule (canonical_enrollment_engagement)

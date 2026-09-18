@@ -20,8 +20,13 @@ vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useCanonicalScheduleState", () => ({
+  useCanonicalScheduleState: () => ({ rows: [], mismatches: [], loading: false, error: null }),
+}));
+
 import "@/i18n/config";
 import { LearnerProgrammeJourney } from "../LearnerProgrammeJourney";
+import { ProgrammeJourney } from "../ProgrammeJourney";
 import { moduleScopeLabelFor } from "../profileTheme";
 
 function renderFull() {
@@ -64,5 +69,23 @@ describe("Programme Journey checkpoint detail", () => {
     expect(moduleScopeLabelFor("peer_coaching", t)).toBe("Peer coaching");
     expect(moduleScopeLabelFor("training_learning", t)).toBe("Training / Learning");
     expect(moduleScopeLabelFor("daily_prompt", t)).toBe("Daily prompt");
+  });
+});
+
+
+describe("Required-units mismatch", () => {
+  it("is shown explicitly in the shared journey (same component for every role)", () => {
+    render(
+      <MemoryRouter>
+        <ProgrammeJourney
+          journey={JOURNEY}
+          start="2026-01-05"
+          end="2026-07-05"
+          viewer="sponsor"
+          scheduleMismatches={[{ module: "coaching", required_units: 5, scheduled_units: 4, state: "missing_dates" }]}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId("schedule-mismatch")).toHaveTextContent("Coaching: 4 of 5 required units have a cohort due date");
   });
 });
