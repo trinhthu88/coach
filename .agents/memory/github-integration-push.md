@@ -20,3 +20,9 @@ When GitHub reports the fetched remote tip as the local merge base, do not merge
 **Why:** A push rejection can come from invalid shell credentials or a connector that can create Git objects but cannot execute `UpdateRef`; rewriting an already-linear history would add avoidable risk.
 
 **How to apply:** Fetch first, report both exclusive commit sets, then retry a non-forced push through an authorized path. If REST returns 404 and GraphQL returns `FORBIDDEN` for `UpdateRef`, stop without changing the branch or dispatching CI.
+
+The CodeExecution shell wrapper can normalize or remove tabs, NUL separators, and trailing whitespace from command output.
+
+**Why:** Direct parsing of `git cat-file` and NUL-delimited tree output failed even though the underlying Git objects were valid.
+
+**How to apply:** Base64-encode commit and blob contents before passing them to an impure connector call, and use a visible separator such as `|` for changed-path metadata.
