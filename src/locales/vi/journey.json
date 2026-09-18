@@ -174,10 +174,6 @@
     "eyebrow": "Tiến độ",
     "titleLead": "Hành trình",
     "titleEmphasis": "của tôi",
-    "quickStats": {
-      "completion": "hoàn thành",
-      "dueAdherence": "tuân thủ hạn"
-    },
     "tabs": {
       "overview": "Tổng quan",
       "goals": "Mục tiêu & cột mốc",
@@ -187,18 +183,30 @@
       "feedback": "Phản hồi ({{count}})",
       "practiceAnalytics": "Phân tích Thực hành & Năng lực"
     },
-    "reflectionFilters": {
-      "all": "Tất cả",
-      "programme": "Chương trình",
-      "coaching": "Coaching",
-      "mentoring": "Mentoring",
-      "triad": "Tự suy ngẫm Triad",
-      "private": "Riêng tư"
+    "goalsAndActions": {
+      "title": "Mục tiêu & hành động",
+      "subtitle_one": "{{count}} mục tiêu đang hoạt động với các hành động gắn kèm.",
+      "subtitle_other": "{{count}} mục tiêu đang hoạt động với các hành động gắn kèm.",
+      "goalEyebrow": "Mục tiêu phát triển",
+      "status": {
+        "active": "Đang hoạt động",
+        "archived": "Đã lưu trữ"
+      },
+      "start": "Bắt đầu",
+      "current": "Hiện tại",
+      "target": "Mục tiêu",
+      "nextAction": "Tiếp theo: {{text}} · Hạn {{date}}",
+      "noDueDate": "chưa có hạn",
+      "noOpenActions": "Chưa có hành động nào đang mở cho mục tiêu này.",
+      "actionsHeader": "Tất cả hành động"
     },
-    "feedbackFilters": {
-      "all": "Tất cả",
-      "mentoring": "Mentoring",
-      "peer": "Peer Coaching"
+    "reflectionsCard": {
+      "title": "Suy ngẫm",
+      "subtitle": "Suy ngẫm chương trình, coaching, mentoring, Triad và riêng tư được giữ tách biệt — mỗi loại giữ nguyên bối cảnh xuất phát của nó."
+    },
+    "feedbackCard": {
+      "title": "Phản hồi",
+      "subtitle": "Chỉ hiển thị phản hồi dành cho học viên trong đợt tham gia này."
     },
     "goalsHeader": "Mục tiêu & cột mốc",
     "goalsEmptyDescription": "Xác định điều bạn muốn đạt được để coach có thể gắn hành động vào các cột mốc.",
@@ -219,26 +227,10 @@
     "saveReflection": "Lưu suy ngẫm riêng tư",
     "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây."
   },
-  "practiceAnalyticsTab": {
-    "scopeNotice": "Phân tích Thực hành & Năng lực nằm trong Hành trình của tôi — giữ nguyên bằng chứng năng lực ICF mà Hành trình Thực hành từng theo dõi, không tạo thêm một điểm đến chính riêng biệt.",
-    "kpis": {
-      "peerSessions": "Session peer coaching",
-      "competenciesObserved": "Năng lực đã quan sát",
-      "selfReflections": "Tự suy ngẫm"
-    },
-    "competencyList": {
-      "title": "Phát triển năng lực",
-      "subtitle": "Dựa trên phản hồi peer coaching cho đợt tham gia này.",
-      "sub": "Phản hồi peer coaching",
-      "empty": "Chưa có phản hồi năng lực nào — mục này sẽ có dữ liệu khi bạn nhận phản hồi peer coaching."
-    },
-    "evidence": {
-      "title": "Bằng chứng thực hành gần đây",
-      "subtitle": "Nguồn gốc của các tín hiệu năng lực.",
-      "empty": "Chưa có bằng chứng thực hành nào."
-    },
-    "viewReflections": "Xem suy ngẫm",
-    "viewFeedback": "Xem phản hồi"
+  "practiceCompetencyCard": {
+    "title": "Thực hành & năng lực",
+    "subtitle": "Bằng chứng từ phản hồi peer coaching cho đợt tham gia này.",
+    "source": "Phản hồi peer coaching"
   },
   "coachMyJourney": {
     "subtitle": "Sự phát triển của bạn với vai trò học viên — qua các session coaching và session đồng cấp bạn nhận được.",
@@ -260,19 +252,8 @@
     "modeBadge": "Bạn, với vai trò học viên"
   },
   "coacheeJourney": {
-    "subtitle": "Theo dõi mục tiêu, hành động cần làm, session và suy ngẫm cá nhân của bạn.",
-    "progressRings": {
-      "programme": "Chương trình",
-      "programmeSub": "{{completed}} trong số {{limit}} session",
-      "goalsOnTrack": "Mục tiêu đang đúng hướng",
-      "goalsOnTrackSub": "{{count}} trong số {{total}} đang tiến triển",
-      "actionsClosed": "Hành động đã đóng",
-      "actionsClosedSub": "{{done}} trong số {{total}} đã hoàn thành"
-    },
-    "milestonesEyebrow": "Cột mốc",
-    "emptyGoalsDescription": "Xác định điều bạn muốn đạt được và coach của bạn có thể gắn hành động vào các cột mốc.",
-    "actionsEmptyMessage": "Chưa có hành động nào. Chúng sẽ xuất hiện ở đây khi coach của bạn giao cho bạn.",
-    "sessionsBlockUpcoming": "Sắp tới",
-    "sessionsBlockCompleted": "Đã hoàn thành"
+    "eyebrow": "Không gian học viên",
+    "title": "Hành trình của tôi",
+    "subtitle": "Mọi thứ cho đợt tham gia này ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự xảy ra, và mục tiêu của bạn đang ở đâu."
   }
 }

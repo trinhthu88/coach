@@ -173,10 +173,6 @@
     "eyebrow": "Progress",
     "titleLead": "My",
     "titleEmphasis": "journey",
-    "quickStats": {
-      "completion": "completion",
-      "dueAdherence": "due adherence"
-    },
     "tabs": {
       "overview": "Overview",
       "goals": "Goals & milestones",
@@ -186,18 +182,30 @@
       "feedback": "Feedback ({{count}})",
       "practiceAnalytics": "Practice & Competency Analytics"
     },
-    "reflectionFilters": {
-      "all": "All",
-      "programme": "Programme",
-      "coaching": "Coaching",
-      "mentoring": "Mentoring",
-      "triad": "Triad Self-Reflection",
-      "private": "Private"
+    "goalsAndActions": {
+      "title": "Goals & actions",
+      "subtitle_one": "{{count}} active goal with the actions attached to it.",
+      "subtitle_other": "{{count}} active goals with the actions attached to them.",
+      "goalEyebrow": "Development goal",
+      "status": {
+        "active": "Active",
+        "archived": "Archived"
+      },
+      "start": "Start",
+      "current": "Current",
+      "target": "Target",
+      "nextAction": "Next: {{text}} · Due {{date}}",
+      "noDueDate": "no due date",
+      "noOpenActions": "No open actions for this goal yet.",
+      "actionsHeader": "All action items"
     },
-    "feedbackFilters": {
-      "all": "All",
-      "mentoring": "Mentoring",
-      "peer": "Peer Coaching"
+    "reflectionsCard": {
+      "title": "Reflections",
+      "subtitle": "Programme, coaching, mentoring, Triad and private reflections stay distinct — each keeps the context it came from."
+    },
+    "feedbackCard": {
+      "title": "Feedback",
+      "subtitle": "Learner-visible feedback for this enrollment only."
     },
     "goalsHeader": "Goals & milestones",
     "goalsEmptyDescription": "Define what you want to achieve and your coach can attach action items to milestones.",
@@ -218,26 +226,10 @@
     "saveReflection": "Save private reflection",
     "noReflectionsYet": "Your private reflections will appear here."
   },
-  "practiceAnalyticsTab": {
-    "scopeNotice": "Practice & Competency Analytics belongs inside My Journey — this keeps the same ICF competency evidence Practice Journey tracked, without a competing top-level destination.",
-    "kpis": {
-      "peerSessions": "Peer coaching sessions",
-      "competenciesObserved": "Competencies observed",
-      "selfReflections": "Self-reflections"
-    },
-    "competencyList": {
-      "title": "Competency development",
-      "subtitle": "Based on peer coaching feedback for this enrollment.",
-      "sub": "Peer coaching feedback",
-      "empty": "No competency feedback yet — this fills in as you receive peer coaching feedback."
-    },
-    "evidence": {
-      "title": "Recent practice evidence",
-      "subtitle": "Where the competency signals came from.",
-      "empty": "No practice evidence yet."
-    },
-    "viewReflections": "View reflections",
-    "viewFeedback": "View feedback"
+  "practiceCompetencyCard": {
+    "title": "Practice & competency",
+    "subtitle": "Evidence from peer coaching feedback for this enrollment.",
+    "source": "Peer coaching feedback"
   },
   "coachMyJourney": {
     "subtitle": "Your growth as a coachee — across coaching and peer sessions you receive.",
@@ -261,19 +253,8 @@
     "modeBadge": "You, as coachee"
   },
   "coacheeJourney": {
-    "subtitle": "Track your goals, action items, sessions and personal reflections.",
-    "progressRings": {
-      "programme": "Programme",
-      "programmeSub": "{{completed}} of {{limit}} sessions",
-      "goalsOnTrack": "Goals on track",
-      "goalsOnTrackSub": "{{count}} of {{total}} advancing",
-      "actionsClosed": "Actions closed",
-      "actionsClosedSub": "{{done}} of {{total}} completed"
-    },
-    "milestonesEyebrow": "Milestones",
-    "emptyGoalsDescription": "Define what you want to achieve and your coach can attach action items to milestones.",
-    "actionsEmptyMessage": "No action items yet. They'll appear here once your coach assigns them.",
-    "sessionsBlockUpcoming": "Upcoming",
-    "sessionsBlockCompleted": "Completed"
+    "eyebrow": "Learner workspace",
+    "title": "My Journey",
+    "subtitle": "Everything for this enrollment in one place: what the programme expects, what has actually happened, and where your goals stand."
   }
 }
