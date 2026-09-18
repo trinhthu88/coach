@@ -10,7 +10,6 @@ import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
-import { SessionRow } from "@/components/ui/proto";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calendar, Loader2, Star, Check, Search } from "lucide-react";
@@ -287,19 +286,6 @@ function SessionCard({
     onChanged();
   };
 
-  const kindLabel = isTriad
-    ? t("list.kindLabelTriad")
-    : isMentoring
-    ? t("list.kindLabelMentoring")
-    : isCoacheePeer
-    ? t("list.kindLabelPeerPractice")
-    : isPeer
-    ? userIsGiver
-      ? t("dashboard:coach.kindPill.peerGive")
-      : t("dashboard:coach.kindPill.peerReceive")
-    : role === "coach"
-    ? t("list.kindLabelWith")
-    : t("list.kindLabelCoach");
   const roleBadge = isMentoring
     ? userIsGiver
       ? { label: t("list.roleBadge.mentor"), className: "bg-success/10 text-success border-success/20" }
@@ -330,40 +316,46 @@ function SessionCard({
       ].filter(Boolean).join(" · ")
     : "";
   const displayTitle = session.topic || t("list.triadSessionTitle");
-  const displayDate = start ? format(start, "HH:mm") : t("list.noTimeYet");
-  const displayMeta = [
-    `${kindLabel} ${counterpartLabel}`,
-    contextLabels,
-    session.programmeName ? t("list.programmeLabel", { name: session.programmeName }) : "",
-    session.cohortName ? t("list.cohortLabel", { name: session.cohortName }) : "",
-    displayDate,
-    session.duration_minutes != null ? `${session.duration_minutes} min` : "",
-  ].filter(Boolean).join(" · ");
+  const displayDate = start ? format(start, "MMM d · HH:mm") : t("list.noTimeYet");
+  const programmeContext = [contextLabels, session.cohortName ? t("list.cohortLabel", { name: session.cohortName }) : ""]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <Card className="surface-card overflow-hidden p-0">
-      <SessionRow
-         month={start ? format(start, "MMM").toUpperCase() : "—"}
-         day={start ? format(start, "d") : "—"}
-         title={displayTitle}
-         meta={displayMeta}
-        status={
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <span
-              className={cn(
-                "inline-flex max-w-[92px] items-center gap-1 whitespace-normal rounded-full border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase leading-tight tracking-wide sm:max-w-none sm:shrink-0 sm:whitespace-nowrap sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-widest",
-                meta.className
-              )}
-            >
-              <Icon className="h-3 w-3 shrink-0" /> {meta.label}
-            </span>
-            <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-widest", triadRoleBadge.className)}>
-               {triadRoleBadge.label}
-            </Badge>
-          </div>
-        }
+      <button
+        type="button"
         onClick={onOpen}
-        className="rounded-none border-0 shadow-none hover:border-0"
-      />
+        className="grid w-full grid-cols-1 items-center gap-3 p-4 text-left transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_minmax(0,1fr)_auto] sm:gap-4 sm:p-5"
+      >
+        <div className="min-w-0">
+          <p className="text-[8.5px] font-bold uppercase tracking-[.14em] text-primary">{t(`list.kindFilter.${kindCategory(session.kind)}`)}</p>
+          <p className="font-display mt-1 truncate text-[13px]">{displayTitle}</p>
+        </div>
+        <div className="min-w-0">
+          {session.programmeName && <p className="truncate text-[12px] font-semibold">{session.programmeName}</p>}
+          {programmeContext && <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">{programmeContext}</p>}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-[11.5px] font-semibold">{counterpartLabel}</p>
+          <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
+            {displayDate}
+            {session.duration_minutes != null && ` · ${session.duration_minutes} min`}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-row items-center gap-1.5 sm:flex-col sm:items-end">
+          <span
+            className={cn(
+              "inline-flex max-w-[92px] items-center gap-1 whitespace-normal rounded-full border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase leading-tight tracking-wide sm:max-w-none sm:shrink-0 sm:whitespace-nowrap sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-widest",
+              meta.className
+            )}
+          >
+            <Icon className="h-3 w-3 shrink-0" /> {meta.label}
+          </span>
+          <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-widest", triadRoleBadge.className)}>
+             {triadRoleBadge.label}
+          </Badge>
+        </div>
+      </button>
       <div className="px-5 pb-5" onClick={(e) => e.stopPropagation()}>
         {canMarkComplete && (
           <Button size="sm" variant="secondary" onClick={markComplete} disabled={completing} className="mb-2">
