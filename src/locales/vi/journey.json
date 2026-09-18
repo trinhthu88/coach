@@ -200,7 +200,12 @@
       "mentoring": "Mentoring",
       "peer": "Peer Coaching"
     },
+    "goalsHeader": "Mục tiêu & cột mốc",
+    "goalsEmptyDescription": "Xác định điều bạn muốn đạt được để coach có thể gắn hành động vào các cột mốc.",
     "actionItemsHeader": "Hành động cần làm",
+    "actionsEmpty": "Chưa có hành động nào. Hành động sẽ xuất hiện khi coach giao cho bạn.",
+    "noFeedbackYet": "Chưa có phản hồi nào dành cho học viên.",
+    "unknownFeedbackAuthor": "Một người dùng",
     "reflectionBanner": {
       "title": "Giờ suy ngẫm — đánh giá mục tiêu của bạn sau session này",
       "openPrefix": "Mở",

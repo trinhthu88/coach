@@ -84,7 +84,8 @@
       "all": "Tất cả",
       "coaching": "Coaching",
       "peer": "Đồng cấp",
-      "mentoring": "Mentoring"
+      "mentoring": "Mentoring",
+      "triad": "Triad"
     },
     "tabs": {
       "upcoming": "Sắp tới ({{count}})",
@@ -101,11 +102,18 @@
     "kindLabelCoach": "Coach",
     "kindLabelPeerPractice": "Thực hành cùng bạn đồng hành",
     "kindLabelMentoring": "Mentoring cùng",
+    "kindLabelTriad": "Session triad",
+    "triadSessionTitle": "Session triad",
+    "triadParticipantsUnavailable": "triad của bạn",
+    "triadRound": "Vòng {{count}}",
+    "triadWeek": "Tuần {{count}}",
+    "noTimeYet": "Chưa có thời gian",
     "roleBadge": {
       "coach": "Coach",
       "coachee": "Coachee",
       "mentor": "Mentor",
-      "mentee": "Mentee"
+      "mentee": "Mentee",
+      "observer": "Observer"
     },
     "markComplete": "Đánh dấu hoàn thành",
     "toast": {

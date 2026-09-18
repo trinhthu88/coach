@@ -21,7 +21,7 @@ import { getSessionStatusPillMeta as getStatusMeta } from "@/lib/sessionStatusMe
 import { useSessionsData } from "@/hooks/sessions/useSessionsData";
 import type { SessionRow as SessionRowData, SessionKind } from "@/hooks/sessions/useSessionsData";
 
-type KindFilter = "all" | "coaching" | "peer" | "mentoring";
+type KindFilter = "all" | "coaching" | "peer" | "mentoring" | "triad";
 
 // Collapses the 7 underlying kinds (which distinguish table + give/receive
 // direction) down to the 3 categories a user actually filters by — direction
@@ -29,11 +29,13 @@ type KindFilter = "all" | "coaching" | "peer" | "mentoring";
 function kindCategory(kind: SessionKind): KindFilter {
   if (kind === "coaching") return "coaching";
   if (kind === "mentoring-mentor" || kind === "mentoring-mentee") return "mentoring";
+  if (kind === "triad") return "triad";
   return "peer";
 }
 
 function sessionDetailPath(s: { id: string; kind: SessionKind }): string {
   if (s.kind === "coaching") return `/sessions/${s.id}`;
+  if (s.kind === "triad") return `/triads/${s.id}`;
   if (s.kind === "coachee-peer-give" || s.kind === "coachee-peer-receive") {
     return `/sessions/${s.id}?type=coachee_peer`;
   }
@@ -72,19 +74,26 @@ export default function Sessions() {
   const matchesFilters = (s: SessionRowData) =>
     (kindFilter === "all" || kindCategory(s.kind) === kindFilter) &&
     (!q ||
-      s.topic.toLowerCase().includes(q) ||
+      (s.topic || t("list.kindLabelTriad")).toLowerCase().includes(q) ||
+      (s.triad?.participantNames ?? []).some((name) => name.toLowerCase().includes(q)) ||
       (s.coach?.full_name ?? "").toLowerCase().includes(q) ||
       (s.coach?.email ?? "").toLowerCase().includes(q) ||
       (s.coachee?.full_name ?? "").toLowerCase().includes(q) ||
       (s.coachee?.email ?? "").toLowerCase().includes(q));
 
   const now = new Date();
-  const upcoming = sessions.filter(
-    (s) => s.status !== "cancelled" && s.status !== "completed" && new Date(s.start_time) >= now && matchesFilters(s)
-  );
-  const past = sessions.filter(
-    (s) => (s.status === "completed" || s.status === "cancelled" || new Date(s.start_time) < now) && matchesFilters(s)
-  );
+  const sessionDate = (s: SessionRowData) => {
+    const value = s.start_time ?? s.triad?.proposedStartTime;
+    return value ? new Date(value) : null;
+  };
+  const upcoming = sessions.filter((s) => {
+    const date = sessionDate(s);
+    return s.status !== "cancelled" && s.status !== "completed" && (!date || date >= now) && matchesFilters(s);
+  });
+  const past = sessions.filter((s) => {
+    const date = sessionDate(s);
+    return (s.status === "completed" || s.status === "cancelled" || (date != null && date < now)) && matchesFilters(s);
+  });
 
   return (
     <div className="space-y-6">
@@ -129,7 +138,7 @@ export default function Sessions() {
               />
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {(["all", "coaching", "peer", "mentoring"] as const).map((k) => (
+              {(["all", "coaching", "peer", "mentoring", "triad"] as const).map((k) => (
                 <Badge
                   key={k}
                   variant={kindFilter === k ? "default" : "outline"}
@@ -221,11 +230,13 @@ function SessionCard({
   onChanged: () => void;
 }) {
   const { t } = useTranslation("sessions");
-  const meta = getStatusMeta(t)[session.status];
+  const statusKey = session.status === "proposed" ? "pending_coach_approval" : session.status;
+  const meta = getStatusMeta(t)[statusKey];
   const Icon = meta.icon;
   const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
   const isCoacheePeer = session.kind === "coachee-peer-give" || session.kind === "coachee-peer-receive";
   const isMentoring = session.kind === "mentoring-mentor" || session.kind === "mentoring-mentee";
+  const isTriad = session.kind === "triad";
   // For peer/mentoring sessions: the giver (peer-giver / mentor) acts as
   // "coach", the receiver (peer-receiver / mentee) acts as "coachee".
   const userIsGiver = session.kind === "peer-give" || session.kind === "coachee-peer-give" || session.kind === "mentoring-mentor";
@@ -236,11 +247,13 @@ function SessionCard({
     : role === "coach"
     ? session.coachee
     : session.coach;
-  const start = new Date(session.start_time);
+  const startTime = session.start_time ?? session.triad?.proposedStartTime;
+  const start = startTime ? new Date(startTime) : null;
   // mentoring_sessions has no rating column at all (mentors give written ICF
   // feedback instead, via mentoring_feedback on the dedicated detail page).
   const showRating =
     !isMentoring &&
+    !isTriad &&
     ((!isPeer && !isCoacheePeer && role === "coachee" && session.status === "completed") ||
       ((isPeer || isCoacheePeer) && !userIsGiver && session.status === "completed"));
   // Mentoring completion is hard-gated at the DB level on a submitted prep
@@ -251,6 +264,7 @@ function SessionCard({
   const canMarkComplete =
     !isMentoring &&
     ((isPeer || isCoacheePeer) ? userIsGiver : role === "coach") &&
+    start != null &&
     start < new Date() &&
     (session.status === "confirmed" ||
       // coachee_peer_sessions has no confirm step wired yet — let the provider
@@ -273,7 +287,9 @@ function SessionCard({
     onChanged();
   };
 
-  const kindLabel = isMentoring
+  const kindLabel = isTriad
+    ? t("list.kindLabelTriad")
+    : isMentoring
     ? t("list.kindLabelMentoring")
     : isCoacheePeer
     ? t("list.kindLabelPeerPractice")
@@ -297,13 +313,37 @@ function SessionCard({
     : role === "coach"
     ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
     : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" };
+  const triadRoleBadge = isTriad
+    ? session.triad?.role === "observer"
+      ? { label: t("list.roleBadge.observer"), className: "bg-warning/10 text-warning border-warning/20" }
+      : session.triad?.role === "coach"
+        ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
+        : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" }
+    : roleBadge;
+  const counterpartLabel = isTriad
+    ? session.triad?.participantNames.join(", ") || t("list.triadParticipantsUnavailable")
+    : counterpart?.full_name || counterpart?.email || "—";
+  const contextLabels = isTriad
+    ? [
+        session.triad?.roundNumber != null ? t("list.triadRound", { count: session.triad.roundNumber }) : null,
+        session.triad?.weekNumber != null ? t("list.triadWeek", { count: session.triad.weekNumber }) : null,
+      ].filter(Boolean).join(" · ")
+    : "";
+  const displayTitle = session.topic || t("list.triadSessionTitle");
+  const displayDate = start ? format(start, "HH:mm") : t("list.noTimeYet");
+  const displayMeta = [
+    `${kindLabel} ${counterpartLabel}`,
+    contextLabels,
+    displayDate,
+    session.duration_minutes != null ? `${session.duration_minutes} min` : "",
+  ].filter(Boolean).join(" · ");
   return (
     <Card className="surface-card overflow-hidden p-0">
       <SessionRow
-        month={format(start, "MMM").toUpperCase()}
-        day={format(start, "d")}
-        title={session.topic}
-        meta={`${kindLabel === "with" || kindLabel === "Coach" ? kindLabel : kindLabel} ${counterpart?.full_name || counterpart?.email || "—"} · ${format(start, "HH:mm")} · ${session.duration_minutes} min`}
+         month={start ? format(start, "MMM").toUpperCase() : "—"}
+         day={start ? format(start, "d") : "—"}
+         title={displayTitle}
+         meta={displayMeta}
         status={
           <div className="flex shrink-0 flex-col items-end gap-1">
             <span
@@ -314,8 +354,8 @@ function SessionCard({
             >
               <Icon className="h-3 w-3 shrink-0" /> {meta.label}
             </span>
-            <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-widest", roleBadge.className)}>
-              {roleBadge.label}
+            <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-widest", triadRoleBadge.className)}>
+               {triadRoleBadge.label}
             </Badge>
           </div>
         }
@@ -413,7 +453,7 @@ interface ActionItem {
   done?: boolean;
 }
 
-function ActionItemsList({ items, date }: { items: EnrollmentActionItem[]; date: string }) {
+function ActionItemsList({ items, date }: { items: EnrollmentActionItem[]; date: string | null }) {
   const { t } = useTranslation("sessions");
   const list: ActionItem[] = items.filter((it) => !!it.text);
   if (list.length === 0) return null;
@@ -431,9 +471,11 @@ function ActionItemsList({ items, date }: { items: EnrollmentActionItem[]; date:
               </span>
               <span>{it.text}</span>
             </span>
-            <span className="shrink-0 text-muted-foreground">
-              {format(new Date(date), "MMM d, yyyy")}
-            </span>
+            {date && (
+              <span className="shrink-0 text-muted-foreground">
+                {format(new Date(date), "MMM d, yyyy")}
+              </span>
+            )}
           </li>
         ))}
         {list.length > 4 && (

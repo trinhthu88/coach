@@ -298,13 +298,13 @@ export default function CoacheeJourney() {
           <WheelHistory coacheeId={user?.id} />
 
           <SectionHeader
-            title="Goals & milestones"
+            title={t("journeyPage.goalsHeader")}
             action={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} /> : undefined}
           />
           {goals.length === 0 ? (
             <EmptyGoals
               onAdd={goalsApi.addGoal}
-              description="Define what you want to achieve and your coach can attach action items to milestones."
+              description={t("journeyPage.goalsEmptyDescription")}
             />
           ) : (
             <div className="space-y-2">
@@ -329,13 +329,13 @@ export default function CoacheeJourney() {
             </div>
           )}
 
-          <SectionHeader title="Action items" />
+          <SectionHeader title={t("journeyPage.actionItemsHeader")} />
           <EnrollmentActionGroups
             summary={allActionsSummary}
             goals={goals}
             toggleableById={toggleableById}
             onToggleAction={toggleAction}
-            emptyMessage="No action items yet. They'll appear here once your coach assigns them."
+            emptyMessage={t("journeyPage.actionsEmpty")}
           />
         </TabsContent>
 
@@ -347,7 +347,7 @@ export default function CoacheeJourney() {
           {goals.length === 0 ? (
             <EmptyGoals
               onAdd={goalsApi.addGoal}
-              description="Define what you want to achieve and your coach can attach action items to milestones."
+              description={t("journeyPage.goalsEmptyDescription")}
             />
           ) : (
             <>
@@ -407,7 +407,7 @@ export default function CoacheeJourney() {
             goals={goals}
             toggleableById={toggleableById}
             onToggleAction={toggleAction}
-            emptyMessage="No action items yet. They'll appear here once your coach assigns them."
+            emptyMessage={t("journeyPage.actionsEmpty")}
           />
         </TabsContent>
 
@@ -553,7 +553,7 @@ export default function CoacheeJourney() {
             if (visibleFeedback.length === 0) {
               return (
                 <p className="text-center text-sm text-muted-foreground">
-                  No learner-visible feedback yet.
+                  {t("journeyPage.noFeedbackYet")}
                 </p>
               );
             }
@@ -565,7 +565,7 @@ export default function CoacheeJourney() {
                   </span>
                   <span className="text-[10px] text-muted-foreground">{format(new Date(item.submittedAt), "MMM d, yyyy")}</span>
                 </div>
-                <p className="mt-2 text-sm font-semibold">{item.fromName ?? "Someone"}</p>
+                <p className="mt-2 text-sm font-semibold">{item.fromName ?? t("journeyPage.unknownFeedbackAuthor")}</p>
                 {item.kind === "mentoring" && item.overallNotes && (
                   <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{item.overallNotes}</p>
                 )}

@@ -83,7 +83,8 @@
       "all": "All",
       "coaching": "Coaching",
       "peer": "Peer",
-      "mentoring": "Mentoring"
+      "mentoring": "Mentoring",
+      "triad": "Triads"
     },
     "tabs": {
       "upcoming": "Upcoming ({{count}})",
@@ -100,11 +101,18 @@
     "kindLabelCoach": "Coach",
     "kindLabelPeerPractice": "Peer practice with",
     "kindLabelMentoring": "Mentoring with",
+    "kindLabelTriad": "Triad session",
+    "triadSessionTitle": "Triad session",
+    "triadParticipantsUnavailable": "your triad",
+    "triadRound": "Round {{count}}",
+    "triadWeek": "Week {{count}}",
+    "noTimeYet": "Time not set",
     "roleBadge": {
       "coach": "Coach",
       "coachee": "Coachee",
       "mentor": "Mentor",
-      "mentee": "Mentee"
+      "mentee": "Mentee",
+      "observer": "Observer"
     },
     "markComplete": "Mark complete",
     "toast": {

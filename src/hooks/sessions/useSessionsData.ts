@@ -12,16 +12,30 @@ export type SessionKind =
   | "coachee-peer-give"
   | "coachee-peer-receive"
   | "mentoring-mentor"
-  | "mentoring-mentee";
+  | "mentoring-mentee"
+  | "triad";
+
+export interface TriadSessionContext {
+  groupId: string;
+  role: "coach" | "coachee" | "observer" | null;
+  roundNumber: number | null;
+  roundTitle: string | null;
+  weekNumber: number | null;
+  participantIds: string[];
+  participantNames: string[];
+  meetingUrl: string | null;
+  proposedStartTime: string | null;
+  proposedEndTime: string | null;
+}
 
 export interface SessionRow {
   id: string;
   coach_id: string;
   coachee_id: string;
   topic: string;
-  start_time: string;
-  duration_minutes: number;
-  status: SessionStatus;
+  start_time: string | null;
+  duration_minutes: number | null;
+  status: SessionStatus | "proposed";
   enrollment_id: string | null;
   enrollment_actions: import("@/lib/enrollmentActions").EnrollmentActionItem[];
   coachee_rating: number | null;
@@ -29,6 +43,74 @@ export interface SessionRow {
   kind: SessionKind;
   coach: { full_name: string; email: string; avatar_url: string | null } | null;
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
+  triad: TriadSessionContext | null;
+}
+
+export type TriadSessionSourceRow = Tables<"triad_sessions"> & {
+  triad_groups: {
+    id: string;
+    member_1_id: string;
+    member_2_id: string;
+    member_3_id: string | null;
+    round_number: number | null;
+    triad_rounds: {
+      round_number: number;
+      title: string | null;
+      training_weeks: { week_number: number } | null;
+    } | null;
+  } | null;
+};
+
+export function getTriadRole(
+  session: Pick<TriadSessionSourceRow, "coach_enrollment_id" | "coachee_enrollment_id" | "observer_enrollment_id">,
+  enrollmentIds: ReadonlySet<string>
+): TriadSessionContext["role"] {
+  if (enrollmentIds.has(session.coach_enrollment_id)) return "coach";
+  if (enrollmentIds.has(session.coachee_enrollment_id)) return "coachee";
+  if (session.observer_enrollment_id && enrollmentIds.has(session.observer_enrollment_id)) return "observer";
+  return null;
+}
+
+export function normalizeTriadSession(
+  session: TriadSessionSourceRow,
+  enrollmentIds: ReadonlySet<string>
+) {
+  const group = session.triad_groups;
+  const round = group?.triad_rounds;
+  const role = getTriadRole(session, enrollmentIds);
+  return {
+    ...session,
+    enrollment_actions: [] as EnrollmentActionItem[],
+    coach_id: "",
+    coachee_id: "",
+    topic: round?.title ?? "",
+    start_time: session.start_time ?? session.proposed_start_time,
+    duration_minutes: null,
+    enrollment_id:
+      role === "coach"
+        ? session.coach_enrollment_id
+        : role === "coachee"
+          ? session.coachee_enrollment_id
+          : session.observer_enrollment_id,
+    coachee_rating: null,
+    coachee_rating_comment: null,
+    status: session.status as SessionRow["status"],
+    kind: "triad" as const,
+    triad: {
+      groupId: session.triad_group_id,
+      role,
+      roundNumber: round?.round_number ?? group?.round_number ?? null,
+      roundTitle: round?.title ?? null,
+      weekNumber: round?.training_weeks?.week_number ?? null,
+      participantIds: group
+        ? [group.member_1_id, group.member_2_id, group.member_3_id].filter(Boolean)
+        : [],
+      participantNames: [],
+      meetingUrl: session.meeting_url,
+      proposedStartTime: session.proposed_start_time,
+      proposedEndTime: session.proposed_end_time,
+    } satisfies TriadSessionContext,
+  };
 }
 
 async function fetchSessionsData(userId: string, role: AppRole): Promise<SessionRow[]> {
@@ -39,6 +121,8 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   let peer: Enriched<Tables<"peer_sessions">>[] = [];
   let coacheePeer: Enriched<Tables<"coachee_peer_sessions">>[] = [];
   let mentoring: Enriched<Tables<"mentoring_sessions">>[] = [];
+  let triads: TriadSessionSourceRow[] = [];
+  const enrollmentRoleById = new Set<string>();
 
   if (role === "coach" || role === "coachee") {
     const col = role === "coach" ? "coach_id" : "coachee_id";
@@ -81,6 +165,36 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     mentoring = await withEnrollmentActions(data || [], "mentoring");
   }
 
+  if (role === "coach" || role === "coachee") {
+    // Triads are linked to enrollments rather than directly to the
+    // participant's user id. Fetch all of this learner's enrollment ids first
+    // so sessions from another participant or unrelated programme cannot leak
+    // into the unified list.
+    const { data: enrollments } = await supabase
+      .from("programme_enrollments")
+      .select("id")
+      .eq("user_id", userId);
+    const enrollmentIds = (enrollments ?? []).map((enrollment) => enrollment.id);
+    enrollmentIds.forEach((id) => enrollmentRoleById.add(id));
+    if (enrollmentIds.length > 0) {
+      const membershipFilter = enrollmentIds
+        .flatMap((id) => [
+          `coach_enrollment_id.eq.${id}`,
+          `coachee_enrollment_id.eq.${id}`,
+          `observer_enrollment_id.eq.${id}`,
+        ])
+        .join(",");
+      const { data } = await supabase
+        .from("triad_sessions")
+        .select(
+          "id, status, start_time, proposed_start_time, proposed_end_time, meeting_url, notes, proposed_by, member_1_response, member_2_response, member_3_response, created_at, updated_at, triad_group_id, coach_enrollment_id, coachee_enrollment_id, observer_enrollment_id, triad_groups(id, member_1_id, member_2_id, member_3_id, round_number, triad_rounds(round_number, title, training_weeks(week_number)))"
+        )
+        .or(membershipFilter)
+        .order("start_time", { ascending: false, nullsFirst: false });
+      triads = (data ?? []) as unknown as TriadContextRow[];
+    }
+  }
+
   const allRows = [
     ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
     ...peer.map((s) => ({
@@ -111,9 +225,22 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       coachee_rating_comment: null,
       kind: (s.mentor_id === userId ? "mentoring-mentor" : "mentoring-mentee") as SessionKind,
     })),
-  ].sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+    ...triads.map((s) => normalizeTriadSession(s, enrollmentRoleById)),
+  ].sort((a, b) => {
+    const at = a.start_time ? new Date(a.start_time).getTime() : 0;
+    const bt = b.start_time ? new Date(b.start_time).getTime() : 0;
+    return bt - at;
+  });
 
-  const ids = Array.from(new Set(allRows.flatMap((s) => [s.coach_id, s.coachee_id])));
+  const ids = Array.from(
+    new Set([
+      ...allRows.flatMap((s) => [s.coach_id, s.coachee_id]),
+      ...triads.flatMap((s) => {
+        const group = s.triad_groups;
+        return group ? [group.member_1_id, group.member_2_id, group.member_3_id].filter(Boolean) : [];
+      }),
+    ])
+  ).filter(Boolean);
   let byId = new Map<string, Pick<Tables<"profiles">, "id" | "full_name" | "email" | "avatar_url">>();
   if (ids.length) {
     const { data: profs } = await supabase
@@ -123,11 +250,23 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     byId = new Map((profs || []).map((p) => [p.id, p]));
   }
 
-  return allRows.map((s) => ({
-    ...s,
-    coach: byId.get(s.coach_id) || null,
-    coachee: byId.get(s.coachee_id) || null,
-  }));
+  return allRows.map((s) => {
+    const triad =
+      s.kind === "triad" && s.triad
+        ? {
+            ...s.triad,
+            participantNames: s.triad.participantIds
+              .map((participantId) => byId.get(participantId)?.full_name)
+              .filter((name): name is string => Boolean(name)),
+          }
+        : null;
+    return {
+      ...s,
+      coach: byId.get(s.coach_id) || null,
+      coachee: byId.get(s.coachee_id) || null,
+      triad,
+    };
+  });
 }
 
 export function useSessionsData(userId: string | undefined, role: AppRole | null) {

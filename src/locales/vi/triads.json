@@ -45,6 +45,12 @@
     "reflectionSubmitted": "Đã gửi phản hồi",
     "waitingOnOthers": "Đang chờ {{names}} chấp nhận"
   },
+  "sessionDetail": {
+    "backToSessions": "Quay lại danh sách session",
+    "subtitle": "Xem lịch triad, người tham gia và quy trình phản tư theo dữ liệu chính thức.",
+    "reflectionPrompt": "Phản tư về session này",
+    "reflectionSubtitle": "Ghi lại điều bạn học được trong từng vai trò và xem trạng thái phản tư chung."
+  },
   "alternative": {
     "title": "Đề xuất thời gian khác",
     "cancel": "Hủy",

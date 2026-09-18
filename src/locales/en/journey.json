@@ -199,7 +199,12 @@
       "mentoring": "Mentoring",
       "peer": "Peer Coaching"
     },
+    "goalsHeader": "Goals & milestones",
+    "goalsEmptyDescription": "Define what you want to achieve and your coach can attach action items to milestones.",
     "actionItemsHeader": "Action items",
+    "actionsEmpty": "No action items yet. They'll appear here once your coach assigns them.",
+    "noFeedbackYet": "No learner-visible feedback yet.",
+    "unknownFeedbackAuthor": "Someone",
     "reflectionBanner": {
       "title": "Reflection time — rate your goals after this session",
       "openPrefix": "Open",

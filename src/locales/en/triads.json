@@ -45,6 +45,12 @@
     "reflectionSubmitted": "Reflection submitted",
     "waitingOnOthers": "Waiting on {{names}} to accept"
   },
+  "sessionDetail": {
+    "backToSessions": "Back to sessions",
+    "subtitle": "Review the canonical triad booking, participants and reflection workflow.",
+    "reflectionPrompt": "Reflect on this session",
+    "reflectionSubtitle": "Capture what you learned in each role and review the shared reflection state."
+  },
   "alternative": {
     "title": "Propose an alternative time",
     "cancel": "Cancel",
