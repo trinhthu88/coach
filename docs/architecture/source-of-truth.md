@@ -25,7 +25,48 @@ never a second answer to a business question.
 | **Goals / actions** | `coachee_goals`, `coachee_goal_ratings`, `enrollment_actions` | per-goal progress `canonical_goal_progress`; aggregates `canonical_enrollment_engagement` | Archived goals are excluded; unrated goals have no progress. |
 | **Reflections** | original reflection records | `learner_reflection_feed` | |
 | **Feedback** | original feedback records | learner feedback source (`useLearnerFeedback`) | Author-private notes are never selected. |
-| **Triad membership** | `triad_groups` | `learner_triad_members` | Never derived from session records. |
+| **Triad membership** | `triad_group_members.enrollment_id` | `canonical_triad_group_members` → `learner_triad_members` | Never derived from session records or role columns. See the Triad ownership map below. |
+
+## Triad ownership map
+
+Established by `20260918190000_triad_canonical_cutover` and `20260918191000_triad_retire_legacy`.
+
+| Triad fact | Authoritative source | Read through | Notes |
+|---|---|---|---|
+| Required Triad units | `programme_modules` (`module = 'triads'`, `config.required_units`) | `canonical_module_progress` | The only round-count source. Admin can't add rounds. |
+| Triad unit N (the "round") and its due date | `cohort_requirement_dates` (`module = 'triads'`, `ordinal = N`, always `units = 1`) | `triad_requirement_units_internal` → `admin_cohort_triad_requirements`, `learner_triad_overview`, journey | Editing the Cohort Requirement Schedule moves every Triad screen. |
+| Group | `triad_groups.cohort_requirement_date_id` | same | Cohort, programme, unit number and due date are derived through the requirement row. |
+| Membership | `triad_group_members` (`triad_group_id`, `enrollment_id`) | `canonical_triad_group_members` → `learner_triad_members` | 2–3 members. Learner/profile comes through the enrollment. `member_order` is display order only, not a role. |
+| Actual session time + lifecycle | `triad_sessions.scheduled_start_time / scheduled_end_time`, `status` (`proposed → confirmed → completed`, or `cancelled`) | `learner_triad_overview`, `learner_session_history` | Lifecycle is enforced by the `triad_sessions_guard` trigger for every writer. |
+| Session acceptance | `triad_session_responses` (session × enrollment) | `learner_triad_overview` | |
+| Alternative times | `triad_alternative_proposals` (`pending → accepted \| superseded`) + `triad_alternative_proposal_responses` | `learner_triad_overview` | A candidate becomes the session time only when every member accepts. Superseded ones stay as history. |
+| Completion evidence | completed `triad_sessions` × `triad_group_members` → `session_activity_attributions` (one writer: `triad_sync_session_attributions`) | `canonical_module_progress` | Completion is validated server-side (`learner_triad_complete_session` + session guard). Capped at required units. A reflection is never completion. |
+| Progress / overdue per unit | `canonical_module_progress` | `triad_unit_enrollment_status_internal` → Admin, Learner. Sponsor reads canonical progress / journey. | Unit N is completed when completed units ≥ N, and overdue when N ≤ due units and not completed. No local overdue rule. |
+| Goal rating / comment | `goal_checkins` (via `record_goal_checkins`, source `triad`) | `learner_reflection_feed` | Never copied into Triad tables. |
+| Triad reflection | `triad_reflections` (one per session × enrollment; `satisfaction_rating`) | `learner_triad_session_reflections`, `learner_reflection_feed` | Group members see each other's only after all have submitted. Sponsors never see it. |
+| Reflection answers | `triad_reflection_answers` × `triad_reflection_questions` (stable ids / keys, programme-scoped or default set) | same | |
+| Auto-assign run state | `cohort_triad_operations` | service role only | Operational only: never a date, a membership or a completion. |
+| My Journey / Your Sessions / Dashboard | projections only | `learner_reflection_feed`, `learner_session_history`, `canonical_enrollment_journey` | No Triad data is copied into another table. |
+
+Assignment is always requirement-first: cohort Triad requirement → that cohort's ongoing enrollments → exclude those already grouped for the unit → language → availability. `triad-auto-assign` takes a `cohort_requirement_date_id`, and `triad_validate_group_member` rejects any enrollment from another cohort or programme.
+
+### Retired Triad objects
+
+| Retired | Class | Replacement |
+|---|---|---|
+| `triad_rounds` (incl. `completion_deadline`, `auto_assign_*`, `is_visible`, `title`) | DROPPED (archived in `triad_cutover_archive`) | `cohort_requirement_dates` + `cohort_triad_operations` |
+| `programme_triad_rounds` | DROPPED (had no runtime consumer) | `programme_modules.required_units` + `cohort_requirement_dates` |
+| `triad_groups.member_1/2/3_id`, `enrollment_1/2/3_id`, `cohort_id`, `programme_id`, `round_number`, `triad_round_id`, `name` | DROPPED (archived) | `triad_group_members`, `cohort_requirement_date_id` |
+| `triad_sessions.coach_ / coachee_ / observer_enrollment_id` | DROPPED (archived) | `triad_group_members`. Every member rotates through every role. |
+| `triad_sessions.member_N_response`, `triad_alternative_proposals.member_N_response` | DROPPED (archived) | `triad_session_responses`, `triad_alternative_proposal_responses` |
+| `triad_sessions.proposed_start/end_time`, `start_time`, `proposed_by` | DROPPED (archived) | `scheduled_start_time / scheduled_end_time` |
+| `triad_alternative_proposals.proposed_by` | DROPPED (archived) | `proposed_by_enrollment_id` |
+| `triad_reflections.participant_id`, `learned_as_*`, `will_use_as_*` | DROPPED (archived; answers backfilled verbatim) | `enrollment_id`, `triad_reflection_answers` |
+| `validate_triad_group_enrollment_scope`, `validate_triad_session_enrollment_scope`, `auto_confirm_triad_session`, `auto_accept_alternative_proposal`, `attribute_new_triad_activity` | DROPPED | `triad_validate_group_member`, `triad_guard_session`, `triad_confirm_session_if_accepted`, `triad_accept_proposal_if_unanimous`, `triad_sync_session_attributions` |
+| Admin local overdue (`completion_deadline` + session status) | REMOVED | `triad_unit_enrollment_status_internal` (canonical progress) |
+| `triad_cutover_group_decisions`, `triad_cutover_archive` | INTERNAL (no client access) | Audit only. They answer no current business question. |
+
+Production readiness: run `scripts/triad-cutover-readiness.sql` (read-only) against the target before deploying. Every group it lists as `AMBIGUOUS` needs a reviewed row in `triad_cutover_group_decisions`, shipped in a migration between `20260918185900` and `20260918190000`. Otherwise the cutover stops.
 
 ## Canonical chains
 
@@ -103,8 +144,11 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
 5. **Guards enforce this contract** and must stay green:
    - `src/test/programmeProfileArchitecture.test.ts` and
      `src/test/migrationChain.test.ts` (frontend and migration chain);
-   - `supabase/tests/cohort_requirement_schedule_test.sql` and
-     `supabase/tests/source_of_truth_contract_test.sql` (database);
+   - `supabase/tests/cohort_requirement_schedule_test.sql`,
+     `supabase/tests/source_of_truth_contract_test.sql` and
+     `supabase/tests/triad_canonical_contract_test.sql` (database);
    - the final-state guard at the end of
      `20260918170000_single_source_of_truth.sql`, which fails the deployment
-     if the canonical definitions aren't in place.
+     if the canonical definitions aren't in place, and the final-state guard
+     in `20260918191000_triad_retire_legacy.sql` (no retired Triad field or
+     client-callable internal Triad function).

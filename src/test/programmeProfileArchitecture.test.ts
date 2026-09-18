@@ -138,15 +138,16 @@ describe("programme profile architecture", () => {
   });
 
   it("learner Triad surfaces resolve co-members only through the canonical triad member source", () => {
-    for (const file of ["hooks/triads/useMyTriads.ts", "pages/triads/TriadReflectionPage.tsx", "hooks/sessions/useSessionsData.ts"]) {
-      expect(read(file), file).toMatch(/fetchTriadMembers\(/);
-    }
+    expect(read("hooks/triads/useMyTriads.ts")).toMatch(/fetchTriadMembers\(/);
+    // The reflection page and Your Sessions reuse the one learner Triad projection.
+    expect(read("pages/triads/TriadReflectionPage.tsx")).toMatch(/useTriadSessionEntry\(/);
+    expect(read("hooks/sessions/useSessionsData.ts")).toMatch(/fetchMyTriads\(/);
     for (const file of ["hooks/triads/useMyTriads.ts", "pages/triads/TriadReflectionPage.tsx", "pages/triads/TriadsPage.tsx", "pages/triads/TriadSessionDetail.tsx"]) {
       expect(read(file), file).not.toMatch(/from\("profiles"\)/);
     }
     expect(read("hooks/triads/useTriadMembers.ts")).toMatch(/rpc\("learner_triad_members"/);
     // No other learner code calls the projection directly or rebuilds membership from sessions.
-    const callers = files.filter((f) => /learner_triad_members/.test(readFileSync(f, "utf8")) && !f.endsWith("integrations/supabase/types.ts"));
+    const callers = files.filter((f) => /rpc\(\s*"learner_triad_members"/.test(readFileSync(f, "utf8")) && !f.endsWith("integrations/supabase/types.ts"));
     expect(callers.map((f) => relative(SRC, f))).toEqual(["hooks/triads/useTriadMembers.ts"]);
   });
 

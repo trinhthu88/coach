@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
-import { Star, ArrowUpDown, Lock } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
 import { SectionCard, Pill, MiniBar, Avatar } from "@/pages/admin/_shared";
 import type {
   SponsorGoalGrowth,

@@ -9,7 +9,7 @@
 --   same programme (never assignable to C1). E6's learner is also a coach.
 begin;
 
-select plan(81);
+select plan(82);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -434,6 +434,9 @@ select is(
      and p.proname <> 'triad_reflections_visible_to_group'
      and has_function_privilege('authenticated', p.oid, 'EXECUTE')),
   null, '30. internal Triad constructions and helpers are not client-callable');
+select isnt(
+  (select p.provolatile::text from pg_proc p where p.oid = 'public.triad_session_can_complete(text,timestamptz)'::regprocedure),
+  'i', '16e. the completion rule reads now(), so it is never IMMUTABLE');
 
 select * from finish();
 rollback;
