@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveNextUp } from "../nextUp";
+import { deriveNextUp, deriveNextUpList } from "../nextUp";
 import type { LearnerJourneyPoint, LearnerLearningItem } from "@/hooks/useLearnerCanonicalProgress";
 import type { EnrollmentActionRow } from "@/hooks/dashboard/useEnrollmentActionsSummary";
 
@@ -101,5 +101,60 @@ describe("deriveNextUp", () => {
       nextSessionAt: null,
     });
     expect(result).toEqual({ kind: "upcoming_requirement", label: "Future module", dueOn: "2026-03-01" });
+  });
+});
+
+describe("deriveNextUpList", () => {
+  it("returns an empty list, not a fabricated placeholder item, when nothing is due", () => {
+    expect(deriveNextUpList({ journey: [], learningBreakdown: [], overdueActions: [], nextSessionAt: null })).toEqual([]);
+  });
+
+  it("its first item always matches deriveNextUp's single highest-priority pick", () => {
+    const inputs = {
+      journey: [checkpoint({ state: "current", label: "Current module" })],
+      learningBreakdown: [learningItem({ status: "overdue", label: "Overdue quiz" })],
+      overdueActions: [action({ title: "Overdue action", due_date: "2026-02-01" })],
+      nextSessionAt: "2026-04-01T10:00:00Z",
+    };
+    expect(deriveNextUpList(inputs)[0]).toEqual(deriveNextUp(inputs));
+  });
+
+  it("surfaces multiple simultaneous real items across tiers, not just the single highest-priority one", () => {
+    const result = deriveNextUpList({
+      journey: [],
+      learningBreakdown: [learningItem({ status: "overdue", label: "Overdue skill card" })],
+      overdueActions: [],
+      nextSessionAt: "2026-04-01T10:00:00Z",
+    });
+    expect(result).toEqual([
+      { kind: "overdue_requirement", label: "Overdue skill card", dueOn: null },
+      { kind: "upcoming_session", label: "Coaching session", dueOn: "2026-04-01T10:00:00Z" },
+    ]);
+  });
+
+  it("includes every overdue action, not just the first, within the cap", () => {
+    const result = deriveNextUpList(
+      {
+        journey: [],
+        learningBreakdown: [],
+        overdueActions: [action({ id: "a1", title: "First overdue action" }), action({ id: "a2", title: "Second overdue action" })],
+        nextSessionAt: null,
+      },
+      5
+    );
+    expect(result.map((r) => r.label)).toEqual(["First overdue action", "Second overdue action"]);
+  });
+
+  it("caps the list at the requested limit without dropping priority order", () => {
+    const result = deriveNextUpList(
+      {
+        journey: [],
+        learningBreakdown: [],
+        overdueActions: [action({ id: "a1", title: "Overdue A" }), action({ id: "a2", title: "Overdue B" }), action({ id: "a3", title: "Overdue C" })],
+        nextSessionAt: "2026-04-01T10:00:00Z",
+      },
+      2
+    );
+    expect(result.map((r) => r.label)).toEqual(["Overdue A", "Overdue B"]);
   });
 });

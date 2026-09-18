@@ -23,8 +23,10 @@
     },
     "nextUp": {
       "title": "Next up",
-      "subtitle": "The highest-priority thing that needs your attention.",
+      "subtitle": "The things that need you first.",
       "empty": "Nothing due right now.",
+      "itemsCount_one": "{{count}} item",
+      "itemsCount_other": "{{count}} items",
       "kinds": {
         "overdue_requirement": "Overdue",
         "overdue_action": "Overdue action",

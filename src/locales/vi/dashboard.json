@@ -24,8 +24,9 @@
     },
     "nextUp": {
       "title": "Tiếp theo",
-      "subtitle": "Việc ưu tiên cao nhất cần bạn chú ý.",
+      "subtitle": "Những việc cần bạn chú ý trước tiên.",
       "empty": "Hiện không có việc nào đến hạn.",
+      "itemsCount_other": "{{count}} việc",
       "kinds": {
         "overdue_requirement": "Quá hạn",
         "overdue_action": "Hành động quá hạn",
