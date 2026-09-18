@@ -1,19 +1,27 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const learnerFeedback = vi.fn();
+const enrollmentContext = vi.fn();
 
 vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ user: { id: "learner-1" } }),
 }));
+vi.mock("@/hooks/useEnrollmentContext", () => ({
+  useEnrollmentContext: (...args: unknown[]) => enrollmentContext(...args),
+}));
 vi.mock("@/hooks/dashboard/useLearnerFeedback", () => ({
-  useLearnerFeedback: () => learnerFeedback(),
+  useLearnerFeedback: (...args: unknown[]) => learnerFeedback(...args),
 }));
 
 import "@/i18n/config";
 import { MyFeedbackCard } from "../MyFeedbackCard";
 
 describe("MyFeedbackCard", () => {
+  beforeEach(() => {
+    enrollmentContext.mockReturnValue({ selectedEnrollment: { id: "enrollment-1" }, loading: false });
+  });
+
   it("shows an explicit empty state, not a fabricated 0, when there is no learner-visible feedback", () => {
     learnerFeedback.mockReturnValue({ feedback: [], loading: false, error: null });
     render(<MyFeedbackCard />);
@@ -66,5 +74,15 @@ describe("MyFeedbackCard", () => {
     render(<MyFeedbackCard />);
     expect(screen.queryByText(/confidential coach note/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/quality_rating/i)).not.toBeInTheDocument();
+  });
+
+  // Section 11 / 66 regression: feedback must be scoped to the *selected*
+  // enrollment, not just the learner — otherwise a re-enrolled learner would
+  // see feedback belonging to a different programme enrollment mixed in.
+  it("passes the selected enrollment id through to useLearnerFeedback", () => {
+    learnerFeedback.mockReturnValue({ feedback: [], loading: false, error: null });
+    enrollmentContext.mockReturnValue({ selectedEnrollment: { id: "enrollment-42" }, loading: false });
+    render(<MyFeedbackCard />);
+    expect(learnerFeedback).toHaveBeenCalledWith("learner-1", "enrollment-42");
   });
 });

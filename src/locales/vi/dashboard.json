@@ -6,6 +6,79 @@
     "inOneDay": "Trong 1 ngày",
     "inDays": "Trong {{count}} ngày"
   },
+  "coacheeDashboard": {
+    "hero": {
+      "enrollmentRequired": "Thông tin chương trình của bạn sẽ hiển thị khi bạn có một đợt tham gia đang hoạt động.",
+      "enrollmentLabel": "Đợt tham gia",
+      "positionLabel": "Vị trí",
+      "checkpointPosition": "Mốc {{current}}/{{total}}",
+      "programmeComplete": "hoàn thành chương trình",
+      "status": {
+        "active": "Đang hoạt động",
+        "completed": "Đã hoàn thành",
+        "paused": "Tạm dừng",
+        "at_risk": "Cần chú ý"
+      }
+    },
+    "nextUp": {
+      "title": "Tiếp theo",
+      "subtitle": "Việc ưu tiên cao nhất cần bạn chú ý.",
+      "empty": "Hiện không có việc nào đến hạn.",
+      "kinds": {
+        "overdue_requirement": "Quá hạn",
+        "overdue_action": "Hành động quá hạn",
+        "current_requirement": "Hiện tại",
+        "upcoming_session": "Session sắp tới",
+        "upcoming_requirement": "Sắp tới"
+      },
+      "cta": "Xem"
+    },
+    "progress": {
+      "title": "Tiến độ chương trình",
+      "subtitle": "Tiến độ so với yêu cầu đã cấu hình.",
+      "overall": "Tổng thể",
+      "dueAdherence": "Tuân thủ hạn",
+      "activitiesDue": "Hoạt động đến hạn",
+      "overdue": "Quá hạn",
+      "enrollmentRequired": "Tiến độ chương trình sẽ hiển thị khi bạn có một đợt tham gia đang hoạt động.",
+      "viewFullJourney": "Xem toàn bộ hành trình chương trình →"
+    },
+    "moduleProgress": {
+      "title": "Tiến độ theo module",
+      "subtitle": "Chỉ hiển thị các module đã được cấu hình cho chương trình này.",
+      "empty": "Chưa có module nào được cấu hình cho đợt tham gia này."
+    },
+    "journeyPreview": {
+      "title": "Hành trình chương trình",
+      "subtitle": "Những gì chương trình của bạn yêu cầu và thời điểm.",
+      "viewFull": "Xem toàn bộ hành trình →",
+      "empty": "Chưa có mốc nào được cấu hình cho đợt tham gia này."
+    },
+    "goalsActions": {
+      "title": "Mục tiêu & hành động",
+      "subtitle": "Trọng tâm phát triển hiện tại của bạn.",
+      "activeGoals": "Mục tiêu đang hoạt động",
+      "avgProgress": "Tiến độ trung bình",
+      "actionsComplete": "Hành động hoàn thành",
+      "viewAll": "Xem mục tiêu & hành động →",
+      "emptyGoals": "Chưa có mục tiêu đang hoạt động.",
+      "ofScale": "trên {{target}}"
+    },
+    "feedbackDevelopment": {
+      "title": "Phản hồi & phát triển",
+      "subtitle": "Phản hồi mới nhất hiển thị cho bạn.",
+      "viewAll": "Xem tất cả phản hồi →",
+      "empty": "Chưa có phản hồi nào.",
+      "fromMentor": "Phản hồi mentoring · {{name}}",
+      "fromPeer": "Phản hồi peer coaching · {{name}}"
+    },
+    "upcomingSessions": {
+      "title": "Session sắp tới",
+      "subtitle": "Các buổi trò chuyện chương trình sắp diễn ra.",
+      "viewAll": "Xem tất cả session →",
+      "empty": "Chưa có session sắp tới nào được đặt."
+    }
+  },
   "greetingByRole": {
     "coachee": "Tìm coach tiếp theo và duy trì đà phát triển.",
     "coach": "Xem lại các yêu cầu session và truyền cảm hứng cho học viên của bạn hôm nay.",

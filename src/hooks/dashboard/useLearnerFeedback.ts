@@ -2,19 +2,27 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Learner-visible feedback only.
+ * Learner-visible feedback only, scoped to one enrollment.
  *
  * Sources audited:
  * - mentoring_feedback: RLS grants the mentee (`mentee_id = auth.uid()`)
  *   read access to their mentor's written feedback — learner-visible.
+ *   Neither this table nor mentoring_sessions carries a direct FK to it, so
+ *   enrollment scoping joins through mentoring_sessions.enrollment_id.
  * - peer_session_competency_feedback: RLS grants both participants read
  *   access; rows where this learner is `peer_coach_id` are competency
  *   ratings ABOUT them from the peer they coached — learner-visible.
+ *   Scoped the same way, through peer_sessions.enrollment_id.
  * - coach_session_feedback is deliberately NOT queried here: its RLS only
  *   grants the authoring coach and admins access (quality_rating,
  *   engagement_level, flag_notes are private coach/admin assessment, never
  *   learner-visible), so there is no learner-safe way to read it and none
  *   should be added.
+ *
+ * A learner with more than one enrollment (e.g. re-enrolled in a later
+ * cohort) must only see feedback that belongs to the selected enrollment —
+ * without this join, feedback from every enrollment they've ever had would
+ * be mixed together regardless of which one is currently open.
  */
 export type LearnerFeedbackItem =
   | {
@@ -45,22 +53,24 @@ const COMPETENCY_KEYS = [
   "facilitates_growth",
 ] as const;
 
-async function fetchLearnerFeedback(userId: string): Promise<LearnerFeedbackItem[]> {
+async function fetchLearnerFeedback(userId: string, enrollmentId: string): Promise<LearnerFeedbackItem[]> {
   const [{ data: mentoring, error: mentoringError }, { data: peer, error: peerError }] = await Promise.all([
     supabase
       .from("mentoring_feedback")
       .select(
-        "id, mentor_id, overall_notes, submitted_at, ethical_practice, coaching_mindset, maintains_agreements, trust_safety, maintains_presence, listens_actively, evokes_awareness, facilitates_growth"
+        "id, mentor_id, overall_notes, submitted_at, ethical_practice, coaching_mindset, maintains_agreements, trust_safety, maintains_presence, listens_actively, evokes_awareness, facilitates_growth, mentoring_sessions!inner(enrollment_id)"
       )
       .eq("mentee_id", userId)
+      .eq("mentoring_sessions.enrollment_id", enrollmentId)
       .order("submitted_at", { ascending: false })
       .limit(10),
     supabase
       .from("peer_session_competency_feedback")
       .select(
-        "id, peer_coachee_id, feedback_note, created_at, ethical_practice, coaching_mindset, maintains_agreements, trust_safety, maintains_presence, listens_actively, evokes_awareness, facilitates_growth"
+        "id, peer_coachee_id, feedback_note, created_at, ethical_practice, coaching_mindset, maintains_agreements, trust_safety, maintains_presence, listens_actively, evokes_awareness, facilitates_growth, peer_sessions!inner(enrollment_id)"
       )
       .eq("peer_coach_id", userId)
+      .eq("peer_sessions.enrollment_id", enrollmentId)
       .order("created_at", { ascending: false })
       .limit(10),
   ]);
@@ -102,17 +112,17 @@ async function fetchLearnerFeedback(userId: string): Promise<LearnerFeedbackItem
   );
 }
 
-export function useLearnerFeedback(userId: string | undefined) {
+export function useLearnerFeedback(userId: string | undefined, enrollmentId: string | undefined) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["learner-feedback", userId ?? null],
-    queryFn: () => fetchLearnerFeedback(userId as string),
-    enabled: !!userId,
+    queryKey: ["learner-feedback", userId ?? null, enrollmentId ?? null],
+    queryFn: () => fetchLearnerFeedback(userId as string, enrollmentId as string),
+    enabled: !!userId && !!enrollmentId,
     staleTime: 30_000,
   });
 
   return {
     feedback: data ?? [],
-    loading: !!userId && isLoading,
+    loading: !!userId && !!enrollmentId && isLoading,
     error: error ? (error instanceof Error ? error.message : String(error)) : null,
   };
 }

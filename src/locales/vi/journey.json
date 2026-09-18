@@ -37,6 +37,10 @@
     "title": "Hành trình chương trình",
     "checkpoint": "Mốc {{number}}",
     "unitsOf": "Đã hoàn thành {{completed}}/{{required}}",
+    "youAreHere": "Bạn đang ở đây",
+    "dueOn": "Hạn {{date}}",
+    "scopeLabel": "Module thuộc phạm vi",
+    "empty": "Chưa có mốc nào được cấu hình cho đợt tham gia này.",
     "states": {
       "completed": "Đã hoàn thành",
       "current": "Hiện tại",

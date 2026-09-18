@@ -36,6 +36,10 @@
     "title": "Programme journey",
     "checkpoint": "Checkpoint {{number}}",
     "unitsOf": "{{completed}}/{{required}} complete",
+    "youAreHere": "You are here",
+    "dueOn": "Due {{date}}",
+    "scopeLabel": "Modules in scope",
+    "empty": "No programme checkpoints are configured for this enrollment yet.",
     "states": {
       "completed": "Completed",
       "current": "Current",

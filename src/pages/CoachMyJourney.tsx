@@ -69,7 +69,7 @@ export default function CoachMyJourney() {
   const sessionsApi = useJourneySessions(user?.id, { includePeer: true, enrollmentId: programmeApi.programme?.enrollmentId });
   const reflectionsApi = useJourneyReflections(user?.id, programmeApi.programme?.enrollmentId);
   const developmentJourney = useEnrollmentDevelopmentJourney(programmeApi.programme?.enrollmentId, user?.id);
-  const learnerFeedback = useLearnerFeedback(user?.id);
+  const learnerFeedback = useLearnerFeedback(user?.id, programmeApi.programme?.enrollmentId);
   const allSessions = useEnrollmentSessions(programmeApi.programme?.enrollmentId, user?.id);
 
   const { goals, milestones, toggleMilestone } = goalsApi;

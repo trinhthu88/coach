@@ -56,7 +56,7 @@ export default function CoacheeJourney() {
   const sessionsApi = useJourneySessions(user?.id, { includePeer: false, enrollmentId: programmeApi.programme?.enrollmentId });
   const reflectionsApi = useJourneyReflections(user?.id, programmeApi.programme?.enrollmentId);
   const developmentJourney = useEnrollmentDevelopmentJourney(programmeApi.programme?.enrollmentId, user?.id);
-  const learnerFeedback = useLearnerFeedback(user?.id);
+  const learnerFeedback = useLearnerFeedback(user?.id, programmeApi.programme?.enrollmentId);
   const allSessions = useEnrollmentSessions(programmeApi.programme?.enrollmentId, user?.id);
 
   const { goals, milestones, toggleMilestone } = goalsApi;

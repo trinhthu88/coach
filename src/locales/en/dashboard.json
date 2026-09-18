@@ -5,6 +5,79 @@
     "inOneDay": "In 1 day",
     "inDays": "In {{count}} days"
   },
+  "coacheeDashboard": {
+    "hero": {
+      "enrollmentRequired": "Your programme details will appear here once you have an active enrollment.",
+      "enrollmentLabel": "Enrollment",
+      "positionLabel": "Position",
+      "checkpointPosition": "Checkpoint {{current}} of {{total}}",
+      "programmeComplete": "programme complete",
+      "status": {
+        "active": "Active",
+        "completed": "Completed",
+        "paused": "Paused",
+        "at_risk": "At risk"
+      }
+    },
+    "nextUp": {
+      "title": "Next up",
+      "subtitle": "The highest-priority thing that needs your attention.",
+      "empty": "Nothing due right now.",
+      "kinds": {
+        "overdue_requirement": "Overdue",
+        "overdue_action": "Overdue action",
+        "current_requirement": "Current",
+        "upcoming_session": "Upcoming session",
+        "upcoming_requirement": "Upcoming"
+      },
+      "cta": "View"
+    },
+    "progress": {
+      "title": "Programme progress",
+      "subtitle": "Progress against configured requirements.",
+      "overall": "Overall",
+      "dueAdherence": "Due adherence",
+      "activitiesDue": "Activities due",
+      "overdue": "Overdue",
+      "enrollmentRequired": "Programme progress is unavailable until an enrollment is selected.",
+      "viewFullJourney": "Explore full programme journey →"
+    },
+    "moduleProgress": {
+      "title": "Module progress",
+      "subtitle": "Only modules configured for this programme appear.",
+      "empty": "No modules are configured for this enrollment yet."
+    },
+    "journeyPreview": {
+      "title": "Programme Journey",
+      "subtitle": "What your programme expects and when.",
+      "viewFull": "View full journey →",
+      "empty": "No programme checkpoints are configured for this enrollment yet."
+    },
+    "goalsActions": {
+      "title": "Goals & actions",
+      "subtitle": "Your current development focus.",
+      "activeGoals": "Active goals",
+      "avgProgress": "Avg progress",
+      "actionsComplete": "Actions complete",
+      "viewAll": "View goals & actions →",
+      "emptyGoals": "No active goals yet.",
+      "ofScale": "of {{target}}"
+    },
+    "feedbackDevelopment": {
+      "title": "Feedback & development",
+      "subtitle": "Latest feedback visible to you.",
+      "viewAll": "View all feedback →",
+      "empty": "No feedback yet.",
+      "fromMentor": "Mentoring feedback · {{name}}",
+      "fromPeer": "Peer coaching feedback · {{name}}"
+    },
+    "upcomingSessions": {
+      "title": "Upcoming sessions",
+      "subtitle": "Your next scheduled programme conversations.",
+      "viewAll": "View all sessions →",
+      "empty": "No upcoming session booked."
+    }
+  },
   "greetingByRole": {
     "coachee": "Find your next coach and keep momentum going.",
     "coach": "Review session requests and inspire your coachees today.",
