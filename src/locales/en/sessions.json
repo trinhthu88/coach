@@ -98,6 +98,8 @@
       "noPastSubtitle": "Past sessions will show up here."
     },
     "kindLabelWith": "with",
+    "programmeLabel": "Programme: {{name}}",
+    "cohortLabel": "Cohort: {{name}}",
     "kindLabelCoach": "Coach",
     "kindLabelPeerPractice": "Peer practice with",
     "kindLabelMentoring": "Mentoring with",

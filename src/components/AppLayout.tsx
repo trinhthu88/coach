@@ -558,7 +558,7 @@ export default function AppLayout() {
 
       {/* ══ MAIN ══ */}
       <main className="flex min-h-[100dvh] flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-20 flex h-[68px] shrink-0 items-center gap-4 border-b border-[#e2dbd0] bg-background/[.86] px-4 backdrop-blur-xl sm:px-8">
+        <header className="sticky top-0 z-20 flex h-[68px] shrink-0 items-center gap-4 border-b border-border bg-background/[.86] px-4 backdrop-blur-xl sm:px-8">
           <button
             onClick={() => setMobileNavOpen(true)}
             className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary lg:hidden"
@@ -629,6 +629,24 @@ export default function AppLayout() {
             <Outlet />
           </div>
         </div>
+        {role === "coachee" && (
+          <nav aria-label={t("layout.mainNavigation")} className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-card/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_30px_-24px_hsl(var(--secondary)/0.8)] backdrop-blur-lg lg:hidden">
+            {[
+              { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+              { to: "/coachee/journey", label: t("nav.myJourney"), icon: Compass },
+              { to: "/sessions", label: t("nav.sessions"), icon: Calendar },
+              { to: "/messages", label: t("nav.messages"), icon: MessageSquare },
+            ].map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={to} className={({ isActive }) => cn("flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold", isActive ? "text-primary" : "text-muted-foreground")}>
+                {({ isActive }) => <><Icon className="h-4 w-4" aria-hidden="true" /><span>{label}</span><span className="sr-only">{isActive ? " current" : ""}</span></>}
+              </NavLink>
+            ))}
+            <button type="button" onClick={() => setMobileNavOpen(true)} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold text-muted-foreground">
+              <Menu className="h-4 w-4" aria-hidden="true" />
+              <span>{t("layout.mobileMore")}</span>
+            </button>
+          </nav>
+        )}
       </main>
 
       {showsOnboarding && autoTourEligible && (

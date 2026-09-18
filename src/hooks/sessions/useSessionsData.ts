@@ -37,6 +37,8 @@ export interface SessionRow {
   duration_minutes: number | null;
   status: SessionStatus | "proposed";
   enrollment_id: string | null;
+  programmeName: string | null;
+  cohortName: string | null;
   enrollment_actions: import("@/lib/enrollmentActions").EnrollmentActionItem[];
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
@@ -44,6 +46,22 @@ export interface SessionRow {
   coach: { full_name: string; email: string; avatar_url: string | null } | null;
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
   triad: TriadSessionContext | null;
+}
+
+export interface SessionEnrollmentContext {
+  programmeName: string | null;
+  cohortName: string | null;
+}
+
+export function attachEnrollmentContext<T extends { enrollment_id?: string | null }>(
+  rows: T[],
+  contexts: Record<string, SessionEnrollmentContext>
+): (T & SessionEnrollmentContext)[] {
+  return rows.map((row) => ({
+    ...row,
+    programmeName: row.enrollment_id ? contexts[row.enrollment_id]?.programmeName ?? null : null,
+    cohortName: row.enrollment_id ? contexts[row.enrollment_id]?.cohortName ?? null : null,
+  }));
 }
 
 export type TriadSessionSourceRow = Tables<"triad_sessions"> & {
@@ -232,10 +250,21 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     return bt - at;
   });
 
-  const ids = Array.from(
-    new Set([
-      ...allRows.flatMap((s) => [s.coach_id, s.coachee_id]),
-      ...triads.flatMap((s) => {
+  const enrollmentIds = Array.from(new Set(allRows.map((row) => row.enrollment_id).filter((id): id is string => Boolean(id))));
+  const enrollmentContexts: Record<string, SessionEnrollmentContext> = {};
+  if (enrollmentIds.length > 0) {
+    const { data: enrollmentRows } = await supabase.from("programme_enrollments").select("id, programmes(name), cohorts(name)").in("id", enrollmentIds);
+    for (const row of enrollmentRows ?? []) {
+      const programme = row.programmes as { name?: string | null } | null;
+      const cohort = row.cohorts as { name?: string | null } | null;
+      enrollmentContexts[row.id] = { programmeName: programme?.name ?? null, cohortName: cohort?.name ?? null };
+    }
+  }
+  const rowsWithContext = attachEnrollmentContext(allRows, enrollmentContexts);
+
+  const ids = Array.from(new Set([
+      ...rowsWithContext.flatMap((s) => [s.coach_id, s.coachee_id]),
+      ...rowsWithContext.flatMap((s) => {
         const group = s.triad_groups;
         return group ? [group.member_1_id, group.member_2_id, group.member_3_id].filter(Boolean) : [];
       }),
@@ -250,7 +279,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     byId = new Map((profs || []).map((p) => [p.id, p]));
   }
 
-  return allRows.map((s) => {
+  return rowsWithContext.map((s) => {
     const triad =
       s.kind === "triad" && s.triad
         ? {

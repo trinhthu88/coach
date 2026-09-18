@@ -99,6 +99,8 @@
       "noPastSubtitle": "Các session đã qua sẽ hiển thị ở đây."
     },
     "kindLabelWith": "với",
+    "programmeLabel": "Chương trình: {{name}}",
+    "cohortLabel": "Cohort: {{name}}",
     "kindLabelCoach": "Coach",
     "kindLabelPeerPractice": "Thực hành cùng bạn đồng hành",
     "kindLabelMentoring": "Mentoring cùng",

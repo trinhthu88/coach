@@ -334,6 +334,8 @@ function SessionCard({
   const displayMeta = [
     `${kindLabel} ${counterpartLabel}`,
     contextLabels,
+    session.programmeName ? t("list.programmeLabel", { name: session.programmeName }) : "",
+    session.cohortName ? t("list.cohortLabel", { name: session.cohortName }) : "",
     displayDate,
     session.duration_minutes != null ? `${session.duration_minutes} min` : "",
   ].filter(Boolean).join(" · ");

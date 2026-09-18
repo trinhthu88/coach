@@ -152,3 +152,14 @@ describe("AppLayout — coach navigation is unaffected by the coachee nav restru
     expect(screen.getAllByRole("link", { name: "Practice journey" }).length).toBeGreaterThan(0);
   });
 });
+
+describe("AppLayout — coachee mobile navigation", () => {
+  it("provides the approved primary destinations plus More", () => {
+    renderLayout("/dashboard");
+    expect(screen.getAllByRole("link", { name: "Dashboard" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "My Journey" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Sessions" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Messages" }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "More" })).toBeInTheDocument();
+  });
+});
