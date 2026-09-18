@@ -9,6 +9,7 @@ import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
 import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
 import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
 import { useFlatActionItems, type FlatAction } from "@/hooks/journey/useFlatActionItems";
+import { useEnrollmentActionsSummary } from "@/hooks/dashboard/useEnrollmentActionsSummary";
 import { useCoachSummaries } from "@/hooks/journey/useCoachSummaries";
 import {
   useMilestoneProgress,
@@ -29,17 +30,18 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { WheelHistory } from "@/components/tools/WheelHistory";
 import { GoalWheel, GoalScoreCards } from "./journey/GoalWheel";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader, FilterChip } from "@/components/ui/page-header";
 import { ProgressRing, TimelineList } from "@/components/ui/proto";
 import { ACCENTS } from "./journey/journeyDisplay";
 import { SectionHeader } from "./journey/SectionHeader";
 import { EmptyGoals } from "./journey/EmptyGoals";
 import { GoalAccordion } from "./journey/GoalAccordion";
-import { ActionGroups } from "./journey/ActionGroups";
 import { SessionsBlock } from "./journey/SessionsBlock";
 import { GoalDialog } from "./journey/GoalDialog";
 import { CoacheeProgrammeCard } from "./journey/CoacheeProgrammeCard";
 import { ProgrammeTimeline } from "./journey/ProgrammeTimeline";
+import { EnrollmentActionGroups } from "./journey/EnrollmentActionGroups";
+import { PracticeAnalyticsTab } from "./journey/PracticeAnalyticsTab";
 import { useEnrollmentDevelopmentJourney } from "@/hooks/journey/useEnrollmentDevelopmentJourney";
 import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
 import { useEnrollmentSessions } from "@/hooks/journey/useEnrollmentSessions";
@@ -61,6 +63,14 @@ export default function CoacheeJourney() {
   const learnerFeedback = useLearnerFeedback(user?.id, programmeApi.programme?.enrollmentId);
   const allSessions = useEnrollmentSessions(programmeApi.programme?.enrollmentId, user?.id);
   const { progress: canonicalProgress } = useLearnerCanonicalProgress(programmeApi.programme?.enrollmentId);
+  // Every enrollment_actions row for this enrollment, regardless of which
+  // module it was created from (useFlatActionItems below only sees actions
+  // whose source is a currently-loaded coaching session).
+  const allActionsSummary = useEnrollmentActionsSummary(programmeApi.programme?.enrollmentId);
+
+  const [activeTab, setActiveTab] = useState("home");
+  const [reflectionFilter, setReflectionFilter] = useState<"all" | "programme" | "coaching" | "mentoring" | "triad" | "private">("all");
+  const [feedbackFilter, setFeedbackFilter] = useState<"all" | "mentoring" | "peer">("all");
 
   const { goals, milestones, toggleMilestone } = goalsApi;
   const { ratings, sessionRatings, saveRating } = ratingsApi;
@@ -90,7 +100,15 @@ export default function CoacheeJourney() {
   // list inside each goal's expanded card).
   const goalProgress = (goalId: string) => ratingRows.find((r) => r.goalId === goalId)?.progress ?? null;
 
-  const { allActionItems, grouped, aiTotal, aiDone, aiOverdue } = useFlatActionItems(sessions);
+  const { allActionItems } = useFlatActionItems(sessions);
+  // Only coaching-session-sourced actions can be toggled here (the mutation
+  // path is session-scoped) — actions from other sources still display in
+  // EnrollmentActionGroups, just without an interactive checkbox.
+  const toggleableById = useMemo(() => {
+    const map = new Map<string, FlatAction>();
+    for (const a of allActionItems) if (a.id) map.set(a.id, a);
+    return map;
+  }, [allActionItems]);
 
   const now = new Date();
   const upcoming = sessions
@@ -197,10 +215,13 @@ export default function CoacheeJourney() {
           </p>
         </Card>
          <Card className="surface-card hover-lift flex flex-col items-center gap-2 p-6">
-          <ProgressRing value={aiTotal ? Math.round((aiDone / aiTotal) * 100) : 0} tone="success" />
+          <ProgressRing
+            value={allActionsSummary.total ? Math.round((allActionsSummary.completedCount / allActionsSummary.total) * 100) : 0}
+            tone="success"
+          />
           <p className="text-sm font-semibold">{t("coacheeJourney.progressRings.actionsClosed")}</p>
           <p className="text-xs text-muted-foreground">
-            {t("coacheeJourney.progressRings.actionsClosedSub", { done: aiDone, total: aiTotal })}
+            {t("coacheeJourney.progressRings.actionsClosedSub", { done: allActionsSummary.completedCount, total: allActionsSummary.total })}
           </p>
         </Card>
       </div>
@@ -238,14 +259,15 @@ export default function CoacheeJourney() {
         avgGoalProgress={avgGoalProgress}
       />
 
-      <Tabs defaultValue="home">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="home">{t("journeyPage.tabs.overview")}</TabsTrigger>
           <TabsTrigger value="goals">{t("journeyPage.tabs.goals")}</TabsTrigger>
-          <TabsTrigger value="actions">{t("journeyPage.tabs.actions", { count: aiTotal })}</TabsTrigger>
+          <TabsTrigger value="actions">{t("journeyPage.tabs.actions", { count: allActionsSummary.total })}</TabsTrigger>
           <TabsTrigger value="sessions">{t("journeyPage.tabs.sessions", { count: sessions.length })}</TabsTrigger>
           <TabsTrigger value="reflections">{t("journeyPage.tabs.reflections", { count: reflections.length })}</TabsTrigger>
           <TabsTrigger value="feedback">{t("journeyPage.tabs.feedback", { count: learnerFeedback.feedback.length })}</TabsTrigger>
+          <TabsTrigger value="practice">{t("journeyPage.tabs.practiceAnalytics")}</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
@@ -308,9 +330,10 @@ export default function CoacheeJourney() {
           )}
 
           <SectionHeader title="Action items" />
-          <ActionGroups
-            grouped={grouped}
-            compact
+          <EnrollmentActionGroups
+            summary={allActionsSummary}
+            goals={goals}
+            toggleableById={toggleableById}
             onToggleAction={toggleAction}
             emptyMessage="No action items yet. They'll appear here once your coach assigns them."
           />
@@ -373,12 +396,16 @@ export default function CoacheeJourney() {
         {/* ACTION ITEMS */}
         <TabsContent value="actions" className="mt-4">
           <p className="mb-3 text-xs text-muted-foreground">
-            {aiTotal} total · {aiDone} done · {aiOverdue} overdue
+            {t("journeyPage.actionsSummary", {
+              total: allActionsSummary.total,
+              done: allActionsSummary.completedCount,
+              overdue: allActionsSummary.overdue.length,
+            })}
           </p>
-          <ActionGroups
-            grouped={grouped}
-            milestones={milestones}
+          <EnrollmentActionGroups
+            summary={allActionsSummary}
             goals={goals}
+            toggleableById={toggleableById}
             onToggleAction={toggleAction}
             emptyMessage="No action items yet. They'll appear here once your coach assigns them."
           />
@@ -402,84 +429,135 @@ export default function CoacheeJourney() {
 
         {/* REFLECTIONS */}
         <TabsContent value="reflections" className="mt-4 space-y-4">
-          {developmentJourney.events.filter((e) => e.type === "reflection" && e.subtype !== "private_reflection").length > 0 && (
-            <div className="space-y-2">
-              {developmentJourney.events
-                .filter((e) => e.type === "reflection" && e.subtype !== "private_reflection")
-                .map((e) => (
-                  <Card key={e.id} className="p-4">
-                    <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-                      {t(`developmentJourney.reflectionTypes.${e.subtype}`)}
-                    </span>
-                    {e.summary && <p className="mt-2 whitespace-pre-wrap text-sm">{e.summary}</p>}
-                    <p className="mt-2 text-[10px] text-muted-foreground">
-                      {format(new Date(e.occurredAt), "EEE, MMM d, yyyy")}
-                    </p>
-                  </Card>
-                ))}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-1.5">
+              {(["all", "programme", "coaching", "mentoring", "triad", "private"] as const).map((f) => (
+                <FilterChip key={f} active={reflectionFilter === f} onClick={() => setReflectionFilter(f)}>
+                  {t(`journeyPage.reflectionFilters.${f}`)}
+                </FilterChip>
+              ))}
             </div>
-          )}
+          </div>
 
-          <Card className="p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-              <BookOpen className="h-4 w-4 text-primary" /> {t("journeyPage.newReflection")}
-              <span className="ml-auto inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                {t("developmentJourney.reflectionTypes.private_reflection")}
-              </span>
-            </div>
-            <Input
-              placeholder={t("journeyPage.moodPlaceholder")}
-              value={reflectionMood}
-              onChange={(e) => setReflectionMood(e.target.value)}
-              className="mb-2"
-            />
-            <Textarea
-              placeholder={t("journeyPage.reflectionPlaceholder")}
-              value={newReflection}
-              onChange={(e) => setNewReflection(e.target.value)}
-              rows={4}
-            />
-            <div className="mt-2 flex justify-end">
-              <Button size="sm" onClick={addReflection} disabled={savingRef || !newReflection.trim()}>
-                <Sparkles className="mr-1 h-4 w-4" /> {t("journeyPage.saveReflection")}
-              </Button>
-            </div>
-          </Card>
+          {(() => {
+            const categoryBySubtype: Record<string, typeof reflectionFilter> = {
+              programme_reflection: "programme",
+              coaching_reflection: "coaching",
+              mentoring_reflection: "mentoring",
+              triad_self_reflection: "triad",
+            };
+            const canonicalEvents = developmentJourney.events.filter(
+              (e) => e.type === "reflection" && e.subtype !== "private_reflection"
+            );
+            const visibleCanonical =
+              reflectionFilter === "private"
+                ? []
+                : canonicalEvents.filter((e) => reflectionFilter === "all" || categoryBySubtype[e.subtype] === reflectionFilter);
+            const visiblePrivate = reflectionFilter === "all" || reflectionFilter === "private" ? reflections : [];
+            const nothingVisible = visibleCanonical.length === 0 && visiblePrivate.length === 0;
 
-          {reflections.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground">{t("journeyPage.noReflectionsYet")}</p>
-          ) : (
-            reflections.map((r) => (
-              <Card key={r.id} className="p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    {r.mood && (
-                      <span className="mb-1 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-                        {r.mood}
-                      </span>
-                    )}
-                    <p className="whitespace-pre-wrap text-sm">{r.body}</p>
-                    <p className="mt-2 text-[10px] text-muted-foreground">
-                      {format(new Date(r.created_at), "EEE, MMM d, yyyy · p")}
-                    </p>
+            return (
+              <>
+                {visibleCanonical.length > 0 && (
+                  <div className="space-y-2">
+                    {visibleCanonical.map((e) => (
+                      <Card key={e.id} className="p-4">
+                        <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                          {t(`developmentJourney.reflectionTypes.${e.subtype}`)}
+                        </span>
+                        {e.summary && <p className="mt-2 whitespace-pre-wrap text-sm">{e.summary}</p>}
+                        <p className="mt-2 text-[10px] text-muted-foreground">
+                          {format(new Date(e.occurredAt), "EEE, MMM d, yyyy")}
+                        </p>
+                      </Card>
+                    ))}
                   </div>
-                  <button onClick={() => deleteReflection(r.id)} className="text-muted-foreground hover:text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </Card>
-            ))
-          )}
+                )}
+
+                {(reflectionFilter === "all" || reflectionFilter === "private") && (
+                  <Card className="p-4">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                      <BookOpen className="h-4 w-4 text-primary" /> {t("journeyPage.newReflection")}
+                      <span className="ml-auto inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                        {t("developmentJourney.reflectionTypes.private_reflection")}
+                      </span>
+                    </div>
+                    <Input
+                      placeholder={t("journeyPage.moodPlaceholder")}
+                      value={reflectionMood}
+                      onChange={(e) => setReflectionMood(e.target.value)}
+                      className="mb-2"
+                    />
+                    <Textarea
+                      placeholder={t("journeyPage.reflectionPlaceholder")}
+                      value={newReflection}
+                      onChange={(e) => setNewReflection(e.target.value)}
+                      rows={4}
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <Button size="sm" onClick={addReflection} disabled={savingRef || !newReflection.trim()}>
+                        <Sparkles className="mr-1 h-4 w-4" /> {t("journeyPage.saveReflection")}
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+
+                {nothingVisible ? (
+                  <p className="text-center text-sm text-muted-foreground">{t("journeyPage.noReflectionsYet")}</p>
+                ) : (
+                  visiblePrivate.map((r) => (
+                    <Card key={r.id} className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <span className="mb-1 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                            {t("developmentJourney.reflectionTypes.private_reflection")}
+                          </span>
+                          {r.mood && (
+                            <span className="ml-1.5 mb-1 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                              {r.mood}
+                            </span>
+                          )}
+                          <p className="mt-1 whitespace-pre-wrap text-sm">{r.body}</p>
+                          <p className="mt-2 text-[10px] text-muted-foreground">
+                            {format(new Date(r.created_at), "EEE, MMM d, yyyy · p")}
+                          </p>
+                        </div>
+                        <button onClick={() => deleteReflection(r.id)} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </>
+            );
+          })()}
         </TabsContent>
 
         {/* FEEDBACK */}
         <TabsContent value="feedback" className="mt-4 space-y-3">
-          {learnerFeedback.feedback.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground">
-              No learner-visible feedback yet.
-            </p>
-          ) : (
-            learnerFeedback.feedback.map((item) => (
+          <div className="flex flex-wrap gap-1.5">
+            {(["all", "mentoring", "peer"] as const).map((f) => (
+              <FilterChip key={f} active={feedbackFilter === f} onClick={() => setFeedbackFilter(f)}>
+                {t(`journeyPage.feedbackFilters.${f}`)}
+              </FilterChip>
+            ))}
+          </div>
+
+          {(() => {
+            const visibleFeedback = learnerFeedback.feedback.filter((item) => {
+              if (feedbackFilter === "all") return true;
+              if (feedbackFilter === "mentoring") return item.kind === "mentoring";
+              return item.kind === "peer_competency";
+            });
+            if (visibleFeedback.length === 0) {
+              return (
+                <p className="text-center text-sm text-muted-foreground">
+                  No learner-visible feedback yet.
+                </p>
+              );
+            }
+            return visibleFeedback.map((item) => (
               <Card key={`${item.kind}-${item.id}`} className="p-4">
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
@@ -495,8 +573,19 @@ export default function CoacheeJourney() {
                   <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{item.note}</p>
                 )}
               </Card>
-            ))
-          )}
+            ));
+          })()}
+        </TabsContent>
+
+        {/* PRACTICE & COMPETENCY ANALYTICS */}
+        <TabsContent value="practice" className="mt-4">
+          <PracticeAnalyticsTab
+            enrollmentId={programme?.enrollmentId}
+            userId={user?.id}
+            selfReflectionsCount={developmentJourney.events.filter((e) => e.type === "reflection").length}
+            onViewReflections={() => setActiveTab("reflections")}
+            onViewFeedback={() => setActiveTab("feedback")}
+          />
         </TabsContent>
       </Tabs>
     </div>

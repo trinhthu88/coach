@@ -4,7 +4,10 @@
     "overdue": "Quá hạn",
     "dueThisWeek": "Đến hạn tuần này",
     "upcoming": "Sắp tới",
-    "completed": "Đã hoàn thành"
+    "completed": "Đã hoàn thành",
+    "dueOn": "Hạn {{date}}",
+    "noDueDate": "Không có hạn",
+    "toggleAction": "Chuyển trạng thái hành động"
   },
   "actionRow": {
     "markAsDone": "Đánh dấu đã hoàn thành",
@@ -181,7 +184,21 @@
       "actions": "Hành động cần làm ({{count}})",
       "sessions": "Session ({{count}})",
       "reflections": "Suy ngẫm ({{count}})",
-      "feedback": "Phản hồi ({{count}})"
+      "feedback": "Phản hồi ({{count}})",
+      "practiceAnalytics": "Phân tích Thực hành & Năng lực"
+    },
+    "reflectionFilters": {
+      "all": "Tất cả",
+      "programme": "Chương trình",
+      "coaching": "Coaching",
+      "mentoring": "Mentoring",
+      "triad": "Tự suy ngẫm Triad",
+      "private": "Riêng tư"
+    },
+    "feedbackFilters": {
+      "all": "Tất cả",
+      "mentoring": "Mentoring",
+      "peer": "Peer Coaching"
     },
     "actionItemsHeader": "Hành động cần làm",
     "reflectionBanner": {
@@ -196,6 +213,27 @@
     "reflectionPlaceholder": "Bạn đang nghĩ gì? Thành công, trở ngại, những điều nhận ra…",
     "saveReflection": "Lưu suy ngẫm riêng tư",
     "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây."
+  },
+  "practiceAnalyticsTab": {
+    "scopeNotice": "Phân tích Thực hành & Năng lực nằm trong Hành trình của tôi — giữ nguyên bằng chứng năng lực ICF mà Hành trình Thực hành từng theo dõi, không tạo thêm một điểm đến chính riêng biệt.",
+    "kpis": {
+      "peerSessions": "Session peer coaching",
+      "competenciesObserved": "Năng lực đã quan sát",
+      "selfReflections": "Tự suy ngẫm"
+    },
+    "competencyList": {
+      "title": "Phát triển năng lực",
+      "subtitle": "Dựa trên phản hồi peer coaching cho đợt tham gia này.",
+      "sub": "Phản hồi peer coaching",
+      "empty": "Chưa có phản hồi năng lực nào — mục này sẽ có dữ liệu khi bạn nhận phản hồi peer coaching."
+    },
+    "evidence": {
+      "title": "Bằng chứng thực hành gần đây",
+      "subtitle": "Nguồn gốc của các tín hiệu năng lực.",
+      "empty": "Chưa có bằng chứng thực hành nào."
+    },
+    "viewReflections": "Xem suy ngẫm",
+    "viewFeedback": "Xem phản hồi"
   },
   "coachMyJourney": {
     "subtitle": "Sự phát triển của bạn với vai trò học viên — qua các session coaching và session đồng cấp bạn nhận được.",

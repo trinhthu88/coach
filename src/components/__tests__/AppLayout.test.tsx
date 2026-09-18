@@ -118,6 +118,14 @@ describe("AppLayout — coachee navigation", () => {
     expect(screen.getAllByRole("link", { name: "My profile" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: "My availability" }).length).toBeGreaterThan(0);
   });
+
+  // Its real competency analytics now live inside My Journey's "Practice &
+  // Competency Analytics" tab instead — see PracticeAnalyticsTab.
+  it("never shows Practice journey as a primary coachee destination, even when peer coaching and triads are configured", () => {
+    mockModules = { hasModule: (m) => ["peer_coaching", "triads"].includes(m), hasDirection: () => false };
+    renderLayout("/coachee/journey");
+    expect(screen.queryAllByRole("link", { name: "Practice journey" })).toHaveLength(0);
+  });
 });
 
 describe("AppLayout — coach navigation is unaffected by the coachee nav restructure", () => {
@@ -133,5 +141,14 @@ describe("AppLayout — coach navigation is unaffected by the coachee nav restru
     expect(screen.getAllByRole("link", { name: "Sessions" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: "Messages" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: "Mentoring" }).length).toBeGreaterThan(0);
+  });
+
+  it("still shows the coach's Practice journey link (untouched by the coachee nav change)", () => {
+    mockAuth.mockReturnValue({ ...baseAuth, role: "coach" as const });
+    mockModules = { hasModule: (m) => m === "peer_coaching", hasDirection: () => false };
+    // Land on /practice-journey itself so "Develop Myself" (collapsed by
+    // default) opens because its own route is current.
+    renderLayout("/practice-journey");
+    expect(screen.getAllByRole("link", { name: "Practice journey" }).length).toBeGreaterThan(0);
   });
 });

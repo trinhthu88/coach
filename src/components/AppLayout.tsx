@@ -79,14 +79,12 @@ const NAV: NavItem[] = [
   { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "peer_coaching" },
   { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "mentoring" },
   { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "triads" },
-  {
-    to: "/practice-journey",
-    labelKey: "nav.practiceJourney",
-    icon: Layers,
-    roles: ["coachee"],
-    groupKey: "navGroups.developMyself",
-    anyModule: [{ module: "peer_coaching" }, { module: "triads" }],
-  },
+  // Practice Journey is deliberately NOT in the coachee nav: its real
+  // competency analytics now live inside My Journey's "Practice &
+  // Competency Analytics" tab (see PracticeAnalyticsTab / CoacheeJourney),
+  // per the approved Coachee UX brief's "not a competing top-level
+  // destination" requirement. The route itself still exists and still
+  // serves the coach (below).
 
   // Coachee — Learning
   { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coachee"], module: "training", groupKey: "navGroups.learning" },
