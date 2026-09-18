@@ -48,18 +48,28 @@ export function checkpointStateColor(state: ProgrammeCheckpointState) {
   return FAINT;
 }
 
+function humaniseModule(module: string) {
+  const text = module.replace(/_/g, " ").trim();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : module;
+}
+
+/** User-facing label for a canonical module_scope entry — never an internal enum. */
+export function moduleScopeLabelFor(module: string, t: (key: string) => string) {
+  const labels: Record<string, string> = {
+    coaching: t("cohortDetail.modules.coaching"),
+    training: t("cohortDetail.modules.training"),
+    training_learning: t("cohortDetail.modules.training"),
+    peer: t("cohortDetail.modules.peer"),
+    peer_coaching: t("cohortDetail.modules.peer"),
+    mentoring: t("cohortDetail.modules.mentoring"),
+    triads: t("cohortDetail.modules.triads"),
+  };
+  return labels[module] ?? humaniseModule(module);
+}
+
 export function useModuleScopeLabel() {
   const { t } = useTranslation("sponsor");
-  return (module: string) => {
-    const labels: Record<string, string> = {
-      coaching: t("cohortDetail.modules.coaching"),
-      training: t("cohortDetail.modules.training"),
-      peer_coaching: t("cohortDetail.modules.peer"),
-      mentoring: t("cohortDetail.modules.mentoring"),
-      triads: t("cohortDetail.modules.triads"),
-    };
-    return labels[module] ?? module;
-  };
+  return (module: string) => moduleScopeLabelFor(module, t);
 }
 
 /** Where a learner goes to work on each canonical module_scope entry. */

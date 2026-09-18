@@ -58,8 +58,10 @@ function LearnerCheckpointDetail({ point }: { point: ProgrammeJourneyPoint }) {
           <div className="text-[9.5px] font-bold uppercase tracking-[.14em] text-[#9a938a]">
             {tSponsor("leaderDrawer.reference.checkpoint", { number: point.checkpoint_number })}
           </div>
-          {point.label && <p className="mt-1 font-serif text-[16px] text-[#062f3e]">{point.label}</p>}
-          <p className="mt-1 text-[11px] text-[#6a6560]">{t("learnerProfile.journey.dueOn", { date: formatProfileDate(point.due_on) })}</p>
+          {/* The checkpoint IS the date milestone: no generated module-list title. */}
+          <p data-testid="checkpoint-due" className="mt-1 font-serif text-[16px] text-[#062f3e]">
+            {t("learnerProfile.journey.dueOn", { date: formatProfileDate(point.due_on) })}
+          </p>
         </div>
         <span className="text-[9.5px] font-bold uppercase tracking-[.15em]" style={{ color }}>
           {tSponsor(`cohortDetail.journey.states.${point.state}`)}
@@ -80,7 +82,7 @@ function LearnerCheckpointDetail({ point }: { point: ProgrammeJourneyPoint }) {
         </div>
         <div>
           <div className="text-[9.5px] font-bold uppercase tracking-[.14em] text-[#9a938a]">{t("learnerProfile.journey.inScope")}</div>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
+          <ul data-testid="checkpoint-modules" className="mt-2 flex flex-wrap gap-1.5">
             {point.module_scope.map((module) => (
               <li key={module}>
                 {LEARNER_MODULE_PATH[module] ? (
@@ -98,6 +100,12 @@ function LearnerCheckpointDetail({ point }: { point: ProgrammeJourneyPoint }) {
               </li>
             ))}
           </ul>
+          {/* Training week titles are source content (training_weeks.title), shown as context for the Training / Learning item. */}
+          {point.label && point.module_scope.includes("training") && (
+            <p data-testid="checkpoint-training-weeks" className="mt-2 text-[10.5px] text-[#6a6560]">
+              {moduleLabel("training")} · {point.label}
+            </p>
+          )}
         </div>
       </div>
       <p className="mt-3 text-[10px] leading-relaxed" style={{ color: PROFILE_COLORS.FAINT }}>

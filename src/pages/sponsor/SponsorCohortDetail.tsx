@@ -8,6 +8,7 @@ import { Pill } from "@/pages/admin/_shared";
 import { STATUS_LABEL_KEY, STATUS_TONE, cohortLifecycleStatus, cohortProgress, effectiveSponsorStatus, initials } from "./sponsorUtils";
 import { SponsorFlagDialog } from "./SponsorFlagDialog";
 import { SponsorDataErrorState } from "./SponsorDataErrorState";
+import { moduleScopeLabelFor } from "@/components/programme/profileTheme";
 
 const SKY = "#3db4d0";
 const NAVY = "#062f3e";
@@ -306,9 +307,6 @@ type SponsorJourneyCheckpoint = {
   state: "upcoming" | "current" | "completed" | "overdue";
 };
 
-type SponsorTimelineCheckpoint = SponsorJourneyCheckpoint & {
-};
-
 function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, options?: Record<string, unknown>) => string }) {
   const rawCheckpoints = Array.isArray(journey)
     ? journey.filter((item): item is SponsorJourneyCheckpoint => Boolean(
@@ -321,7 +319,9 @@ function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, o
       && "completed_units" in item,
     ))
     : [];
-  const checkpoints = groupJourneyCheckpoints(rawCheckpoints);
+  // One canonical checkpoint per due date comes from the backend (grouped in
+  // SQL); the UI only orders it, never merges or re-derives checkpoints.
+  const checkpoints = [...rawCheckpoints].sort((left, right) => left.due_on.localeCompare(right.due_on));
   return (
     <section className="mt-4 overflow-hidden rounded-[14px] border p-[22px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -347,7 +347,7 @@ function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, o
                       <div className="mt-3 flex flex-wrap content-start gap-1.5">
                         {(checkpoint.module_scope ?? []).map((module) => (
                           <span key={module} className="max-w-full rounded-full border border-[#d8e9ed] bg-white px-2 py-1 text-[9px] font-semibold leading-[1.25] text-[#2c8fa8]">
-                            {moduleScopeLabel([module], t)}
+                            {moduleScopeLabelFor(module, t)}
                           </span>
                         ))}
                       </div>
@@ -385,48 +385,11 @@ function ProgrammeJourney({ journey, t }: { journey: unknown; t: (key: string, o
   );
 }
 
-function groupJourneyCheckpoints(checkpoints: SponsorJourneyCheckpoint[]): SponsorTimelineCheckpoint[] {
-  const grouped = new Map<string, SponsorTimelineCheckpoint>();
-  for (const checkpoint of checkpoints) {
-    const existing = grouped.get(checkpoint.due_on);
-    if (!existing) {
-      grouped.set(checkpoint.due_on, {
-        ...checkpoint,
-        module_scope: uniqueStrings(checkpoint.module_scope ?? []),
-      });
-      continue;
-    }
-
-    const mergedScope = uniqueStrings([...(existing.module_scope ?? []), ...(checkpoint.module_scope ?? [])]);
-    const representative = checkpoint.checkpoint_number >= existing.checkpoint_number ? checkpoint : existing;
-    grouped.set(checkpoint.due_on, {
-      ...representative,
-      module_scope: mergedScope,
-    });
-  }
-  return [...grouped.values()].sort((left, right) => left.due_on.localeCompare(right.due_on));
-}
-
-function uniqueStrings(values: string[]) {
-  return [...new Set(values.filter(Boolean))];
-}
-
 function journeyStateColor(state: SponsorJourneyCheckpoint["state"]) {
   if (state === "completed") return GREEN;
   if (state === "overdue") return "#c9543a";
   if (state === "current") return SKY;
   return "#cfc7bb";
-}
-
-function moduleScopeLabel(scope: string[] | null | undefined, t: (key: string, options?: Record<string, unknown>) => string) {
-  const labels: Record<string, string> = {
-    coaching: t("cohortDetail.modules.coaching"),
-    training: t("cohortDetail.modules.training"),
-    peer_coaching: t("cohortDetail.modules.peer"),
-    mentoring: t("cohortDetail.modules.mentoring"),
-    triads: t("cohortDetail.modules.triads"),
-  };
-  return (scope ?? []).map((module) => labels[module] ?? module).join(" · ");
 }
 
 function ProgrammeDetails({ kpis, t }: { kpis: SponsorCohortSummary | null; t: (key: string, options?: Record<string, unknown>) => string }) {

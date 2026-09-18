@@ -245,15 +245,19 @@ export function parseProgrammeExperience(value: unknown): ProgrammeExperience {
  * whose date has passed (completed/overdue), otherwise the first upcoming
  * one. Uses only the backend-assigned states, never dates vs. a client clock.
  */
+/**
+ * The learner's position on the canonical journey: the checkpoint due today,
+ * else the next upcoming checkpoint (the one currently being worked towards),
+ * else — programme finished — the final checkpoint. Only canonical dates and
+ * states are read; nothing is recalculated.
+ */
 export function journeyFocusIndex(journey: ProgrammeJourneyPoint[]): number {
   if (journey.length === 0) return -1;
   const current = journey.findIndex((p) => p.state === "current");
   if (current >= 0) return current;
-  let lastPassed = -1;
-  journey.forEach((p, idx) => {
-    if (p.state !== "upcoming") lastPassed = idx;
-  });
-  return lastPassed >= 0 ? lastPassed : 0;
+  const nextUpcoming = journey.findIndex((p) => p.state === "upcoming");
+  if (nextUpcoming >= 0) return nextUpcoming;
+  return journey.length - 1;
 }
 
 export interface JourneyWindow {
