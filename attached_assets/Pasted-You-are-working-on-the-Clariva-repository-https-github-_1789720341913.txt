@@ -1,0 +1,1319 @@
+You are working on the Clariva repository:
+
+https://github.com/trinhthu88/coach.git
+
+Working branch:
+
+`remediation-p0-p1-retimestamp`
+
+Current verified baseline:
+
+```text
+HEAD:
+87be5805b47caac3e4e58caba195238a080e5fc6
+
+Local = origin
+Working tree = clean
+
+Vitest:
+55 files / 255 tests passed
+
+TypeScript:
+0 errors
+
+Lint:
+0 errors
+16 pre-existing warnings
+
+Build:
+PASS
+
+git diff --check:
+PASS
+```
+
+The approved Coachee UX/UI prototype is:
+
+`Clariva Coachee Prototype standalone-src.dc.html`
+
+Prototype commit:
+
+`c3cce25d68f88b0949c00e676481a1eb04f2b47c`
+
+The prototype is on `origin/main`, not necessarily on the current working branch.
+
+Read it directly when needed:
+
+```bash
+git show c3cce25d68f88b0949c00e676481a1eb04f2b47c:"Clariva Coachee Prototype standalone-src.dc.html"
+```
+
+Do NOT merge the prototype commit merely to access the HTML.
+
+---
+
+# ABSOLUTE RULE — SOURCE OF TRUTH FIRST
+
+This is the most important requirement in this entire task.
+
+The prototype defines:
+
+> HOW the Coachee application looks and behaves.
+
+The existing Clariva canonical architecture defines:
+
+> WHAT the data actually is.
+
+Never reverse those responsibilities.
+
+The prototype contains illustrative/sample values.
+
+They are NOT production data.
+
+Never copy sample values from the HTML into the React application simply to make the UI look complete.
+
+---
+
+# THE CANONICAL MODEL
+
+Preserve:
+
+```text
+Programme/Admin = WHAT is required
+Cohort            = WHEN it happens
+Enrollment        = WHO participates
+Activity          = WHAT actually happened
+```
+
+And:
+
+```text
+Goal
+Goal check-in
+Milestone
+Enrollment Action
+Reflection
+Feedback
+```
+
+Core invariant:
+
+> ONE LEARNER + ONE ENROLLMENT = ONE TRUTH.
+
+Every learner screen must derive from the selected enrollment wherever programme-specific data is shown.
+
+---
+
+# NEVER INVENT DATA
+
+You must NEVER:
+
+- hard-code prototype progress numbers
+- hard-code programme names
+- hard-code cohort names
+- hard-code learner names
+- invent checkpoint titles
+- invent checkpoint dates
+- invent programme phases
+- invent week ranges
+- invent module requirements
+- invent session counts
+- invent feedback
+- invent reflection text
+- invent goal percentages
+- invent action counts
+- invent session participants
+- infer programme/cohort from a date
+- infer a Triad week if no canonical week exists
+- infer a Triad round if no canonical round exists
+- create fake "Next Up" records
+- fabricate module completion to fill empty UI
+- create fallback demo values inside production components
+
+If data does not exist:
+
+> show the correct empty/unavailable state.
+
+Do not make the screen look populated artificially.
+
+---
+
+# EMPTY STATE IS BETTER THAN FALSE DATA
+
+Examples:
+
+If no upcoming session exists:
+
+```text
+No upcoming session booked
+```
+
+NOT a sample session.
+
+If no feedback exists:
+
+```text
+No feedback yet
+```
+
+NOT example mentoring feedback.
+
+If a checkpoint has no title:
+
+use the legitimate configured fallback already defined by the product, if one exists.
+
+Do not create:
+
+```text
+Building Confidence
+Foundations
+Applying at Work
+```
+
+unless those names actually come from canonical programme configuration.
+
+If a module is not configured:
+
+DO NOT display:
+
+```text
+0 / 0
+```
+
+Hide it.
+
+---
+
+# PROTOTYPE SAMPLE DATA MUST BE REPLACED
+
+The HTML may contain values such as:
+
+```text
+Mai Nguyen
+Emerging Leaders Programme
+September 2026
+Anna Fan
+Round 2
+Week 4
+5 / 6
+42%
+```
+
+These are only examples demonstrating layout.
+
+Never copy these values into production code.
+
+Every visible value must be either:
+
+1. canonical application data;
+2. translated static UI copy;
+3. a legitimate empty/unavailable state.
+
+Nothing else.
+
+---
+
+# FIRST — STUDY BOTH SIDES
+
+Before writing code:
+
+## A. Read the full prototype
+
+```bash
+git show c3cce25d68f88b0949c00e676481a1eb04f2b47c:"Clariva Coachee Prototype standalone-src.dc.html"
+```
+
+Understand:
+
+- layout
+- menu
+- Dashboard
+- Programme Journey
+- Development Journey
+- goals
+- actions
+- sessions
+- reflections
+- feedback
+- Training & Learning
+- Coaching
+- Peer Coaching
+- Mentoring
+- Triads
+- Messages
+- Profile & Availability
+- responsive behavior
+
+## B. Read the existing real implementation
+
+At minimum inspect:
+
+```text
+src/App.tsx
+src/components/AppLayout.tsx
+
+src/pages/Dashboard.tsx
+src/pages/CoacheeJourney.tsx
+src/pages/Sessions.tsx
+src/pages/SessionDetail.tsx
+
+src/pages/CoacheePeerPractice.tsx
+
+src/pages/MentoringFindMentor.tsx
+src/pages/MentoringSessionDetail.tsx
+
+src/pages/TrainingWeeks.tsx
+src/pages/SkillCardView.tsx
+src/pages/QuizView.tsx
+src/pages/ReflectionView.tsx
+
+src/pages/triads/TriadsPage.tsx
+src/pages/triads/TriadReflectionPage.tsx
+
+src/pages/Coaches.tsx
+src/pages/CoachDetail.tsx
+
+src/pages/CoacheeProfileEditor.tsx
+src/pages/CoacheeAvailability.tsx
+```
+
+Also inspect all relevant hooks before making new ones.
+
+---
+
+# DO NOT DUPLICATE WORKING LOGIC
+
+The latest P0/P1 functionality has already been validated.
+
+Preserve it.
+
+In particular:
+
+## Triad Self-Reflection
+
+Already canonical:
+
+```text
+triad_reflections
+```
+
+and already included in:
+
+```text
+useEnrollmentDevelopmentJourney
+```
+
+as:
+
+```text
+type = reflection
+subtype = triad_self_reflection
+```
+
+Do not recreate it.
+
+---
+
+# REFLECTION SOURCE OF TRUTH
+
+Exactly five sources:
+
+| Reflection | Canonical source |
+|---|---|
+| Programme / Learning | `programme_reflections` + `reflection_submissions` |
+| Coaching | `sessions.coachee_notes` |
+| Mentoring | `mentoring_sessions.mentee_notes` |
+| Triad Self-Reflection | `triad_reflections` |
+| Private | `coachee_reflections` |
+
+The UI may aggregate them.
+
+The database must not duplicate them.
+
+---
+
+# FEEDBACK SOURCE OF TRUTH
+
+Learner-visible:
+
+```text
+mentoring_feedback
+peer_session_competency_feedback
+```
+
+Private / NEVER learner-visible:
+
+```text
+coach_session_feedback
+```
+
+Also ensure learner feedback shown inside a selected Journey belongs to the selected enrollment.
+
+Do not mix feedback across different programme enrollments.
+
+---
+
+# SESSION SOURCE OF TRUTH
+
+Use:
+
+| Type | Canonical source |
+|---|---|
+| Coaching | `sessions` |
+| Peer Coaching | `peer_sessions` |
+| Mentoring | `mentoring_sessions` |
+| Triad | `triad_sessions` |
+
+Enrollment linkage:
+
+```text
+sessions.enrollment_id
+
+peer_sessions.enrollment_id
+
+mentoring_sessions.enrollment_id
+
+triad_sessions:
+coach_enrollment_id
+coachee_enrollment_id
+observer_enrollment_id
+```
+
+Every programme-specific session card must resolve:
+
+```text
+session
+→ enrollment
+→ programme
+→ cohort
+```
+
+Never infer programme/cohort from date.
+
+---
+
+# PROGRAMME JOURNEY SOURCE OF TRUTH
+
+Do NOT use the prototype's static JavaScript:
+
+```text
+checkpointData
+```
+
+for production.
+
+That sample exists only to demonstrate interaction.
+
+Production Programme Journey must use canonical learner progress/configuration.
+
+Preserve the existing canonical construction around:
+
+```text
+useLearnerCanonicalProgress
+```
+
+or its current authoritative equivalent.
+
+Programme Journey must derive:
+
+```text
+Programme requirements
++
+Cohort timing
++
+Enrollment context
++
+Activity completion
+```
+
+---
+
+# CHECKPOINT RULES
+
+Only show real configured:
+
+- checkpoint number
+- checkpoint title
+- due date
+- module scope
+- required count
+- completed count
+- state
+
+Do not assume there are 6 checkpoints because the prototype shows six.
+
+If a programme has:
+
+```text
+4 checkpoints
+```
+
+show four.
+
+If it has:
+
+```text
+8 checkpoints
+```
+
+show eight.
+
+The UI must dynamically adapt.
+
+---
+
+# DEVELOPMENT JOURNEY SOURCE OF TRUTH
+
+Preserve exactly one canonical history:
+
+```text
+useEnrollmentDevelopmentJourney(enrollmentId, learnerId)
+```
+
+Full Journey:
+
+```text
+events
+```
+
+Dashboard Recent Development:
+
+```text
+events.slice(0, N)
+```
+
+Do not create another history query.
+
+Do not create another event table.
+
+Do not recalculate event ordering separately.
+
+---
+
+# TRAINING & LEARNING SOURCE OF TRUTH
+
+Preserve canonical child-derived Training & Learning progress.
+
+Do NOT use the old stored parent number when child-derived canonical progress is authoritative.
+
+Example:
+
+If canonical calculation returns:
+
+```text
+5 / 6
+```
+
+show:
+
+```text
+5 / 6
+```
+
+Do not accidentally return:
+
+```text
+0 / 6
+```
+
+through an old UI reader.
+
+---
+
+# GOAL SOURCE OF TRUTH
+
+Preserve:
+
+- `coachee_goals`
+- milestones
+- `goal_checkins`
+- canonical goal progress formula
+
+Do not recalculate goal progress differently for Dashboard and Journey.
+
+Goal check-in:
+
+```text
+≠ Reflection
+```
+
+Keep the corrected terminology:
+
+**Goal check-in**
+
+---
+
+# ACTION SOURCE OF TRUTH
+
+Use:
+
+```text
+enrollment_actions
+```
+
+Do not use legacy JSON action storage.
+
+---
+
+# NEXT UP
+
+The prototype contains a Next Up experience.
+
+Do not persist another task table.
+
+Derive deterministically from canonical data.
+
+Priority:
+
+```text
+1. overdue required programme activity
+2. open action due soon
+3. incomplete current checkpoint requirement
+4. next booked session
+5. next upcoming programme activity
+```
+
+If none exists:
+
+show empty state.
+
+Never invent one.
+
+---
+
+# NAVIGATION IMPLEMENTATION
+
+Follow the approved prototype architecture.
+
+## Main
+
+```text
+Dashboard
+My Journey
+Sessions
+```
+
+## My Development
+
+Configured modules only:
+
+```text
+Coaching
+Peer Coaching
+Mentoring
+Triads
+```
+
+## Learning
+
+```text
+Training & Learning
+```
+
+when configured.
+
+## Communication
+
+```text
+Messages
+```
+
+## Account
+
+```text
+Profile & Availability
+How it works
+```
+
+---
+
+# MY JOURNEY MUST NOT BE COACHING-ONLY
+
+Current historical navigation gating tied My Journey to:
+
+```text
+coaching + receive
+```
+
+This is incorrect now.
+
+My Journey includes:
+
+- Programme Journey
+- Development Journey
+- Training
+- Coaching
+- Peer Coaching
+- Mentoring
+- Triads
+- Goals
+- Actions
+- Reflections
+- Feedback
+
+Therefore:
+
+> If a learner has a valid enrollment, My Journey must be accessible.
+
+Do not require the Coaching module.
+
+---
+
+# PRACTICE ANALYTICS
+
+The existing Practice Journey contains useful real competency analytics.
+
+Do NOT delete the underlying functionality.
+
+Do NOT maintain it as a competing top-level Coachee Journey.
+
+Integrate it inside:
+
+```text
+My Journey
+→ Practice & Competency Analytics
+```
+
+Reuse existing canonical competency data.
+
+Do not generate fake competency scores to fill radar charts.
+
+If insufficient data exists:
+
+show the existing legitimate empty state.
+
+---
+
+# APPLY THE PROTOTYPE DESIGN
+
+Implement visual parity with:
+
+`Clariva Coachee Prototype standalone-src.dc.html`
+
+For the following:
+
+## 1 Dashboard
+
+Implement:
+
+```text
+Programme Hero
+Next Up
+Programme Journey preview
+Programme Progress
+Module Progress
+Goals & Actions
+Feedback & Development
+Recent Development
+Upcoming Sessions
+```
+
+Use only real data.
+
+---
+
+# 2 MY JOURNEY
+
+Implement:
+
+```text
+Programme Hero
+
+Programme Journey
+
+Development Journey
+
+Overview
+Goals
+Actions
+Sessions
+Reflections
+Feedback
+Practice & Competency Analytics
+```
+
+---
+
+# 3 PROGRAMME JOURNEY
+
+Match the prototype design:
+
+- connected horizontal checkpoints
+- state dots
+- current state
+- "You are here"
+- selected checkpoint
+- expandable details
+- responsive horizontal scrolling
+
+But populate entirely from canonical configuration.
+
+---
+
+# 4 DEVELOPMENT JOURNEY
+
+Match prototype:
+
+- vertical line
+- chronological events
+- event dots
+- source/type distinction
+- expandable context
+
+Use only canonical events.
+
+---
+
+# 5 REFLECTIONS
+
+Filters:
+
+```text
+All
+Programme
+Coaching
+Mentoring
+Triad
+Private
+```
+
+Do not invent reflection content.
+
+Private Reflection creation button:
+
+```text
+Add Private Reflection
+```
+
+Only private reflection uses this generic form.
+
+---
+
+# 6 FEEDBACK
+
+Filters:
+
+```text
+All
+Mentoring
+Peer Coaching
+```
+
+Ensure enrollment isolation.
+
+No `coach_session_feedback`.
+
+---
+
+# 7 SESSIONS
+
+Match prototype unified session design.
+
+Filters:
+
+```text
+All / Upcoming / Completed
+
+All Types
+Coaching
+Peer Coaching
+Mentoring
+Triad
+```
+
+Every record must show real:
+
+- type
+- programme
+- cohort
+- date
+- status
+- counterpart / role
+
+---
+
+# 8 SESSION DETAIL
+
+Apply prototype shell while retaining source-specific functionality.
+
+Do not force every session type to have fields it does not canonically support.
+
+If a section has no valid data/function:
+
+omit it.
+
+---
+
+# 9 TRAINING & LEARNING
+
+Apply prototype design to real configured content.
+
+Only show configured:
+
+- Skill Cards
+- Assignments
+- Quiz
+- Programme Reflection
+- Daily Prompt
+
+Do not manufacture missing content categories.
+
+---
+
+# 10 COACHING
+
+Apply prototype design around existing:
+
+- assigned coach
+- coach discovery
+- booking
+- upcoming/past sessions
+
+No fake assigned coach if none exists.
+
+---
+
+# 11 PEER COACHING
+
+Apply prototype design using real:
+
+- peer partner
+- sessions
+- roles
+- feedback
+
+---
+
+# 12 MENTORING
+
+Apply prototype design using:
+
+- real mentor
+- preparation
+- sessions
+- mentoring reflection
+- mentoring feedback
+
+---
+
+# 13 TRIADS
+
+Apply prototype design using:
+
+- real Triad group
+- actual participants
+- actual role
+- actual round
+- actual training week where linked
+- actual session state
+- actual Self-Reflection state
+
+If canonical Week is null:
+
+do not show Week.
+
+If canonical Round is null:
+
+do not show Round.
+
+---
+
+# 14 MESSAGES
+
+Apply prototype layout.
+
+Preserve current real messaging functionality.
+
+Only show session context when canonical context exists.
+
+---
+
+# 15 PROFILE & AVAILABILITY
+
+Follow prototype.
+
+Do not invent unsupported persistent Preferences fields.
+
+If some prototype preference control has no backing schema:
+
+either:
+
+- omit it;
+- or clearly leave it out as an intentional functional adaptation.
+
+Do NOT add a database column merely to make the prototype visually complete.
+
+---
+
+# DESIGN SYSTEM
+
+Use the prototype's visual system.
+
+Approximate design variables:
+
+```text
+Navy       #062f3e
+Sky        #3db4d0
+Teal       #2c8fa8
+Green      #17663f
+Amber      #a8541c
+Red        #a8341c
+
+Ivory      #f6f3ee
+Paper      #fffdf9
+Border     #e6e0d6
+
+Ink        #17313a
+Muted      #6a6560
+Soft       #9a938a
+```
+
+Prefer central tokens/CSS variables over repeated raw values.
+
+---
+
+# RESPONSIVE
+
+Match prototype intent.
+
+Desktop:
+
+```text
+persistent sidebar
+```
+
+Mobile primary navigation:
+
+```text
+Dashboard
+Journey
+Sessions
+Messages
+More
+```
+
+Do not remove functionality from mobile.
+
+---
+
+# I18N
+
+No new hard-coded production English UI.
+
+Use existing i18n system:
+
+```text
+en
+vi
+```
+
+Prototype copy is reference.
+
+---
+
+# DO NOT CHANGE DATABASE UNLESS ABSOLUTELY NECESSARY
+
+This phase should primarily be UI.
+
+If you believe a database/RPC change is required:
+
+STOP and first prove why existing canonical data cannot support the prototype requirement.
+
+Prefer legitimate empty state over creating a new schema just for UI.
+
+---
+
+# IMPLEMENT IN SMALL COMMITS
+
+Do not produce one massive unreviewable commit.
+
+Suggested commit sequence:
+
+```text
+1. Coachee shell and navigation
+2. Coachee dashboard redesign
+3. My Journey and Programme Journey redesign
+4. Development Journey + tabs
+5. Sessions and session detail
+6. Training & Learning
+7. Coaching / Peer / Mentoring / Triads
+8. Messages / Profile / responsive polish
+9. Test and localization cleanup
+```
+
+You may combine small adjacent steps sensibly.
+
+---
+
+# REGRESSION REQUIREMENTS
+
+Do not regress the already verified:
+
+```text
+Triad Self-Reflection
+Peer session routing
+Peer field mapping
+Programme/cohort session context
+Private Reflection enrollment scope
+Goal check-in terminology
+Canonical Training progress
+Canonical Development Journey
+```
+
+---
+
+# TEST SOURCE-OF-TRUTH BEHAVIOR
+
+Add/maintain tests proving:
+
+## Multi-enrollment isolation
+
+Given:
+
+```text
+Enrollment A
+Enrollment B
+```
+
+My Journey for A must not contain:
+
+- B's private reflections
+- B's feedback
+- B's sessions
+- B's actions
+- B's goals
+
+---
+
+# EMPTY DATA TESTS
+
+Ensure design behaves correctly with:
+
+- no goals
+- no feedback
+- no reflections
+- no sessions
+- no upcoming activity
+- module absent
+- checkpoint absent
+- Triad round/week absent
+
+No fake values should appear.
+
+---
+
+# VALIDATION
+
+After each major phase run targeted tests.
+
+Before completion run:
+
+```bash
+npx vitest run
+npx tsc --noEmit
+npm run lint
+npm run build
+git diff --check
+```
+
+Do not call complete if these fail.
+
+---
+
+# FINAL VISUAL AUDIT
+
+Compare production implementation screen-by-screen against:
+
+`Clariva Coachee Prototype standalone-src.dc.html`
+
+For each screen report:
+
+```text
+MATCH
+MINOR DIFFERENCE
+INTENTIONAL FUNCTIONAL ADAPTATION
+MISSING
+```
+
+An **intentional functional adaptation** is appropriate when the HTML contains prototype-only data/functionality that has no canonical production source.
+
+Do not fabricate data to turn an intentional adaptation into a visual match.
+
+---
+
+# FINAL DATA INTEGRITY AUDIT
+
+Before completion inspect every major screen and answer:
+
+### Dashboard
+
+Does every value come from canonical data?
+
+### Programme Journey
+
+Does every checkpoint/title/date/count come from canonical configuration?
+
+### Development Journey
+
+Does every event come from `useEnrollmentDevelopmentJourney`?
+
+### Goals
+
+Does every value come from canonical goal/check-in data?
+
+### Actions
+
+Does every item come from `enrollment_actions`?
+
+### Sessions
+
+Does each record resolve through correct enrollment?
+
+### Reflections
+
+Does every item map to one of the five canonical sources?
+
+### Feedback
+
+Does each item come from mentoring/peer feedback for the selected enrollment?
+
+### Triads
+
+Are Round/Week shown only when real canonical relationships exist?
+
+### Training
+
+Does progress use canonical child-derived requirements?
+
+If any answer is NO:
+
+fix it before calling the work complete.
+
+---
+
+# FINAL REPORT
+
+Return:
+
+## A. Starting / Ending Git State
+
+```text
+Starting HEAD:
+Ending HEAD:
+Remote HEAD:
+Working tree:
+```
+
+## B. Prototype Used
+
+Confirm:
+
+```text
+Clariva Coachee Prototype standalone-src.dc.html
+c3cce25d68f88b0949c00e676481a1eb04f2b47c
+```
+
+## C. Navigation Implemented
+
+Show final learner menu.
+
+## D. Screen-by-Screen Design Match
+
+| Screen | Result | Notes |
+|---|---|---|
+| Dashboard | | |
+| My Journey | | |
+| Sessions | | |
+| Session Detail | | |
+| Training & Learning | | |
+| Coaching | | |
+| Peer Coaching | | |
+| Mentoring | | |
+| Triads | | |
+| Messages | | |
+| Profile & Availability | | |
+
+## E. Source-of-Truth Audit
+
+For every major component list:
+
+```text
+UI component
+→ canonical source/hook/table
+```
+
+## F. Prototype Values NOT Copied
+
+Explicitly confirm:
+
+> No illustrative learner, programme, cohort, checkpoint, session, reflection, feedback, goal, progress or Triad values from the HTML were hard-coded into production.
+
+## G. Empty States
+
+List empty/unavailable behaviors used instead of fabricated data.
+
+## H. Multi-Enrollment Isolation
+
+Confirm tests/results.
+
+## I. Reflection Sources
+
+| Reflection | Source |
+|---|---|
+| Programme | |
+| Coaching | |
+| Mentoring | |
+| Triad | |
+| Private | |
+
+## J. Feedback Sources
+
+| Feedback | Source |
+|---|---|
+| Mentoring | |
+| Peer | |
+| Coach operational | NOT learner visible |
+
+## K. Validation
+
+Exact:
+
+```text
+Vitest:
+TypeScript:
+Lint:
+Build:
+git diff --check:
+```
+
+## L. Commits
+
+List commits created for UI implementation.
+
+## M. Push State
+
+Confirm final UI branch is pushed and local HEAD matches origin.
+
+## N. Remaining Differences
+
+List legitimate remaining differences from the HTML prototype.
+
+---
+
+# FINAL NON-NEGOTIABLE RULE
+
+When there is a conflict between:
+
+> making the screen look populated
+
+and:
+
+> telling the truth
+
+ALWAYS choose truth.
+
+The approved HTML controls the experience.
+
+The canonical Clariva data model controls reality.
+
+Never invent data to bridge the two.
