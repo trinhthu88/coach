@@ -30,17 +30,22 @@ import {
   Handshake,
   ChevronDown,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import clarivaLogoDark from "@/assets/clariva-logo-dark.png";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useProgrammeModules, ProgrammeModuleType } from "@/hooks/useProgrammeModules";
+
+const OnboardingTour = lazy(() =>
+  import("@/components/onboarding/OnboardingTour").then(({ OnboardingTour: Component }) => ({
+    default: Component,
+  }))
+);
 
 interface NavItem {
   to: string;
@@ -667,15 +672,19 @@ export default function AppLayout() {
       </main>
 
       {showsOnboarding && autoTourEligible && (
-        <OnboardingTour role={role as "coach" | "coachee" | "sponsor"} onSetMobileNavOpen={setMobileNavOpen} />
+        <Suspense fallback={null}>
+          <OnboardingTour role={role as "coach" | "coachee" | "sponsor"} onSetMobileNavOpen={setMobileNavOpen} />
+        </Suspense>
       )}
       {showsOnboarding && manualTourOpen && (
-        <OnboardingTour
-          key={manualTourKey}
-          role={role as "coach" | "coachee" | "sponsor"}
-          onClose={() => setManualTourOpen(false)}
-          onSetMobileNavOpen={setMobileNavOpen}
-        />
+        <Suspense fallback={null}>
+          <OnboardingTour
+            key={manualTourKey}
+            role={role as "coach" | "coachee" | "sponsor"}
+            onClose={() => setManualTourOpen(false)}
+            onSetMobileNavOpen={setMobileNavOpen}
+          />
+        </Suspense>
       )}
     </div>
   );

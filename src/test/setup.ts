@@ -1,4 +1,9 @@
 import "@testing-library/jest-dom";
+import i18n, { NAMESPACES } from "@/i18n/config";
+
+// Browser builds load translation namespaces on demand. Tests render components
+// synchronously, so make the same namespaces available before the suite starts.
+await i18n.loadNamespaces(NAMESPACES);
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,

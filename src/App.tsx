@@ -6,12 +6,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import AppLayout from "@/components/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageSkeleton } from "@/components/PageSkeleton";
 
 // Page-level lazy imports — each becomes a separate chunk
 const Index = lazy(() => import("./pages/Index"));
+const AppLayout = lazy(() => import("./components/AppLayout"));
 const Auth = lazy(() => import("./pages/Auth"));
 const RequestAccess = lazy(() => import("./pages/RequestAccess"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
