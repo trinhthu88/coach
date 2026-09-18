@@ -139,6 +139,11 @@
       "backToSessions": "Về danh sách session"
     },
     "allSessions": "Tất cả session",
+    "typeLabels": {
+      "coaching": "Coaching",
+      "peer": "Peer Coaching",
+      "coachee_peer": "Peer Coaching"
+    },
     "missingRequirementHintPeer": "Đang chờ phản hồi năng lực từ học viên đồng cấp trước khi session này có thể được đánh dấu hoàn thành.",
     "missingRequirementHintCoaching": "Đang chờ suy ngẫm của học viên trước khi session này có thể được đánh dấu hoàn thành.",
     "toast": {

@@ -74,6 +74,11 @@
   "sessionDetail": {
     "notFound": "Session not found",
     "backToMentors": "Back to mentors",
+    "typeLabel": "Mentoring",
+    "counterpartRole": {
+      "mentor": "Mentor",
+      "mentee": "Mentee"
+    },
     "withCounterpart": "With {{name}}",
     "minutes": "min",
     "joinMeeting": "Join meeting",

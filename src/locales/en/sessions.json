@@ -139,6 +139,11 @@
       "backToSessions": "Back to sessions"
     },
     "allSessions": "All sessions",
+    "typeLabels": {
+      "coaching": "Coaching",
+      "peer": "Peer Coaching",
+      "coachee_peer": "Peer Coaching"
+    },
     "missingRequirementHintPeer": "Waiting on the peer-coachee's competency feedback before this session can be marked complete.",
     "missingRequirementHintCoaching": "Waiting on the coachee's reflection before this session can be marked complete.",
     "toast": {

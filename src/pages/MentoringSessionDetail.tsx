@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   ChevronLeft,
-  Clock,
   Loader2,
   Video,
   Save,
@@ -25,6 +24,7 @@ import { useMentoringFeedback } from "@/hooks/mentoring/useMentoringFeedback";
 import { MentorFeedbackForm } from "@/components/mentoring/MentorFeedbackForm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { getSessionStatusMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
+import { SessionDetailHero } from "@/components/sessions/SessionDetailHero";
 
 export default function MentoringSessionDetail() {
   const { t } = useTranslation("mentoring");
@@ -78,7 +78,6 @@ export default function MentoringSessionDetail() {
   const isMentor = user?.id === session.mentor_id;
   const isMentee = user?.id === session.mentee_id;
   const statusMeta = getStatusMeta(t)[session.status];
-  const StatusIcon = statusMeta.icon;
 
   const handleConfirm = async () => {
     const { error } = await confirmSession();
@@ -124,58 +123,56 @@ export default function MentoringSessionDetail() {
         <ChevronLeft className="h-4 w-4" /> {t("sessionDetail.backToMentors")}
       </Link>
 
-      <Card className="space-y-4 p-4 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="font-display text-[1.4rem] leading-[1.1] tracking-tight sm:text-[1.7rem]">{session.topic}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("sessionDetail.withCounterpart", { name: counterpartName || "—" })}
-            </p>
-          </div>
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest ${statusMeta.className}`}>
-            <StatusIcon className="h-3.5 w-3.5" /> {statusMeta.label}
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <Clock className="h-4 w-4" />
-            {format(new Date(session.start_time), "EEE, MMM d · h:mm a")} · {session.duration_minutes} {t("sessionDetail.minutes")}
-          </span>
-          {session.meeting_url && (
-            session.prep_file_path ? (
-              <a
-                href={session.meeting_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
+      <SessionDetailHero
+        type={t("sessionDetail.typeLabel")}
+        title={session.topic}
+        enrollmentId={session.enrollment_id}
+        dateLabel={`${format(new Date(session.start_time), "EEE, MMM d · h:mm a")} · ${session.duration_minutes} ${t("sessionDetail.minutes")}`}
+        roleLabel={isMentor ? t("sessionDetail.counterpartRole.mentee") : t("sessionDetail.counterpartRole.mentor")}
+        counterpartName={counterpartName ?? null}
+        status={{ label: statusMeta.label, className: statusMeta.className }}
+        actions={
+          <>
+            {session.meeting_url &&
+              (session.prep_file_path ? (
+                <Button asChild size="lg" className="rounded-full bg-primary px-7 text-primary-foreground shadow-glow hover:bg-primary/90">
+                  <a href={session.meeting_url} target="_blank" rel="noreferrer">
+                    <Video className="mr-1.5 h-4 w-4" /> {t("sessionDetail.joinMeeting")}
+                  </a>
+                </Button>
+              ) : (
+                <span
+                  className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-full bg-white/5 px-5 py-2.5 text-[12px] font-semibold text-white/50"
+                  title={t("sessionDetail.joinLockedPrepFile")}
+                >
+                  <Video className="h-4 w-4" /> {t("sessionDetail.joinMeeting")}
+                </span>
+              ))}
+            {isMentor && session.status === "pending_coach_approval" && (
+              <Button
+                onClick={handleConfirm}
+                disabled={saving}
+                variant="outline"
+                className="rounded-full border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"
               >
-                <Video className="h-4 w-4" /> {t("sessionDetail.joinMeeting")}
-              </a>
-            ) : (
-              <span
-                className="inline-flex cursor-not-allowed items-center gap-1.5 font-semibold text-muted-foreground/60"
-                title={t("sessionDetail.joinLockedPrepFile")}
+                {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
+                {t("sessionDetail.confirmSession")}
+              </Button>
+            )}
+            {isMentor && session.status === "confirmed" && (
+              <Button
+                onClick={handleComplete}
+                disabled={saving}
+                variant="outline"
+                className="rounded-full border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"
               >
-                <Video className="h-4 w-4" /> {t("sessionDetail.joinMeeting")}
-              </span>
-            )
-          )}
-        </div>
-
-        {isMentor && session.status === "pending_coach_approval" && (
-          <Button onClick={handleConfirm} disabled={saving}>
-            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
-            {t("sessionDetail.confirmSession")}
-          </Button>
-        )}
-        {isMentor && session.status === "confirmed" && (
-          <Button onClick={handleComplete} disabled={saving} variant="outline">
-            {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
-            {t("sessionDetail.markComplete")}
-          </Button>
-        )}
-      </Card>
+                {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
+                {t("sessionDetail.markComplete")}
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* Preparation file */}
       <Card className="space-y-4 p-4 sm:p-6">

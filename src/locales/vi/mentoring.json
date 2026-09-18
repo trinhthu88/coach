@@ -74,6 +74,11 @@
   "sessionDetail": {
     "notFound": "Không tìm thấy buổi mentoring",
     "backToMentors": "Về danh sách mentor",
+    "typeLabel": "Mentoring",
+    "counterpartRole": {
+      "mentor": "Mentor",
+      "mentee": "Mentee"
+    },
     "withCounterpart": "Với {{name}}",
     "minutes": "phút",
     "joinMeeting": "Tham gia buổi họp",
