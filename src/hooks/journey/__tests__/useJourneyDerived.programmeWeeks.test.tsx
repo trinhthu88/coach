@@ -6,6 +6,7 @@ import type { ProgrammeInfo } from "../types";
 const baseProgramme: ProgrammeInfo = {
   enrollmentId: "enrollment-1",
   programmeName: "Emerging Leaders",
+  cohortName: null,
   startDate: "2026-03-01",
   endDate: "2026-07-05",
   sessionsAllowed: 4,

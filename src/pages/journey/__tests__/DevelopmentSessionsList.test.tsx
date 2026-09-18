@@ -41,6 +41,24 @@ describe("DevelopmentSessionsList", () => {
     expect(link).toHaveAttribute("href", "/sessions/s1");
   });
 
+  it("shows programme and cohort context resolved from the selected enrollment, not inferred", () => {
+    render(
+      <MemoryRouter>
+        <DevelopmentSessionsList sessions={[baseItem]} programmeName="Emerging Leaders Programme" cohortName="September 2026 Cohort" />
+      </MemoryRouter>
+    );
+    expect(screen.getByText("Emerging Leaders Programme · September 2026 Cohort")).toBeInTheDocument();
+  });
+
+  it("omits the programme/cohort line when neither is available", () => {
+    render(
+      <MemoryRouter>
+        <DevelopmentSessionsList sessions={[baseItem]} />
+      </MemoryRouter>
+    );
+    expect(screen.queryByText("Emerging Leaders Programme · September 2026 Cohort")).not.toBeInTheDocument();
+  });
+
   it("links a mentoring item to its dedicated mentoring detail route", () => {
     render(
       <MemoryRouter>

@@ -153,6 +153,7 @@
       "programme_reflection": "Suy ngẫm chương trình",
       "coaching_reflection": "Suy ngẫm khai vấn",
       "mentoring_reflection": "Suy ngẫm cố vấn",
+      "triad_self_reflection": "Tự suy ngẫm bộ ba",
       "private_reflection": "Suy ngẫm riêng tư"
     },
     "feedbackTypes": {
@@ -180,10 +181,10 @@
       "afterLinkSuffix": ") để ghi lại đánh giá bản thân từ 0–100 cho mỗi mục tiêu. Mỗi suy ngẫm trở thành một lớp mới trên bánh xe."
     },
     "actionsSummary": "{{total}} tổng cộng · {{done}} đã hoàn thành · {{overdue}} quá hạn",
-    "newReflection": "Suy ngẫm mới",
+    "newReflection": "Thêm suy ngẫm riêng tư",
     "moodPlaceholder": "Tâm trạng (không bắt buộc, ví dụ: tập trung, bế tắc, tự hào)…",
     "reflectionPlaceholder": "Bạn đang nghĩ gì? Thành công, trở ngại, những điều nhận ra…",
-    "saveReflection": "Lưu suy ngẫm",
+    "saveReflection": "Lưu suy ngẫm riêng tư",
     "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây."
   },
   "coachMyJourney": {

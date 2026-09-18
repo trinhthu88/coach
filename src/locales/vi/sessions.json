@@ -263,7 +263,7 @@
   },
   "goalRatings": {
     "enrollmentRequired": "Không thể đánh giá mục tiêu cho đến khi chọn một đợt tham gia.",
-    "title": "Suy ngẫm về mục tiêu",
+    "title": "Điểm danh mục tiêu",
     "emptyPrefix": "Chưa có mục tiêu nào đang hoạt động. Thêm mục tiêu trong",
     "emptyLinkText": "Hành trình của tôi",
     "emptySuffix": "để chấm điểm chúng sau mỗi session.",
@@ -271,8 +271,8 @@
     "lockedNotCompletedSuffix": "đã hoàn thành",
     "lockedReadOnly": "Chỉ đọc — chỉ học viên mới có thể đánh giá mục tiêu của chính họ.",
     "unlockedHint": "Chấm điểm 0–100 cho mỗi mục tiêu. Bánh xe của bạn sẽ vẽ session này như một lớp mới.",
-    "saveReflection": "Lưu suy ngẫm",
-    "notePlaceholder": "Ghi chú suy ngẫm tùy chọn cho mục tiêu này…",
+    "saveReflection": "Lưu điểm danh",
+    "notePlaceholder": "Ghi chú tùy chọn cho lần điểm danh này…",
     "toast": {
       "saved": "Đã lưu đánh giá mục tiêu — bánh xe của bạn sẽ cập nhật."
     },

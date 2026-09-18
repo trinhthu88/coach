@@ -339,7 +339,12 @@ export default function CoachMyJourney() {
 
           <div>
             <SectionHeader title={t("developmentSessions.allSessionsHeader")} />
-            <DevelopmentSessionsList sessions={allSessions.sessions} loading={allSessions.loading} />
+            <DevelopmentSessionsList
+              sessions={allSessions.sessions}
+              loading={allSessions.loading}
+              programmeName={programmeApi.programme?.programmeName}
+              cohortName={programmeApi.programme?.cohortName}
+            />
           </div>
         </TabsContent>
 

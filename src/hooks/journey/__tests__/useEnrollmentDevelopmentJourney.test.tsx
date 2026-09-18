@@ -77,6 +77,7 @@ describe("useEnrollmentDevelopmentJourney", () => {
       "assignment_submissions",
       "reflection_submissions",
       "coachee_reflections",
+      "triad_reflections",
     ];
     for (const table of scopedTables) {
       expect(calls).toContainEqual([table, "enrollment_id", ENROLLMENT]);
@@ -263,6 +264,71 @@ describe("useEnrollmentDevelopmentJourney", () => {
     const triadEvents = result.current.events.filter((e) => e.type === "triad");
     expect(triadEvents.find((e) => e.sourceId === "t1")?.title).toBe("Triad — Round 3");
     expect(triadEvents.find((e) => e.sourceId === "t2")?.title).toBe("Triad completed");
+  });
+
+  it("produces a Triad Self-Reflection event as a REFLECTION, not FEEDBACK, with week/round context", async () => {
+    from.mockImplementation(
+      buildFromMock(
+        {
+          triad_reflections: [
+            {
+              id: "tr1",
+              satisfaction_rating: 4,
+              learned_as_coach: "Stayed curious longer than usual.",
+              will_use_as_coach: null,
+              learned_as_coachee: null,
+              will_use_as_coachee: null,
+              learned_as_observer: null,
+              will_use_as_observer: null,
+              submitted_at: "2026-10-14T11:00:00Z",
+              triad_sessions: { triad_groups: { round_number: 2, triad_rounds: { title: "Round 2", training_weeks: { week_number: 4 } } } },
+            },
+          ],
+        },
+        calls
+      )
+    );
+    const { result } = renderHook(() => useEnrollmentDevelopmentJourney(ENROLLMENT, COACHEE), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const event = result.current.events.find((e) => e.subtype === "triad_self_reflection");
+    expect(event?.type).toBe("reflection");
+    expect(event?.title).toBe("Triad Self-Reflection — Week 4 / Round 2");
+    expect(event?.summary).toBe("Self-rating: 4/5");
+    expect(event?.sourceType).toBe("triad_reflections");
+    expect(event?.sourceId).toBe("tr1");
+    // Never displayed as feedback — no feedback-typed event should come from this row.
+    expect(result.current.events.some((e) => e.sourceId === "tr1" && e.type === "feedback")).toBe(false);
+  });
+
+  it("falls back to a plain Triad Self-Reflection title and a text preview when no rating/context resolves", async () => {
+    from.mockImplementation(
+      buildFromMock(
+        {
+          triad_reflections: [
+            {
+              id: "tr2",
+              satisfaction_rating: null,
+              learned_as_coach: null,
+              will_use_as_coach: null,
+              learned_as_coachee: "Noticed I interrupt when nervous.",
+              will_use_as_coachee: null,
+              learned_as_observer: null,
+              will_use_as_observer: null,
+              submitted_at: "2026-10-20T11:00:00Z",
+              triad_sessions: { triad_groups: null },
+            },
+          ],
+        },
+        calls
+      )
+    );
+    const { result } = renderHook(() => useEnrollmentDevelopmentJourney(ENROLLMENT, COACHEE), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const event = result.current.events.find((e) => e.subtype === "triad_self_reflection");
+    expect(event?.title).toBe("Triad Self-Reflection");
+    expect(event?.summary).toBe("Noticed I interrupt when nervous.");
   });
 
   it("produces training, quiz, programme-reflection, and private-reflection events", async () => {

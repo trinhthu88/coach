@@ -2,6 +2,24 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { DevelopmentJourneyEvent } from "./developmentJourneyTypes";
 
+type TriadGroupContext = {
+  round_number: number | null;
+  triad_rounds: { title: string | null; training_weeks: { week_number: number } | null } | null;
+} | null;
+
+/**
+ * Round/week context only when the canonical relationship actually resolves
+ * one (triad_sessions -> triad_groups -> triad_rounds [-> training_weeks]) —
+ * a missing group/round/week link keeps the generic label rather than
+ * guessing a number. Shared by the triad-session and triad-self-reflection
+ * event builders so the two surfaces never disagree on the same context.
+ */
+function resolveTriadRoundWeek(group: TriadGroupContext) {
+  const roundNumber = group?.round_number ?? null;
+  const weekNumber = group?.triad_rounds?.training_weeks?.week_number ?? null;
+  return { roundNumber, weekNumber, roundTitle: group?.triad_rounds?.title ?? null };
+}
+
 /**
  * The single Development Journey projection: every event is read directly
  * from its canonical table, scoped to one enrollment_id, and converted to a
@@ -17,6 +35,7 @@ import type { DevelopmentJourneyEvent } from "./developmentJourneyTypes";
  *  peer_coaching   -> peer_sessions (+ peer_session_competency_feedback via session ids)
  *  mentoring       -> mentoring_sessions (+ mentee_notes, + mentoring_feedback)
  *  triad           -> triad_sessions (coach/coachee/observer enrollment columns)
+ *                     + triad_reflections (learner self-reflection/self-rating; own enrollment_id column)
  *  training        -> training_progress, assignment_submissions (quiz), reflection_submissions
  *  reflection      -> coachee_reflections (private, enrollment-scoped)
  */
@@ -30,6 +49,7 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     peerRes,
     mentoringRes,
     triadRes,
+    triadReflectionRes,
     trainingRes,
     quizRes,
     programmeReflectionRes,
@@ -48,6 +68,12 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
         "id, status, start_time, proposed_start_time, triad_groups(round_number, triad_rounds(title, training_weeks(week_number)))"
       )
       .or(`coach_enrollment_id.eq.${enrollmentId},coachee_enrollment_id.eq.${enrollmentId},observer_enrollment_id.eq.${enrollmentId}`),
+    supabase
+      .from("triad_reflections")
+      .select(
+        "id, satisfaction_rating, learned_as_coach, will_use_as_coach, learned_as_coachee, will_use_as_coachee, learned_as_observer, will_use_as_observer, submitted_at, triad_sessions(triad_groups(round_number, triad_rounds(title, training_weeks(week_number))))"
+      )
+      .eq("enrollment_id", enrollmentId),
     supabase
       .from("training_progress")
       .select("id, training_week_id, completed_at, training_weeks(title, week_number)")
@@ -283,15 +309,8 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
 
   for (const t of triadRes.data ?? []) {
     if (t.status === "completed") {
-      // Round/week context only when the canonical relationship actually
-      // resolves one (triad_sessions -> triad_groups -> triad_rounds
-      // [-> training_weeks]) — a missing group/round/week link keeps the
-      // generic "Triad completed" title rather than guessing a number.
-      const group = t.triad_groups as
-        | { round_number: number | null; triad_rounds: { title: string | null; training_weeks: { week_number: number } | null } | null }
-        | null;
-      const roundNumber = group?.round_number ?? null;
-      const weekNumber = group?.triad_rounds?.training_weeks?.week_number ?? null;
+      const group = t.triad_groups as TriadGroupContext;
+      const { roundNumber, weekNumber, roundTitle } = resolveTriadRoundWeek(group);
       const title =
         roundNumber != null && weekNumber != null
           ? `Triad — Week ${weekNumber} / Round ${roundNumber}`
@@ -305,12 +324,48 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
         type: "triad",
         subtype: "session_completed",
         title,
-        summary: group?.triad_rounds?.title ?? null,
+        summary: roundTitle,
         status: t.status,
         sourceId: t.id,
         sourceType: "triad_sessions",
       });
     }
+  }
+
+  // The learner assessing themselves — a REFLECTION, never FEEDBACK (feedback
+  // is another participant assessing the learner, and no such canonical
+  // Triad-feedback record exists). Resolves through triad_reflections' own
+  // enrollment_id, scoped to this enrollment directly (not by participant_id
+  // alone), so it never leaks in based on identity rather than membership.
+  for (const r of triadReflectionRes.data ?? []) {
+    const session = r.triad_sessions as { triad_groups: TriadGroupContext } | null;
+    const { roundNumber, weekNumber } = resolveTriadRoundWeek(session?.triad_groups ?? null);
+    const title =
+      roundNumber != null && weekNumber != null
+        ? `Triad Self-Reflection — Week ${weekNumber} / Round ${roundNumber}`
+        : roundNumber != null
+          ? `Triad Self-Reflection — Round ${roundNumber}`
+          : "Triad Self-Reflection";
+    const textPreview = [
+      r.learned_as_coach,
+      r.will_use_as_coach,
+      r.learned_as_coachee,
+      r.will_use_as_coachee,
+      r.learned_as_observer,
+      r.will_use_as_observer,
+    ].find((v) => v && v.trim());
+    const summary = r.satisfaction_rating != null ? `Self-rating: ${r.satisfaction_rating}/5` : textPreview ?? null;
+    events.push({
+      id: `triad-reflection-${r.id}`,
+      enrollmentId,
+      occurredAt: r.submitted_at,
+      type: "reflection",
+      subtype: "triad_self_reflection",
+      title,
+      summary,
+      sourceId: r.id,
+      sourceType: "triad_reflections",
+    });
   }
 
   for (const w of trainingRes.data ?? []) {

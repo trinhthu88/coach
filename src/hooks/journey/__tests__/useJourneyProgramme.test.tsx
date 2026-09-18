@@ -38,6 +38,7 @@ vi.mock("@/integrations/supabase/client", () => ({
             end_date: "2026-04-01",
             programme_id: "programme-history",
             programmes: { name: "Historical programme", coachee_session_limit: 6, duration_months: 3 },
+            cohorts: { name: "September 2026 Cohort" },
           },
           error: null,
         }),
@@ -72,6 +73,7 @@ describe("useJourneyProgramme", () => {
     );
 
     await waitFor(() => expect(result.current.programme?.programmeName).toBe("Historical programme"));
+    expect(result.current.programme?.cohortName).toBe("September 2026 Cohort");
     expect(enrollmentContext).toHaveBeenCalledWith("learner-1", "enrollment-history");
     expect(filters).toContainEqual(["id", "enrollment-history"]);
     expect(filters).not.toContainEqual(["status", "active"]);

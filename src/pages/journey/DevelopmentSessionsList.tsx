@@ -34,7 +34,20 @@ function detailPath(item: DevelopmentSessionItem): string | null {
  * filter and presentation live here — status, dates, and counterparts are
  * exactly what the source row says.
  */
-export function DevelopmentSessionsList({ sessions, loading }: { sessions: DevelopmentSessionItem[]; loading?: boolean }) {
+export function DevelopmentSessionsList({
+  sessions,
+  loading,
+  programmeName,
+  cohortName,
+}: {
+  sessions: DevelopmentSessionItem[];
+  loading?: boolean;
+  /** Every session here belongs to the one selected enrollment, so this is the
+   * same programme/cohort for every row — passed once rather than re-fetched
+   * per session, resolved via the enrollment (never inferred from date). */
+  programmeName?: string | null;
+  cohortName?: string | null;
+}) {
   const { t } = useTranslation("journey");
   const [filter, setFilter] = useState<DevelopmentSessionType | "all">("all");
 
@@ -88,6 +101,11 @@ export function DevelopmentSessionsList({ sessions, loading }: { sessions: Devel
                   {t(`developmentSessions.types.${item.type}`)}
                 </p>
                 <p className="truncate text-sm font-semibold">{contextLabel || item.title}</p>
+                {(programmeName || cohortName) && (
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {[programmeName, cohortName].filter(Boolean).join(" · ")}
+                  </p>
+                )}
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
                   {item.startTime ? format(new Date(item.startTime), "MMM d · p") : t("developmentSessions.timeTbd")}
                   {" · "}

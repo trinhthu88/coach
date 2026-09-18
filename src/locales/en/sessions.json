@@ -264,7 +264,7 @@
   },
   "goalRatings": {
     "enrollmentRequired": "Goal ratings are unavailable until an enrollment is selected.",
-    "title": "Goal reflection",
+    "title": "Goal check-in",
     "emptyPrefix": "No active goals yet. Add goals in",
     "emptyLinkText": "My journey",
     "emptySuffix": "to score them after each session.",
@@ -272,8 +272,8 @@
     "lockedNotCompletedSuffix": "completed",
     "lockedReadOnly": "Read-only — only the coachee can rate their own goals.",
     "unlockedHint": "Score 0–100 for each goal. Your wheel will plot this session as a new layer.",
-    "saveReflection": "Save reflection",
-    "notePlaceholder": "Optional reflection note for this goal…",
+    "saveReflection": "Save check-in",
+    "notePlaceholder": "Optional note for this check-in…",
     "toast": {
       "saved": "Goal ratings saved — your wheel will update."
     },

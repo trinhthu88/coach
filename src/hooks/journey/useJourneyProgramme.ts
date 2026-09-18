@@ -15,7 +15,7 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
     }),
     supabase
       .from("programme_enrollments")
-      .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months)")
+      .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months), cohorts(name)")
       .eq("id", enrollmentId)
       .maybeSingle(),
   ]);
@@ -28,6 +28,7 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
       ? {
           enrollmentId: e.id,
           programmeName: e.programmes.name,
+          cohortName: e.cohorts?.name ?? null,
           startDate: e.start_date,
           endDate: e.end_date,
           sessionsAllowed: e.programmes.coachee_session_limit ?? 0,

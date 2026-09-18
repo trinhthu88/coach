@@ -350,7 +350,12 @@ export default function CoacheeJourney() {
 
           <div>
             <SectionHeader title={t("developmentSessions.allSessionsHeader")} />
-            <DevelopmentSessionsList sessions={allSessions.sessions} loading={allSessions.loading} />
+            <DevelopmentSessionsList
+              sessions={allSessions.sessions}
+              loading={allSessions.loading}
+              programmeName={programmeApi.programme?.programmeName}
+              cohortName={programmeApi.programme?.cohortName}
+            />
           </div>
         </TabsContent>
 
@@ -376,32 +381,32 @@ export default function CoacheeJourney() {
 
           <Card className="p-4">
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-              <BookOpen className="h-4 w-4 text-primary" /> New reflection
+              <BookOpen className="h-4 w-4 text-primary" /> {t("journeyPage.newReflection")}
               <span className="ml-auto inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                 {t("developmentJourney.reflectionTypes.private_reflection")}
               </span>
             </div>
             <Input
-              placeholder="Mood (optional, e.g. focused, stuck, proud)…"
+              placeholder={t("journeyPage.moodPlaceholder")}
               value={reflectionMood}
               onChange={(e) => setReflectionMood(e.target.value)}
               className="mb-2"
             />
             <Textarea
-              placeholder="What's on your mind? Wins, blockers, insights…"
+              placeholder={t("journeyPage.reflectionPlaceholder")}
               value={newReflection}
               onChange={(e) => setNewReflection(e.target.value)}
               rows={4}
             />
             <div className="mt-2 flex justify-end">
               <Button size="sm" onClick={addReflection} disabled={savingRef || !newReflection.trim()}>
-                <Sparkles className="mr-1 h-4 w-4" /> Save reflection
+                <Sparkles className="mr-1 h-4 w-4" /> {t("journeyPage.saveReflection")}
               </Button>
             </div>
           </Card>
 
           {reflections.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground">Your private reflections will appear here.</p>
+            <p className="text-center text-sm text-muted-foreground">{t("journeyPage.noReflectionsYet")}</p>
           ) : (
             reflections.map((r) => (
               <Card key={r.id} className="p-4">
