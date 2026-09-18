@@ -34,7 +34,11 @@ insert into public.organizations (id, name)
 values ('b9000000-0000-0000-0000-000000000001', 'Learner recon organization');
 
 insert into public.user_roles (user_id, role)
-values ('a9000000-0000-0000-0000-000000000099', 'sponsor');
+values
+  ('a9000000-0000-0000-0000-000000000002', 'coach'),
+  ('a9000000-0000-0000-0000-000000000099', 'sponsor');
+insert into public.coach_profiles (id, approval_status, peer_coaching_opt_in)
+values ('a9000000-0000-0000-0000-000000000002', 'active', false);
 insert into public.sponsor_profiles (user_id, organization_id)
 values ('a9000000-0000-0000-0000-000000000099', 'b9000000-0000-0000-0000-000000000001');
 
@@ -55,7 +59,7 @@ values
 
 insert into public.programme_modules (programme_id, module, enabled, config)
 values
-  ('c9000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}'),
+  ('c9000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":2,"receive_limit":1,"distribution_mode":"flexible","distribution_settings":{}}'),
   ('c9000000-0000-0000-0000-000000000001', 'training', true, jsonb_build_object('required', true, 'required_units', 2, 'distribution_mode', 'training_linked', 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f9000000-0000-0000-0000-000000000001', 'f9000000-0000-0000-0000-000000000002'))));
 
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
@@ -66,8 +70,14 @@ select
   'b9000000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05', 'active'
 from generate_series(1, 5) as n;
 
+insert into public.coachee_coach_allowlist (coachee_id, coach_id)
+values ('a9000000-0000-0000-0000-000000000001', 'a9000000-0000-0000-0000-000000000002');
+
 -- One completed coaching session for learner 1 so completed_units differs
 -- from zero and the two engines have something non-trivial to agree on.
+select set_config('request.jwt.claim.sub', 'a9000000-0000-0000-0000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
 insert into public.sessions (coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id)
 values (
   'a9000000-0000-0000-0000-000000000002', 'a9000000-0000-0000-0000-000000000001',
