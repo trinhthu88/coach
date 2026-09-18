@@ -1,60 +1,62 @@
 import { describe, expect, it } from "vitest";
-import { getTriadRole, normalizeTriadSession, type TriadSessionSourceRow } from "../useSessionsData";
+import { normalizeTriadSession } from "../useSessionsData";
+import type { TriadGroupEntry, TriadSessionView } from "@/hooks/triads/useMyTriads";
 
-const session = (overrides: Partial<TriadSessionSourceRow> = {}) =>
-  ({
-    id: "triad-session-1",
-    coach_enrollment_id: "enrollment-coach",
-    coachee_enrollment_id: "enrollment-coachee",
-    observer_enrollment_id: "enrollment-observer",
-    triad_group_id: "group-1",
-    status: "proposed",
-    start_time: null,
-    proposed_start_time: "2026-09-20T10:00:00Z",
-    proposed_end_time: "2026-09-20T11:00:00Z",
-    meeting_url: null,
-    triad_groups: {
-      id: "group-1",
-      member_1_id: "user-1",
-      member_2_id: "user-2",
-      member_3_id: "user-3",
-      round_number: null,
-      triad_rounds: {
-        round_number: 2,
-        title: "Configured round title",
-        training_weeks: { week_number: 4 },
-      },
-    },
-    ...overrides,
-  }) as unknown as TriadSessionSourceRow;
+const session: TriadSessionView = {
+  id: "triad-session-1",
+  status: "proposed",
+  scheduledStartTime: "2026-09-20T10:00:00Z",
+  scheduledEndTime: "2026-09-20T11:00:00Z",
+  meetingUrl: null,
+  createdAt: "2026-09-01T00:00:00Z",
+  canComplete: false,
+  myResponse: "pending",
+  responses: [],
+  reflectionSubmitted: false,
+  reflectionSatisfaction: null,
+  pendingAlternatives: [],
+};
+
+const group = (overrides: Partial<TriadGroupEntry> = {}): TriadGroupEntry => ({
+  enrollmentId: "enrollment-member",
+  groupId: "group-1",
+  requirementId: "requirement-2",
+  unitNumber: 2,
+  dueOn: "2026-10-01",
+  trainingWeek: { number: 4, title: "Week four", titleVi: null },
+  groupLanguage: "en",
+  isActive: true,
+  memberCount: 3,
+  mySlot: 2,
+  unitCompleted: false,
+  unitOverdue: false,
+  sessions: [session],
+  session,
+  members: [
+    { id: "user-1", full_name: "One", avatar_url: null, slot: 1, isSelf: false },
+    { id: "user-2", full_name: "Two", avatar_url: null, slot: 2, isSelf: true },
+    { id: "user-3", full_name: "Three", avatar_url: null, slot: 3, isSelf: false },
+  ],
+  ...overrides,
+});
 
 describe("unified Triad session context", () => {
-  it("resolves the learner role from enrollment membership and preserves configured context", () => {
-    const normalized = normalizeTriadSession(session(), new Set(["enrollment-coachee"]));
-
-    expect(getTriadRole(session(), new Set(["enrollment-coachee"]))).toBe("coachee");
+  it("owns the session through the learner's member enrollment and keeps the requirement context", () => {
+    const normalized = normalizeTriadSession(group(), session);
     expect(normalized.kind).toBe("triad");
-    expect(normalized.enrollment_id).toBe("enrollment-coachee");
+    expect(normalized.enrollment_id).toBe("enrollment-member");
     expect(normalized.start_time).toBe("2026-09-20T10:00:00Z");
     expect(normalized.triad.roundNumber).toBe(2);
-    expect(normalized.triad.roundTitle).toBe("Configured round title");
     expect(normalized.triad.weekNumber).toBe(4);
+    expect(normalized.triad.participantNames).toEqual(["One", "Two", "Three"]);
+    // Every member rotates roles: no per-session role is invented.
+    expect(normalized.triad).not.toHaveProperty("role");
   });
 
-  it("does not invent round or week values when canonical relationships are absent", () => {
-    const normalized = normalizeTriadSession(
-      session({
-        start_time: "2026-09-20T10:00:00Z",
-        proposed_start_time: null,
-        triad_groups: null,
-      }),
-      new Set(["unrelated-enrollment"])
-    );
-
-    expect(normalized.triad.role).toBeNull();
+  it("does not invent round or week values when the group has no requirement context", () => {
+    const normalized = normalizeTriadSession(group({ unitNumber: null, trainingWeek: null }), { ...session, scheduledStartTime: null });
     expect(normalized.triad.roundNumber).toBeNull();
-    expect(normalized.triad.roundTitle).toBeNull();
     expect(normalized.triad.weekNumber).toBeNull();
-    expect(normalized.start_time).toBe("2026-09-20T10:00:00Z");
+    expect(normalized.start_time).toBeNull();
   });
 });

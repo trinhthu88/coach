@@ -14,70 +14,50 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
-function table(rows: Record<string, unknown>) {
-  return (name: string) => {
-    const data = rows[name];
-    const q: Record<string, unknown> = {};
-    q.select = () => q;
-    q.eq = () => q;
-    q.in = () => q;
-    q.maybeSingle = () => Promise.resolve({ data, error: null });
-    q.then = (resolve: (v: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve);
-    return q;
-  };
-}
+const session = (id: string, status: string, extra: Record<string, unknown> = {}) => ({
+  id, status, scheduled_start_time: "2026-02-16T03:00:00Z", scheduled_end_time: null, meeting_url: null,
+  created_at: "2026-02-01T00:00:00Z", can_complete: false, my_response: "accepted", responses: [],
+  reflection_submitted: false, reflection_satisfaction: null, pending_proposals: [], ...extra,
+});
 
-const LEGACY_GROUP = {
-  id: "g1",
-  group_language: "en",
-  member_1_id: "learner-1",
-  member_2_id: "learner-2",
-  member_3_id: "learner-3",
-  round_number: 1,
-  triad_rounds: null,
-};
+const OVERVIEW = [{
+  enrollment_id: "enrollment-1", triad_group_id: "g1", cohort_requirement_date_id: "r1", unit_number: 1, due_on: "2026-03-01",
+  training_week_number: null, training_week_title: null, training_week_title_vi: null, group_language: "en", is_active: true,
+  member_count: 3, my_member_slot: 1, unit_completed: true, unit_overdue: false,
+  // An earlier completed session and the group's later session.
+  sessions: [session("t1", "completed", { reflection_submitted: true, reflection_satisfaction: 4 }), session("t2", "confirmed")],
+}];
+
+const MEMBERS = [
+  { triad_group_id: "g1", member_id: "learner-3", member_slot: 3, full_name: "Three", avatar_url: null, is_self: false },
+  { triad_group_id: "g1", member_id: "learner-1", member_slot: 1, full_name: "Me", avatar_url: null, is_self: true },
+  { triad_group_id: "g1", member_id: "learner-2", member_slot: 2, full_name: "Two", avatar_url: null, is_self: false },
+];
 
 describe("useTriadSessionEntry", () => {
   beforeEach(() => {
     from.mockReset();
     rpc.mockReset();
+    rpc.mockImplementation((fn: string) =>
+      Promise.resolve({ data: fn === "learner_triad_overview" ? OVERVIEW : fn === "learner_triad_members" ? MEMBERS : null, error: null })
+    );
   });
 
-  it("resolves a completed session in a group with no configured round (the reported 'unavailable' case)", async () => {
-    from.mockImplementation(
-      table({
-        triad_sessions: { id: "t1", status: "completed", proposed_start_time: "2026-02-16T03:00:00Z", triad_groups: LEGACY_GROUP },
-        triad_reflections: [{ id: "r1" }],
-      })
-    );
-    // Members come from the canonical learner_triad_members projection (membership from triad_groups).
-    rpc.mockResolvedValue({
-      data: [
-        { triad_group_id: "g1", member_id: "learner-3", member_slot: 3, full_name: "Three", avatar_url: null, is_self: false },
-        { triad_group_id: "g1", member_id: "learner-1", member_slot: 1, full_name: "Me", avatar_url: null, is_self: true },
-        { triad_group_id: "g1", member_id: "learner-2", member_slot: 2, full_name: "Two", avatar_url: null, is_self: false },
-      ],
-      error: null,
-    });
+  it("resolves an earlier completed session of the learner's group, with its requirement unit and reflection state", async () => {
     const { result } = renderHook(() => useTriadSessionEntry("t1"), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.entry).not.toBeNull();
-    expect(result.current.entry?.round).toBeNull();
-    expect(result.current.entry?.roundNumber).toBe(1);
+    expect(result.current.entry?.unitNumber).toBe(1);
+    expect(result.current.entry?.dueOn).toBe("2026-03-01");
+    expect(result.current.entry?.session?.id).toBe("t1");
     expect(result.current.entry?.session?.status).toBe("completed");
+    expect(result.current.entry?.session?.reflectionSubmitted).toBe(true);
+    expect(rpc).toHaveBeenCalledWith("learner_triad_overview", { p_enrollment_id: undefined });
     expect(rpc).toHaveBeenCalledWith("learner_triad_members", { p_group_ids: ["g1"] });
-    expect(from).not.toHaveBeenCalledWith("profiles");
+    expect(from).not.toHaveBeenCalled();
     expect(result.current.entry?.members.map((m) => m.full_name)).toEqual(["Me", "Two", "Three"]);
-    expect(result.current.entry?.reflectionSubmitted).toBe(true);
   });
 
-  it("returns null (not someone else's session) when the learner is not a group member", async () => {
-    from.mockImplementation(
-      table({
-        triad_sessions: { id: "t9", status: "confirmed", triad_groups: { ...LEGACY_GROUP, member_1_id: "x", member_2_id: "y", member_3_id: "z" } },
-        triad_reflections: [],
-      })
-    );
+  it("returns null (not someone else's session) for a session outside the learner's groups", async () => {
     const { result } = renderHook(() => useTriadSessionEntry("t9"), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.entry).toBeNull();

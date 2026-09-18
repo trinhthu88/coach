@@ -29,6 +29,21 @@ function functionDefinitions(sql: string, name: string): string[] {
   return out;
 }
 
+/** Every `CREATE [OR REPLACE] FUNCTION public.<name>(` in a file, with its name. */
+function namedFunctionDefinitions(sql: string): { name: string; body: string }[] {
+  const out: { name: string; body: string }[] = [];
+  const re = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.([a-z_0-9]+)\s*\(/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(sql))) {
+    const after = sql.slice(m.index);
+    const tag = /AS\s+(\$[a-z_]*\$)/i.exec(after);
+    if (!tag) continue;
+    const start = tag.index + tag[0].length;
+    out.push({ name: m[1], body: after.slice(start, after.indexOf(tag[1], start)) });
+  }
+  return out;
+}
+
 function lastDefinition(name: string): { file: string; body: string } | null {
   let last: { file: string; body: string } | null = null;
   for (const file of files) {
@@ -56,9 +71,11 @@ describe("migration chain — canonical final state", () => {
     const later = files.filter((f) => f > SCHEDULE_MIGRATION);
     for (const file of later) {
       const sql = readFileSync(join(DIR, file), "utf8");
-      // No function defined after materialization may interpret the policy.
-      for (const body of functionDefinitions(sql, "[a-z_]+")) {
-        expect(body, file).not.toMatch(/distribution_mode\s*=|\*\s*units\.sequence_no\s*\//);
+      // No function defined after materialization may interpret the policy —
+      // except the proposal layer itself, where policy changes belong.
+      for (const { name, body } of namedFunctionDefinitions(sql)) {
+        if (name === "cohort_requirement_proposal_internal") continue;
+        expect(body, `${file} ${name}`).not.toMatch(/distribution_mode\s*=|\*\s*units\.sequence_no\s*\//);
       }
       for (const body of functionDefinitions(sql, "sponsor_canonical_module_schedule")) {
         expect(body, file).toMatch(/cohort_requirement_dates/);
@@ -128,6 +145,65 @@ describe("migration chain — canonical final state", () => {
     for (const name of ["learner_canonical_experience", "sponsor_canonical_leader_experience"]) {
       expect(lastDefinition(name)?.body, name).toMatch(/canonical_enrollment_experience\(/);
     }
+  });
+
+  describe("Triad canonical cutover", () => {
+    const CUTOVER = "20260918190000_triad_canonical_cutover.sql";
+    const RETIRE_TRIAD = "20260918191000_triad_retire_legacy.sql";
+    const RETIRED_TRIAD_FIELDS = /(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|completion_deadline|programme_triad_rounds|\btriad_rounds\b|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)/;
+
+    it("the legacy round tables and slot / role / answer columns are dropped after the cutover", () => {
+      const sql = readFileSync(join(DIR, RETIRE_TRIAD), "utf8");
+      expect(files).toContain(CUTOVER);
+      expect(sql).toMatch(/DROP TABLE public\.triad_rounds;/);
+      expect(sql).toMatch(/DROP TABLE public\.programme_triad_rounds;/);
+      for (const column of ["member_1_id", "enrollment_1_id", "coach_enrollment_id", "coachee_enrollment_id", "observer_enrollment_id",
+        "member_1_response", "proposed_start_time", "participant_id", "learned_as_coach", "will_use_as_observer"]) {
+        expect(sql, column).toMatch(new RegExp(`DROP COLUMN ${column}`));
+      }
+    });
+
+    it("no migration after the retirement re-creates a round table or reads a retired Triad field", () => {
+      for (const file of files.filter((f) => f > RETIRE_TRIAD)) {
+        const sql = readFileSync(join(DIR, file), "utf8");
+        expect(sql, file).not.toMatch(/CREATE TABLE[^;]*\b(programme_)?triad_rounds\b/i);
+        for (const { name, body } of namedFunctionDefinitions(sql)) {
+          expect(body, `${file} ${name}`).not.toMatch(RETIRED_TRIAD_FIELDS);
+        }
+      }
+    });
+
+    it("every final Triad-reading function derives participants from membership", () => {
+      for (const name of ["learner_session_history", "attribute_activity_to_cadence_milestone", "record_goal_checkins",
+        "canonical_triad_group_members", "validate_triad_session_cap", "notify_triad_session_booked", "triad_sync_session_attributions"]) {
+        const last = lastDefinition(name);
+        expect(last?.body, name).toMatch(/triad_group_members/);
+        expect(last?.body, name).not.toMatch(RETIRED_TRIAD_FIELDS);
+      }
+    });
+
+    it("the reflection feed reads normalized answers and the goal source stays separate", () => {
+      const feed = lastDefinition("learner_reflection_feed")?.body ?? "";
+      expect(feed).toMatch(/triad_reflection_answers/);
+      expect(feed).toMatch(/goal_checkins/);
+      expect(feed).not.toMatch(RETIRED_TRIAD_FIELDS);
+    });
+
+    it("the only Triad due date is the cohort requirement date", () => {
+      for (const name of ["triad_requirement_units_internal", "triad_unit_enrollment_status_internal", "learner_triad_overview"]) {
+        const body = lastDefinition(name)?.body ?? "";
+        expect(body, name).toMatch(/cohort_requirement_dates/);
+        expect(body, name).not.toMatch(/completion_deadline|triad_rounds/);
+      }
+      // Unit overdue / completed come from canonical module progress, not a local rule.
+      expect(lastDefinition("triad_unit_enrollment_status_internal")?.body).toMatch(/canonical_module_progress/);
+    });
+
+    it("group creation is requirement-scoped and cohort-first", () => {
+      const create = lastDefinition("triad_create_group_internal")?.body ?? "";
+      expect(create).toMatch(/cohort_requirement_date_id/);
+      expect(create).toMatch(/cohort_id IS DISTINCT FROM unit\.cohort_id/);
+    });
   });
 
   it("sponsor_min_leaders_for_distribution has one final zero-argument signature", () => {

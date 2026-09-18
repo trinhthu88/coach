@@ -10,20 +10,6 @@ vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: { id: "learner
 import "@/i18n/config";
 import TriadSessionDetail from "../TriadSessionDetail";
 
-function table(rows: Record<string, unknown>) {
-  return (name: string) => {
-    const data = rows[name];
-    const q: Record<string, unknown> = {};
-    q.select = () => q;
-    q.eq = () => q;
-    q.in = () => q;
-    q.order = () => q;
-    q.maybeSingle = () => Promise.resolve({ data, error: null });
-    q.then = (resolve: (v: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve);
-    return q;
-  };
-}
-
 function renderDetail() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -41,23 +27,23 @@ describe("TriadSessionDetail — co-member identity", () => {
   beforeEach(() => {
     from.mockReset();
     rpc.mockReset();
-    from.mockImplementation(
-      table({
-        // A round-less (legacy) group — the reported historical case.
-        triad_sessions: {
-          id: "t1",
-          status: "completed",
-          proposed_start_time: "2026-02-16T03:00:00Z",
-          member_1_response: "accepted",
-          member_2_response: "accepted",
-          member_3_response: "accepted",
-          triad_groups: { id: "g1", group_language: "en", member_1_id: "learner-a", member_2_id: "learner-b", member_3_id: "learner-c", round_number: 1, triad_rounds: null },
-        },
-        triad_reflections: [],
-      })
-    );
     rpc.mockImplementation((fn: string) =>
-      fn === "learner_triad_members"
+      fn === "learner_triad_overview"
+        ? Promise.resolve({
+            data: [{
+              enrollment_id: "enrollment-a", triad_group_id: "g1", cohort_requirement_date_id: "r1", unit_number: 1, due_on: "2026-03-01",
+              training_week_number: null, training_week_title: null, training_week_title_vi: null, group_language: "en", is_active: true,
+              member_count: 3, my_member_slot: 1, unit_completed: true, unit_overdue: false,
+              sessions: [{
+                id: "t1", status: "completed", scheduled_start_time: "2026-02-16T03:00:00Z", scheduled_end_time: null, meeting_url: null,
+                created_at: "2026-02-01T00:00:00Z", can_complete: false, my_response: "accepted",
+                responses: [{ member_slot: 1, response: "accepted" }, { member_slot: 2, response: "accepted" }, { member_slot: 3, response: "accepted" }],
+                reflection_submitted: false, reflection_satisfaction: null, pending_proposals: [],
+              }],
+            }],
+            error: null,
+          })
+        : fn === "learner_triad_members"
         ? Promise.resolve({
             data: [
               { triad_group_id: "g1", member_id: "learner-a", member_slot: 1, full_name: "Alex A", avatar_url: null, is_self: true },
@@ -77,12 +63,13 @@ describe("TriadSessionDetail — co-member identity", () => {
     expect(within(group).getByText("Bea B")).toBeInTheDocument();
     expect(within(group).getByText("Cam C")).toBeInTheDocument();
     expect(rpc).toHaveBeenCalledWith("learner_triad_members", { p_group_ids: ["g1"] });
-    expect(from.mock.calls.map(([t]) => t)).not.toContain("profiles");
+    expect(from).not.toHaveBeenCalled();
   });
 
-  it("still renders a round-less historical session (group round number, no deadline line)", async () => {
+  it("shows the requirement unit and its canonical due date", async () => {
     renderDetail();
     expect(await screen.findAllByText("Round 1")).not.toHaveLength(0);
-    expect(screen.queryByText(/Deadline/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Deadline Mar 1, 2026/)).toBeInTheDocument();
+    expect(from).not.toHaveBeenCalled();
   });
 });
