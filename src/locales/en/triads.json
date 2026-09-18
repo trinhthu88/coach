@@ -74,14 +74,9 @@
     "sections": {
       "coach": "As Coach",
       "coachee": "As Coachee",
-      "observer": "As Observer"
+      "observer": "As Observer",
+      "general": "Overall"
     },
-    "learnedAsCoach": "What did I learn?",
-    "willUseAsCoach": "How will I use this?",
-    "learnedAsCoachee": "What did I learn?",
-    "willUseAsCoachee": "How will I use this?",
-    "learnedAsObserver": "What did I learn?",
-    "willUseAsObserver": "How will I use this?",
     "satisfaction": "How satisfied were you with this session?",
     "submit": "Submit reflection",
     "alreadySubmitted": "You've already submitted your reflection for this session.",
@@ -90,7 +85,8 @@
     "othersLocked": "Everyone's reflections unlock once all members have submitted.",
     "successToast": "Reflection submitted",
     "errorToast": "Couldn't submit your reflection",
-    "notFound": "This session isn't available."
+    "notFound": "This session isn't available.",
+    "afterCompletion": "You can reflect on this session once it has been marked as completed."
   },
   "currentRounds": {
     "title": "Current triad rounds",

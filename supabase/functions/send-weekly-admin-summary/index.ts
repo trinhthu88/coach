@@ -106,22 +106,32 @@ Deno.serve(async (req) => {
         }
       }
 
-      const { data: groups } = await admin.from("triad_groups").select("id").eq("programme_id", programme.id).eq("is_active", true);
-      const groupIds = (groups || []).map((g) => g.id as string);
+      // Triad reflections on this programme's sessions completed this week,
+      // out of one expected reflection per group member (dyads have two).
+      const { data: groups } = await admin
+        .from("triad_groups")
+        .select("id, cohort_requirement_dates!inner(programme_id), triad_group_members(enrollment_id)")
+        .eq("cohort_requirement_dates.programme_id", programme.id)
+        .eq("is_active", true);
+      const memberCountByGroup = new Map(
+        ((groups || []) as unknown as { id: string; triad_group_members: { enrollment_id: string }[] }[]).map((g) => [g.id, g.triad_group_members.length]),
+      );
       let triadCompletionPct: number | null = null;
-      if (groupIds.length > 0) {
+      if (memberCountByGroup.size > 0) {
         const { data: sessions } = await admin
           .from("triad_sessions")
-          .select("id")
-          .in("triad_group_id", groupIds)
-          .gte("session_date", weekAgoISO.slice(0, 10));
+          .select("id, triad_group_id")
+          .in("triad_group_id", [...memberCountByGroup.keys()])
+          .eq("status", "completed")
+          .gte("scheduled_start_time", weekAgoISO);
         const sessionIds = (sessions || []).map((s) => s.id as string);
+        const expected = (sessions || []).reduce((sum, s) => sum + (memberCountByGroup.get(s.triad_group_id as string) ?? 0), 0);
         if (sessionIds.length > 0) {
           const { count } = await admin
             .from("triad_reflections")
             .select("id", { count: "exact", head: true })
             .in("triad_session_id", sessionIds);
-          triadCompletionPct = ratio(count || 0, sessionIds.length * 3);
+          triadCompletionPct = ratio(count || 0, expected);
         }
       }
 

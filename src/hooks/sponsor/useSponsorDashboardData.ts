@@ -14,13 +14,6 @@ export type SponsorGoalGrowth = {
   hit_target_count: number; meaningful_progress_count: number; just_started_count: number;
   flat_declined_count: number; pct_progressing: number;
 };
-export type SponsorProgrammeEngagementRow = {
-  week_number: number; week_title: string; is_locked: boolean; effective_unlock_date: string | null;
-  skill_card_completion_pct: number; quiz_completion_pct: number; quiz_avg_score: number | null;
-  reflection_completion_pct: number; triad_completion_pct: number; triad_satisfaction_avg: number | null;
-  daily_prompt_response_rate: number;
-};
-export type SponsorRedFlagRow = { full_name: string; missed_prompts: number; missed_quizzes: number; missed_triads: number; days_since_last_activity: number };
 export type SponsorSatisfactionTrendRow = { week_number: number; avg_rating: number | null };
 export type SponsorCoachUtilisationRow = { coach_name: string; completed_sessions: number };
 

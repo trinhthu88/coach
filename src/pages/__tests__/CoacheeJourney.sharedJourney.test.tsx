@@ -176,7 +176,7 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     expect(within(checkin).getByText("Rating 7 → 8")).toBeInTheDocument();
     expect(within(checkin).getByText("“Goal check-in: I noticed that I delegate more.”")).toBeInTheDocument();
     expect(within(checkin).getByRole("link")).toHaveAttribute("href", "/sessions/s2");
-    expect(within(items[2]).getByText("What I learned as coach")).toBeInTheDocument();
+    expect(within(items[2]).getByText("As coach · What did I learn?")).toBeInTheDocument();
     expect(within(items[3]).getByRole("link")).toHaveAttribute("href", "/mentoring/sessions/m1");
     expect(within(items[4]).getByRole("link")).toHaveAttribute("href", "/sessions/p1?type=coachee_peer");
     expect(within(items[5]).getByText("What did you try?")).toBeInTheDocument();

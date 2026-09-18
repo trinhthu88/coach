@@ -29,11 +29,10 @@ SELECT is(
           'reflection_submissions',
           'coachee_goal_ratings'
         ) AND column_name = 'enrollment_id')
-       OR (table_name = 'triad_groups' AND column_name IN ('enrollment_1_id', 'enrollment_2_id'))
-       OR (table_name = 'triad_sessions' AND column_name IN ('coach_enrollment_id', 'coachee_enrollment_id'))
+       OR (table_name = 'triad_group_members' AND column_name = 'enrollment_id')
      )
      AND is_nullable = 'NO'),
-  11,
+  8,
   'non-retired activity ownership columns are physically required'
 );
 

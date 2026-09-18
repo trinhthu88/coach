@@ -1,25 +1,24 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 
-// Admin-invoked (verify_jwt = true): groups a triad round's active
-// participants into triads/dyads by spoken-language compatibility, then
-// picks the best-overlapping coachee_availability slot for each group.
+// Admin-invoked (verify_jwt = true), cohort-first:
+//   cohort Triad requirement unit (cohort_requirement_dates row)
+//   -> ongoing enrollments of THAT cohort (triad_requirement_candidates_internal)
+//   -> minus learners already grouped for this unit
+//   -> spoken-language pools -> coachee_availability overlap -> groups.
+// A mixed-cohort group can never be formed: the pool is one cohort, and
+// triad_create_group_internal + the membership trigger enforce it again.
 //
-// Idempotent: re-running clears out this round's auto-assigned groups that
-// haven't been confirmed yet (status = 'proposed') and rebuilds from
-// scratch, but leaves already-confirmed/completed groups untouched so a
-// re-run can't clobber a session two members already agreed to.
+// Idempotent: re-running clears this unit's auto-assigned groups nobody has
+// acted on yet (every session still proposed, no responses) and rebuilds;
+// anything a member already responded to is kept.
 
-interface ParticipantRow {
-  id: string;
+interface CandidateRow {
+  enrollment_id: string;
+  user_id: string;
   full_name: string | null;
   spoken_languages: string[];
-}
-
-interface EnrollmentRow {
-  id: string;
-  user_id: string;
-  cohort_id: string | null;
+  triad_group_id: string | null;
 }
 
 interface AvailabilityRow {
@@ -117,121 +116,63 @@ Deno.serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+  const json = (payload: unknown, status = 200) =>
+    new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  let roundId: string | null = null;
+  let requirementId: string | null = null;
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!authHeader) return json({ error: "Missing authorization" }, 401);
     const token = authHeader.replace(/^Bearer\s+/i, "");
     const { data: userData, error: userErr } = await admin.auth.getUser(token);
-    if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Invalid session" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (userErr || !userData?.user) return json({ error: "Invalid session" }, 401);
     const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", userData.user.id);
-    const isAdmin = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!(roleRows ?? []).some((r: { role: string }) => r.role === "admin")) return json({ error: "Forbidden" }, 403);
 
     const body = await req.json().catch(() => ({}));
-    roundId = body.round_id;
-    if (!roundId) {
-      return new Response(JSON.stringify({ error: "round_id is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    requirementId = body.cohort_requirement_date_id ?? null;
+    if (!requirementId) return json({ error: "cohort_requirement_date_id is required" }, 400);
 
-    const { data: round, error: roundErr } = await admin
-      .from("triad_rounds")
-      .select("id, programme_id, title, title_vi, completion_deadline")
-      .eq("id", roundId)
+    const { data: requirement } = await admin
+      .from("cohort_requirement_dates")
+      .select("id, cohort_id, ordinal, due_on, module")
+      .eq("id", requirementId)
       .maybeSingle();
-    if (roundErr || !round) {
-      return new Response(JSON.stringify({ error: "Triad round not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!requirement || requirement.module !== "triads") return json({ error: "Triad requirement not found" }, 404);
+    const unitNumber = requirement.ordinal as number;
+    const dueOn = requirement.due_on as string;
+    const adminLink = `/admin/cohorts/${requirement.cohort_id}/triads`;
 
-    await admin.from("triad_rounds").update({ auto_assign_status: "running" }).eq("id", roundId);
+    await admin.rpc("triad_set_assignment_status_internal", { p_cohort_requirement_date_id: requirementId, p_status: "running" });
 
-    // --- Idempotent re-run: clear this round's not-yet-confirmed auto groups ---
-    const { data: existingGroups } = await admin
-      .from("triad_groups")
-      .select("id, triad_sessions(id, status)")
-      .eq("triad_round_id", roundId)
-      .eq("assigned_by", "auto");
-    interface ExistingGroupRow {
-      id: string;
-      triad_sessions: { id: string; status: string }[];
-    }
-    const groupsToClear = ((existingGroups ?? []) as unknown as ExistingGroupRow[]).filter((g) => {
-      const sessions = g.triad_sessions ?? [];
-      return sessions.length === 0 || sessions.every((s) => s.status === "proposed");
+    // --- Idempotent re-run: clear this unit's untouched auto groups ---
+    await admin.rpc("triad_clear_unconfirmed_auto_groups_internal", { p_cohort_requirement_date_id: requirementId });
+
+    // --- The pool: this cohort's ongoing enrollments not yet grouped for this unit ---
+    const { data: candidates, error: candidatesErr } = await admin.rpc("triad_requirement_candidates_internal", {
+      p_cohort_requirement_date_id: requirementId,
     });
-    if (groupsToClear.length > 0) {
-      const clearIds = groupsToClear.map((g) => g.id);
-      await admin.from("triad_sessions").delete().in("triad_group_id", clearIds);
-      await admin.from("triad_groups").delete().in("id", clearIds);
-    }
-
-    // --- Participants already in a confirmed/completed group for this round are excluded ---
-    const { data: keptGroups } = await admin
-      .from("triad_groups")
-      .select("member_1_id, member_2_id, member_3_id")
-      .eq("triad_round_id", roundId);
-    const alreadyGroupedIds = new Set<string>();
-    for (const g of keptGroups ?? []) {
-      for (const id of [g.member_1_id, g.member_2_id, g.member_3_id]) if (id) alreadyGroupedIds.add(id);
-    }
-
-    const { data: enrollments } = await admin
-      .from("programme_enrollments")
-      .select("id, user_id, cohort_id")
-      .eq("programme_id", round.programme_id)
-      .in("status", ["active", "at_risk", "paused"]);
-    const enrollmentRows = ((enrollments ?? []) as EnrollmentRow[]).filter((enrollment) => !alreadyGroupedIds.has(enrollment.user_id));
-    const participantIds = [...new Set(enrollmentRows.map((enrollment) => enrollment.user_id))];
-    const enrollmentByUser = new Map(enrollmentRows.map((enrollment) => [enrollment.user_id, enrollment]));
+    if (candidatesErr) throw candidatesErr;
+    const pool = ((candidates ?? []) as CandidateRow[]).filter((c) => !c.triad_group_id);
+    const byUser = new Map(pool.map((c) => [c.user_id, c]));
+    const participantIds = [...byUser.keys()];
 
     if (participantIds.length === 0) {
-      await admin.from("triad_rounds").update({ auto_assign_status: "completed" }).eq("id", roundId);
-      return new Response(JSON.stringify({ ok: true, groups: 0, dyads: 0, ungrouped: 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const summary = { groups: 0, dyads: 0, flagged: 0 };
+      await admin.rpc("triad_set_assignment_status_internal", { p_cohort_requirement_date_id: requirementId, p_status: "completed", p_summary: summary });
+      return json({ ok: true, ...summary });
     }
 
-    const { data: participants } = await admin
-      .from("profiles")
-      .select("id, full_name, spoken_languages")
-      .in("id", participantIds);
-    const participantById = new Map((participants ?? []).map((p: ParticipantRow) => [p.id, p]));
-
-    const windowEnd = round.completion_deadline as string;
-    const windowStart = new Date(new Date(`${windowEnd}T00:00:00Z`).getTime() - 7 * 24 * HOUR_MS)
-      .toISOString()
-      .slice(0, 10);
-
+    // Availability in the week leading up to the unit's canonical due date.
+    const windowStart = new Date(new Date(`${dueOn}T00:00:00Z`).getTime() - 7 * 24 * HOUR_MS).toISOString().slice(0, 10);
     const { data: availability } = await admin
       .from("coachee_availability")
       .select("coachee_id, slot_date, start_time, end_time")
       .in("coachee_id", participantIds)
       .eq("is_booked", false)
       .gte("slot_date", windowStart)
-      .lte("slot_date", windowEnd);
+      .lte("slot_date", dueOn);
 
     const availByUser = new Map<string, AvailabilityRow[]>();
     for (const row of (availability ?? []) as AvailabilityRow[]) {
@@ -243,9 +184,9 @@ Deno.serve(async (req) => {
     for (const id of participantIds) bucketsByUser.set(id, bucketsFor(availByUser.get(id) ?? []));
 
     // --- Language pools: 'vi' pool includes bilinguals, 'en' pool is English-only ---
-    const viPool = participantIds.filter((id) => participantById.get(id)?.spoken_languages?.includes("vi"));
+    const viPool = participantIds.filter((id) => byUser.get(id)?.spoken_languages?.includes("vi"));
     const enPool = participantIds.filter((id) => {
-      const langs = participantById.get(id)?.spoken_languages ?? [];
+      const langs = byUser.get(id)?.spoken_languages ?? [];
       return langs.includes("en") && !langs.includes("vi");
     });
 
@@ -263,93 +204,55 @@ Deno.serve(async (req) => {
     const adminAlerts: { id: string; reason: string }[] = [];
     let groupsCreated = 0;
     let dyadsCreated = 0;
+    const roundTitle = `Triad round ${unitNumber}`;
+    const roundTitleVi = `Vòng triad ${unitNumber}`;
 
-    async function createGroup(memberIds: string[], language: string) {
-      const [m1, m2, m3] = [memberIds[0], memberIds[1], memberIds[2] ?? null];
-      const enrollment1 = enrollmentByUser.get(m1)!;
-      const enrollment2 = enrollmentByUser.get(m2)!;
-      const enrollment3 = m3 ? enrollmentByUser.get(m3)! : null;
-      const cohortIds = new Set([enrollment1.cohort_id, enrollment2.cohort_id, enrollment3?.cohort_id ?? enrollment1.cohort_id]);
-      if (cohortIds.size !== 1 || cohortIds.has(null)) {
-        adminAlerts.push({ id: memberIds.join(":"), reason: "mixed_cohort" });
-        return;
-      }
-
-      const { data: inserted, error: insertErr } = await admin
-        .from("triad_groups")
-        .insert({
-          triad_round_id: roundId,
-          programme_id: round.programme_id,
-          cohort_id: enrollment1.cohort_id,
-          member_1_id: m1,
-          member_2_id: m2,
-          member_3_id: m3,
-          enrollment_1_id: enrollment1.id,
-          enrollment_2_id: enrollment2.id,
-          enrollment_3_id: enrollment3?.id ?? null,
-          assigned_by: "auto",
-          group_language: language,
-        })
-        .select("id")
-        .single();
-      if (insertErr || !inserted) {
-        console.error("Failed to create triad group", insertErr);
-        return;
-      }
-
+    async function createGroup(memberIds: string[], language: string): Promise<boolean> {
       const sets = memberIds.map((id) => bucketsByUser.get(id) ?? new Set<string>());
-      const commonBucket = memberIds.every((id) => (bucketsByUser.get(id)?.size ?? 0) > 0)
-        ? earliestCommonBucket(sets)
-        : null;
+      const commonBucket = memberIds.every((id) => (bucketsByUser.get(id)?.size ?? 0) > 0) ? earliestCommonBucket(sets) : null;
       const range = commonBucket ? bucketToRange(commonBucket) : null;
 
-      const { error: sessionErr } = await admin.from("triad_sessions").insert({
-        triad_group_id: inserted.id,
-        coach_enrollment_id: enrollment1.id,
-        coachee_enrollment_id: enrollment2.id,
-        observer_enrollment_id: enrollment3?.id ?? null,
-        proposed_start_time: range?.start ?? null,
-        proposed_end_time: range?.end ?? null,
-        proposed_by: "system",
-        status: "proposed",
-        member_3_response: m3 ? "pending" : null,
+      const { data: groupId, error: groupErr } = await admin.rpc("triad_create_group_internal", {
+        p_cohort_requirement_date_id: requirementId,
+        p_enrollment_ids: memberIds.map((id) => byUser.get(id)!.enrollment_id),
+        p_group_language: language,
+        p_assigned_by: "auto",
+        p_start: range?.start ?? null,
+        p_end: range?.end ?? null,
       });
-      if (sessionErr) console.error("Failed to create triad session", sessionErr);
-
-      if (!commonBucket) {
-        adminAlerts.push({ id: inserted.id, reason: "no_common_slot" });
+      if (groupErr || !groupId) {
+        console.error("Failed to create triad group", groupErr);
+        adminAlerts.push({ id: memberIds.join(":"), reason: "group_rejected" });
+        return false;
       }
+      if (!commonBucket) adminAlerts.push({ id: groupId as string, reason: "no_common_slot" });
 
-      const roundTitle = round.title as string;
-      const names = memberIds.map((id) => participantById.get(id)?.full_name || "a teammate");
+      const names = memberIds.map((id) => byUser.get(id)?.full_name || "a teammate");
       for (const memberId of memberIds) {
         const others = names.filter((_, idx) => memberIds[idx] !== memberId);
         await admin.from("notifications").insert({
           user_id: memberId,
           notification_type: "triad_assigned",
           title: `You've been grouped for ${roundTitle}`,
-          title_vi: `Bạn đã được ghép nhóm cho ${round.title_vi || roundTitle}`,
+          title_vi: `Bạn đã được ghép nhóm cho ${roundTitleVi}`,
           body: range
             ? `Your triad is with ${others.join(", ")}. Proposed: ${new Date(range.start).toLocaleString()}.`
             : `Your triad is with ${others.join(", ")}. No common time was found yet — propose one.`,
           link: "/triads",
         });
       }
+      return true;
     }
 
     for (const pool of [viPool, enPool]) {
       if (pool.length === 0) continue;
       const { triads, dyad, leftover } = groupPool(pool, overlapOf);
       for (const triad of triads) {
-        await createGroup(triad, pool === viPool ? "vi" : "en");
-        groupsCreated++;
+        if (await createGroup(triad, pool === viPool ? "vi" : "en")) groupsCreated++;
       }
-      if (dyad) {
-        await createGroup(dyad, pool === viPool ? "vi" : "en");
-        dyadsCreated++;
-      }
+      if (dyad && (await createGroup(dyad, pool === viPool ? "vi" : "en"))) dyadsCreated++;
       if (leftover) {
-        adminAlerts.push({ id: leftover, reason: pool === enPool ? "english_only_no_partner" : "odd_one_out" });
+        adminAlerts.push({ id: byUser.get(leftover)?.enrollment_id ?? leftover, reason: pool === enPool ? "english_only_no_partner" : "odd_one_out" });
         await admin.from("notifications").insert({
           user_id: leftover,
           notification_type: "triad_no_availability",
@@ -377,39 +280,26 @@ Deno.serve(async (req) => {
 
     if (adminAlerts.length > 0) {
       const { data: admins } = await admin.from("user_roles").select("user_id").eq("role", "admin");
-      const summary = adminAlerts
-        .map((a) => `${a.reason}${a.id ? ` (${a.id})` : ""}`)
-        .join("; ");
+      const summaryText = adminAlerts.map((a) => `${a.reason}${a.id ? ` (${a.id})` : ""}`).join("; ");
       for (const a of admins ?? []) {
         await admin.from("notifications").insert({
           user_id: a.user_id,
           notification_type: "triad_admin_alert",
-          title: `Auto-assign for "${round.title}" needs attention`,
-          body: `${adminAlerts.length} item(s) need manual review: ${summary}`,
-          link: "/admin/triads",
+          title: `Auto-assign for "${roundTitle}" needs attention`,
+          body: `${adminAlerts.length} item(s) need manual review: ${summaryText}`,
+          link: adminLink,
         });
       }
     }
 
-    await admin.from("triad_rounds").update({ auto_assign_status: "completed" }).eq("id", roundId);
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        groups: groupsCreated,
-        dyads: dyadsCreated,
-        flagged: adminAlerts.length,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    const summary = { groups: groupsCreated, dyads: dyadsCreated, flagged: adminAlerts.length };
+    await admin.rpc("triad_set_assignment_status_internal", { p_cohort_requirement_date_id: requirementId, p_status: "completed", p_summary: summary });
+    return json({ ok: true, ...summary });
   } catch (err) {
     console.error("triad-auto-assign failed", err);
-    if (roundId) {
-      await admin.from("triad_rounds").update({ auto_assign_status: "failed" }).eq("id", roundId);
+    if (requirementId) {
+      await admin.rpc("triad_set_assignment_status_internal", { p_cohort_requirement_date_id: requirementId, p_status: "failed" });
     }
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
   }
 });

@@ -13,9 +13,8 @@ import { TriadSessionCard } from "./components/TriadSessionCard";
  * Triads have different canonical actions from coaching/peer/mentoring
  * sessions, so they intentionally keep the existing Triad workflow instead of
  * being forced through the generic session detail hooks. The session is
- * resolved by id (useTriadSessionEntry), not by searching the current
- * round-based groups, so completed sessions, earlier sessions of a group and
- * sessions in groups without a configured round all open.
+ * resolved by id (useTriadSessionEntry) across every group the learner is a
+ * member of, so completed sessions and earlier sessions of a group open.
  */
 export default function TriadSessionDetail() {
   const { t } = useTranslation("triads");
@@ -62,7 +61,7 @@ export default function TriadSessionDetail() {
       <div>
         <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-primary">{t("eyebrow")}</p>
         <h1 className="font-display mt-2 text-[1.9rem] leading-[1.08] tracking-[-0.02em]">
-          {entry.round?.title || (entry.roundNumber != null ? t("roundLabel", { n: entry.roundNumber }) : t("eyebrow"))}
+          {entry.unitNumber != null ? t("roundLabel", { n: entry.unitNumber }) : t("eyebrow")}
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">{t("sessionDetail.subtitle")}</p>
       </div>
@@ -80,7 +79,7 @@ export default function TriadSessionDetail() {
           </div>
           <Button asChild>
             <Link to={`/triads/${entry.session.id}/reflect`}>
-              {entry.reflectionSubmitted ? t("session.viewReflections") : t("session.submitReflection")}
+              {entry.session.reflectionSubmitted ? t("session.viewReflections") : t("session.submitReflection")}
             </Link>
           </Button>
         </Card>

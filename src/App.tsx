@@ -53,6 +53,7 @@ const AdminSponsorReports = lazy(() => import("./pages/admin/AdminSponsorReports
 const AdminMentoring = lazy(() => import("./pages/admin/AdminMentoring"));
 const AdminTrainingContent = lazy(() => import("./pages/admin/AdminTrainingContent"));
 const AdminTriads = lazy(() => import("./pages/admin/AdminTriads"));
+const AdminCohortTriads = lazy(() => import("./pages/admin/AdminCohortTriads"));
 const TriadsPage = lazy(() => import("./pages/triads/TriadsPage"));
 const TriadSessionDetail = lazy(() => import("./pages/triads/TriadSessionDetail"));
 const TriadReflectionPage = lazy(() => import("./pages/triads/TriadReflectionPage"));
@@ -369,6 +370,7 @@ const App = () => (
                   <Route path="/admin/programmes/new" element={<ProtectedRoute role="admin"><ProgrammeBuilder /></ProtectedRoute>} />
                   <Route path="/admin/programmes/:programmeId/edit" element={<ProtectedRoute role="admin"><ProgrammeBuilder /></ProtectedRoute>} />
                   <Route path="/admin/cohorts" element={<ProtectedRoute role="admin"><AdminCohorts /></ProtectedRoute>} />
+                  <Route path="/admin/cohorts/:cohortId/triads" element={<ProtectedRoute role="admin"><AdminCohortTriads /></ProtectedRoute>} />
                   <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
                   <Route path="/admin/organizations" element={<ProtectedRoute role="admin"><AdminOrganizations /></ProtectedRoute>} />
                   <Route path="/admin/sponsor-reports" element={<ProtectedRoute role="admin"><AdminSponsorReports /></ProtectedRoute>} />

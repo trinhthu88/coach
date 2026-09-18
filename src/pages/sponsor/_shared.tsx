@@ -4,11 +4,10 @@ import { format } from "date-fns";
 import { Star, ArrowUpDown, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { SectionCard, Pill, MiniBar, Avatar, EngagementCell } from "@/pages/admin/_shared";
+import { SectionCard, Pill, MiniBar, Avatar } from "@/pages/admin/_shared";
 import type {
   SponsorGoalGrowth,
   SponsorRosterRow,
-  SponsorProgrammeEngagementRow,
   SponsorCoachUtilisationRow,
 } from "@/hooks/sponsor/useSponsorDashboardData";
 import { STATUS_TONE, STATUS_LABEL_KEY, effectiveSponsorStatus, initials, type HealthSignal } from "./sponsorUtils";
@@ -95,71 +94,6 @@ export function GoalGrowthCard({ goalGrowth, minLeadersForDistribution }: { goal
   );
 }
 
-/** The per-week engagement grid — shared between the org dashboard and a single cohort's detail page. */
-export function ProgrammeEngagementTable({ rows, lowCompletionNote }: { rows: SponsorProgrammeEngagementRow[]; lowCompletionNote?: boolean }) {
-  const { t } = useTranslation("sponsor");
-  return (
-    <Card className="overflow-hidden">
-      <div className="grid grid-cols-[64px_repeat(5,1fr)] gap-0 border-b bg-muted/30 px-4 py-2.5 text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
-        <span>{t("dashboard.programmeEngagement.columns.week")}</span>
-        <span>{t("dashboard.programmeEngagement.columns.skillCard")}</span>
-        <span>{t("dashboard.programmeEngagement.columns.quiz")}</span>
-        <span>{t("dashboard.programmeEngagement.columns.reflection")}</span>
-        <span>{t("dashboard.programmeEngagement.columns.triad")}</span>
-        <span>{t("dashboard.programmeEngagement.columns.prompt")}</span>
-      </div>
-      <div className="divide-y">
-        {rows.map((w) => {
-          const pcts = [w.skill_card_completion_pct, w.quiz_completion_pct, w.reflection_completion_pct, w.triad_completion_pct, w.daily_prompt_response_rate].filter((p): p is number => p != null);
-          const avgPct = pcts.length ? pcts.reduce((s, p) => s + p, 0) / pcts.length : null;
-          if (w.is_locked) {
-            return (
-              <div
-                key={`${w.week_number}-${w.week_title}`}
-                className="grid grid-cols-[64px_1fr] items-center gap-2 px-4 py-3 text-[12.5px] text-muted-foreground opacity-60"
-              >
-                <span className="font-bold">W{w.week_number}</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Lock className="h-3 w-3" />
-                  {w.effective_unlock_date
-                    ? t("cohortDetail.programmeEngagement.unlocksOn", { date: format(new Date(w.effective_unlock_date), "MMM d, yyyy") })
-                    : t("cohortDetail.programmeEngagement.locked")}
-                </span>
-              </div>
-            );
-          }
-          return (
-            <div key={`${w.week_number}-${w.week_title}`}>
-              <div className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-0 px-4 py-3 text-[12.5px]">
-                <span className="font-bold">W{w.week_number}</span>
-                <EngagementCell pct={w.skill_card_completion_pct} />
-                <EngagementCell pct={w.quiz_completion_pct} sub={w.quiz_avg_score != null ? `${Math.round(w.quiz_avg_score)}% avg` : undefined} />
-                <EngagementCell pct={w.reflection_completion_pct} />
-                <div>
-                  <EngagementCell pct={w.triad_completion_pct} />
-                  {w.triad_satisfaction_avg != null && (
-                    <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                      {w.triad_satisfaction_avg.toFixed(1)}<span className="opacity-60">/5</span>
-                    </span>
-                  )}
-                </div>
-                <EngagementCell pct={w.daily_prompt_response_rate} tone="accent" />
-              </div>
-              {lowCompletionNote && avgPct != null && avgPct < 40 && (
-                <p className="px-4 pb-2.5 text-[10px] italic text-warning">
-                  {t("cohortDetail.programmeEngagement.lowCompletion", { week: w.week_number })}
-                </p>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
-
-/** Horizontal per-coach session bars — shared between the org dashboard and a single cohort's detail page. */
 export function CoachUtilisationBars({ rows }: { rows: SponsorCoachUtilisationRow[] }) {
   const maxCoachSessions = Math.max(1, ...rows.map((c) => c.completed_sessions));
   return (

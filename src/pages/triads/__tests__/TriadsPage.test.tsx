@@ -1,10 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { TriadGroupEntry, TriadSessionView } from "@/hooks/triads/useMyTriads";
 
 const myTriads = vi.fn();
-const sessionEntry = vi.fn();
-const reflectionStatuses = vi.fn();
 const enrollmentSessions = vi.fn();
 
 vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: { id: "learner-1" } }) }));
@@ -12,12 +11,12 @@ vi.mock("@/hooks/useEnrollmentContext", () => ({
   useEnrollmentContext: () => ({ selectedEnrollment: { id: "enrollment-1" }, loading: false }),
 }));
 vi.mock("@/hooks/triads/useMyTriads", () => ({
-  useMyTriads: () => myTriads(),
-  // Group members come from the canonical triad member source via this hook.
-  useTriadSessionEntry: (id: string | undefined) => sessionEntry(id),
+  // The one learner Triad read model (learner_triad_overview + canonical members).
+  useMyTriads: (enrollmentId: string | null) => myTriads(enrollmentId),
+  pendingMembers: () => [],
 }));
-vi.mock("@/hooks/triads/useTriadReflection", () => ({
-  useMyTriadReflectionStatuses: (ids: string[]) => reflectionStatuses(ids),
+vi.mock("@/hooks/triads/useTriadSession", () => ({
+  useTriadSession: () => ({ acceptSession: vi.fn(), markCompleted: vi.fn(), proposeAlternative: vi.fn(), acceptAlternative: vi.fn(), isPending: false }),
 }));
 vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
   useLearnerCanonicalProgress: () => ({
@@ -34,23 +33,57 @@ import "@/i18n/config";
 import TriadsPage from "../TriadsPage";
 
 const HISTORY = [
-  { id: "k1", enrollmentId: "enrollment-1", type: "triad", title: "Round 1", startTime: "2026-02-16T03:00:00Z", status: "completed", sourceId: "t1", sourceType: "triad_sessions", isProgrammeEvidence: true, participantRole: "coach" },
-  { id: "k2", enrollmentId: "enrollment-1", type: "triad", title: "Round 1", startTime: "2026-04-20T03:00:00Z", status: "confirmed", sourceId: "t2", sourceType: "triad_sessions", isProgrammeEvidence: false, participantRole: "coach" },
+  { id: "k1", enrollmentId: "enrollment-1", type: "triad", title: "Round 1", startTime: "2026-02-16T03:00:00Z", status: "completed", sourceId: "t1", sourceType: "triad_sessions", isProgrammeEvidence: true, participantRole: null, counterpartNames: ["Caleb Ong", "Hana Bui"] },
+  { id: "k2", enrollmentId: "enrollment-1", type: "triad", title: "Round 2", startTime: "2026-04-20T03:00:00Z", status: "confirmed", sourceId: "t2", sourceType: "triad_sessions", isProgrammeEvidence: false, participantRole: null, counterpartNames: ["Caleb Ong", "Hana Bui"] },
 ];
 
-const GROUP_ENTRY = {
-  round: null,
-  roundNumber: 1,
-  group: { id: "g1", member_1_id: "learner-1", member_2_id: "caleb", member_3_id: "hana", group_language: "en" },
-  session: { id: "t2", status: "confirmed" },
-  roleByMemberId: { "learner-1": "coach", caleb: "coachee", hana: "observer" },
-  members: [
-    { id: "learner-1", full_name: "Demo Learner", avatar_url: null },
-    { id: "caleb", full_name: "Caleb Ong", avatar_url: null },
-    { id: "hana", full_name: "Hana Bui", avatar_url: null },
-  ],
-  reflectionSubmitted: false,
-};
+function session(overrides: Partial<TriadSessionView>): TriadSessionView {
+  return {
+    id: "t2",
+    status: "confirmed",
+    scheduledStartTime: "2026-04-20T03:00:00Z",
+    scheduledEndTime: "2026-04-20T04:00:00Z",
+    meetingUrl: null,
+    createdAt: "2026-04-01T00:00:00Z",
+    canComplete: false,
+    myResponse: "accepted",
+    responses: [],
+    reflectionSubmitted: false,
+    reflectionSatisfaction: null,
+    pendingAlternatives: [],
+    ...overrides,
+  };
+}
+
+const MEMBERS = [
+  { id: "learner-1", full_name: "Demo Learner", avatar_url: null, slot: 1, isSelf: true },
+  { id: "caleb", full_name: "Caleb Ong", avatar_url: null, slot: 2, isSelf: false },
+  { id: "hana", full_name: "Hana Bui", avatar_url: null, slot: 3, isSelf: false },
+];
+
+function group(unitNumber: number, sessions: TriadSessionView[], overrides: Partial<TriadGroupEntry> = {}): TriadGroupEntry {
+  return {
+    enrollmentId: "enrollment-1",
+    groupId: `g${unitNumber}`,
+    requirementId: `r${unitNumber}`,
+    unitNumber,
+    dueOn: unitNumber === 1 ? "2026-03-01" : "2026-05-03",
+    trainingWeek: null,
+    groupLanguage: "en",
+    isActive: true,
+    memberCount: 3,
+    mySlot: 1,
+    unitCompleted: unitNumber === 1,
+    unitOverdue: false,
+    sessions,
+    session: sessions[sessions.length - 1] ?? null,
+    members: MEMBERS,
+    ...overrides,
+  };
+}
+
+const COMPLETED_ROUND_1 = group(1, [session({ id: "t1", status: "completed", scheduledStartTime: "2026-02-16T03:00:00Z", reflectionSubmitted: true, reflectionSatisfaction: 4 })]);
+const OPEN_ROUND_2 = group(2, [session({ id: "t2" })]);
 
 function renderPage() {
   return render(
@@ -61,20 +94,19 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  // No admin-configured round is open (the reported case).
-  myTriads.mockReturnValue({ rounds: [], loading: false, error: false, refetch: vi.fn() });
-  sessionEntry.mockReturnValue({ entry: GROUP_ENTRY, loading: false, error: null });
-  reflectionStatuses.mockReturnValue({ statuses: new Map(), loading: false, error: null });
+  myTriads.mockReturnValue({ groups: [COMPLETED_ROUND_1], loading: false, error: false, refetch: vi.fn() });
   enrollmentSessions.mockReturnValue({ sessions: HISTORY, loading: false, error: null });
 });
 
 describe("TriadsPage", () => {
+  it("reads the learner's Triad groups for the selected enrollment", () => {
+    renderPage();
+    expect(myTriads).toHaveBeenCalledWith("enrollment-1");
+  });
+
   it("says no round is open without hiding the learner's existing triad sessions (1 completed + 1 confirmed = 1/2)", () => {
     renderPage();
     expect(screen.getByTestId("triad-round-pill")).toHaveTextContent("No round open");
-    const current = screen.getByTestId("triad-current-rounds");
-    expect(within(current).getByText("No triad round is open right now")).toBeInTheDocument();
-
     const history = screen.getByTestId("triad-history");
     expect(within(history).getByTestId("triad-progress")).toHaveTextContent("Triads programme progress: 1/2 completed");
     const rows = within(history).getAllByTestId("session-row");
@@ -85,42 +117,47 @@ describe("TriadsPage", () => {
     expect(hrefs).toContain("/triads/t2");
   });
 
-  it("shows the next confirmed triad session from canonical history when no round is open", () => {
+  it("shows the next session from canonical history when no round is open", () => {
     renderPage();
     const next = screen.getByTestId("triad-next");
     expect(within(next).getByRole("link", { name: "Open Triad session" })).toHaveAttribute("href", "/triads/t2");
-    // Focus session for the group card is the next open history session.
-    expect(sessionEntry).toHaveBeenCalledWith("t2");
   });
 
-  it("lists group members from the canonical triad member source with their session roles", () => {
+  it("shows the open round with its canonical due date, and members without fixed roles", () => {
+    myTriads.mockReturnValue({ groups: [COMPLETED_ROUND_1, OPEN_ROUND_2], loading: false, error: false, refetch: vi.fn() });
     renderPage();
-    const group = screen.getByTestId("triad-group");
-    const members = within(group).getAllByTestId("triad-member");
+    expect(screen.getByTestId("triad-round-pill")).toHaveTextContent("Round 2 current");
+    const card = screen.getByTestId("triad-group");
+    expect(within(card).getByText("Round 2")).toBeInTheDocument();
+    expect(within(card).getByTestId("triad-due")).toHaveTextContent("May 3, 2026");
+    const members = within(card).getAllByTestId("triad-member");
     expect(members.map((m) => m.textContent)).toEqual([
       expect.stringContaining("Demo Learner"),
       expect.stringContaining("Caleb Ong"),
       expect.stringContaining("Hana Bui"),
     ]);
     expect(members[0]).toHaveTextContent("You");
-    expect(members[0]).toHaveTextContent("Your role · Coach");
-    expect(members[1]).toHaveTextContent("Coachee");
-    expect(members[2]).toHaveTextContent("Observer");
+    expect(card).not.toHaveTextContent(/Your role|Coachee|Observer/);
+    expect(card).toHaveTextContent("Everyone rotates through coach, coachee and observer.");
   });
 
-  it("shows the learner's own self-reflection status per round (submitted / due / after session)", () => {
-    reflectionStatuses.mockReturnValue({ statuses: new Map(), loading: false, error: null });
+  it("shows the learner's own reflection status per session from the Triad read model", () => {
     renderPage();
     const [done, upcoming] = within(screen.getByTestId("triad-history")).getAllByTestId("session-row");
-    expect(done).toHaveTextContent("Due now");
-    expect(within(done).getByRole("link", { name: "Due now" })).toHaveAttribute("href", "/triads/t1/reflect");
+    expect(done).toHaveTextContent("4 / 5");
+    expect(done).toHaveTextContent("Submitted");
     expect(upcoming).toHaveTextContent("After session");
 
-    reflectionStatuses.mockReturnValue({ statuses: new Map([["t1", { sessionId: "t1", submittedAt: "2026-02-17T00:00:00Z", selfRating: 4 }]]), loading: false, error: null });
+    myTriads.mockReturnValue({
+      groups: [group(1, [session({ id: "t1", status: "completed", reflectionSubmitted: false })])],
+      loading: false,
+      error: false,
+      refetch: vi.fn(),
+    });
     renderPage();
     const rows = within(screen.getAllByTestId("triad-history")[1]).getAllByTestId("session-row");
-    expect(rows[0]).toHaveTextContent("4 / 5");
-    expect(rows[0]).toHaveTextContent("Submitted");
+    expect(rows[0]).toHaveTextContent("Due now");
+    expect(within(rows[0]).getByRole("link", { name: "Due now" })).toHaveAttribute("href", "/triads/t1/reflect");
   });
 
   it("shows a load error for triad history instead of an empty state", () => {

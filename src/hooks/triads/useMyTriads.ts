@@ -3,226 +3,175 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { fetchTriadMembers, type TriadMember } from "./useTriadMembers";
 
+export type TriadResponse = "pending" | "accepted" | "declined";
+export type TriadSessionStatus = "proposed" | "confirmed" | "completed" | "cancelled";
+
 export interface TriadMemberProfile {
   id: string;
   full_name: string;
   avatar_url: string | null;
+  /** Display order within the group (not a role — every member rotates roles). */
+  slot: number;
+  isSelf: boolean;
 }
 
-function toMemberProfiles(members: TriadMember[] | undefined): TriadMemberProfile[] {
-  return (members ?? []).map((m) => ({ id: m.id, full_name: m.full_name, avatar_url: m.avatar_url }));
-}
-
-export interface TriadGroupMembers {
+export interface TriadAlternativeView {
   id: string;
-  member_1_id: string;
-  member_2_id: string;
-  member_3_id: string | null;
+  proposedBySlot: number | null;
+  startTime: string;
+  endTime: string;
+  myResponse: TriadResponse | null;
 }
 
-export interface TriadSessionRow {
+export interface TriadSessionView {
   id: string;
-  status: "proposed" | "confirmed" | "completed" | "cancelled";
-  proposed_start_time: string | null;
-  proposed_end_time: string | null;
-  proposed_by: string;
-  member_1_response: "pending" | "accepted" | "declined";
-  member_2_response: "pending" | "accepted" | "declined";
-  member_3_response: "pending" | "accepted" | "declined" | null;
-  meeting_url: string | null;
-  notes: string | null;
-}
-
-export interface TriadRoundEntry {
-  /** The admin-configured round. Null for groups created before rounds existed (triad_round_id IS NULL) — their sessions are still real history. */
-  round: {
-    id: string;
-    round_number: number;
-    title: string;
-    title_vi: string | null;
-    completion_deadline: string;
-    training_week_id: string | null;
-    training_weeks: { title: string; title_vi: string | null; week_number: number } | null;
-  } | null;
-  /** round.round_number, else the group's own round_number. */
-  roundNumber: number | null;
-  group: TriadGroupMembers & { group_language: string };
-  session: TriadSessionRow | null;
-  /** Each member's role in `session` (from the session's coach/coachee/observer enrollment columns matched to the group's enrollment slots). Only set by useTriadSessionEntry. */
-  roleByMemberId?: Record<string, "coach" | "coachee" | "observer">;
-  members: TriadMemberProfile[];
+  status: TriadSessionStatus;
+  /** The session's current effective time (proposed until everyone accepts, then agreed). */
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
+  meetingUrl: string | null;
+  createdAt: string;
+  /** Server rule: confirmed and its time has started. */
+  canComplete: boolean;
+  myResponse: TriadResponse | null;
+  responses: { slot: number; response: TriadResponse }[];
   reflectionSubmitted: boolean;
+  reflectionSatisfaction: number | null;
+  /** Candidate replacement times — never the session time until every member accepts one. */
+  pendingAlternatives: TriadAlternativeView[];
+}
+
+export interface TriadGroupEntry {
+  enrollmentId: string;
+  groupId: string;
+  requirementId: string | null;
+  /** The cohort Triad requirement unit (round) number. */
+  unitNumber: number | null;
+  /** Canonical due date (cohort_requirement_dates). */
+  dueOn: string | null;
+  trainingWeek: { number: number; title: string | null; titleVi: string | null } | null;
+  groupLanguage: string;
+  isActive: boolean;
+  memberCount: number;
+  mySlot: number;
+  /** Canonical unit state (from canonical module progress). */
+  unitCompleted: boolean | null;
+  unitOverdue: boolean | null;
+  sessions: TriadSessionView[];
+  /** The group's current session: the latest open one, else the latest. */
+  session: TriadSessionView | null;
+  members: TriadMemberProfile[];
+}
+
+interface RawSession {
+  id: string;
+  status: TriadSessionStatus;
+  scheduled_start_time: string | null;
+  scheduled_end_time: string | null;
+  meeting_url: string | null;
+  created_at: string;
+  can_complete: boolean;
+  my_response: TriadResponse | null;
+  responses: { member_slot: number; response: TriadResponse }[];
+  reflection_submitted: boolean;
+  reflection_satisfaction: number | null;
+  pending_proposals: { id: string; proposed_by_member_slot: number | null; start_time: string; end_time: string; my_response: TriadResponse | null }[];
+}
+
+function toSession(raw: RawSession): TriadSessionView {
+  return {
+    id: raw.id,
+    status: raw.status,
+    scheduledStartTime: raw.scheduled_start_time,
+    scheduledEndTime: raw.scheduled_end_time,
+    meetingUrl: raw.meeting_url,
+    createdAt: raw.created_at,
+    canComplete: raw.can_complete,
+    myResponse: raw.my_response,
+    responses: (raw.responses ?? []).map((r) => ({ slot: r.member_slot, response: r.response })),
+    reflectionSubmitted: raw.reflection_submitted,
+    reflectionSatisfaction: raw.reflection_satisfaction,
+    pendingAlternatives: (raw.pending_proposals ?? []).map((p) => ({
+      id: p.id,
+      proposedBySlot: p.proposed_by_member_slot,
+      startTime: p.start_time,
+      endTime: p.end_time,
+      myResponse: p.my_response,
+    })),
+  };
+}
+
+function currentSession(sessions: TriadSessionView[]): TriadSessionView | null {
+  const open = sessions.filter((s) => s.status === "proposed" || s.status === "confirmed");
+  return open[open.length - 1] ?? sessions[sessions.length - 1] ?? null;
+}
+
+function toMembers(members: TriadMember[] | undefined): TriadMemberProfile[] {
+  return (members ?? []).map((m) => ({ id: m.id, full_name: m.full_name, avatar_url: m.avatar_url, slot: m.slot, isSelf: m.isSelf }));
 }
 
 /**
- * All of the current user's active triad groups across every round in
- * their programme(s). Each group carries at most one "current" session
- * (the most recently created one) — a new session only gets created if an
- * admin re-runs auto-assign after the previous one was cleared.
+ * THE learner Triad read model: learner_triad_overview (requirement unit,
+ * canonical due date and unit state, sessions, responses, alternatives,
+ * own reflection state) + learner_triad_members for names. Nothing here
+ * computes a date, a completion or an overdue state.
  */
-export function useMyTriads() {
+export async function fetchMyTriads(enrollmentId: string | null): Promise<TriadGroupEntry[]> {
+  const { data, error } = await supabase.rpc("learner_triad_overview", { p_enrollment_id: enrollmentId ?? undefined });
+  if (error) throw error;
+  const rows = data ?? [];
+  const membersByGroup = await fetchTriadMembers(rows.map((r) => r.triad_group_id));
+  return rows.map((row) => {
+    const sessions = ((row.sessions ?? []) as unknown as RawSession[]).map(toSession);
+    return {
+      enrollmentId: row.enrollment_id,
+      groupId: row.triad_group_id,
+      requirementId: row.cohort_requirement_date_id,
+      unitNumber: row.unit_number,
+      dueOn: row.due_on,
+      trainingWeek: row.training_week_number != null
+        ? { number: row.training_week_number, title: row.training_week_title, titleVi: row.training_week_title_vi }
+        : null,
+      groupLanguage: row.group_language,
+      isActive: row.is_active,
+      memberCount: row.member_count,
+      mySlot: row.my_member_slot,
+      unitCompleted: row.unit_completed,
+      unitOverdue: row.unit_overdue,
+      sessions,
+      session: currentSession(sessions),
+      members: toMembers(membersByGroup.get(row.triad_group_id)),
+    };
+  });
+}
+
+export const MY_TRIADS_KEY = "my-triads";
+
+/** The learner's Triad groups — for one enrollment, or across all of them when none is given. */
+export function useMyTriads(enrollmentId?: string | null) {
   const { user } = useAuth();
-
   const query = useQuery({
-    queryKey: ["my-triads", user?.id],
-    queryFn: async (): Promise<TriadRoundEntry[]> => {
-      const uid = user!.id;
-      const { data: groups, error } = await supabase
-        .from("triad_groups")
-        .select(
-          "id, group_language, member_1_id, member_2_id, member_3_id, " +
-            "triad_rounds(id, round_number, title, title_vi, completion_deadline, training_week_id, training_weeks(title, title_vi, week_number)), " +
-            "triad_sessions(id, status, proposed_start_time, proposed_end_time, proposed_by, member_1_response, member_2_response, member_3_response, meeting_url, notes, created_at)",
-        )
-        .or(`member_1_id.eq.${uid},member_2_id.eq.${uid},member_3_id.eq.${uid}`)
-        .eq("is_active", true);
-      if (error) throw error;
-
-      interface RawTriadGroupRow {
-        id: string;
-        group_language: string;
-        member_1_id: string;
-        member_2_id: string;
-        member_3_id: string | null;
-        triad_rounds: TriadRoundEntry["round"];
-        triad_sessions: (TriadSessionRow & { created_at: string })[];
-      }
-      const rows = (groups ?? []) as unknown as RawTriadGroupRow[];
-
-      // Co-member identity from the one canonical Triad member source.
-      const membersByGroup = await fetchTriadMembers(rows.map((g) => g.id));
-
-      const sessionsById = new Map<string, TriadSessionRow>();
-      const latestSessionByGroup = new Map<string, TriadSessionRow>();
-      for (const g of rows) {
-        const sessions = g.triad_sessions ?? [];
-        const latest = [...sessions].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null;
-        if (latest) {
-          sessionsById.set(latest.id, latest);
-          latestSessionByGroup.set(g.id, latest);
-        }
-      }
-
-      const sessionIds = [...sessionsById.keys()];
-      const { data: reflections } = sessionIds.length
-        ? await supabase
-            .from("triad_reflections")
-            .select("triad_session_id")
-            .eq("participant_id", uid)
-            .in("triad_session_id", sessionIds)
-        : { data: [] };
-      const reflectedSessionIds = new Set((reflections ?? []).map((r) => r.triad_session_id as string));
-
-      return rows
-        // Pre-redesign (v1) groups had no round at all — triad_round_id was
-        // added nullable so those historical rows weren't force-migrated,
-        // but they don't fit the round-based UI (no round_number, no
-        // deadline). Their embedded triad_rounds comes back null since
-        // there's no row to join to, not an empty object, so skip them here
-        // rather than crash on `.round.round_number` below.
-        .filter((g) => g.triad_rounds != null)
-        .map((g) => {
-          const session = latestSessionByGroup.get(g.id) ?? null;
-          return {
-            round: g.triad_rounds,
-            roundNumber: g.triad_rounds?.round_number ?? null,
-            group: { id: g.id, group_language: g.group_language, member_1_id: g.member_1_id, member_2_id: g.member_2_id, member_3_id: g.member_3_id },
-            session,
-            members: toMemberProfiles(membersByGroup.get(g.id)),
-            reflectionSubmitted: session ? reflectedSessionIds.has(session.id) : false,
-          };
-        })
-        .sort((a, b) => (a.roundNumber ?? 0) - (b.roundNumber ?? 0));
-    },
+    queryKey: [MY_TRIADS_KEY, user?.id, enrollmentId ?? null],
+    queryFn: () => fetchMyTriads(enrollmentId ?? null),
     enabled: !!user,
   });
-
-  return { rounds: query.data ?? [], loading: query.isLoading, error: query.isError, refetch: query.refetch };
+  return { groups: query.data ?? [], loading: query.isLoading, error: query.isError, refetch: query.refetch };
 }
 
 /**
- * One triad session resolved by id — for the session detail route. Unlike
- * useMyTriads (current round-based groups, latest session per group), this
- * resolves ANY triad session the learner belongs to, including sessions in
- * legacy groups with no configured round and earlier sessions of a group,
- * so every triad row shown in Your Sessions / session history can open.
+ * One Triad session resolved by id — for the session detail route. Any
+ * session of any group the learner belongs to opens (earlier sessions,
+ * completed ones, inactive groups), from the same read model.
  */
 export function useTriadSessionEntry(sessionId: string | undefined) {
-  const { user } = useAuth();
+  const { groups, loading, error, refetch } = useMyTriads(null);
+  const group = sessionId ? groups.find((g) => g.sessions.some((s) => s.id === sessionId)) ?? null : null;
+  const entry = group ? { ...group, session: group.sessions.find((s) => s.id === sessionId) ?? null } : null;
+  return { entry, loading: !!sessionId && loading, error, refetch };
+}
 
-  const query = useQuery({
-    queryKey: ["triad-session-entry", sessionId, user?.id],
-    queryFn: async (): Promise<TriadRoundEntry | null> => {
-      const uid = user!.id;
-      const { data: row, error } = await supabase
-        .from("triad_sessions")
-        .select(
-          "id, status, proposed_start_time, proposed_end_time, proposed_by, member_1_response, member_2_response, member_3_response, meeting_url, notes, " +
-            "coach_enrollment_id, coachee_enrollment_id, observer_enrollment_id, " +
-            "triad_groups(id, group_language, member_1_id, member_2_id, member_3_id, enrollment_1_id, enrollment_2_id, enrollment_3_id, round_number, " +
-            "triad_rounds(id, round_number, title, title_vi, completion_deadline, training_week_id, training_weeks(title, title_vi, week_number)))",
-        )
-        .eq("id", sessionId as string)
-        .maybeSingle();
-      if (error) throw error;
-      if (!row) return null;
-
-      interface RawSession extends TriadSessionRow {
-        coach_enrollment_id: string;
-        coachee_enrollment_id: string;
-        observer_enrollment_id: string | null;
-        triad_groups:
-          | (TriadGroupMembers & {
-              group_language: string;
-              round_number: number | null;
-              enrollment_1_id: string;
-              enrollment_2_id: string;
-              enrollment_3_id: string | null;
-              triad_rounds: TriadRoundEntry["round"];
-            })
-          | null;
-      }
-      const raw = row as unknown as RawSession;
-      const group = raw.triad_groups;
-      if (!group) return null;
-      const memberIds = [group.member_1_id, group.member_2_id, group.member_3_id].filter(Boolean) as string[];
-      if (!memberIds.includes(uid)) return null;
-
-      const [membersByGroup, { data: reflections }] = await Promise.all([
-        fetchTriadMembers([group.id]),
-        supabase.from("triad_reflections").select("id").eq("participant_id", uid).eq("triad_session_id", raw.id),
-      ]);
-      const { triad_groups: _group, coach_enrollment_id, coachee_enrollment_id, observer_enrollment_id, ...session } = raw;
-      const roleByMemberId: Record<string, "coach" | "coachee" | "observer"> = {};
-      const slots: Array<[string | null, string | null]> = [
-        [group.member_1_id, group.enrollment_1_id],
-        [group.member_2_id, group.enrollment_2_id],
-        [group.member_3_id, group.enrollment_3_id],
-      ];
-      for (const [memberId, enrollmentId] of slots) {
-        if (!memberId || !enrollmentId) continue;
-        if (enrollmentId === coach_enrollment_id) roleByMemberId[memberId] = "coach";
-        else if (enrollmentId === coachee_enrollment_id) roleByMemberId[memberId] = "coachee";
-        else if (enrollmentId === observer_enrollment_id) roleByMemberId[memberId] = "observer";
-      }
-      return {
-        round: group.triad_rounds ?? null,
-        roundNumber: group.triad_rounds?.round_number ?? group.round_number ?? null,
-        group: {
-          id: group.id,
-          group_language: group.group_language,
-          member_1_id: group.member_1_id,
-          member_2_id: group.member_2_id,
-          member_3_id: group.member_3_id,
-        },
-        session: session as TriadSessionRow,
-        members: toMemberProfiles(membersByGroup.get(group.id)),
-        reflectionSubmitted: (reflections ?? []).length > 0,
-        roleByMemberId,
-      };
-    },
-    enabled: !!user && !!sessionId,
-  });
-
-  return { entry: query.data ?? null, loading: query.isLoading, error: query.isError, refetch: query.refetch };
+/** "Waiting on …": members whose response to the current time is still pending. */
+export function pendingMembers(entry: Pick<TriadGroupEntry, "members">, responses: { slot: number; response: TriadResponse }[]) {
+  const pendingSlots = new Set(responses.filter((r) => r.response === "pending").map((r) => r.slot));
+  return entry.members.filter((m) => pendingSlots.has(m.slot) && !m.isSelf);
 }

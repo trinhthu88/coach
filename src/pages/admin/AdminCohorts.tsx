@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, UsersRound, Building2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, UsersRound, Building2, Eye, EyeOff, Users } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
@@ -151,6 +152,7 @@ export default function AdminCohorts() {
               )}
               <div className="mt-3 flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setEditing(c)}><Pencil className="h-3.5 w-3.5" /> {t("cohorts.edit")}</Button>
+                <Button variant="outline" size="sm" asChild><Link to={`/admin/cohorts/${c.id}/triads`}><Users className="h-3.5 w-3.5" /> {t("cohorts.triads")}</Link></Button>
                 <Button variant="ghost" size="sm" onClick={() => remove(c.id)}><Trash2 className="h-3.5 w-3.5" /> {t("cohorts.delete")}</Button>
               </div>
             </Card>

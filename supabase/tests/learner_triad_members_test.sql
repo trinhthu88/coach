@@ -49,15 +49,18 @@ from generate_series(1, 6) n;
 insert into public.user_roles (user_id, role) values ('a6000000-0000-0000-0000-000000000007', 'sponsor');
 insert into public.sponsor_profiles (user_id, organization_id) values ('a6000000-0000-0000-0000-000000000007', 'b6000000-0000-0000-0000-000000000001');
 
--- G1 has no configured round (legacy), G2 is another programme's group.
-insert into public.triad_groups (id, programme_id, cohort_id, member_1_id, member_2_id, member_3_id,
-  enrollment_1_id, enrollment_2_id, enrollment_3_id, round_number, is_active) values
-  ('f6000000-0000-0000-0000-000000000001', 'c6000000-0000-0000-0000-000000000001', 'd6000000-0000-0000-0000-000000000001',
-   'a6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-000000000002', 'a6000000-0000-0000-0000-000000000003',
-   'e6000000-0000-0000-0000-000000000001', 'e6000000-0000-0000-0000-000000000002', 'e6000000-0000-0000-0000-000000000003', 1, true),
-  ('f6000000-0000-0000-0000-000000000002', 'c6000000-0000-0000-0000-000000000002', 'd6000000-0000-0000-0000-000000000002',
-   'a6000000-0000-0000-0000-000000000005', 'a6000000-0000-0000-0000-000000000006', null,
-   'e6000000-0000-0000-0000-000000000005', 'e6000000-0000-0000-0000-000000000006', null, 1, true);
+-- G1 = A, B, C for cohort 1's Triad unit 1; G2 is another programme's group.
+insert into public.triad_groups (id, cohort_requirement_date_id, is_active)
+select g.id, d.id, true
+from (values ('f6000000-0000-0000-0000-000000000001'::uuid, 'd6000000-0000-0000-0000-000000000001'::uuid),
+             ('f6000000-0000-0000-0000-000000000002'::uuid, 'd6000000-0000-0000-0000-000000000002'::uuid)) g(id, cohort_id)
+join public.cohort_requirement_dates d on d.cohort_id = g.cohort_id and d.module = 'triads' and d.ordinal = 1;
+insert into public.triad_group_members (triad_group_id, enrollment_id, member_order) values
+  ('f6000000-0000-0000-0000-000000000001', 'e6000000-0000-0000-0000-000000000001', 1),
+  ('f6000000-0000-0000-0000-000000000001', 'e6000000-0000-0000-0000-000000000002', 2),
+  ('f6000000-0000-0000-0000-000000000001', 'e6000000-0000-0000-0000-000000000003', 3),
+  ('f6000000-0000-0000-0000-000000000002', 'e6000000-0000-0000-0000-000000000005', 1),
+  ('f6000000-0000-0000-0000-000000000002', 'e6000000-0000-0000-0000-000000000006', 2);
 
 create temporary table profile_policies_before as
 select polname, polcmd, pg_get_expr(polqual, polrelid) as qual from pg_policy where polrelid = 'public.profiles'::regclass;
@@ -143,9 +146,12 @@ select is(
   'only id, slot, name and avatar are exposed'
 );
 select ok(
-  pg_get_functiondef('public.canonical_triad_group_members(uuid[])'::regprocedure)
-    !~ 'email|phone|status|session|enrollment|goal|reflection|note|cohort',
-  'membership comes from triad_groups members only; no contact, status, session, enrollment or content fields'
+  pg_get_function_result('public.canonical_triad_group_members(uuid[])'::regprocedure)
+    !~ 'email|phone|status|session|enrollment|goal|reflection|note|cohort'
+  and pg_get_functiondef('public.canonical_triad_group_members(uuid[])'::regprocedure) ~ 'triad_group_members'
+  and pg_get_functiondef('public.canonical_triad_group_members(uuid[])'::regprocedure)
+    !~ 'email|phone|status|session|goal|reflection|note|cohort',
+  'membership comes from triad_group_members only; no contact, status, session, enrollment or content fields are exposed'
 );
 select results_eq(
   $$select polname, polcmd, pg_get_expr(polqual, polrelid) from pg_policy where polrelid = 'public.profiles'::regclass order by 1$$,

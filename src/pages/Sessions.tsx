@@ -71,7 +71,7 @@ export default function Sessions() {
 
   const now = new Date();
   const sessionDate = (s: SessionRowData) => {
-    const value = s.start_time ?? s.triad?.proposedStartTime;
+    const value = s.start_time ?? s.triad?.scheduledStartTime;
     return value ? new Date(value) : null;
   };
   const upcoming = sessions.filter((s) => {
@@ -235,7 +235,7 @@ function SessionCard({
     : role === "coach"
     ? session.coachee
     : session.coach;
-  const startTime = session.start_time ?? session.triad?.proposedStartTime;
+  const startTime = session.start_time ?? session.triad?.scheduledStartTime;
   const start = startTime ? new Date(startTime) : null;
   // mentoring_sessions has no rating column at all (mentors give written ICF
   // feedback instead, via mentoring_feedback on the dedicated detail page).
@@ -288,12 +288,9 @@ function SessionCard({
     : role === "coach"
     ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
     : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" };
+  // Triad members rotate through coach / coachee / observer: no fixed role.
   const triadRoleBadge = isTriad
-    ? session.triad?.role === "observer"
-      ? { label: t("list.roleBadge.observer"), className: "bg-warning/10 text-warning border-warning/20" }
-      : session.triad?.role === "coach"
-        ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
-        : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" }
+    ? { label: t("list.roleBadge.triadMember"), className: "bg-primary/10 text-primary border-primary/20" }
     : roleBadge;
   const counterpartLabel = isTriad
     ? session.triad?.participantNames.join(", ") || t("list.triadParticipantsUnavailable")

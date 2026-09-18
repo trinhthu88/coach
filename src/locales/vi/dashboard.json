@@ -692,14 +692,6 @@
       "ratingNow": "Điểm {{to}}",
       "outOfFive": "{{value}} / 5",
       "mood": "Tâm trạng: {{mood}}",
-      "triad": {
-        "learned_as_coach": "Điều tôi học được khi là coach",
-        "will_use_as_coach": "Điều tôi sẽ áp dụng khi là coach",
-        "learned_as_coachee": "Điều tôi học được khi là coachee",
-        "will_use_as_coachee": "Điều tôi sẽ áp dụng khi là coachee",
-        "learned_as_observer": "Điều tôi học được khi quan sát",
-        "will_use_as_observer": "Điều tôi sẽ áp dụng khi quan sát"
-      },
       "open": {
         "goal": "Mở mục tiêu →",
         "session": "Mở session →",
@@ -711,6 +703,11 @@
       "pill": {
         "private": "Riêng tư",
         "linked": "Có liên kết"
+      },
+      "triadSections": {
+        "coach": "Với vai trò coach",
+        "coachee": "Với vai trò coachee",
+        "observer": "Với vai trò observer"
       }
     }
   },
@@ -767,12 +764,6 @@
       "myGroup": "Nhóm Triad của tôi",
       "noGroup": "Bạn chưa được xếp vào nhóm Triad.",
       "member": "Thành viên",
-      "yourRole": "Vai trò của bạn · {{role}}",
-      "roles": {
-        "coach": "Coach",
-        "coachee": "Coachee",
-        "observer": "Người quan sát"
-      },
       "nextTitle": "Session Triad tiếp theo",
       "openSession": "Mở session Triad",
       "roundsTitle": "Các vòng",
@@ -783,7 +774,8 @@
       "selfReflection": "Tự phản tư",
       "submitted": "Đã nộp",
       "due": "Cần nộp",
-      "afterSession": "Sau session"
+      "afterSession": "Sau session",
+      "rotateRoles": "Mọi người lần lượt đảm nhận vai trò coach, coachee và observer."
     }
   }
 }

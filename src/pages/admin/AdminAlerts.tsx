@@ -138,7 +138,7 @@ export default function AdminAlerts() {
         supabase.from("assignments").select("id, assignment_type"),
         supabase.from("assignment_submissions").select("user_id, enrollment_id, assignment_id, score_pct, submitted_at"),
         supabase.from("daily_prompt_responses").select("user_id, enrollment_id, responded_at"),
-        supabase.from("triad_reflections").select("participant_id, enrollment_id, submitted_at"),
+        supabase.from("triad_reflections").select("enrollment_id, submitted_at, programme_enrollments(user_id)"),
         supabase.from("training_progress").select("user_id, enrollment_id, completed_at"),
         supabase.from("coach_session_feedback").select("session_id, coach_id, flag_notes").eq("flag_for_admin", true),
         supabase.from("enrollment_actions").select("enrollment_id, status, due_date").neq("status", "completed"),
@@ -225,7 +225,7 @@ export default function AdminAlerts() {
          ...(promptResponses || []).filter((r: { enrollment_id: string | null }) => !!r.enrollment_id).map((r: { user_id: string; enrollment_id: string; responded_at: string | null }) => ({ userId: r.user_id, enrollmentId: r.enrollment_id, timestamp: r.responded_at })),
          ...(reflections || [])
            .filter((r): r is typeof r & { enrollment_id: string } => !!r.enrollment_id)
-           .map((r) => ({ userId: r.participant_id, enrollmentId: r.enrollment_id, timestamp: r.submitted_at })),
+           .map((r) => ({ userId: (r.programme_enrollments as { user_id: string } | null)?.user_id ?? "", enrollmentId: r.enrollment_id, timestamp: r.submitted_at })),
          ...(trainingProgress || []).filter((p: { enrollment_id: string | null }) => !!p.enrollment_id).map((p: { user_id: string; enrollment_id: string; completed_at: string | null }) => ({ userId: p.user_id, enrollmentId: p.enrollment_id, timestamp: p.completed_at })),
       ];
       newAlerts.push(

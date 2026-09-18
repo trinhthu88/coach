@@ -85,22 +85,26 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
         return;
       }
 
-      const [{ data: progress }, { data: assignments }, { data: groups }, { data: profiles }, { data: triadRounds }] = await Promise.all([
+      const [{ data: progress }, { data: assignments }, { data: groups }, { data: profiles }] = await Promise.all([
         supabase.from("training_progress").select("user_id, enrollment_id, training_week_id, completed_at").in("training_week_id", weekIds).in("enrollment_id", enrollmentIds),
         supabase.from("assignments").select("id, training_week_id, assignment_type").eq("is_visible", true).in("training_week_id", weekIds),
-        supabase.from("triad_groups").select("id, triad_round_id").eq("programme_id", programmeId).eq("is_active", true),
+        // A group's week is its cohort Triad requirement's Training week.
+        supabase
+          .from("triad_groups")
+          .select("id, cohort_requirement_dates!inner(programme_id, training_week_id)")
+          .eq("cohort_requirement_dates.programme_id", programmeId)
+          .eq("is_active", true),
         supabase.from("profiles").select("id, full_name").in("id", enrolledIds),
-        // Triad sessions no longer carry a training_week_id directly — that
-        // link now lives one level up, on the round each group belongs to.
-        supabase.from("triad_rounds").select("id, training_week_id").eq("programme_id", programmeId),
       ]);
       if (!mounted) return;
 
       const quizAssignments = (assignments ?? []).filter((a) => a.assignment_type === "quiz");
       const quizAssignmentIds = quizAssignments.map((a) => a.id as string);
       const groupIds = (groups ?? []).map((g) => g.id as string);
-      const weekByRound = new Map((triadRounds ?? []).map((r) => [r.id as string, r.training_week_id as string | null]));
-      const weekByGroup = new Map((groups ?? []).map((g) => [g.id as string, weekByRound.get(g.triad_round_id as string) ?? null]));
+      const weekByGroup = new Map(
+        (groups ?? []).map((g) => [g.id as string, (g.cohort_requirement_dates as { training_week_id: string | null } | null)?.training_week_id ?? null])
+      );
+      const userByEnrollment = new Map([...currentByUser.entries()].map(([userId, enrollmentId]) => [enrollmentId, userId]));
 
       const [{ data: submissions }, { data: triadSessions }, { data: prompts }] = await Promise.all([
         quizAssignmentIds.length
@@ -118,8 +122,8 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
 
       const [{ data: reflections }, { data: promptResponses }] = await Promise.all([
         sessionIds.length
-          ? supabase.from("triad_reflections").select("participant_id, triad_session_id, submitted_at").in("triad_session_id", sessionIds)
-          : Promise.resolve({ data: [] as { participant_id: string; triad_session_id: string; submitted_at: string }[] }),
+          ? supabase.from("triad_reflections").select("enrollment_id, triad_session_id, submitted_at").in("triad_session_id", sessionIds)
+          : Promise.resolve({ data: [] as { enrollment_id: string | null; triad_session_id: string; submitted_at: string }[] }),
         promptIds.length
           ? supabase.from("daily_prompt_responses").select("user_id, enrollment_id, daily_prompt_id, responded_at").in("daily_prompt_id", promptIds).in("enrollment_id", enrollmentIds)
           : Promise.resolve({ data: [] as { user_id: string; daily_prompt_id: string; responded_at: string | null }[] }),
@@ -140,7 +144,9 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
         const quizSubmittedUsers = new Set(weekSubs.map((s) => s.user_id));
 
         const weekSessionIds = new Set([...sessionToWeek.entries()].filter(([, tw]) => tw === weekId).map(([id]) => id));
-        const weekReflectedUsers = new Set((reflections ?? []).filter((r) => weekSessionIds.has(r.triad_session_id)).map((r) => r.participant_id));
+        const weekReflectedUsers = new Set(
+          (reflections ?? []).filter((r) => weekSessionIds.has(r.triad_session_id) && r.enrollment_id && userByEnrollment.has(r.enrollment_id)).map((r) => r.enrollment_id)
+        );
 
         const weekPromptIds = new Set([...promptToWeek.entries()].filter(([, tw]) => tw === weekId).map(([id]) => id));
         const weekResponses = (promptResponses ?? []).filter((r) => weekPromptIds.has(r.daily_prompt_id) && r.responded_at);
@@ -173,7 +179,10 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
       };
       (progress ?? []).forEach((p) => bump(p.user_id as string, p.completed_at as string | null));
       (submissions ?? []).forEach((s) => bump(s.user_id, s.submitted_at));
-      (reflections ?? []).forEach((r) => bump(r.participant_id, r.submitted_at));
+      (reflections ?? []).forEach((r) => {
+        const userId = r.enrollment_id ? userByEnrollment.get(r.enrollment_id) : undefined;
+        if (userId) bump(userId, r.submitted_at);
+      });
       (promptResponses ?? []).forEach((r) => bump(r.user_id, r.responded_at));
 
       const cutoff = Date.now() - 7 * DAY_MS;

@@ -294,28 +294,22 @@ values
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Past mentoring', '2026-01-22 10:00:00+00', 60, 'completed', 'test/past.pdf', 'e1000000-0000-0000-0000-000000000001'),
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Future mentoring', '2026-03-22 10:00:00+00', 60, 'completed', 'test/future.pdf', 'e1000000-0000-0000-0000-000000000001');
 
-insert into public.triad_groups (
-  id, cohort_id, programme_id, name, member_1_id, member_2_id,
-  enrollment_1_id, enrollment_2_id
-)
-values (
-  'a5000000-0000-0000-0000-000000000001',
-  'd1000000-0000-0000-0000-000000000001',
-  'c1000000-0000-0000-0000-000000000001',
-  'Schedule test dyad',
-  'a1000000-0000-0000-0000-000000000001',
-  'a2000000-0000-0000-0000-000000000002',
-  'e1000000-0000-0000-0000-000000000001',
-  'e2000000-0000-0000-0000-000000000002'
-);
+-- A dyad for the cohort's Triad requirement unit 1; both completed sessions
+-- are evidence for both member enrollments.
+insert into public.triad_groups (id, cohort_requirement_date_id)
+select 'a5000000-0000-0000-0000-000000000001', d.id
+from public.cohort_requirement_dates d
+where d.cohort_id = 'd1000000-0000-0000-0000-000000000001' and d.module = 'triads' and d.ordinal = 1;
 
-insert into public.triad_sessions (
-  triad_group_id, start_time, proposed_start_time, proposed_end_time, status,
-  coach_enrollment_id, coachee_enrollment_id
-)
+insert into public.triad_group_members (triad_group_id, enrollment_id, member_order)
 values
-  ('a5000000-0000-0000-0000-000000000001', null, '2026-01-23 10:00:00+00', '2026-01-23 11:00:00+00', 'completed', 'e1000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002'),
-  ('a5000000-0000-0000-0000-000000000001', null, '2026-03-23 10:00:00+00', '2026-03-23 11:00:00+00', 'completed', 'e1000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002');
+  ('a5000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000001', 1),
+  ('a5000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002', 2);
+
+insert into public.triad_sessions (triad_group_id, scheduled_start_time, scheduled_end_time, status)
+values
+  ('a5000000-0000-0000-0000-000000000001', '2026-01-23 10:00:00+00', '2026-01-23 11:00:00+00', 'completed'),
+  ('a5000000-0000-0000-0000-000000000001', '2026-03-23 10:00:00+00', '2026-03-23 11:00:00+00', 'completed');
 
 insert into public.training_progress (user_id, training_week_id, completed_at, enrollment_id)
 values
@@ -366,7 +360,7 @@ select results_eq(
       ('assessment'::text, 0), ('coaching'::text, 2), ('daily_prompt'::text, 2),
       ('mentoring'::text, 2), ('peer_coaching'::text, 2), ('quiz'::text, 2),
       ('training'::text, 2), ('triads'::text, 2)$$,
-  'progress uses session dates, training completion, quiz submission, prompt response, and proposed triad dates'
+  'progress uses session dates, training completion, quiz submission, prompt response, and scheduled triad dates'
 );
 
 select is(

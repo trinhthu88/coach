@@ -1,138 +1,115 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { MY_TRIADS_KEY } from "./useMyTriads";
 
-export interface TriadReflectionInput {
-  learned_as_coach: string;
-  will_use_as_coach: string;
-  learned_as_coachee: string;
-  will_use_as_coachee: string;
-  learned_as_observer: string;
-  will_use_as_observer: string;
-  satisfaction_rating: number;
-}
+export type TriadReflectionSection = "coach" | "coachee" | "observer" | "general";
 
-// Not `extends TriadReflectionInput`: the DB columns are all nullable
-// (no NOT NULL constraint — see 20260903130200_triad_reflections.sql), so a
-// row read back can genuinely have nulls even though submitReflection()
-// always writes full non-null text via TriadReflectionInput.
-export interface TriadReflectionRow {
+export interface TriadReflectionQuestion {
   id: string;
-  triad_session_id: string;
-  participant_id: string;
-  submitted_at: string;
-  learned_as_coach: string | null;
-  will_use_as_coach: string | null;
-  learned_as_coachee: string | null;
-  will_use_as_coachee: string | null;
-  learned_as_observer: string | null;
-  will_use_as_observer: string | null;
-  satisfaction_rating: number | null;
+  key: string;
+  section: TriadReflectionSection;
+  label: string;
+  labelVi: string | null;
+  displayOrder: number;
 }
 
-/** The current user's own reflection for a session — locked (insert-only) once submitted. */
-export function useMyTriadReflection(sessionId: string | undefined) {
-  const { user } = useAuth();
-  const { selectedEnrollment } = useEnrollmentContext(user?.id);
-  const enrollmentId = selectedEnrollment?.id;
-  const query = useQuery({
-    queryKey: ["triad-reflection-mine", sessionId, user?.id, enrollmentId],
-    queryFn: async (): Promise<TriadReflectionRow | null> => {
-      const { data, error } = await supabase
-        .from("triad_reflections")
-        .select("*")
-        .eq("triad_session_id", sessionId as string)
-        .eq("participant_id", user!.id)
-        .eq("enrollment_id", enrollmentId as string)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!sessionId && !!user && !!enrollmentId,
-  });
-  return { reflection: query.data ?? null, loading: query.isLoading };
+export interface TriadReflectionAnswer {
+  questionId: string;
+  questionKey: string;
+  section: TriadReflectionSection;
+  question: string;
+  questionVi: string | null;
+  answer: string;
 }
 
-/** All members' reflections for a session — RLS only returns rows once every member has submitted. */
-export function useGroupReflections(sessionId: string | undefined) {
+export interface TriadSessionReflection {
+  slot: number;
+  isSelf: boolean;
+  satisfactionRating: number | null;
+  submittedAt: string;
+  answers: TriadReflectionAnswer[];
+}
+
+/** The reflection questions for a session's programme (stable question ids). */
+export function useTriadReflectionQuestions(sessionId: string | undefined) {
   const query = useQuery({
-    queryKey: ["triad-reflection-group", sessionId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("triad_reflections")
-        .select("*, profiles(full_name, avatar_url)")
-        .eq("triad_session_id", sessionId as string);
+    queryKey: ["triad-reflection-questions", sessionId],
+    queryFn: async (): Promise<TriadReflectionQuestion[]> => {
+      const { data, error } = await supabase.rpc("learner_triad_reflection_questions", { p_session_id: sessionId as string });
       if (error) throw error;
-      return (data ?? []) as (TriadReflectionRow & { profiles: { full_name: string; avatar_url: string | null } })[];
+      return (data ?? []).map((q) => ({
+        id: q.id,
+        key: q.question_key,
+        section: q.section as TriadReflectionSection,
+        label: q.label,
+        labelVi: q.label_vi,
+        displayOrder: q.display_order,
+      }));
     },
     enabled: !!sessionId,
+  });
+  return { questions: query.data ?? [], loading: query.isLoading };
+}
+
+/**
+ * Reflections on one session as the learner may see them: always their own;
+ * the other members' once every member has submitted (server rule).
+ */
+export function useTriadSessionReflections(sessionId: string | undefined) {
+  const { user } = useAuth();
+  const query = useQuery({
+    queryKey: ["triad-session-reflections", sessionId, user?.id],
+    queryFn: async (): Promise<TriadSessionReflection[]> => {
+      const { data, error } = await supabase.rpc("learner_triad_session_reflections", { p_session_id: sessionId as string });
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        slot: r.member_slot,
+        isSelf: r.is_self,
+        satisfactionRating: r.satisfaction_rating,
+        submittedAt: r.submitted_at,
+        answers: ((r.answers ?? []) as { question_id: string; question_key: string; section: TriadReflectionSection; question: string; question_vi: string | null; answer: string }[]).map((a) => ({
+          questionId: a.question_id,
+          questionKey: a.question_key,
+          section: a.section,
+          question: a.question,
+          questionVi: a.question_vi,
+          answer: a.answer,
+        })),
+      }));
+    },
+    enabled: !!sessionId && !!user,
   });
   return { reflections: query.data ?? [], loading: query.isLoading };
 }
 
-export function useTriadReflection() {
-  const { user } = useAuth();
-  const { selectedEnrollment } = useEnrollmentContext(user?.id);
-  const enrollmentId = selectedEnrollment?.id;
-  const queryClient = useQueryClient();
+export interface TriadReflectionSubmission {
+  satisfactionRating: number | null;
+  answers: { questionId: string; answerText: string }[];
+}
 
+/**
+ * Submit the learner's one reflection for a session (answers by question id
+ * + satisfaction). The goal self-rating is recorded separately in the goal
+ * source (SessionGoalRatings -> record_goal_checkins), never copied here.
+ */
+export function useTriadReflection() {
+  const queryClient = useQueryClient();
   const submitReflection = useMutation({
-    mutationFn: async ({ sessionId, data }: { sessionId: string; data: TriadReflectionInput }) => {
-      if (!enrollmentId) throw new Error("Select an enrollment before submitting a triad reflection");
-      const { error } = await supabase.from("triad_reflections").insert({
-        triad_session_id: sessionId,
-        participant_id: user!.id,
-        enrollment_id: enrollmentId,
-        ...data,
+    mutationFn: async ({ sessionId, data }: { sessionId: string; data: TriadReflectionSubmission }) => {
+      const { error } = await supabase.rpc("learner_triad_submit_reflection", {
+        p_session_id: sessionId,
+        p_satisfaction_rating: data.satisfactionRating ?? undefined,
+        p_answers: data.answers.map((a) => ({ question_id: a.questionId, answer_text: a.answerText })),
       });
       if (error) throw error;
     },
     onSuccess: (_r, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["triad-reflection-mine", vars.sessionId, user?.id, enrollmentId] });
-      queryClient.invalidateQueries({ queryKey: ["triad-reflection-group", vars.sessionId] });
-      queryClient.invalidateQueries({ queryKey: ["my-triads"] });
-      queryClient.invalidateQueries({ queryKey: ["triad-session-entry"] });
-      queryClient.invalidateQueries({ queryKey: ["triad-reflection-statuses"] });
+      queryClient.invalidateQueries({ queryKey: ["triad-session-reflections", vars.sessionId] });
+      queryClient.invalidateQueries({ queryKey: [MY_TRIADS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["learner-reflection-feed"] });
+      queryClient.invalidateQueries({ queryKey: ["triads-card"] });
     },
   });
-
   return { submitReflection: submitReflection.mutateAsync, submitting: submitReflection.isPending };
-}
-
-export interface TriadReflectionStatus {
-  sessionId: string;
-  submittedAt: string | null;
-  selfRating: number | null;
-}
-
-/**
- * The learner's own self-rating / self-reflection status per Triad session,
- * read from the original triad_reflections records (one row per participant
- * per session). Used by the Triads "Rounds" list; independent of whether the
- * reflection has any text (the learner_reflection_feed only carries text).
- */
-export function useMyTriadReflectionStatuses(sessionIds: string[]) {
-  const { user } = useAuth();
-  const ids = Array.from(new Set(sessionIds)).sort();
-  const query = useQuery({
-    queryKey: ["triad-reflection-statuses", user?.id, ids],
-    queryFn: async (): Promise<Map<string, TriadReflectionStatus>> => {
-      const { data, error } = await supabase
-        .from("triad_reflections")
-        .select("triad_session_id, satisfaction_rating, submitted_at")
-        .eq("participant_id", user!.id)
-        .in("triad_session_id", ids);
-      if (error) throw error;
-      return new Map(
-        (data ?? []).map((row) => [
-          row.triad_session_id as string,
-          { sessionId: row.triad_session_id as string, submittedAt: row.submitted_at as string | null, selfRating: row.satisfaction_rating as number | null },
-        ])
-      );
-    },
-    enabled: !!user && ids.length > 0,
-  });
-  return { statuses: query.data ?? new Map<string, TriadReflectionStatus>(), loading: query.isLoading && ids.length > 0, error: query.isError };
 }

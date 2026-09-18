@@ -68,7 +68,8 @@
         "outside_cohort": "{{module}}: a date falls outside the cohort dates.",
         "out_of_scope": "{{module}}: dates exist but the module is no longer required by the programme."
       }
-    }
+    },
+    "triads": "Triads"
   },
   "dashboard": {
     "eyebrow": "Organisation",
@@ -926,34 +927,18 @@
   "triads": {
     "eyebrow": "Programmes",
     "title": "Triads",
-    "subtitle": "Define triad rounds, auto-assign participants by language and availability, and track booking and reflections.",
-    "programmeLabel": "Programme",
-    "selectProgrammePrompt": "Select a programme to manage its triad rounds.",
-    "addRound": "Add triad round",
-    "roundDialogTitleNew": "New triad round",
-    "roundDialogTitleEdit": "Edit triad round",
-    "fields": {
-      "roundNumber": "Round number",
-      "title": "Title (English)",
-      "titleVi": "Title (Vietnamese, optional)",
-      "trainingWeek": "Linked training week (optional)",
-      "trainingWeekNone": "No linked week",
-      "completionDeadline": "Completion deadline",
-      "autoAssignDate": "Auto-assign date",
-      "isVisible": "Visible to participants"
-    },
+    "subtitle": "Triads are managed per cohort: each round is one of the cohort's Triad requirements, due on the cohort schedule date.",
     "cancel": "Cancel",
     "save": "Save",
     "saved": "Triad round saved",
     "saveFailed": "Couldn't save. Please try again.",
     "roundLabel": "Round {{n}}",
     "deadline": "Deadline: {{date}}",
-    "autoAssignDateLabel": "Auto-assign: {{date}}",
     "autoAssignStatus": {
-      "pending": "Pending",
       "running": "Running…",
       "completed": "Completed",
-      "failed": "Failed"
+      "failed": "Failed",
+      "not_started": "Not run yet"
     },
     "runAutoAssign": "Run auto-assign now",
     "runAutoAssignConfirmTitle": "Run auto-assign for this round?",
@@ -967,9 +952,10 @@
       "groups": "Groups",
       "confirmed": "Confirmed",
       "completed": "Completed",
-      "overdue": "Overdue"
+      "overdue": "Overdue",
+      "completedLearners": "Learners completed",
+      "overdueLearners": "Learners overdue"
     },
-    "noRounds": "No triad rounds yet for this programme.",
     "groupsHeading": "Groups",
     "noGroups": "No groups yet for this round. Run auto-assign or create one manually.",
     "dyadBadge": "Dyad",
@@ -994,7 +980,6 @@
     "membersMustDiffer": "Pick different participants",
     "manageGroup": "Manage group",
     "manageGroupDialogTitle": "Manage triad group",
-    "replaceMember": "Replace member {{slot}}",
     "addThirdMember": "Add a third member",
     "deactivateGroup": "Deactivate group",
     "deactivateConfirmTitle": "Deactivate this triad group?",
@@ -1002,6 +987,16 @@
     "reactivateGroup": "Reactivate group",
     "active": "Active",
     "inactive": "Inactive",
-    "close": "Close"
+    "close": "Close",
+    "dueFromSchedule": "from the cohort requirement schedule",
+    "beyondRequirement": "This scheduled unit is beyond the programme's Triad requirement, so no groups can be assigned to it.",
+    "unassignedCount": "{{count}} learners not yet grouped",
+    "cohortPoolHint": "Only ongoing learners of this cohort who are not yet grouped for this round are listed.",
+    "replaceMemberAction": "Replace",
+    "backToCohorts": "All cohorts",
+    "requiredSubtitle_one": "Triads — {{count}} required. Each round is due on the cohort requirement schedule.",
+    "requiredSubtitle_other": "Triads — {{count}} required. Each round is due on the cohort requirement schedule.",
+    "loadError": "Couldn't load this cohort's Triads.",
+    "noRequirements": "This cohort's programme has no Triad requirement, or the cohort has no Triad dates yet (see the cohort requirement schedule)."
   }
 }

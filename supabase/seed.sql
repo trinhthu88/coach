@@ -294,13 +294,26 @@ BEGIN
         ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id;
     END IF;
   END LOOP;
-  INSERT INTO triad_groups(id,cohort_id,programme_id,name,member_1_id,member_2_id,member_3_id,enrollment_1_id,enrollment_2_id,enrollment_3_id)
-    VALUES('eeeeeeee-eeee-4eee-8eee-000000000001',cb,pb,'B Demo Triad',u1,u2,u3,e1,e2,e3)
-    ON CONFLICT(id) DO UPDATE SET member_1_id=excluded.member_1_id,member_2_id=excluded.member_2_id,member_3_id=excluded.member_3_id,enrollment_1_id=excluded.enrollment_1_id,enrollment_2_id=excluded.enrollment_2_id,enrollment_3_id=excluded.enrollment_3_id;
+  -- Triad: one group for the cohort's Triad requirement unit 1, membership by
+  -- enrollment; the session time is its scheduled time.
+  INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language)
+    SELECT 'eeeeeeee-eeee-4eee-8eee-000000000001', d.id, 'vi'
+    FROM cohort_requirement_dates d
+    WHERE d.cohort_id=cb AND d.programme_id=pb AND d.module='triads' AND d.ordinal=1
+    ON CONFLICT(id) DO NOTHING;
+  IF NOT FOUND AND NOT EXISTS (SELECT 1 FROM triad_groups WHERE id='eeeeeeee-eeee-4eee-8eee-000000000001') THEN
+    RAISE EXCEPTION 'Demo seed: cohort B has no Triad requirement unit 1';
+  END IF;
+  INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
+    VALUES('eeeeeeee-eeee-4eee-8eee-000000000001',e1,1),('eeeeeeee-eeee-4eee-8eee-000000000001',e2,2),('eeeeeeee-eeee-4eee-8eee-000000000001',e3,3)
+    ON CONFLICT(triad_group_id,enrollment_id) DO NOTHING;
   SELECT id INTO w FROM training_weeks WHERE programme_id=pb AND week_number=1;
-  INSERT INTO triad_sessions(id,triad_group_id,proposed_start_time,proposed_end_time,proposed_by,member_1_response,member_2_response,member_3_response,coach_enrollment_id,coachee_enrollment_id,observer_enrollment_id,status,notes)
-    VALUES('eeeeeeee-eeee-4eee-8eee-000000000002','eeeeeeee-eeee-4eee-8eee-000000000001','2026-10-10T10:00:00Z','2026-10-10T11:00:00Z','system','accepted','accepted','accepted',e1,e2,e3,'confirmed','Private triad notes')
+  INSERT INTO triad_sessions(id,triad_group_id,scheduled_start_time,scheduled_end_time,status,notes)
+    VALUES('eeeeeeee-eeee-4eee-8eee-000000000002','eeeeeeee-eeee-4eee-8eee-000000000001','2026-10-10T10:00:00Z','2026-10-10T11:00:00Z','confirmed','Private triad notes')
     ON CONFLICT(id) DO UPDATE SET status=excluded.status,notes=excluded.notes;
+  INSERT INTO triad_session_responses(triad_session_id,enrollment_id,response,responded_at)
+    SELECT 'eeeeeeee-eeee-4eee-8eee-000000000002', x, 'accepted', '2026-09-01' FROM unnest(ARRAY[e1,e2,e3]) x
+    ON CONFLICT(triad_session_id,enrollment_id) DO NOTHING;
   INSERT INTO peer_sessions(id,enrollment_id,peer_coach_id,peer_coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
     VALUES('eeeeeeee-eeee-4eee-8eee-000000000003',e2,mentor_provider,u2,'B peer practice','2026-10-15',60,'completed',5),
           ('eeeeeeee-eeee-4eee-8eee-000000000004',e3,mentor_provider,u3,'B peer practice','2026-11-15',60,'confirmed',NULL)
@@ -425,9 +438,11 @@ BEGIN
     USING public.programme_enrollments e
     WHERE p.enrollment_id=e.id AND e.cohort_id=cc;
   DELETE FROM public.triad_sessions s
-    USING public.triad_groups g
-    WHERE s.triad_group_id=g.id AND g.cohort_id=cc;
-  DELETE FROM public.triad_groups WHERE cohort_id=cc;
+    USING public.triad_groups g, public.cohort_requirement_dates d
+    WHERE s.triad_group_id=g.id AND g.cohort_requirement_date_id=d.id AND d.cohort_id=cc;
+  DELETE FROM public.triad_groups g
+    USING public.cohort_requirement_dates d
+    WHERE g.cohort_requirement_date_id=d.id AND d.cohort_id=cc;
 
   FOR i IN 1..12 LOOP
     uid:=('13131313-1313-4131-8131-'||lpad(i::text,12,'0'))::uuid;
@@ -578,93 +593,43 @@ BEGIN
     END LOOP;
   END;
 
-  -- Triads: one triad_session row attributes a unit to every leader named
-  -- as its coach/coachee/observer enrollment at once, so units are handed
-  -- out via specific session compositions rather than a flat per-leader
-  -- loop. validate_triad_session_enrollment_scope() requires every session
-  -- on a group to use exactly that group's members in their fixed
-  -- coach/coachee/observer role, and a 2-member group cannot carry an
-  -- observer, so each distinct composition below gets its own group.
+  -- Triads: a completed session is evidence for every member of its group.
+  -- Each group practises for one cohort Triad requirement unit (1 or 2).
   DECLARE
-    u1 uuid := '13131313-1313-4131-8131-000000000001'; e1 uuid := '14141414-1414-4141-8141-000000000001';
-    u2 uuid := '13131313-1313-4131-8131-000000000002'; e2 uuid := '14141414-1414-4141-8141-000000000002';
-    u3 uuid := '13131313-1313-4131-8131-000000000003'; e3 uuid := '14141414-1414-4141-8141-000000000003';
-    u4 uuid := '13131313-1313-4131-8131-000000000004'; e4 uuid := '14141414-1414-4141-8141-000000000004';
-    u9 uuid := '13131313-1313-4131-8131-000000000009'; e9 uuid := '14141414-1414-4141-8141-000000000009';
-    u10 uuid := ('13131313-1313-4131-8131-'||lpad('10',12,'0'))::uuid; e10 uuid := '14141414-1414-4141-8141-000000000010';
-    g1 uuid := '15151515-1515-4151-8151-000000000001';
-    g2 uuid := '15151515-1515-4151-8151-000000000002';
-    g3 uuid := '15151515-1515-4151-8151-000000000003';
-    g4 uuid := '15151515-1515-4151-8151-000000000004';
+    e1 uuid := '14141414-1414-4141-8141-000000000001';
+    e2 uuid := '14141414-1414-4141-8141-000000000002';
+    e3 uuid := '14141414-1414-4141-8141-000000000003';
+    e4 uuid := '14141414-1414-4141-8141-000000000004';
+    e9 uuid := '14141414-1414-4141-8141-000000000009';
+    e10 uuid := '14141414-1414-4141-8141-000000000010';
+    unit1 uuid; unit2 uuid;
+    grp record;
   BEGIN
-    -- Leaders 1, 2 and 3 each earn their first triad unit together.
-    INSERT INTO triad_groups(id,cohort_id,programme_id,member_1_id,member_2_id,member_3_id,enrollment_1_id,enrollment_2_id,enrollment_3_id)
-      VALUES(g1,cc,pc,u1,u2,u3,e1,e2,e3);
-    INSERT INTO triad_sessions(
-      id,triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id,observer_enrollment_id
-    )
-      VALUES(
-        '1c1c1c1c-1c1c-41c1-81c1-000000000001',
-        g1,'2026-05-03'::timestamptz,'completed',e1,e2,e3
-      )
-      ON CONFLICT(id) DO UPDATE SET
-        triad_group_id=excluded.triad_group_id,
-        start_time=excluded.start_time,
-        status=excluded.status,
-        coach_enrollment_id=excluded.coach_enrollment_id,
-        coachee_enrollment_id=excluded.coachee_enrollment_id,
-        observer_enrollment_id=excluded.observer_enrollment_id;
-
-    -- Leaders 1 and 2 each earn their second (final) triad unit.
-    INSERT INTO triad_groups(id,cohort_id,programme_id,member_1_id,member_2_id,enrollment_1_id,enrollment_2_id)
-      VALUES(g2,cc,pc,u1,u2,e1,e2);
-    INSERT INTO triad_sessions(
-      id,triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id
-    )
-      VALUES(
-        '1c1c1c1c-1c1c-41c1-81c1-000000000002',
-        g2,'2026-07-05'::timestamptz,'completed',e1,e2
-      )
-      ON CONFLICT(id) DO UPDATE SET
-        triad_group_id=excluded.triad_group_id,
-        start_time=excluded.start_time,
-        status=excluded.status,
-        coach_enrollment_id=excluded.coach_enrollment_id,
-        coachee_enrollment_id=excluded.coachee_enrollment_id;
-
-    -- Leaders 4 and 9 each earn their first triad unit.
-    INSERT INTO triad_groups(id,cohort_id,programme_id,member_1_id,member_2_id,enrollment_1_id,enrollment_2_id)
-      VALUES(g3,cc,pc,u4,u9,e4,e9);
-    INSERT INTO triad_sessions(
-      id,triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id
-    )
-      VALUES(
-        '1c1c1c1c-1c1c-41c1-81c1-000000000003',
-        g3,'2026-05-03'::timestamptz,'completed',e4,e9
-      )
-      ON CONFLICT(id) DO UPDATE SET
-        triad_group_id=excluded.triad_group_id,
-        start_time=excluded.start_time,
-        status=excluded.status,
-        coach_enrollment_id=excluded.coach_enrollment_id,
-        coachee_enrollment_id=excluded.coachee_enrollment_id;
-
-    -- Leaders 9 and 10 each earn their second/first triad unit.
-    INSERT INTO triad_groups(id,cohort_id,programme_id,member_1_id,member_2_id,enrollment_1_id,enrollment_2_id)
-      VALUES(g4,cc,pc,u9,u10,e9,e10);
-    INSERT INTO triad_sessions(
-      id,triad_group_id,start_time,status,coach_enrollment_id,coachee_enrollment_id
-    )
-      VALUES(
-        '1c1c1c1c-1c1c-41c1-81c1-000000000004',
-        g4,'2026-07-05'::timestamptz,'completed',e9,e10
-      )
-      ON CONFLICT(id) DO UPDATE SET
-        triad_group_id=excluded.triad_group_id,
-        start_time=excluded.start_time,
-        status=excluded.status,
-        coach_enrollment_id=excluded.coach_enrollment_id,
-        coachee_enrollment_id=excluded.coachee_enrollment_id;
+    SELECT id INTO unit1 FROM cohort_requirement_dates WHERE cohort_id=cc AND programme_id=pc AND module='triads' AND ordinal=1;
+    SELECT id INTO unit2 FROM cohort_requirement_dates WHERE cohort_id=cc AND programme_id=pc AND module='triads' AND ordinal=2;
+    IF unit1 IS NULL OR unit2 IS NULL THEN
+      RAISE EXCEPTION 'Demo seed: cohort C needs Triad requirement units 1 and 2';
+    END IF;
+    FOR grp IN
+      SELECT * FROM (VALUES
+        -- Leaders 1, 2 and 3 each earn their first triad unit together.
+        ('15151515-1515-4151-8151-000000000001'::uuid, unit1, ARRAY[e1,e2,e3], '1c1c1c1c-1c1c-41c1-81c1-000000000001'::uuid, '2026-05-03'::timestamptz),
+        -- Leaders 1 and 2 each earn their second (final) triad unit.
+        ('15151515-1515-4151-8151-000000000002'::uuid, unit2, ARRAY[e1,e2], '1c1c1c1c-1c1c-41c1-81c1-000000000002'::uuid, '2026-07-05'::timestamptz),
+        -- Leaders 4 and 9 each earn their first triad unit.
+        ('15151515-1515-4151-8151-000000000003'::uuid, unit1, ARRAY[e4,e9], '1c1c1c1c-1c1c-41c1-81c1-000000000003'::uuid, '2026-05-03'::timestamptz),
+        -- Leaders 9 and 10 each earn their second/first triad unit.
+        ('15151515-1515-4151-8151-000000000004'::uuid, unit2, ARRAY[e9,e10], '1c1c1c1c-1c1c-41c1-81c1-000000000004'::uuid, '2026-07-05'::timestamptz)
+      ) AS g(group_id, requirement_id, members, session_id, starts_at)
+    LOOP
+      INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language) VALUES(grp.group_id,grp.requirement_id,'vi');
+      INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
+        SELECT grp.group_id, m.enrollment_id, m.ord FROM unnest(grp.members) WITH ORDINALITY AS m(enrollment_id, ord);
+      INSERT INTO triad_sessions(id,triad_group_id,scheduled_start_time,scheduled_end_time,status)
+        VALUES(grp.session_id,grp.group_id,grp.starts_at,grp.starts_at + interval '1 hour','completed');
+      INSERT INTO triad_session_responses(triad_session_id,enrollment_id,response,responded_at)
+        SELECT grp.session_id, m, 'accepted', grp.starts_at - interval '7 days' FROM unnest(grp.members) m;
+    END LOOP;
   END;
 
   -- Goals/actions only where a leader has real coaching engagement above —

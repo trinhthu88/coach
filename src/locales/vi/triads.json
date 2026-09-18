@@ -74,14 +74,9 @@
     "sections": {
       "coach": "Với vai trò Coach",
       "coachee": "Với vai trò Coachee",
-      "observer": "Với vai trò Observer"
+      "observer": "Với vai trò Observer",
+      "general": "Tổng thể"
     },
-    "learnedAsCoach": "Bạn học được gì?",
-    "willUseAsCoach": "Bạn sẽ áp dụng điều này như thế nào?",
-    "learnedAsCoachee": "Bạn học được gì?",
-    "willUseAsCoachee": "Bạn sẽ áp dụng điều này như thế nào?",
-    "learnedAsObserver": "Bạn học được gì?",
-    "willUseAsObserver": "Bạn sẽ áp dụng điều này như thế nào?",
     "satisfaction": "Bạn hài lòng với session này ở mức nào?",
     "submit": "Gửi phản hồi",
     "alreadySubmitted": "Bạn đã gửi phản hồi cho session này rồi.",
@@ -90,7 +85,8 @@
     "othersLocked": "Phản hồi của mọi người sẽ mở khi tất cả thành viên đã gửi.",
     "successToast": "Đã gửi phản hồi",
     "errorToast": "Không thể gửi phản hồi",
-    "notFound": "Session này hiện không khả dụng."
+    "notFound": "Session này hiện không khả dụng.",
+    "afterCompletion": "Bạn có thể phản hồi về session này sau khi session được đánh dấu hoàn thành."
   },
   "currentRounds": {
     "title": "Các vòng triad hiện tại",

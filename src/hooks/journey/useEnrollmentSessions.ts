@@ -44,7 +44,8 @@ async function fetchEnrollmentSessions(enrollmentId: string): Promise<Developmen
         counterpartNames: names,
         sourceId: row.source_id,
         sourceType: row.source_table,
-        participantRole: row.participant_role,
+        // Triad members rotate roles; only the other session types have one.
+        participantRole: type === "triad" ? null : row.participant_role,
         isProgrammeEvidence: row.is_programme_evidence,
         roundNumber: row.round_number,
         trainingWeekNumber: row.training_week_number,

@@ -1,12 +1,12 @@
 -- Learner session history + canonical reflection feed.
 --
 -- Self-contained fixture reproducing the reported Emerging Leaders case
--- (triad requirement 2 with one completed + one confirmed session in a
--- round-less group; peer requirement 2 with more history than required).
+-- (triad requirement 2 with one completed + one confirmed session in the
+-- unit 1 group; peer requirement 2 with more history than required).
 -- Proves:
 --   * module progress and session history agree on WHICH sessions are
 --     programme evidence, while history keeps every record and real status;
---   * triad sessions in a round-less (legacy) group are still history;
+--   * triad sessions are history for every group member (membership);
 --   * given peer sessions stay visible but are not this learner's evidence;
 --   * the reflection feed projects every learner-authored source, skips
 --     rating-only / blank rows, and never exposes coach/mentor/provider notes.
@@ -91,23 +91,26 @@ values ('f7000000-0000-0000-0000-000000000021', 'e7000000-0000-0000-0000-0000000
   'a7000000-0000-0000-0000-000000000001', 'Mentoring one', '2026-01-19T10:00:00Z', 60, 'completed', 'prep/file.pdf',
   'Mentoring reflection: map stakeholders earlier.', 'MENTOR NOTE');
 
--- Triads: a legacy group with NO configured round; one completed + one
--- confirmed session (the reported case).
-insert into public.triad_groups (id, programme_id, cohort_id, member_1_id, member_2_id, member_3_id,
-  enrollment_1_id, enrollment_2_id, enrollment_3_id, round_number, is_active)
-values ('f7000000-0000-0000-0000-000000000030', 'c7000000-0000-0000-0000-000000000001', 'd7000000-0000-0000-0000-000000000001',
-  'a7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000003',
-  'e7000000-0000-0000-0000-000000000001', 'e7000000-0000-0000-0000-000000000002', 'e7000000-0000-0000-0000-000000000003', 1, true);
-insert into public.triad_sessions (id, triad_group_id, start_time, proposed_start_time, status, coach_enrollment_id, coachee_enrollment_id, observer_enrollment_id)
+-- Triads: the cohort's Triad unit 1 group; one completed + one confirmed
+-- session (the reported case). Membership is by enrollment.
+insert into public.triad_groups (id, cohort_requirement_date_id, is_active)
+select 'f7000000-0000-0000-0000-000000000030', d.id, true
+from public.cohort_requirement_dates d
+where d.cohort_id = 'd7000000-0000-0000-0000-000000000001' and d.module = 'triads' and d.ordinal = 1;
+insert into public.triad_group_members (triad_group_id, enrollment_id, member_order) values
+  ('f7000000-0000-0000-0000-000000000030', 'e7000000-0000-0000-0000-000000000001', 1),
+  ('f7000000-0000-0000-0000-000000000030', 'e7000000-0000-0000-0000-000000000002', 2),
+  ('f7000000-0000-0000-0000-000000000030', 'e7000000-0000-0000-0000-000000000003', 3);
+insert into public.triad_sessions (id, triad_group_id, scheduled_start_time, status)
 values
-  ('f7000000-0000-0000-0000-000000000031', 'f7000000-0000-0000-0000-000000000030', '2026-02-16T10:00:00Z', '2026-02-16T10:00:00Z', 'completed',
-   'e7000000-0000-0000-0000-000000000001', 'e7000000-0000-0000-0000-000000000002', 'e7000000-0000-0000-0000-000000000003'),
-  ('f7000000-0000-0000-0000-000000000032', 'f7000000-0000-0000-0000-000000000030', '2099-04-20T10:00:00Z', '2099-04-20T10:00:00Z', 'confirmed',
-   'e7000000-0000-0000-0000-000000000001', 'e7000000-0000-0000-0000-000000000002', 'e7000000-0000-0000-0000-000000000003');
+  ('f7000000-0000-0000-0000-000000000031', 'f7000000-0000-0000-0000-000000000030', '2026-02-16T10:00:00Z', 'completed'),
+  ('f7000000-0000-0000-0000-000000000032', 'f7000000-0000-0000-0000-000000000030', '2099-04-20T10:00:00Z', 'confirmed');
 
-insert into public.triad_reflections (triad_session_id, participant_id, enrollment_id, learned_as_coach, satisfaction_rating)
-values ('f7000000-0000-0000-0000-000000000031', 'a7000000-0000-0000-0000-000000000001',
-  'e7000000-0000-0000-0000-000000000001', 'Triad reflection: silence is useful.', 4);
+insert into public.triad_reflections (id, triad_session_id, enrollment_id, satisfaction_rating)
+values ('f7000000-0000-0000-0000-000000000033', 'f7000000-0000-0000-0000-000000000031',
+  'e7000000-0000-0000-0000-000000000001', 4);
+insert into public.triad_reflection_answers (triad_reflection_id, question_id, answer_text)
+values ('f7000000-0000-0000-0000-000000000033', '7d1a0000-0000-4000-8000-000000000001', 'Triad reflection: silence is useful.');
 
 -- Goal check-ins by the learner: one with a comment, one rating-only; plus a
 -- check-in note written by the coach (not a learner reflection).
@@ -154,7 +157,7 @@ select results_eq(
 select is((select count(*)::integer from history where session_type = 'triad' and is_programme_evidence), 1,
   'exactly the completed triad session is programme evidence');
 select ok((select bool_and(round_number = 1) from history where session_type = 'triad'),
-  'triad sessions in a group without a configured round are still history (group round number)');
+  'triad sessions carry their requirement unit number');
 
 select is((select completed_units || '/' || required_units from modules where module = 'peer_coaching'), '2/2',
   'peer module progress caps at 2/2');

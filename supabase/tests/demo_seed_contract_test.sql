@@ -126,7 +126,7 @@ $sql$, '42501', NULL,
   'a wrong-enrollment quiz submission is rejected');
 select is((select count(*)::int from daily_prompt_responses r join programme_enrollments e on e.id=r.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),7,'prompt responses are owned');
 select is((select count(*)::int from reflection_submissions r join programme_enrollments e on e.id=r.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),8,'reflections are owned');
-select is((select count(*)::int from triad_sessions t where t.coach_enrollment_id is not null and t.coachee_enrollment_id is not null and t.observer_enrollment_id is not null),2,'triad roles are enrollment-owned');
+select is((select count(*)::int from triad_sessions t where (select count(*) from triad_group_members m where m.triad_group_id=t.triad_group_id)=3),2,'triad sessions are owned by their group''s member enrollments');
 select is((select count(*)::int from peer_sessions p join programme_enrollments e on e.id=p.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),2,'peer sessions are owned');
 select is((select count(*)::int from mentoring_sessions m join programme_enrollments e on e.id=m.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111115'),2,'mentoring sessions are owned');
 select is((select count(*)::int from programme_enrollments where status='paused'),1,'A5 is paused');

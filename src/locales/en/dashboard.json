@@ -706,14 +706,6 @@
       "ratingNow": "Rating {{to}}",
       "outOfFive": "{{value}} / 5",
       "mood": "Mood: {{mood}}",
-      "triad": {
-        "learned_as_coach": "What I learned as coach",
-        "will_use_as_coach": "What I'll use as coach",
-        "learned_as_coachee": "What I learned as coachee",
-        "will_use_as_coachee": "What I'll use as coachee",
-        "learned_as_observer": "What I learned as observer",
-        "will_use_as_observer": "What I'll use as observer"
-      },
       "open": {
         "goal": "Open goal →",
         "session": "Open session →",
@@ -725,6 +717,11 @@
       "pill": {
         "private": "Private",
         "linked": "Linked"
+      },
+      "triadSections": {
+        "coach": "As coach",
+        "coachee": "As coachee",
+        "observer": "As observer"
       }
     }
   },
@@ -781,12 +778,6 @@
       "myGroup": "My Triad group",
       "noGroup": "You haven't been placed in a Triad group yet.",
       "member": "Member",
-      "yourRole": "Your role · {{role}}",
-      "roles": {
-        "coach": "Coach",
-        "coachee": "Coachee",
-        "observer": "Observer"
-      },
       "nextTitle": "Next Triad session",
       "openSession": "Open Triad session",
       "roundsTitle": "Rounds",
@@ -797,7 +788,8 @@
       "selfReflection": "Self-reflection",
       "submitted": "Submitted",
       "due": "Due now",
-      "afterSession": "After session"
+      "afterSession": "After session",
+      "rotateRoles": "Everyone rotates through coach, coachee and observer."
     }
   }
 }

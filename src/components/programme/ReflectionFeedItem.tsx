@@ -6,8 +6,6 @@ import { sessionDetailPathFor } from "@/lib/sessionPaths";
 import { formatProfileDate } from "@/lib/programmeProfile";
 import { cn } from "@/lib/utils";
 
-const TRIAD_PARTS = ["learned_as_coach", "will_use_as_coach", "learned_as_coachee", "will_use_as_coachee", "learned_as_observer", "will_use_as_observer"] as const;
-
 /** Where the learner can open the original record behind a reflection. */
 function sourcePath(item: LearnerReflection): string | null {
   if (item.linkedSessionTable && item.linkedSessionId) return sessionDetailPathFor(item.linkedSessionTable, item.linkedSessionId);
@@ -31,11 +29,19 @@ export function ReflectionFeedItem({
   compact?: boolean;
   onDelete?: (item: LearnerReflection) => void;
 }) {
-  const { t } = useTranslation("dashboard");
+  const { t, i18n } = useTranslation("dashboard");
   const path = sourcePath(item);
-  const answers = Array.isArray(item.details.answers) ? (item.details.answers as { question?: string; answer?: string }[]) : [];
-  const triadParts = TRIAD_PARTS.filter((key) => typeof item.details[key] === "string");
-  const structured = !compact && (answers.length > 0 || triadParts.length > 0);
+  // Structured answers (Training reflection questions, Triad reflection
+  // questions) come from the original records with their question labels.
+  const answers = Array.isArray(item.details.answers)
+    ? (item.details.answers as { question?: string; question_vi?: string | null; section?: string; answer?: string }[])
+    : [];
+  const vi = i18n.language?.startsWith("vi");
+  const answerLabel = (a: (typeof answers)[number]) => {
+    const question = (vi && a.question_vi) || a.question;
+    return a.section && a.section !== "general" ? `${t(`learnerProfile.reflections.triadSections.${a.section}`)} · ${question}` : question;
+  };
+  const structured = !compact && answers.length > 0;
 
   const pill = item.isPrivate ? "private" : item.linkedSessionId ? "linked" : null;
 
@@ -104,14 +110,8 @@ export function ReflectionFeedItem({
         <dl className="mt-2.5 space-y-2">
           {answers.map((a, idx) => (
             <div key={idx}>
-              <dt className="text-[9.5px] font-bold uppercase tracking-[.12em] text-[#9a938a]">{a.question}</dt>
+              <dt className="text-[9.5px] font-bold uppercase tracking-[.12em] text-[#9a938a]">{answerLabel(a)}</dt>
               <dd className="mt-0.5 whitespace-pre-wrap font-serif text-[13.5px] leading-relaxed text-[#062f3e]">{a.answer}</dd>
-            </div>
-          ))}
-          {triadParts.map((key) => (
-            <div key={key}>
-              <dt className="text-[9.5px] font-bold uppercase tracking-[.12em] text-[#9a938a]">{t(`learnerProfile.reflections.triad.${key}`)}</dt>
-              <dd className="mt-0.5 whitespace-pre-wrap font-serif text-[13.5px] leading-relaxed text-[#062f3e]">{item.details[key] as string}</dd>
             </div>
           ))}
         </dl>

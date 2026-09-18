@@ -115,7 +115,8 @@
       "coachee": "Coachee",
       "mentor": "Mentor",
       "mentee": "Mentee",
-      "observer": "Observer"
+      "observer": "Observer",
+      "triadMember": "Thành viên Triad"
     },
     "markComplete": "Đánh dấu hoàn thành",
     "toast": {

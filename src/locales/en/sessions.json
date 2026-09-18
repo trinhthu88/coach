@@ -114,7 +114,8 @@
       "coachee": "Coachee",
       "mentor": "Mentor",
       "mentee": "Mentee",
-      "observer": "Observer"
+      "observer": "Observer",
+      "triadMember": "Triad member"
     },
     "markComplete": "Mark complete",
     "toast": {

@@ -2485,35 +2485,6 @@ export type Database = {
           },
         ]
       }
-      programme_triad_rounds: {
-        Row: {
-          at_week: number
-          id: string
-          programme_id: string
-          round_number: number
-        }
-        Insert: {
-          at_week: number
-          id?: string
-          programme_id: string
-          round_number: number
-        }
-        Update: {
-          at_week?: number
-          id?: string
-          programme_id?: string
-          round_number?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "programme_triad_rounds_programme_id_fkey"
-            columns: ["programme_id"]
-            isOneToOne: false
-            referencedRelation: "programmes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       programmes: {
         Row: {
           coach_session_limit: number
@@ -3364,14 +3335,47 @@ export type Database = {
           },
         ]
       }
+      triad_alternative_proposal_responses: {
+        Row: {
+          enrollment_id: string
+          proposal_id: string
+          responded_at: string | null
+          response: string
+        }
+        Insert: {
+          enrollment_id: string
+          proposal_id: string
+          responded_at?: string | null
+          response?: string
+        }
+        Update: {
+          enrollment_id?: string
+          proposal_id?: string
+          responded_at?: string | null
+          response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_alternative_proposal_responses_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_alternative_proposal_responses_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "triad_alternative_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       triad_alternative_proposals: {
         Row: {
           created_at: string
           id: string
-          member_1_response: string
-          member_2_response: string
-          member_3_response: string | null
-          proposed_by: string
+          proposed_by_enrollment_id: string | null
           proposed_end_time: string
           proposed_start_time: string
           status: string
@@ -3380,10 +3384,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
-          proposed_by: string
+          proposed_by_enrollment_id?: string | null
           proposed_end_time: string
           proposed_start_time: string
           status?: string
@@ -3392,10 +3393,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
-          proposed_by?: string
+          proposed_by_enrollment_id?: string | null
           proposed_end_time?: string
           proposed_start_time?: string
           status?: string
@@ -3403,10 +3401,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "triad_alternative_proposals_proposed_by_fkey"
-            columns: ["proposed_by"]
+            foreignKeyName: "triad_alternative_proposals_proposed_by_enrollment_id_fkey"
+            columns: ["proposed_by_enrollment_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "programme_enrollments"
             referencedColumns: ["id"]
           },
           {
@@ -3418,126 +3416,165 @@ export type Database = {
           },
         ]
       }
+      triad_group_members: {
+        Row: {
+          created_at: string
+          enrollment_id: string
+          id: string
+          member_order: number
+          triad_group_id: string
+        }
+        Insert: {
+          created_at?: string
+          enrollment_id: string
+          id?: string
+          member_order: number
+          triad_group_id: string
+        }
+        Update: {
+          created_at?: string
+          enrollment_id?: string
+          id?: string
+          member_order?: number
+          triad_group_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_group_members_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_group_members_triad_group_id_fkey"
+            columns: ["triad_group_id"]
+            isOneToOne: false
+            referencedRelation: "triad_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       triad_groups: {
         Row: {
           assigned_by: string
-          cohort_id: string | null
+          cohort_requirement_date_id: string | null
           created_at: string
-          enrollment_1_id: string
-          enrollment_2_id: string
-          enrollment_3_id: string | null
           group_language: string
           id: string
           is_active: boolean
-          member_1_id: string
-          member_2_id: string
-          member_3_id: string | null
-          name: string | null
-          programme_id: string
-          round_number: number | null
-          triad_round_id: string | null
           updated_at: string
         }
         Insert: {
           assigned_by?: string
-          cohort_id?: string | null
+          cohort_requirement_date_id?: string | null
           created_at?: string
-          enrollment_1_id: string
-          enrollment_2_id: string
-          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
-          member_1_id: string
-          member_2_id: string
-          member_3_id?: string | null
-          name?: string | null
-          programme_id: string
-          round_number?: number | null
-          triad_round_id?: string | null
           updated_at?: string
         }
         Update: {
           assigned_by?: string
-          cohort_id?: string | null
+          cohort_requirement_date_id?: string | null
           created_at?: string
-          enrollment_1_id?: string
-          enrollment_2_id?: string
-          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
-          member_1_id?: string
-          member_2_id?: string
-          member_3_id?: string | null
-          name?: string | null
-          programme_id?: string
-          round_number?: number | null
-          triad_round_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "triad_groups_cohort_id_fkey"
-            columns: ["cohort_id"]
+            foreignKeyName: "triad_groups_cohort_requirement_date_id_fkey"
+            columns: ["cohort_requirement_date_id"]
             isOneToOne: false
-            referencedRelation: "cohorts"
+            referencedRelation: "cohort_requirement_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      triad_reflection_answers: {
+        Row: {
+          answer_text: string
+          created_at: string
+          id: string
+          question_id: string
+          triad_reflection_id: string
+        }
+        Insert: {
+          answer_text: string
+          created_at?: string
+          id?: string
+          question_id: string
+          triad_reflection_id: string
+        }
+        Update: {
+          answer_text?: string
+          created_at?: string
+          id?: string
+          question_id?: string
+          triad_reflection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_reflection_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "triad_reflection_questions"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "triad_groups_enrollment_1_id_fkey"
-            columns: ["enrollment_1_id"]
+            foreignKeyName: "triad_reflection_answers_triad_reflection_id_fkey"
+            columns: ["triad_reflection_id"]
             isOneToOne: false
-            referencedRelation: "programme_enrollments"
+            referencedRelation: "triad_reflections"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      triad_reflection_questions: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          label: string
+          label_vi: string | null
+          programme_id: string | null
+          question_key: string
+          section: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order: number
+          id?: string
+          is_active?: boolean
+          label: string
+          label_vi?: string | null
+          programme_id?: string | null
+          question_key: string
+          section: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          label_vi?: string | null
+          programme_id?: string | null
+          question_key?: string
+          section?: string
+          updated_at?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "triad_groups_enrollment_2_id_fkey"
-            columns: ["enrollment_2_id"]
-            isOneToOne: false
-            referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_enrollment_3_id_fkey"
-            columns: ["enrollment_3_id"]
-            isOneToOne: false
-            referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_member_1_id_fkey"
-            columns: ["member_1_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_member_2_id_fkey"
-            columns: ["member_2_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_member_3_id_fkey"
-            columns: ["member_3_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_programme_id_fkey"
+            foreignKeyName: "triad_reflection_questions_programme_id_fkey"
             columns: ["programme_id"]
             isOneToOne: false
             referencedRelation: "programmes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_triad_round_id_fkey"
-            columns: ["triad_round_id"]
-            isOneToOne: false
-            referencedRelation: "triad_rounds"
             referencedColumns: ["id"]
           },
         ]
@@ -3546,44 +3583,23 @@ export type Database = {
         Row: {
           enrollment_id: string | null
           id: string
-          learned_as_coach: string | null
-          learned_as_coachee: string | null
-          learned_as_observer: string | null
-          participant_id: string
           satisfaction_rating: number | null
           submitted_at: string
           triad_session_id: string
-          will_use_as_coach: string | null
-          will_use_as_coachee: string | null
-          will_use_as_observer: string | null
         }
         Insert: {
           enrollment_id?: string | null
           id?: string
-          learned_as_coach?: string | null
-          learned_as_coachee?: string | null
-          learned_as_observer?: string | null
-          participant_id: string
           satisfaction_rating?: number | null
           submitted_at?: string
           triad_session_id: string
-          will_use_as_coach?: string | null
-          will_use_as_coachee?: string | null
-          will_use_as_observer?: string | null
         }
         Update: {
           enrollment_id?: string | null
           id?: string
-          learned_as_coach?: string | null
-          learned_as_coachee?: string | null
-          learned_as_observer?: string | null
-          participant_id?: string
           satisfaction_rating?: number | null
           submitted_at?: string
           triad_session_id?: string
-          will_use_as_coach?: string | null
-          will_use_as_coachee?: string | null
-          will_use_as_observer?: string | null
         }
         Relationships: [
           {
@@ -3591,13 +3607,6 @@ export type Database = {
             columns: ["enrollment_id"]
             isOneToOne: false
             referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_reflections_participant_id_fkey"
-            columns: ["participant_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3609,146 +3618,77 @@ export type Database = {
           },
         ]
       }
-      triad_rounds: {
+      triad_session_responses: {
         Row: {
-          auto_assign_date: string
-          auto_assign_status: string
-          completion_deadline: string
-          created_at: string
-          id: string
-          is_visible: boolean
-          programme_id: string
-          round_number: number
-          title: string
-          title_vi: string | null
-          training_week_id: string | null
-          updated_at: string
+          enrollment_id: string
+          responded_at: string | null
+          response: string
+          triad_session_id: string
         }
         Insert: {
-          auto_assign_date: string
-          auto_assign_status?: string
-          completion_deadline: string
-          created_at?: string
-          id?: string
-          is_visible?: boolean
-          programme_id: string
-          round_number: number
-          title: string
-          title_vi?: string | null
-          training_week_id?: string | null
-          updated_at?: string
+          enrollment_id: string
+          responded_at?: string | null
+          response?: string
+          triad_session_id: string
         }
         Update: {
-          auto_assign_date?: string
-          auto_assign_status?: string
-          completion_deadline?: string
-          created_at?: string
-          id?: string
-          is_visible?: boolean
-          programme_id?: string
-          round_number?: number
-          title?: string
-          title_vi?: string | null
-          training_week_id?: string | null
-          updated_at?: string
+          enrollment_id?: string
+          responded_at?: string | null
+          response?: string
+          triad_session_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "triad_rounds_programme_id_fkey"
-            columns: ["programme_id"]
+            foreignKeyName: "triad_session_responses_enrollment_id_fkey"
+            columns: ["enrollment_id"]
             isOneToOne: false
-            referencedRelation: "programmes"
+            referencedRelation: "programme_enrollments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "triad_rounds_training_week_id_fkey"
-            columns: ["training_week_id"]
+            foreignKeyName: "triad_session_responses_triad_session_id_fkey"
+            columns: ["triad_session_id"]
             isOneToOne: false
-            referencedRelation: "training_weeks"
+            referencedRelation: "triad_sessions"
             referencedColumns: ["id"]
           },
         ]
       }
       triad_sessions: {
         Row: {
-          coach_enrollment_id: string
-          coachee_enrollment_id: string
           created_at: string
           id: string
           meeting_url: string | null
-          member_1_response: string
-          member_2_response: string
-          member_3_response: string | null
           notes: string | null
-          observer_enrollment_id: string | null
-          proposed_by: string
-          proposed_end_time: string | null
-          proposed_start_time: string | null
-          start_time: string | null
+          scheduled_end_time: string | null
+          scheduled_start_time: string | null
           status: string
           triad_group_id: string
           updated_at: string
         }
         Insert: {
-          coach_enrollment_id: string
-          coachee_enrollment_id: string
           created_at?: string
           id?: string
           meeting_url?: string | null
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
           notes?: string | null
-          observer_enrollment_id?: string | null
-          proposed_by?: string
-          proposed_end_time?: string | null
-          proposed_start_time?: string | null
-          start_time?: string | null
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string | null
           status?: string
           triad_group_id: string
           updated_at?: string
         }
         Update: {
-          coach_enrollment_id?: string
-          coachee_enrollment_id?: string
           created_at?: string
           id?: string
           meeting_url?: string | null
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
           notes?: string | null
-          observer_enrollment_id?: string | null
-          proposed_by?: string
-          proposed_end_time?: string | null
-          proposed_start_time?: string | null
-          start_time?: string | null
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string | null
           status?: string
           triad_group_id?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "triad_sessions_coach_enrollment_id_fkey"
-            columns: ["coach_enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_sessions_coachee_enrollment_id_fkey"
-            columns: ["coachee_enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_sessions_observer_enrollment_id_fkey"
-            columns: ["observer_enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "triad_sessions_triad_group_id_fkey"
             columns: ["triad_group_id"]
@@ -4497,9 +4437,59 @@ export type Database = {
           state: string
         }[]
       }
+      admin_cohort_triad_requirements: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: {
+          assigned_enrollments: number
+          assignment_status: string
+          cohort_requirement_date_id: string
+          completed_enrollments: number
+          due_on: string
+          eligible_enrollments: number
+          groups: Json
+          is_operational: boolean
+          last_assignment_run_at: string
+          last_assignment_summary: Json
+          overdue_enrollments: number
+          programme_id: string
+          required_units: number
+          unit_number: number
+        }[]
+      }
       admin_save_cohort_requirement_dates: {
         Args: { p_cohort_id: string; p_items: Json; p_regenerate?: boolean }
         Returns: number
+      }
+      admin_triad_change_member: {
+        Args: {
+          p_add_enrollment_id?: string
+          p_group_id: string
+          p_remove_enrollment_id?: string
+        }
+        Returns: undefined
+      }
+      admin_triad_create_group: {
+        Args: {
+          p_cohort_requirement_date_id: string
+          p_enrollment_ids: string[]
+          p_group_language: string
+        }
+        Returns: string
+      }
+      admin_triad_requirement_candidates: {
+        Args: { p_cohort_requirement_date_id: string }
+        Returns: {
+          enrollment_id: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_name: string
+          spoken_languages: string[]
+          triad_group_id: string
+          user_id: string
+        }[]
+      }
+      admin_triad_set_group_active: {
+        Args: { p_group_id: string; p_is_active: boolean }
+        Returns: undefined
       }
       cohort_requirement_schedule_issues: {
         Args: { p_cohort_id: string }
@@ -4543,6 +4533,77 @@ export type Database = {
           triad_group_id: string
         }[]
       }
+      learner_triad_overview: {
+        Args: { p_enrollment_id?: string }
+        Returns: {
+          cohort_requirement_date_id: string
+          due_on: string
+          enrollment_id: string
+          group_language: string
+          is_active: boolean
+          member_count: number
+          my_member_slot: number
+          sessions: Json
+          training_week_number: number
+          training_week_title: string
+          training_week_title_vi: string
+          triad_group_id: string
+          unit_completed: boolean
+          unit_number: number
+          unit_overdue: boolean
+        }[]
+      }
+      learner_triad_propose_alternative: {
+        Args: { p_end: string; p_session_id: string; p_start: string }
+        Returns: string
+      }
+      learner_triad_reflection_questions: {
+        Args: { p_session_id: string }
+        Returns: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          label: string
+          label_vi: string | null
+          programme_id: string | null
+          question_key: string
+          section: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "triad_reflection_questions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      learner_triad_respond_alternative: {
+        Args: { p_proposal_id: string; p_response: string }
+        Returns: undefined
+      }
+      learner_triad_respond_session: {
+        Args: { p_response: string; p_session_id: string }
+        Returns: undefined
+      }
+      learner_triad_session_reflections: {
+        Args: { p_session_id: string }
+        Returns: {
+          answers: Json
+          is_self: boolean
+          member_slot: number
+          satisfaction_rating: number
+          submitted_at: string
+        }[]
+      }
+      learner_triad_submit_reflection: {
+        Args: {
+          p_answers?: Json
+          p_satisfaction_rating?: number
+          p_session_id: string
+        }
+        Returns: string
+      }
       learner_reflection_feed: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -4582,6 +4643,10 @@ export type Database = {
           title: string
           training_week_number: number
         }[]
+      }
+      learner_triad_complete_session: {
+        Args: { p_session_id: string }
+        Returns: undefined
       }
       learner_canonical_goal_progress: {
         Args: { p_enrollment_id: string }
