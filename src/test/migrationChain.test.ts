@@ -99,4 +99,41 @@ describe("migration chain — canonical final state", () => {
     }
     expect(lastDefinition("cohort_requirement_schedule_issues")?.body).toMatch(/cohort_programme_schedule_state/);
   });
+
+  it("the retired engines are dropped and no later migration re-creates them", () => {
+    const RETIRED = [
+      "sponsor_enrollment_summaries", "sponsor_cohort_summaries", "sponsor_organisation_summary",
+      "sponsor_cohort_summaries_legacy", "sponsor_organisation_summary_legacy", "sponsor_metric_rows",
+      "sponsor_metric_rows_legacy", "sponsor_satisfaction_summary", "sponsor_satisfaction_events",
+      "sponsor_normalize_satisfaction", "sponsor_leader_engagement_summary", "sponsor_leader_cadence_items",
+      "sponsor_cohort_cadence_items", "sponsor_enrollment_next_session", "sponsor_canonical_leader_next_booking",
+      "sponsor_leader_programme_history", "sponsor_canonical_leader_experience_base",
+      "sponsor_canonical_leader_experience_legacy", "learner_canonical_experience_legacy",
+      "get_admin_enrollment_progress", "compute_leader_progress", "refresh_all_progress_pct",
+    ];
+    const RETIRE = "20260918180000_retire_legacy_sponsor_sources.sql";
+    const retireSql = readFileSync(join(DIR, RETIRE), "utf8");
+    for (const name of RETIRED) {
+      expect(retireSql, name).toMatch(new RegExp(`DROP FUNCTION IF EXISTS public\\.${name}\\(`));
+      for (const file of files.filter((f) => f > RETIRE)) {
+        expect(functionDefinitions(readFileSync(join(DIR, file), "utf8"), name), `${file} re-creates ${name}`).toEqual([]);
+      }
+    }
+  });
+
+  it("Learner and Sponsor experience end on the one shared experience construction", () => {
+    expect(lastDefinition("canonical_enrollment_experience")?.body).toMatch(/canonical_enrollment_experience_base/);
+    expect(lastDefinition("canonical_enrollment_experience_base")?.body).toMatch(/canonical_enrollment_progress/);
+    expect(lastDefinition("canonical_enrollment_experience_base")?.body).not.toMatch(/'weekly_participation', '\[\]'::jsonb/);
+    for (const name of ["learner_canonical_experience", "sponsor_canonical_leader_experience"]) {
+      expect(lastDefinition(name)?.body, name).toMatch(/canonical_enrollment_experience\(/);
+    }
+  });
+
+  it("sponsor_min_leaders_for_distribution has one final zero-argument signature", () => {
+    const sql = readFileSync(join(DIR, "20260918180000_retire_legacy_sponsor_sources.sql"), "utf8");
+    expect(sql).toMatch(/DROP FUNCTION IF EXISTS public\.sponsor_min_leaders_for_distribution\(uuid\)/);
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.sponsor_min_leaders_for_distribution\(\)/);
+  });
 });
+

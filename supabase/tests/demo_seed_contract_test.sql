@@ -52,8 +52,8 @@ select is((select count(*)::int from programme_enrollments where id in
  ('12121212-1212-4121-8121-000000000001','12121212-1212-4121-8121-000000000010')),2,'enrollment IDs are stable fixed IDs');
 select is((select count(*)::int from profiles where email in ('admin@demo.clariva.club','provider.1@demo.clariva.club','provider.2@demo.clariva.club')),3,'admin and providers are preserved fixtures');
 select is((select count(*)::int from user_roles r join profiles p on p.id=r.user_id where p.email like 'provider.%@demo.clariva.club' and r.role='coach'),2,'two deterministic provider roles exist');
-select has_function('public','sponsor_satisfaction_summary',array['uuid'],'numeric sponsor satisfaction RPC exists');
-select ok(has_function_privilege('authenticated','public.sponsor_satisfaction_summary(uuid)','EXECUTE'),'sponsor satisfaction RPC is callable by authenticated users');
+select hasnt_function('public','sponsor_satisfaction_summary',array['uuid'],'the legacy satisfaction engine is retired (satisfaction comes from canonical engagement)');
+select ok(has_function_privilege('authenticated','public.sponsor_canonical_enrollment_metadata(uuid,uuid,date)','EXECUTE'),'sponsor satisfaction aggregates are callable through canonical metadata');
 select is((select count(*)::int from programme_enrollments where cohort_id='11111111-1111-4111-8111-111111111114'),5,'A has five leaders');
 select is((select count(*)::int from programme_enrollments where cohort_id='11111111-1111-4111-8111-111111111115'),5,'B has five leaders');
 select is((select count(*)::int from programme_enrollments where user_id in
@@ -163,24 +163,24 @@ select is((select count(*)::int from enrollment_actions where enrollment_id='121
 select is((select count(*)::int from goal_checkins where enrollment_id='12121212-1212-4121-8121-000000000010'),0,'B5 has no check-ins');
 select ok((select status='paused' from programme_enrollments where id='12121212-1212-4121-8121-000000000005'),'A5 paused semantics');
 select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
- where n.nspname='public' and p.proname in ('sponsor_enrollment_summaries','sponsor_cohort_summaries')
+ where n.nspname='public' and p.proname in ('sponsor_canonical_enrollment_progress','sponsor_canonical_cohort_progress','sponsor_canonical_enrollment_metadata')
  and pg_get_function_result(p.oid) ~* '(^|[^a-z_])(notes?|description|title|comment|reflection|prompt|file|recording|transcript)([^a-z_]|$)'),'sponsor RPC contracts exclude private fields');
-select is((select count(*)::int from sponsor_cohort_summaries(null)),3,'sponsor sees all three demo cohorts');
-select is((select count(*)::int from sponsor_enrollment_summaries('11111111-1111-4111-8111-111111111114')),5,'sponsor sees five A enrollments');
-select is((select count(*)::int from sponsor_enrollment_summaries('11111111-1111-4111-8111-111111111115')),5,'sponsor sees five B enrollments');
-select is((select count(*)::int from sponsor_satisfaction_summary('11111111-1111-4111-8111-111111111114')),1,'sponsor satisfaction is numeric aggregate');
-select is((select rated_session_count from sponsor_satisfaction_summary('11111111-1111-4111-8111-111111111114')),
+select is((select count(*)::int from sponsor_canonical_cohort_progress(null::uuid, current_date)),3,'sponsor sees all three demo cohorts');
+select is((select count(*)::int from sponsor_canonical_enrollment_progress('11111111-1111-4111-8111-111111111114'::uuid, current_date)),5,'sponsor sees five A enrollments');
+select is((select count(*)::int from sponsor_canonical_enrollment_progress('11111111-1111-4111-8111-111111111115'::uuid, current_date)),5,'sponsor sees five B enrollments');
+select is((select count(*)::int from sponsor_canonical_enrollment_metadata('11111111-1111-4111-8111-111111111114'::uuid, null::uuid, current_date) where satisfaction_rated_count > 0 and satisfaction_avg is not null),(select count(distinct s.enrollment_id)::int from sessions s join programme_enrollments e on e.id=s.enrollment_id where e.cohort_id='11111111-1111-4111-8111-111111111114' and s.status='completed' and s.coachee_rating is not null),'sponsor satisfaction is a numeric per-enrollment aggregate (canonical engagement)');
+select is((select sum(satisfaction_rated_count)::int from sponsor_canonical_enrollment_metadata('11111111-1111-4111-8111-111111111114'::uuid, null::uuid, current_date)),
   (select count(*)::int from sessions s join programme_enrollments e on e.id=s.enrollment_id
    where e.cohort_id='11111111-1111-4111-8111-111111111114' and s.status='completed' and s.coachee_rating is not null),
   'sponsor satisfaction count reconciles to completed sessions');
-select is((select avg_rating from sponsor_satisfaction_summary('11111111-1111-4111-8111-111111111114')),
-  (select round(avg(s.coachee_rating)::numeric,2) from sessions s join programme_enrollments e on e.id=s.enrollment_id
-   where e.cohort_id='11111111-1111-4111-8111-111111111114' and s.status='completed' and s.coachee_rating is not null),
-  'sponsor satisfaction average reconciles');
-select is((select count(*)::int from sponsor_cohort_summaries(null)),3,'sponsor exact cohort total');
-select is((select count(*)::int from sponsor_enrollment_summaries('11111111-1111-4111-8111-111111111114')),5,'sponsor exact enrollment total A');
+select is((select max(satisfaction_avg) from sponsor_canonical_enrollment_metadata('11111111-1111-4111-8111-111111111114'::uuid, null::uuid, current_date)),
+  (select max(a) from (select round(avg(s.coachee_rating)::numeric,2) a from sessions s join programme_enrollments e on e.id=s.enrollment_id
+   where e.cohort_id='11111111-1111-4111-8111-111111111114' and s.status='completed' and s.coachee_rating is not null group by s.enrollment_id) x),
+  'sponsor satisfaction average reconciles to the original ratings');
+select is((select count(*)::int from sponsor_canonical_cohort_progress(null::uuid, current_date)),3,'sponsor exact cohort total');
+select is((select count(*)::int from sponsor_canonical_enrollment_progress('11111111-1111-4111-8111-111111111114'::uuid, current_date)),5,'sponsor exact enrollment total A');
 select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
- where n.nspname='public' and p.proname in ('sponsor_enrollment_summaries','sponsor_cohort_summaries')
+ where n.nspname='public' and p.proname in ('sponsor_canonical_enrollment_progress','sponsor_canonical_cohort_progress','sponsor_canonical_enrollment_metadata')
   and pg_get_function_result(p.oid) ~* '(^|[^a-z_])(notes?|description|title|comment|reflection|prompt|assignment|file|recording|transcript)([^a-z_]|$)'),
   'sponsor result contains no private text or content payload');
 select ok(not exists(select 1 from programmes where id in ('ee000000-0000-0000-0000-000000000001','ee000000-0000-0000-0000-000000000002')),'obsolete programme IDs absent');

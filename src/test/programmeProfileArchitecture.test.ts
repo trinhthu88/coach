@@ -34,6 +34,13 @@ const RETIRED_RPCS = [
   "sponsor_satisfaction_summary",
   "sponsor_satisfaction_trend",
   "sponsor_timeline",
+  // Retired in 20260918180000_retire_legacy_sponsor_sources.
+  "sponsor_enrollment_summaries",
+  "sponsor_cohort_summaries",
+  "sponsor_organisation_summary",
+  "sponsor_leader_engagement_summary",
+  "sponsor_canonical_leader_next_booking",
+  "get_admin_enrollment_progress",
 ];
 
 describe("programme profile architecture", () => {

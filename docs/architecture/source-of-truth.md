@@ -27,22 +27,65 @@ never a second answer to a business question.
 | **Feedback** | original feedback records | learner feedback source (`useLearnerFeedback`) | Author-private notes are never selected. |
 | **Triad membership** | `triad_groups` | `learner_triad_members` | Never derived from session records. |
 
+## Canonical chains
+
+```
+Completion / progress
+  canonical_module_progress (per module, internal)
+    → canonical_enrollment_progress (THE enrollment row, internal)
+        → learner_canonical_progress · sponsor_canonical_enrollment_progress · admin_canonical_enrollment_progress
+        → sponsor_canonical_leader_progress · sponsor_canonical_enrollment_metadata (+ canonical_enrollment_engagement)
+    → sponsor_canonical_cohort_progress_one / sponsor_canonical_cohort_progress (sums canonical enrollment rows)
+        → sponsor_canonical_organisation_progress (sums visible cohort rows)
+
+Journey:     sponsor_canonical_module_schedule → canonical_enrollment_journey → learner_ / sponsor_canonical_leader_ / admin_canonical_enrollment_journey
+Experience:  canonical_enrollment_progress + schedule + activity → canonical_enrollment_experience_base → canonical_enrollment_experience
+             → learner_canonical_experience · sponsor_canonical_leader_experience
+Schedule state: cohort_programme_schedule_state → canonical_enrollment_schedule_state → learner_ / sponsor_canonical_leader_ / admin_canonical_schedule_state
+```
+
+Rollups only aggregate canonical rows (sums, counts of effective status and pace). They never recompute module progress, goal progress, overdue, adherence or status.
+
 ## Table / function classification
 
-| Object | Class | Status |
+| Object | Class | Canonical replacement / note |
 |---|---|---|
-| `programme_modules` | canonical | Requirements + default policy |
-| `cohort_requirement_dates` | canonical | Cohort due dates (non-Training) |
-| `training_weeks`, `cohort_week_overrides` | canonical | Training cohort timing |
-| `session_activity_attributions` | canonical | Completion evidence |
-| `enrollment_module_snapshots`, `enrollment_module_milestones` | **historical / derived** | Record of the module configuration and milestone at enrollment time; used for activity-to-milestone attribution history. **Not** a current requirement, due date or completion source. |
-| `get_enrollment_progress` | **historical** | Snapshot progress engine. Not client-callable. |
-| `generate_enrollment_schedule`, `attribute_activity_to_cadence_milestone`, `backfill_enrollment_schedule_snapshots` | historical infrastructure | Maintain the snapshot history only. |
-| `get_admin_enrollment_progress` | projection | Compatibility projection of `admin_canonical_enrollment_progress`. |
-| `sponsor_enrollment_summaries`, `sponsor_cohort_summaries`, `sponsor_organisation_summary`, `sponsor_leader_engagement_summary` | legacy projections | Not used by the app. Unit progress comes from `canonical_module_progress`; goal progress uses the canonical goal rule. New code must use the `sponsor_canonical_*` RPCs. |
-| `sponsor_*_cadence_items`, `sponsor_*_legacy`, `sponsor_metric_rows*`, `sponsor_enrollment_next_session`, `sponsor_leader_programme_history` | **retired** | Not client-callable. These exist only on hosted production, created outside the migration chain (schema drift). |
-| `programme_enrollments.progress_pct` | **deprecated** | Not maintained, always NULL. Use `canonical_enrollment_progress.full_completion_pct`. |
-| `20260918090000_sponsor_canonical_calendar_followup.sql` | superseded | Intentional no-op; its dynamic-schedule redefinition must never apply. |
+| `programme_modules` | CANONICAL | Requirements + default policy |
+| `cohort_requirement_dates` | CANONICAL | Cohort due dates (non-Training) |
+| `training_weeks`, `cohort_week_overrides` | CANONICAL | Training cohort timing. For requirement dates the precedence is cohort override → cohort calendar → programme template date. |
+| `session_activity_attributions` | CANONICAL | Completion evidence |
+| `canonical_module_progress`, `canonical_enrollment_progress`, `canonical_enrollment_journey`, `canonical_enrollment_experience(_base)`, `canonical_enrollment_engagement`, `canonical_goal_progress`, `canonical_training_learning_items`, `canonical_learning_breakdown`, `sponsor_canonical_module_schedule`, `sponsor_canonical_activity`, `cohort_programme_schedule_state`, `canonical_enrollment_schedule_state`, `cohort_requirement_proposal_internal` | CANONICAL (INTERNAL) | Shared constructions. Not client-callable. |
+| `learner_canonical_*`, `sponsor_canonical_*`, `admin_canonical_*` | CANONICAL wrappers | Role eligibility only |
+| `get_sponsor_programme_progress`, `get_sponsor_programme_journey`, `sponsor_canonical_cohort_progress_one` | INTERNAL | Projections used inside canonical functions; not client-callable |
+| `attribute_activity_to_cadence_milestone`, `generate_enrollment_schedule`, `backfill_enrollment_schedule_snapshots` | INTERNAL / HISTORICAL | Maintain the snapshot history only |
+| `enrollment_module_snapshots`, `enrollment_module_milestones` | HISTORICAL / DERIVED | Enrollment-time record for activity-to-milestone attribution. Never current requirements, dates or completion. |
+| `get_enrollment_progress` | HISTORICAL | Snapshot progress engine; not client-callable |
+| `programme_enrollments.progress_pct` | DEPRECATED | Not maintained (maintenance functions dropped), always NULL. Use `canonical_enrollment_progress.full_completion_pct`. |
+| `sponsor_min_leaders_for_distribution()` | CANONICAL | Single zero-argument signature |
+| Learner Training page unlock (`get_enrollment_training_weeks`, `get_my_training_weeks`) | CONTENT ACCESS | Unlocks content from the learner's own enrollment start. This is a content-availability rule, not a requirement due date. |
+| `20260918090000_sponsor_canonical_calendar_followup.sql` | RETIRED | Intentional no-op |
+
+### Retired (dropped in `20260918180000_retire_legacy_sponsor_sources`)
+
+| Retired | Canonical replacement |
+|---|---|
+| `sponsor_enrollment_summaries` | `sponsor_canonical_enrollment_progress` / `sponsor_canonical_enrollment_metadata` |
+| `sponsor_cohort_summaries`, `sponsor_cohort_summaries_legacy`* | `sponsor_canonical_cohort_progress` |
+| `sponsor_organisation_summary`, `sponsor_organisation_summary_legacy`* | `sponsor_canonical_organisation_progress` |
+| `sponsor_metric_rows`*, `sponsor_metric_rows_legacy`*, `sponsor_satisfaction_summary`, `sponsor_satisfaction_events`*, `sponsor_normalize_satisfaction`* | `canonical_enrollment_engagement` satisfaction fields (via `sponsor_canonical_enrollment_metadata`) |
+| `sponsor_leader_engagement_summary` | `sponsor_canonical_enrollment_metadata` |
+| `sponsor_leader_cadence_items`*, `sponsor_cohort_cadence_items`* | `canonical_enrollment_journey` |
+| `sponsor_enrollment_next_session`*, `sponsor_canonical_leader_next_booking` | `canonical_enrollment_experience` → `coaching_utilisation.next_session_at` |
+| `sponsor_leader_programme_history`* | `sponsor_canonical_leader_progress` |
+| `sponsor_canonical_leader_experience_base`, `sponsor_canonical_leader_experience_legacy`, `learner_canonical_experience_legacy` | `canonical_enrollment_experience` |
+| `get_admin_enrollment_progress` | `admin_canonical_enrollment_progress` |
+| `compute_leader_progress`, `refresh_all_progress_pct`, `trg_update_progress_from_session`, `trg_update_progress_from_training` | none (`progress_pct` is deprecated) |
+
+\* existed only on hosted production (not created by any repository migration).
+
+### Known production-only exception
+
+The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status` functions and 5 `demo_*` tables) exists only on hosted production. It answers no programme business fact. Only `get_demo_organization_status` is client-callable, and it is Admin/service-role gated. Pending a decision: bring it under migration control, or remove it.
 
 ## Rules for new code
 

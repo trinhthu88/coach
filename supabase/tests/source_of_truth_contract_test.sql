@@ -3,7 +3,7 @@
 -- never change a number, a date or a state.
 begin;
 
-select plan(38);
+select plan(43);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -128,6 +128,64 @@ select is((select count(distinct journey)::int from facts), 1,
 select is((select count(distinct schedule)::int from facts), 1,
   'identical schedule state for Admin, Learner and Sponsor');
 
+-- Experience (weekly participation, learning breakdown, coaching utilisation
+-- incl. next session) and per-module progress: one construction.
+create temporary table experience_facts (role text, experience jsonb, modules jsonb);
+grant all on experience_facts to authenticated;
+select set_config('request.jwt.claim.sub', 'a7700000-0000-0000-0000-000000000001', true);
+set local role authenticated;
+insert into experience_facts select 'learner',
+  public.learner_canonical_experience('e7700000-0000-0000-0000-000000000001', date '2026-04-01'),
+  (select jsonb_agg(jsonb_build_object('module', m.module, 'required', m.required_units, 'completed', m.completed_units, 'due', m.due_units) order by m.module)
+   from public.learner_canonical_module_progress('e7700000-0000-0000-0000-000000000001', date '2026-04-01') m);
+select set_config('request.jwt.claim.sub', 'a7700000-0000-0000-0000-000000000099', true);
+insert into experience_facts select 'sponsor',
+  public.sponsor_canonical_leader_experience('e7700000-0000-0000-0000-000000000001', date '2026-04-01'),
+  (select jsonb_build_array(
+     jsonb_build_object('module', 'coaching', 'required', p.coaching_required_units, 'completed', p.coaching_completed_units, 'due', p.coaching_due_units),
+     jsonb_build_object('module', 'mentoring', 'required', p.mentoring_required_units, 'completed', p.mentoring_completed_units, 'due', p.mentoring_due_units))
+   from public.sponsor_canonical_leader_progress('e7700000-0000-0000-0000-000000000001', date '2026-04-01') p);
+reset role;
+
+select is(
+  (select experience from experience_facts where role = 'learner'),
+  (select experience from experience_facts where role = 'sponsor'),
+  'Learner and Sponsor receive the identical experience (weekly participation, learning breakdown, coaching utilisation)');
+select ok(
+  (select jsonb_array_length(experience->'weekly_participation') > 0
+      and (experience->'coaching_utilisation'->>'required_units')::int = 4
+      and experience->'coaching_utilisation' ? 'next_session_at'
+   from experience_facts where role = 'sponsor'),
+  'the Sponsor experience carries real weekly participation and coaching utilisation (never an empty stub)');
+select is(
+  (select modules from experience_facts where role = 'learner'),
+  (select modules from experience_facts where role = 'sponsor'),
+  'per-module progress is identical for Learner and Sponsor');
+
+-- Rollups aggregate the canonical enrollment rows; they never recompute.
+select set_config('request.jwt.claim.sub', 'a7700000-0000-0000-0000-000000000099', true);
+set local role authenticated;
+select ok(
+  (select c.required_units = e.required_units and c.completed_units = e.completed_units
+      and c.due_units = e.due_units and c.overdue_units = e.overdue_units
+      and c.coaching_completed_units = e.coaching_completed_units
+      and c.at_risk_count = e.at_risk and c.behind_count = e.behind
+   from public.sponsor_canonical_cohort_progress('d7700000-0000-0000-0000-000000000001', date '2026-04-01') c,
+   (select sum(required_units)::int required_units, sum(completed_units)::int completed_units,
+           sum(due_units)::int due_units, sum(overdue_units)::int overdue_units,
+           sum(coaching_completed_units)::int coaching_completed_units,
+           count(*) filter (where effective_enrollment_status = 'at_risk')::int at_risk,
+           count(*) filter (where pace_status = 'behind')::int behind
+    from public.sponsor_canonical_enrollment_progress('d7700000-0000-0000-0000-000000000001', date '2026-04-01')) e),
+  'the cohort rollup is exactly the aggregation of the canonical enrollment rows');
+select ok(
+  (select o.required_units = c.required_units and o.completed_units = c.completed_units and o.due_units = c.due_units
+   from public.sponsor_canonical_organisation_progress(date '2026-04-01') o,
+   (select sum(required_units)::int required_units, sum(completed_units)::int completed_units, sum(due_units)::int due_units
+    from public.sponsor_canonical_cohort_progress(null::uuid, date '2026-04-01') where not suppressed) c),
+  'the organisation rollup is exactly the aggregation of the visible cohort rollups');
+reset role;
+
 -- Requirement due dates: the journey dates ARE the stored cohort dates.
 select is(
   (select array_agg(distinct due_on order by due_on) from public.cohort_requirement_dates where cohort_id = 'd7700000-0000-0000-0000-000000000001'),
@@ -137,8 +195,8 @@ select is(
 select is(
   (select array_agg(due_on order by ordinal) from public.cohort_requirement_dates
    where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'mentoring'),
-  array[date '2026-02-02', date '2026-03-09'],
-  'Training-linked Mentoring dates were generated from the Training weeks (with the cohort week override)'
+  array[date '2026-01-05', date '2026-03-09'],
+  'Training-linked Mentoring dates were generated from the cohort Training calendar (override wins; the programme template date 2026-02-02 does not)'
 );
 
 -- ---------------------------------------------------------------------------
@@ -222,13 +280,14 @@ grant select on canonical_goal to authenticated;
 select set_config('request.jwt.claim.sub', 'a7700000-0000-0000-0000-000000000099', true);
 set local role authenticated;
 select is(
-  (select goal_progress_pct from public.sponsor_enrollment_summaries('d7700000-0000-0000-0000-000000000001') where enrollment_id = 'e7700000-0000-0000-0000-000000000001'),
+  (select goal_progress_pct from public.sponsor_canonical_enrollment_metadata('d7700000-0000-0000-0000-000000000001'::uuid, 'e7700000-0000-0000-0000-000000000001'::uuid, date '2026-04-01')),
   (select goal_progress_pct from canonical_goal),
-  'the older Sponsor summary uses the canonical goal-progress rule (archived goal excluded)');
+  'Sponsor metadata uses the canonical goal-progress rule (archived goal excluded)');
+select set_config('request.jwt.claim.sub', 'a7700000-0000-0000-0000-000000000001', true);
 select is(
-  (select goal_progress_pct from public.sponsor_leader_engagement_summary('e7700000-0000-0000-0000-000000000001')),
+  (select goal_progress_pct from public.learner_canonical_engagement('e7700000-0000-0000-0000-000000000001')),
   (select goal_progress_pct from canonical_goal),
-  'the Sponsor engagement summary projects canonical engagement');
+  'the learner engagement uses the same canonical engagement');
 select throws_ok(
   $$select * from public.get_enrollment_progress('e7700000-0000-0000-0000-000000000001', current_date)$$,
   '42501', null, 'the historical snapshot engine is not a client-facing source');

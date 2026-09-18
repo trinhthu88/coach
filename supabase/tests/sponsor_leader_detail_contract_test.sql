@@ -1,7 +1,10 @@
 -- Sponsor Leader Detail canonical contract: enrollment scoping, no
 -- cross-enrollment leakage, current-Admin/real-activity sourcing, and
 -- privacy-safe output for sponsor_canonical_leader_progress,
--- sponsor_canonical_leader_journey and sponsor_leader_engagement_summary.
+-- sponsor_canonical_leader_journey, sponsor_canonical_leader_experience and the
+-- canonical engagement fields of sponsor_canonical_enrollment_metadata
+-- (sponsor_leader_engagement_summary was retired in
+-- 20260918180000_retire_legacy_sponsor_sources).
 --
 -- Reuses the Emerging Leaders / Cohort C fixture from seed.sql: Leader C1
 -- (enrollment 14141414-1414-4141-8141-000000000001) finishes every
@@ -21,7 +24,13 @@ select plan(33);
 select ok(
   pg_get_functiondef(
     'public.sponsor_canonical_leader_progress(uuid,date)'::regprocedure
-  ) ~ 'get_sponsor_programme_progress',
+  ) ~ 'sponsor_canonical_enrollment_progress'
+    AND pg_get_functiondef(
+      'public.sponsor_canonical_enrollment_progress(uuid,date)'::regprocedure
+    ) ~ 'canonical_enrollment_progress'
+    AND pg_get_functiondef(
+      'public.canonical_enrollment_progress(uuid,date)'::regprocedure
+    ) ~ 'canonical_module_progress',
   'leader progress uses the current Admin/activity source'
 );
 -- The leader journey delegates to the one shared journey construction
@@ -43,7 +52,7 @@ select ok(
 -- (canonical_enrollment_engagement → canonical_goal_progress / enrollment_actions).
 select ok(
   pg_get_functiondef(
-    'public.sponsor_leader_engagement_summary(uuid)'::regprocedure
+    'public.sponsor_canonical_enrollment_metadata(uuid,uuid,date)'::regprocedure
   ) ~ 'canonical_enrollment_engagement' AND pg_get_functiondef(
     'public.canonical_enrollment_engagement(uuid)'::regprocedure
   ) ~ 'canonical_goal_progress' AND pg_get_functiondef(
@@ -61,20 +70,23 @@ select ok(
 );
 select ok(
   pg_get_functiondef(
-    'public.sponsor_leader_engagement_summary(uuid)'::regprocedure
+    'public.canonical_enrollment_engagement(uuid)'::regprocedure
   ) !~ 'coach_id|coach_notes|coach_private_notes|coachee_notes|coachee_rating_comment|\.title|\.description',
   'leader engagement summary never selects coach identity, notes, or goal/action wording'
 );
 select ok(
   pg_get_functiondef(
     'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
-  ) ~ 'sponsor_canonical_module_schedule'
+  ) ~ 'canonical_enrollment_experience'
     AND pg_get_functiondef(
-      'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
+      'public.canonical_enrollment_experience_base(uuid,date)'::regprocedure
+    ) ~ 'sponsor_canonical_module_schedule'
+    AND pg_get_functiondef(
+      'public.canonical_enrollment_experience_base(uuid,date)'::regprocedure
     ) ~ 'sponsor_canonical_activity'
     AND pg_get_functiondef(
-      'public.sponsor_canonical_leader_experience(uuid,date)'::regprocedure
-    ) ~ 'training_progress|assignment_submissions|reflection_submissions|daily_prompt_responses',
+      'public.canonical_enrollment_experience(uuid,date)'::regprocedure
+    ) ~ 'canonical_learning_breakdown',
   'leader experience uses canonical schedule/activity and enrollment-owned learning completion'
 );
 select ok(
@@ -173,30 +185,30 @@ select is(
 
 -- Goals/actions/satisfaction aggregate scoping and null-vs-zero semantics.
 select is(
-  (select open_action_count from public.sponsor_leader_engagement_summary(
-     '14141414-1414-4141-8141-000000000001'::uuid)),
+  (select open_action_count from public.sponsor_canonical_enrollment_metadata(
+     null::uuid, '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   0, 'Leader C1 has zero open actions (both seeded actions are completed)');
 select is(
-  (select completed_action_count from public.sponsor_leader_engagement_summary(
-     '14141414-1414-4141-8141-000000000001'::uuid)),
+  (select completed_action_count from public.sponsor_canonical_enrollment_metadata(
+     null::uuid, '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   2, 'Leader C1 completed-action count reconciles to the seed fixture');
 select is(
-  (select action_completion_pct from public.sponsor_leader_engagement_summary(
-     '14141414-1414-4141-8141-000000000001'::uuid)),
+  (select action_completion_pct from public.sponsor_canonical_enrollment_metadata(
+     null::uuid, '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   100.0, 'Leader C1 action completion is a real 100%, not a coerced default');
 select is(
-  (select goal_count from public.sponsor_leader_engagement_summary(
-     '14141414-1414-4141-8141-000000000001'::uuid)),
+  (select goal_count from public.sponsor_canonical_enrollment_metadata(
+     null::uuid, '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   1, 'Leader C1 goal count reconciles to the seed fixture (one seeded leadership goal)');
 select is(
-  (select goal_progress_pct from public.sponsor_leader_engagement_summary(
-     '14141414-1414-4141-8141-000000000001'::uuid)),
+  (select goal_progress_pct from public.sponsor_canonical_enrollment_metadata(
+     null::uuid, '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)),
   NULL::numeric,
   'Leader C1 goal progress is null (unavailable, no rated goal), never coerced to zero'
 );
 select is(
-  (select count(*)::integer from public.sponsor_leader_engagement_summary(
-     '14141414-1414-4141-8141-000000000002'::uuid)),
+  (select count(*)::integer from public.sponsor_canonical_enrollment_metadata(
+     null::uuid, '14141414-1414-4141-8141-000000000002'::uuid, '2026-07-06'::date)),
   1, 'Leader C2''s engagement summary is independently scoped and also returns exactly one row'
 );
 
@@ -271,8 +283,8 @@ select is(
      '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-06'::date)),
   0, 'a nonexistent enrollment id returns no rows');
 select is(
-  (select count(*)::integer from public.sponsor_leader_engagement_summary(
-     '00000000-0000-0000-0000-000000000000'::uuid)),
+  (select count(*)::integer from public.sponsor_canonical_enrollment_metadata(
+     null::uuid, '00000000-0000-0000-0000-000000000000'::uuid, '2026-07-06'::date)),
   0, 'engagement summary returns no rows for a nonexistent enrollment');
 select is(
   public.sponsor_canonical_leader_journey(

@@ -1,6 +1,6 @@
 begin;
 
-select plan(50);
+select plan(51);
 
 select ok(
   pg_get_functiondef(
@@ -42,7 +42,10 @@ select ok(
 select ok(
   pg_get_functiondef(
     'public.sponsor_canonical_enrollment_progress(uuid,date)'::regprocedure
-  ) ~ 'get_sponsor_programme_progress',
+  ) ~ 'canonical_enrollment_progress'
+    AND pg_get_functiondef(
+      'public.canonical_enrollment_progress(uuid,date)'::regprocedure
+    ) ~ 'canonical_module_progress',
   'canonical enrollment progress uses the current Admin/activity source'
 );
 select ok(
@@ -170,10 +173,18 @@ select is(
 set local role authenticated;
 
 -- A temporary Admin change must affect Sponsor denominators immediately,
--- without rebuilding historical enrollment snapshots.
+-- without rebuilding historical enrollment snapshots. The canonical Training
+-- requirement is the set of selected Training weeks (canonical_training_
+-- learning_items), so the Admin change deselects one of the six weeks.
 reset role;
+create temporary table training_config_before as
+select config from public.programme_modules
+where programme_id = '11111111-1111-4111-8111-111111111118'::uuid and module = 'training';
 update public.programme_modules
-set config = jsonb_set(config, '{required_units}', '5'::jsonb)
+set config = jsonb_set(
+      jsonb_set(config, '{required_units}', '5'::jsonb),
+      '{distribution_settings,training_week_ids}',
+      (config->'distribution_settings'->'training_week_ids') - 5)
 where programme_id = '11111111-1111-4111-8111-111111111118'::uuid
   and module = 'training';
 set local role authenticated;
@@ -186,6 +197,12 @@ select is(
   5,
   'canonical enrollment denominator follows current Admin configuration'
 );
+-- Restore the six-week selection for the rest of this fixture.
+reset role;
+update public.programme_modules
+set config = (select config from training_config_before)
+where programme_id = '11111111-1111-4111-8111-111111111118'::uuid and module = 'training';
+set local role authenticated;
 
 -- Training-linked dates use the configured cohort override rather than an
 -- inferred week number or the historical enrollment snapshot.
@@ -366,8 +383,12 @@ select is(
   'suppressed cohorts expose no enrollment detail rows'
 );
 
--- Raw historical activity is not capped at the Admin requirement. Only the
--- percentage and booked/schedule capacity fields remain bounded.
+-- Over-requirement activity. Canonical contract: completed units are capped at
+-- the Admin requirement for every role (so Sponsor, Learner and Admin all show
+-- 4/4, as the Demo Learner's 4 peer records show 2/2); the raw attributed
+-- activity remains recorded and visible as completed_activity_units. (The
+-- former uncapped 5 / 17 / 19 / 74 expectations predate the requirement-capped
+-- canonical engine, 20260917160000_sponsor_requirement_capped_progress.)
 reset role;
 insert into public.session_activity_attributions (
   enrollment_id, module, source_activity_type, source_activity_id, occurred_on
@@ -386,17 +407,26 @@ select is(
      '11111111-1111-4111-8111-111111111119'::uuid,
      '2026-07-05'::date)
    where learner_display_name = 'Leader C1'),
-  5,
-  'leader raw completed coaching activity can exceed its four-unit requirement'
+  4,
+  'leader canonical completed coaching stays capped at its four-unit requirement'
 );
+reset role;
+select is(
+  (select completed_activity_units from public.canonical_module_progress(
+     '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)
+   where module = 'coaching'),
+  5,
+  'the extra attributed activity remains visible as raw completed_activity_units'
+);
+set local role authenticated;
 select is(
   (select completed_units
    from public.sponsor_canonical_enrollment_progress(
      '11111111-1111-4111-8111-111111111119'::uuid,
      '2026-07-05'::date)
    where learner_display_name = 'Leader C1'),
-  17,
-  'leader raw completed total reconciles to uncapped module activity'
+  16,
+  'leader canonical completed total is the capped module sum'
 );
 select ok(
   (select full_completion_pct <= 100
@@ -421,8 +451,8 @@ select is(
    from public.sponsor_canonical_cohort_progress(
      '11111111-1111-4111-8111-111111111119'::uuid,
      '2026-07-05'::date)),
-  19,
-  'cohort raw coaching total includes the extra attributed activity'
+  18,
+  'cohort coaching total is the sum of capped canonical leader rows'
 );
 select is(
   (select completed_units
@@ -440,8 +470,8 @@ select is(
    from public.sponsor_canonical_cohort_progress(
      '11111111-1111-4111-8111-111111111119'::uuid,
      '2026-07-05'::date)),
-  74,
-  'cohort raw completed total increases from 73 to 74'
+  73,
+  'cohort completed total is unchanged by over-requirement activity'
 );
 select ok(
   (select full_completion_pct <= 100
@@ -487,9 +517,9 @@ select is(
 select ok(
   pg_get_functiondef(
     'public.sponsor_canonical_activity(uuid)'::regprocedure
-  ) ~ 'training_week_activity'
+  ) ~ 'canonical_training_learning_items'
     AND pg_get_functiondef(
-      'public.sponsor_canonical_activity(uuid)'::regprocedure
+      'public.canonical_training_learning_items(uuid,date)'::regprocedure
     ) !~ 'assignment_type',
   'training activity rolls up selected learning records by week without a hard-coded assignment type'
 );
