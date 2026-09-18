@@ -54,6 +54,10 @@ export function useTriadSession() {
 
   const invalidate = (sessionId?: string) => {
     queryClient.invalidateQueries({ queryKey: ["my-triads"] });
+    queryClient.invalidateQueries({ queryKey: ["triad-session-entry"] });
+    // A triad status change moves session history and canonical triad progress.
+    queryClient.invalidateQueries({ queryKey: ["enrollment-sessions-view"] });
+    queryClient.invalidateQueries({ queryKey: ["learner-canonical-progress"] });
     if (sessionId) queryClient.invalidateQueries({ queryKey: ["triad-alt-proposals", sessionId] });
   };
 

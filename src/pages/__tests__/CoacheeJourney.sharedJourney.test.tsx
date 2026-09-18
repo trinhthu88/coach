@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { canonicalExperience, canonicalJourney, canonicalProgress, ENROLLMENT_ID } from "@/test/fixtures/canonicalEnrollment";
+import { reflectionFeedFixture } from "@/test/fixtures/reflectionFeed";
 
 const state = vi.hoisted(() => ({
   feedbackError: null as string | null,
@@ -10,6 +11,9 @@ const state = vi.hoisted(() => ({
   ratings: {} as Record<string, unknown>,
   goalProgress: {} as Record<string, number | null>,
   canonicalCalls: [] as Array<string | undefined>,
+  reflections: [] as unknown[],
+  reflectionsError: null as string | null,
+  reflectionFeedCalls: [] as Array<string | undefined>,
 }));
 
 vi.mock("@/context/AuthContext", () => ({
@@ -40,6 +44,13 @@ vi.mock("@/hooks/journey/useJourneyReflections", () => ({
 }));
 vi.mock("@/hooks/journey/useEnrollmentDevelopmentJourney", () => ({
   useEnrollmentDevelopmentJourney: () => ({ events: [], loading: false, error: null, partialFailure: false }),
+}));
+vi.mock("@/hooks/journey/useLearnerReflectionFeed", () => ({
+  LEARNER_REFLECTION_FEED_KEY: "learner-reflection-feed",
+  useLearnerReflectionFeed: (enrollmentId: string | undefined) => {
+    state.reflectionFeedCalls.push(enrollmentId);
+    return { reflections: state.reflections, loading: false, error: state.reflectionsError };
+  },
 }));
 vi.mock("@/hooks/dashboard/useLearnerFeedback", () => ({
   useLearnerFeedback: () => ({ feedback: state.feedback, loading: false, error: state.feedbackError }),
@@ -75,6 +86,9 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     state.ratings = {};
     state.goalProgress = {};
     state.canonicalCalls = [];
+    state.reflections = [];
+    state.reflectionsError = null;
+    state.reflectionFeedCalls = [];
   });
 
   it("renders the shared full journey from the canonical learner source for the selected enrollment", () => {
@@ -123,5 +137,51 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     const { container } = renderPage();
     const bar = container.querySelector("#goal-goal-1 [style*='width']") as HTMLElement;
     expect(bar.style.width).toBe("48%");
+  });
+
+  it("renders the canonical reflection feed with each item's source, date, rating change and link", () => {
+    state.reflections = reflectionFeedFixture;
+    renderPage();
+    expect(state.reflectionFeedCalls).toContain(ENROLLMENT_ID);
+    const list = screen.getByTestId("journey-reflections");
+    const items = within(list).getAllByTestId("reflection-item");
+    expect(items.map((i) => i.getAttribute("data-source"))).toEqual([
+      "journey_reflection",
+      "goal_checkin",
+      "triad_reflection",
+      "mentoring_session_reflection",
+      "peer_session_reflection",
+      "training_reflection",
+      "coaching_session_reflection",
+    ]);
+    for (const label of [
+      "Coaching · Session reflection",
+      "Peer coaching · Session reflection",
+      "Mentoring · Session reflection",
+      "Triad · Session reflection",
+      "Goal · Check-in",
+      "Training / Learning · Reflection prompt",
+      "Journey · Personal reflection",
+    ]) {
+      expect(within(list).getByText(label)).toBeInTheDocument();
+    }
+    const checkin = items[1];
+    expect(within(checkin).getByText("Lead weekly one-to-ones")).toBeInTheDocument();
+    expect(within(checkin).getByText("Rating 7 → 8")).toBeInTheDocument();
+    expect(within(checkin).getByText("Goal check-in: I noticed that I delegate more.")).toBeInTheDocument();
+    expect(within(checkin).getByRole("link")).toHaveAttribute("href", "/sessions/s2");
+    expect(within(items[2]).getByText("What I learned as coach")).toBeInTheDocument();
+    expect(within(items[3]).getByRole("link")).toHaveAttribute("href", "/mentoring/sessions/m1");
+    expect(within(items[4]).getByRole("link")).toHaveAttribute("href", "/sessions/p1?type=coachee_peer");
+    expect(within(items[5]).getByText("What did you try?")).toBeInTheDocument();
+    expect(within(items[0]).getByText("Only you")).toBeInTheDocument();
+    // Only explicit journey reflections are deletable from here.
+    expect(within(list).getAllByRole("button", { name: "Delete reflection" })).toHaveLength(1);
+  });
+
+  it("shows a reflection load failure as an error, not as an empty reflection list", () => {
+    state.reflectionsError = "boom";
+    renderPage();
+    expect(within(screen.getByTestId("journey-reflections")).getByRole("alert")).toHaveTextContent("Your reflections could not be loaded.");
   });
 });

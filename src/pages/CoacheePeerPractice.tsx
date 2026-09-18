@@ -63,6 +63,13 @@ export default function CoacheePeerPractice() {
 
       <MyPeerPracticeSection />
 
+      {/* Partner availability (profiles opted in to peer practice) — who can be
+          booked NOW. Not session history: that is the section above. */}
+      <div data-testid="peer-partners">
+        <h2 className="font-display text-lg">{t("coacheePeerPractice.partnersTitle")}</h2>
+        <p className="mt-0.5 text-[11.5px] text-muted-foreground">{t("coacheePeerPractice.partnersSubtitle")}</p>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />

@@ -29,6 +29,7 @@ export interface TriadSessionRow {
 }
 
 export interface TriadRoundEntry {
+  /** The admin-configured round. Null for groups created before rounds existed (triad_round_id IS NULL) — their sessions are still real history. */
   round: {
     id: string;
     round_number: number;
@@ -37,7 +38,9 @@ export interface TriadRoundEntry {
     completion_deadline: string;
     training_week_id: string | null;
     training_weeks: { title: string; title_vi: string | null; week_number: number } | null;
-  };
+  } | null;
+  /** round.round_number, else the group's own round_number. */
+  roundNumber: number | null;
   group: TriadGroupMembers & { group_language: string };
   session: TriadSessionRow | null;
   members: TriadMemberProfile[];
@@ -122,16 +125,81 @@ export function useMyTriads() {
           const session = latestSessionByGroup.get(g.id) ?? null;
           return {
             round: g.triad_rounds,
+            roundNumber: g.triad_rounds?.round_number ?? null,
             group: { id: g.id, group_language: g.group_language, member_1_id: g.member_1_id, member_2_id: g.member_2_id, member_3_id: g.member_3_id },
             session,
             members: memberIdList.map((id) => profileById.get(id)).filter(Boolean) as TriadMemberProfile[],
             reflectionSubmitted: session ? reflectedSessionIds.has(session.id) : false,
           };
         })
-        .sort((a, b) => a.round.round_number - b.round.round_number);
+        .sort((a, b) => (a.roundNumber ?? 0) - (b.roundNumber ?? 0));
     },
     enabled: !!user,
   });
 
   return { rounds: query.data ?? [], loading: query.isLoading, error: query.isError, refetch: query.refetch };
+}
+
+/**
+ * One triad session resolved by id — for the session detail route. Unlike
+ * useMyTriads (current round-based groups, latest session per group), this
+ * resolves ANY triad session the learner belongs to, including sessions in
+ * legacy groups with no configured round and earlier sessions of a group,
+ * so every triad row shown in Your Sessions / session history can open.
+ */
+export function useTriadSessionEntry(sessionId: string | undefined) {
+  const { user } = useAuth();
+
+  const query = useQuery({
+    queryKey: ["triad-session-entry", sessionId, user?.id],
+    queryFn: async (): Promise<TriadRoundEntry | null> => {
+      const uid = user!.id;
+      const { data: row, error } = await supabase
+        .from("triad_sessions")
+        .select(
+          "id, status, proposed_start_time, proposed_end_time, proposed_by, member_1_response, member_2_response, member_3_response, meeting_url, notes, " +
+            "triad_groups(id, group_language, member_1_id, member_2_id, member_3_id, round_number, " +
+            "triad_rounds(id, round_number, title, title_vi, completion_deadline, training_week_id, training_weeks(title, title_vi, week_number)))",
+        )
+        .eq("id", sessionId as string)
+        .maybeSingle();
+      if (error) throw error;
+      if (!row) return null;
+
+      interface RawSession extends TriadSessionRow {
+        triad_groups:
+          | (TriadGroupMembers & { group_language: string; round_number: number | null; triad_rounds: TriadRoundEntry["round"] })
+          | null;
+      }
+      const raw = row as unknown as RawSession;
+      const group = raw.triad_groups;
+      if (!group) return null;
+      const memberIds = [group.member_1_id, group.member_2_id, group.member_3_id].filter(Boolean) as string[];
+      if (!memberIds.includes(uid)) return null;
+
+      const [{ data: profiles }, { data: reflections }] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, avatar_url").in("id", memberIds),
+        supabase.from("triad_reflections").select("id").eq("participant_id", uid).eq("triad_session_id", raw.id),
+      ]);
+      const profileById = new Map((profiles ?? []).map((p) => [p.id, p as TriadMemberProfile]));
+      const { triad_groups: _group, ...session } = raw;
+      return {
+        round: group.triad_rounds ?? null,
+        roundNumber: group.triad_rounds?.round_number ?? group.round_number ?? null,
+        group: {
+          id: group.id,
+          group_language: group.group_language,
+          member_1_id: group.member_1_id,
+          member_2_id: group.member_2_id,
+          member_3_id: group.member_3_id,
+        },
+        session: session as TriadSessionRow,
+        members: memberIds.map((id) => profileById.get(id)).filter(Boolean) as TriadMemberProfile[],
+        reflectionSubmitted: (reflections ?? []).length > 0,
+      };
+    },
+    enabled: !!user && !!sessionId,
+  });
+
+  return { entry: query.data ?? null, loading: query.isLoading, error: query.isError, refetch: query.refetch };
 }

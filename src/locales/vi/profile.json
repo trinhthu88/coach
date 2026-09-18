@@ -106,7 +106,11 @@
     "noUpcoming": "Chưa có session sắp tới nào được đặt.",
     "completed": "Session đã hoàn thành",
     "feedback": "Phản hồi bạn đã nhận",
-    "noFeedback": "Chưa có phản hồi nào."
+    "noFeedback": "Chưa có phản hồi nào.",
+    "historyTitle": "Các session thực hành đồng hành của tôi",
+    "historySummary_other": "{{count}} session trong lịch sử · {{evidence}} được tính vào chương trình · Peer coaching {{completed}}/{{required}}",
+    "historyError": "Không thể tải các session thực hành đồng hành.",
+    "noHistory": "Chưa có session thực hành đồng hành nào."
   },
   "coacheePeerPractice": {
     "header": {
@@ -115,7 +119,7 @@
       "titleEmphasis": "đồng cấp",
       "subtitle": "Các học viên đã tham gia thực hành đồng cấp. Đặt một buổi để cùng thực hành."
     },
-    "empty": "Hiện chưa có đối tác thực hành đồng cấp nào khả dụng. Vui lòng quay lại sau.",
+    "empty": "Hiện chưa có bạn đồng hành nào để đặt lịch. Điều này không ảnh hưởng đến lịch sử session ở trên.",
     "defaultTitle": "Đối tác thực hành đồng cấp",
     "book": "Đặt lịch",
     "retry": "Thử lại",
@@ -152,6 +156,8 @@
         "title": "Không tìm thấy đối tác",
         "back": "Về danh sách thực hành đồng cấp"
       }
-    }
+    },
+    "partnersTitle": "Bạn đồng hành có thể đặt lịch ngay",
+    "partnersSubtitle": "Các coachee đang tham gia thực hành đồng hành."
   }
 }

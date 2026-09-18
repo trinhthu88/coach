@@ -102,4 +102,29 @@ describe("programme profile architecture", () => {
   it("the learner checkpoint detail derives no units of its own", () => {
     expect(read("components/programme/LearnerProgrammeJourney.tsx")).not.toMatch(/required_units\s*-|-\s*point\.completed_units/);
   });
+
+  it("enrollment-scoped learner session lists read the canonical history projection only", () => {
+    const hook = read("hooks/journey/useEnrollmentSessions.ts");
+    expect(hook).toMatch(/rpc\("learner_session_history"/);
+    expect(hook).not.toMatch(/from\("(sessions|peer_sessions|coachee_peer_sessions|mentoring_sessions|triad_sessions)"\)/);
+  });
+
+  it("there is one session-detail route resolver", () => {
+    const offenders = files.filter((file) => {
+      const text = readFileSync(file, "utf8");
+      return !file.endsWith("lib/sessionPaths.ts") && /`\/sessions\/\$\{[^}]+\}\?type=/.test(text);
+    });
+    expect(offenders.map((f) => relative(SRC, f))).toEqual([]);
+  });
+
+  it("My Journey, the Dashboard and the Development Journey share the canonical reflection feed", () => {
+    expect(read("pages/CoacheeJourney.tsx")).toMatch(/useLearnerReflectionFeed\(/);
+    expect(read("pages/dashboard/coachee/LearnerFeedbackDevelopment.tsx")).toMatch(/useLearnerReflectionFeed\(/);
+    const devJourney = read("hooks/journey/useEnrollmentDevelopmentJourney.ts");
+    expect(devJourney).toMatch(/rpc\("learner_reflection_feed"/);
+    // No second reflection fetch from the original tables in those surfaces.
+    for (const file of ["pages/CoacheeJourney.tsx", "pages/dashboard/coachee/LearnerFeedbackDevelopment.tsx", "hooks/journey/useEnrollmentDevelopmentJourney.ts"]) {
+      expect(read(file), file).not.toMatch(/from\("(coachee_reflections|triad_reflections|reflection_answers|daily_prompt_responses)"\)/);
+    }
+  });
 });

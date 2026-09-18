@@ -2,84 +2,71 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { DevelopmentJourneyEvent } from "./developmentJourneyTypes";
 
-type TriadGroupContext = {
-  round_number: number | null;
-  triad_rounds: { title: string | null; training_weeks: { week_number: number } | null } | null;
-} | null;
-
-/**
- * Round/week context only when the canonical relationship actually resolves
- * one (triad_sessions -> triad_groups -> triad_rounds [-> training_weeks]) —
- * a missing group/round/week link keeps the generic label rather than
- * guessing a number. Shared by the triad-session and triad-self-reflection
- * event builders so the two surfaces never disagree on the same context.
- */
-function resolveTriadRoundWeek(group: TriadGroupContext) {
-  const roundNumber = group?.round_number ?? null;
-  const weekNumber = group?.triad_rounds?.training_weeks?.week_number ?? null;
-  return { roundNumber, weekNumber, roundTitle: group?.triad_rounds?.title ?? null };
-}
-
-/**
- * The single Development Journey projection: every event is read directly
- * from its canonical table, scoped to one enrollment_id, and converted to a
- * DevelopmentJourneyEvent — nothing is computed twice. This is the ONE
- * source both the Journey page's timeline and the Dashboard's "Recent
- * Development" must consume (Dashboard = first N of this same array, never
- * a second query or a different calculation).
- *
- * Sources (all filtered by enrollment_id):
- *  goal            -> coachee_goals, coachee_milestones, goal_checkins
- *  action          -> enrollment_actions (canonical; never legacy session JSON)
- *  coaching        -> sessions (+ coachee_notes as a "reflection" sub-event)
- *  peer_coaching   -> peer_sessions (+ peer_session_competency_feedback via session ids)
- *  mentoring       -> mentoring_sessions (+ mentee_notes, + mentoring_feedback)
- *  triad           -> triad_sessions (coach/coachee/observer enrollment columns)
- *                     + triad_reflections (learner self-reflection/self-rating; own enrollment_id column)
- *  training        -> training_progress, assignment_submissions (quiz), reflection_submissions
- *  reflection      -> coachee_reflections (private, enrollment-scoped)
- */
 interface DevelopmentJourneyResult {
   events: DevelopmentJourneyEvent[];
   /** Canonical sources whose query failed — their events are missing, not empty. */
   failedSources: string[];
 }
 
+const REFLECTION_TITLE: Record<string, string> = {
+  coaching_session_reflection: "Coaching reflection",
+  coaching_session_rating: "Coaching session rating",
+  peer_session_reflection: "Peer practice reflection",
+  peer_session_rating: "Peer practice rating",
+  mentoring_session_reflection: "Mentoring reflection",
+  triad_reflection: "Triad Self-Reflection",
+  training_reflection: "Programme reflection",
+  quiz_reflection: "Quiz reflection",
+  daily_prompt_response: "Daily prompt response",
+  journey_reflection: "Private reflection",
+};
+
+function triadTitle(prefix: string, fallback: string, roundNumber: number | null, weekNumber: number | null) {
+  if (roundNumber != null && weekNumber != null) return `${prefix} — Week ${weekNumber} / Round ${roundNumber}`;
+  if (roundNumber != null) return `${prefix} — Round ${roundNumber}`;
+  return fallback;
+}
+
+/**
+ * The single Development Journey projection: every event is derived from a
+ * canonical record scoped to one enrollment and converted to a
+ * DevelopmentJourneyEvent — nothing is computed twice. This is the ONE
+ * source both the Journey page's timeline and the Dashboard's "Recent
+ * Development" consume (Dashboard = first N of this same array).
+ *
+ * Sources (all enrollment-scoped):
+ *  goal       -> coachee_goals, coachee_milestones, goal_checkins
+ *  action     -> enrollment_actions (canonical; never legacy session JSON)
+ *  sessions   -> learner_session_history (completed coaching / peer practice /
+ *                mentoring / triad records — the same projection the session
+ *                lists use; peer practice from coachee_peer_sessions)
+ *  feedback   -> mentoring_feedback, peer_session_competency_feedback (by the
+ *                enrollment's session ids)
+ *  training   -> training_progress, assignment_submissions (quiz),
+ *                reflection_submissions (submission activity)
+ *  reflection -> learner_reflection_feed (the canonical learner reflection
+ *                projection My Journey → Reflections renders). Goal check-in
+ *                comments are carried by their goal_checkin event instead of
+ *                being repeated as a separate reflection event.
+ */
 async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string): Promise<DevelopmentJourneyResult> {
   const [
     goalsRes,
     milestonesRes,
     checkinsRes,
     actionsRes,
-    sessionsRes,
-    peerRes,
-    mentoringRes,
-    triadRes,
-    triadReflectionRes,
+    historyRes,
+    reflectionFeedRes,
     trainingRes,
     quizRes,
     programmeReflectionRes,
-    privateReflectionRes,
   ] = await Promise.all([
-    supabase.from("coachee_goals").select("id, title, status, created_at").eq("enrollment_id", enrollmentId),
+    supabase.from("coachee_goals").select("id, title, status, created_at").eq("enrollment_id", enrollmentId).eq("coachee_id", coacheeId),
     supabase.from("coachee_milestones").select("id, goal_id, title, is_done, done_at, created_at").eq("enrollment_id", enrollmentId),
     supabase.from("goal_checkins").select("id, goal_id, source_activity_type, source_activity_id, new_rating, note, created_at").eq("enrollment_id", enrollmentId),
     supabase.from("enrollment_actions").select("id, title, status, goal_id, milestone_id, created_at, completed_at").eq("enrollment_id", enrollmentId),
-    supabase.from("sessions").select("id, topic, status, start_time, coachee_notes").eq("enrollment_id", enrollmentId),
-    supabase.from("peer_sessions").select("id, topic, status, start_time").eq("enrollment_id", enrollmentId),
-    supabase.from("mentoring_sessions").select("id, topic, status, start_time, mentee_notes").eq("enrollment_id", enrollmentId),
-    supabase
-      .from("triad_sessions")
-      .select(
-        "id, status, start_time, proposed_start_time, triad_groups(round_number, triad_rounds(title, training_weeks(week_number)))"
-      )
-      .or(`coach_enrollment_id.eq.${enrollmentId},coachee_enrollment_id.eq.${enrollmentId},observer_enrollment_id.eq.${enrollmentId}`),
-    supabase
-      .from("triad_reflections")
-      .select(
-        "id, satisfaction_rating, learned_as_coach, will_use_as_coach, learned_as_coachee, will_use_as_coachee, learned_as_observer, will_use_as_observer, submitted_at, triad_sessions(triad_groups(round_number, triad_rounds(title, training_weeks(week_number))))"
-      )
-      .eq("enrollment_id", enrollmentId),
+    supabase.rpc("learner_session_history", { p_enrollment_id: enrollmentId }),
+    supabase.rpc("learner_reflection_feed", { p_enrollment_id: enrollmentId }),
     supabase
       .from("training_progress")
       .select("id, training_week_id, completed_at, training_weeks(title, week_number)")
@@ -93,7 +80,6 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
       .from("reflection_submissions")
       .select("id, submitted_at, programme_reflections(title, reflection_number)")
       .eq("enrollment_id", enrollmentId),
-    supabase.from("coachee_reflections").select("id, body, mood, created_at").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId),
   ]);
 
   const sourceResults: Record<string, { error: unknown }> = {
@@ -101,15 +87,11 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     coachee_milestones: milestonesRes,
     goal_checkins: checkinsRes,
     enrollment_actions: actionsRes,
-    sessions: sessionsRes,
-    peer_sessions: peerRes,
-    mentoring_sessions: mentoringRes,
-    triad_sessions: triadRes,
-    triad_reflections: triadReflectionRes,
+    learner_session_history: historyRes,
+    learner_reflection_feed: reflectionFeedRes,
     training_progress: trainingRes,
     assignment_submissions: quizRes,
     reflection_submissions: programmeReflectionRes,
-    coachee_reflections: privateReflectionRes,
   };
   const failedSources = Object.entries(sourceResults)
     .filter(([, res]) => res?.error)
@@ -213,62 +195,61 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     }
   }
 
-  for (const s of sessionsRes.data ?? []) {
-    if (s.status === "completed") {
+  // Completed sessions, from the same history projection the session lists use.
+  const history = historyRes.data ?? [];
+  for (const h of history) {
+    if (h.status !== "completed" || !h.start_time) continue;
+    const base = {
+      id: `${h.session_type}-${h.source_id}`,
+      enrollmentId,
+      occurredAt: h.start_time,
+      subtype: "session_completed",
+      status: h.status,
+      sourceId: h.source_id,
+      sourceType: h.source_table,
+    };
+    if (h.session_type === "coaching") {
+      events.push({ ...base, type: "coaching", title: "Coaching session completed", summary: h.title });
+    } else if (h.session_type === "peer_coaching") {
       events.push({
-        id: `coaching-${s.id}`,
-        enrollmentId,
-        occurredAt: s.start_time,
-        type: "coaching",
-        subtype: "session_completed",
-        title: "Coaching session completed",
-        summary: s.topic,
-        status: s.status,
-        sourceId: s.id,
-        sourceType: "sessions",
-      });
-      if (s.coachee_notes && s.coachee_notes.trim()) {
-        events.push({
-          id: `coaching-reflection-${s.id}`,
-          enrollmentId,
-          occurredAt: s.start_time,
-          type: "reflection",
-          subtype: "coaching_reflection",
-          title: "Coaching reflection",
-          summary: s.coachee_notes,
-          sourceId: s.id,
-          sourceType: "sessions",
-        });
-      }
-    }
-  }
-
-  const peerSessionIds = (peerRes.data ?? []).map((p) => p.id as string);
-  const { data: peerFeedback, error: peerFeedbackError } = peerSessionIds.length
-    ? await supabase
-        .from("peer_session_competency_feedback")
-        .select("id, peer_session_id, feedback_note, created_at")
-        .in("peer_session_id", peerSessionIds)
-    : { data: [] as { id: string; peer_session_id: string; feedback_note: string | null; created_at: string }[], error: null };
-  if (peerFeedbackError) failedSources.push("peer_session_competency_feedback");
-
-  for (const p of peerRes.data ?? []) {
-    if (p.status === "completed") {
-      events.push({
-        id: `peer-${p.id}`,
-        enrollmentId,
-        occurredAt: p.start_time,
+        ...base,
         type: "peer_coaching",
-        subtype: "session_completed",
-        title: "Peer coaching completed",
-        summary: p.topic,
-        status: p.status,
-        sourceId: p.id,
-        sourceType: "peer_sessions",
+        title: h.participant_role === "provider" ? "Peer practice given" : "Peer coaching completed",
+        summary: h.title,
+      });
+    } else if (h.session_type === "mentoring") {
+      events.push({ ...base, type: "mentoring", title: "Mentoring session completed", summary: h.title });
+    } else if (h.session_type === "triad") {
+      events.push({
+        ...base,
+        type: "triad",
+        title: triadTitle("Triad", "Triad completed", h.round_number, h.training_week_number),
+        summary: h.title,
       });
     }
   }
-  for (const f of peerFeedback ?? []) {
+
+  // Feedback on this enrollment's sessions (other participants assessing the learner).
+  const peerSessionIds = history.filter((h) => h.source_table === "peer_sessions").map((h) => h.source_id);
+  const mentoringSessionIds = history.filter((h) => h.source_table === "mentoring_sessions").map((h) => h.source_id);
+  const [peerFeedbackRes, mentoringFeedbackRes] = await Promise.all([
+    peerSessionIds.length
+      ? supabase
+          .from("peer_session_competency_feedback")
+          .select("id, peer_session_id, feedback_note, created_at")
+          .in("peer_session_id", peerSessionIds)
+      : Promise.resolve({ data: [] as { id: string; peer_session_id: string; feedback_note: string | null; created_at: string }[], error: null }),
+    mentoringSessionIds.length
+      ? supabase
+          .from("mentoring_feedback")
+          .select("id, mentoring_session_id, overall_notes, submitted_at")
+          .in("mentoring_session_id", mentoringSessionIds)
+      : Promise.resolve({ data: [] as { id: string; mentoring_session_id: string; overall_notes: string | null; submitted_at: string }[], error: null }),
+  ]);
+  if (peerFeedbackRes.error) failedSources.push("peer_session_competency_feedback");
+  if (mentoringFeedbackRes.error) failedSources.push("mentoring_feedback");
+
+  for (const f of peerFeedbackRes.data ?? []) {
     events.push({
       id: `peer-feedback-${f.id}`,
       enrollmentId,
@@ -281,46 +262,7 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
       sourceType: "peer_session_competency_feedback",
     });
   }
-
-  const mentoringSessionIds = (mentoringRes.data ?? []).map((m) => m.id as string);
-  const { data: mentoringFeedback, error: mentoringFeedbackError } = mentoringSessionIds.length
-    ? await supabase
-        .from("mentoring_feedback")
-        .select("id, mentoring_session_id, overall_notes, submitted_at")
-        .in("mentoring_session_id", mentoringSessionIds)
-    : { data: [] as { id: string; mentoring_session_id: string; overall_notes: string | null; submitted_at: string }[], error: null };
-  if (mentoringFeedbackError) failedSources.push("mentoring_feedback");
-
-  for (const m of mentoringRes.data ?? []) {
-    if (m.status === "completed") {
-      events.push({
-        id: `mentoring-${m.id}`,
-        enrollmentId,
-        occurredAt: m.start_time,
-        type: "mentoring",
-        subtype: "session_completed",
-        title: "Mentoring session completed",
-        summary: m.topic,
-        status: m.status,
-        sourceId: m.id,
-        sourceType: "mentoring_sessions",
-      });
-      if (m.mentee_notes && m.mentee_notes.trim()) {
-        events.push({
-          id: `mentoring-reflection-${m.id}`,
-          enrollmentId,
-          occurredAt: m.start_time,
-          type: "reflection",
-          subtype: "mentoring_reflection",
-          title: "Mentoring reflection",
-          summary: m.mentee_notes,
-          sourceId: m.id,
-          sourceType: "mentoring_sessions",
-        });
-      }
-    }
-  }
-  for (const f of mentoringFeedback ?? []) {
+  for (const f of mentoringFeedbackRes.data ?? []) {
     events.push({
       id: `mentoring-feedback-${f.id}`,
       enrollmentId,
@@ -331,67 +273,6 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
       summary: f.overall_notes,
       sourceId: f.id,
       sourceType: "mentoring_feedback",
-    });
-  }
-
-  for (const t of triadRes.data ?? []) {
-    if (t.status === "completed") {
-      const group = t.triad_groups as TriadGroupContext;
-      const { roundNumber, weekNumber, roundTitle } = resolveTriadRoundWeek(group);
-      const title =
-        roundNumber != null && weekNumber != null
-          ? `Triad — Week ${weekNumber} / Round ${roundNumber}`
-          : roundNumber != null
-            ? `Triad — Round ${roundNumber}`
-            : "Triad completed";
-      events.push({
-        id: `triad-${t.id}`,
-        enrollmentId,
-        occurredAt: t.start_time ?? t.proposed_start_time ?? new Date().toISOString(),
-        type: "triad",
-        subtype: "session_completed",
-        title,
-        summary: roundTitle,
-        status: t.status,
-        sourceId: t.id,
-        sourceType: "triad_sessions",
-      });
-    }
-  }
-
-  // The learner assessing themselves — a REFLECTION, never FEEDBACK (feedback
-  // is another participant assessing the learner, and no such canonical
-  // Triad-feedback record exists). Resolves through triad_reflections' own
-  // enrollment_id, scoped to this enrollment directly (not by participant_id
-  // alone), so it never leaks in based on identity rather than membership.
-  for (const r of triadReflectionRes.data ?? []) {
-    const session = r.triad_sessions as { triad_groups: TriadGroupContext } | null;
-    const { roundNumber, weekNumber } = resolveTriadRoundWeek(session?.triad_groups ?? null);
-    const title =
-      roundNumber != null && weekNumber != null
-        ? `Triad Self-Reflection — Week ${weekNumber} / Round ${roundNumber}`
-        : roundNumber != null
-          ? `Triad Self-Reflection — Round ${roundNumber}`
-          : "Triad Self-Reflection";
-    const textPreview = [
-      r.learned_as_coach,
-      r.will_use_as_coach,
-      r.learned_as_coachee,
-      r.will_use_as_coachee,
-      r.learned_as_observer,
-      r.will_use_as_observer,
-    ].find((v) => v && v.trim());
-    const summary = r.satisfaction_rating != null ? `Self-rating: ${r.satisfaction_rating}/5` : textPreview ?? null;
-    events.push({
-      id: `triad-reflection-${r.id}`,
-      enrollmentId,
-      occurredAt: r.submitted_at,
-      type: "reflection",
-      subtype: "triad_self_reflection",
-      title,
-      summary,
-      sourceId: r.id,
-      sourceType: "triad_reflections",
     });
   }
 
@@ -426,14 +307,16 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     });
   }
 
+  // Submitting a programme reflection is learning ACTIVITY; its written
+  // answers (if any) are a reflection and come from the feed below.
   for (const r of programmeReflectionRes.data ?? []) {
     const reflection = r.programme_reflections as { title: string; reflection_number: number } | null;
     events.push({
       id: `programme-reflection-${r.id}`,
       enrollmentId,
       occurredAt: r.submitted_at,
-      type: "reflection",
-      subtype: "programme_reflection",
+      type: "training",
+      subtype: "programme_reflection_submitted",
       title: "Programme reflection submitted",
       summary: reflection?.title,
       sourceId: r.id,
@@ -441,17 +324,23 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     });
   }
 
-  for (const p of privateReflectionRes.data ?? []) {
+  for (const f of reflectionFeedRes.data ?? []) {
+    if (f.source_type === "goal_checkin") continue;
+    const details = (f.details && typeof f.details === "object" && !Array.isArray(f.details) ? f.details : {}) as Record<string, unknown>;
+    const roundNumber = typeof details.round_number === "number" ? details.round_number : null;
     events.push({
-      id: `private-reflection-${p.id}`,
+      id: `reflection-${f.reflection_key}`,
       enrollmentId,
-      occurredAt: p.created_at,
+      occurredAt: f.occurred_at,
       type: "reflection",
-      subtype: "private_reflection",
-      title: "Private reflection",
-      summary: p.body,
-      sourceId: p.id,
-      sourceType: "coachee_reflections",
+      subtype: f.source_type,
+      title:
+        f.source_type === "triad_reflection"
+          ? triadTitle("Triad Self-Reflection", "Triad Self-Reflection", roundNumber, null)
+          : REFLECTION_TITLE[f.source_type] ?? "Reflection",
+      summary: f.body,
+      sourceId: f.source_id,
+      sourceType: f.source_table,
     });
   }
 

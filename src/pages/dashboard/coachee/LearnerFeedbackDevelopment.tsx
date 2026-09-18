@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useLearnerFeedback, type LearnerFeedbackItem } from "@/hooks/dashboard/useLearnerFeedback";
 import { feedbackAuthorLabel, feedbackModule, feedbackSourcePath, feedbackText, feedbackTypeLabel } from "@/lib/feedbackLabels";
 import { useEnrollmentDevelopmentJourney } from "@/hooks/journey/useEnrollmentDevelopmentJourney";
-import type { DevelopmentJourneyEvent } from "@/hooks/journey/developmentJourneyTypes";
+import { useLearnerReflectionFeed, type LearnerReflection } from "@/hooks/journey/useLearnerReflectionFeed";
+import { sessionDetailPathFor } from "@/lib/sessionPaths";
 import { formatProfileDate } from "@/lib/programmeProfile";
 import {
   ProfileLoadError,
@@ -28,16 +29,6 @@ type RecentItem = {
   path?: string | null;
 };
 
-/** Module a development event belongs to, from the canonical source table — never guessed. */
-const MODULE_BY_SOURCE: Record<string, string> = {
-  sessions: "coaching",
-  mentoring_sessions: "mentoring",
-  mentoring_feedback: "mentoring",
-  peer_session_competency_feedback: "peer_coaching",
-  triad_reflections: "triads",
-  reflection_submissions: "training",
-};
-
 /**
  * Learner Feedback & Development — learner-only (the sponsor surface has no
  * equivalent). Two existing, learner-visible sources:
@@ -46,19 +37,22 @@ const MODULE_BY_SOURCE: Record<string, string> = {
  *    (non-private) session notes coaches, mentors and practice partners
  *    write for the learner — enrollment-scoped.
  *    coach_session_feedback is coach/admin-private and is never read.
- *  - useEnrollmentDevelopmentJourney: the one enrollment-scoped development
- *    history (reflections, goals, actions, sessions, training) My Journey
- *    also renders — the Dashboard shows the latest slice of the same array.
+ *  - useLearnerReflectionFeed: the canonical learner reflection feed
+ *    (learner_reflection_feed) — the same feed My Journey → Reflections
+ *    renders in full; the Dashboard shows the latest slice.
+ *  - useEnrollmentDevelopmentJourney: recent development activity (goals,
+ *    actions, sessions, training) — the same array My Journey's timeline uses.
  * A fetch failure renders an error, never an empty "No feedback yet".
  */
 export function LearnerFeedbackDevelopment({ userId, enrollmentId }: { userId: string | undefined; enrollmentId: string | undefined }) {
   const { t } = useTranslation("dashboard");
-  const { t: tJourney } = useTranslation("journey");
   const { t: tSponsor } = useTranslation("sponsor");
   const feedback = useLearnerFeedback(userId, enrollmentId);
   const development = useEnrollmentDevelopmentJourney(enrollmentId, userId);
+  // Same canonical reflection feed My Journey → Reflections renders in full.
+  const reflectionFeed = useLearnerReflectionFeed(enrollmentId);
 
-  const reflections = development.events.filter((e) => e.type === "reflection");
+  const reflections = reflectionFeed.reflections;
   const activity = development.events.filter((e) => e.type !== "reflection" && e.type !== "feedback");
   const latest = development.events[0] ?? null;
 
@@ -70,12 +64,12 @@ export function LearnerFeedbackDevelopment({ userId, enrollmentId }: { userId: s
 
   const recent: RecentItem[] = [
     ...feedback.feedback.map((item) => feedbackToRecent(item, t)),
-    ...reflections.map((event) => reflectionToRecent(event, tJourney)),
+    ...reflections.map((item) => reflectionToRecent(item, t)),
   ]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, RECENT_LIMIT);
 
-  const loading = feedback.loading || development.loading;
+  const loading = feedback.loading || development.loading || reflectionFeed.loading;
 
   return (
     <ProfileSection id="feedback-development" className="mt-4">
@@ -86,11 +80,12 @@ export function LearnerFeedbackDevelopment({ userId, enrollmentId }: { userId: s
         <>
           <div data-testid="feedback-summary" className="mt-5 flex flex-wrap gap-x-[34px] gap-y-5">
             <SmallMetric value={feedback.error ? "—" : String(feedback.feedback.length)} label={t("learnerProfile.feedback.feedbackCount")} />
-            <SmallMetric value={development.error ? "—" : String(reflections.length)} label={t("learnerProfile.feedback.reflectionCount")} />
+            <SmallMetric value={reflectionFeed.error ? "—" : String(reflections.length)} label={t("learnerProfile.feedback.reflectionCount")} />
             <SmallMetric value={latest ? formatProfileDate(latest.occurredAt) : "—"} label={t("learnerProfile.feedback.latestActivity")} />
           </div>
 
           {feedback.error && <ProfileLoadError text={t("learnerProfile.errors.feedback")} />}
+          {reflectionFeed.error && <ProfileLoadError text={t("learnerProfile.errors.reflections")} />}
           {development.error && <ProfileLoadError text={t("learnerProfile.errors.development")} />}
           {development.partialFailure && !development.error && <ProfileLoadError text={t("learnerProfile.errors.developmentPartial")} />}
 
@@ -98,7 +93,7 @@ export function LearnerFeedbackDevelopment({ userId, enrollmentId }: { userId: s
             <div>
               <div className="text-[9.5px] font-bold uppercase tracking-[.14em] text-[#9a938a]">{t("learnerProfile.feedback.recentTitle")}</div>
               {recent.length === 0 ? (
-                !feedback.error && !development.error && <UnavailableNote text={t("learnerProfile.feedback.empty")} locked={false} />
+                !feedback.error && !reflectionFeed.error && <UnavailableNote text={t("learnerProfile.feedback.empty")} locked={false} />
               ) : (
                 <ul data-testid="feedback-recent" className="mt-3 flex flex-col gap-2.5">
                   {recent.map((item) => (
@@ -107,7 +102,7 @@ export function LearnerFeedbackDevelopment({ userId, enrollmentId }: { userId: s
                         <span className="rounded-full bg-[#e4f3f7] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.12em] text-[#2c8fa8]">{item.typeLabel}</span>
                         <span className="text-[10px] text-[#9a938a]">{formatProfileDate(item.date)}</span>
                       </div>
-                      <p className="mt-1.5 text-[12px] font-semibold text-[#062f3e]">{item.source}</p>
+                      {item.source && <p className="mt-1.5 text-[12px] font-semibold text-[#062f3e]">{item.source}</p>}
                       {item.excerpt && <p className="mt-1 line-clamp-2 font-serif text-[12.5px] leading-relaxed text-[#6a6560]">“{item.excerpt}”</p>}
                       <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-2 text-[9.5px] text-[#9a938a]">
                         {moduleLabel(item.module) && <span>{t("learnerProfile.feedback.module", { module: moduleLabel(item.module) })}</span>}
@@ -164,14 +159,15 @@ function feedbackToRecent(item: LearnerFeedbackItem, t: (key: string, options?: 
   };
 }
 
-function reflectionToRecent(event: DevelopmentJourneyEvent, tJourney: (key: string, options?: Record<string, unknown>) => string): RecentItem {
+function reflectionToRecent(item: LearnerReflection, t: (key: string, options?: Record<string, unknown>) => string): RecentItem {
   return {
-    key: event.id,
+    key: item.key,
     kind: "reflection",
-    typeLabel: tJourney(`developmentJourney.reflectionTypes.${event.subtype}`, { defaultValue: event.title }),
-    source: event.title,
-    date: event.occurredAt,
-    excerpt: event.summary ?? null,
-    module: MODULE_BY_SOURCE[event.sourceType] ?? null,
+    typeLabel: t(`learnerProfile.reflections.sources.${item.sourceType}`),
+    source: item.title ?? "",
+    date: item.occurredAt,
+    excerpt: item.body,
+    module: item.module,
+    path: item.linkedSessionTable && item.linkedSessionId ? sessionDetailPathFor(item.linkedSessionTable, item.linkedSessionId) : "/coachee/journey#reflections",
   };
 }

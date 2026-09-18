@@ -10,8 +10,6 @@
   },
   "loadError": "Couldn't load your triads. Please try again.",
   "retry": "Retry",
-  "noRoundsTitle": "No triad rounds yet",
-  "noRoundsBody": "Your admin hasn't opened a triad round for your programme yet.",
   "roundLabel": "Round {{n}}",
   "deadlineLabel": "Deadline",
   "dyadNote": "This is a pair (dyad) — no third member was available for this round.",
@@ -68,12 +66,6 @@
     "acceptError": "Couldn't accept the alternative time",
     "dateRequired": "Pick a date and time first"
   },
-  "pastSessions": {
-    "heading": "Past sessions",
-    "submitted": "Submitted",
-    "pending": "Pending",
-    "satisfaction": "Satisfaction"
-  },
   "reflection": {
     "back": "Back to triads",
     "title": "Session reflection",
@@ -99,5 +91,16 @@
     "successToast": "Reflection submitted",
     "errorToast": "Couldn't submit your reflection",
     "notFound": "This session isn't available."
+  },
+  "currentRounds": {
+    "title": "Current triad rounds",
+    "noneTitle": "No triad round is open right now",
+    "noneBody": "Your admin hasn't opened a new triad round for your programme. Your existing triad sessions are listed below."
+  },
+  "history": {
+    "title": "My triad sessions",
+    "progress": "Triads programme progress: {{completed}}/{{required}} completed",
+    "loadError": "Your triad sessions could not be loaded.",
+    "empty": "No triad sessions yet."
   }
 }

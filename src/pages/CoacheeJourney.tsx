@@ -15,7 +15,7 @@ import type { JourneySession } from "@/hooks/journey/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Sparkles, BookOpen } from "lucide-react";
+import { Sparkles, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { SectionHeader } from "./journey/SectionHeader";
 import { EmptyGoals } from "./journey/EmptyGoals";
@@ -39,6 +39,8 @@ import {
 import { PROFILE_COLORS } from "@/components/programme/profileTheme";
 import { useLearnerCanonicalGoalProgress, useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
 import { useHashScroll } from "@/hooks/useHashScroll";
+import { useLearnerReflectionFeed } from "@/hooks/journey/useLearnerReflectionFeed";
+import { ReflectionFeedItem } from "@/components/programme/ReflectionFeedItem";
 import { formatProfileDate } from "@/lib/programmeProfile";
 import { STATUS_LABEL_KEY, STATUS_TONE, effectiveSponsorStatus } from "@/pages/sponsor/sponsorUtils";
 import { DevelopmentJourneyList } from "@/components/journey/DevelopmentJourneyList";
@@ -65,7 +67,12 @@ export default function CoacheeJourney() {
   const { goals, milestones, toggleMilestone } = goalsApi;
   const { ratings, saveRating } = ratingsApi;
   const { coachingSessions, toggleAction: toggleActionRaw } = sessionsApi;
-  const { reflections, deleteReflection } = reflectionsApi;
+  const { deleteReflection } = reflectionsApi;
+  // THE learner reflection feed (learner_reflection_feed): session, peer,
+  // mentoring and triad reflections, goal check-in comments, training
+  // prompts and explicit journey reflections — projected from their original
+  // records. The Dashboard shows a recent subset of this same feed.
+  const reflectionFeed = useLearnerReflectionFeed(programmeApi.programme?.enrollmentId);
   const { programme } = programmeApi;
 
   const loading =
@@ -145,18 +152,6 @@ export default function CoacheeJourney() {
     return <PageSkeleton />;
   }
 
-  const canonicalReflections = developmentJourney.events
-    .filter((e) => e.type === "reflection" && e.subtype !== "private_reflection")
-    .map((e) => ({ id: e.id, subtype: e.subtype, date: e.occurredAt, quote: e.summary }));
-  const privateReflectionRows = reflections.map((r) => ({
-    id: r.id,
-    subtype: "private_reflection",
-    date: r.created_at,
-    quote: r.body,
-  }));
-  const allReflectionRows = [...canonicalReflections, ...privateReflectionRows].sort(
-    (a, b) => +new Date(b.date) - +new Date(a.date)
-  );
   const status = canonical.progress ? effectiveSponsorStatus(canonical.progress) : null;
 
   return (
@@ -303,29 +298,20 @@ export default function CoacheeJourney() {
           <ProfileSectionTitle title={t("journeyPage.reflectionsCard.title")} aside={tDash("learnerProfile.feedback.aside")} />
           <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("journeyPage.reflectionsCard.subtitle")}</p>
 
-          <div className="mt-4 space-y-2.5">
-            {allReflectionRows.length === 0 ? (
+          <div data-testid="journey-reflections" className="mt-4 space-y-2.5">
+            {reflectionFeed.loading ? (
+              <div className="h-24 animate-pulse rounded-xl bg-[#eee8de]/70" />
+            ) : reflectionFeed.error ? (
+              <ProfileLoadError text={tDash("learnerProfile.errors.reflections")} />
+            ) : reflectionFeed.reflections.length === 0 ? (
               <UnavailableNote text={t("journeyPage.noReflectionsYet")} locked={false} />
             ) : (
-              allReflectionRows.map((r) => (
-                <div key={r.id} className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="rounded-full bg-[#e4f3f7] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.12em] text-[#2c8fa8]">
-                      {t(`developmentJourney.reflectionTypes.${r.subtype}`)}
-                    </span>
-                    <span className="shrink-0 text-[10px] text-[#9a938a]">{formatProfileDate(r.date)}</span>
-                  </div>
-                  {r.quote && <p className="mt-2.5 whitespace-pre-wrap font-serif text-[13.5px] leading-relaxed">{r.quote}</p>}
-                  {r.subtype === "private_reflection" && (
-                    <button
-                      onClick={() => deleteReflection(r.id)}
-                      aria-label={t("journeyPage.deleteReflection", { defaultValue: "Delete reflection" })}
-                      className="mt-2 text-[#9a938a] hover:text-[#a8341c]"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
+              reflectionFeed.reflections.map((item) => (
+                <ReflectionFeedItem
+                  key={item.key}
+                  item={item}
+                  onDelete={item.sourceType === "journey_reflection" ? () => deleteReflection(item.sourceId) : undefined}
+                />
               ))
             )}
           </div>

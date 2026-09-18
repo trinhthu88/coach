@@ -4372,6 +4372,46 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
+      learner_reflection_feed: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          body: string
+          details: Json
+          is_private: boolean
+          linked_activity_id: string
+          linked_goal_id: string
+          linked_session_id: string
+          linked_session_table: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          occurred_at: string
+          previous_rating: number
+          rating: number
+          reflection_key: string
+          source_id: string
+          source_table: string
+          source_type: string
+          title: string
+        }[]
+      }
+      learner_session_history: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          attributed_to_enrollment: boolean
+          counterpart_names: string[]
+          is_programme_evidence: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          participant_role: string
+          round_number: number
+          session_key: string
+          session_type: string
+          source_id: string
+          source_table: string
+          start_time: string
+          status: string
+          title: string
+          training_week_number: number
+        }[]
+      }
       learner_canonical_goal_progress: {
         Args: { p_enrollment_id: string }
         Returns: {

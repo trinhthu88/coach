@@ -1,4 +1,5 @@
 import type { LearnerFeedbackItem } from "@/hooks/dashboard/useLearnerFeedback";
+import { sessionDetailPathFor } from "@/lib/sessionPaths";
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -38,7 +39,6 @@ export function feedbackModule(item: LearnerFeedbackItem): "coaching" | "mentori
 /** Where the learner can open the source of a feedback item. */
 export function feedbackSourcePath(item: LearnerFeedbackItem): string | null {
   if (item.kind !== "session_note") return null;
-  if (item.source === "coaching") return `/sessions/${item.sessionId}`;
-  if (item.source === "mentoring") return `/mentoring/sessions/${item.sessionId}`;
-  return `/sessions/${item.sessionId}?type=coachee_peer`;
+  const table = item.source === "coaching" ? "sessions" : item.source === "mentoring" ? "mentoring_sessions" : "coachee_peer_sessions";
+  return sessionDetailPathFor(table, item.sessionId);
 }

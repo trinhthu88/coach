@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { LEARNER_REFLECTION_FEED_KEY } from "./useLearnerReflectionFeed";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 export type Reflection = Tables<"coachee_reflections">;
@@ -46,7 +47,10 @@ export function useJourneyReflections(coacheeId: string | undefined, initialEnro
       });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [LEARNER_REFLECTION_FEED_KEY] });
+      return queryClient.invalidateQueries({ queryKey });
+    },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
   });
 
@@ -55,7 +59,10 @@ export function useJourneyReflections(coacheeId: string | undefined, initialEnro
       const { error } = await supabase.from("coachee_reflections").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [LEARNER_REFLECTION_FEED_KEY] });
+      return queryClient.invalidateQueries({ queryKey });
+    },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
   });
 

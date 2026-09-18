@@ -15,7 +15,7 @@ const ID_BY_SLOT = ["member_1_id", "member_2_id", "member_3_id"] as const;
 export function TriadGroupHero({ entry }: { entry: TriadRoundEntry }) {
   const { t } = useTranslation("triads");
   const { user } = useAuth();
-  const { round, group, members, session } = entry;
+  const { round, roundNumber, group, members, session } = entry;
 
   const responseFor = (memberId: string): "pending" | "accepted" | "declined" => {
     if (!session) return "pending";
@@ -31,7 +31,7 @@ export function TriadGroupHero({ entry }: { entry: TriadRoundEntry }) {
         <Users className="h-3.5 w-3.5" /> {t("myGroup.label")}
       </p>
       <h3 className="font-display mt-3 text-[1.6rem] font-light leading-[1.15] tracking-[-0.025em] sm:text-[1.85rem]">
-        {t("roundLabel", { n: round.round_number })}
+        {roundNumber != null ? t("roundLabel", { n: roundNumber }) : t("myGroup.label")}
       </h3>
       {!group.member_3_id && <p className="mt-1.5 text-[11.5px] text-muted-foreground">{t("dyadNote")}</p>}
 
@@ -54,9 +54,11 @@ export function TriadGroupHero({ entry }: { entry: TriadRoundEntry }) {
         })}
       </div>
 
-      <p className="mt-5 border-t border-border pt-4 text-[11.5px] text-muted-foreground">
-        {(round.training_weeks?.title ?? round.title) + " · " + t("deadlineLabel") + " " + format(new Date(`${round.completion_deadline}T00:00:00`), "MMM d, yyyy")}
-      </p>
+      {round && (
+        <p className="mt-5 border-t border-border pt-4 text-[11.5px] text-muted-foreground">
+          {(round.training_weeks?.title ?? round.title) + " · " + t("deadlineLabel") + " " + format(new Date(`${round.completion_deadline}T00:00:00`), "MMM d, yyyy")}
+        </p>
+      )}
     </section>
   );
 }

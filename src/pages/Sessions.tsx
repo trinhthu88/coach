@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { getSessionStatusPillMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
 import { useSessionsData } from "@/hooks/sessions/useSessionsData";
+import { sessionRowDetailPath as sessionDetailPath } from "@/lib/sessionPaths";
 import type { SessionRow as SessionRowData, SessionKind } from "@/hooks/sessions/useSessionsData";
 
 type KindFilter = "all" | "coaching" | "peer" | "mentoring" | "triad";
@@ -30,18 +31,6 @@ function kindCategory(kind: SessionKind): KindFilter {
   if (kind === "mentoring-mentor" || kind === "mentoring-mentee") return "mentoring";
   if (kind === "triad") return "triad";
   return "peer";
-}
-
-function sessionDetailPath(s: { id: string; kind: SessionKind }): string {
-  if (s.kind === "coaching") return `/sessions/${s.id}`;
-  if (s.kind === "triad") return `/triads/${s.id}`;
-  if (s.kind === "coachee-peer-give" || s.kind === "coachee-peer-receive") {
-    return `/sessions/${s.id}?type=coachee_peer`;
-  }
-  if (s.kind === "mentoring-mentor" || s.kind === "mentoring-mentee") {
-    return `/mentoring/sessions/${s.id}`;
-  }
-  return `/sessions/${s.id}?type=peer`;
 }
 
 export default function Sessions() {

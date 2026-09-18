@@ -113,7 +113,8 @@ export function TriadSessionCard({ entry }: { entry: TriadRoundEntry }) {
               <Clock className="h-3.5 w-3.5" /> {t("session.proposeAlternative")}
             </button>
           </div>
-          {showAlternative && (
+          {/* Alternative slots are searched inside the round's completion window; a legacy group without a round has none. */}
+          {showAlternative && entry.round && (
             <div className="mt-4 rounded-xl bg-white p-4 text-foreground">
               <TriadAlternativeProposal
                 sessionId={session.id}

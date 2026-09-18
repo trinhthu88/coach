@@ -135,7 +135,16 @@
       "pending_coach_approval": "Pending approval",
       "cancelled": "Cancelled",
       "proposed": "Proposed"
-    }
+    },
+    "roles": {
+      "coachee": "Coachee",
+      "receiver": "Received",
+      "provider": "Given",
+      "mentee": "Mentee",
+      "coach": "Coach",
+      "observer": "Observer"
+    },
+    "countsTowardProgramme": "Counts toward programme"
   },
   "developmentJourney": {
     "title": "Development journey",
@@ -146,7 +155,18 @@
       "coaching_reflection": "Coaching reflection",
       "mentoring_reflection": "Mentoring reflection",
       "triad_self_reflection": "Triad self-reflection",
-      "private_reflection": "Private reflection"
+      "private_reflection": "Private reflection",
+      "coaching_session_reflection": "Coaching · Session reflection",
+      "coaching_session_rating": "Coaching · Session rating",
+      "peer_session_reflection": "Peer coaching · Session reflection",
+      "peer_session_rating": "Peer coaching · Session rating",
+      "mentoring_session_reflection": "Mentoring · Session reflection",
+      "triad_reflection": "Triad · Session reflection",
+      "goal_checkin": "Goal · Check-in",
+      "training_reflection": "Training / Learning · Reflection prompt",
+      "quiz_reflection": "Training / Learning · Quiz reflection",
+      "daily_prompt_response": "Training / Learning · Daily prompt",
+      "journey_reflection": "Journey · Personal reflection"
     }
   },
   "journeyPage": {

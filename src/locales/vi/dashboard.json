@@ -667,10 +667,45 @@
       "developmentPartial": "Một số hoạt động phát triển không tải được, danh sách có thể chưa đầy đủ.",
       "sessions": "Không thể tải các session sắp tới.",
       "attention": "Không thể tải các mục cần chú ý.",
-      "retry": "Thử lại"
+      "retry": "Thử lại",
+      "reflections": "Không thể tải các suy ngẫm của bạn. Vui lòng thử lại."
     },
     "journeyPage": {
       "backToDashboard": "← Bảng điều khiển"
+    },
+    "reflections": {
+      "sources": {
+        "coaching_session_reflection": "Coaching · Suy ngẫm sau session",
+        "coaching_session_rating": "Coaching · Đánh giá session",
+        "peer_session_reflection": "Peer coaching · Suy ngẫm sau session",
+        "peer_session_rating": "Peer coaching · Đánh giá session",
+        "mentoring_session_reflection": "Mentoring · Suy ngẫm sau session",
+        "triad_reflection": "Triad · Suy ngẫm sau session",
+        "goal_checkin": "Mục tiêu · Cập nhật",
+        "training_reflection": "Đào tạo / Học tập · Câu hỏi suy ngẫm",
+        "quiz_reflection": "Đào tạo / Học tập · Suy ngẫm sau quiz",
+        "daily_prompt_response": "Đào tạo / Học tập · Câu hỏi hằng ngày",
+        "journey_reflection": "Hành trình · Suy ngẫm cá nhân"
+      },
+      "onlyYou": "Chỉ bạn",
+      "ratingChange": "Điểm {{from}} → {{to}}",
+      "ratingNow": "Điểm {{to}}",
+      "outOfFive": "{{value}} / 5",
+      "mood": "Tâm trạng: {{mood}}",
+      "triad": {
+        "learned_as_coach": "Điều tôi học được khi là coach",
+        "will_use_as_coach": "Điều tôi sẽ áp dụng khi là coach",
+        "learned_as_coachee": "Điều tôi học được khi là coachee",
+        "will_use_as_coachee": "Điều tôi sẽ áp dụng khi là coachee",
+        "learned_as_observer": "Điều tôi học được khi quan sát",
+        "will_use_as_observer": "Điều tôi sẽ áp dụng khi quan sát"
+      },
+      "open": {
+        "goal": "Mở mục tiêu →",
+        "session": "Mở session →",
+        "training": "Mở phần đào tạo →"
+      },
+      "delete": "Xóa suy ngẫm"
     }
   }
 }

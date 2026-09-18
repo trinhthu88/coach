@@ -681,10 +681,45 @@
       "developmentPartial": "Some development activity could not be loaded, so this list may be incomplete.",
       "sessions": "Upcoming sessions could not be loaded.",
       "attention": "Items needing attention could not be loaded.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "reflections": "Your reflections could not be loaded. Please try again."
     },
     "journeyPage": {
       "backToDashboard": "← Dashboard"
+    },
+    "reflections": {
+      "sources": {
+        "coaching_session_reflection": "Coaching · Session reflection",
+        "coaching_session_rating": "Coaching · Session rating",
+        "peer_session_reflection": "Peer coaching · Session reflection",
+        "peer_session_rating": "Peer coaching · Session rating",
+        "mentoring_session_reflection": "Mentoring · Session reflection",
+        "triad_reflection": "Triad · Session reflection",
+        "goal_checkin": "Goal · Check-in",
+        "training_reflection": "Training / Learning · Reflection prompt",
+        "quiz_reflection": "Training / Learning · Quiz reflection",
+        "daily_prompt_response": "Training / Learning · Daily prompt",
+        "journey_reflection": "Journey · Personal reflection"
+      },
+      "onlyYou": "Only you",
+      "ratingChange": "Rating {{from}} → {{to}}",
+      "ratingNow": "Rating {{to}}",
+      "outOfFive": "{{value}} / 5",
+      "mood": "Mood: {{mood}}",
+      "triad": {
+        "learned_as_coach": "What I learned as coach",
+        "will_use_as_coach": "What I'll use as coach",
+        "learned_as_coachee": "What I learned as coachee",
+        "will_use_as_coachee": "What I'll use as coachee",
+        "learned_as_observer": "What I learned as observer",
+        "will_use_as_observer": "What I'll use as observer"
+      },
+      "open": {
+        "goal": "Open goal →",
+        "session": "Open session →",
+        "training": "Open training →"
+      },
+      "delete": "Delete reflection"
     }
   }
 }

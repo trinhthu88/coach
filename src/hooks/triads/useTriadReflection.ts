@@ -92,6 +92,8 @@ export function useTriadReflection() {
       queryClient.invalidateQueries({ queryKey: ["triad-reflection-mine", vars.sessionId, user?.id, enrollmentId] });
       queryClient.invalidateQueries({ queryKey: ["triad-reflection-group", vars.sessionId] });
       queryClient.invalidateQueries({ queryKey: ["my-triads"] });
+      queryClient.invalidateQueries({ queryKey: ["triad-session-entry"] });
+      queryClient.invalidateQueries({ queryKey: ["learner-reflection-feed"] });
     },
   });
 

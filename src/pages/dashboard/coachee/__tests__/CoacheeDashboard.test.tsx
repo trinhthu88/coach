@@ -20,6 +20,8 @@ const state = vi.hoisted(() => ({
   feedback: {} as Record<string, unknown>,
   development: {} as Record<string, unknown>,
   sessions: {} as Record<string, unknown>,
+  reflections: {} as Record<string, unknown>,
+  reflectionFeedCalls: [] as Array<string | undefined>,
   learnerHookCalls: [] as string[],
 }));
 
@@ -71,6 +73,14 @@ vi.mock("@/hooks/journey/useEnrollmentDevelopmentJourney", () => ({
   useEnrollmentDevelopmentJourney: () => {
     state.learnerHookCalls.push("development");
     return state.development;
+  },
+}));
+vi.mock("@/hooks/journey/useLearnerReflectionFeed", () => ({
+  LEARNER_REFLECTION_FEED_KEY: "learner-reflection-feed",
+  useLearnerReflectionFeed: (enrollmentId: string | undefined) => {
+    state.learnerHookCalls.push("reflections");
+    state.reflectionFeedCalls.push(enrollmentId);
+    return state.reflections;
   },
 }));
 vi.mock("@/hooks/journey/useEnrollmentSessions", () => ({
@@ -158,6 +168,14 @@ function seedPopulated() {
     partialFailure: false,
   };
   state.sessions = { sessions: [], loading: false, error: null };
+  state.reflections = {
+    reflections: [
+      { key: "journey_reflection:r1", sourceType: "journey_reflection", sourceTable: "coachee_reflections", sourceId: "r1", module: null, occurredAt: "2026-03-04T09:00:00Z", title: null, body: PRIVATE_REFLECTION, details: {}, rating: null, previousRating: null, linkedSessionTable: null, linkedSessionId: null, linkedGoalId: null, linkedActivityId: null, isPrivate: true },
+    ],
+    loading: false,
+    error: null,
+  };
+  state.reflectionFeedCalls = [];
 }
 
 function renderDashboard() {
@@ -299,15 +317,24 @@ describe("Learner Dashboard — canonical programme profile", () => {
     expect(within(screen.getByTestId("programme-kpis")).queryByText("0%")).not.toBeInTheDocument();
   });
 
+  it("takes reflections from the canonical reflection feed for the selected enrollment", () => {
+    renderDashboard();
+    expect(state.reflectionFeedCalls).toContain(ENROLLMENT_ID);
+    const recent = screen.getByTestId("feedback-recent");
+    expect(within(recent).getByText("Journey · Personal reflection")).toBeInTheDocument();
+  });
+
   it("separates a feedback fetch failure from a genuine empty state", () => {
     state.feedback = { feedback: [], loading: false, error: "PGRST200" };
     state.development = { events: [], loading: false, error: null, partialFailure: false };
+    state.reflections = { reflections: [], loading: false, error: null };
     const { unmount } = renderDashboard();
     expect(screen.getByText(/Feedback could not be loaded because of a connection or server error/)).toBeInTheDocument();
     expect(screen.queryByText("No feedback available yet, and no reflections submitted yet.")).not.toBeInTheDocument();
     unmount();
 
     state.feedback = { feedback: [], loading: false, error: null };
+    state.reflections = { reflections: [], loading: false, error: null };
     renderDashboard();
     expect(screen.getByText("No feedback available yet, and no reflections submitted yet.")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -346,6 +373,7 @@ describe("Sponsor Leader Detail — privacy boundary on the shared profile", () 
   });
 
   it("never loads or renders learner-private goal, action, reflection or feedback detail", () => {
+    // (includes the canonical reflection feed: the sponsor surface never calls it)
     renderSponsor();
     expect(state.learnerHookCalls).toEqual([]);
     for (const privateText of [PRIVATE_GOAL, PRIVATE_MILESTONE, PRIVATE_ACTION, PRIVATE_CHECKIN_NOTE, MENTOR_FEEDBACK, PRIVATE_REFLECTION]) {

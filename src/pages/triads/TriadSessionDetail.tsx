@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useMyTriads } from "@/hooks/triads/useMyTriads";
+import { useTriadSessionEntry } from "@/hooks/triads/useMyTriads";
 import { TriadGroupHero } from "./components/TriadGroupHero";
 import { TriadSessionCard } from "./components/TriadSessionCard";
 
@@ -12,13 +12,15 @@ import { TriadSessionCard } from "./components/TriadSessionCard";
  *
  * Triads have different canonical actions from coaching/peer/mentoring
  * sessions, so they intentionally keep the existing Triad workflow instead of
- * being forced through the generic session detail hooks.
+ * being forced through the generic session detail hooks. The session is
+ * resolved by id (useTriadSessionEntry), not by searching the current
+ * round-based groups, so completed sessions, earlier sessions of a group and
+ * sessions in groups without a configured round all open.
  */
 export default function TriadSessionDetail() {
   const { t } = useTranslation("triads");
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { rounds, loading, error, refetch } = useMyTriads();
-  const entry = rounds.find((round) => round.session?.id === sessionId);
+  const { entry, loading, error, refetch } = useTriadSessionEntry(sessionId);
 
   if (loading) {
     return (
@@ -60,7 +62,7 @@ export default function TriadSessionDetail() {
       <div>
         <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-primary">{t("eyebrow")}</p>
         <h1 className="font-display mt-2 text-[1.9rem] leading-[1.08] tracking-[-0.02em]">
-          {entry.round.title || t("roundLabel", { n: entry.round.round_number })}
+          {entry.round?.title || (entry.roundNumber != null ? t("roundLabel", { n: entry.roundNumber }) : t("eyebrow"))}
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">{t("sessionDetail.subtitle")}</p>
       </div>

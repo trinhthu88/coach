@@ -352,10 +352,10 @@ export default function CoachMyJourney() {
         </TabsContent>
 
         <TabsContent value="reflections" className="mt-4 space-y-4">
-          {developmentJourney.events.filter((e) => e.type === "reflection" && e.subtype !== "private_reflection").length > 0 && (
+          {developmentJourney.events.filter((e) => e.type === "reflection" && e.subtype !== "journey_reflection").length > 0 && (
             <div className="space-y-2">
               {developmentJourney.events
-                .filter((e) => e.type === "reflection" && e.subtype !== "private_reflection")
+                .filter((e) => e.type === "reflection" && e.subtype !== "journey_reflection")
                 .map((e) => (
                   <Card key={e.id} className="p-4">
                     <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">

@@ -83,14 +83,22 @@ export function DevelopmentSessionsList({
           const path = sessionDetailPath(item);
           const contextLabel = [item.trainingWeekLabel, item.roundLabel].filter(Boolean).join(" / ");
           const body = (
-            <Card className="flex items-start gap-3 p-4 transition-colors hover:border-primary/40">
+            <Card data-testid="session-row" data-source={item.sourceType} data-status={item.status} className="flex items-start gap-3 p-4 transition-colors hover:border-primary/40">
               <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
                 <Icon className="h-4 w-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  {t(`developmentSessions.types.${item.type}`)}
-                </p>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    {t(`developmentSessions.types.${item.type}`)}
+                    {item.participantRole && ` · ${t(`developmentSessions.roles.${item.participantRole}`, { defaultValue: item.participantRole })}`}
+                  </p>
+                  {item.isProgrammeEvidence && (
+                    <span data-testid="programme-evidence" className="rounded-full bg-success/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-success">
+                      {t("developmentSessions.countsTowardProgramme")}
+                    </span>
+                  )}
+                </div>
                 <p className="truncate text-sm font-semibold">{contextLabel || item.title}</p>
                 {(programmeName || cohortName) && (
                   <p className="truncate text-[11px] text-muted-foreground">
@@ -101,7 +109,8 @@ export function DevelopmentSessionsList({
                   {item.startTime ? format(new Date(item.startTime), "MMM d · p") : t("developmentSessions.timeTbd")}
                   {" · "}
                   {t(`developmentSessions.status.${item.status}`, { defaultValue: item.status })}
-                  {item.counterpartName && ` · ${t("developmentSessions.withCounterpart", { name: item.counterpartName })}`}
+                  {(item.counterpartNames?.length ? item.counterpartNames.join(", ") : item.counterpartName) &&
+                    ` · ${t("developmentSessions.withCounterpart", { name: item.counterpartNames?.length ? item.counterpartNames.join(", ") : item.counterpartName })}`}
                 </p>
               </div>
             </Card>

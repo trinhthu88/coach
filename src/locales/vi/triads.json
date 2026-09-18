@@ -10,8 +10,6 @@
   },
   "loadError": "Không thể tải triad của bạn. Vui lòng thử lại.",
   "retry": "Thử lại",
-  "noRoundsTitle": "Chưa có vòng triad nào",
-  "noRoundsBody": "Quản trị viên chưa mở vòng triad nào cho chương trình của bạn.",
   "roundLabel": "Vòng {{n}}",
   "deadlineLabel": "Hạn chót",
   "dyadNote": "Đây là nhóm đôi (dyad) — không có thành viên thứ ba khả dụng cho vòng này.",
@@ -68,12 +66,6 @@
     "acceptError": "Không thể chấp nhận thời gian đề xuất",
     "dateRequired": "Hãy chọn ngày giờ trước"
   },
-  "pastSessions": {
-    "heading": "Session đã qua",
-    "submitted": "Đã gửi",
-    "pending": "Đang chờ",
-    "satisfaction": "Mức độ hài lòng"
-  },
   "reflection": {
     "back": "Quay lại Triads",
     "title": "Phản hồi sau session",
@@ -99,5 +91,16 @@
     "successToast": "Đã gửi phản hồi",
     "errorToast": "Không thể gửi phản hồi",
     "notFound": "Session này hiện không khả dụng."
+  },
+  "currentRounds": {
+    "title": "Các vòng triad hiện tại",
+    "noneTitle": "Hiện không có vòng triad nào đang mở",
+    "noneBody": "Quản trị viên chưa mở vòng triad mới cho chương trình của bạn. Các session triad hiện có được liệt kê bên dưới."
+  },
+  "history": {
+    "title": "Các session triad của tôi",
+    "progress": "Tiến độ Triads: đã hoàn thành {{completed}}/{{required}}",
+    "loadError": "Không thể tải các session triad của bạn.",
+    "empty": "Chưa có session triad nào."
   }
 }
