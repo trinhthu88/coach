@@ -9,7 +9,7 @@ const row = (patch: Partial<AdminCanonicalProgressRow>) => ({ progress_available
 
 describe("Admin reads the canonical completion engine", () => {
   it("averages the canonical full_completion_pct (enrollments without progress are excluded, not zero)", () => {
-    expect(averageCanonicalCompletion([row({ full_completion_pct: 80 }), row({ full_completion_pct: 60 }), row({ progress_available: false, full_completion_pct: null })])).toBe(70);
+    expect(averageCanonicalCompletion([row({ full_completion_pct: 80 }), row({ full_completion_pct: 60 }), row({ progress_available: false })])).toBe(70);
     expect(averageCanonicalCompletion([])).toBe(0);
   });
 
