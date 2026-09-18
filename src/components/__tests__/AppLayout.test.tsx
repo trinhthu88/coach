@@ -94,8 +94,6 @@ describe("AppLayout — coachee navigation", () => {
       hasModule: (m) => ["coaching", "peer_coaching", "mentoring", "triads"].includes(m),
       hasDirection: () => true,
     };
-    // "My development" is collapsed by default unless the current route is
-    // inside it — land on one of its own items so the group opens.
     renderLayout("/coaches");
     expect(screen.getAllByRole("link", { name: "Coaching" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: "Peer coaching" }).length).toBeGreaterThan(0);
@@ -127,6 +125,59 @@ describe("AppLayout — coachee navigation", () => {
   });
 });
 
+describe("AppLayout — Develop Myself is expanded (Coachee prototype nav rail)", () => {
+  const allModules = () => ({
+    hasModule: (m: string) => ["coaching", "peer_coaching", "mentoring", "triads"].includes(m),
+    hasDirection: () => true,
+  });
+  const MODULE_LINKS: [string, string][] = [
+    ["/coaches", "Coaching"],
+    ["/coachee/peer-practice", "Peer coaching"],
+    ["/mentoring", "Mentoring"],
+    ["/triads", "Triads"],
+  ];
+
+  it("shows every Develop Myself child on first load from the Dashboard", () => {
+    mockModules = allModules();
+    renderLayout("/dashboard");
+    for (const [, name] of MODULE_LINKS) {
+      expect(screen.getAllByRole("link", { name }).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("renders Develop Myself as a static, always-open section for learners (no collapse toggle)", () => {
+    mockModules = allModules();
+    renderLayout("/dashboard");
+    expect(screen.getAllByRole("group", { name: "Develop Myself" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /Develop Myself/ })).toBeNull();
+  });
+
+  it.each([...MODULE_LINKS, ["/coachee/journey", "My Journey"] as [string, string]])(
+    "deep link %s keeps Develop Myself open and highlights %s",
+    (path, activeName) => {
+      mockModules = allModules();
+      renderLayout(path);
+      for (const [, name] of MODULE_LINKS) {
+        expect(screen.getAllByRole("link", { name }).length).toBeGreaterThan(0);
+      }
+      const active = screen.getAllByRole("link", { name: activeName });
+      expect(active.some((link) => link.getAttribute("aria-current") === "page")).toBe(true);
+      for (const [to, name] of MODULE_LINKS) {
+        if (to === path) continue;
+        expect(screen.getAllByRole("link", { name }).every((link) => link.getAttribute("aria-current") !== "page")).toBe(true);
+      }
+    }
+  );
+
+  it("opens Develop Myself by default for coaches too (still collapsible)", () => {
+    mockAuth.mockReturnValue({ ...baseAuth, role: "coach" as const });
+    mockModules = { hasModule: (m) => ["mentoring", "peer_coaching", "coaching"].includes(m), hasDirection: () => true };
+    renderLayout("/dashboard");
+    expect(screen.getAllByRole("link", { name: "Mentoring" }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Develop Myself/ })).toBeInTheDocument();
+  });
+});
+
 describe("AppLayout — coach navigation is unaffected by the coachee nav restructure", () => {
   it("still shows the coach's Sessions, Messages and My development items", () => {
     mockAuth.mockReturnValue({ ...baseAuth, role: "coach" as const });
@@ -134,8 +185,6 @@ describe("AppLayout — coach navigation is unaffected by the coachee nav restru
       hasModule: (m) => ["mentoring", "peer_coaching", "coaching", "training", "triads"].includes(m),
       hasDirection: () => true,
     };
-    // "Develop Myself" is collapsed by default unless the current route is
-    // inside it — land on /mentoring so the group opens.
     renderLayout("/mentoring");
     expect(screen.getAllByRole("link", { name: "Sessions" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: "Messages" }).length).toBeGreaterThan(0);
@@ -145,8 +194,6 @@ describe("AppLayout — coach navigation is unaffected by the coachee nav restru
   it("still shows the coach's Practice journey link (untouched by the coachee nav change)", () => {
     mockAuth.mockReturnValue({ ...baseAuth, role: "coach" as const });
     mockModules = { hasModule: (m) => m === "peer_coaching", hasDirection: () => false };
-    // Land on /practice-journey itself so "Develop Myself" (collapsed by
-    // default) opens because its own route is current.
     renderLayout("/practice-journey");
     expect(screen.getAllByRole("link", { name: "Practice journey" }).length).toBeGreaterThan(0);
   });

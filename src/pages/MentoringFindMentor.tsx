@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { MyMentorSection } from "@/pages/coachee/MyMentorSection";
+import { ModulePageHeader, ModulePrimaryAction } from "@/components/programme/module/ModulePage";
 
 interface MentorRow {
   mentor_user_id: string;
@@ -22,7 +23,9 @@ interface MentorRow {
 }
 
 export default function MentoringFindMentor() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isLearner = role === "coachee";
+  const { t: tDash } = useTranslation("dashboard");
   const { t } = useTranslation("mentoring");
   const [mentors, setMentors] = useState<MentorRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,15 +69,30 @@ export default function MentoringFindMentor() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        className="mb-0"
-        eyebrow={t("findMentor.eyebrow")}
-        title={t("findMentor.titleLead")}
-        emphasis={t("findMentor.titleEmphasis")}
-        subtitle={t("findMentor.subtitle")}
-      />
-
-      <MyMentorSection />
+      {isLearner ? (
+        <>
+          <ModulePageHeader
+            title={tDash("learnerModules.mentoring.title")}
+            subtitle={tDash("learnerModules.mentoring.subtitle")}
+            action={<ModulePrimaryAction href="#mentors">{tDash("learnerModules.mentoring.book")}</ModulePrimaryAction>}
+          />
+          <MyMentorSection fallbackMentorName={mentors.length === 1 ? mentors[0].full_name : null} />
+          <div id="mentors" className="scroll-mt-6">
+            <h2 className="font-serif text-[19px] font-normal tracking-[-.02em] text-[#062f3e]">{tDash("learnerModules.mentoring.mentorsTitle")}</h2>
+          </div>
+        </>
+      ) : (
+        <>
+          <PageHeader
+            className="mb-0"
+            eyebrow={t("findMentor.eyebrow")}
+            title={t("findMentor.titleLead")}
+            emphasis={t("findMentor.titleEmphasis")}
+            subtitle={t("findMentor.subtitle")}
+          />
+          <MyMentorSection />
+        </>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

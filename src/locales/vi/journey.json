@@ -168,7 +168,36 @@
       "quiz_reflection": "Đào tạo / Học tập · Suy ngẫm sau quiz",
       "daily_prompt_response": "Đào tạo / Học tập · Câu hỏi hằng ngày",
       "journey_reflection": "Hành trình · Suy ngẫm cá nhân"
-    }
+    },
+    "summary_one": "{{count}} sự kiện phát triển · mới nhất trước",
+    "summary_other": "{{count}} sự kiện phát triển · mới nhất trước",
+    "filterLabel": "Lọc sự kiện phát triển",
+    "filters": {
+      "all": "Tất cả",
+      "goals": "Mục tiêu",
+      "sessions": "Session",
+      "training": "Đào tạo",
+      "reflections": "Phản tư"
+    },
+    "filterEmpty": "Chưa có sự kiện nào thuộc loại này.",
+    "monthCount_one": "{{count}} sự kiện",
+    "monthCount_other": "{{count}} sự kiện",
+    "typeLabels": {
+      "goal": "Mục tiêu",
+      "action": "Hành động",
+      "coaching": "Coaching",
+      "peer_coaching": "Peer coaching",
+      "mentoring": "Mentoring",
+      "triad": "Triad",
+      "training": "Đào tạo",
+      "reflection": "Phản tư",
+      "feedback": "Phản hồi"
+    },
+    "groupTitle": "{{count}} cập nhật {{type}}",
+    "items": "{{count}} mục",
+    "hide": "ẩn",
+    "showEarlier_one": "Xem cũ hơn · thêm {{count}} tháng",
+    "showEarlier_other": "Xem cũ hơn · thêm {{count}} tháng"
   },
   "journeyPage": {
     "eyebrow": "Tiến độ",
@@ -198,7 +227,12 @@
       "nextAction": "Tiếp theo: {{text}} · Hạn {{date}}",
       "noDueDate": "chưa có hạn",
       "noOpenActions": "Chưa có hành động nào đang mở cho mục tiêu này.",
-      "actionsHeader": "Tất cả hành động"
+      "actionsHeader": "Tất cả hành động",
+      "milestonesChip": "{{done}} / {{total}} cột mốc",
+      "openActionsChip_one": "{{count}} hành động đang mở",
+      "openActionsChip_other": "{{count}} hành động đang mở",
+      "showDetail": "Cột mốc & hành động ↓",
+      "hideDetail": "Ẩn chi tiết ↑"
     },
     "reflectionsCard": {
       "title": "Suy ngẫm",
@@ -253,6 +287,8 @@
   },
   "coacheeJourney": {
     "title": "Hành trình của tôi",
-    "subtitle": "Mọi thứ cho đợt tham gia này ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự xảy ra, và mục tiêu của bạn đang ở đâu."
+    "subtitle": "Mọi thứ cho đợt tham gia này ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự xảy ra, và mục tiêu của bạn đang ở đâu.",
+    "eyebrow": "Không gian học viên",
+    "subtitleFor": "Mọi thứ về {{programme}} · {{cohort}} ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự diễn ra và mục tiêu của bạn đang ở đâu."
   }
 }

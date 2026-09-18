@@ -81,7 +81,9 @@ describe("programme profile architecture", () => {
 
   it("My Journey is built on the shared profile system, not the older card layout", () => {
     const journey = read("pages/CoacheeJourney.tsx");
-    expect(journey).toMatch(/<ProgrammeProfileHeader/);
+    // Coachee prototype: plain page header + the one shared Programme Journey.
+    expect(journey).toMatch(/data-testid="journey-header"/);
+    expect(journey).toMatch(/<LearnerProgrammeJourney/);
     expect(journey).toMatch(/<ProfileSection/);
     expect(journey).not.toMatch(/@\/components\/ui\/card/);
     expect(journey).toMatch(/<FeedbackItemCard/);
@@ -139,5 +141,39 @@ describe("programme profile architecture", () => {
     // No other learner code calls the projection directly or rebuilds membership from sessions.
     const callers = files.filter((f) => /learner_triad_members/.test(readFileSync(f, "utf8")) && !f.endsWith("integrations/supabase/types.ts"));
     expect(callers.map((f) => relative(SRC, f))).toEqual(["hooks/triads/useTriadMembers.ts"]);
+  });
+
+  it("learner module pages (Coaching / Peer / Mentoring / Triads) read progress and sessions only from canonical sources", () => {
+    const workspace = read("hooks/journey/useModuleWorkspace.ts");
+    expect(workspace).toMatch(/useLearnerCanonicalProgress\(/);
+    expect(workspace).toMatch(/useEnrollmentSessions\(/);
+    expect(workspace).toMatch(/programmeModuleRows\(/);
+    const modulePages = [
+      "pages/coachee/MyCoachSection.tsx",
+      "pages/coachee/MyPeerPracticeSection.tsx",
+      "pages/coachee/MyMentorSection.tsx",
+      "pages/triads/TriadsPage.tsx",
+    ];
+    for (const file of modulePages) {
+      const text = read(file);
+      expect(text, file).toMatch(/useModuleWorkspace\("(coaching|peer|mentoring|triads)"\)/);
+      // No direct session-table reads and no client-side completion counting.
+      expect(text, file).not.toMatch(/from\("(sessions|coachee_peer_sessions|peer_sessions|mentoring_sessions|triad_sessions)"\)/);
+      expect(text, file).not.toMatch(/status\s*===\s*"completed"\)\.length/);
+    }
+    // Shared module presentation never queries data.
+    expect(read("components/programme/module/ModulePage.tsx")).not.toMatch(/supabase|useQuery|use[A-Z]\w*Progress\(/);
+  });
+
+  it("Development journey renders experienced events only — no programme progress source", () => {
+    for (const file of ["components/journey/DevelopmentJourneyList.tsx", "lib/developmentJourneyView.ts"]) {
+      expect(read(file), file).not.toMatch(/useLearnerCanonical|canonical_progress|required_units|supabase/);
+    }
+  });
+
+  it("nav keeps Develop Myself open: no group is collapsed by default and learners get static groups", () => {
+    const layout = read("components/AppLayout.tsx");
+    expect(layout).toMatch(/DEFAULT_COLLAPSED_GROUPS = new Set<string>\(\)/);
+    expect(layout).toMatch(/staticGroups=\{role === "coachee"\}/);
   });
 });

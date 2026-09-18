@@ -48,6 +48,8 @@ export interface TriadRoundEntry {
   roundNumber: number | null;
   group: TriadGroupMembers & { group_language: string };
   session: TriadSessionRow | null;
+  /** Each member's role in `session` (from the session's coach/coachee/observer enrollment columns matched to the group's enrollment slots). Only set by useTriadSessionEntry. */
+  roleByMemberId?: Record<string, "coach" | "coachee" | "observer">;
   members: TriadMemberProfile[];
   reflectionSubmitted: boolean;
 }
@@ -156,7 +158,8 @@ export function useTriadSessionEntry(sessionId: string | undefined) {
         .from("triad_sessions")
         .select(
           "id, status, proposed_start_time, proposed_end_time, proposed_by, member_1_response, member_2_response, member_3_response, meeting_url, notes, " +
-            "triad_groups(id, group_language, member_1_id, member_2_id, member_3_id, round_number, " +
+            "coach_enrollment_id, coachee_enrollment_id, observer_enrollment_id, " +
+            "triad_groups(id, group_language, member_1_id, member_2_id, member_3_id, enrollment_1_id, enrollment_2_id, enrollment_3_id, round_number, " +
             "triad_rounds(id, round_number, title, title_vi, completion_deadline, training_week_id, training_weeks(title, title_vi, week_number)))",
         )
         .eq("id", sessionId as string)
@@ -165,8 +168,18 @@ export function useTriadSessionEntry(sessionId: string | undefined) {
       if (!row) return null;
 
       interface RawSession extends TriadSessionRow {
+        coach_enrollment_id: string;
+        coachee_enrollment_id: string;
+        observer_enrollment_id: string | null;
         triad_groups:
-          | (TriadGroupMembers & { group_language: string; round_number: number | null; triad_rounds: TriadRoundEntry["round"] })
+          | (TriadGroupMembers & {
+              group_language: string;
+              round_number: number | null;
+              enrollment_1_id: string;
+              enrollment_2_id: string;
+              enrollment_3_id: string | null;
+              triad_rounds: TriadRoundEntry["round"];
+            })
           | null;
       }
       const raw = row as unknown as RawSession;
@@ -179,7 +192,19 @@ export function useTriadSessionEntry(sessionId: string | undefined) {
         fetchTriadMembers([group.id]),
         supabase.from("triad_reflections").select("id").eq("participant_id", uid).eq("triad_session_id", raw.id),
       ]);
-      const { triad_groups: _group, ...session } = raw;
+      const { triad_groups: _group, coach_enrollment_id, coachee_enrollment_id, observer_enrollment_id, ...session } = raw;
+      const roleByMemberId: Record<string, "coach" | "coachee" | "observer"> = {};
+      const slots: Array<[string | null, string | null]> = [
+        [group.member_1_id, group.enrollment_1_id],
+        [group.member_2_id, group.enrollment_2_id],
+        [group.member_3_id, group.enrollment_3_id],
+      ];
+      for (const [memberId, enrollmentId] of slots) {
+        if (!memberId || !enrollmentId) continue;
+        if (enrollmentId === coach_enrollment_id) roleByMemberId[memberId] = "coach";
+        else if (enrollmentId === coachee_enrollment_id) roleByMemberId[memberId] = "coachee";
+        else if (enrollmentId === observer_enrollment_id) roleByMemberId[memberId] = "observer";
+      }
       return {
         round: group.triad_rounds ?? null,
         roundNumber: group.triad_rounds?.round_number ?? group.round_number ?? null,
@@ -193,6 +218,7 @@ export function useTriadSessionEntry(sessionId: string | undefined) {
         session: session as TriadSessionRow,
         members: toMemberProfiles(membersByGroup.get(group.id)),
         reflectionSubmitted: (reflections ?? []).length > 0,
+        roleByMemberId,
       };
     },
     enabled: !!user && !!sessionId,

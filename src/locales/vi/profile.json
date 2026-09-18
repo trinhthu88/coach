@@ -119,7 +119,7 @@
       "titleEmphasis": "đồng cấp",
       "subtitle": "Các học viên đã tham gia thực hành đồng cấp. Đặt một buổi để cùng thực hành."
     },
-    "empty": "Hiện chưa có bạn đồng hành nào để đặt lịch. Điều này không ảnh hưởng đến lịch sử session ở trên.",
+    "empty": "Hiện chưa có bạn đồng hành nào để đặt lịch. Điều này không ảnh hưởng đến lịch sử peer practice bên dưới.",
     "defaultTitle": "Đối tác thực hành đồng cấp",
     "book": "Đặt lịch",
     "retry": "Thử lại",

@@ -14,22 +14,20 @@ export function FeedbackItemCard({ item }: { item: LearnerFeedbackItem }) {
   const path = feedbackSourcePath(item);
 
   return (
-    <article data-testid="feedback-item" className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="rounded-full bg-[#e4f3f7] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.12em] text-[#2c8fa8]">
-          {feedbackTypeLabel(item, t)}
-        </span>
-        <span className="text-[10px] text-[#9a938a]">{formatProfileDate(item.submittedAt)}</span>
+    // Design (My Journey → Feedback): kind · person · context, rating chips, quote.
+    <article data-testid="feedback-item" className="rounded-[13px] border border-[#efeae1] bg-white p-[15px]">
+      <div className="text-[8.5px] font-extrabold uppercase tracking-[.14em] text-[#2c8fa8]">{feedbackTypeLabel(item, t)}</div>
+      <h3 className="mt-[5px] font-serif text-[15px] font-normal text-[#062f3e]">{feedbackAuthorLabel(item, t)}</h3>
+      <div className="mt-[3px] text-[10px] text-[#9a9287]">
+        {[item.kind === "session_note" ? item.topic : null, formatProfileDate(item.submittedAt)].filter(Boolean).join(" · ")}
       </div>
-      <h3 className="mt-1.5 text-[12.5px] font-semibold text-[#062f3e]">{feedbackAuthorLabel(item, t)}</h3>
-      {item.kind === "session_note" && item.topic && <p className="mt-0.5 text-[10.5px] text-[#6a6560]">{item.topic}</p>}
 
       {item.kind === "peer_competency" && item.scores.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2.5">
           {item.scores.map((s) => (
-            <div key={s.key} className="rounded-[10px] border border-[#e6e0d6] bg-white px-2.5 py-1.5">
-              <p className="font-serif text-sm text-[#2c8fa8]">{s.score}</p>
-              <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[.12em] text-[#9a938a]">{t(`practiceJourney.competencies.${s.key}`)}</p>
+            <div key={s.key} className="rounded-[10px] border border-[#efeae1] bg-[#fbf8f2] px-[11px] py-2">
+              <p className="font-serif text-[16px] text-[#2c8fa8]">{s.score}</p>
+              <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[.08em] text-[#7d7468]">{t(`practiceJourney.competencies.${s.key}`)}</p>
             </div>
           ))}
         </div>
@@ -44,7 +42,7 @@ export function FeedbackItemCard({ item }: { item: LearnerFeedbackItem }) {
           ))}
         </dl>
       )}
-      {text && <p className="mt-2.5 whitespace-pre-wrap font-serif text-[13.5px] leading-relaxed text-[#062f3e]">{text}</p>}
+      {text && <p className="mt-3 whitespace-pre-wrap font-serif text-[13.5px] leading-[1.55] text-[#3f3a33]">“{text}”</p>}
       {path && (
         <Link to={path} className="mt-2 inline-block text-[10.5px] font-semibold text-[#2c8fa8] hover:underline">
           {t("learnerProfile.feedback.openSource")}

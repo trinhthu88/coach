@@ -118,15 +118,15 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     expect(screen.getByText(/Feedback could not be loaded because of a connection or server error/)).toBeInTheDocument();
   });
 
-  it("uses the same programme header as the Dashboard and shows shared session notes with a link to the session", () => {
+  it("shows the design header with the canonical programme · cohort and shows shared session notes with a link to the session", () => {
     state.feedback = [
       { kind: "session_note", id: "coaching-s1", source: "coaching", sessionId: "s1", topic: "Delegation", fromName: "Casey Coach", submittedAt: "2026-03-01T10:00:00Z", note: "Try the 3-question check-in." },
     ];
     renderPage();
-    expect(screen.getByText("Leadership Accelerator · Spring cohort")).toBeInTheDocument();
+    expect(screen.getByTestId("journey-header")).toHaveTextContent("Leadership Accelerator · Spring cohort");
     const item = screen.getByTestId("feedback-item");
     expect(within(item).getByText("Coach session note · Casey Coach")).toBeInTheDocument();
-    expect(within(item).getByText("Try the 3-question check-in.")).toBeInTheDocument();
+    expect(within(item).getByText(/Try the 3-question check-in\./)).toBeInTheDocument();
     expect(within(item).getByRole("link", { name: /Open session/ })).toHaveAttribute("href", "/sessions/s1");
   });
 
@@ -168,13 +168,14 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     const checkin = items[1];
     expect(within(checkin).getByText("Lead weekly one-to-ones")).toBeInTheDocument();
     expect(within(checkin).getByText("Rating 7 → 8")).toBeInTheDocument();
-    expect(within(checkin).getByText("Goal check-in: I noticed that I delegate more.")).toBeInTheDocument();
+    expect(within(checkin).getByText("“Goal check-in: I noticed that I delegate more.”")).toBeInTheDocument();
     expect(within(checkin).getByRole("link")).toHaveAttribute("href", "/sessions/s2");
     expect(within(items[2]).getByText("What I learned as coach")).toBeInTheDocument();
     expect(within(items[3]).getByRole("link")).toHaveAttribute("href", "/mentoring/sessions/m1");
     expect(within(items[4]).getByRole("link")).toHaveAttribute("href", "/sessions/p1?type=coachee_peer");
     expect(within(items[5]).getByText("What did you try?")).toBeInTheDocument();
-    expect(within(items[0]).getByText("Only you")).toBeInTheDocument();
+    expect(within(items[0]).getByText("Private")).toBeInTheDocument();
+    expect(items[0]).toHaveTextContent("only you can see this");
     // Only explicit journey reflections are deletable from here.
     expect(within(list).getAllByRole("button", { name: "Delete reflection" })).toHaveLength(1);
   });

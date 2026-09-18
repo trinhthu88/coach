@@ -719,7 +719,85 @@
         "session": "Open session →",
         "training": "Open training →"
       },
-      "delete": "Delete reflection"
+      "delete": "Delete reflection",
+      "privateNote": "only you can see this",
+      "sourcePrefix": "Source",
+      "pill": {
+        "private": "Private",
+        "linked": "Linked"
+      }
+    }
+  },
+  "learnerModules": {
+    "eyebrow": "My development",
+    "next": "Next",
+    "noneBooked": "none booked",
+    "sessionsComplete": "sessions complete",
+    "sessionsCompleted": "Sessions completed",
+    "sessionsError": "Your sessions could not be loaded.",
+    "coaching": {
+      "title": "Coaching",
+      "subtitle": "Your coach, your coaching progress and every coaching session in this programme.",
+      "book": "Book session",
+      "myCoach": "My coach",
+      "noCoach": "No coach is assigned to you yet. Choose a coach from the directory below.",
+      "progressTitle": "Coaching progress",
+      "privacy": "Your coach's private notes stay private. Only what they share with you appears here.",
+      "sessionsLabel": "Coaching sessions",
+      "noSessions": "No coaching sessions in this programme yet.",
+      "directoryTitle": "Coach directory"
+    },
+    "peer": {
+      "title": "Peer coaching",
+      "subtitle": "Practise with peers in your cohort. Booking availability and your session history are shown separately.",
+      "book": "Book peer session",
+      "progressLabel": "Peer sessions completed",
+      "feedbackTitle": "Feedback received",
+      "noFeedback": "No peer feedback shared with you yet.",
+      "sessionsLabel": "Peer coaching sessions"
+    },
+    "mentoring": {
+      "title": "Mentoring",
+      "subtitle": "Your mentor, how to prepare, and every mentoring session in this programme.",
+      "book": "Book mentoring",
+      "myMentor": "My mentor",
+      "noMentor": "No mentoring session booked yet. Choose a mentor below.",
+      "preparation": "Preparation",
+      "prepTitle": "Prepare for your next session",
+      "prepBody": "Add your questions and context on the session page so your mentor can see them before you meet.",
+      "addPreparation": "Add preparation notes",
+      "prepNoSession": "Book a mentoring session to start preparing.",
+      "feedbackTitle": "Mentor feedback",
+      "noFeedback": "No mentor feedback shared with you yet.",
+      "sessionsLabel": "Mentoring sessions",
+      "noSessions": "No mentoring sessions in this programme yet.",
+      "mentorsTitle": "Available mentors"
+    },
+    "triads": {
+      "title": "Triads",
+      "subtitle": "Practise in threes: coach, coachee and observer. The current round and your session history are shown separately.",
+      "roundCurrent": "Round {{n}} current",
+      "noRoundPill": "No round open",
+      "myGroup": "My Triad group",
+      "noGroup": "You haven't been placed in a Triad group yet.",
+      "member": "Member",
+      "yourRole": "Your role · {{role}}",
+      "roles": {
+        "coach": "Coach",
+        "coachee": "Coachee",
+        "observer": "Observer"
+      },
+      "nextTitle": "Next Triad session",
+      "openSession": "Open Triad session",
+      "roundsTitle": "Rounds",
+      "roundsSubtitle": "Every Triad session in this programme, with your self-reflection status",
+      "earlierPractice": "Triad practice",
+      "session": "Session",
+      "selfRating": "Self-rating",
+      "selfReflection": "Self-reflection",
+      "submitted": "Submitted",
+      "due": "Due now",
+      "afterSession": "After session"
     }
   }
 }

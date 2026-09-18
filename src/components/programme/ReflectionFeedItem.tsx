@@ -37,23 +37,57 @@ export function ReflectionFeedItem({
   const triadParts = TRIAD_PARTS.filter((key) => typeof item.details[key] === "string");
   const structured = !compact && (answers.length > 0 || triadParts.length > 0);
 
+  const pill = item.isPrivate ? "private" : item.linkedSessionId ? "linked" : null;
+
   return (
-    <article data-testid="reflection-item" data-source={item.sourceType} className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="rounded-full bg-[#e4f3f7] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.12em] text-[#2c8fa8]">
-          {t(`learnerProfile.reflections.sources.${item.sourceType}`)}
-        </span>
-        <span className="flex items-center gap-2 text-[10px] text-[#9a938a]">
-          {item.isPrivate && (
-            <span className="inline-flex items-center gap-1">
-              <Lock className="h-3 w-3" /> {t("learnerProfile.reflections.onlyYou")}
+    <article
+      data-testid="reflection-item"
+      data-source={item.sourceType}
+      className={compact ? "rounded-xl border border-[#eee8de] bg-[#f6f3ee] p-4" : "rounded-[13px] border border-[#efeae1] bg-white p-[15px]"}
+    >
+      {compact ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="rounded-full bg-[#e4f3f7] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.12em] text-[#2c8fa8]">
+              {t(`learnerProfile.reflections.sources.${item.sourceType}`)}
+            </span>
+            <span className="flex items-center gap-2 text-[10px] text-[#9a938a]">
+              {item.isPrivate && (
+                <span className="inline-flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> {t("learnerProfile.reflections.onlyYou")}
+                </span>
+              )}
+              {formatProfileDate(item.occurredAt)}
+            </span>
+          </div>
+          {item.title && <p className="mt-1.5 text-[12px] font-semibold text-[#062f3e]">{item.title}</p>}
+        </>
+      ) : (
+        // Design (My Journey → Reflections): kind · title · date, state pill, quote, "Source · …".
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="min-w-0">
+            <div className="text-[8.5px] font-extrabold uppercase tracking-[.14em] text-[#2c8fa8]">
+              {t(`learnerProfile.reflections.sources.${item.sourceType}`)}
+            </div>
+            {item.title && <h3 className="mt-[5px] font-serif text-[15px] font-normal text-[#062f3e]">{item.title}</h3>}
+            <div className="mt-[3px] text-[10px] text-[#9a9287]">
+              {formatProfileDate(item.occurredAt)}
+              {item.isPrivate && ` · ${t("learnerProfile.reflections.privateNote")}`}
+            </div>
+          </div>
+          {pill && (
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-[5px] text-[8.5px] font-extrabold uppercase tracking-[.08em]",
+                pill === "private" ? "bg-[#f2eee6] text-[#7d7468]" : "bg-[#e4f1f5] text-[#226d80]"
+              )}
+            >
+              {pill === "private" && <Lock className="h-2.5 w-2.5" />}
+              {t(`learnerProfile.reflections.pill.${pill}`)}
             </span>
           )}
-          {formatProfileDate(item.occurredAt)}
-        </span>
-      </div>
-
-      {item.title && <p className="mt-1.5 text-[12px] font-semibold text-[#062f3e]">{item.title}</p>}
+        </div>
+      )}
 
       {item.sourceType === "goal_checkin" && item.rating != null && (
         <p className="mt-1 text-[11px] text-[#6a6560]">
@@ -82,17 +116,20 @@ export function ReflectionFeedItem({
           ))}
         </dl>
       ) : (
-        <p className={cn("mt-2 whitespace-pre-wrap font-serif text-[13.5px] leading-relaxed text-[#062f3e]", compact && "line-clamp-2 text-[12.5px] text-[#6a6560]")}>
-          {compact ? `“${item.body}”` : item.body}
+        <p className={cn("whitespace-pre-wrap font-serif text-[13.5px] leading-[1.55]", compact ? "mt-2 line-clamp-2 text-[12.5px] text-[#6a6560]" : "mt-3 text-[#3f3a33]")}>
+          {`“${item.body}”`}
         </p>
       )}
 
       {(path || onDelete) && (
-        <div className="mt-2 flex items-center justify-between gap-2">
+        <div className={cn("flex items-center justify-between gap-2", compact ? "mt-2" : "mt-[11px]")}>
           {path ? (
-            <Link to={path} className="text-[10.5px] font-semibold text-[#2c8fa8] hover:underline">
-              {t(`learnerProfile.reflections.open.${item.sourceType === "goal_checkin" ? "goal" : item.linkedSessionId ? "session" : "training"}`)}
-            </Link>
+            <span className="text-[10px] text-[#9a9287]">
+              {!compact && `${t("learnerProfile.reflections.sourcePrefix")} · `}
+              <Link to={path} className="text-[10.5px] font-semibold text-[#2c8fa8] hover:underline">
+                {t(`learnerProfile.reflections.open.${item.sourceType === "goal_checkin" ? "goal" : item.linkedSessionId ? "session" : "training"}`)}
+              </Link>
+            </span>
           ) : (
             <span />
           )}

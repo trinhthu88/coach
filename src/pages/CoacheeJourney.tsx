@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -26,7 +25,6 @@ import { PracticeCompetencyCard } from "./journey/PracticeCompetencyCard";
 import { useEnrollmentDevelopmentJourney } from "@/hooks/journey/useEnrollmentDevelopmentJourney";
 import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
 import { LearnerProgrammeJourney } from "@/components/programme/LearnerProgrammeJourney";
-import { ProgrammeProfileHeader } from "@/components/programme/ProgrammeProfileHeader";
 import { FeedbackItemCard } from "@/components/programme/FeedbackItemCard";
 import {
   MiniProgress,
@@ -45,11 +43,18 @@ import { formatProfileDate } from "@/lib/programmeProfile";
 import { STATUS_LABEL_KEY, STATUS_TONE, effectiveSponsorStatus } from "@/pages/sponsor/sponsorUtils";
 import { DevelopmentJourneyList } from "@/components/journey/DevelopmentJourneyList";
 
+const STATUS_PILL = {
+  success: "bg-[#e8f1ec] text-[#17663f]",
+  warning: "bg-[#faf0e3] text-[#a8541c]",
+  destructive: "bg-[#fdf4ef] text-[#a8341c]",
+  muted: "bg-[#f2eee6] text-[#7d7468]",
+} as const;
+
 export default function CoacheeJourney() {
   const { t } = useTranslation("journey");
   const { t: tDash } = useTranslation("dashboard");
   const { t: tSponsor } = useTranslation("sponsor");
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const programmeApi = useJourneyProgramme(user?.id);
   const canonical = useLearnerCanonicalProgress(programmeApi.programme?.enrollmentId);
   const goalProgress = useLearnerCanonicalGoalProgress(programmeApi.programme?.enrollmentId);
@@ -156,32 +161,30 @@ export default function CoacheeJourney() {
 
   return (
     <div className="pb-4" style={{ color: PROFILE_COLORS.NAVY }}>
-      <ProgrammeProfileHeader
-        name={canonical.progress?.learner_display_name || profile?.full_name || ""}
-        eyebrow={t("coacheeJourney.title")}
-        subtitle={
-          canonical.progress
-            ? `${canonical.progress.programme_label} · ${canonical.progress.cohort_label || "—"}`
-            : t("coacheeJourney.subtitle")
-        }
-        metas={
-          canonical.progress && status
-            ? [
-                { label: tDash("learnerProfile.header.programmeStatus"), value: tSponsor(`status.${STATUS_LABEL_KEY[status]}`) },
-                {
-                  label: tSponsor("leaderDrawer.reference.dates"),
-                  value: `${formatProfileDate(canonical.progress.enrollment_start_date)} – ${formatProfileDate(canonical.progress.enrollment_end_date)}`,
-                },
-              ]
-            : []
-        }
-        status={status ? { tone: STATUS_TONE[status], label: tSponsor(`status.${STATUS_LABEL_KEY[status]}`) } : null}
-        trailing={
-          <Link to="/dashboard" className="rounded-full border border-white/25 px-3.5 py-1.5 text-[11px] font-semibold text-white hover:bg-white/10">
-            {tDash("learnerProfile.journeyPage.backToDashboard")}
-          </Link>
-        }
-      />
+      {/* Coachee prototype → My Journey: plain page header; programme status,
+          dates and requirements live in the shared Programme journey below. */}
+      <header data-testid="journey-header" className="mb-[18px] flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="text-[9.5px] font-extrabold uppercase tracking-[.18em] text-[#2c8fa8]">{t("coacheeJourney.eyebrow")}</div>
+          <h1 className="mt-[9px] font-serif text-[30px] font-light leading-[1.1] tracking-[-.025em] text-[#062f3e]">{t("coacheeJourney.title")}</h1>
+          <p className="mt-2 max-w-[70ch] text-[12.5px] text-[#7d7468]">
+            {canonical.progress
+              ? t("coacheeJourney.subtitleFor", {
+                  programme: canonical.progress.programme_label,
+                  cohort: canonical.progress.cohort_label || "—",
+                })
+              : t("coacheeJourney.subtitle")}
+          </p>
+        </div>
+        {canonical.progress && status && (
+          <span
+            data-testid="journey-status"
+            className={`rounded-full px-[13px] py-2 text-[9px] font-extrabold uppercase tracking-[.08em] ${STATUS_PILL[STATUS_TONE[status]]}`}
+          >
+            {tSponsor(`status.${STATUS_LABEL_KEY[status]}`)} · {formatProfileDate(canonical.progress.enrollment_start_date)} – {formatProfileDate(canonical.progress.enrollment_end_date)}
+          </span>
+        )}
+      </header>
 
       {/* The same shared Programme Journey the Dashboard and Sponsor Leader
           Detail render — full variant: every checkpoint plus detail. */}
@@ -222,35 +225,60 @@ export default function CoacheeJourney() {
                         onRatingChange={(patch) => saveRating(g.id, patch)}
                         startTargetLocked={isGoalLocked(g.created_at)}
                         progressPct={goalProgress.error ? null : goalProgress.progressByGoal[g.id] ?? null}
-                        renderHeader={({ pct }) => (
-                          <div className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] p-4 transition-colors hover:border-[#8bd3e3]">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-[9px] font-bold uppercase tracking-[.14em] text-[#2c8fa8]">
-                                  {t("journeyPage.goalsAndActions.goalEyebrow")}
-                                </p>
-                                <h3 className="mt-1 truncate font-serif text-[15.5px] font-normal leading-snug">{g.title}</h3>
+                        renderHeader={({ pct, open }) => {
+                          const goalMilestones = milestones.filter((m) => m.goal_id === g.id);
+                          const doneMilestones = goalMilestones.filter((m) => m.is_done).length;
+                          const openActions = allActionsSummary.actions.filter((a) => a.goal_id === g.id && a.status !== "completed").length;
+                          return (
+                            <div
+                              data-testid="goal-card"
+                              className={`border p-4 transition-colors hover:border-[#8bd3e3] ${open ? "border-[#dfd8cc] bg-[#fbf8f2]" : "border-[#efeae1] bg-white"}`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-[8.5px] font-extrabold uppercase tracking-[.14em] text-[#2c8fa8]">
+                                    {t("journeyPage.goalsAndActions.goalEyebrow")}
+                                  </p>
+                                  <h3 className="mt-[5px] font-serif text-[15.5px] font-normal leading-snug text-[#062f3e]">{g.title}</h3>
+                                </div>
+                                <span className="shrink-0 rounded-full bg-[#e8f1ec] px-2.5 py-[5px] text-[8.5px] font-extrabold uppercase tracking-[.08em] text-[#17663f]">
+                                  {t(`journeyPage.goalsAndActions.status.${g.status}`, { defaultValue: g.status })}
+                                </span>
                               </div>
-                              <span className="shrink-0 rounded-full bg-[#e4f3f7] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.12em] text-[#2c8fa8]">
-                                {t(`journeyPage.goalsAndActions.status.${g.status}`, { defaultValue: g.status })}
-                              </span>
+                              <div className="mt-3 flex items-end gap-6">
+                                <SmallMetric value={String(r?.start ?? "—")} label={t("journeyPage.goalsAndActions.start")} />
+                                <SmallMetric value={String(r?.current ?? "—")} label={t("journeyPage.goalsAndActions.current")} color={PROFILE_COLORS.TEAL} />
+                                <SmallMetric value={String(r?.target ?? "—")} label={t("journeyPage.goalsAndActions.target")} />
+                                {/* canonical_goal_progress, rendered as-is */}
+                                <div data-testid="goal-progress" className="ml-auto font-serif text-[20px] font-light text-[#2c8fa8]">
+                                  {pct == null ? "—" : `${pct}%`}
+                                </div>
+                              </div>
+                              <MiniProgress pct={pct ?? 0} color={PROFILE_COLORS.TEAL} />
+                              <div className="mt-3 flex flex-wrap items-center gap-2 text-[10.5px]">
+                                <span className="rounded-full border border-[#efeae1] bg-[#fbf8f2] px-2.5 py-1 text-[#062f3e]">
+                                  {t("journeyPage.goalsAndActions.milestonesChip", { done: doneMilestones, total: goalMilestones.length })}
+                                </span>
+                                <span className="rounded-full border border-[#efeae1] bg-[#fbf8f2] px-2.5 py-1 text-[#062f3e]">
+                                  {t("journeyPage.goalsAndActions.openActionsChip", { count: openActions })}
+                                </span>
+                                <span className="ml-auto font-bold text-[#2c8fa8]">
+                                  {open ? t("journeyPage.goalsAndActions.hideDetail") : t("journeyPage.goalsAndActions.showDetail")}
+                                </span>
+                              </div>
+                              {!open && (
+                                <p className="mt-2.5 text-[11px] text-[#6a6560]">
+                                  {nextAction
+                                    ? t("journeyPage.goalsAndActions.nextAction", {
+                                        text: nextAction.title,
+                                        date: nextAction.due_date ? format(new Date(nextAction.due_date), "MMM d") : t("journeyPage.goalsAndActions.noDueDate"),
+                                      })
+                                    : t("journeyPage.goalsAndActions.noOpenActions")}
+                                </p>
+                              )}
                             </div>
-                            <div className="mt-3 flex gap-6">
-                              <SmallMetric value={String(r?.start ?? "—")} label={t("journeyPage.goalsAndActions.start")} />
-                              <SmallMetric value={String(r?.current ?? "—")} label={t("journeyPage.goalsAndActions.current")} color={PROFILE_COLORS.TEAL} />
-                              <SmallMetric value={String(r?.target ?? "—")} label={t("journeyPage.goalsAndActions.target")} />
-                            </div>
-                            <MiniProgress pct={pct ?? 0} color={PROFILE_COLORS.TEAL} />
-                            <p className="mt-2.5 text-[11px] text-[#6a6560]">
-                              {nextAction
-                                ? t("journeyPage.goalsAndActions.nextAction", {
-                                    text: nextAction.title,
-                                    date: nextAction.due_date ? format(new Date(nextAction.due_date), "MMM d") : t("journeyPage.goalsAndActions.noDueDate"),
-                                  })
-                                : t("journeyPage.goalsAndActions.noOpenActions")}
-                            </p>
-                          </div>
-                        )}
+                          );
+                        }}
                       />
                     </div>
                   );
@@ -279,13 +307,12 @@ export default function CoacheeJourney() {
 
         <ProfileSection>
           <ProfileSectionTitle title={t("developmentJourney.title")} />
-          <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("developmentJourney.subtitle")}</p>
           {developmentJourney.error ? (
             <ProfileLoadError text={tDash("learnerProfile.errors.development")} />
           ) : (
             <>
               {developmentJourney.partialFailure && <ProfileLoadError text={tDash("learnerProfile.errors.developmentPartial")} />}
-              <div className="mt-4">
+              <div className="mt-1.5">
                 <DevelopmentJourneyList events={developmentJourney.events} loading={developmentJourney.loading} />
               </div>
             </>

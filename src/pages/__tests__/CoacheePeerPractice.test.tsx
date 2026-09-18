@@ -17,7 +17,8 @@ vi.mock("@/hooks/useEnrollmentContext", () => ({
 vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
   useLearnerCanonicalProgress: () => ({ progress: { peer_completed_units: 2, peer_required_units: 2, programme_label: "P", cohort_label: "C" } }),
 }));
-vi.mock("@/hooks/dashboard/useLearnerFeedback", () => ({ useLearnerFeedback: () => ({ feedback: [], loading: false, error: null }) }));
+const learnerFeedback = vi.fn(() => ({ feedback: [] as unknown[], loading: false, error: null as string | null }));
+vi.mock("@/hooks/dashboard/useLearnerFeedback", () => ({ useLearnerFeedback: () => learnerFeedback() }));
 vi.mock("@/hooks/journey/useEnrollmentSessions", () => ({
   useEnrollmentSessions: () => ({
     sessions: [
@@ -41,11 +42,31 @@ describe("CoacheePeerPractice", () => {
       </MemoryRouter>
     );
     await waitFor(() =>
-      expect(screen.getByText("No peer practice partners are available to book right now. This doesn't affect your session history above.")).toBeInTheDocument()
+      expect(screen.getByText("No peer practice partners are available to book right now. This doesn't affect your peer practice history below.")).toBeInTheDocument()
     );
     const history = screen.getByTestId("peer-history");
     expect(within(history).getByText(/3 sessions in your history · 2 count as programme evidence · Peer coaching 2\/2/)).toBeInTheDocument();
     expect(within(history).getAllByTestId("session-row")).toHaveLength(3);
     expect(screen.getByTestId("peer-partners")).toHaveTextContent("Partners available to book now");
+    // Module progress is the canonical peer ratio (2/2), not the 3 history rows.
+    expect(screen.getByTestId("module-progress-value")).toHaveTextContent("2 / 2");
+  });
+
+  it("quotes only real received peer feedback, never mentoring feedback", async () => {
+    learnerFeedback.mockReturnValue({
+      feedback: [
+        { kind: "mentoring", id: "f2", fromName: "Minh Anh", submittedAt: "2026-09-11T00:00:00Z", overallNotes: "Mentoring-only note", competencies: [] },
+        { kind: "peer_competency", id: "f1", fromName: "Linh Tran", submittedAt: "2026-09-10T00:00:00Z", note: "Strong listening.", scores: [] },
+      ],
+      loading: false,
+      error: null,
+    });
+    render(
+      <MemoryRouter>
+        <CoacheePeerPractice />
+      </MemoryRouter>
+    );
+    expect(await screen.findByText(/Strong listening\./)).toBeInTheDocument();
+    expect(screen.queryByText(/Mentoring-only note/)).not.toBeInTheDocument();
   });
 });

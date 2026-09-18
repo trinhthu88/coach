@@ -167,7 +167,36 @@
       "quiz_reflection": "Training / Learning · Quiz reflection",
       "daily_prompt_response": "Training / Learning · Daily prompt",
       "journey_reflection": "Journey · Personal reflection"
-    }
+    },
+    "summary_one": "{{count}} development event · newest first",
+    "summary_other": "{{count}} development events · newest first",
+    "filterLabel": "Filter development events",
+    "filters": {
+      "all": "All",
+      "goals": "Goals",
+      "sessions": "Sessions",
+      "training": "Training",
+      "reflections": "Reflections"
+    },
+    "filterEmpty": "No events of this kind yet.",
+    "monthCount_one": "{{count}} event",
+    "monthCount_other": "{{count}} events",
+    "typeLabels": {
+      "goal": "Goal",
+      "action": "Action",
+      "coaching": "Coaching",
+      "peer_coaching": "Peer coaching",
+      "mentoring": "Mentoring",
+      "triad": "Triad",
+      "training": "Training",
+      "reflection": "Reflection",
+      "feedback": "Feedback"
+    },
+    "groupTitle": "{{count}} {{type}} updates",
+    "items": "{{count}} items",
+    "hide": "hide",
+    "showEarlier_one": "Show earlier · {{count}} more month",
+    "showEarlier_other": "Show earlier · {{count}} more months"
   },
   "journeyPage": {
     "eyebrow": "Progress",
@@ -197,7 +226,12 @@
       "nextAction": "Next: {{text}} · Due {{date}}",
       "noDueDate": "no due date",
       "noOpenActions": "No open actions for this goal yet.",
-      "actionsHeader": "All action items"
+      "actionsHeader": "All action items",
+      "milestonesChip": "{{done}} / {{total}} milestones",
+      "openActionsChip_one": "{{count}} open action",
+      "openActionsChip_other": "{{count}} open actions",
+      "showDetail": "Milestones & actions ↓",
+      "hideDetail": "Hide detail ↑"
     },
     "reflectionsCard": {
       "title": "Reflections",
@@ -254,6 +288,8 @@
   },
   "coacheeJourney": {
     "title": "My Journey",
-    "subtitle": "Everything for this enrollment in one place: what the programme expects, what has actually happened, and where your goals stand."
+    "subtitle": "Everything for this enrollment in one place: what the programme expects, what has actually happened, and where your goals stand.",
+    "eyebrow": "Learner workspace",
+    "subtitleFor": "Everything for {{programme}} · {{cohort}} in one place: what the programme expects, what has actually happened, and where your goals stand."
   }
 }

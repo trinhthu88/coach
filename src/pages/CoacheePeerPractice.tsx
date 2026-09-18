@@ -2,13 +2,23 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
-import { PageHeader } from "@/components/ui/page-header";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { MyPeerPracticeSection } from "@/pages/coachee/MyPeerPracticeSection";
+import { useModuleWorkspace } from "@/hooks/journey/useModuleWorkspace";
+import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
+import { feedbackText } from "@/lib/feedbackLabels";
+import { formatProfileDate } from "@/lib/programmeProfile";
+import {
+  ModuleCard,
+  ModuleEyebrow,
+  ModuleFeedbackQuote,
+  ModulePageHeader,
+  ModulePrimaryAction,
+  ModuleProgressCard,
+} from "@/components/programme/module/ModulePage";
 
 interface PeerCoachee {
   id: string;
@@ -25,6 +35,12 @@ interface PeerCoachee {
 export default function CoacheePeerPractice() {
   const { user } = useAuth();
   const { t } = useTranslation("profile");
+  const { t: tDash } = useTranslation("dashboard");
+  const ws = useModuleWorkspace("peer");
+  // Latest learner-visible peer feedback, from the one learner feedback source.
+  const feedback = useLearnerFeedback(user?.id, ws.enrollmentId);
+  const latestFeedback =
+    feedback.feedback.find((f) => f.kind === "peer_competency" || (f.kind === "session_note" && f.source === "peer_practice")) ?? null;
   const [coachees, setCoachees] = useState<PeerCoachee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,60 +68,77 @@ export default function CoacheePeerPractice() {
   }, [load]);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        className="mb-0"
-        eyebrow={t("coacheePeerPractice.header.eyebrow")}
-        title={t("coacheePeerPractice.header.titleLead")}
-        emphasis={t("coacheePeerPractice.header.titleEmphasis")}
-        subtitle={t("coacheePeerPractice.header.subtitle")}
+    <div className="flex flex-col gap-[18px]">
+      <ModulePageHeader
+        title={tDash("learnerModules.peer.title")}
+        subtitle={tDash("learnerModules.peer.subtitle")}
+        action={<ModulePrimaryAction href="#peer-partners">{tDash("learnerModules.peer.book")}</ModulePrimaryAction>}
       />
 
-      <MyPeerPracticeSection />
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(290px,1fr))]">
+        {/* Practice pool = partner AVAILABILITY (profiles opted in to peer
+            practice) — who can be booked now. Not session history. */}
+        <ModuleCard id="peer-partners" testId="peer-partners">
+          <ModuleEyebrow>{t("coacheePeerPractice.partnersTitle")}</ModuleEyebrow>
+          <p className="mb-[14px] mt-2 text-[11.5px] text-[#7d7468]">{t("coacheePeerPractice.partnersSubtitle")}</p>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center text-sm">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-muted-foreground">{error}</p>
+              <Button size="sm" variant="outline" onClick={load}>
+                {t("coacheePeerPractice.retry")}
+              </Button>
+            </div>
+          ) : coachees.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-[#ddd6cc] bg-[#fbf8f2] p-4 text-[11.5px] leading-relaxed text-[#7d7468]">
+              {t("coacheePeerPractice.empty")}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-[9px]">
+              {coachees.map((c) => (
+                <div key={c.id} className="flex items-center justify-between gap-3 rounded-[12px] border border-[#efeae1] bg-white px-[13px] py-3">
+                  <div className="flex min-w-0 items-center gap-[11px]">
+                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#e4f1f5] text-[11px] font-bold text-[#226d80]">
+                      {(c.full_name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-[12px] font-semibold text-[#062f3e]">{c.full_name}</div>
+                      <div className="mt-0.5 text-[10px] text-[#7d7468]">{t("coacheePeerPractice.defaultTitle")}</div>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/coachee/peer-practice/${c.id}/book`}
+                    className="shrink-0 rounded-full border border-[#d8d1c6] px-[13px] py-2 text-[10.5px] font-bold text-[#062f3e] hover:border-[#8bd3e3]"
+                  >
+                    {t("coacheePeerPractice.book")}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </ModuleCard>
 
-      {/* Partner availability (profiles opted in to peer practice) — who can be
-          booked NOW. Not session history: that is the section above. */}
-      <div data-testid="peer-partners">
-        <h2 className="font-display text-lg">{t("coacheePeerPractice.partnersTitle")}</h2>
-        <p className="mt-0.5 text-[11.5px] text-muted-foreground">{t("coacheePeerPractice.partnersSubtitle")}</p>
+        <div className="flex flex-col gap-4">
+          <ModuleProgressCard
+            completed={ws.completed}
+            required={ws.required}
+            label={tDash("learnerModules.peer.progressLabel")}
+            loading={ws.progressLoading}
+          />
+          <ModuleFeedbackQuote
+            eyebrow={tDash("learnerModules.peer.feedbackTitle")}
+            quote={latestFeedback ? feedbackText(latestFeedback) : null}
+            byline={latestFeedback ? [latestFeedback.fromName, formatProfileDate(latestFeedback.submittedAt)].filter(Boolean).join(" · ") : undefined}
+            empty={feedback.error ? tDash("learnerProfile.errors.feedback") : tDash("learnerModules.peer.noFeedback")}
+          />
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      ) : error ? (
-        <Card className="flex flex-col items-center gap-3 border-destructive/30 bg-destructive/5 p-12 text-center text-sm">
-          <AlertTriangle className="h-5 w-5 text-destructive" />
-          <p className="text-muted-foreground">{error}</p>
-          <Button size="sm" variant="outline" onClick={load}>
-            {t("coacheePeerPractice.retry")}
-          </Button>
-        </Card>
-      ) : coachees.length === 0 ? (
-        <Card className="p-12 text-center text-sm text-muted-foreground">{t("coacheePeerPractice.empty")}</Card>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {coachees.map((c) => (
-            <Card key={c.id} className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-sm font-bold text-success">
-                  {(c.full_name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{c.full_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{t("coacheePeerPractice.defaultTitle")}</p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <Button asChild size="sm" className="w-full">
-                  <Link to={`/coachee/peer-practice/${c.id}/book`}>{t("coacheePeerPractice.book")}</Link>
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+      <MyPeerPracticeSection />
     </div>
   );
 }

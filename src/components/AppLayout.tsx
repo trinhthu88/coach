@@ -153,9 +153,10 @@ const NAV: NavItem[] = [
 ];
 
 // Groups collapsed by default (until manually toggled, or until the current
-// route lands inside one — see isGroupOpen below) — everything else stays
-// open by default, unchanged from before groups were collapsible at all.
-const DEFAULT_COLLAPSED_GROUPS = new Set(["navGroups.developMyself"]);
+// route lands inside one — see isGroupOpen below). Empty: every group opens
+// by default. "Develop Myself" used to start collapsed, which hid the four
+// learner module pages on first load.
+const DEFAULT_COLLAPSED_GROUPS = new Set<string>();
 
 function NavItemLink({
   item,
@@ -225,12 +226,15 @@ function SidebarNav({
   unreadCount,
   onNavigate,
   onHowItWorks,
+  staticGroups = false,
 }: {
   items: NavItem[];
   collapsed: boolean;
   unreadCount: number;
   onNavigate?: () => void;
   onHowItWorks?: () => void;
+  /** Learner rail (Coachee prototype): group labels are static section headings, always expanded. */
+  staticGroups?: boolean;
 }) {
   const { t } = useTranslation("common");
   const location = useLocation();
@@ -284,6 +288,17 @@ function SidebarNav({
         // no collapsible wrapper — render the links directly, unchanged.
         if (collapsed || !group.key) {
           return <div key={group.key ?? group.items[0].to} className="space-y-[3px]">{links}</div>;
+        }
+
+        if (staticGroups) {
+          return (
+            <div key={group.key} role="group" aria-label={t(group.key)} className="space-y-[3px]">
+              <div className="truncate px-3 pb-1.5 pt-4 text-micro font-bold uppercase tracking-[0.15em] text-secondary-foreground/40">
+                {t(group.key)}
+              </div>
+              {links}
+            </div>
+          );
         }
 
         const open = isGroupOpen(group);
@@ -524,6 +539,7 @@ export default function AppLayout() {
           collapsed={collapsed}
           unreadCount={unreadCount}
           onHowItWorks={showsOnboarding ? openManualTour : undefined}
+          staticGroups={role === "coachee"}
         />
         <SidebarFooter role={role} collapsed={collapsed} onSignOut={handleSignOut} />
       </aside>
@@ -544,6 +560,7 @@ export default function AppLayout() {
             unreadCount={unreadCount}
             onNavigate={() => setMobileNavOpen(false)}
             onHowItWorks={showsOnboarding ? openManualTour : undefined}
+            staticGroups={role === "coachee"}
           />
           <SidebarFooter
             role={role}

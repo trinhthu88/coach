@@ -119,7 +119,7 @@
       "titleEmphasis": "practice",
       "subtitle": "Coachees who have opted in to peer practice. Book a session to practice together."
     },
-    "empty": "No peer practice partners are available to book right now. This doesn't affect your session history above.",
+    "empty": "No peer practice partners are available to book right now. This doesn't affect your peer practice history below.",
     "defaultTitle": "Peer practice partner",
     "book": "Book a session",
     "retry": "Try again",

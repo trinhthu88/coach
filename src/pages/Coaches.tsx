@@ -13,6 +13,10 @@ import { Search, Star, Heart, AlertTriangle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "@/hooks/useFavorites";
 import { MyCoachSection } from "@/pages/coachee/MyCoachSection";
+import { useAuth } from "@/context/AuthContext";
+import { useProgrammeModules } from "@/hooks/useProgrammeModules";
+import { useMyCoachCardData } from "@/hooks/dashboard/useMyCoachCardData";
+import { ModulePageHeader, ModulePrimaryAction } from "@/components/programme/module/ModulePage";
 
 interface CoachRow {
   id: string;
@@ -58,6 +62,11 @@ function coachesQuery() {
 
 export default function Coaches() {
   const { t } = useTranslation("coaches");
+  const { t: tDash } = useTranslation("dashboard");
+  const { user, role } = useAuth();
+  const isLearner = role === "coachee";
+  const { hasDirection } = useProgrammeModules();
+  const { data: myCoach } = useMyCoachCardData(user?.id, isLearner && hasDirection("coaching", "receive"));
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -116,14 +125,32 @@ export default function Coaches() {
 
   return (
     <div className="space-y-9">
-      <PageHeader
-        eyebrow={t("list.eyebrow")}
-        title={t("list.titleLead")}
-        emphasis={t("list.titleEmphasis")}
-        subtitle={t("list.subtitle", { count: coaches.length })}
-      />
-
-      <MyCoachSection />
+      {isLearner ? (
+        <>
+          {/* Coachee prototype → Coaching: header, My coach, progress, sessions. */}
+          <ModulePageHeader
+            title={tDash("learnerModules.coaching.title")}
+            subtitle={tDash("learnerModules.coaching.subtitle")}
+            action={
+              <ModulePrimaryAction {...(myCoach ? { to: `/coaches/${myCoach.id}/book` } : { href: "#coach-directory" })}>
+                {tDash("learnerModules.coaching.book")}
+              </ModulePrimaryAction>
+            }
+          />
+          <MyCoachSection />
+          <div id="coach-directory">
+            <h2 className="font-serif text-[19px] font-normal tracking-[-.02em] text-[#062f3e]">{tDash("learnerModules.coaching.directoryTitle")}</h2>
+            <p className="mt-1 text-[11.5px] text-[#7d7468]">{t("list.subtitle", { count: coaches.length })}</p>
+          </div>
+        </>
+      ) : (
+        <PageHeader
+          eyebrow={t("list.eyebrow")}
+          title={t("list.titleLead")}
+          emphasis={t("list.titleEmphasis")}
+          subtitle={t("list.subtitle", { count: coaches.length })}
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative min-w-0 flex-1 sm:min-w-[260px]">

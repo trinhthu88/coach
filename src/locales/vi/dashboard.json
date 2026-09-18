@@ -705,7 +705,85 @@
         "session": "Mở session →",
         "training": "Mở phần đào tạo →"
       },
-      "delete": "Xóa suy ngẫm"
+      "delete": "Xóa suy ngẫm",
+      "privateNote": "chỉ bạn xem được",
+      "sourcePrefix": "Nguồn",
+      "pill": {
+        "private": "Riêng tư",
+        "linked": "Có liên kết"
+      }
+    }
+  },
+  "learnerModules": {
+    "eyebrow": "Phát triển của tôi",
+    "next": "Tiếp theo",
+    "noneBooked": "chưa đặt lịch",
+    "sessionsComplete": "session đã hoàn thành",
+    "sessionsCompleted": "Session đã hoàn thành",
+    "sessionsError": "Không thể tải các session của bạn.",
+    "coaching": {
+      "title": "Coaching",
+      "subtitle": "Coach của bạn, tiến độ coaching và mọi session coaching trong chương trình.",
+      "book": "Đặt session",
+      "myCoach": "Coach của tôi",
+      "noCoach": "Bạn chưa được phân công coach. Hãy chọn coach trong danh sách bên dưới.",
+      "progressTitle": "Tiến độ coaching",
+      "privacy": "Ghi chú riêng của coach luôn được bảo mật. Chỉ những gì coach chia sẻ mới hiển thị ở đây.",
+      "sessionsLabel": "Các session coaching",
+      "noSessions": "Chưa có session coaching nào trong chương trình.",
+      "directoryTitle": "Danh sách coach"
+    },
+    "peer": {
+      "title": "Peer coaching",
+      "subtitle": "Thực hành cùng bạn đồng hành trong khóa. Khả năng đặt lịch và lịch sử session được hiển thị riêng.",
+      "book": "Đặt session peer",
+      "progressLabel": "Session peer đã hoàn thành",
+      "feedbackTitle": "Phản hồi nhận được",
+      "noFeedback": "Chưa có phản hồi peer nào được chia sẻ với bạn.",
+      "sessionsLabel": "Các session peer coaching"
+    },
+    "mentoring": {
+      "title": "Mentoring",
+      "subtitle": "Mentor của bạn, cách chuẩn bị và mọi session mentoring trong chương trình.",
+      "book": "Đặt mentoring",
+      "myMentor": "Mentor của tôi",
+      "noMentor": "Chưa có session mentoring nào được đặt. Hãy chọn mentor bên dưới.",
+      "preparation": "Chuẩn bị",
+      "prepTitle": "Chuẩn bị cho session tiếp theo",
+      "prepBody": "Thêm câu hỏi và bối cảnh trên trang session để mentor xem trước khi gặp.",
+      "addPreparation": "Thêm ghi chú chuẩn bị",
+      "prepNoSession": "Đặt một session mentoring để bắt đầu chuẩn bị.",
+      "feedbackTitle": "Phản hồi của mentor",
+      "noFeedback": "Chưa có phản hồi nào từ mentor được chia sẻ với bạn.",
+      "sessionsLabel": "Các session mentoring",
+      "noSessions": "Chưa có session mentoring nào trong chương trình.",
+      "mentorsTitle": "Mentor khả dụng"
+    },
+    "triads": {
+      "title": "Triads",
+      "subtitle": "Thực hành theo nhóm ba: coach, coachee và người quan sát. Vòng hiện tại và lịch sử session được hiển thị riêng.",
+      "roundCurrent": "Vòng {{n}} hiện tại",
+      "noRoundPill": "Chưa mở vòng",
+      "myGroup": "Nhóm Triad của tôi",
+      "noGroup": "Bạn chưa được xếp vào nhóm Triad.",
+      "member": "Thành viên",
+      "yourRole": "Vai trò của bạn · {{role}}",
+      "roles": {
+        "coach": "Coach",
+        "coachee": "Coachee",
+        "observer": "Người quan sát"
+      },
+      "nextTitle": "Session Triad tiếp theo",
+      "openSession": "Mở session Triad",
+      "roundsTitle": "Các vòng",
+      "roundsSubtitle": "Mọi session Triad trong chương trình, kèm trạng thái tự phản tư của bạn",
+      "earlierPractice": "Thực hành Triad",
+      "session": "Session",
+      "selfRating": "Tự đánh giá",
+      "selfReflection": "Tự phản tư",
+      "submitted": "Đã nộp",
+      "due": "Cần nộp",
+      "afterSession": "Sau session"
     }
   }
 }

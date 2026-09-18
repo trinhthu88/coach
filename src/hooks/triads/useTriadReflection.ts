@@ -93,9 +93,46 @@ export function useTriadReflection() {
       queryClient.invalidateQueries({ queryKey: ["triad-reflection-group", vars.sessionId] });
       queryClient.invalidateQueries({ queryKey: ["my-triads"] });
       queryClient.invalidateQueries({ queryKey: ["triad-session-entry"] });
+      queryClient.invalidateQueries({ queryKey: ["triad-reflection-statuses"] });
       queryClient.invalidateQueries({ queryKey: ["learner-reflection-feed"] });
     },
   });
 
   return { submitReflection: submitReflection.mutateAsync, submitting: submitReflection.isPending };
+}
+
+export interface TriadReflectionStatus {
+  sessionId: string;
+  submittedAt: string | null;
+  selfRating: number | null;
+}
+
+/**
+ * The learner's own self-rating / self-reflection status per Triad session,
+ * read from the original triad_reflections records (one row per participant
+ * per session). Used by the Triads "Rounds" list; independent of whether the
+ * reflection has any text (the learner_reflection_feed only carries text).
+ */
+export function useMyTriadReflectionStatuses(sessionIds: string[]) {
+  const { user } = useAuth();
+  const ids = Array.from(new Set(sessionIds)).sort();
+  const query = useQuery({
+    queryKey: ["triad-reflection-statuses", user?.id, ids],
+    queryFn: async (): Promise<Map<string, TriadReflectionStatus>> => {
+      const { data, error } = await supabase
+        .from("triad_reflections")
+        .select("triad_session_id, satisfaction_rating, submitted_at")
+        .eq("participant_id", user!.id)
+        .in("triad_session_id", ids);
+      if (error) throw error;
+      return new Map(
+        (data ?? []).map((row) => [
+          row.triad_session_id as string,
+          { sessionId: row.triad_session_id as string, submittedAt: row.submitted_at as string | null, selfRating: row.satisfaction_rating as number | null },
+        ])
+      );
+    },
+    enabled: !!user && ids.length > 0,
+  });
+  return { statuses: query.data ?? new Map<string, TriadReflectionStatus>(), loading: query.isLoading && ids.length > 0, error: query.isError };
 }
