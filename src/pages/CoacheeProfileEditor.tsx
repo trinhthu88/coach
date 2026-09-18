@@ -38,7 +38,7 @@ function getTimezoneOptions(): string[] {
 
 const TIMEZONES = getTimezoneOptions();
 
-export default function CoacheeProfileEditor() {
+export default function CoacheeProfileEditor({ embedded = false }: { embedded?: boolean } = {}) {
   const { user, profile, refreshProfile } = useAuth();
   const { t } = useTranslation("profile");
   const [loading, setLoading] = useState(true);
@@ -132,13 +132,15 @@ export default function CoacheeProfileEditor() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      {!embedded && (
+        <PageHeader
           className="mb-0"
           eyebrow={t("coacheeEditor.header.eyebrow")}
           title={t("coacheeEditor.header.titleLead")}
           emphasis={t("coacheeEditor.header.titleEmphasis")}
           subtitle={t("coacheeEditor.header.subtitle")}
         />
+      )}
 
       <Card className="space-y-5 p-6">
         <div className="grid gap-4 sm:grid-cols-2">

@@ -304,6 +304,7 @@
       "body": "Once a session is confirmed, the conversation thread will appear here."
     },
     "threadsLabel": "Threads",
+    "contextLabel": "Coaching",
     "sessionCount_one": "{{count}} session",
     "sessionCount_other": "{{count}} sessions",
     "newBadge": "{{count}} new",

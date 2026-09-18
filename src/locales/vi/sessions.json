@@ -302,6 +302,7 @@
       "body": "Khi một session được xác nhận, chuỗi trò chuyện sẽ xuất hiện ở đây."
     },
     "threadsLabel": "Chuỗi trò chuyện",
+    "contextLabel": "Coaching",
     "sessionCount_other": "{{count}} session",
     "newBadge": "{{count}} mới",
     "typeMessagePlaceholder": "Nhập tin nhắn…",

@@ -92,9 +92,9 @@ const NAV: NavItem[] = [
   // Coachee — Communication
   { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coachee"], groupKey: "navGroups.communication" },
 
-  // Coachee — Account
-  { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"], groupKey: "navGroups.account" },
-  { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.account" },
+  // Coachee — Account (single combined workspace — Profile tab + Availability
+  // tab on the same page; /coachee/availability redirects there)
+  { to: "/coachee/profile", labelKey: "nav.profileAndAvailability", icon: IdCard, roles: ["coachee"], groupKey: "navGroups.account" },
 
   // Coach — My Coaching Profile
   { to: "/coach/profile", labelKey: "nav.myCoachProfile", icon: IdCard, roles: ["coach"], groupKey: "navGroups.deliverCoaching" },

@@ -185,11 +185,11 @@
 - Consumes: existing message queries/mutations, profile persistence, availability persistence, language switching, and onboarding/help controls.
 - Produces: split-pane messages with canonical context, profile/availability tabs that only save existing fields, translated copy, semantic headings/labels, keyboard tabs, focus-visible controls, and mobile-safe touch targets.
 
-- [ ] **Step 1: Write failing tests.** Not done, except mobile navigation: `AppLayout.test.tsx`'s "coachee mobile navigation" coverage exists and passes.
-- [ ] **Step 2: Run the targeted tests and verify red failures.** N/A beyond the mobile-nav coverage above.
-- [ ] **Step 3: Implement the approved layout and accessibility fixes.** Not done — `Messages.tsx`, `CoacheeProfileEditor.tsx`, and `CoacheeAvailability.tsx` have not been touched since before this redesign effort (confirmed via `git log --oneline -- <path>` for each). Profile and Availability remain two separate pages, not the approved prototype's combined account workspace.
-- [ ] **Step 4: Run targeted tests, `npm run lint`, and `npx tsc --noEmit`.** N/A until Step 3 happens.
-- [ ] **Step 5: Commit.** No such commit exists.
+- [x] **Step 1: Write failing tests.** `src/pages/coachee/__tests__/CoacheeAccount.test.tsx` covers default tab, `?tab=availability` deep-link, and tab switching. No dedicated Messages test was added (no test file existed before either).
+- [x] **Step 2: Run the targeted tests and verify red failures.** Done as part of the same work.
+- [x] **Step 3: Implement the approved layout and accessibility fixes**, corrected scope. `Messages.tsx`: confirmed `session_messages.session_id` FKs only to `sessions` (coaching) — there is no canonical peer/mentoring/triad messaging schema, so a multi-module inbox like the prototype's illustrative one is not implementable without inventing tables; added an honest "Coaching" context label to each thread instead (real, not fabricated). `CoacheeProfileEditor.tsx` and `CoacheeAvailability.tsx`: both gained an `embedded?: boolean` prop that only suppresses their own duplicate `PageHeader`, logic and state untouched. New `src/pages/coachee/CoacheeAccount.tsx` is the combined workspace — `/coachee/profile` now renders it (Profile tab + Availability tab); `/coachee/availability` redirects to `/coachee/profile?tab=availability` for old links. AppLayout's two separate Account nav items were merged into one "Profile & Availability" entry. No "Preferences" tab was added — the only real preference-shaped field (spoken languages) already lives in the Profile tab, and the prototype's other Preferences controls (session format, free-text context) have no backing schema; inventing one to fill a tab is explicitly against the brief.
+- [x] **Step 4: Run targeted tests, `npm run lint`, and `npx tsc --noEmit`.** Clean.
+- [ ] **Step 5: Commit.** Pending — do this as part of finishing this phase.
 
 ### Task 8: Run the full visual/source-of-truth audit and produce the final validated commit
 

@@ -1,4 +1,14 @@
 {
+  "account": {
+    "eyebrow": "Account",
+    "titleLead": "Profile &",
+    "titleEmphasis": "availability",
+    "subtitle": "Personal information and your availability, in one place.",
+    "tabs": {
+      "profile": "Profile",
+      "availability": "Availability"
+    }
+  },
   "coachEditor": {
     "toast": {
       "savedTitle": "Profile saved",

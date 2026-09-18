@@ -112,11 +112,10 @@ describe("AppLayout — coachee navigation", () => {
     expect(screen.getAllByRole("link", { name: "Training & Learning" }).length).toBeGreaterThan(0);
   });
 
-  it("always shows Messages and Profile & Availability regardless of module configuration", () => {
+  it("always shows Messages and the combined Profile & Availability workspace regardless of module configuration", () => {
     renderLayout();
     expect(screen.getAllByRole("link", { name: "Messages" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("link", { name: "My profile" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("link", { name: "My availability" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Profile & Availability" }).length).toBeGreaterThan(0);
   });
 
   // Its real competency analytics now live inside My Journey's "Practice &

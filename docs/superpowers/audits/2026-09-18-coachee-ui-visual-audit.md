@@ -19,8 +19,8 @@ The current learner implementation uses live canonical data. The sample values i
 | Peer Coaching | MATCH | `src/pages/CoacheePeerPractice.tsx` gained `MyPeerPracticeSection.tsx` — upcoming/completed peer sessions and received competency feedback, reusing `useEnrollmentSessions` and `useLearnerFeedback` (kind `peer_competency`). Renders nothing when no peer session exists yet. |
 | Mentoring | MATCH | `src/pages/MentoringFindMentor.tsx` gained `MyMentorSection.tsx` — current mentor (derived from the most recent/next booked `mentoring_sessions` row, since mentoring has no fixed 1:1 assignment like coaching's allowlist), upcoming/past sessions, and learner-visible mentoring feedback. Renders nothing when no mentoring session exists yet. |
 | Triads (workspace) | MATCH | `src/pages/triads/TriadsPage.tsx` was re-inspected and already matches the prototype closely: a navy "My Triad Group" hero (`TriadGroupHero`), an upcoming-session card (`TriadSessionCard`), and a past-rounds table that already surfaces per-round reflection status (submitted/pending) and satisfaction ratings (`TriadPastSessionsTable`). No changes made. One documented gap: the canonical data model has no fixed per-member role column (`triad_groups` has three interchangeable member slots; `triad_reflections` records `learned_as_coach/coachee/observer` per submission, not a fixed assignment), so an explicit "Your role: Coach" label is not added — it would have to be invented. |
-| Messages | MISSING | `src/pages/Messages.tsx` not modified for this effort. |
-| Profile & Availability | MISSING | `src/pages/CoacheeProfileEditor.tsx` and `src/pages/CoacheeAvailability.tsx` not modified for this effort; they remain two separate pages, not the approved prototype's combined account workspace. |
+| Messages | INTENTIONAL FUNCTIONAL ADAPTATION | `session_messages.session_id` FKs only to `sessions` (coaching) — there is no canonical schema for peer/mentoring/triad messaging, so the prototype's multi-module inbox ("Anna Fan · Coaching", "Triad A · Round 2", etc.) cannot be implemented without inventing tables, which is explicitly against the brief. Added a real "Coaching" context label to each thread (every thread genuinely is a coaching conversation) instead of fabricating other categories. |
+| Profile & Availability | MATCH | New `src/pages/coachee/CoacheeAccount.tsx` is the combined workspace the brief asked for (smallest clean implementation: Profile is the account workspace, Availability is a tab). `/coachee/profile` now renders it; `/coachee/availability` redirects to `?tab=availability`. `CoacheeProfileEditor.tsx` and `CoacheeAvailability.tsx` are otherwise unchanged (just gained an `embedded` prop to suppress their own duplicate header) — all existing persistence and mutations are untouched. No "Preferences" tab was added: the only real preference field (spoken languages) already lives in Profile, and the prototype's other Preferences controls have no backing schema. |
 | Mobile navigation | MATCH | Coachee mobile primary navigation (Dashboard, My Journey, Sessions, Messages, More) is implemented in `AppLayout.tsx` and covered by a passing test. |
 
 ## Source-of-truth mapping (for the screens actually implemented so far)
@@ -42,8 +42,8 @@ The current learner implementation uses live canonical data. The sample values i
 | My Mentor | `useEnrollmentSessions`, `useLearnerFeedback` | `mentoring_sessions` (current mentor derived from most recent/next booked session), `mentoring_feedback` |
 | Peer Coaching workspace | `useEnrollmentSessions`, `useLearnerFeedback` | `peer_sessions` / `coachee_peer_sessions`, `peer_session_competency_feedback` |
 | Triads workspace | `useMyTriads` | `triad_groups`, `triad_sessions`, `triad_reflections` (`reflectionSubmitted` per round) |
-
-Messages and Profile & Availability are still genuinely outstanding — no source-of-truth mapping to report for them yet.
+| Messages | existing Messages page query/mutations | `session_messages` through `sessions` (coaching only — no other module has a messaging table) |
+| Profile and availability | `CoacheeAccount`, `CoacheeProfileEditor`, `CoacheeAvailability` | `profiles`, `coachee_profiles`, `coachee_availability` |
 
 ## Privacy and isolation checks (verified for the screens actually implemented)
 
@@ -55,4 +55,4 @@ Messages and Profile & Availability are still genuinely outstanding — no sourc
 
 ## Outstanding work
 
-Messages, Profile & Availability, the Sessions list's prototype visual redesign, and a shared Session Detail shell for coaching/mentoring still need their prototype-aligned implementation. See the plan file for the corrected task checklist.
+The Sessions list's prototype visual redesign and a shared Session Detail shell for coaching/mentoring (Task 5, partial) are the only items remaining from the corrected plan. Everything else (Tasks 1-4, 6, 7) is now genuinely complete and verified.

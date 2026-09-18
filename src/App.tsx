@@ -23,8 +23,7 @@ const Coaches = lazy(() => import("./pages/Coaches"));
 const CoachDetail = lazy(() => import("./pages/CoachDetail"));
 const CoachProfileEditor = lazy(() => import("./pages/CoachProfileEditor"));
 const CoachAvailability = lazy(() => import("./pages/CoachAvailability"));
-const CoacheeAvailability = lazy(() => import("./pages/CoacheeAvailability"));
-const CoacheeProfileEditor = lazy(() => import("./pages/CoacheeProfileEditor"));
+const CoacheeAccount = lazy(() => import("./pages/coachee/CoacheeAccount"));
 const Sessions = lazy(() => import("./pages/Sessions"));
 const SessionDetail = lazy(() => import("./pages/SessionDetail"));
 const BookSession = lazy(() => import("./pages/BookSession"));
@@ -142,7 +141,7 @@ const App = () => (
                     path="/coachee/profile"
                     element={
                       <ProtectedRoute role="coachee">
-                        <CoacheeProfileEditor />
+                        <CoacheeAccount />
                       </ProtectedRoute>
                     }
                   />
@@ -213,14 +212,10 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
-                  <Route
-                    path="/coachee/availability"
-                    element={
-                      <ProtectedRoute role="coachee">
-                        <CoacheeAvailability />
-                      </ProtectedRoute>
-                    }
-                  />
+                  {/* Kept as an alias to the combined account workspace's Availability
+                      tab — nav now links there directly, but old bookmarks/links
+                      should still land somewhere that works. */}
+                  <Route path="/coachee/availability" element={<Navigate to="/coachee/profile?tab=availability" replace />} />
                   <Route
                     path="/coachee/peer-practice"
                     element={
