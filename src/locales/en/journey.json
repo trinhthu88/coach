@@ -39,6 +39,7 @@
     "youAreHere": "You are here",
     "dueOn": "Due {{date}}",
     "scopeLabel": "Modules in scope",
+    "subtitle": "Planned / expected — configured checkpoints, requirements and timing for this enrollment.",
     "empty": "No programme checkpoints are configured for this enrollment yet.",
     "states": {
       "completed": "Completed",
@@ -151,6 +152,7 @@
   },
   "developmentJourney": {
     "title": "Development journey",
+    "subtitle": "Historical / experienced — what has actually happened in your development.",
     "empty": "Nothing has happened in this programme yet — goals, sessions, and reflections will appear here as they happen.",
     "reflectionTypes": {
       "programme_reflection": "Programme reflection",
@@ -168,6 +170,10 @@
     "eyebrow": "Progress",
     "titleLead": "My",
     "titleEmphasis": "journey",
+    "quickStats": {
+      "completion": "completion",
+      "dueAdherence": "due adherence"
+    },
     "tabs": {
       "overview": "Overview",
       "goals": "Goals & milestones",

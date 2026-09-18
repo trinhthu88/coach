@@ -40,12 +40,14 @@ import { SessionsBlock } from "./journey/SessionsBlock";
 import { GoalDialog } from "./journey/GoalDialog";
 import { CoacheeProgrammeCard } from "./journey/CoacheeProgrammeCard";
 import { ProgrammeTimeline } from "./journey/ProgrammeTimeline";
-import { ProgrammeJourneyCheckpoints } from "./journey/ProgrammeJourneyCheckpoints";
-import { DevelopmentJourneyTimeline } from "./journey/DevelopmentJourneyTimeline";
 import { useEnrollmentDevelopmentJourney } from "@/hooks/journey/useEnrollmentDevelopmentJourney";
 import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
 import { useEnrollmentSessions } from "@/hooks/journey/useEnrollmentSessions";
+import { useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
 import { DevelopmentSessionsList } from "./journey/DevelopmentSessionsList";
+import { CoacheeProgrammeHero } from "./dashboard/coachee/CoacheeProgrammeHero";
+import { ProgrammeJourneyTimeline } from "@/components/journey/ProgrammeJourneyTimeline";
+import { DevelopmentJourneyList } from "@/components/journey/DevelopmentJourneyList";
 
 export default function CoacheeJourney() {
   const { t } = useTranslation("journey");
@@ -58,6 +60,7 @@ export default function CoacheeJourney() {
   const developmentJourney = useEnrollmentDevelopmentJourney(programmeApi.programme?.enrollmentId, user?.id);
   const learnerFeedback = useLearnerFeedback(user?.id, programmeApi.programme?.enrollmentId);
   const allSessions = useEnrollmentSessions(programmeApi.programme?.enrollmentId, user?.id);
+  const { progress: canonicalProgress } = useLearnerCanonicalProgress(programmeApi.programme?.enrollmentId);
 
   const { goals, milestones, toggleMilestone } = goalsApi;
   const { ratings, sessionRatings, saveRating } = ratingsApi;
@@ -126,7 +129,51 @@ export default function CoacheeJourney() {
           title={t("journeyPage.titleLead")}
           emphasis={t("journeyPage.titleEmphasis")}
           subtitle={t("coacheeJourney.subtitle")}
+          actions={
+            canonicalProgress ? (
+              <div className="flex items-center gap-6">
+                <div className="text-right">
+                  <p className="font-display text-2xl leading-none">{Math.round(canonicalProgress.full_completion_pct)}%</p>
+                  <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                    {t("journeyPage.quickStats.completion")}
+                  </p>
+                </div>
+                {canonicalProgress.due_adherence_pct != null && (
+                  <div className="text-right">
+                    <p className="font-display text-2xl leading-none text-primary">
+                      {Math.round(canonicalProgress.due_adherence_pct)}%
+                    </p>
+                    <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                      {t("journeyPage.quickStats.dueAdherence")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : undefined
+          }
         />
+
+      <CoacheeProgrammeHero variant="journey" />
+
+      <Card className="p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg">{t("programmeJourney.title")}</h2>
+            <p className="mt-0.5 text-[11.5px] text-muted-foreground">{t("programmeJourney.subtitle")}</p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <ProgrammeJourneyTimeline enrollmentId={programme?.enrollmentId} variant="full" />
+        </div>
+      </Card>
+
+      <Card className="p-5" id="development-journey">
+        <h2 className="font-display text-lg">{t("developmentJourney.title")}</h2>
+        <p className="mt-0.5 text-[11.5px] text-muted-foreground">{t("developmentJourney.subtitle")}</p>
+        <div className="mt-4">
+          <DevelopmentJourneyList events={developmentJourney.events} loading={developmentJourney.loading} />
+        </div>
+      </Card>
 
       <ProgrammeTimeline />
 
@@ -190,12 +237,6 @@ export default function CoacheeJourney() {
         sessionsCompletedCount={sessionsCompletedCount}
         avgGoalProgress={avgGoalProgress}
       />
-      <ProgrammeJourneyCheckpoints enrollmentId={programme?.enrollmentId} />
-
-      <div>
-        <SectionHeader title={t("developmentJourney.title")} />
-        <DevelopmentJourneyTimeline events={developmentJourney.events} loading={developmentJourney.loading} />
-      </div>
 
       <Tabs defaultValue="home">
         <TabsList>

@@ -11,7 +11,9 @@
       "enrollmentRequired": "Thông tin chương trình của bạn sẽ hiển thị khi bạn có một đợt tham gia đang hoạt động.",
       "enrollmentLabel": "Đợt tham gia",
       "positionLabel": "Vị trí",
+      "currentLabel": "Hiện tại",
       "checkpointPosition": "Mốc {{current}}/{{total}}",
+      "checkpointCurrent": "Mốc {{current}}",
       "programmeComplete": "hoàn thành chương trình",
       "status": {
         "active": "Đang hoạt động",

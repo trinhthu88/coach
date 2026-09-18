@@ -40,6 +40,7 @@
     "youAreHere": "Bạn đang ở đây",
     "dueOn": "Hạn {{date}}",
     "scopeLabel": "Module thuộc phạm vi",
+    "subtitle": "Dự kiến — các mốc, yêu cầu và thời điểm đã cấu hình cho đợt tham gia này.",
     "empty": "Chưa có mốc nào được cấu hình cho đợt tham gia này.",
     "states": {
       "completed": "Đã hoàn thành",
@@ -152,6 +153,7 @@
   },
   "developmentJourney": {
     "title": "Hành trình phát triển",
+    "subtitle": "Đã diễn ra — những gì thực sự đã xảy ra trong quá trình phát triển của bạn.",
     "empty": "Chưa có gì diễn ra trong chương trình này — mục tiêu, session và suy ngẫm sẽ xuất hiện ở đây khi chúng diễn ra.",
     "reflectionTypes": {
       "programme_reflection": "Suy ngẫm chương trình",
@@ -169,6 +171,10 @@
     "eyebrow": "Tiến độ",
     "titleLead": "Hành trình",
     "titleEmphasis": "của tôi",
+    "quickStats": {
+      "completion": "hoàn thành",
+      "dueAdherence": "tuân thủ hạn"
+    },
     "tabs": {
       "overview": "Tổng quan",
       "goals": "Mục tiêu & cột mốc",

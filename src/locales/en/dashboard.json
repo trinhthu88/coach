@@ -10,7 +10,9 @@
       "enrollmentRequired": "Your programme details will appear here once you have an active enrollment.",
       "enrollmentLabel": "Enrollment",
       "positionLabel": "Position",
+      "currentLabel": "Current",
       "checkpointPosition": "Checkpoint {{current}} of {{total}}",
+      "checkpointCurrent": "Checkpoint {{current}}",
       "programmeComplete": "programme complete",
       "status": {
         "active": "Active",

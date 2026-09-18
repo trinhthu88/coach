@@ -18,8 +18,14 @@ const STATUS_TONE: Record<string, string> = {
  * dashboard card reads). No sample programme/cohort/name is ever
  * substituted: with no active enrollment the hero renders the greeting
  * alone plus an explicit "no enrollment yet" notice.
+ *
+ * Shared between the Dashboard and My Journey screens, matching the
+ * prototype's two hero variants: "dashboard" shows a time-of-day greeting
+ * and overall completion percentage; "journey" shows the learner's name and
+ * omits the percentage (My Journey states it lower down instead, in
+ * Programme progress).
  */
-export function CoacheeProgrammeHero() {
+export function CoacheeProgrammeHero({ variant = "dashboard" }: { variant?: "dashboard" | "journey" }) {
   const { t } = useTranslation("dashboard");
   const { profile, user } = useAuth();
   const { selectedEnrollment, loading: enrollmentLoading } = useEnrollmentContext(user?.id);
@@ -50,7 +56,7 @@ export function CoacheeProgrammeHero() {
           </div>
           <div className="min-w-0">
             <p className="text-[9.5px] font-bold uppercase tracking-[.24em] text-primary-glow">
-              {t(`coachee.greeting.${greetingKey}`)}, {firstName}
+              {variant === "journey" ? profile?.full_name || firstName : `${t(`coachee.greeting.${greetingKey}`)}, ${firstName}`}
             </p>
             {loading ? (
               <div className="mt-2 h-7 w-56 animate-pulse rounded bg-white/10" />
@@ -96,14 +102,18 @@ export function CoacheeProgrammeHero() {
             {currentCheckpoint != null && journey.length > 0 && (
               <div>
                 <p className="text-[8.5px] font-bold uppercase tracking-[.16em] text-white/45">
-                  {t("coacheeDashboard.hero.positionLabel")}
+                  {variant === "journey"
+                    ? t("coacheeDashboard.hero.currentLabel")
+                    : t("coacheeDashboard.hero.positionLabel")}
                 </p>
                 <p className="mt-1 text-[12.5px] font-semibold">
-                  {t("coacheeDashboard.hero.checkpointPosition", { current: currentCheckpoint, total: journey.length })}
+                  {variant === "journey"
+                    ? t("coacheeDashboard.hero.checkpointCurrent", { current: currentCheckpoint })
+                    : t("coacheeDashboard.hero.checkpointPosition", { current: currentCheckpoint, total: journey.length })}
                 </p>
               </div>
             )}
-            {progress.full_completion_pct != null && (
+            {variant === "dashboard" && progress.full_completion_pct != null && (
               <div className="text-right">
                 <p className="font-display text-3xl leading-none">{Math.round(progress.full_completion_pct)}%</p>
                 <p className="mt-1 text-[9.5px] font-semibold text-white/55">{t("coacheeDashboard.hero.programmeComplete")}</p>

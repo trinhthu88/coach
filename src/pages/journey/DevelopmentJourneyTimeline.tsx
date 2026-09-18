@@ -1,45 +1,10 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import {
-  Target,
-  ListChecks,
-  Users,
-  MessagesSquare,
-  UserCog,
-  Users2,
-  BookOpen,
-  MessageSquareText,
-  Star,
-  type LucideIcon,
-} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { DevelopmentJourneyEvent, DevelopmentJourneyEventType } from "@/hooks/journey/developmentJourneyTypes";
-
-const ICON_BY_TYPE: Record<DevelopmentJourneyEventType, LucideIcon> = {
-  goal: Target,
-  action: ListChecks,
-  coaching: Users,
-  peer_coaching: MessagesSquare,
-  mentoring: UserCog,
-  triad: Users2,
-  training: BookOpen,
-  reflection: MessageSquareText,
-  feedback: Star,
-};
-
-const TONE_BY_TYPE: Record<DevelopmentJourneyEventType, string> = {
-  goal: "bg-primary-soft text-primary",
-  action: "bg-success/15 text-success",
-  coaching: "bg-accent/15 text-accent",
-  peer_coaching: "bg-warning/15 text-warning",
-  mentoring: "bg-accent/15 text-accent",
-  triad: "bg-warning/15 text-warning",
-  training: "bg-primary-soft text-primary",
-  reflection: "bg-muted text-muted-foreground",
-  feedback: "bg-success/15 text-success",
-};
+import type { DevelopmentJourneyEvent } from "@/hooks/journey/developmentJourneyTypes";
+import { ICON_BY_TYPE, TONE_BY_TYPE } from "./developmentJourneyDisplay";
 
 /**
  * Chronological Development Journey timeline: groups the shared
