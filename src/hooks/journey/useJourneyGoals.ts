@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import type { Goal, Milestone } from "./types";
+import { LEARNER_ENGAGEMENT_QUERY_KEYS } from "@/hooks/useLearnerCanonicalProgress";
 
 interface JourneyGoalsData {
   goals: Goal[];
@@ -16,7 +17,15 @@ interface JourneyGoalsOptions {
 
 async function fetchJourneyGoals(coacheeId: string, enrollmentId: string): Promise<JourneyGoalsData> {
   const [{ data: g, error: goalsError }, { data: m, error: milestonesError }] = await Promise.all([
-    supabase.from("coachee_goals").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("created_at"),
+    // Archived = the learner deleted the goal; canonical goal counts and
+    // progress (canonical_goal_progress) exclude it, so the lists must too.
+    supabase
+      .from("coachee_goals")
+      .select("*")
+      .eq("coachee_id", coacheeId)
+      .eq("enrollment_id", enrollmentId)
+      .neq("status", "archived")
+      .order("created_at"),
     supabase.from("coachee_milestones").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId).order("created_at"),
   ]);
   if (goalsError) throw goalsError;
@@ -43,7 +52,10 @@ export function useJourneyGoals(coacheeId: string | undefined, options: JourneyG
     staleTime: 30_000,
   });
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey });
+  const refresh = () => {
+    for (const key of LEARNER_ENGAGEMENT_QUERY_KEYS) void queryClient.invalidateQueries({ queryKey: [...key] });
+    return queryClient.invalidateQueries({ queryKey });
+  };
   // onChanged is never actually passed by either consumer today (both call
   // useJourneyGoals(user?.id) with one arg) but the param is kept for API
   // compatibility — when present, it fully replaces the refresh, matching

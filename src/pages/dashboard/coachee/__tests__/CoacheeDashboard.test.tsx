@@ -13,6 +13,7 @@ import {
 const state = vi.hoisted(() => ({
   canonical: {} as Record<string, unknown>,
   engagement: {} as Record<string, unknown>,
+  goalProgress: {} as Record<string, unknown>,
   goals: {} as Record<string, unknown>,
   ratings: {} as Record<string, unknown>,
   actions: {} as Record<string, unknown>,
@@ -36,6 +37,10 @@ vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
   useLearnerCanonicalEngagement: () => {
     state.learnerHookCalls.push("engagement");
     return state.engagement;
+  },
+  useLearnerCanonicalGoalProgress: () => {
+    state.learnerHookCalls.push("goalProgress");
+    return state.goalProgress;
   },
 }));
 vi.mock("@/hooks/journey/useJourneyGoals", () => ({
@@ -96,6 +101,7 @@ function seedPopulated() {
     retry: vi.fn(),
   };
   state.engagement = { engagement: canonicalEngagement, loading: false, error: null };
+  state.goalProgress = { progressByGoal: { "goal-1": 50, "goal-2": 60 }, loading: false, error: null };
   state.goals = {
     goals: [
       { id: "goal-1", title: PRIVATE_GOAL, description: "Every report leaves with one agreed next step", target_date: "2026-05-01", status: "active", created_at: "2026-01-02" },
@@ -269,6 +275,30 @@ describe("Learner Dashboard — canonical programme profile", () => {
     expect(within(screen.getByTestId("development-activity")).getByText("Coaching session completed")).toBeInTheDocument();
   });
 
+  it("renders per-goal progress from canonical_goal_progress, never recomputed from the raw ratings", () => {
+    // Raw ratings for goal-1 are 20 → 50 → 80 (a client formula would say 50%);
+    // the canonical value wins and is only rounded for display.
+    state.goalProgress = { progressByGoal: { "goal-1": 47.6, "goal-2": null }, loading: false, error: null };
+    renderDashboard();
+    const goals = screen.getByTestId("learner-goal-list");
+    expect(within(goals).getByText("48% towards target")).toBeInTheDocument();
+    expect(within(goals).queryByText("50% towards target")).not.toBeInTheDocument();
+    expect(within(goals).getByText("Not rated yet")).toBeInTheDocument();
+  });
+
+  it("shows an error instead of goal detail when canonical per-goal progress fails", () => {
+    state.goalProgress = { progressByGoal: {}, loading: false, error: "function not found" };
+    renderDashboard();
+    expect(screen.getByText("Your goals and actions could not be loaded.")).toBeInTheDocument();
+    expect(screen.queryByTestId("learner-goal-list")).not.toBeInTheDocument();
+  });
+
+  it("shows — rather than 0% when there is no configured requirement", () => {
+    state.canonical = { ...state.canonical, progress: { ...canonicalProgress, full_completion_pct: null } };
+    renderDashboard();
+    expect(within(screen.getByTestId("programme-kpis")).queryByText("0%")).not.toBeInTheDocument();
+  });
+
   it("separates a feedback fetch failure from a genuine empty state", () => {
     state.feedback = { feedback: [], loading: false, error: "PGRST200" };
     state.development = { events: [], loading: false, error: null, partialFailure: false };
@@ -350,7 +380,7 @@ describe("My Journey — shared Programme Journey (full variant)", () => {
     expect(checkpoints(mine.container)).toEqual(sponsorCheckpoints);
     const detail = screen.getByTestId("checkpoint-detail");
     expect(within(detail).getByText("Week 9")).toBeInTheDocument();
-    expect(within(detail).getByText("1 unit still outstanding at this checkpoint.")).toBeInTheDocument();
+    expect(within(detail).getByText("This checkpoint is due today.")).toBeInTheDocument();
     expect(within(detail).getByRole("link", { name: /Training \/ Learning/ })).toHaveAttribute("href", "/training");
   });
 });

@@ -9,7 +9,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { rpc },
 }));
 
-import { useLearnerCanonicalEngagement, useLearnerCanonicalProgress } from "../useLearnerCanonicalProgress";
+import { useLearnerCanonicalEngagement, useLearnerCanonicalGoalProgress, useLearnerCanonicalProgress } from "../useLearnerCanonicalProgress";
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } });
@@ -211,5 +211,23 @@ describe("useLearnerCanonicalEngagement", () => {
     expect(result.current.engagement.goal_progress_pct).toBeNull();
     expect(result.current.engagement.total_action_count).toBeNull();
     errorSpy.mockRestore();
+  });
+});
+
+describe("useLearnerCanonicalGoalProgress", () => {
+  beforeEach(() => rpc.mockReset());
+
+  it("maps canonical per-goal progress by goal id without recalculating it", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        { goal_id: "goal-1", has_rating: true, start_rating: 20, current_rating: 50, target_rating: 80, progress_pct: 47.6 },
+        { goal_id: "goal-2", has_rating: false, start_rating: null, current_rating: null, target_rating: null, progress_pct: null },
+      ],
+      error: null,
+    });
+    const { result } = renderHook(() => useLearnerCanonicalGoalProgress("enrollment-1"), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(rpc).toHaveBeenCalledWith("learner_canonical_goal_progress", { p_enrollment_id: "enrollment-1" });
+    expect(result.current.progressByGoal).toEqual({ "goal-1": 47.6, "goal-2": null });
   });
 });

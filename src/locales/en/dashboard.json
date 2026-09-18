@@ -592,12 +592,13 @@
     "journey": {
       "dueOn": "Due {{date}}",
       "inScope": "Modules in scope",
-      "allMet": "All cumulative units for this checkpoint are complete.",
-      "outstanding_one": "{{count}} unit still outstanding at this checkpoint.",
-      "outstanding_other": "{{count}} units still outstanding at this checkpoint.",
-      "stillToDo_one": "{{count}} unit still to complete by this date.",
-      "stillToDo_other": "{{count}} units still to complete by this date.",
-      "detailNote": "Cumulative units count every required activity due up to this date. Your sponsor sees the same checkpoint status."
+      "detailNote": "Cumulative units count every required activity due up to this date. Your sponsor sees the same checkpoint status.",
+      "stateNote": {
+        "completed": "Every cumulative unit due by this date was completed on time.",
+        "overdue": "Not every cumulative unit due by this date was completed by then.",
+        "current": "This checkpoint is due today.",
+        "upcoming": "Not yet due — activity completed before this date counts towards it."
+      }
     },
     "goals": {
       "aside_one": "{{count}} active goal",

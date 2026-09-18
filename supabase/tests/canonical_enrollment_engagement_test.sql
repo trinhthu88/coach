@@ -8,7 +8,7 @@
 -- the learner can only ever read their own enrollment.
 begin;
 
-select plan(10);
+select plan(14);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -128,11 +128,32 @@ select is((select total_action_count from learner_engagement), 2, 'cancelled act
 select is((select completed_action_count from learner_engagement), 1, 'completed actions are counted');
 select is((select satisfaction_avg from learner_engagement), 4.00::numeric, 'programme experience averages completed-session ratings');
 
+select results_eq(
+  $$select goal_id, round(progress_pct, 1) from public.learner_canonical_goal_progress('e8000000-0000-0000-0000-000000000001') order by goal_id$$,
+  $$values ('98000000-0000-0000-0000-000000000001'::uuid, 50.0::numeric), ('98000000-0000-0000-0000-000000000002'::uuid, 60.0::numeric)$$,
+  'per-goal progress comes from canonical_goal_progress'
+);
+select is(
+  (select round(avg(progress_pct), 1) from public.learner_canonical_goal_progress('e8000000-0000-0000-0000-000000000001')),
+  (select goal_progress_pct from learner_engagement),
+  'the enrollment goal progress is exactly the average of the canonical per-goal values'
+);
+select is(
+  (select count(*)::integer from public.learner_canonical_goal_progress('e8000000-0000-0000-0000-000000000002')),
+  0,
+  'a learner cannot read another learner''s per-goal progress'
+);
+
 update public.coachee_goals set status = 'archived' where id = '98000000-0000-0000-0000-000000000002';
 select is(
   (select goal_count from public.learner_canonical_engagement('e8000000-0000-0000-0000-000000000001')),
   1,
   'archived goals are not counted'
+);
+select is(
+  (select count(*)::integer from public.learner_canonical_goal_progress('e8000000-0000-0000-0000-000000000001')),
+  1,
+  'archived goals have no per-goal progress row'
 );
 
 select is(

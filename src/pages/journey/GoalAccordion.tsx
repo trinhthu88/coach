@@ -31,6 +31,7 @@ export function GoalAccordion({
   startTargetLocked,
   showCompletionMarks,
   renderHeader,
+  progressPct,
 }: {
   goal: Goal;
   milestones: Milestone[];
@@ -50,6 +51,8 @@ export function GoalAccordion({
   showCompletionMarks?: boolean;
   /** Replaces the default compact header row with a custom one (e.g. the Journey page's richer goal card), while the toggle button and all of the expanded content below stay the same. `pct` is the same start→target progress this component already computes, handed back so the caller never has to recompute it. */
   renderHeader?: (ctx: { pct: number | null; open: boolean }) => React.ReactNode;
+  /** Server-calculated progress (canonical_goal_progress). When provided it is rendered as-is instead of the local fallback calculation. */
+  progressPct?: number | null;
 }) {
   const { t } = useTranslation("journey");
   const [open, setOpen] = useState(!!defaultOpen);
@@ -57,7 +60,12 @@ export function GoalAccordion({
   const [newMs, setNewMs] = useState("");
   const [newDate, setNewDate] = useState("");
 
-  const pct = goalProgressPct(rating?.start ?? null, rating?.current ?? null, rating?.target ?? null);
+  const pct =
+    progressPct !== undefined
+      ? progressPct == null
+        ? null
+        : Math.round(progressPct)
+      : goalProgressPct(rating?.start ?? null, rating?.current ?? null, rating?.target ?? null);
   const goalDone = pct === 100;
 
   const addMs = async () => {

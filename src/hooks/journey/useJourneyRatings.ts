@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import type { Database } from "@/integrations/supabase/types";
 import type { GoalRating, SessionGoalRating } from "./types";
+import { LEARNER_ENGAGEMENT_QUERY_KEYS } from "@/hooks/useLearnerCanonicalProgress";
 
 type GoalRatingUpsert = Database["public"]["Tables"]["coachee_goal_ratings"]["Insert"];
 
@@ -75,6 +76,8 @@ export function useJourneyRatings(coacheeId: string | undefined, initialEnrollme
       queryClient.setQueryData(queryKey, (prev: JourneyRatingsData | undefined) =>
         prev ? { ...prev, ratings: { ...prev.ratings, [saved.goal_id]: saved } } : prev
       );
+      // Goal progress is canonical (server-calculated); refetch it rather than derive it here.
+      for (const key of LEARNER_ENGAGEMENT_QUERY_KEYS) void queryClient.invalidateQueries({ queryKey: [...key] });
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
   });

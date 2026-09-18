@@ -17,12 +17,60 @@
 -- The unified rules: archived goals and cancelled actions are excluded; a
 -- goal needs Start, Current and a Target above Start to have progress.
 --
--- canonical_enrollment_engagement() is now the single definition. It is
--- internal (no direct grant): sponsor_canonical_enrollment_metadata reads it
--- for Sponsor screens and learner_canonical_engagement() exposes it to the
--- learner for their own enrollment only. Counts and averages only — goal
--- wording, action detail and rating comments are never returned, so the
--- sponsor privacy contract is unchanged.
+-- canonical_goal_progress() is the single per-goal progress definition and
+-- canonical_enrollment_engagement() the single enrollment summary (its
+-- average goal progress is built from canonical_goal_progress). Both are
+-- internal (no direct grant): sponsor_canonical_enrollment_metadata reads the
+-- summary for Sponsor screens; learner_canonical_engagement() and
+-- learner_canonical_goal_progress() expose them to the learner for their own
+-- enrollment only (per-goal values are never exposed to a sponsor).
+-- Only ids, ratings, counts and averages are returned — goal wording, action
+-- detail and rating comments never are, so the sponsor privacy contract is
+-- unchanged.
+
+CREATE OR REPLACE FUNCTION public.canonical_goal_progress(
+  p_enrollment_id uuid
+)
+RETURNS TABLE (
+  goal_id uuid,
+  has_rating boolean,
+  start_rating smallint,
+  current_rating smallint,
+  target_rating smallint,
+  progress_pct numeric
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT
+    g.id,
+    gr.id IS NOT NULL,
+    gr.start_rating,
+    gr.current_rating,
+    gr.target_rating,
+    CASE
+      WHEN gr.target_rating IS NULL
+        OR gr.start_rating IS NULL
+        OR gr.current_rating IS NULL
+        OR gr.target_rating <= gr.start_rating
+      THEN NULL
+      ELSE least(100, greatest(0,
+        (gr.current_rating - gr.start_rating) * 100.0
+          / (gr.target_rating - gr.start_rating)
+      ))
+    END::numeric
+  FROM public.coachee_goals g
+  LEFT JOIN public.coachee_goal_ratings gr
+    ON gr.goal_id = g.id
+   AND gr.enrollment_id = g.enrollment_id
+  WHERE g.enrollment_id = p_enrollment_id
+    AND g.status <> 'archived';
+$$;
+
+REVOKE ALL ON FUNCTION public.canonical_goal_progress(uuid)
+  FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.canonical_enrollment_engagement(
   p_enrollment_id uuid
@@ -45,27 +93,10 @@ SET search_path = public, pg_temp
 AS $$
   WITH goals AS (
     SELECT
-      count(DISTINCT g.id)::integer AS goal_count,
-      coalesce(bool_or(gr.id IS NOT NULL), false) AS goal_setup,
-      round(avg(
-        CASE
-          WHEN gr.target_rating IS NULL
-            OR gr.start_rating IS NULL
-            OR gr.current_rating IS NULL
-            OR gr.target_rating <= gr.start_rating
-          THEN NULL
-          ELSE least(100, greatest(0,
-            (gr.current_rating - gr.start_rating) * 100.0
-              / (gr.target_rating - gr.start_rating)
-          ))
-        END
-      ), 1) AS goal_progress_pct
-    FROM public.coachee_goals g
-    LEFT JOIN public.coachee_goal_ratings gr
-      ON gr.goal_id = g.id
-     AND gr.enrollment_id = g.enrollment_id
-    WHERE g.enrollment_id = p_enrollment_id
-      AND g.status <> 'archived'
+      count(gp.goal_id)::integer AS goal_count,
+      coalesce(bool_or(gp.has_rating), false) AS goal_setup,
+      round(avg(gp.progress_pct), 1) AS goal_progress_pct
+    FROM public.canonical_goal_progress(p_enrollment_id) gp
   ), actions AS (
     SELECT
       count(a.id) FILTER (WHERE a.status IN ('open', 'in_progress'))::integer AS open_action_count,
@@ -136,6 +167,37 @@ $$;
 REVOKE ALL ON FUNCTION public.learner_canonical_engagement(uuid)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.learner_canonical_engagement(uuid)
+  TO authenticated;
+
+-- Learner self-view: per-goal progress for the learner's own enrollment,
+-- the same values canonical_enrollment_engagement averages.
+CREATE OR REPLACE FUNCTION public.learner_canonical_goal_progress(
+  p_enrollment_id uuid
+)
+RETURNS TABLE (
+  goal_id uuid,
+  has_rating boolean,
+  start_rating smallint,
+  current_rating smallint,
+  target_rating smallint,
+  progress_pct numeric
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT gp.*
+  FROM public.programme_enrollments e
+  CROSS JOIN LATERAL public.canonical_goal_progress(e.id) gp
+  WHERE e.id = p_enrollment_id
+    AND e.user_id = auth.uid()
+    AND auth.uid() IS NOT NULL;
+$$;
+
+REVOKE ALL ON FUNCTION public.learner_canonical_goal_progress(uuid)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.learner_canonical_goal_progress(uuid)
   TO authenticated;
 
 -- Sponsor metadata now reads the same definition instead of its own copy.

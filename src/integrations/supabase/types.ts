@@ -4372,6 +4372,17 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
+      learner_canonical_goal_progress: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          current_rating: number
+          goal_id: string
+          has_rating: boolean
+          progress_pct: number
+          start_rating: number
+          target_rating: number
+        }[]
+      }
       learner_canonical_experience_legacy: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json

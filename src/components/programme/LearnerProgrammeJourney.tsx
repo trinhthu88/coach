@@ -50,7 +50,6 @@ function LearnerCheckpointDetail({ point }: { point: ProgrammeJourneyPoint }) {
   const { t: tSponsor } = useTranslation("sponsor");
   const moduleLabel = useModuleScopeLabel();
   const color = checkpointStateColor(point.state);
-  const outstanding = Math.max(point.required_units - point.completed_units, 0);
 
   return (
     <div data-testid="checkpoint-detail" className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] p-4">
@@ -76,9 +75,7 @@ function LearnerCheckpointDetail({ point }: { point: ProgrammeJourneyPoint }) {
           </div>
           <MiniProgress pct={ratioPct(point.completed_units, point.required_units)} color={color} />
           <p className="mt-2 text-[10.5px] text-[#6a6560]">
-            {outstanding === 0
-              ? t("learnerProfile.journey.allMet")
-              : t(point.state === "upcoming" ? "learnerProfile.journey.stillToDo" : "learnerProfile.journey.outstanding", { count: outstanding })}
+            {t(`learnerProfile.journey.stateNote.${point.state}`)}
           </p>
         </div>
         <div>

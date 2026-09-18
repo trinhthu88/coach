@@ -152,3 +152,36 @@ export function useLearnerCanonicalEngagement(enrollmentId: string | undefined) 
     error: errorMessage(error),
   };
 }
+
+/** Query keys whose canonical values change when the learner edits goals/ratings/actions. */
+export const LEARNER_ENGAGEMENT_QUERY_KEYS = [["learner-canonical-engagement"], ["learner-canonical-goal-progress"]] as const;
+
+/**
+ * Per-goal progress for the learner's own enrollment —
+ * learner_canonical_goal_progress reads canonical_goal_progress, the same
+ * rows canonical_enrollment_engagement averages into "Goal progress". The UI
+ * renders these values; it never recalculates Start→Target progress.
+ */
+export function useLearnerCanonicalGoalProgress(enrollmentId: string | undefined) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["learner-canonical-goal-progress", enrollmentId ?? null],
+    queryFn: async (): Promise<Record<string, number | null>> => {
+      const { data: rows, error: rpcError } = await supabase.rpc("learner_canonical_goal_progress", {
+        p_enrollment_id: enrollmentId as string,
+      });
+      if (rpcError) {
+        console.error("Learner goal progress failed to load", { enrollmentId, rpcError });
+        throw rpcError;
+      }
+      return Object.fromEntries((rows ?? []).map((row) => [row.goal_id, row.progress_pct ?? null]));
+    },
+    enabled: !!enrollmentId,
+    staleTime: 30_000,
+  });
+
+  return {
+    progressByGoal: data ?? {},
+    loading: !!enrollmentId && isLoading,
+    error: errorMessage(error),
+  };
+}

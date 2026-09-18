@@ -10,7 +10,7 @@ import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
 import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
 import { useFlatActionItems, type FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { useEnrollmentActionsSummary } from "@/hooks/dashboard/useEnrollmentActionsSummary";
-import { useGoalLock, useGoalRatingRows } from "@/hooks/journey/useJourneyDerived";
+import { useGoalLock } from "@/hooks/journey/useJourneyDerived";
 import type { JourneySession } from "@/hooks/journey/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,7 @@ import {
   UnavailableNote,
 } from "@/components/programme/primitives";
 import { PROFILE_COLORS } from "@/components/programme/profileTheme";
-import { useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
+import { useLearnerCanonicalGoalProgress, useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
 import { useHashScroll } from "@/hooks/useHashScroll";
 import { formatProfileDate } from "@/lib/programmeProfile";
 import { STATUS_LABEL_KEY, STATUS_TONE, effectiveSponsorStatus } from "@/pages/sponsor/sponsorUtils";
@@ -50,6 +50,7 @@ export default function CoacheeJourney() {
   const { user, profile } = useAuth();
   const programmeApi = useJourneyProgramme(user?.id);
   const canonical = useLearnerCanonicalProgress(programmeApi.programme?.enrollmentId);
+  const goalProgress = useLearnerCanonicalGoalProgress(programmeApi.programme?.enrollmentId);
   const goalsApi = useJourneyGoals(user?.id, { enrollmentId: programmeApi.programme?.enrollmentId });
   const ratingsApi = useJourneyRatings(user?.id, programmeApi.programme?.enrollmentId);
   const sessionsApi = useJourneySessions(user?.id, { includePeer: false, enrollmentId: programmeApi.programme?.enrollmentId });
@@ -81,11 +82,25 @@ export default function CoacheeJourney() {
     [coachingSessions]
   );
 
-  // Canonical Start→Target rating progress — the same formula and the same
-  // per-goal values Sponsor's goal_progress_pct aggregates. Never the
-  // milestone-completion ratio, which is a different fact (see milestones
-  // list inside each goal's expanded card).
-  const { ratingRows } = useGoalRatingRows(goals, ratings);
+  // Start/Current/Target are the learner's own raw ratings (editable here);
+  // progress % is never derived in the browser — it is canonical_goal_progress
+  // (goalProgress below), the same per-goal values Sponsor's goal_progress_pct
+  // averages.
+  const ratingRows = useMemo(
+    () =>
+      goals.map((g) => {
+        const r = ratings[g.id];
+        return {
+          goalId: g.id,
+          title: g.title,
+          start: r?.start_rating ?? null,
+          current: r?.current_rating ?? null,
+          target: r?.target_rating ?? null,
+          progress: goalProgress.progressByGoal[g.id] ?? null,
+        };
+      }),
+    [goals, ratings, goalProgress.progressByGoal]
+  );
 
   const { allActionItems } = useFlatActionItems(sessions);
   // Only coaching-session-sourced actions can be toggled here (the mutation
@@ -186,7 +201,7 @@ export default function CoacheeJourney() {
           <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("journeyPage.goalsAndActions.subtitle", { count: goals.length })}</p>
 
           <div className="mt-4">
-            {goalsApi.error || ratingsApi.error ? (
+            {goalsApi.error || ratingsApi.error || goalProgress.error ? (
               <ProfileLoadError text={tDash("learnerProfile.errors.goals")} />
             ) : goals.length === 0 ? (
               <EmptyGoals onAdd={goalsApi.addGoal} description={t("journeyPage.goalsEmptyDescription")} />
@@ -211,6 +226,7 @@ export default function CoacheeJourney() {
                         rating={r ?? undefined}
                         onRatingChange={(patch) => saveRating(g.id, patch)}
                         startTargetLocked={isGoalLocked(g.created_at)}
+                        progressPct={goalProgress.error ? null : goalProgress.progressByGoal[g.id] ?? null}
                         renderHeader={({ pct }) => (
                           <div className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] p-4 transition-colors hover:border-[#8bd3e3]">
                             <div className="flex items-start justify-between gap-3">

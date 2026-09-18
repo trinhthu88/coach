@@ -90,4 +90,16 @@ describe("programme profile architecture", () => {
   it("learner feedback never selects author-private note columns", () => {
     expect(read("hooks/dashboard/useLearnerFeedback.ts")).not.toMatch(/select\([^)]*private_notes/);
   });
+
+  it("learner surfaces render canonical goal progress instead of recalculating it", () => {
+    for (const file of ["pages/dashboard/coachee/LearnerGoalsActions.tsx", "pages/CoacheeJourney.tsx"]) {
+      const text = read(file);
+      expect(text, file).not.toMatch(/goalProgressPct|useGoalRatingRows/);
+      expect(text, file).toMatch(/useLearnerCanonicalGoalProgress/);
+    }
+  });
+
+  it("the learner checkpoint detail derives no units of its own", () => {
+    expect(read("components/programme/LearnerProgrammeJourney.tsx")).not.toMatch(/required_units\s*-|-\s*point\.completed_units/);
+  });
 });

@@ -3,7 +3,14 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { canonicalExperience, canonicalJourney, canonicalProgress, ENROLLMENT_ID } from "@/test/fixtures/canonicalEnrollment";
 
-const state = vi.hoisted(() => ({ feedbackError: null as string | null, feedback: [] as unknown[], canonicalCalls: [] as Array<string | undefined> }));
+const state = vi.hoisted(() => ({
+  feedbackError: null as string | null,
+  feedback: [] as unknown[],
+  goals: [] as unknown[],
+  ratings: {} as Record<string, unknown>,
+  goalProgress: {} as Record<string, number | null>,
+  canonicalCalls: [] as Array<string | undefined>,
+}));
 
 vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ user: { id: "learner-1" }, profile: { full_name: "Jamie Learner" }, role: "coachee" }),
@@ -16,12 +23,14 @@ vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
     state.canonicalCalls.push(enrollmentId);
     return { progress: canonicalProgress, modules: [], journey: canonicalJourney, experience: canonicalExperience, loading: false, error: null, retry: vi.fn() };
   },
+  useLearnerCanonicalGoalProgress: () => ({ progressByGoal: state.goalProgress, loading: false, error: null }),
+  LEARNER_ENGAGEMENT_QUERY_KEYS: [],
 }));
 vi.mock("@/hooks/journey/useJourneyGoals", () => ({
-  useJourneyGoals: () => ({ goals: [], milestones: [], loading: false, error: null, addGoal: vi.fn() }),
+  useJourneyGoals: () => ({ goals: state.goals, milestones: [], loading: false, error: null, addGoal: vi.fn() }),
 }));
 vi.mock("@/hooks/journey/useJourneyRatings", () => ({
-  useJourneyRatings: () => ({ ratings: {}, sessionRatings: [], checkins: [], loading: false, error: null, saveRating: vi.fn() }),
+  useJourneyRatings: () => ({ ratings: state.ratings, sessionRatings: [], checkins: [], loading: false, error: null, saveRating: vi.fn() }),
 }));
 vi.mock("@/hooks/journey/useJourneySessions", () => ({
   useJourneySessions: () => ({ coachingSessions: [], peerSessions: [], loading: false, toggleAction: vi.fn() }),
@@ -62,6 +71,9 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     await i18n.changeLanguage("en");
     state.feedbackError = null;
     state.feedback = [];
+    state.goals = [];
+    state.ratings = {};
+    state.goalProgress = {};
     state.canonicalCalls = [];
   });
 
@@ -102,5 +114,14 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     expect(within(item).getByText("Coach session note · Casey Coach")).toBeInTheDocument();
     expect(within(item).getByText("Try the 3-question check-in.")).toBeInTheDocument();
     expect(within(item).getByRole("link", { name: /Open session/ })).toHaveAttribute("href", "/sessions/s1");
+  });
+
+  it("renders each goal's progress from canonical_goal_progress", () => {
+    state.goals = [{ id: "goal-1", title: "Lead one-to-ones", description: null, target_date: null, status: "active", created_at: "2026-01-02" }];
+    state.ratings = { "goal-1": { goal_id: "goal-1", start_rating: 20, current_rating: 50, target_rating: 80 } };
+    state.goalProgress = { "goal-1": 47.6 };
+    const { container } = renderPage();
+    const bar = container.querySelector("#goal-goal-1 [style*='width']") as HTMLElement;
+    expect(bar.style.width).toBe("48%");
   });
 });

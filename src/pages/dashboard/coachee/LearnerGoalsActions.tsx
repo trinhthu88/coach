@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { CheckCircle2, Circle } from "lucide-react";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { useJourneyRatings, type GoalCheckin } from "@/hooks/journey/useJourneyRatings";
-import { goalProgressPct } from "@/hooks/journey/useJourneyDerived";
+import { useLearnerCanonicalGoalProgress } from "@/hooks/useLearnerCanonicalProgress";
 import { useEnrollmentActionsSummary, type EnrollmentActionRow } from "@/hooks/dashboard/useEnrollmentActionsSummary";
 import type { Goal, GoalRating, Milestone } from "@/hooks/journey/types";
 import { formatProfileDate, type ProgrammeEngagementFacts } from "@/lib/programmeProfile";
@@ -40,9 +40,10 @@ export function LearnerGoalsActions({
   const goalsApi = useJourneyGoals(userId, { enrollmentId });
   const ratingsApi = useJourneyRatings(userId, enrollmentId);
   const actions = useEnrollmentActionsSummary(enrollmentId);
+  const goalProgress = useLearnerCanonicalGoalProgress(enrollmentId);
 
-  const loading = goalsApi.loading || ratingsApi.loading || actions.loading;
-  const detailError = goalsApi.error || ratingsApi.error || actions.error;
+  const loading = goalsApi.loading || ratingsApi.loading || actions.loading || goalProgress.loading;
+  const detailError = goalsApi.error || ratingsApi.error || actions.error || goalProgress.error;
   const activeGoals = goalsApi.goals.filter((g) => g.status === "active");
   const unlinkedOpen = actions.actions.filter((a) => !a.goal_id && a.status !== "completed");
 
@@ -67,6 +68,7 @@ export function LearnerGoalsActions({
                 key={goal.id}
                 goal={goal}
                 rating={ratingsApi.ratings[goal.id]}
+                progress={goalProgress.progressByGoal[goal.id] ?? null}
                 latestCheckin={ratingsApi.checkins.find((c) => c.goal_id === goal.id) ?? null}
                 milestones={goalsApi.milestones.filter((m) => m.goal_id === goal.id)}
                 actions={actions.actions.filter((a) => a.goal_id === goal.id)}
@@ -92,7 +94,7 @@ export function LearnerGoalsActions({
         )}
       </div>
       <Link to="/coachee/journey#goals" className="mt-4 inline-block text-[11.5px] font-semibold text-[#2c8fa8] hover:underline">
-        {t("learnerProfile.goals.viewAll", { count: goalsApi.goals.length })}
+        {t("learnerProfile.goals.viewAll", { count: engagement.goal_count ?? goalsApi.goals.length })}
       </Link>
     </ProgrammeGoalSummary>
   );
@@ -101,6 +103,7 @@ export function LearnerGoalsActions({
 function GoalDetail({
   goal,
   rating,
+  progress,
   latestCheckin,
   milestones,
   actions,
@@ -108,6 +111,8 @@ function GoalDetail({
 }: {
   goal: Goal;
   rating: GoalRating | undefined;
+  /** canonical_goal_progress — rendered, never recalculated here. */
+  progress: number | null;
   latestCheckin: GoalCheckin | null;
   milestones: Milestone[];
   actions: EnrollmentActionRow[];
@@ -117,7 +122,6 @@ function GoalDetail({
   const start = rating?.start_rating ?? null;
   const current = rating?.current_rating ?? null;
   const target = rating?.target_rating ?? null;
-  const progress = goalProgressPct(start, current, target);
   const doneMilestones = milestones.filter((m) => m.is_done).length;
   const openActions = useMemo(
     () =>
@@ -150,7 +154,7 @@ function GoalDetail({
       </div>
       <MiniProgress pct={progress} color={TEAL} />
       <div className="mt-1 flex justify-between text-[9.5px] text-[#9a938a]">
-        <span>{progress == null ? t("learnerProfile.goals.notRated") : t("learnerProfile.goals.progress", { pct: progress })}</span>
+        <span>{progress == null ? t("learnerProfile.goals.notRated") : t("learnerProfile.goals.progress", { pct: Math.round(progress) })}</span>
         <span>
           {latestCheckin
             ? t("learnerProfile.goals.latestCheckin", {
