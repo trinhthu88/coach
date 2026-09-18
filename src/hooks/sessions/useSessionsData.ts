@@ -4,6 +4,7 @@ import type { AppRole } from "@/context/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 import type { SessionStatus } from "@/lib/sessionStatusMeta";
 import { withEnrollmentActions, type EnrollmentActionItem } from "@/lib/enrollmentActions";
+import { fetchTriadMembers, type TriadMember } from "@/hooks/triads/useTriadMembers";
 
 export type SessionKind =
   | "coaching"
@@ -262,14 +263,11 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   }
   const rowsWithContext = attachEnrollmentContext(allRows, enrollmentContexts);
 
-  const ids = Array.from(new Set([
-      ...rowsWithContext.flatMap((s) => [s.coach_id, s.coachee_id]),
-      ...rowsWithContext.flatMap((s) => {
-        const group = s.triad_groups;
-        return group ? [group.member_1_id, group.member_2_id, group.member_3_id].filter(Boolean) : [];
-      }),
-    ])
-  ).filter(Boolean);
+  const ids = Array.from(new Set(rowsWithContext.flatMap((s) => [s.coach_id, s.coachee_id]))).filter(Boolean);
+  // Triad participant names come from the one canonical Triad member source
+  // (membership from triad_groups), not from profiles discovery.
+  const triadGroupIds = rowsWithContext.flatMap((s) => (s.kind === "triad" && s.triad ? [s.triad.groupId] : []));
+  const triadMembers = await fetchTriadMembers(triadGroupIds).catch(() => new Map<string, TriadMember[]>());
   let byId = new Map<string, Pick<Tables<"profiles">, "id" | "full_name" | "email" | "avatar_url">>();
   if (ids.length) {
     const { data: profs } = await supabase
@@ -284,9 +282,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       s.kind === "triad" && s.triad
         ? {
             ...s.triad,
-            participantNames: s.triad.participantIds
-              .map((participantId) => byId.get(participantId)?.full_name)
-              .filter((name): name is string => Boolean(name)),
+            participantNames: (triadMembers.get(s.triad.groupId) ?? []).map((member) => member.full_name),
           }
         : null;
     return {

@@ -1,11 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { fetchTriadMembers, type TriadMember } from "./useTriadMembers";
 
 export interface TriadMemberProfile {
   id: string;
   full_name: string;
   avatar_url: string | null;
+}
+
+function toMemberProfiles(members: TriadMember[] | undefined): TriadMemberProfile[] {
+  return (members ?? []).map((m) => ({ id: m.id, full_name: m.full_name, avatar_url: m.avatar_url }));
 }
 
 export interface TriadGroupMembers {
@@ -82,14 +87,8 @@ export function useMyTriads() {
       }
       const rows = (groups ?? []) as unknown as RawTriadGroupRow[];
 
-      const memberIds = new Set<string>();
-      for (const g of rows) {
-        for (const id of [g.member_1_id, g.member_2_id, g.member_3_id]) if (id) memberIds.add(id);
-      }
-      const { data: profiles } = memberIds.size
-        ? await supabase.from("profiles").select("id, full_name, avatar_url").in("id", [...memberIds])
-        : { data: [] };
-      const profileById = new Map((profiles ?? []).map((p) => [p.id, p as TriadMemberProfile]));
+      // Co-member identity from the one canonical Triad member source.
+      const membersByGroup = await fetchTriadMembers(rows.map((g) => g.id));
 
       const sessionsById = new Map<string, TriadSessionRow>();
       const latestSessionByGroup = new Map<string, TriadSessionRow>();
@@ -121,14 +120,13 @@ export function useMyTriads() {
         // rather than crash on `.round.round_number` below.
         .filter((g) => g.triad_rounds != null)
         .map((g) => {
-          const memberIdList = [g.member_1_id, g.member_2_id, g.member_3_id].filter(Boolean) as string[];
           const session = latestSessionByGroup.get(g.id) ?? null;
           return {
             round: g.triad_rounds,
             roundNumber: g.triad_rounds?.round_number ?? null,
             group: { id: g.id, group_language: g.group_language, member_1_id: g.member_1_id, member_2_id: g.member_2_id, member_3_id: g.member_3_id },
             session,
-            members: memberIdList.map((id) => profileById.get(id)).filter(Boolean) as TriadMemberProfile[],
+            members: toMemberProfiles(membersByGroup.get(g.id)),
             reflectionSubmitted: session ? reflectedSessionIds.has(session.id) : false,
           };
         })
@@ -177,11 +175,10 @@ export function useTriadSessionEntry(sessionId: string | undefined) {
       const memberIds = [group.member_1_id, group.member_2_id, group.member_3_id].filter(Boolean) as string[];
       if (!memberIds.includes(uid)) return null;
 
-      const [{ data: profiles }, { data: reflections }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, avatar_url").in("id", memberIds),
+      const [membersByGroup, { data: reflections }] = await Promise.all([
+        fetchTriadMembers([group.id]),
         supabase.from("triad_reflections").select("id").eq("participant_id", uid).eq("triad_session_id", raw.id),
       ]);
-      const profileById = new Map((profiles ?? []).map((p) => [p.id, p as TriadMemberProfile]));
       const { triad_groups: _group, ...session } = raw;
       return {
         round: group.triad_rounds ?? null,
@@ -194,7 +191,7 @@ export function useTriadSessionEntry(sessionId: string | undefined) {
           member_3_id: group.member_3_id,
         },
         session: session as TriadSessionRow,
-        members: memberIds.map((id) => profileById.get(id)).filter(Boolean) as TriadMemberProfile[],
+        members: toMemberProfiles(membersByGroup.get(group.id)),
         reflectionSubmitted: (reflections ?? []).length > 0,
       };
     },

@@ -4372,6 +4372,17 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
+      learner_triad_members: {
+        Args: { p_group_ids: string[] }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          is_self: boolean
+          member_id: string
+          member_slot: number
+          triad_group_id: string
+        }[]
+      }
       learner_reflection_feed: {
         Args: { p_enrollment_id: string }
         Returns: {

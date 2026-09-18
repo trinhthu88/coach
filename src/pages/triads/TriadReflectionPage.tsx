@@ -13,6 +13,7 @@ import { ChevronLeft, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useMyTriadReflection, useGroupReflections, useTriadReflection, type TriadReflectionInput } from "@/hooks/triads/useTriadReflection";
+import { fetchTriadMembers } from "@/hooks/triads/useTriadMembers";
 
 interface ProfileRow {
   id: string;
@@ -65,16 +66,9 @@ export default function TriadReflectionPage() {
       const enrollmentIds = [session.coach_enrollment_id, session.coachee_enrollment_id, session.observer_enrollment_id].filter((id): id is string => !!id);
       const { data: ownEnrollments } = await supabase.from("programme_enrollments").select("id").in("id", enrollmentIds).eq("user_id", user?.id ?? "");
       setEnrollmentId(ownEnrollments?.length === 1 ? ownEnrollments[0].id : null);
-      const { data: group } = await supabase
-        .from("triad_groups")
-        .select("member_1_id, member_2_id, member_3_id")
-        .eq("id", session.triad_group_id)
-        .maybeSingle();
-      const memberIds = [group?.member_1_id, group?.member_2_id, group?.member_3_id].filter(Boolean) as string[];
-      const { data: profileRows } = memberIds.length
-        ? await supabase.from("profiles").select("id, full_name").in("id", memberIds)
-        : { data: [] };
-      setProfiles((profileRows ?? []) as ProfileRow[]);
+      // Co-member names from the one canonical Triad member source.
+      const membersByGroup = await fetchTriadMembers([session.triad_group_id]).catch(() => new Map());
+      setProfiles(((membersByGroup.get(session.triad_group_id) ?? []) as { id: string; full_name: string }[]).map((m) => ({ id: m.id, full_name: m.full_name })));
       setLoading(false);
     })();
   }, [sessionId, user?.id]);
