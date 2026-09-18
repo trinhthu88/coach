@@ -17,7 +17,11 @@ const ICON_BY_TYPE: Record<DevelopmentSessionType, LucideIcon> = {
 const FILTERS: Array<DevelopmentSessionType | "all"> = ["all", "coaching", "peer_coaching", "mentoring", "triad"];
 
 function detailPath(item: DevelopmentSessionItem): string | null {
-  if (item.type === "coaching" || item.type === "peer_coaching") return `/sessions/${item.sourceId}`;
+  // SessionDetail resolves which table (sessions vs peer_sessions) to read
+  // from its `?type=` query param — omitting it for a peer-coaching item
+  // makes it look up the id in the wrong table and report "not found".
+  if (item.type === "coaching") return `/sessions/${item.sourceId}`;
+  if (item.type === "peer_coaching") return `/sessions/${item.sourceId}?type=peer`;
   if (item.type === "mentoring") return `/mentoring/sessions/${item.sourceId}`;
   if (item.type === "triad") return "/triads";
   return null;

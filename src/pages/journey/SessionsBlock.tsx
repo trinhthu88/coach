@@ -111,7 +111,10 @@ function SessionRow<S extends DisplaySession>({
           <p className="text-[10px] uppercase text-muted-foreground">{format(d, "MMM")}</p>
         </div>
         <div className="min-w-0 flex-1">
-          <Link to={`/sessions/${s.id}`} className="text-sm font-medium hover:text-primary">
+          <Link
+            to={source === "peer" ? `/sessions/${s.id}?type=peer` : `/sessions/${s.id}`}
+            className="text-sm font-medium hover:text-primary"
+          >
             {s.topic}
           </Link>
           <p className="text-[11px] text-muted-foreground">

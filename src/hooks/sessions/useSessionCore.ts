@@ -38,11 +38,27 @@ async function fetchSessionCore(
   coacheeNotesField: string,
   sourceActivityType: EnrollmentActionSource
 ): Promise<SessionCoreData | null> {
-  const selectFields = tableName === "sessions"
-    ? "id, enrollment_id, coach_id, coachee_id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, cancelled_at, slot_id"
-    : tableName === "peer_sessions"
-      ? "id, enrollment_id, peer_coach_id, peer_coachee_id, topic, start_time, duration_minutes, status, meeting_url, provider_notes, receiver_notes, cancelled_at, slot_id"
-      : "id, enrollment_id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, meeting_url, provider_notes, receiver_notes, cancelled_at, slot_id";
+  // Built from the caller's field map (never hardcoded per table) — each
+  // session table names its participant/notes columns differently
+  // (coach_id/coachee_id + coach_notes/coachee_notes on `sessions` and
+  // `peer_sessions`, peer_provider_id/peer_receiver_id + provider_notes/
+  // receiver_notes on `coachee_peer_sessions`), and selecting a column name
+  // that doesn't exist on the target table throws a Postgres 42703 error.
+  const selectFields = [
+    "id",
+    "enrollment_id",
+    coachField,
+    coacheeField,
+    "topic",
+    "start_time",
+    "duration_minutes",
+    "status",
+    "meeting_url",
+    coachNotesField,
+    coacheeNotesField,
+    "cancelled_at",
+    "slot_id",
+  ].join(", ");
   const { data } = await supabase
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from(tableName as any)
