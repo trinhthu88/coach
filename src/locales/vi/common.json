@@ -100,6 +100,8 @@
     "findCoaches": "Tìm coach",
     "myProfile": "Hồ sơ của tôi",
     "myDevelopment": "Hành trình phát triển",
+    "myJourney": "Hành trình của tôi",
+    "coaching": "Coaching",
     "myCoachProfile": "Hồ sơ coach của tôi",
     "myAvailability": "Lịch trống của tôi",
     "myClients": "Khách hàng của tôi",
@@ -119,7 +121,7 @@
     "analytics": "Phân tích",
     "overview": "Tổng quan",
     "mentoring": "Mentoring",
-    "training": "Đào tạo",
+    "training": "Đào tạo & Học tập",
     "trainingContent": "Nội dung đào tạo",
     "triads": "Triads"
   },
@@ -132,7 +134,8 @@
     "people": "Người dùng",
     "programmes": "Chương trình",
     "operations": "Vận hành",
-    "learning": "Học tập"
+    "learning": "Học tập",
+    "account": "Tài khoản"
   },
   "layout": {
     "howItWorks": "Cách thức hoạt động",

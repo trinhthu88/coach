@@ -66,13 +66,19 @@ const NAV: NavItem[] = [
   { to: "/sponsor/report", labelKey: "nav.exportReport", icon: FileDown, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
   { to: "/sponsor/settings", labelKey: "nav.myProfile", icon: IdCard, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
 
-  // Coachee
-  { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", module: "coaching", moduleDirection: "receive" },
-  { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"] },
-  { to: "/coachee/journey", labelKey: "nav.myDevelopment", icon: Compass, roles: ["coachee"], module: "coaching", moduleDirection: "receive" },
-  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "mentoring" },
+  // Coachee — Main (My Journey is permanent for any enrolled learner — see
+  // RULES.md / the Coachee UX brief: it must never be gated on the Coaching
+  // module, since it also surfaces Training, Peer Coaching, Mentoring, Triads,
+  // goals, actions, reflections and feedback for the selected enrollment).
+  { to: "/coachee/journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coachee"] },
+  { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coachee"] },
+
+  // Coachee — My development (each item is itself gated on its module being
+  // configured for the selected enrollment, so only relevant modules appear)
+  { to: "/coaches", labelKey: "nav.coaching", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", groupKey: "navGroups.developMyself", module: "coaching", moduleDirection: "receive" },
   { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "peer_coaching" },
-  { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.developMyself" },
+  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "mentoring" },
+  { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "triads" },
   {
     to: "/practice-journey",
     labelKey: "nav.practiceJourney",
@@ -81,6 +87,16 @@ const NAV: NavItem[] = [
     groupKey: "navGroups.developMyself",
     anyModule: [{ module: "peer_coaching" }, { module: "triads" }],
   },
+
+  // Coachee — Learning
+  { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coachee"], module: "training", groupKey: "navGroups.learning" },
+
+  // Coachee — Communication
+  { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coachee"], groupKey: "navGroups.communication" },
+
+  // Coachee — Account
+  { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"], groupKey: "navGroups.account" },
+  { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.account" },
 
   // Coach — My Coaching Profile
   { to: "/coach/profile", labelKey: "nav.myCoachProfile", icon: IdCard, roles: ["coach"], groupKey: "navGroups.deliverCoaching" },
@@ -106,13 +122,14 @@ const NAV: NavItem[] = [
     ],
   },
 
-  // Communication (shared)
-  { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coach", "coachee"], groupKey: "navGroups.communication" },
-  { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coach", "coachee"], groupKey: "navGroups.communication" },
+  // Communication (coach — coachee has its own entry above, ordered after
+  // My development/Learning per the approved Coachee navigation hierarchy)
+  { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coach"], groupKey: "navGroups.communication" },
+  { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coach"], groupKey: "navGroups.communication" },
 
-  // Learning (shared)
-  { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coach", "coachee"], module: "training", groupKey: "navGroups.learning" },
-  { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coach", "coachee"], module: "triads", groupKey: "navGroups.learning" },
+  // Learning (coach — coachee has its own entry above)
+  { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coach"], module: "training", groupKey: "navGroups.learning" },
+  { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coach"], module: "triads", groupKey: "navGroups.learning" },
 
   // Admin — Overview
   { to: "/admin", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["admin"], groupKey: "navGroups.overview" },

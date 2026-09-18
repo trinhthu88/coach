@@ -101,6 +101,8 @@
     "findCoaches": "Find coaches",
     "myProfile": "My profile",
     "myDevelopment": "My development",
+    "myJourney": "My Journey",
+    "coaching": "Coaching",
     "myCoachProfile": "My coach profile",
     "myAvailability": "My availability",
     "myClients": "My clients",
@@ -120,7 +122,7 @@
     "analytics": "Analytics",
     "overview": "Overview",
     "mentoring": "Mentoring",
-    "training": "Training",
+    "training": "Training & Learning",
     "trainingContent": "Training content",
     "triads": "Triads"
   },
@@ -133,7 +135,8 @@
     "people": "People",
     "programmes": "Programmes",
     "operations": "Operations",
-    "learning": "Learning"
+    "learning": "Learning",
+    "account": "Account"
   },
   "layout": {
     "howItWorks": "How it works",

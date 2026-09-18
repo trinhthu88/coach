@@ -151,7 +151,7 @@
     "pointers": {
       "findCoaches": {
         "where": "Điều hướng bên trái",
-        "title": "\"Find coaches\" là điểm bắt đầu của bạn.",
+        "title": "\"Coaching\" là điểm bắt đầu của bạn.",
         "body": "Hồ sơ coach, buổi trò chuyện làm quen, và lịch trống thực tế — tất cả đều nằm ở đây. Mục này luôn mở trong suốt chương trình, kể cả khi bạn đổi coach."
       },
       "nextSession": {

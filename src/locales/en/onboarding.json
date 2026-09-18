@@ -150,7 +150,7 @@
     "pointers": {
       "findCoaches": {
         "where": "Left navigation",
-        "title": "Find coaches is your starting point.",
+        "title": "Coaching is your starting point.",
         "body": "Profiles, chemistry calls, and live calendars all sit here. It stays open for the whole programme, including if you switch coach."
       },
       "nextSession": {
