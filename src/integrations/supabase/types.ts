@@ -4448,6 +4448,66 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
+      admin_canonical_enrollment_journey: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      admin_canonical_enrollment_progress: {
+        Args: { p_as_of?: string; p_enrollment_ids: string[] }
+        Returns: {
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          enrollment_end_date: string
+          enrollment_id: string
+          enrollment_start_date: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_completion_pct: number
+          learner_display_name: string
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          pace_status: string
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_id: string
+          programme_label: string
+          programme_start_date: string
+          progress_available: boolean
+          required_units: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
+      admin_canonical_schedule_state: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          scheduled_units: number
+          state: string
+        }[]
+      }
       admin_save_cohort_requirement_dates: {
         Args: { p_cohort_id: string; p_items: Json; p_regenerate?: boolean }
         Returns: number
@@ -4472,6 +4532,15 @@ export type Database = {
           programme_id: string
           training_week_id: string
           units: number
+        }[]
+      }
+      learner_canonical_schedule_state: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          scheduled_units: number
+          state: string
         }[]
       }
       learner_triad_members: {
@@ -4932,6 +5001,15 @@ export type Database = {
       sponsor_canonical_leader_experience_legacy: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
+      }
+      sponsor_canonical_leader_schedule_state: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          scheduled_units: number
+          state: string
+        }[]
       }
       sponsor_canonical_leader_journey: {
         Args: { p_as_of?: string; p_enrollment_id: string }

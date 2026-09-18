@@ -25,6 +25,8 @@ export interface ProgrammeJourneyProps {
   /** When provided, checkpoints become selectable and this renders the selected checkpoint's detail. */
   renderDetail?: (point: ProgrammeJourneyPoint) => ReactNode;
   id?: string;
+  /** Canonical required-vs-scheduled mismatches (cohort_programme_schedule_state), shown identically to every role. */
+  scheduleMismatches?: { module: string; required_units: number; scheduled_units: number; state: string }[];
 }
 
 /**
@@ -48,6 +50,7 @@ export function ProgrammeJourney({
   action,
   renderDetail,
   id,
+  scheduleMismatches = [],
 }: ProgrammeJourneyProps) {
   const { t } = useTranslation("sponsor");
   const text = useProfileText(viewer);
@@ -78,6 +81,17 @@ export function ProgrammeJourney({
         <JourneyMeta label={t("cohortDetail.details.startEnd")} value={`${formatProfileDate(start)} – ${formatProfileDate(end)}`} />
         <JourneyMeta label={text("journeySource")} value={text("journeySourceValue")} />
       </div>
+
+      {scheduleMismatches.length > 0 && (
+        <div data-testid="schedule-mismatch" role="status" className="mt-4 rounded-xl border border-[#f0d9b5] bg-[#faf0e3] px-3.5 py-3 text-[11px] leading-relaxed text-[#a8541c]">
+          <strong className="block text-[9.5px] font-bold uppercase tracking-[.14em]">{t("cohortDetail.journey.scheduleMismatchTitle")}</strong>
+          {scheduleMismatches.map((m) => (
+            <span key={m.module} className="block">
+              {t("cohortDetail.journey.scheduleMismatch", { module: moduleLabel(m.module), required: m.required_units, scheduled: m.scheduled_units })}
+            </span>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <ProfileSkeleton className="h-[260px]" />

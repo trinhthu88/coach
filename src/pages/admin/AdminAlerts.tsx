@@ -9,11 +9,13 @@ import {
   buildFeedbackAlerts, buildMentoringPrepFileOverdueAlerts, buildMentoringFeedbackOverdueAlerts,
   buildStaleProgrammeParticipantAlerts, buildLowQuizScoreAlerts, buildFlaggedSessionAlerts,
   type ScanActivityRow, type ScanQuizSubmissionRow,
+  countOverdueActions,
+  type ScanActionRow,
 } from "./alertScan";
 import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { withEnrollmentActions } from "@/lib/enrollmentActions";
+import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
 
 interface AlertsScanSessionRow {
   id: string;
@@ -119,6 +121,7 @@ export default function AdminAlerts() {
         { data: reflections },
         { data: trainingProgress },
         { data: flaggedFeedback },
+        { data: actionRows },
       ] = await Promise.all([
         supabase
           .from("sessions")
@@ -138,6 +141,7 @@ export default function AdminAlerts() {
         supabase.from("triad_reflections").select("participant_id, enrollment_id, submitted_at"),
         supabase.from("training_progress").select("user_id, enrollment_id, completed_at"),
         supabase.from("coach_session_feedback").select("session_id, coach_id, flag_notes").eq("flag_for_admin", true),
+        supabase.from("enrollment_actions").select("enrollment_id, status, due_date").neq("status", "completed"),
       ]);
 
       const profById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.full_name]));
@@ -145,22 +149,14 @@ export default function AdminAlerts() {
       const peerFeedbackSessionIds = new Set(
         (peerFeedback || []).map((f: { peer_session_id: string }) => f.peer_session_id)
       );
-      const overdueByEnrollment = new Map<string, number>();
       const enrollmentById = new Map((enrollments || []).map((e: AlertsScanEnrollmentRow) => [e.id, e]));
-      const normalizedSessions = await withEnrollmentActions(sessions || [], "coaching");
-      normalizedSessions.forEach((s: AlertsScanSessionRow & { enrollment_actions?: { done?: boolean; due_date?: string | null }[] }) => {
-        const items = s.enrollment_actions ?? [];
-        items.forEach((action) => {
-          if (action && !action.done && action.due_date && new Date(action.due_date) < new Date() && s.enrollment_id) {
-            overdueByEnrollment.set(s.enrollment_id, (overdueByEnrollment.get(s.enrollment_id) || 0) + 1);
-          }
-        });
-      });
+      const overdueByEnrollment = countOverdueActions((actionRows || []) as ScanActionRow[], now);
 
-       const progressRows = await supabase.rpc("get_admin_enrollment_progress", {
-         p_enrollment_ids: (enrollments || []).map((e: AlertsScanEnrollmentRow) => e.id),
-       });
-       const progressByEnrollment = new Map((progressRows.data || []).map((row) => [row.enrollment_id, row.full_completion_pct == null ? null : Number(row.full_completion_pct)]));
+      // Programme status and completion come from the canonical engine (the
+      // effective status and completion % Learner and Sponsor see).
+      const progressRows = await fetchAdminCanonicalProgress((enrollments || []).map((e: AlertsScanEnrollmentRow) => e.id));
+      const progressByEnrollment = new Map(progressRows.map((row) => [row.enrollment_id, row]));
+      const effectiveStatus = (e: AlertsScanEnrollmentRow) => progressByEnrollment.get(e.id)?.effective_enrollment_status ?? e.status;
        const newAlerts: NewAlert[] = [];
        overdueByEnrollment.forEach((count, enrollmentId) => {
         if (count >= 3) {
@@ -179,12 +175,12 @@ export default function AdminAlerts() {
       });
 
       (enrollments || []).forEach((e: AlertsScanEnrollmentRow) => {
-        if (e.status === "at_risk") {
+        if (effectiveStatus(e) === "at_risk") {
           newAlerts.push({
             severity: "critical",
             alert_type: "programme_at_risk",
             title: `${profById.get(e.user_id) || "Coachee"} — programme at risk`,
-             message: `Canonical progress ${progressByEnrollment.get(e.id) == null ? "unavailable" : `${Math.round(progressByEnrollment.get(e.id)!)}%`} · review needed`,
+             message: `Canonical progress ${progressByEnrollment.get(e.id)?.full_completion_pct == null ? "unavailable" : `${Math.round(Number(progressByEnrollment.get(e.id)!.full_completion_pct))}%`} · review needed`,
             related_coachee_id: e.user_id,
             related_enrollment_id: e.id,
             resolved: false,
@@ -222,7 +218,7 @@ export default function AdminAlerts() {
       // Programme engagement (Phase 4) — stale participants, low quiz scores.
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
        const activeEnrollments = (enrollments || [])
-         .filter((e: AlertsScanEnrollmentRow) => e.status === "active" && new Date(e.start_date) <= weekAgo)
+         .filter((e: AlertsScanEnrollmentRow) => effectiveStatus(e) === "active" && new Date(e.start_date) <= weekAgo)
          .map((e: AlertsScanEnrollmentRow) => ({ enrollmentId: e.id, userId: e.user_id }));
       const activity: ScanActivityRow[] = [
          ...(submissions || []).filter((s: { enrollment_id: string | null }) => !!s.enrollment_id).map((s: { user_id: string; enrollment_id: string; submitted_at: string }) => ({ userId: s.user_id, enrollmentId: s.enrollment_id, timestamp: s.submitted_at })),

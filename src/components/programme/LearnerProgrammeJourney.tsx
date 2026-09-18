@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
+import { useCanonicalScheduleState } from "@/hooks/useCanonicalScheduleState";
 import { formatProfileDate, ratioPct, type ProgrammeJourneyPoint } from "@/lib/programmeProfile";
 import { MiniProgress } from "./primitives";
 import { ProgrammeJourney } from "./ProgrammeJourney";
@@ -27,6 +28,7 @@ export function LearnerProgrammeJourney({
 }) {
   const { t } = useTranslation("dashboard");
   const { progress, journey, loading, error, retry } = useLearnerCanonicalProgress(enrollmentId ?? undefined);
+  const schedule = useCanonicalScheduleState("learner", enrollmentId);
 
   return (
     <ProgrammeJourney
@@ -39,6 +41,7 @@ export function LearnerProgrammeJourney({
       loading={loading}
       error={error ? { text: t("learnerProfile.errors.journey"), retryLabel: t("learnerProfile.errors.retry"), onRetry: retry } : null}
       action={action}
+      scheduleMismatches={schedule.mismatches}
       renderDetail={variant === "full" ? (point) => <LearnerCheckpointDetail point={point} /> : undefined}
     />
   );

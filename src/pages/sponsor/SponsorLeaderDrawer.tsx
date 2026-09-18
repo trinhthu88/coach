@@ -12,6 +12,7 @@ import { PROFILE_COLORS } from "@/components/programme/profileTheme";
 import { ProgrammeProfileHeader } from "@/components/programme/ProgrammeProfileHeader";
 import { ProgrammeMetricCards } from "@/components/programme/ProgrammeMetricCards";
 import { ProgrammeJourney } from "@/components/programme/ProgrammeJourney";
+import { useCanonicalScheduleState } from "@/hooks/useCanonicalScheduleState";
 import { ProgrammeProgressParticipation } from "@/components/programme/ProgrammeProgressParticipation";
 import { ProgrammeModuleProgress } from "@/components/programme/ProgrammeModuleProgress";
 import { ProgrammeExperienceRating, ProgrammeGoalSummary } from "@/components/programme/ProgrammeEngagementCards";
@@ -54,6 +55,7 @@ export function SponsorLeaderProfile({
   experience?: SponsorLeaderExperience;
 }) {
   const { t } = useTranslation("sponsor");
+  const schedule = useCanonicalScheduleState("sponsor", leader.enrollment_id);
   const attention = attentionItems(leader, t);
   const effectiveStatus = effectiveSponsorStatus(leader);
   const storedStatus = storedSponsorStatus(leader);
@@ -81,7 +83,7 @@ export function SponsorLeaderProfile({
         <h2 className="sr-only">{t("leaderDrawer.overview")}</h2>
         <ProgrammeMetricCards facts={leader} engagement={leader} viewer="sponsor" />
 
-        <ProgrammeJourney journey={journey} start={leader.programme_start_date} end={leader.programme_end_date} viewer="sponsor" />
+        <ProgrammeJourney journey={journey} start={leader.programme_start_date} end={leader.programme_end_date} viewer="sponsor" scheduleMismatches={schedule.mismatches} />
 
         <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
           <ProgrammeProgressParticipation facts={leader} journey={journey} coachingUtilisation={experience.coachingUtilisation} viewer="sponsor" />

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { averageCanonicalCompletion, canonicalAtRisk, fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
 import { Loader2, Star, TrendingUp, Award, Users, MessagesSquare, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminPageHeader, Kpi, SectionCard, MiniBar, Pill, Avatar, EngagementCell } from "./_shared";
@@ -179,15 +180,13 @@ export default function AdminAnalytics() {
         if (s.status === "completed") coacheeSessDone.set(s.coachee_id, (coacheeSessDone.get(s.coachee_id) || 0) + 1);
         if (["pending_coach_approval", "confirmed"].includes(s.status)) coacheeSessBooked.set(s.coachee_id, (coacheeSessBooked.get(s.coachee_id) || 0) + 1);
       });
-       const progressRows = await supabase.rpc("get_admin_enrollment_progress", {
-         p_enrollment_ids: (enr || []).map((e: AnalyticsEnrollmentRow) => e.id),
-       });
-       const progressByEnrollment = new Map((progressRows.data || []).map((row) => [row.enrollment_id, row.full_completion_pct == null ? null : Number(row.full_completion_pct)]));
+      // Programme completion and at-risk status come from the canonical engine
+      // (the same numbers and effective status Learner and Sponsor see).
+      const progressRows = await fetchAdminCanonicalProgress((enr || []).map((e: AnalyticsEnrollmentRow) => e.id));
       const activeCoachees = coacheeIds.filter(id => profById.get(id)?.status === "active").length;
-       const enrolled = new Set((enr || []).map((e: AnalyticsEnrollmentRow) => e.user_id)).size;
-       const progressValues = (enr || []).map((e: AnalyticsEnrollmentRow) => progressByEnrollment.get(e.id)).filter((v): v is number => v != null);
-       const progressAvg = progressValues.length ? progressValues.reduce((a, b) => a + b, 0) / progressValues.length : 0;
-      const atRisk = (enr || []).filter((e: AnalyticsEnrollmentRow) => e.status === "at_risk").length;
+      const enrolled = new Set((enr || []).map((e: AnalyticsEnrollmentRow) => e.user_id)).size;
+      const progressAvg = averageCanonicalCompletion(progressRows);
+      const atRisk = canonicalAtRisk(progressRows).length;
 
       // Coach analytics (delivered)
       const coachDelivered = new Map<string, number>();

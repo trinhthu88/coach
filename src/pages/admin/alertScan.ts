@@ -369,3 +369,25 @@ export function buildFlaggedSessionAlerts(opts: {
 // handled by the triad-reminders Edge Function's own 'triad_admin_alert'
 // notifications instead. "triad_not_scheduled" is kept in AdminAlerts.tsx's
 // cleanup delete-list so any pre-existing rows still get cleared.
+
+export interface ScanActionRow {
+  enrollment_id: string;
+  status: string;
+  due_date: string | null;
+}
+
+/**
+ * Overdue action items per enrollment, from the original enrollment_actions
+ * records (every action, whatever activity it came from) — the same records
+ * Learner and Sponsor action counts use.
+ */
+export function countOverdueActions(actions: ScanActionRow[], now: Date): Map<string, number> {
+  const today = format(now, "yyyy-MM-dd");
+  const byEnrollment = new Map<string, number>();
+  actions.forEach((a) => {
+    if (a.status === "completed" || !a.due_date || a.due_date >= today) return;
+    byEnrollment.set(a.enrollment_id, (byEnrollment.get(a.enrollment_id) ?? 0) + 1);
+  });
+  return byEnrollment;
+}
+
