@@ -39,7 +39,13 @@ function resolveTriadRoundWeek(group: TriadGroupContext) {
  *  training        -> training_progress, assignment_submissions (quiz), reflection_submissions
  *  reflection      -> coachee_reflections (private, enrollment-scoped)
  */
-async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string): Promise<DevelopmentJourneyEvent[]> {
+interface DevelopmentJourneyResult {
+  events: DevelopmentJourneyEvent[];
+  /** Canonical sources whose query failed — their events are missing, not empty. */
+  failedSources: string[];
+}
+
+async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string): Promise<DevelopmentJourneyResult> {
   const [
     goalsRes,
     milestonesRes,
@@ -89,6 +95,25 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
       .eq("enrollment_id", enrollmentId),
     supabase.from("coachee_reflections").select("id, body, mood, created_at").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId),
   ]);
+
+  const sourceResults: Record<string, { error: unknown }> = {
+    coachee_goals: goalsRes,
+    coachee_milestones: milestonesRes,
+    goal_checkins: checkinsRes,
+    enrollment_actions: actionsRes,
+    sessions: sessionsRes,
+    peer_sessions: peerRes,
+    mentoring_sessions: mentoringRes,
+    triad_sessions: triadRes,
+    triad_reflections: triadReflectionRes,
+    training_progress: trainingRes,
+    assignment_submissions: quizRes,
+    reflection_submissions: programmeReflectionRes,
+    coachee_reflections: privateReflectionRes,
+  };
+  const failedSources = Object.entries(sourceResults)
+    .filter(([, res]) => res?.error)
+    .map(([source]) => source);
 
   const events: DevelopmentJourneyEvent[] = [];
 
@@ -219,12 +244,13 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
   }
 
   const peerSessionIds = (peerRes.data ?? []).map((p) => p.id as string);
-  const { data: peerFeedback } = peerSessionIds.length
+  const { data: peerFeedback, error: peerFeedbackError } = peerSessionIds.length
     ? await supabase
         .from("peer_session_competency_feedback")
         .select("id, peer_session_id, feedback_note, created_at")
         .in("peer_session_id", peerSessionIds)
-    : { data: [] as { id: string; peer_session_id: string; feedback_note: string | null; created_at: string }[] };
+    : { data: [] as { id: string; peer_session_id: string; feedback_note: string | null; created_at: string }[], error: null };
+  if (peerFeedbackError) failedSources.push("peer_session_competency_feedback");
 
   for (const p of peerRes.data ?? []) {
     if (p.status === "completed") {
@@ -257,12 +283,13 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
   }
 
   const mentoringSessionIds = (mentoringRes.data ?? []).map((m) => m.id as string);
-  const { data: mentoringFeedback } = mentoringSessionIds.length
+  const { data: mentoringFeedback, error: mentoringFeedbackError } = mentoringSessionIds.length
     ? await supabase
         .from("mentoring_feedback")
         .select("id, mentoring_session_id, overall_notes, submitted_at")
         .in("mentoring_session_id", mentoringSessionIds)
-    : { data: [] as { id: string; mentoring_session_id: string; overall_notes: string | null; submitted_at: string }[] };
+    : { data: [] as { id: string; mentoring_session_id: string; overall_notes: string | null; submitted_at: string }[], error: null };
+  if (mentoringFeedbackError) failedSources.push("mentoring_feedback");
 
   for (const m of mentoringRes.data ?? []) {
     if (m.status === "completed") {
@@ -428,7 +455,14 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     });
   }
 
-  return events.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+  if (failedSources.length > 0) {
+    console.error("Development journey sources failed to load", { enrollmentId, failedSources });
+  }
+
+  return {
+    events: events.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()),
+    failedSources,
+  };
 }
 
 /**
@@ -446,8 +480,10 @@ export function useEnrollmentDevelopmentJourney(enrollmentId: string | undefined
   });
 
   return {
-    events: data ?? [],
+    events: data?.events ?? [],
     loading: !!enrollmentId && !!coacheeId && isLoading,
     error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    /** Some sources failed: `events` is incomplete and must not be presented as the full history. */
+    partialFailure: (data?.failedSources.length ?? 0) > 0,
   };
 }

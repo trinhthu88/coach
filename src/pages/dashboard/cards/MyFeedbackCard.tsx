@@ -4,6 +4,7 @@ import { MessageSquareHeart } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
+import { feedbackAuthorLabel, feedbackText } from "@/lib/feedbackLabels";
 import { DashboardCardShell, CardEmptyHint } from "./shared";
 
 /**
@@ -32,20 +33,13 @@ export function MyFeedbackCard() {
             <li key={`${item.kind}-${item.id}`} className="rounded-lg border border-border bg-muted/30 p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] font-semibold">
-                  {item.kind === "mentoring"
-                    ? t("cards.myFeedback.fromMentor", { name: item.fromName ?? t("cards.myFeedback.someone") })
-                    : t("cards.myFeedback.fromPeer", { name: item.fromName ?? t("cards.myFeedback.someone") })}
+                  {feedbackAuthorLabel(item, t)}
                 </p>
                 <span className="shrink-0 text-[10px] text-muted-foreground">
                   {format(new Date(item.submittedAt), "MMM d")}
                 </span>
               </div>
-              {item.kind === "mentoring" && item.overallNotes && (
-                <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{item.overallNotes}</p>
-              )}
-              {item.kind === "peer_competency" && item.note && (
-                <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{item.note}</p>
-              )}
+              {feedbackText(item) && <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{feedbackText(item)}</p>}
             </li>
           ))}
         </ul>

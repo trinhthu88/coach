@@ -44,7 +44,7 @@ describe("MyFeedbackCard", () => {
       error: null,
     });
     render(<MyFeedbackCard />);
-    expect(screen.getByText("Mentor feedback from Casey Mentor")).toBeInTheDocument();
+    expect(screen.getByText("Mentor feedback · Casey Mentor")).toBeInTheDocument();
     expect(screen.getByText("Great progress on delegation this month.")).toBeInTheDocument();
   });
 

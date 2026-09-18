@@ -8,22 +8,9 @@
   "coacheeDashboard": {
     "hero": {
       "enrollmentRequired": "Your programme details will appear here once you have an active enrollment.",
-      "enrollmentLabel": "Enrollment",
-      "positionLabel": "Position",
-      "currentLabel": "Current",
-      "checkpointPosition": "Checkpoint {{current}} of {{total}}",
-      "checkpointCurrent": "Checkpoint {{current}}",
-      "programmeComplete": "programme complete",
-      "status": {
-        "active": "Active",
-        "completed": "Completed",
-        "paused": "Paused",
-        "at_risk": "At risk"
-      }
+      "checkpointPosition": "Checkpoint {{current}} of {{total}}"
     },
     "nextUp": {
-      "title": "Next up",
-      "subtitle": "The things that need you first.",
       "empty": "Nothing due right now.",
       "itemsCount_one": "{{count}} item",
       "itemsCount_other": "{{count}} items",
@@ -33,53 +20,14 @@
         "current_requirement": "Current",
         "upcoming_session": "Upcoming session",
         "upcoming_requirement": "Upcoming"
-      },
-      "cta": "View"
-    },
-    "progress": {
-      "title": "Programme progress",
-      "subtitle": "Progress against configured requirements.",
-      "overall": "Overall",
-      "dueAdherence": "Due adherence",
-      "activitiesDue": "Activities due",
-      "overdue": "Overdue",
-      "enrollmentRequired": "Programme progress is unavailable until an enrollment is selected.",
-      "viewFullJourney": "Explore full programme journey →"
-    },
-    "moduleProgress": {
-      "title": "Module progress",
-      "subtitle": "Only modules configured for this programme appear.",
-      "empty": "No modules are configured for this enrollment yet."
+      }
     },
     "journeyPreview": {
-      "title": "Programme Journey",
-      "subtitle": "What your programme expects and when.",
-      "viewFull": "View full journey →",
-      "empty": "No programme checkpoints are configured for this enrollment yet."
-    },
-    "goalsActions": {
-      "title": "Goals & actions",
-      "subtitle": "Your current development focus.",
-      "activeGoals": "Active goals",
-      "avgProgress": "Avg progress",
-      "actionsComplete": "Actions complete",
-      "viewAll": "View goals & actions →",
-      "emptyGoals": "No active goals yet.",
-      "ofScale": "of {{target}}"
-    },
-    "feedbackDevelopment": {
-      "title": "Feedback & development",
-      "subtitle": "Latest feedback visible to you.",
-      "viewAll": "View all feedback →",
-      "empty": "No feedback yet.",
-      "fromMentor": "Mentoring feedback · {{name}}",
-      "fromPeer": "Peer coaching feedback · {{name}}"
+      "viewFull": "View full journey →"
     },
     "upcomingSessions": {
-      "title": "Upcoming sessions",
-      "subtitle": "Your next scheduled programme conversations.",
-      "viewAll": "View all sessions →",
-      "empty": "No upcoming session booked."
+      "empty": "No upcoming session booked.",
+      "viewAll": "View all sessions →"
     }
   },
   "greetingByRole": {
@@ -547,9 +495,7 @@
       "title": "Feedback & development",
       "loadError": "Feedback could not be loaded.",
       "empty": "No learner-visible feedback yet.",
-      "someone": "Someone",
-      "fromMentor": "Mentor feedback from {{name}}",
-      "fromPeer": "Peer feedback from {{name}}"
+      "someone": "Someone"
     },
     "coachingGive": {
       "title": "My clients",
@@ -614,6 +560,130 @@
       "awaitingYourResponse": "Awaiting your response",
       "reflectionsPending": "{{count}} reflection(s) pending",
       "openTriads": "Open triads"
+    }
+  },
+  "learnerProfile": {
+    "header": {
+      "eyebrow": "My programme",
+      "programmeStatus": "Programme status",
+      "coaching": "Coaching",
+      "coachingValue": "{{completed}} of {{allocated}} sessions",
+      "position": "Position"
+    },
+    "reference": {
+      "journeySubtitle": "Your programme structure and deadlines, set by your programme and cohort.",
+      "journeySourceValue": "Programme configuration, cohort dates and your completed activity",
+      "journeyWithheld": "No programme checkpoints are configured for this enrollment yet.",
+      "journeyWindow": "Showing checkpoints {{first}}–{{last}} of {{total}}",
+      "trendWithheld": "No checkpoint participation yet.",
+      "aggregateOnly": "Same figures your sponsor sees",
+      "privacySafe": "Required items only",
+      "learningUnavailable": "No required learning items are configured for this enrollment.",
+      "attendanceOnly": "Only required, visible items you were assigned count towards these totals. Your sponsor sees the same numbers — never your session content.",
+      "progressOnly": "Your goals",
+      "ratingTrendWithheld": "Rate your completed coaching sessions to add to this score.",
+      "ratingPrivacy": "Average of your submitted session ratings. Your sponsor sees this average, not your comments.",
+      "ratingNone": "You haven't rated a completed session yet."
+    },
+    "modules": {
+      "open": "Open →",
+      "openTraining": "Open training →"
+    },
+    "journey": {
+      "dueOn": "Due {{date}}",
+      "inScope": "Modules in scope",
+      "allMet": "All cumulative units for this checkpoint are complete.",
+      "outstanding_one": "{{count}} unit still outstanding at this checkpoint.",
+      "outstanding_other": "{{count}} units still outstanding at this checkpoint.",
+      "stillToDo_one": "{{count}} unit still to complete by this date.",
+      "stillToDo_other": "{{count}} units still to complete by this date.",
+      "detailNote": "Cumulative units count every required activity due up to this date. Your sponsor sees the same checkpoint status."
+    },
+    "goals": {
+      "aside_one": "{{count}} active goal",
+      "aside_other": "{{count}} active goals",
+      "emptyGoals": "No active goals yet. Set one in My Journey.",
+      "successMeasure": "Success looks like: {{text}}",
+      "open": "Open goal →",
+      "start": "Start",
+      "current": "Current",
+      "target": "Target",
+      "targetDate": "Target {{date}}",
+      "noTargetDate": "No target date",
+      "notRated": "Not rated yet",
+      "progress": "{{pct}}% towards target",
+      "latestCheckin": "Last check-in {{date}} · {{from}} → {{to}}",
+      "noCheckin": "No check-ins yet",
+      "milestones": "Milestones {{done}}/{{total}}",
+      "noMilestones": "No milestones yet.",
+      "linkedActions": "Actions {{done}}/{{total}}",
+      "noOpenActions": "No open actions.",
+      "otherActions": "Other open actions",
+      "noActiveActions": "No active actions.",
+      "allLinked": "All open actions are linked to a goal.",
+      "actionOverdue": "Overdue",
+      "actionStatus": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "completed": "Done"
+      },
+      "noDueDate": "No due date",
+      "viewAll_one": "View all goals & actions ({{count}} goal) →",
+      "viewAll_other": "View all goals & actions ({{count}} goals) →"
+    },
+    "feedback": {
+      "title": "Feedback & development",
+      "aside": "Visible only to you",
+      "feedbackCount": "Feedback received",
+      "reflectionCount": "Reflections",
+      "latestActivity": "Latest activity",
+      "recentTitle": "Recent feedback & reflections",
+      "activityTitle": "Recent development activity",
+      "empty": "No feedback available yet, and no reflections submitted yet.",
+      "noActivity": "No development activity recorded yet.",
+      "module": "Module: {{module}}",
+      "privacy": "Feedback from your mentor and peers, shared session notes from your coach, mentor and practice partners, and your own reflections. Coach-private notes are never shown here, and none of this is shared with your sponsor.",
+      "viewAll": "View all feedback & development →",
+      "from": {
+        "mentoring": "Mentor feedback · {{name}}",
+        "peer_competency": "Peer coaching feedback · {{name}}",
+        "coaching_note": "Coach session note · {{name}}",
+        "mentoring_note": "Mentor session note · {{name}}",
+        "peer_practice_note": "Peer practice note · {{name}}"
+      },
+      "types": {
+        "mentoring": "Mentor feedback",
+        "peer_competency": "Peer feedback",
+        "coaching_note": "Coach note",
+        "mentoring_note": "Mentor note",
+        "peer_practice_note": "Peer practice note"
+      },
+      "openSource": "Open session →"
+    },
+    "attention": {
+      "title": "Needs your attention"
+    },
+    "sessions": {
+      "book": "Book a session"
+    },
+    "privacy": {
+      "title": "What your sponsor sees",
+      "body": "Your sponsor sees the same programme progress, module, checkpoint and coaching figures shown above, plus goal and action counts and your average session rating. They never see your goal wording, actions, reflections, feedback, session notes or messages."
+    },
+    "errors": {
+      "progress": "Your programme progress could not be loaded. Nothing has changed with your programme — please try again.",
+      "journey": "Your programme journey could not be loaded.",
+      "engagement": "Goal and action totals could not be loaded.",
+      "goals": "Your goals and actions could not be loaded.",
+      "feedback": "Feedback could not be loaded because of a connection or server error. Please try again.",
+      "development": "Your development activity could not be loaded.",
+      "developmentPartial": "Some development activity could not be loaded, so this list may be incomplete.",
+      "sessions": "Upcoming sessions could not be loaded.",
+      "attention": "Items needing attention could not be loaded.",
+      "retry": "Try again"
+    },
+    "journeyPage": {
+      "backToDashboard": "← Dashboard"
     }
   }
 }

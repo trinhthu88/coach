@@ -13,6 +13,14 @@ import { supabase } from "@/integrations/supabase/client";
  *   access; rows where this learner is `peer_coach_id` are competency
  *   ratings ABOUT them from the peer they coached — learner-visible.
  *   Scoped the same way, through peer_sessions.enrollment_id.
+ * - Shared session notes written by the other party — sessions.coach_notes
+ *   (coach → coachee), mentoring_sessions.mentor_notes (mentor → mentee)
+ *   and coachee_peer_sessions.provider_notes (peer provider → receiver).
+ *   SessionDetail / MentoringSessionDetail already show exactly these
+ *   fields to the learner read-only ("Coach note" / "Mentor notes"), so they
+ *   are learner-visible by design. Their private counterparts
+ *   (coach_private_notes, provider_private_notes) are author-only and are
+ *   never selected here.
  * - coach_session_feedback is deliberately NOT queried here: its RLS only
  *   grants the authoring coach and admins access (quality_rating,
  *   engagement_level, flag_notes are private coach/admin assessment, never
@@ -40,6 +48,16 @@ export type LearnerFeedbackItem =
       submittedAt: string;
       note: string | null;
       scores: { key: string; score: number }[];
+    }
+  | {
+      kind: "session_note";
+      id: string;
+      source: "coaching" | "mentoring" | "peer_practice";
+      sessionId: string;
+      topic: string | null;
+      fromName: string | null;
+      submittedAt: string;
+      note: string;
     };
 
 const COMPETENCY_KEYS = [
@@ -54,7 +72,20 @@ const COMPETENCY_KEYS = [
 ] as const;
 
 async function fetchLearnerFeedback(userId: string, enrollmentId: string): Promise<LearnerFeedbackItem[]> {
-  const [{ data: mentoring, error: mentoringError }, { data: peer, error: peerError }] = await Promise.all([
+  // peer_session_competency_feedback.peer_session_id carries no foreign key
+  // to peer_sessions, so PostgREST cannot embed `peer_sessions!inner(...)`
+  // from it (PGRST200) — that embed was why the Dashboard showed "Feedback
+  // could not be loaded" even for learners with feedback. Resolve this
+  // enrollment's peer sessions first, then read feedback for exactly those
+  // ids. mentoring_feedback does have an FK to mentoring_sessions, so its
+  // enrollment-scoped embed stays.
+  const [
+    { data: mentoring, error: mentoringError },
+    { data: peerSessions, error: peerSessionsError },
+    { data: coachingNotes, error: coachingNotesError },
+    { data: mentorNotes, error: mentorNotesError },
+    { data: peerPracticeNotes, error: peerPracticeNotesError },
+  ] = await Promise.all([
     supabase
       .from("mentoring_feedback")
       .select(
@@ -64,23 +95,72 @@ async function fetchLearnerFeedback(userId: string, enrollmentId: string): Promi
       .eq("mentoring_sessions.enrollment_id", enrollmentId)
       .order("submitted_at", { ascending: false })
       .limit(10),
+    supabase.from("peer_sessions").select("id").eq("enrollment_id", enrollmentId).eq("peer_coach_id", userId),
     supabase
-      .from("peer_session_competency_feedback")
-      .select(
-        "id, peer_coachee_id, feedback_note, created_at, ethical_practice, coaching_mindset, maintains_agreements, trust_safety, maintains_presence, listens_actively, evokes_awareness, facilitates_growth, peer_sessions!inner(enrollment_id)"
-      )
-      .eq("peer_coach_id", userId)
-      .eq("peer_sessions.enrollment_id", enrollmentId)
-      .order("created_at", { ascending: false })
-      .limit(10),
+      .from("sessions")
+      .select("id, topic, start_time, coach_id, coach_notes")
+      .eq("enrollment_id", enrollmentId)
+      .eq("coachee_id", userId)
+      .not("coach_notes", "is", null),
+    supabase
+      .from("mentoring_sessions")
+      .select("id, topic, start_time, mentor_id, mentor_notes")
+      .eq("enrollment_id", enrollmentId)
+      .eq("mentee_id", userId)
+      .not("mentor_notes", "is", null),
+    supabase
+      .from("coachee_peer_sessions")
+      .select("id, topic, start_time, peer_provider_id, provider_notes")
+      .eq("enrollment_id", enrollmentId)
+      .eq("peer_receiver_id", userId)
+      .not("provider_notes", "is", null),
   ]);
   if (mentoringError) throw mentoringError;
-  if (peerError) throw peerError;
+  if (peerSessionsError) throw peerSessionsError;
+  if (coachingNotesError) throw coachingNotesError;
+  if (mentorNotesError) throw mentorNotesError;
+  if (peerPracticeNotesError) throw peerPracticeNotesError;
+
+  type NoteRow = { id: string; topic: string | null; start_time: string; author: string; note: string | null };
+  const noteSources: Array<{ source: "coaching" | "mentoring" | "peer_practice"; rows: NoteRow[] }> = [
+    {
+      source: "coaching",
+      rows: (coachingNotes ?? []).map((r) => ({ id: r.id, topic: r.topic, start_time: r.start_time, author: r.coach_id, note: r.coach_notes })),
+    },
+    {
+      source: "mentoring",
+      rows: (mentorNotes ?? []).map((r) => ({ id: r.id, topic: r.topic, start_time: r.start_time, author: r.mentor_id, note: r.mentor_notes })),
+    },
+    {
+      source: "peer_practice",
+      rows: (peerPracticeNotes ?? []).map((r) => ({ id: r.id, topic: r.topic, start_time: r.start_time, author: r.peer_provider_id, note: r.provider_notes })),
+    },
+  ];
+  const sessionNotes = noteSources.flatMap(({ source, rows }) =>
+    rows.filter((row) => row.note && row.note.trim()).map((row) => ({ source, row }))
+  );
+
+  const peerSessionIds = (peerSessions ?? []).map((row) => row.id as string);
+  let peer: Array<Record<string, unknown>> = [];
+  if (peerSessionIds.length > 0) {
+    const { data, error: peerError } = await supabase
+      .from("peer_session_competency_feedback")
+      .select(
+        "id, peer_coachee_id, feedback_note, created_at, ethical_practice, coaching_mindset, maintains_agreements, trust_safety, maintains_presence, listens_actively, evokes_awareness, facilitates_growth"
+      )
+      .eq("peer_coach_id", userId)
+      .in("peer_session_id", peerSessionIds)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (peerError) throw peerError;
+    peer = (data ?? []) as Array<Record<string, unknown>>;
+  }
 
   const authorIds = Array.from(
     new Set([
       ...(mentoring ?? []).map((row) => row.mentor_id as string),
       ...(peer ?? []).map((row) => row.peer_coachee_id as string),
+      ...sessionNotes.map(({ row }) => row.author),
     ])
   );
   const namesById: Record<string, string> = {};
@@ -107,7 +187,18 @@ async function fetchLearnerFeedback(userId: string, enrollmentId: string): Promi
     scores: COMPETENCY_KEYS.filter((key) => row[key] != null).map((key) => ({ key, score: row[key] as number })),
   }));
 
-  return [...mentoringItems, ...peerItems].sort(
+  const noteItems: LearnerFeedbackItem[] = sessionNotes.map(({ source, row }) => ({
+    kind: "session_note" as const,
+    id: `${source}-${row.id}`,
+    source,
+    sessionId: row.id,
+    topic: row.topic,
+    fromName: namesById[row.author] ?? null,
+    submittedAt: row.start_time,
+    note: (row.note as string).trim(),
+  }));
+
+  return [...mentoringItems, ...peerItems, ...noteItems].sort(
     (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
   );
 }
@@ -115,7 +206,11 @@ async function fetchLearnerFeedback(userId: string, enrollmentId: string): Promi
 export function useLearnerFeedback(userId: string | undefined, enrollmentId: string | undefined) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["learner-feedback", userId ?? null, enrollmentId ?? null],
-    queryFn: () => fetchLearnerFeedback(userId as string, enrollmentId as string),
+    queryFn: () =>
+      fetchLearnerFeedback(userId as string, enrollmentId as string).catch((cause: unknown) => {
+        console.error("Learner feedback failed to load", { enrollmentId, cause });
+        throw cause;
+      }),
     enabled: !!userId && !!enrollmentId,
     staleTime: 30_000,
   });
@@ -123,6 +218,12 @@ export function useLearnerFeedback(userId: string | undefined, enrollmentId: str
   return {
     feedback: data ?? [],
     loading: !!userId && !!enrollmentId && isLoading,
-    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    error: error
+      ? error instanceof Error
+        ? error.message
+        : typeof error === "object" && "message" in error
+          ? String((error as { message: unknown }).message)
+          : String(error)
+      : null,
   };
 }

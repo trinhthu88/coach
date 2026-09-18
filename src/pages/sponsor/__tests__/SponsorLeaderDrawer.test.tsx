@@ -36,7 +36,7 @@ const leader = {
   action_completion_pct: 66.7,
   satisfaction_avg: 4.4,
   satisfaction_rated_count: 4,
-} as SponsorRosterRow;
+} as unknown as SponsorRosterRow;
 
 describe("SponsorLeaderDrawer", () => {
   beforeEach(async () => {

@@ -2,53 +2,24 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { SponsorRosterRow } from "./useSponsorDashboardData";
+import {
+  EMPTY_PROGRAMME_EXPERIENCE,
+  parseProgrammeExperience,
+  parseProgrammeJourney,
+  type ProgrammeExperience,
+  type ProgrammeJourneyPoint,
+  type ProgrammeLearningItem,
+  type ProgrammeWeeklyParticipation,
+} from "@/lib/programmeProfile";
 
 type HostedLeaderProgress = Database["public"]["Functions"]["sponsor_canonical_enrollment_metadata"]["Returns"][number];
 
-export type SponsorLeaderJourneyPoint = {
-  checkpoint_number: number;
-  due_on: string;
-  label: string | null;
-  module_scope: string[];
-  required_units: number;
-  completed_units: number;
-  state: "completed" | "current" | "overdue" | "upcoming";
-};
-
-export type SponsorLeaderWeeklyParticipation = {
-  week_number: number;
-  week_start: string;
-  week_end: string;
-  required_units: number;
-  due_units: number;
-  completed_units: number;
-  activity_units: number;
-  state: "completed" | "current" | "overdue" | "upcoming";
-  is_current: boolean;
-};
-
-export type SponsorLeaderLearningItem = {
-  key: "skill_cards" | "quizzes" | "reflections" | "daily_prompts";
-  label: string;
-  required_units: number;
-  due_units: number;
-  completed_units: number;
-  progress_available: boolean;
-  status: "completed" | "current" | "overdue" | "upcoming" | "unavailable";
-};
-
-export type SponsorLeaderExperience = {
-  weeklyParticipation: SponsorLeaderWeeklyParticipation[];
-  learningBreakdown: SponsorLeaderLearningItem[];
-  coachingUtilisation: {
-    required_units: number | null;
-    completed_units: number | null;
-    due_units: number | null;
-    booked_units: number | null;
-    utilisation_pct: number | null;
-    next_session_at: string | null;
-  } | null;
-};
+// One journey/experience contract shared with the learner self-view — see
+// src/lib/programmeProfile.ts. Aliases keep existing sponsor imports stable.
+export type SponsorLeaderJourneyPoint = ProgrammeJourneyPoint;
+export type SponsorLeaderWeeklyParticipation = ProgrammeWeeklyParticipation;
+export type SponsorLeaderLearningItem = ProgrammeLearningItem;
+export type SponsorLeaderExperience = ProgrammeExperience;
 
 export type SponsorLeaderProfileData = Pick<
   SponsorRosterRow,
@@ -111,102 +82,12 @@ export interface SponsorLeaderData {
   retry: () => void;
 }
 
-type ExperiencePayload = {
-  weekly_participation?: unknown;
-  learning_breakdown?: unknown;
-  coaching_utilisation?: unknown;
-};
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" ? value as Record<string, unknown> : {};
-}
-
-function asNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function parseJourney(value: unknown): SponsorLeaderJourneyPoint[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is SponsorLeaderJourneyPoint => {
-    const row = asRecord(item);
-    return typeof row.checkpoint_number === "number"
-      && typeof row.due_on === "string"
-      && typeof row.required_units === "number"
-      && typeof row.completed_units === "number"
-      && ["completed", "current", "overdue", "upcoming"].includes(String(row.state));
-  }).map((item) => ({
-    checkpoint_number: item.checkpoint_number,
-    due_on: item.due_on,
-    label: item.label ?? null,
-    module_scope: Array.isArray(item.module_scope) ? item.module_scope.map(String) : [],
-    required_units: item.required_units,
-    completed_units: item.completed_units,
-    state: item.state,
-  }));
-}
-
-function parseExperience(value: unknown): SponsorLeaderExperience {
-  const payload = asRecord(value) as ExperiencePayload;
-  const weeklyValue = Array.isArray(payload.weekly_participation) ? payload.weekly_participation : [];
-  const learningValue = Array.isArray(payload.learning_breakdown) ? payload.learning_breakdown : [];
-  const coaching = asRecord(payload.coaching_utilisation);
-
-  return {
-    weeklyParticipation: weeklyValue.filter((item): item is SponsorLeaderWeeklyParticipation => {
-      const row = asRecord(item);
-      return typeof row.week_number === "number"
-        && typeof row.week_start === "string"
-        && typeof row.week_end === "string"
-        && typeof row.required_units === "number"
-        && typeof row.completed_units === "number"
-        && typeof row.activity_units === "number"
-        && ["completed", "current", "overdue", "upcoming"].includes(String(row.state));
-    }).map((item) => ({
-      week_number: item.week_number,
-      week_start: item.week_start,
-      week_end: item.week_end,
-      required_units: item.required_units,
-      due_units: item.due_units,
-      completed_units: item.completed_units,
-      activity_units: item.activity_units,
-      state: item.state,
-      is_current: Boolean(item.is_current),
-    })),
-    learningBreakdown: learningValue.filter((item): item is SponsorLeaderLearningItem => {
-      const row = asRecord(item);
-      return typeof row.key === "string"
-        && typeof row.label === "string"
-        && typeof row.required_units === "number"
-        && typeof row.due_units === "number"
-        && typeof row.completed_units === "number"
-        && typeof row.progress_available === "boolean"
-        && ["completed", "current", "overdue", "upcoming", "unavailable"].includes(String(row.status));
-    }).map((item) => ({
-      key: item.key,
-      label: item.label,
-      required_units: item.required_units,
-      due_units: item.due_units,
-      completed_units: item.completed_units,
-      progress_available: item.progress_available,
-      status: item.status,
-    })),
-    coachingUtilisation: Object.keys(coaching).length === 0 ? null : {
-      required_units: asNumber(coaching.required_units),
-      completed_units: asNumber(coaching.completed_units),
-      due_units: asNumber(coaching.due_units),
-      booked_units: asNumber(coaching.booked_units),
-      utilisation_pct: asNumber(coaching.utilisation_pct),
-      next_session_at: typeof coaching.next_session_at === "string" ? coaching.next_session_at : null,
-    },
-  };
-}
-
 export function useSponsorLeaderData(enrollmentId: string, cohortId?: string): SponsorLeaderData {
   const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<SponsorLeaderData>({
     leader: null,
     journey: [],
-    experience: { weeklyParticipation: [], learningBreakdown: [], coachingUtilisation: null },
+    experience: EMPTY_PROGRAMME_EXPERIENCE,
     loading: true,
     error: null,
     retry: () => undefined,
@@ -243,7 +124,7 @@ export function useSponsorLeaderData(enrollmentId: string, cohortId?: string): S
       const experience = await supabase.rpc("sponsor_canonical_leader_experience", { p_enrollment_id: enrollmentId });
       const rpcErrors = [progress.error, journey.error];
       const needsSessionRefresh = allowSessionRefresh && rpcErrors.some((rpcError) =>
-        rpcError?.code === "42501" || rpcError?.code === "401" || rpcError?.status === 401
+        rpcError?.code === "42501" || rpcError?.code === "401" || (rpcError as { status?: number } | null)?.status === 401
       );
 
       if (needsSessionRefresh) {
@@ -276,13 +157,14 @@ export function useSponsorLeaderData(enrollmentId: string, cohortId?: string): S
           experienceError: experience.error,
         });
       }
-      setState({
+      setState((current) => ({
+        ...current,
         leader,
-        journey: parseJourney(journey.data),
-        experience: parseExperience(experience.data),
+        journey: parseProgrammeJourney(journey.data),
+        experience: parseProgrammeExperience(experience.data),
         loading: false,
         error,
-      });
+      }));
     };
 
     load(true).catch((error: unknown) => {

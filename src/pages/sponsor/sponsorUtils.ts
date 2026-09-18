@@ -1,4 +1,5 @@
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
+import { profileInitials, programmeLifecycle } from "@/lib/programmeProfile";
 
 export type SponsorEnrollmentStatus = SponsorRosterRow["enrollment_status"];
 
@@ -25,7 +26,7 @@ export function storedSponsorStatus(row: Pick<SponsorRosterRow, "stored_enrollme
 }
 
 export function initials(name: string) {
-  return name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2);
+  return profileInitials(name);
 }
 
 export type HealthSignal = "healthy" | "watch" | "attention";
@@ -51,9 +52,5 @@ export function cohortProgress(start: string | null, end: string | null): { elap
 
 /** Lifecycle is date-derived; pace can still be mixed inside a completed cohort. */
 export function cohortLifecycleStatus(start: string | null, end: string | null): "upcoming" | "active" | "complete" {
-  const startMs = start ? new Date(start).getTime() : NaN;
-  const endMs = end ? new Date(end).getTime() : NaN;
-  if (Number.isFinite(startMs) && Date.now() < startMs) return "upcoming";
-  if (Number.isFinite(endMs) && Date.now() > endMs) return "complete";
-  return "active";
+  return programmeLifecycle(start, end);
 }

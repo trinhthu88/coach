@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -9,15 +10,13 @@ import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
 import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
 import { useFlatActionItems, type FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { useEnrollmentActionsSummary } from "@/hooks/dashboard/useEnrollmentActionsSummary";
-import { useGoalLock } from "@/hooks/journey/useJourneyDerived";
+import { useGoalLock, useGoalRatingRows } from "@/hooks/journey/useJourneyDerived";
 import type { JourneySession } from "@/hooks/journey/types";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Sparkles, BookOpen } from "lucide-react";
 import { format } from "date-fns";
-import { PageHeader } from "@/components/ui/page-header";
 import { SectionHeader } from "./journey/SectionHeader";
 import { EmptyGoals } from "./journey/EmptyGoals";
 import { GoalAccordion } from "./journey/GoalAccordion";
@@ -26,24 +25,31 @@ import { EnrollmentActionGroups } from "./journey/EnrollmentActionGroups";
 import { PracticeCompetencyCard } from "./journey/PracticeCompetencyCard";
 import { useEnrollmentDevelopmentJourney } from "@/hooks/journey/useEnrollmentDevelopmentJourney";
 import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
-import { ProgrammeJourneyTimeline } from "@/components/journey/ProgrammeJourneyTimeline";
+import { LearnerProgrammeJourney } from "@/components/programme/LearnerProgrammeJourney";
+import { ProgrammeProfileHeader } from "@/components/programme/ProgrammeProfileHeader";
+import { FeedbackItemCard } from "@/components/programme/FeedbackItemCard";
+import {
+  MiniProgress,
+  ProfileLoadError,
+  ProfileSection,
+  ProfileSectionTitle,
+  SmallMetric,
+  UnavailableNote,
+} from "@/components/programme/primitives";
+import { PROFILE_COLORS } from "@/components/programme/profileTheme";
+import { useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
+import { useHashScroll } from "@/hooks/useHashScroll";
+import { formatProfileDate } from "@/lib/programmeProfile";
+import { STATUS_LABEL_KEY, STATUS_TONE, effectiveSponsorStatus } from "@/pages/sponsor/sponsorUtils";
 import { DevelopmentJourneyList } from "@/components/journey/DevelopmentJourneyList";
-
-/** A start/current/target numeral, as the approved prototype's goal card shows it. */
-function GoalStat({ value, label, tone }: { value: number | string; label: string; tone?: "primary" }) {
-  return (
-    <div>
-      <p className={`font-display text-lg leading-none ${tone === "primary" ? "text-primary" : ""}`}>{value}</p>
-      <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-    </div>
-  );
-}
 
 export default function CoacheeJourney() {
   const { t } = useTranslation("journey");
   const { t: tDash } = useTranslation("dashboard");
-  const { user } = useAuth();
+  const { t: tSponsor } = useTranslation("sponsor");
+  const { user, profile } = useAuth();
   const programmeApi = useJourneyProgramme(user?.id);
+  const canonical = useLearnerCanonicalProgress(programmeApi.programme?.enrollmentId);
   const goalsApi = useJourneyGoals(user?.id, { enrollmentId: programmeApi.programme?.enrollmentId });
   const ratingsApi = useJourneyRatings(user?.id, programmeApi.programme?.enrollmentId);
   const sessionsApi = useJourneySessions(user?.id, { includePeer: false, enrollmentId: programmeApi.programme?.enrollmentId });
@@ -79,14 +85,7 @@ export default function CoacheeJourney() {
   // per-goal values Sponsor's goal_progress_pct aggregates. Never the
   // milestone-completion ratio, which is a different fact (see milestones
   // list inside each goal's expanded card).
-  const ratingRows = useMemo(
-    () =>
-      goals.map((g) => {
-        const r = ratings[g.id];
-        return { goalId: g.id, start: r?.start_rating ?? null, current: r?.current_rating ?? null, target: r?.target_rating ?? null };
-      }),
-    [goals, ratings]
-  );
+  const { ratingRows } = useGoalRatingRows(goals, ratings);
 
   const { allActionItems } = useFlatActionItems(sessions);
   // Only coaching-session-sourced actions can be toggled here (the mutation
@@ -123,6 +122,10 @@ export default function CoacheeJourney() {
 
   const toggleAction = (a: FlatAction) => toggleActionRaw(a.sessionId, a.idx, "coaching");
 
+  // Dashboard CTAs deep-link into sections (#programme-journey, #goals,
+  // #goal-<id>, #feedback).
+  useHashScroll(!loading);
+
   if (loading) {
     return <PageSkeleton />;
   }
@@ -139,50 +142,53 @@ export default function CoacheeJourney() {
   const allReflectionRows = [...canonicalReflections, ...privateReflectionRows].sort(
     (a, b) => +new Date(b.date) - +new Date(a.date)
   );
+  const status = canonical.progress ? effectiveSponsorStatus(canonical.progress) : null;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow={t("coacheeJourney.eyebrow")}
-        title={t("coacheeJourney.title")}
-        trailing=""
-        subtitle={t("coacheeJourney.subtitle")}
+    <div className="pb-4" style={{ color: PROFILE_COLORS.NAVY }}>
+      <ProgrammeProfileHeader
+        name={canonical.progress?.learner_display_name || profile?.full_name || ""}
+        eyebrow={t("coacheeJourney.title")}
+        subtitle={
+          canonical.progress
+            ? `${canonical.progress.programme_label} · ${canonical.progress.cohort_label || "—"}`
+            : t("coacheeJourney.subtitle")
+        }
+        metas={
+          canonical.progress && status
+            ? [
+                { label: tDash("learnerProfile.header.programmeStatus"), value: tSponsor(`status.${STATUS_LABEL_KEY[status]}`) },
+                {
+                  label: tSponsor("leaderDrawer.reference.dates"),
+                  value: `${formatProfileDate(canonical.progress.enrollment_start_date)} – ${formatProfileDate(canonical.progress.enrollment_end_date)}`,
+                },
+              ]
+            : []
+        }
+        status={status ? { tone: STATUS_TONE[status], label: tSponsor(`status.${STATUS_LABEL_KEY[status]}`) } : null}
+        trailing={
+          <Link to="/dashboard" className="rounded-full border border-white/25 px-3.5 py-1.5 text-[11px] font-semibold text-white hover:bg-white/10">
+            {tDash("learnerProfile.journeyPage.backToDashboard")}
+          </Link>
+        }
       />
 
-      <Card className="p-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-display text-lg">{t("programmeJourney.title")}</h2>
-            <p className="mt-0.5 text-[11.5px] text-muted-foreground">{t("programmeJourney.subtitle")}</p>
-          </div>
-        </div>
-        <div className="mt-4">
-          <ProgrammeJourneyTimeline enrollmentId={programme?.enrollmentId} variant="full" />
-        </div>
-      </Card>
+      {/* The same shared Programme Journey the Dashboard and Sponsor Leader
+          Detail render — full variant: every checkpoint plus detail. */}
+      <LearnerProgrammeJourney id="programme-journey" enrollmentId={programme?.enrollmentId} variant="full" />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-5">
-          <h2 className="font-display text-lg">{t("developmentJourney.title")}</h2>
-          <p className="mt-0.5 text-[11.5px] text-muted-foreground">{t("developmentJourney.subtitle")}</p>
-          <div className="mt-4">
-            <DevelopmentJourneyList events={developmentJourney.events} loading={developmentJourney.loading} />
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="font-display text-lg">{t("journeyPage.goalsAndActions.title")}</h2>
-              <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-                {t("journeyPage.goalsAndActions.subtitle", { count: goals.length })}
-              </p>
-            </div>
-            {goals.length > 0 && <GoalDialog onAdd={goalsApi.addGoal} />}
-          </div>
+      <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
+        <ProfileSection id="goals" className="scroll-mt-4">
+          <ProfileSectionTitle
+            title={t("journeyPage.goalsAndActions.title")}
+            aside={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} /> : undefined}
+          />
+          <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("journeyPage.goalsAndActions.subtitle", { count: goals.length })}</p>
 
           <div className="mt-4">
-            {goals.length === 0 ? (
+            {goalsApi.error || ratingsApi.error ? (
+              <ProfileLoadError text={tDash("learnerProfile.errors.goals")} />
+            ) : goals.length === 0 ? (
               <EmptyGoals onAdd={goalsApi.addGoal} description={t("journeyPage.goalsEmptyDescription")} />
             ) : (
               <div className="space-y-3">
@@ -190,96 +196,116 @@ export default function CoacheeJourney() {
                   const r = ratingRows.find((row) => row.goalId === g.id);
                   const nextAction = nextActionForGoal(g.id);
                   return (
-                    <GoalAccordion
-                      key={g.id}
-                      goal={g}
-                      milestones={milestones.filter((m) => m.goal_id === g.id)}
-                      actions={allActionItems}
-                      accent={{ bg: "bg-primary/15", text: "text-primary", fill: "bg-primary" }}
-                      onToggle={toggleMilestone}
-                      onToggleAction={toggleAction}
-                      onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
-                      onDeleteGoal={goalsApi.deleteGoal}
-                      onDeleteMilestone={goalsApi.deleteMilestone}
-                      defaultOpen={i === 0}
-                      rating={r ?? undefined}
-                      onRatingChange={(patch) => saveRating(g.id, patch)}
-                      startTargetLocked={isGoalLocked(g.created_at)}
-                      renderHeader={({ pct }) => (
-                        <div className="rounded-[13px] border border-border bg-card p-4 transition-colors hover:border-primary/30">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-[8.5px] font-bold uppercase tracking-[.14em] text-primary">
-                                {t("journeyPage.goalsAndActions.goalEyebrow")}
-                              </p>
-                              <h3 className="font-display mt-1 truncate text-[15.5px] font-normal leading-snug">{g.title}</h3>
+                    <div key={g.id} id={`goal-${g.id}`} className="scroll-mt-4">
+                      <GoalAccordion
+                        goal={g}
+                        milestones={milestones.filter((m) => m.goal_id === g.id)}
+                        actions={allActionItems}
+                        accent={{ bg: "bg-primary/15", text: "text-primary", fill: "bg-primary" }}
+                        onToggle={toggleMilestone}
+                        onToggleAction={toggleAction}
+                        onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
+                        onDeleteGoal={goalsApi.deleteGoal}
+                        onDeleteMilestone={goalsApi.deleteMilestone}
+                        defaultOpen={i === 0}
+                        rating={r ?? undefined}
+                        onRatingChange={(patch) => saveRating(g.id, patch)}
+                        startTargetLocked={isGoalLocked(g.created_at)}
+                        renderHeader={({ pct }) => (
+                          <div className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] p-4 transition-colors hover:border-[#8bd3e3]">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-[.14em] text-[#2c8fa8]">
+                                  {t("journeyPage.goalsAndActions.goalEyebrow")}
+                                </p>
+                                <h3 className="mt-1 truncate font-serif text-[15.5px] font-normal leading-snug">{g.title}</h3>
+                              </div>
+                              <span className="shrink-0 rounded-full bg-[#e4f3f7] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.12em] text-[#2c8fa8]">
+                                {t(`journeyPage.goalsAndActions.status.${g.status}`, { defaultValue: g.status })}
+                              </span>
                             </div>
-                            <span className="shrink-0 rounded-full bg-primary-soft px-2.5 py-1 text-[8.5px] font-bold uppercase tracking-widest text-primary">
-                              {t(`journeyPage.goalsAndActions.status.${g.status}`, { defaultValue: g.status })}
-                            </span>
+                            <div className="mt-3 flex gap-6">
+                              <SmallMetric value={String(r?.start ?? "—")} label={t("journeyPage.goalsAndActions.start")} />
+                              <SmallMetric value={String(r?.current ?? "—")} label={t("journeyPage.goalsAndActions.current")} color={PROFILE_COLORS.TEAL} />
+                              <SmallMetric value={String(r?.target ?? "—")} label={t("journeyPage.goalsAndActions.target")} />
+                            </div>
+                            <MiniProgress pct={pct ?? 0} color={PROFILE_COLORS.TEAL} />
+                            <p className="mt-2.5 text-[11px] text-[#6a6560]">
+                              {nextAction
+                                ? t("journeyPage.goalsAndActions.nextAction", {
+                                    text: nextAction.title,
+                                    date: nextAction.due_date ? format(new Date(nextAction.due_date), "MMM d") : t("journeyPage.goalsAndActions.noDueDate"),
+                                  })
+                                : t("journeyPage.goalsAndActions.noOpenActions")}
+                            </p>
                           </div>
-                          <div className="mt-3 flex gap-5">
-                            <GoalStat value={r?.start ?? "—"} label={t("journeyPage.goalsAndActions.start")} />
-                            <GoalStat value={r?.current ?? "—"} label={t("journeyPage.goalsAndActions.current")} tone="primary" />
-                            <GoalStat value={r?.target ?? "—"} label={t("journeyPage.goalsAndActions.target")} />
-                          </div>
-                          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                            <div className="h-full rounded-full bg-primary" style={{ width: `${pct ?? 0}%` }} />
-                          </div>
-                          <p className="mt-2.5 text-[11px] text-muted-foreground">
-                            {nextAction
-                              ? t("journeyPage.goalsAndActions.nextAction", {
-                                  text: nextAction.title,
-                                  date: nextAction.due_date ? format(new Date(nextAction.due_date), "MMM d") : t("journeyPage.goalsAndActions.noDueDate"),
-                                })
-                              : t("journeyPage.goalsAndActions.noOpenActions")}
-                          </p>
-                        </div>
-                      )}
-                    />
+                        )}
+                      />
+                    </div>
                   );
                 })}
               </div>
             )}
           </div>
 
-          {allActionsSummary.total > 0 && (
-            <div className="mt-5">
-              <SectionHeader title={t("journeyPage.goalsAndActions.actionsHeader")} />
-              <EnrollmentActionGroups
-                summary={allActionsSummary}
-                goals={goals}
-                toggleableById={toggleableById}
-                onToggleAction={toggleAction}
-                emptyMessage={t("journeyPage.actionsEmpty")}
-              />
-            </div>
+          {allActionsSummary.error ? (
+            <ProfileLoadError text={tDash("learnerProfile.errors.goals")} />
+          ) : (
+            allActionsSummary.total > 0 && (
+              <div className="mt-5 border-t border-[#eee8de] pt-4">
+                <SectionHeader title={t("journeyPage.goalsAndActions.actionsHeader")} />
+                <EnrollmentActionGroups
+                  summary={allActionsSummary}
+                  goals={goals}
+                  toggleableById={toggleableById}
+                  onToggleAction={toggleAction}
+                  emptyMessage={t("journeyPage.actionsEmpty")}
+                />
+              </div>
+            )
           )}
-        </Card>
+        </ProfileSection>
+
+        <ProfileSection>
+          <ProfileSectionTitle title={t("developmentJourney.title")} />
+          <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("developmentJourney.subtitle")}</p>
+          {developmentJourney.error ? (
+            <ProfileLoadError text={tDash("learnerProfile.errors.development")} />
+          ) : (
+            <>
+              {developmentJourney.partialFailure && <ProfileLoadError text={tDash("learnerProfile.errors.developmentPartial")} />}
+              <div className="mt-4">
+                <DevelopmentJourneyList events={developmentJourney.events} loading={developmentJourney.loading} />
+              </div>
+            </>
+          )}
+        </ProfileSection>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-5">
-          <h2 className="font-display text-lg">{t("journeyPage.reflectionsCard.title")}</h2>
-          <p className="mt-0.5 text-[11.5px] text-muted-foreground">{t("journeyPage.reflectionsCard.subtitle")}</p>
+      <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
+        <ProfileSection id="reflections" className="scroll-mt-4">
+          <ProfileSectionTitle title={t("journeyPage.reflectionsCard.title")} aside={tDash("learnerProfile.feedback.aside")} />
+          <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("journeyPage.reflectionsCard.subtitle")}</p>
 
           <div className="mt-4 space-y-2.5">
             {allReflectionRows.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                {t("journeyPage.noReflectionsYet")}
-              </p>
+              <UnavailableNote text={t("journeyPage.noReflectionsYet")} locked={false} />
             ) : (
               allReflectionRows.map((r) => (
-                <div key={r.id} className="rounded-[13px] border border-border bg-card p-4">
+                <div key={r.id} className="rounded-xl border border-[#eee8de] bg-[#f6f3ee] p-4">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                    <span className="rounded-full bg-[#e4f3f7] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[.12em] text-[#2c8fa8]">
                       {t(`developmentJourney.reflectionTypes.${r.subtype}`)}
                     </span>
-                    <span className="shrink-0 text-[10px] text-muted-foreground">{format(new Date(r.date), "MMM d, yyyy")}</span>
+                    <span className="shrink-0 text-[10px] text-[#9a938a]">{formatProfileDate(r.date)}</span>
                   </div>
-                  {r.quote && <p className="mt-2.5 whitespace-pre-wrap font-display text-[13.5px] leading-relaxed">{r.quote}</p>}
+                  {r.quote && <p className="mt-2.5 whitespace-pre-wrap font-serif text-[13.5px] leading-relaxed">{r.quote}</p>}
                   {r.subtype === "private_reflection" && (
-                    <button onClick={() => deleteReflection(r.id)} className="mt-2 text-muted-foreground hover:text-destructive">
+                    <button
+                      onClick={() => deleteReflection(r.id)}
+                      aria-label={t("journeyPage.deleteReflection", { defaultValue: "Delete reflection" })}
+                      className="mt-2 text-[#9a938a] hover:text-[#a8341c]"
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -288,9 +314,9 @@ export default function CoacheeJourney() {
             )}
           </div>
 
-          <div className="mt-4 rounded-[13px] border border-border bg-muted/20 p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-              <BookOpen className="h-4 w-4 text-primary" /> {t("journeyPage.newReflection")}
+          <div className="mt-4 rounded-xl border border-[#eee8de] bg-white/60 p-4">
+            <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold">
+              <BookOpen className="h-4 w-4 text-[#2c8fa8]" /> {t("journeyPage.newReflection")}
             </div>
             <Input
               placeholder={t("journeyPage.moodPlaceholder")}
@@ -310,50 +336,23 @@ export default function CoacheeJourney() {
               </Button>
             </div>
           </div>
-        </Card>
+        </ProfileSection>
 
         <div className="flex flex-col gap-4">
-          <Card className="p-5">
-            <h2 className="font-display text-lg">{t("journeyPage.feedbackCard.title")}</h2>
-            <p className="mt-0.5 text-[11.5px] text-muted-foreground">{t("journeyPage.feedbackCard.subtitle")}</p>
+          <ProfileSection id="feedback" className="scroll-mt-4">
+            <ProfileSectionTitle title={t("journeyPage.feedbackCard.title")} aside={tDash("learnerProfile.feedback.aside")} />
+            <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("journeyPage.feedbackCard.subtitle")}</p>
             <div className="mt-4 space-y-2.5">
-              {learnerFeedback.feedback.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                  {t("journeyPage.noFeedbackYet")}
-                </p>
+              {learnerFeedback.error ? (
+                <ProfileLoadError text={tDash("learnerProfile.errors.feedback")} />
+              ) : learnerFeedback.feedback.length === 0 ? (
+                <UnavailableNote text={t("journeyPage.noFeedbackYet")} locked={false} />
               ) : (
-                learnerFeedback.feedback.map((item) => (
-                  <div key={`${item.kind}-${item.id}`} className="rounded-[13px] border border-border bg-card p-4">
-                    <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-                      {t(`developmentJourney.feedbackTypes.${item.kind}`)}
-                    </span>
-                    <h3 className="font-display mt-1.5 text-[15px]">{item.fromName ?? t("journeyPage.unknownFeedbackAuthor")}</h3>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">{format(new Date(item.submittedAt), "MMM d, yyyy")}</p>
-
-                    {item.kind === "peer_competency" && item.scores.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {item.scores.map((s) => (
-                          <div key={s.key} className="rounded-[10px] border border-border bg-muted/30 px-2.5 py-1.5">
-                            <p className="font-display text-sm text-primary">{s.score}</p>
-                            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                              {tDash(`practiceJourney.competencies.${s.key}`)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {item.kind === "mentoring" && item.overallNotes && (
-                      <p className="mt-2.5 whitespace-pre-wrap font-display text-[13.5px] leading-relaxed">{item.overallNotes}</p>
-                    )}
-                    {item.kind === "peer_competency" && item.note && (
-                      <p className="mt-2.5 whitespace-pre-wrap font-display text-[13.5px] leading-relaxed">{item.note}</p>
-                    )}
-                  </div>
-                ))
+                learnerFeedback.feedback.map((item) => <FeedbackItemCard key={`${item.kind}-${item.id}`} item={item} />)
               )}
             </div>
-          </Card>
+            <p className="mt-4 text-[10.5px] leading-relaxed text-[#9a938a]">{tDash("learnerProfile.feedback.privacy")}</p>
+          </ProfileSection>
 
           <PracticeCompetencyCard enrollmentId={programme?.enrollmentId} userId={user?.id} />
         </div>

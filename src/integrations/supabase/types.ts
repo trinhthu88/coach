@@ -4354,6 +4354,20 @@ export type Database = {
         Returns: boolean
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
+      learner_canonical_engagement: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          action_completion_pct: number
+          completed_action_count: number
+          goal_count: number
+          goal_progress_pct: number
+          goal_setup: boolean
+          open_action_count: number
+          satisfaction_avg: number
+          satisfaction_rated_count: number
+          total_action_count: number
+        }[]
+      }
       learner_canonical_experience: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json

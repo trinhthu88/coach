@@ -35,22 +35,6 @@
     "assignedCoaches": "Assigned coaches",
     "sponsorDisclaimer": "If your organization sponsors this programme, they can see your participation, progress, and completion status — never your session notes, chat messages, or personal reflections."
   },
-  "programmeJourney": {
-    "title": "Programme journey",
-    "checkpoint": "Checkpoint {{number}}",
-    "unitsOf": "{{completed}}/{{required}} complete",
-    "youAreHere": "You are here",
-    "dueOn": "Due {{date}}",
-    "scopeLabel": "Modules in scope",
-    "subtitle": "Planned / expected — configured checkpoints, requirements and timing for this enrollment.",
-    "empty": "No programme checkpoints are configured for this enrollment yet.",
-    "states": {
-      "completed": "Completed",
-      "current": "Current",
-      "overdue": "Overdue",
-      "upcoming": "Upcoming"
-    }
-  },
   "programmeTimeline": {
     "heading": "Programme timeline",
     "overallProgress": "{{done}}/{{total}} weeks completed",
@@ -163,10 +147,6 @@
       "mentoring_reflection": "Mentoring reflection",
       "triad_self_reflection": "Triad self-reflection",
       "private_reflection": "Private reflection"
-    },
-    "feedbackTypes": {
-      "mentoring": "Mentor feedback",
-      "peer_competency": "Peer feedback"
     }
   },
   "journeyPage": {
@@ -212,7 +192,6 @@
     "actionItemsHeader": "Action items",
     "actionsEmpty": "No action items yet. They'll appear here once your coach assigns them.",
     "noFeedbackYet": "No learner-visible feedback yet.",
-    "unknownFeedbackAuthor": "Someone",
     "reflectionBanner": {
       "title": "Reflection time — rate your goals after this session",
       "openPrefix": "Open",
@@ -224,7 +203,8 @@
     "moodPlaceholder": "Mood (optional, e.g. focused, stuck, proud)…",
     "reflectionPlaceholder": "What's on your mind? Wins, blockers, insights…",
     "saveReflection": "Save private reflection",
-    "noReflectionsYet": "Your private reflections will appear here."
+    "noReflectionsYet": "Your private reflections will appear here.",
+    "deleteReflection": "Delete reflection"
   },
   "practiceCompetencyCard": {
     "title": "Practice & competency",
@@ -253,7 +233,6 @@
     "modeBadge": "You, as coachee"
   },
   "coacheeJourney": {
-    "eyebrow": "Learner workspace",
     "title": "My Journey",
     "subtitle": "Everything for this enrollment in one place: what the programme expects, what has actually happened, and where your goals stand."
   }

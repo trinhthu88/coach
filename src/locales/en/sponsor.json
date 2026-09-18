@@ -545,7 +545,6 @@
       "trendWithheld": "Checkpoint participation is unavailable for this enrollment.",
       "coachingUtilisation": "Coaching utilisation",
       "allocated": "Allocated",
-      "completed": "Completed",
       "booked": "Booked",
       "moduleProgress": "Module progress",
       "aggregateOnly": "Aggregate only",
@@ -575,7 +574,9 @@
       "attentionTitle": "Attention",
       "attentionCount": "{{count}} items need attention",
       "confidentialityTitle": "Coaching confidentiality",
-      "confidentialityBody": "Sponsors can view programme participation, progress, utilisation and aggregate outcomes only. Coaching conversations, notes, reflections and private comments are never shared."
+      "confidentialityBody": "Sponsors can view programme participation, progress, utilisation and aggregate outcomes only. Coaching conversations, notes, reflections and private comments are never shared.",
+      "ratingNone": "No programme experience ratings yet.",
+      "journeyWindow": "Showing checkpoints {{first}}–{{last}} of {{total}}"
     }
   },
   "report": {

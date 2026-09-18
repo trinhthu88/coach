@@ -38,7 +38,9 @@ import { SessionsBlock } from "./journey/SessionsBlock";
 import { GoalDialog } from "./journey/GoalDialog";
 import { CoachProgrammeCard } from "./journey/CoachProgrammeCard";
 import { ProgrammeTimeline } from "./journey/ProgrammeTimeline";
-import { ProgrammeJourneyCheckpoints } from "./journey/ProgrammeJourneyCheckpoints";
+import { LearnerProgrammeJourney } from "@/components/programme/LearnerProgrammeJourney";
+import { FeedbackItemCard } from "@/components/programme/FeedbackItemCard";
+import { ProfileLoadError } from "@/components/programme/primitives";
 import { DevelopmentJourneyTimeline } from "./journey/DevelopmentJourneyTimeline";
 import { useEnrollmentDevelopmentJourney } from "@/hooks/journey/useEnrollmentDevelopmentJourney";
 import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
@@ -62,6 +64,7 @@ function Metric({
 
 export default function CoachMyJourney() {
   const { t } = useTranslation("journey");
+  const { t: tDash } = useTranslation("dashboard");
   const { user } = useAuth();
   const programmeApi = useJourneyProgramme(user?.id);
   const goalsApi = useJourneyGoals(user?.id, { enrollmentId: programmeApi.programme?.enrollmentId });
@@ -182,7 +185,7 @@ export default function CoachMyJourney() {
         sessionsCompletedCount={sessionsCompletedCount}
         avgGoalProgress={avgGoalProgress}
       />
-      <ProgrammeJourneyCheckpoints enrollmentId={programme?.enrollmentId} />
+      {programme?.enrollmentId && <LearnerProgrammeJourney enrollmentId={programme.enrollmentId} variant="full" />}
 
       <div>
         <SectionHeader title={t("developmentJourney.title")} />
@@ -421,28 +424,12 @@ export default function CoachMyJourney() {
 
         {/* FEEDBACK */}
         <TabsContent value="feedback" className="mt-4 space-y-3">
-          {learnerFeedback.feedback.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground">
-              No learner-visible feedback yet.
-            </p>
+          {learnerFeedback.error ? (
+            <ProfileLoadError text={tDash("learnerProfile.errors.feedback")} />
+          ) : learnerFeedback.feedback.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground">{t("journeyPage.noFeedbackYet")}</p>
           ) : (
-            learnerFeedback.feedback.map((item) => (
-              <Card key={`${item.kind}-${item.id}`} className="p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-                    {t(`developmentJourney.feedbackTypes.${item.kind}`)}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">{format(new Date(item.submittedAt), "MMM d, yyyy")}</span>
-                </div>
-                <p className="mt-2 text-sm font-semibold">{item.fromName ?? "Someone"}</p>
-                {item.kind === "mentoring" && item.overallNotes && (
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{item.overallNotes}</p>
-                )}
-                {item.kind === "peer_competency" && item.note && (
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{item.note}</p>
-                )}
-              </Card>
-            ))
+            learnerFeedback.feedback.map((item) => <FeedbackItemCard key={`${item.kind}-${item.id}`} item={item} />)
           )}
         </TabsContent>
       </Tabs>

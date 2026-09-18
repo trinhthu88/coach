@@ -392,7 +392,7 @@
     },
     "rosterNote": "Mỗi ô module hiển thị số đơn vị đã hoàn thành / yêu cầu của lãnh đạo đó. Thẻ nhóm và hành trình chương trình dùng cùng định mức module và số liệu tổng hợp an toàn."
   },
-    "leaderDrawer": {
+  "leaderDrawer": {
     "srLabelSuffix": "chi tiết lãnh đạo",
     "backToRoster": "Về danh sách",
     "loadError": "Không thể tải chi tiết lãnh đạo",
@@ -474,7 +474,6 @@
       "trendWithheld": "Không có dữ liệu tham gia theo mốc cho đăng ký này.",
       "coachingUtilisation": "Mức sử dụng coaching",
       "allocated": "Được phân bổ",
-      "completed": "Đã hoàn thành",
       "booked": "Đã đặt",
       "moduleProgress": "Tiến độ module",
       "aggregateOnly": "Chỉ tổng hợp",
@@ -504,7 +503,9 @@
       "attentionTitle": "Cần chú ý",
       "attentionCount": "{{count}} mục cần chú ý",
       "confidentialityTitle": "Bảo mật coaching",
-      "confidentialityBody": "Nhà tài trợ chỉ xem được mức tham gia, tiến độ, sử dụng và kết quả tổng hợp của chương trình. Hội thoại coaching, ghi chú, phản ánh và bình luận riêng tư không bao giờ được chia sẻ."
+      "confidentialityBody": "Nhà tài trợ chỉ xem được mức tham gia, tiến độ, sử dụng và kết quả tổng hợp của chương trình. Hội thoại coaching, ghi chú, phản ánh và bình luận riêng tư không bao giờ được chia sẻ.",
+      "ratingNone": "Chưa có đánh giá trải nghiệm chương trình.",
+      "journeyWindow": "Đang hiển thị mốc {{first}}–{{last}} trên {{total}}"
     }
   },
   "report": {

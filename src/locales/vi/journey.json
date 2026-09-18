@@ -36,22 +36,6 @@
     "assignedCoaches": "Coach được phân công",
     "sponsorDisclaimer": "Nếu tổ chức của bạn tài trợ chương trình này, họ có thể xem sự tham gia, tiến độ và trạng thái hoàn thành của bạn — không bao giờ xem ghi chú buổi session, tin nhắn trò chuyện hoặc suy ngẫm cá nhân của bạn."
   },
-  "programmeJourney": {
-    "title": "Hành trình chương trình",
-    "checkpoint": "Mốc {{number}}",
-    "unitsOf": "Đã hoàn thành {{completed}}/{{required}}",
-    "youAreHere": "Bạn đang ở đây",
-    "dueOn": "Hạn {{date}}",
-    "scopeLabel": "Module thuộc phạm vi",
-    "subtitle": "Dự kiến — các mốc, yêu cầu và thời điểm đã cấu hình cho đợt tham gia này.",
-    "empty": "Chưa có mốc nào được cấu hình cho đợt tham gia này.",
-    "states": {
-      "completed": "Đã hoàn thành",
-      "current": "Hiện tại",
-      "overdue": "Quá hạn",
-      "upcoming": "Sắp tới"
-    }
-  },
   "programmeTimeline": {
     "heading": "Dòng thời gian chương trình",
     "overallProgress": "Đã hoàn thành {{done}}/{{total}} tuần",
@@ -164,10 +148,6 @@
       "mentoring_reflection": "Suy ngẫm cố vấn",
       "triad_self_reflection": "Tự suy ngẫm bộ ba",
       "private_reflection": "Suy ngẫm riêng tư"
-    },
-    "feedbackTypes": {
-      "mentoring": "Phản hồi từ mentor",
-      "peer_competency": "Phản hồi từ đồng cấp"
     }
   },
   "journeyPage": {
@@ -213,7 +193,6 @@
     "actionItemsHeader": "Hành động cần làm",
     "actionsEmpty": "Chưa có hành động nào. Hành động sẽ xuất hiện khi coach giao cho bạn.",
     "noFeedbackYet": "Chưa có phản hồi nào dành cho học viên.",
-    "unknownFeedbackAuthor": "Một người dùng",
     "reflectionBanner": {
       "title": "Giờ suy ngẫm — đánh giá mục tiêu của bạn sau session này",
       "openPrefix": "Mở",
@@ -225,7 +204,8 @@
     "moodPlaceholder": "Tâm trạng (không bắt buộc, ví dụ: tập trung, bế tắc, tự hào)…",
     "reflectionPlaceholder": "Bạn đang nghĩ gì? Thành công, trở ngại, những điều nhận ra…",
     "saveReflection": "Lưu suy ngẫm riêng tư",
-    "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây."
+    "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây.",
+    "deleteReflection": "Xóa suy ngẫm"
   },
   "practiceCompetencyCard": {
     "title": "Thực hành & năng lực",
@@ -252,7 +232,6 @@
     "modeBadge": "Bạn, với vai trò học viên"
   },
   "coacheeJourney": {
-    "eyebrow": "Không gian học viên",
     "title": "Hành trình của tôi",
     "subtitle": "Mọi thứ cho đợt tham gia này ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự xảy ra, và mục tiêu của bạn đang ở đâu."
   }

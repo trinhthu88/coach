@@ -9,7 +9,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { rpc },
 }));
 
-import { useLearnerCanonicalProgress } from "../useLearnerCanonicalProgress";
+import { useLearnerCanonicalEngagement, useLearnerCanonicalProgress } from "../useLearnerCanonicalProgress";
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } });
@@ -165,5 +165,51 @@ describe("useLearnerCanonicalProgress", () => {
 
     await waitFor(() => expect(result.current.error).toBe("progress unavailable"));
     expect(result.current.progress).toBeNull();
+  });
+});
+
+describe("useLearnerCanonicalEngagement", () => {
+  beforeEach(() => rpc.mockReset());
+
+  it("reads the shared canonical engagement summary (same definition as sponsor metadata)", async () => {
+    const row = {
+      goal_count: 2,
+      goal_setup: true,
+      goal_progress_pct: 55,
+      open_action_count: 1,
+      completed_action_count: 1,
+      total_action_count: 2,
+      action_completion_pct: 50,
+      satisfaction_avg: 4,
+      satisfaction_rated_count: 1,
+    };
+    rpc.mockResolvedValue({ data: [row], error: null });
+
+    const { result } = renderHook(() => useLearnerCanonicalEngagement("enrollment-1"), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(rpc).toHaveBeenCalledWith("learner_canonical_engagement", { p_enrollment_id: "enrollment-1" });
+    expect(result.current.engagement).toEqual({
+      goal_count: 2,
+      goal_progress_pct: 55,
+      open_action_count: 1,
+      completed_action_count: 1,
+      total_action_count: 2,
+      satisfaction_avg: 4,
+      satisfaction_rated_count: 1,
+    });
+    expect(result.current.error).toBeNull();
+  });
+
+  it("reports an error rather than zeros when the RPC fails", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "function learner_canonical_engagement does not exist", code: "PGRST202" } });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const { result } = renderHook(() => useLearnerCanonicalEngagement("enrollment-1"), { wrapper });
+    await waitFor(() => expect(result.current.error).toMatch(/does not exist/));
+
+    expect(result.current.engagement.goal_progress_pct).toBeNull();
+    expect(result.current.engagement.total_action_count).toBeNull();
+    errorSpy.mockRestore();
   });
 });

@@ -6,6 +6,7 @@ import { Users, MessagesSquare, UserCog, Users2, type LucideIcon } from "lucide-
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { DevelopmentSessionItem, DevelopmentSessionType } from "@/hooks/journey/developmentSessionTypes";
+import { sessionDetailPath } from "@/lib/sessionPaths";
 
 const ICON_BY_TYPE: Record<DevelopmentSessionType, LucideIcon> = {
   coaching: Users,
@@ -16,16 +17,6 @@ const ICON_BY_TYPE: Record<DevelopmentSessionType, LucideIcon> = {
 
 const FILTERS: Array<DevelopmentSessionType | "all"> = ["all", "coaching", "peer_coaching", "mentoring", "triad"];
 
-function detailPath(item: DevelopmentSessionItem): string | null {
-  // SessionDetail resolves which table (sessions vs peer_sessions) to read
-  // from its `?type=` query param — omitting it for a peer-coaching item
-  // makes it look up the id in the wrong table and report "not found".
-  if (item.type === "coaching") return `/sessions/${item.sourceId}`;
-  if (item.type === "peer_coaching") return `/sessions/${item.sourceId}?type=peer`;
-  if (item.type === "mentoring") return `/mentoring/sessions/${item.sourceId}`;
-  if (item.type === "triad") return "/triads";
-  return null;
-}
 
 /**
  * The learner's unified Sessions view: coaching, peer coaching, mentoring,
@@ -89,7 +80,7 @@ export function DevelopmentSessionsList({
       <div className="space-y-2">
         {filtered.map((item) => {
           const Icon = ICON_BY_TYPE[item.type];
-          const path = detailPath(item);
+          const path = sessionDetailPath(item);
           const contextLabel = [item.trainingWeekLabel, item.roundLabel].filter(Boolean).join(" / ");
           const body = (
             <Card className="flex items-start gap-3 p-4 transition-colors hover:border-primary/40">

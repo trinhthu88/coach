@@ -59,7 +59,7 @@ values
 
 insert into public.programme_modules (programme_id, module, enabled, config)
 values
-  ('c9000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":2,"receive_limit":1,"distribution_mode":"flexible","distribution_settings":{}}'),
+  ('c9000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":2,"receive_limit":2,"distribution_mode":"flexible","distribution_settings":{}}'),
   ('c9000000-0000-0000-0000-000000000001', 'training', true, jsonb_build_object('required', true, 'required_units', 2, 'distribution_mode', 'training_linked', 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f9000000-0000-0000-0000-000000000001', 'f9000000-0000-0000-0000-000000000002'))));
 
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
@@ -131,8 +131,8 @@ select results_eq(
 
 select is(
   (select required_units from learner_progress),
-  2,
-  'training-linked + flexible module config produces the expected required-unit total'
+  4,
+  'training-linked + flexible module config produces the expected required-unit total (coaching 2 + two selected training weeks)'
 );
 select is(
   (select completed_units from learner_progress),
@@ -204,7 +204,7 @@ select is(
 -- contract tests): reuses the current Admin config / real activity engines,
 -- and never selects coach identity or private notes.
 select ok(
-  pg_get_functiondef('public.learner_canonical_progress(uuid,date)'::regprocedure) ~ 'get_sponsor_programme_progress'
+  pg_get_functiondef('public.learner_canonical_progress(uuid,date)'::regprocedure) ~ 'canonical_module_progress'
     AND pg_get_functiondef('public.learner_canonical_progress(uuid,date)'::regprocedure) !~ 'enrollment_module_snapshots',
   'learner progress uses the current Admin/activity source, not enrollment snapshots'
 );
