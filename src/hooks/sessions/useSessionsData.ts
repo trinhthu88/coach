@@ -266,7 +266,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   const ids = Array.from(new Set(rowsWithContext.flatMap((s) => [s.coach_id, s.coachee_id]))).filter(Boolean);
   // Triad participant names come from the one canonical Triad member source
   // (membership from triad_groups), not from profiles discovery.
-  const triadGroupIds = rowsWithContext.flatMap((s) => (s.kind === "triad" && s.triad ? [s.triad.groupId] : []));
+  const triadGroupIds = triads.map((session) => session.triad_group_id);
   const triadMembers = await fetchTriadMembers(triadGroupIds).catch(() => new Map<string, TriadMember[]>());
   let byId = new Map<string, Pick<Tables<"profiles">, "id" | "full_name" | "email" | "avatar_url">>();
   if (ids.length) {

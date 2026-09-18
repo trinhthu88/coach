@@ -127,4 +127,17 @@ describe("programme profile architecture", () => {
       expect(read(file), file).not.toMatch(/from\("(coachee_reflections|triad_reflections|reflection_answers|daily_prompt_responses)"\)/);
     }
   });
+
+  it("learner Triad surfaces resolve co-members only through the canonical triad member source", () => {
+    for (const file of ["hooks/triads/useMyTriads.ts", "pages/triads/TriadReflectionPage.tsx", "hooks/sessions/useSessionsData.ts"]) {
+      expect(read(file), file).toMatch(/fetchTriadMembers\(/);
+    }
+    for (const file of ["hooks/triads/useMyTriads.ts", "pages/triads/TriadReflectionPage.tsx", "pages/triads/TriadsPage.tsx", "pages/triads/TriadSessionDetail.tsx"]) {
+      expect(read(file), file).not.toMatch(/from\("profiles"\)/);
+    }
+    expect(read("hooks/triads/useTriadMembers.ts")).toMatch(/rpc\("learner_triad_members"/);
+    // No other learner code calls the projection directly or rebuilds membership from sessions.
+    const callers = files.filter((f) => /learner_triad_members/.test(readFileSync(f, "utf8")) && !f.endsWith("integrations/supabase/types.ts"));
+    expect(callers.map((f) => relative(SRC, f))).toEqual(["hooks/triads/useTriadMembers.ts"]);
+  });
 });
