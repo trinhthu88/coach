@@ -1080,6 +1080,82 @@ export type Database = {
           },
         ]
       }
+      cohort_requirement_dates: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          due_on: string
+          generated_due_on: string | null
+          generation_method: string
+          id: string
+          is_overridden: boolean
+          materialized_via: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          ordinal: number
+          programme_id: string
+          training_week_id: string | null
+          units: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          due_on: string
+          generated_due_on?: string | null
+          generation_method: string
+          id?: string
+          is_overridden?: boolean
+          materialized_via: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          ordinal: number
+          programme_id: string
+          training_week_id?: string | null
+          units?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          due_on?: string
+          generated_due_on?: string | null
+          generation_method?: string
+          id?: string
+          is_overridden?: boolean
+          materialized_via?: string
+          module?: Database["public"]["Enums"]["programme_module_type"]
+          ordinal?: number
+          programme_id?: string
+          training_week_id?: string | null
+          units?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_requirement_dates_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_requirement_dates_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_requirement_dates_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cohort_week_overrides: {
         Row: {
           cohort_id: string
@@ -4371,6 +4447,32 @@ export type Database = {
       learner_canonical_experience: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
+      }
+      admin_save_cohort_requirement_dates: {
+        Args: { p_cohort_id: string; p_items: Json; p_regenerate?: boolean }
+        Returns: number
+      }
+      cohort_requirement_schedule_issues: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          issue: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          required_units: number
+          scheduled_units: number
+        }[]
+      }
+      cohort_requirement_schedule_proposal: {
+        Args: { p_cohort_id?: string; p_end: string; p_programme_id: string; p_start: string }
+        Returns: {
+          due_on: string
+          generation_method: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          ordinal: number
+          programme_id: string
+          training_week_id: string
+          units: number
+        }[]
       }
       learner_triad_members: {
         Args: { p_group_ids: string[] }

@@ -83,24 +83,15 @@ const summary = {
   goal_progress_pct: null,
   satisfaction_avg: null,
   satisfaction_rated_count: 0,
+  // The backend groups requirements by due date: one checkpoint per date,
+  // modules only in module_scope, no generated module-list label.
   programme_journey: [
     {
       checkpoint_number: 1,
       due_on: "2026-04-01",
-      label: "Coaching checkpoint",
-      module_scope: ["coaching"],
-      required_units: 48,
-      completed_units: 0,
-      completed_leaders: 0,
-      total_leaders: 12,
-      state: "overdue",
-    },
-    {
-      checkpoint_number: 2,
-      due_on: "2026-04-01",
       label: null,
-      module_scope: ["mentoring", "peer_coaching", "training", "triads"],
-      required_units: 120,
+      module_scope: ["coaching", "mentoring", "peer_coaching", "training", "triads"],
+      required_units: 168,
       completed_units: 0,
       completed_leaders: 0,
       total_leaders: 12,
@@ -182,8 +173,8 @@ describe("Sponsor Cohort C reconciliation", () => {
     expect(screen.getAllByText("0/48").length).toBeGreaterThan(0);
     expect(screen.getByText("0 of 12 leaders meet the requirement · 48 due so far")).toBeInTheDocument();
     expect(screen.getByText("Programme journey")).toBeInTheDocument();
-    expect(screen.getByText("Checkpoint 2")).toBeInTheDocument();
-    expect(screen.queryByText("Coaching checkpoint")).not.toBeInTheDocument();
+    expect(screen.getByText("Checkpoint 1")).toBeInTheDocument();
+    expect(screen.queryByText(/coaching · |peer_coaching/)).not.toBeInTheDocument();
     expect(screen.getAllByText("Training / Learning").length).toBeGreaterThan(1);
     expect(screen.getAllByText("Mentoring").length).toBeGreaterThan(1);
     expect(screen.getAllByText("Peer coaching").length).toBeGreaterThan(1);

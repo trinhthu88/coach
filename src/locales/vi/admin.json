@@ -44,7 +44,32 @@
     "startDateLabel": "Ngày bắt đầu",
     "endDateLabel": "Ngày kết thúc",
     "cancel": "Hủy",
-    "save": "Lưu"
+    "save": "Lưu",
+    "schedule": {
+      "title": "Lịch yêu cầu",
+      "subtitleNew": "Đề xuất từ quy tắc lên lịch mặc định của chương trình. Điều chỉnh ngày trước khi lưu — ngày đã lưu trở thành hạn chính thức của khóa.",
+      "subtitleSaved": "Hạn yêu cầu đã lưu của khóa. Hành trình của học viên, nhà tài trợ và quản trị đều dùng các ngày này.",
+      "regenerate": "Tạo lại lịch",
+      "reviewTitle": "Xem lại ngày được tạo lại",
+      "reviewNoChanges": "Quy tắc chương trình cho ra cùng các ngày như lịch đã lưu.",
+      "useRegenerated": "Dùng ngày được tạo lại",
+      "regeneratedNote": "Ngày được tạo lại sẽ thay thế lịch đã lưu khi bạn lưu.",
+      "datesChangedNote": "Thay đổi ngày của khóa không di chuyển các hạn đã lưu. Dùng Tạo lại lịch để xem ngày mới.",
+      "loadError": "Không thể tải lịch yêu cầu.",
+      "needProgrammeAndDates": "Chọn chương trình, ngày bắt đầu và kết thúc để xem ngày đề xuất.",
+      "empty": "Khóa này chưa có hạn yêu cầu nào.",
+      "required_one": "yêu cầu {{count}}",
+      "required_other": "yêu cầu {{count}}",
+      "dateLabel": "Hạn yêu cầu {{module}} {{n}}",
+      "edited": "Đã sửa",
+      "trainingNote": "Hạn Đào tạo / Học tập theo ngày của các tuần đào tạo trong khóa.",
+      "issues": {
+        "missing_dates": "{{module}}: {{scheduled}}/{{required}} đơn vị yêu cầu có hạn.",
+        "surplus_dates": "{{module}}: {{scheduled}} đơn vị có hạn nhưng chỉ yêu cầu {{required}}.",
+        "outside_cohort": "{{module}}: có hạn nằm ngoài thời gian của khóa.",
+        "out_of_scope": "{{module}}: có hạn nhưng chương trình không còn yêu cầu mô-đun này."
+      }
+    }
   },
   "dashboard": {
     "eyebrow": "Tổ chức",

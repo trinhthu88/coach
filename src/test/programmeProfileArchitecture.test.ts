@@ -176,4 +176,33 @@ describe("programme profile architecture", () => {
     expect(layout).toMatch(/DEFAULT_COLLAPSED_GROUPS = new Set<string>\(\)/);
     expect(layout).toMatch(/staticGroups=\{role === "coachee"\}/);
   });
+
+  it("scheduling policy is only ever interpreted by the database — no frontend date generation", () => {
+    // The policy names appear only in the Admin programme template editor / its validation.
+    const policyFiles = files.filter((f) => /evenly_distributed|monthly_frequency/.test(readFileSync(f, "utf8")) && !/__tests__|\.test\./.test(f));
+    expect(policyFiles.map((f) => relative(SRC, f)).sort()).toEqual(["lib/programmeModuleConfig.ts", "pages/admin/ProgrammeModuleScheduleFields.tsx"]);
+    for (const file of ["lib/programmeModuleConfig.ts", "pages/admin/ProgrammeModuleScheduleFields.tsx"]) {
+      expect(read(file), file).not.toMatch(/addDays|addMonths|differenceInDays|\/\s*required_?[uU]nits/);
+    }
+    // Proposals come only from the canonical RPC, and only the Admin schedule hook asks for them.
+    const proposalCallers = files.filter((f) => /rpc\(\s*"(cohort_requirement_schedule_proposal|admin_save_cohort_requirement_dates)"/.test(readFileSync(f, "utf8")));
+    expect(proposalCallers.map((f) => relative(SRC, f))).toEqual(["hooks/admin/useCohortRequirementSchedule.ts"]);
+    const tableReaders = files.filter((f) => /from\("cohort_requirement_dates"\)/.test(readFileSync(f, "utf8")));
+    expect(tableReaders.map((f) => relative(SRC, f))).toEqual(["hooks/admin/useCohortRequirementSchedule.ts"]);
+    // The Admin schedule helpers group and compare backend dates; they never compute one.
+    expect(read("lib/cohortSchedule.ts")).not.toMatch(/addDays|addMonths|getTime\(\)|setDate\(|differenceIn/);
+  });
+
+  it("no role-specific checkpoint reinterpretation: every journey renders the backend's checkpoints as returned", () => {
+    // Sponsor Cohort Detail no longer merges/regroups checkpoints client-side.
+    expect(read("pages/sponsor/SponsorCohortDetail.tsx")).not.toMatch(/groupJourneyCheckpoints|representative/);
+    // The shared checkpoint card never uses the backend label as a title.
+    expect(read("components/programme/ProgrammeJourney.tsx")).not.toMatch(/point\.label/);
+    // The learner detail only shows the label as Training week source content.
+    expect(read("components/programme/LearnerProgrammeJourney.tsx")).toMatch(/point\.label && point\.module_scope\.includes\("training"\)/);
+    // Learner / Sponsor journeys come from the canonical RPCs only.
+    expect(read("hooks/useLearnerCanonicalProgress.ts")).toMatch(/rpc\("learner_canonical_journey"/);
+    expect(read("hooks/sponsor/useSponsorLeaderData.ts")).toMatch(/rpc\("sponsor_canonical_leader_journey"/);
+  });
 });
+

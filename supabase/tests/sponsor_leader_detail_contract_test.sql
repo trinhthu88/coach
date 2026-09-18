@@ -24,12 +24,18 @@ select ok(
   ) ~ 'get_sponsor_programme_progress',
   'leader progress uses the current Admin/activity source'
 );
+-- The leader journey delegates to the one shared journey construction
+-- (canonical_enrollment_journey), which reads the canonical cohort schedule
+-- and the real activity source.
 select ok(
   pg_get_functiondef(
     'public.sponsor_canonical_leader_journey(uuid,date)'::regprocedure
-  ) ~ 'sponsor_canonical_module_schedule'
+  ) ~ 'canonical_enrollment_journey'
     AND pg_get_functiondef(
-      'public.sponsor_canonical_leader_journey(uuid,date)'::regprocedure
+      'public.canonical_enrollment_journey(uuid,date)'::regprocedure
+    ) ~ 'sponsor_canonical_module_schedule'
+    AND pg_get_functiondef(
+      'public.canonical_enrollment_journey(uuid,date)'::regprocedure
     ) ~ 'sponsor_canonical_activity',
   'leader journey uses the current Admin schedule and real activity source'
 );

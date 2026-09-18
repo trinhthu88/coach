@@ -407,7 +407,8 @@ describe("My Journey — shared Programme Journey (full variant)", () => {
     expect(screen.getByTestId("programme-journey")).toHaveAttribute("data-variant", "full");
     expect(checkpoints(mine.container)).toEqual(sponsorCheckpoints);
     const detail = screen.getByTestId("checkpoint-detail");
-    expect(within(detail).getByText("Week 9")).toBeInTheDocument();
+    // Training week title is source content, shown with the Training item — not as the checkpoint title.
+    expect(within(detail).getByTestId("checkpoint-training-weeks")).toHaveTextContent("Training / Learning · Week 9");
     expect(within(detail).getByText("This checkpoint is due today.")).toBeInTheDocument();
     expect(within(detail).getByRole("link", { name: /Training \/ Learning/ })).toHaveAttribute("href", "/training");
   });

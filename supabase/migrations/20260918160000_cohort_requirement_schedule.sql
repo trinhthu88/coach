@@ -502,7 +502,7 @@ GRANT EXECUTE ON FUNCTION public.cohort_requirement_schedule_issues(uuid) TO aut
 -- 5. Backfill from the CURRENT live schedule, then switch the canonical
 --    schedule to read the stored dates, and prove nothing visible changed.
 -- ---------------------------------------------------------------------------
-CREATE TEMP TABLE crd_schedule_before ON COMMIT DROP AS
+CREATE TEMP TABLE crd_schedule_before AS
 SELECT e.id AS enrollment_id, s.module, s.required_units, s.due_on, s.milestone_units, s.training_week_id
 FROM public.programme_enrollments e
 CROSS JOIN LATERAL public.sponsor_canonical_module_schedule(e.id) s;
@@ -617,6 +617,8 @@ BEGIN
   END IF;
 END
 $verify$;
+
+DROP TABLE crd_schedule_before;
 
 -- ---------------------------------------------------------------------------
 -- 6. Fill-missing triggers (never rewrite existing dates)

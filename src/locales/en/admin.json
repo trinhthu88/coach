@@ -43,7 +43,32 @@
     "startDateLabel": "Start date",
     "endDateLabel": "End date",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "schedule": {
+      "title": "Requirement schedule",
+      "subtitleNew": "Proposed from the programme's default scheduling rule. Adjust any date before saving — saved dates become this cohort's canonical deadlines.",
+      "subtitleSaved": "This cohort's saved requirement deadlines. Learner, Sponsor and Admin journeys all use these dates.",
+      "regenerate": "Regenerate schedule",
+      "reviewTitle": "Review regenerated dates",
+      "reviewNoChanges": "The programme rule produces the same dates as the saved schedule.",
+      "useRegenerated": "Use regenerated dates",
+      "regeneratedNote": "Regenerated dates will replace the saved schedule when you save.",
+      "datesChangedNote": "Changing the cohort dates does not move saved requirement deadlines. Use Regenerate schedule to review new dates.",
+      "loadError": "The requirement schedule could not be loaded.",
+      "needProgrammeAndDates": "Choose a programme, start date and end date to see the proposed requirement dates.",
+      "empty": "No requirement dates are scheduled for this cohort.",
+      "required_one": "{{count}} required",
+      "required_other": "{{count}} required",
+      "dateLabel": "{{module}} requirement {{n}} due date",
+      "edited": "Edited",
+      "trainingNote": "Training / Learning deadlines follow the cohort's training week dates.",
+      "issues": {
+        "missing_dates": "{{module}}: {{scheduled}} of {{required}} required units have a date.",
+        "surplus_dates": "{{module}}: {{scheduled}} dated units but only {{required}} required.",
+        "outside_cohort": "{{module}}: a date falls outside the cohort dates.",
+        "out_of_scope": "{{module}}: dates exist but the module is no longer required by the programme."
+      }
+    }
   },
   "dashboard": {
     "eyebrow": "Organisation",

@@ -63,10 +63,30 @@ describe("journey focus and window", () => {
     expect(journeyFocusIndex(journey)).toBe(4);
   });
 
-  it("falls back to the last passed checkpoint, then the first", () => {
-    expect(journeyFocusIndex([point(1, "completed"), point(2, "overdue"), point(3, "upcoming")])).toBe(1);
+  it("without a checkpoint due today, focuses the next upcoming checkpoint; a finished programme focuses its final checkpoint", () => {
+    expect(journeyFocusIndex([point(1, "completed"), point(2, "overdue"), point(3, "upcoming")])).toBe(2);
     expect(journeyFocusIndex([point(1, "upcoming"), point(2, "upcoming")])).toBe(0);
+    expect(journeyFocusIndex([point(1, "completed"), point(2, "overdue")])).toBe(1);
     expect(journeyFocusIndex([])).toBe(-1);
+  });
+
+  it("the Dashboard window is contextual (previous, current, next, next) — not the last N", () => {
+    const midProgramme = [
+      point(1, "completed"), point(2, "completed"), point(3, "overdue"), point(4, "upcoming"),
+      point(5, "upcoming"), point(6, "upcoming"), point(7, "upcoming"), point(8, "upcoming"), point(9, "upcoming"), point(10, "upcoming"),
+    ];
+    const window = journeyWindow(midProgramme, 4);
+    expect(window.points.map((p) => p.checkpoint_number)).toEqual([3, 4, 5, 6]);
+    expect(window.points).toEqual(midProgramme.slice(2, 6));
+    expect(window.lastShown).not.toBe(window.total);
+
+    // Not started yet: the first checkpoints.
+    const notStarted = midProgramme.map((p) => ({ ...p, state: "upcoming" as const }));
+    expect(journeyWindow(notStarted, 4).points.map((p) => p.checkpoint_number)).toEqual([1, 2, 3, 4]);
+
+    // Finished programme: the window ends on the final checkpoint.
+    const finished = midProgramme.map((p) => ({ ...p, state: "overdue" as const }));
+    expect(journeyWindow(finished, 4).points.map((p) => p.checkpoint_number)).toEqual([7, 8, 9, 10]);
   });
 
   it("a summary window is an unaltered consecutive slice around the current position", () => {

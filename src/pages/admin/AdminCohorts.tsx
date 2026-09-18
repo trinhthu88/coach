@@ -14,6 +14,8 @@ import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { useCohortRequirementSchedule } from "@/hooks/admin/useCohortRequirementSchedule";
+import { CohortRequirementSchedule } from "./cohorts/CohortRequirementSchedule";
 
 interface Cohort {
   id: string;
@@ -35,6 +37,16 @@ export default function AdminCohorts() {
   const [editing, setEditing] = useState<Partial<Cohort> | null>(null);
   const [saving, setSaving] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
+  // The cohort's canonical requirement dates (proposed for a new cohort,
+  // saved for an existing one) — see useCohortRequirementSchedule.
+  const savedCohort = editing?.id ? rows.find((r) => r.id === editing.id) ?? null : null;
+  const schedule = useCohortRequirementSchedule({
+    open: !!editing,
+    cohortId: editing?.id,
+    programmeId: editing?.programme_id,
+    start: editing?.start_date,
+    end: editing?.end_date,
+  });
 
   const load = async () => {
     setLoading(true);
@@ -68,13 +80,20 @@ export default function AdminCohorts() {
         start_date: editing.start_date || null,
         end_date: editing.end_date || null,
       };
-      if (editing.id) {
-        const { error } = await supabase.from("cohorts").update(payload).eq("id", editing.id);
+      let cohortId = editing.id ?? null;
+      if (cohortId) {
+        // Start/end edits never rewrite saved requirement dates (DB rule);
+        // only an explicit, reviewed "Regenerate schedule" does.
+        const { error } = await supabase.from("cohorts").update(payload).eq("id", cohortId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("cohorts").insert(payload);
+        // Creating the cohort materializes the programme's default dates;
+        // the Admin's edits to the proposal are saved on top of them.
+        const { data, error } = await supabase.from("cohorts").insert(payload).select("id").single();
         if (error) throw error;
+        cohortId = data.id;
       }
+      if (cohortId && schedule.dirty) await schedule.save(cohortId);
       toast.success(t("cohorts.saved"));
       setEditing(null);
       load();
@@ -145,7 +164,7 @@ export default function AdminCohorts() {
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader><DialogTitle>{editing?.id ? t("cohorts.dialogTitleEdit") : t("cohorts.dialogTitleNew")}</DialogTitle></DialogHeader>
           {editing && (
             <div className="space-y-3">
@@ -184,6 +203,12 @@ export default function AdminCohorts() {
                 <div><Label>{t("cohorts.startDateLabel")}</Label><Input type="date" value={editing.start_date || ""} onChange={(e) => setEditing({ ...editing, start_date: e.target.value })} /></div>
                 <div><Label>{t("cohorts.endDateLabel")}</Label><Input type="date" value={editing.end_date || ""} onChange={(e) => setEditing({ ...editing, end_date: e.target.value })} /></div>
               </div>
+              <CohortRequirementSchedule
+                schedule={schedule}
+                programmeNames={Object.fromEntries(progs.map((p) => [p.id, p.name]))}
+                datesChanged={!!savedCohort && (savedCohort.start_date !== (editing.start_date || null) || savedCohort.end_date !== (editing.end_date || null))}
+                canRegenerate={!!editing.programme_id && !!editing.start_date && !!editing.end_date}
+              />
             </div>
           )}
           <DialogFooter>
