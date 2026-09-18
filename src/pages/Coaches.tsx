@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Star, Heart, AlertTriangle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "@/hooks/useFavorites";
+import { MyCoachSection } from "@/pages/coachee/MyCoachSection";
 
 interface CoachRow {
   id: string;
@@ -121,6 +122,8 @@ export default function Coaches() {
         emphasis={t("list.titleEmphasis")}
         subtitle={t("list.subtitle", { count: coaches.length })}
       />
+
+      <MyCoachSection />
 
       <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative min-w-0 flex-1 sm:min-w-[260px]">

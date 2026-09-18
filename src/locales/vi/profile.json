@@ -91,6 +91,13 @@
     "bookPeer": "Đặt session",
     "retry": "Thử lại"
   },
+  "myPeerPractice": {
+    "upcoming": "Session sắp tới",
+    "noUpcoming": "Chưa có session sắp tới nào được đặt.",
+    "completed": "Session đã hoàn thành",
+    "feedback": "Phản hồi bạn đã nhận",
+    "noFeedback": "Chưa có phản hồi nào."
+  },
   "coacheePeerPractice": {
     "header": {
       "eyebrow": "Cộng đồng",

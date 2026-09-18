@@ -1,4 +1,14 @@
 {
+  "myCoach": {
+    "eyebrow": "My Coach",
+    "viewProfile": "View profile",
+    "viewNextSession": "View next session",
+    "progressLabel": "Coaching progress",
+    "sessionsCompleted": "sessions completed",
+    "upcoming": "Upcoming sessions",
+    "noUpcoming": "No upcoming session booked.",
+    "past": "Past sessions"
+  },
   "detail": {
     "notFound": {
       "title": "Coach not found",

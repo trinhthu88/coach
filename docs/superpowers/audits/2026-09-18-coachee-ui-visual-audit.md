@@ -14,11 +14,11 @@ The current learner implementation uses live canonical data. The sample values i
 | My Journey | MATCH | `CoacheeJourney` uses the hero, horizontal canonical checkpoint timeline, development projection, and approved detail tabs (Overview, Goals, Actions, Sessions, Reflections, Feedback, Practice & Competency Analytics). Verified against the actual tab implementation and its tests. |
 | Sessions | INTENTIONAL FUNCTIONAL ADAPTATION | The pre-existing `/sessions` list gained a working Triad filter (round/week/participants, role badge) alongside its existing coaching/peer/mentoring filters — real, verified work (`src/pages/Sessions.tsx`, `useSessionsData.ts`). It has **not** been restyled to the approved prototype's unified session-card visual design; it still uses its pre-redesign layout. |
 | Session Detail | MISSING (partial) | Only Triads gained a dedicated new detail page (`src/pages/triads/TriadSessionDetail.tsx`, routed in `App.tsx`). Coaching (`SessionDetail.tsx`) and Mentoring (`MentoringSessionDetail.tsx`) detail pages are unchanged since before this redesign effort — no shared prototype-style detail shell exists yet. |
-| Training & Learning | MISSING | `src/pages/TrainingWeeks.tsx` has not been modified since before this redesign effort (`git log` shows its last touch predates the prototype work). The page still functions on its pre-existing design, not the approved prototype layout. |
-| Coaching | MISSING | `src/pages/Coaches.tsx` not modified for this effort. |
-| Peer Coaching | MISSING | `src/pages/CoacheePeerPractice.tsx` not modified for this effort. |
-| Mentoring | MISSING | `src/pages/MentoringFindMentor.tsx` not modified for this effort. |
-| Triads (workspace) | MISSING | `src/pages/triads/TriadsPage.tsx` (group/role/round-history view) not modified for this effort — only the session-detail sub-page was added (see Session Detail row above). |
+| Training & Learning | MATCH | `src/pages/TrainingWeeks.tsx` was re-inspected (not just checked for a recent commit) and is already a canonical, child-derived vertical week timeline (locked/current/completed states, quiz scores, skill-card links) sourced via `get_my_training_weeks()` through `useProgrammeProgress` — no client-side recomputation, no fabricated categories. No changes made; none were needed. |
+| Coaching | MATCH | `src/pages/Coaches.tsx` gained a new "My Coach" section (`src/pages/coachee/MyCoachSection.tsx`) — assigned coach, coaching progress, upcoming/past sessions — reusing `useMyCoachCardData` and `useEnrollmentSessions`. Renders nothing (not a fabricated coach) when none is assigned; the existing browse/search directory below still serves as Find a Coach either way. |
+| Peer Coaching | MATCH | `src/pages/CoacheePeerPractice.tsx` gained `MyPeerPracticeSection.tsx` — upcoming/completed peer sessions and received competency feedback, reusing `useEnrollmentSessions` and `useLearnerFeedback` (kind `peer_competency`). Renders nothing when no peer session exists yet. |
+| Mentoring | MATCH | `src/pages/MentoringFindMentor.tsx` gained `MyMentorSection.tsx` — current mentor (derived from the most recent/next booked `mentoring_sessions` row, since mentoring has no fixed 1:1 assignment like coaching's allowlist), upcoming/past sessions, and learner-visible mentoring feedback. Renders nothing when no mentoring session exists yet. |
+| Triads (workspace) | MATCH | `src/pages/triads/TriadsPage.tsx` was re-inspected and already matches the prototype closely: a navy "My Triad Group" hero (`TriadGroupHero`), an upcoming-session card (`TriadSessionCard`), and a past-rounds table that already surfaces per-round reflection status (submitted/pending) and satisfaction ratings (`TriadPastSessionsTable`). No changes made. One documented gap: the canonical data model has no fixed per-member role column (`triad_groups` has three interchangeable member slots; `triad_reflections` records `learned_as_coach/coachee/observer` per submission, not a fixed assignment), so an explicit "Your role: Coach" label is not added — it would have to be invented. |
 | Messages | MISSING | `src/pages/Messages.tsx` not modified for this effort. |
 | Profile & Availability | MISSING | `src/pages/CoacheeProfileEditor.tsx` and `src/pages/CoacheeAvailability.tsx` not modified for this effort; they remain two separate pages, not the approved prototype's combined account workspace. |
 | Mobile navigation | MATCH | Coachee mobile primary navigation (Dashboard, My Journey, Sessions, Messages, More) is implemented in `AppLayout.tsx` and covered by a passing test. |
@@ -37,8 +37,13 @@ The current learner implementation uses live canonical data. The sample values i
 | Feedback (My Journey tab) | `useLearnerFeedback` | `mentoring_feedback` / `peer_session_competency_feedback`, joined through the selected enrollment's session relationship |
 | Practice & Competency Analytics | `usePracticeAnalytics` | selected enrollment's peer coaching sessions and `peer_session_competency_feedback`; `triad_reflections` intentionally excluded (no per-competency columns) |
 | Sessions list (Triad support) | `useSessionsData` | `sessions`, `peer_sessions`, `coachee_peer_sessions`, `mentoring_sessions`, `triad_sessions` |
+| Training & Learning | `useProgrammeProgress` (`get_my_training_weeks()`) | configured training weeks with cohort-relative unlock dates, canonical completion/quiz state |
+| My Coach | `useMyCoachCardData`, `useEnrollmentSessions` | `coachee_coach_allowlist` (resolved coach), `sessions` filtered to type coaching |
+| My Mentor | `useEnrollmentSessions`, `useLearnerFeedback` | `mentoring_sessions` (current mentor derived from most recent/next booked session), `mentoring_feedback` |
+| Peer Coaching workspace | `useEnrollmentSessions`, `useLearnerFeedback` | `peer_sessions` / `coachee_peer_sessions`, `peer_session_competency_feedback` |
+| Triads workspace | `useMyTriads` | `triad_groups`, `triad_sessions`, `triad_reflections` (`reflectionSubmitted` per round) |
 
-The remaining rows from the previous version of this table (Training, Coaching, Peer Coaching, Mentoring workspace, Triads workspace, Messages, Profile/Availability) are removed here — those screens have not yet been redesigned against the prototype, so there is no new source-of-truth mapping to report for them. Their existing (pre-redesign) hooks continue to serve real data; only the prototype visual/informational alignment is outstanding.
+Messages and Profile & Availability are still genuinely outstanding — no source-of-truth mapping to report for them yet.
 
 ## Privacy and isolation checks (verified for the screens actually implemented)
 
@@ -50,4 +55,4 @@ The remaining rows from the previous version of this table (Training, Coaching, 
 
 ## Outstanding work
 
-Training & Learning, Coaching, Peer Coaching, Mentoring workspace, Triads workspace, Messages, Profile & Availability, and the shared Session Detail shell (coaching/mentoring) still need their prototype-aligned implementation. See the plan file for the corrected task checklist.
+Messages, Profile & Availability, the Sessions list's prototype visual redesign, and a shared Session Detail shell for coaching/mentoring still need their prototype-aligned implementation. See the plan file for the corrected task checklist.

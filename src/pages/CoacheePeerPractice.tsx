@@ -8,6 +8,7 @@ import { Loader2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { MyPeerPracticeSection } from "@/pages/coachee/MyPeerPracticeSection";
 
 interface PeerCoachee {
   id: string;
@@ -59,6 +60,8 @@ export default function CoacheePeerPractice() {
         emphasis={t("coacheePeerPractice.header.titleEmphasis")}
         subtitle={t("coacheePeerPractice.header.subtitle")}
       />
+
+      <MyPeerPracticeSection />
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

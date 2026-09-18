@@ -90,6 +90,13 @@
     "bookPeer": "Book peer",
     "retry": "Try again"
   },
+  "myPeerPractice": {
+    "upcoming": "Upcoming sessions",
+    "noUpcoming": "No upcoming session booked.",
+    "completed": "Completed sessions",
+    "feedback": "Feedback I've received",
+    "noFeedback": "No feedback yet."
+  },
   "coacheePeerPractice": {
     "header": {
       "eyebrow": "Community",

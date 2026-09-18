@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
+import { MyMentorSection } from "@/pages/coachee/MyMentorSection";
 
 interface MentorRow {
   mentor_user_id: string;
@@ -72,6 +73,8 @@ export default function MentoringFindMentor() {
         emphasis={t("findMentor.titleEmphasis")}
         subtitle={t("findMentor.subtitle")}
       />
+
+      <MyMentorSection />
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

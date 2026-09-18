@@ -163,11 +163,11 @@
 - Consumes: canonical child-derived training progress, configured programme modules, current coach/peer/mentor/triad hooks, and booking routes.
 - Produces: prototype-aligned module headers, expandable configured weeks/units, Find a Coach/Mentor empty states, peer partner context, triad group/role/round history, and no fabricated categories or people.
 
-- [ ] **Step 1: Add failing tests.** Not done.
-- [ ] **Step 2: Run the module tests and verify red failures.** Not done.
-- [ ] **Step 3: Implement visual hierarchy and empty states.** Not done — none of `TrainingWeeks.tsx`, `Coaches.tsx`, `CoacheePeerPractice.tsx`, `MentoringFindMentor.tsx`, `TriadsPage.tsx`, or `DailyPromptCard.tsx` have been touched since before this redesign effort (confirmed via `git log --oneline -- <path>` for each). This whole task is outstanding.
-- [ ] **Step 4: Run targeted module tests plus `npx tsc --noEmit`.** N/A until Step 3 happens.
-- [ ] **Step 5: Commit.** No such commit exists.
+- [x] **Step 1: Add failing tests.** Done for the parts that changed: `src/pages/coachee/__tests__/MyCoachSection.test.tsx`, `MyMentorSection.test.tsx`, `MyPeerPracticeSection.test.tsx`.
+- [x] **Step 2: Run the module tests and verify red failures.** Done as part of the same work.
+- [x] **Step 3: Implement visual hierarchy and empty states**, corrected scope. `TrainingWeeks.tsx` and `triads/TriadsPage.tsx` were re-audited and found already prototype-aligned on inspection (canonical child-derived week timeline; navy triad-group hero, session card, and a past-sessions table that already surfaces reflection status per round) — no changes needed, verified rather than assumed. `Coaches.tsx`, `MentoringFindMentor.tsx`, and `CoacheePeerPractice.tsx` were genuinely missing the prototype's "My Coach" / "My Mentor" / peer-session-and-feedback workspace sections (they were pure browse/book lists) — added `src/pages/coachee/MyCoachSection.tsx`, `MyMentorSection.tsx`, `MyPeerPracticeSection.tsx`, each reusing existing canonical hooks (`useMyCoachCardData`, `useEnrollmentSessions`, `useLearnerFeedback`, `useLearnerCanonicalProgress`) and rendering nothing (not a fabricated partner) when no relationship/session exists yet. `DailyPromptCard.tsx` was not touched — no gap was found against the prototype for it.
+- [x] **Step 4: Run targeted module tests plus `npx tsc --noEmit`.** Clean.
+- [ ] **Step 5: Commit.** Pending — do this as part of finishing this phase.
 
 ### Task 7: Complete Messages, Profile & Availability, accessibility, and responsive verification
 

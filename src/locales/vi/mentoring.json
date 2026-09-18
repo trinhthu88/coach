@@ -1,4 +1,13 @@
 {
+  "myMentor": {
+    "eyebrow": "Mentor của tôi",
+    "next": "Session tiếp theo",
+    "upcoming": "Session sắp tới",
+    "noUpcoming": "Chưa có session sắp tới nào được đặt.",
+    "past": "Session đã qua",
+    "feedback": "Phản hồi mentoring",
+    "noFeedback": "Chưa có phản hồi nào."
+  },
   "findMentor": {
     "eyebrow": "Mentoring",
     "titleLead": "Mentor",
