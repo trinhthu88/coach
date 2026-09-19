@@ -113,12 +113,13 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
       const weekPrompts = (prompts || []).filter((p) => p.training_week_id === w.id);
       const promptsDone = weekPrompts.filter((p) => respondedPromptIds.has(p.id)).length;
 
-      // The session's real lifecycle status — a passed time is not completion.
+      // Completion is the unit's canonical state (the same one Admin and the
+      // Triads page show), never a local reading of session statuses.
       let triadStatus: TimelineWeek["triadStatus"] = null;
       if (hasTriads) {
-        const weekSessions = triadGroups.filter((g) => g.trainingWeek?.number === w.week_number).flatMap((g) => g.sessions);
-        if (weekSessions.length === 0) triadStatus = "not_scheduled";
-        else if (weekSessions.some((s) => s.status === "completed")) triadStatus = "completed";
+        const weekGroups = triadGroups.filter((g) => g.trainingWeek?.number === w.week_number);
+        if (weekGroups.some((g) => g.unitCompleted)) triadStatus = "completed";
+        else if (weekGroups.every((g) => g.sessions.length === 0)) triadStatus = "not_scheduled";
         else triadStatus = "scheduled";
       }
 

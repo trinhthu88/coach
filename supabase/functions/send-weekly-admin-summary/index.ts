@@ -106,8 +106,9 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Triad reflections on this programme's sessions completed this week,
-      // out of one expected reflection per group member (dyads have two).
+      // Triad reflection rate: reflections on this programme's sessions
+      // completed this week, out of one per group member (dyads have two).
+      // An engagement signal only — Triad completion is canonical progress.
       const { data: groups } = await admin
         .from("triad_groups")
         .select("id, cohort_requirement_dates!inner(programme_id), triad_group_members(enrollment_id)")
@@ -116,7 +117,7 @@ Deno.serve(async (req) => {
       const memberCountByGroup = new Map(
         ((groups || []) as unknown as { id: string; triad_group_members: { enrollment_id: string }[] }[]).map((g) => [g.id, g.triad_group_members.length]),
       );
-      let triadCompletionPct: number | null = null;
+      let triadReflectionPct: number | null = null;
       if (memberCountByGroup.size > 0) {
         const { data: sessions } = await admin
           .from("triad_sessions")
@@ -131,7 +132,7 @@ Deno.serve(async (req) => {
             .from("triad_reflections")
             .select("id", { count: "exact", head: true })
             .in("triad_session_id", sessionIds);
-          triadCompletionPct = ratio(count || 0, expected);
+          triadReflectionPct = ratio(count || 0, expected);
         }
       }
 
@@ -164,7 +165,7 @@ Deno.serve(async (req) => {
         enrolledCount: enrolledIds.length,
         quizCompletionPct,
         reflectionCompletionPct,
-        triadCompletionPct,
+        triadReflectionPct,
         promptResponseRatePct,
       });
     }

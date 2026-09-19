@@ -234,6 +234,58 @@ describe("programme profile architecture", () => {
     expect(offenders.map((f) => relative(SRC, f))).toEqual([]);
   });
 
+  describe("Triad source of truth (frontend + Edge Functions)", () => {
+    const FUNCTIONS = join(process.cwd(), "supabase", "functions");
+    const functionFiles = (dir = FUNCTIONS): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) return functionFiles(path);
+        return /\.(ts|tsx)$/.test(name) ? [path] : [];
+      });
+    const runtime = [...files.filter((f) => !f.endsWith("integrations/supabase/types.ts")), ...functionFiles()];
+    const label = (f: string) => relative(process.cwd(), f);
+
+    it("no runtime code reads a retired Triad table or field", () => {
+      const retired = /\b(programme_)?triad_rounds\b|completion_deadline|(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|(learned|will_use)_as_(coach|coachee|observer)/;
+      expect(runtime.filter((f) => retired.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+    });
+
+    it("auto-assignment is requirement-first: one cohort Triad requirement, never a programme-wide pool", () => {
+      const fn = readFileSync(join(FUNCTIONS, "triad-auto-assign", "index.ts"), "utf8");
+      expect(fn).toMatch(/body\.cohort_requirement_date_id/);
+      expect(fn).toMatch(/rpc\("triad_requirement_candidates_internal"/);
+      expect(fn).toMatch(/rpc\("triad_create_group_internal"/);
+      expect(fn).not.toMatch(/programme_id|from\("(programme_enrollments|triad_groups|triad_group_members)"\)/);
+    });
+
+    it("Triad completion is never derived from reflections or session rows outside canonical progress", () => {
+      // A reflection rate is labelled as one; no surface names it "completion".
+      expect(runtime.filter((f) => /triadCompletion/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+      const timeline = read("hooks/journey/useProgrammeTimeline.ts");
+      expect(timeline).toMatch(/\.unitCompleted\)/);
+      expect(timeline).not.toMatch(/status\s*===\s*"completed"/);
+    });
+
+    it("Triad due dates and overdue state are rendered, never computed, on Triad surfaces", () => {
+      for (const file of [
+        "hooks/triads/useMyTriads.ts",
+        "hooks/triads/useAdminTriads.ts",
+        "pages/triads/TriadsPage.tsx",
+        "pages/triads/components/TriadGroupHero.tsx",
+        "pages/admin/AdminTriadRequirementCard.tsx",
+        "pages/admin/AdminCohortTriads.tsx",
+      ]) {
+        const text = read(file);
+        expect(text, file).not.toMatch(/Date\.now\(\)|isPast|isBefore|isAfter|differenceIn|addDays|addMonths/);
+        expect(text, file).not.toMatch(/from\("(triad_[a-z_]+|cohort_requirement_dates)"\)/);
+      }
+    });
+
+    it("membership has one read path per role: learners via learner_triad_members / overview, Admin via its RPC", () => {
+      expect(files.filter((f) => /from\("triad_group_members"\)/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+    });
+  });
+
   it("schedule mismatch state comes from one canonical source for every role", () => {
     const hook = read("hooks/useCanonicalScheduleState.ts");
     expect(hook).toMatch(/learner_canonical_schedule_state/);

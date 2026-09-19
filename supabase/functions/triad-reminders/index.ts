@@ -130,20 +130,23 @@ Deno.serve(async (req) => {
       const { cohort_id: cohortId, unit_number: unit, due_on: dueOn, days_until_due: daysUntilDue } = targets[0];
       const title = `Triad round ${unit}`;
       const titleVi = `Vòng triad ${unit}`;
-      const memberLink = `/triads?requirement=${requirementId}`;
-      const adminLink = `/admin/cohorts/${cohortId}/triads?requirement=${requirementId}`;
+      // The 30-day dedupe is per (user, link), so each notice kind gets its
+      // own link: a pre-due reminder must never suppress the overdue notice.
+      const memberLink = (notice: "reminder" | "overdue") => `/triads?requirement=${requirementId}&notice=${notice}`;
+      const adminLink = (notice: "due_tomorrow" | "overdue") =>
+        `/admin/cohorts/${cohortId}/triads?requirement=${requirementId}&notice=${notice}`;
       const open = targets.filter((t) => !t.unit_completed);
       const ungrouped = open.filter((t) => !t.triad_group_id);
 
       for (const t of open) {
         if (t.unit_overdue) {
-          if (await notifyOnce(t.user_id, memberLink, "triad_round_reminder",
+          if (await notifyOnce(t.user_id, memberLink("overdue"), "triad_round_reminder",
             `Your triad practice for "${title}" is overdue`,
             "The due date has passed. Schedule or complete your session as soon as possible.",
             `Buổi luyện tập triad cho "${titleVi}" đã quá hạn`,
             "Hạn hoàn thành đã qua. Hãy đặt lịch hoặc hoàn thành session của bạn càng sớm càng tốt.")) overdueSent++;
         } else if (daysUntilDue === 3 && t.triad_group_id && t.session_status !== "confirmed") {
-          if (await notifyOnce(t.user_id, memberLink, "triad_round_reminder",
+          if (await notifyOnce(t.user_id, memberLink("reminder"), "triad_round_reminder",
             `Confirm your triad session for "${title}"`,
             "Your triad session isn't confirmed yet and the due date is in 3 days. Accept a time or propose an alternative.",
             `Xác nhận session triad của bạn cho "${titleVi}"`,
@@ -155,10 +158,10 @@ Deno.serve(async (req) => {
       const unconfirmedGroups = new Set(open.filter((t) => t.triad_group_id && t.session_status !== "confirmed").map((t) => t.triad_group_id)).size;
       for (const userId of adminIds) {
         if (overdueCount > 0) {
-          if (await notifyOnce(userId, adminLink, "triad_admin_alert", `Overdue: "${title}"`,
+          if (await notifyOnce(userId, adminLink("overdue"), "triad_admin_alert", `Overdue: "${title}"`,
             `${overdueCount} learner(s) have not completed ${title} (due ${dueOn}).`)) overdueSent++;
         } else if (daysUntilDue === 1 && (unconfirmedGroups > 0 || ungrouped.length > 0)) {
-          if (await notifyOnce(userId, adminLink, "triad_admin_alert", `"${title}" is due tomorrow`,
+          if (await notifyOnce(userId, adminLink("due_tomorrow"), "triad_admin_alert", `"${title}" is due tomorrow`,
             `${unconfirmedGroups} group(s) without a confirmed session and ${ungrouped.length} learner(s) without a group (due ${dueOn}).`)) escalationsSent++;
         }
       }

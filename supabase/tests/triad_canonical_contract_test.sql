@@ -9,7 +9,7 @@
 --   same programme (never assignable to C1). E6's learner is also a coach.
 begin;
 
-select plan(82);
+select plan(89);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -180,6 +180,18 @@ update public.triad_sessions set status = 'completed' where id = (select id from
 select is((select status from public.triad_sessions where id = (select id from ses where name = 'G1')), 'confirmed',
   '16c. learners cannot write session state directly (only through validated functions)');
 select lives_ok($$select public.learner_triad_complete_session((select id from ses where name = 'G1'))$$, 'E1 completes G1');
+select is((select status from public.triad_sessions where id = (select id from ses where name = 'G1')), 'completed',
+  '16f. a member''s completion persists although every member accepted (no auto-confirm revert)');
+reset role;
+update public.triad_sessions set meeting_url = 'https://meet.example/g1' where id = (select id from ses where name = 'G1');
+update public.triad_session_responses set response = 'accepted', responded_at = now()
+where triad_session_id = (select id from ses where name = 'G1');
+select is((select status from public.triad_sessions where id = (select id from ses where name = 'G1')), 'completed',
+  '16g. later session or response writes never move a completed session out of completed');
+select throws_ok($$update public.triad_sessions set status = 'confirmed' where id = (select id from ses where name = 'G1')$$,
+  '42501', null, '16h. a completed Triad session is final for every writer');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000001', true);
 
 -- Alternatives on G2 (E4, E5), a confirmed future session.
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000004', true);
@@ -426,6 +438,18 @@ select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000001
 select ok(
   (select bool_and(not (s ? 'notes')) from public.learner_triad_overview(null) o, jsonb_array_elements(o.sessions) s),
   '29. private session notes are not projected to learners');
+select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000098', true);
+select throws_ok($$delete from public.triad_sessions where id = (select id from ses where name = 'G1')$$,
+  '42501', null, '16i. not even an Admin can delete a completed session (evidence and reflections are history)');
+select ok((select count(*) from public.triad_reflections where triad_session_id = (select id from ses where name = 'G1')) > 0,
+  '16j. the completed session''s reflections are intact');
+select lives_ok($$insert into public.triad_group_members (triad_group_id, enrollment_id, member_order)
+  select m.triad_group_id, m.enrollment_id, m.member_order from public.triad_group_members m where m.triad_group_id = (select id from grp where name = 'G1')
+  on conflict (triad_group_id, enrollment_id) do nothing$$,
+  '9e. re-inserting existing memberships is a no-op (idempotent writers), even once the group has a completed session');
+select throws_ok($$insert into public.triad_group_members (triad_group_id, enrollment_id, member_order)
+  select m.triad_group_id, m.enrollment_id, m.member_order from public.triad_group_members m where m.triad_group_id = (select id from grp where name = 'G1')$$,
+  '23505', null, '9f. without ON CONFLICT the same membership is still a duplicate');
 reset role;
 select is(
   (select string_agg(p.proname, ', ' order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace

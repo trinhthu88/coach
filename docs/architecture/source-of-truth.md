@@ -29,7 +29,7 @@ never a second answer to a business question.
 
 ## Triad ownership map
 
-Established by `20260918190000_triad_canonical_cutover` and `20260918191000_triad_retire_legacy`.
+Established by `20260918190000_triad_canonical_cutover` and `20260918191000_triad_retire_legacy`, with `20260918192000_triad_completion_rule_stable` and `20260918193000_triad_history_guards`.
 
 | Triad fact | Authoritative source | Read through | Notes |
 |---|---|---|---|
@@ -40,12 +40,13 @@ Established by `20260918190000_triad_canonical_cutover` and `20260918191000_tria
 | Actual session time + lifecycle | `triad_sessions.scheduled_start_time / scheduled_end_time`, `status` (`proposed → confirmed → completed`, or `cancelled`) | `learner_triad_overview`, `learner_session_history` | Lifecycle is enforced by the `triad_sessions_guard` trigger for every writer. |
 | Session acceptance | `triad_session_responses` (session × enrollment) | `learner_triad_overview` | |
 | Alternative times | `triad_alternative_proposals` (`pending → accepted \| superseded`) + `triad_alternative_proposal_responses` | `learner_triad_overview` | A candidate becomes the session time only when every member accepts. Superseded ones stay as history. |
-| Completion evidence | completed `triad_sessions` × `triad_group_members` → `session_activity_attributions` (one writer: `triad_sync_session_attributions`) | `canonical_module_progress` | Completion is validated server-side (`learner_triad_complete_session` + session guard). Capped at required units. A reflection is never completion. |
+| Completion evidence | completed `triad_sessions` × `triad_group_members` → `session_activity_attributions` (one writer: `triad_sync_session_attributions`) | `canonical_module_progress` | Completion is validated server-side (`learner_triad_complete_session` + session guard). Capped at required units. A reflection is never completion. A completed session is final, and it can't be deleted by any writer, Admin included. The same goes for a session with reflections (`triad_sessions_guard_delete`). |
 | Progress / overdue per unit | `canonical_module_progress` | `triad_unit_enrollment_status_internal` → Admin, Learner. Sponsor reads canonical progress / journey. | Unit N is completed when completed units ≥ N, and overdue when N ≤ due units and not completed. No local overdue rule. |
 | Goal rating / comment | `goal_checkins` (via `record_goal_checkins`, source `triad`) | `learner_reflection_feed` | Never copied into Triad tables. |
 | Triad reflection | `triad_reflections` (one per session × enrollment; `satisfaction_rating`) | `learner_triad_session_reflections`, `learner_reflection_feed` | Group members see each other's only after all have submitted. Sponsors never see it. |
 | Reflection answers | `triad_reflection_answers` × `triad_reflection_questions` (stable ids / keys, programme-scoped or default set) | same | |
 | Auto-assign run state | `cohort_triad_operations` | service role only | Operational only: never a date, a membership or a completion. |
+| Triad reflection rate (Admin Analytics per-week table, weekly admin email) | derived from `triad_reflections` | `useAdminProgrammeEngagement`, `send-weekly-admin-summary` | An engagement signal, labelled "Triad reflection". It is never presented as Triad completion. |
 | My Journey / Your Sessions / Dashboard | projections only | `learner_reflection_feed`, `learner_session_history`, `canonical_enrollment_journey` | No Triad data is copied into another table. |
 
 Assignment is always requirement-first: cohort Triad requirement → that cohort's ongoing enrollments → exclude those already grouped for the unit → language → availability. `triad-auto-assign` takes a `cohort_requirement_date_id`, and `triad_validate_group_member` rejects any enrollment from another cohort or programme.
@@ -67,6 +68,8 @@ Assignment is always requirement-first: cohort Triad requirement → that cohort
 | `triad_cutover_group_decisions`, `triad_cutover_archive` | INTERNAL (no client access) | Audit only. They answer no current business question. |
 
 Production readiness: run `scripts/triad-cutover-readiness.sql` (read-only) against the target before deploying. Every group it lists as `AMBIGUOUS` needs a reviewed row in `triad_cutover_group_decisions`, shipped in a migration between `20260918185900` and `20260918190000`. Otherwise the cutover stops.
+
+Section 6 of the same report lists past `confirmed` sessions. The legacy `trg_auto_confirm_triad` trigger reset a session to `confirmed` on every update once all members had accepted. That included the learner's own "Mark complete", so a completion made that way was never stored. The cutover keeps stored statuses as they are and never infers a completion. Restoring one needs a reviewed decision (a follow-up migration that names the sessions).
 
 ## Canonical chains
 
@@ -147,6 +150,10 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
    - `supabase/tests/cohort_requirement_schedule_test.sql`,
      `supabase/tests/source_of_truth_contract_test.sql` and
      `supabase/tests/triad_canonical_contract_test.sql` (database);
+   - the "Triad source of truth" block in `src/test/programmeProfileArchitecture.test.ts`,
+     which also scans `supabase/functions` (no retired Triad field, requirement-first
+     auto-assignment, no Triad completion derived from reflections or session rows,
+     no client-side Triad date or overdue logic);
    - the final-state guard at the end of
      `20260918170000_single_source_of_truth.sql`, which fails the deployment
      if the canonical definitions aren't in place, and the final-state guard

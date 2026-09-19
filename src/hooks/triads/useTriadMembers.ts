@@ -13,9 +13,9 @@ export const TRIAD_MEMBERS_KEY = "triad-members";
 
 /**
  * THE learner-side source of Triad co-member identity: learner_triad_members
- * reads membership from triad_groups (member_1/2/3) and display identity
- * (name, avatar — nothing else) from profiles, and returns rows only for
- * groups the caller belongs to. Every learner Triad surface that shows who
+ * reads membership from triad_group_members (learner via the enrollment) and
+ * display identity (name, avatar — nothing else) from profiles, and returns
+ * rows only for groups the caller belongs to. Every learner Triad surface that shows who
  * is in a group uses this — never profiles RLS discovery, session records,
  * cohort lists or cached names.
  */

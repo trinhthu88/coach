@@ -432,7 +432,7 @@ export default function AdminAnalytics() {
                         <span className="truncate font-bold" title={`W${w.weekNumber} · ${w.title}`}>W{w.weekNumber}</span>
                         <EngagementCell pct={w.skillCardCompletionPct} />
                         <EngagementCell pct={w.quizCompletionPct} sub={w.quizAvgScore != null ? `${Math.round(w.quizAvgScore)}% avg` : undefined} />
-                        <EngagementCell pct={w.triadCompletionPct} />
+                        <EngagementCell pct={w.triadReflectionPct} />
                         <EngagementCell pct={w.promptResponseRate} tone="accent" />
                       </div>
                     ))}

@@ -16,7 +16,8 @@ export interface ProgrammeWeekEngagement {
   skillCardCompletionPct: number | null;
   quizAvgScore: number | null;
   quizCompletionPct: number | null;
-  triadCompletionPct: number | null;
+  /** Triad reflection rate (members who reflected on that week's Triad sessions). Engagement only — Triad completion is canonical progress. */
+  triadReflectionPct: number | null;
   promptResponseRate: number | null;
 }
 
@@ -161,7 +162,7 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
           skillCardCompletionPct: enrolledCount > 0 ? (completedUsers.size * 100) / enrolledCount : null,
           quizAvgScore,
           quizCompletionPct: weekQuizIds.size > 0 && enrolledCount > 0 ? (quizSubmittedUsers.size * 100) / enrolledCount : null,
-          triadCompletionPct: weekSessionIds.size > 0 && enrolledCount > 0 ? (weekReflectedUsers.size * 100) / enrolledCount : null,
+          triadReflectionPct: weekSessionIds.size > 0 && enrolledCount > 0 ? (weekReflectedUsers.size * 100) / enrolledCount : null,
           promptResponseRate: weekPromptIds.size > 0 && enrolledCount > 0 ? (respondedUsers.size * 100) / enrolledCount : null,
         };
       });

@@ -125,4 +125,23 @@ JOIN public.triad_sessions s ON s.id = a.source_activity_id
 WHERE a.source_activity_type = 'triad'
   AND a.occurred_on IS DISTINCT FROM coalesce(s.proposed_start_time, s.start_time)::date;
 
+-- The legacy trg_auto_confirm_triad (BEFORE UPDATE) set status back to
+-- 'confirmed' on every update of a session whose members had all accepted —
+-- including the learner's own "Mark complete" update. A completion a learner
+-- made that way was never stored. The cutover keeps every stored status as-is
+-- (it never infers a completion); this list is the evidence for a reviewed
+-- remediation decision (a follow-up migration that marks named sessions
+-- completed), not something applied automatically.
+\echo '== 6. Review: past confirmed sessions (a "Mark complete" the legacy auto-confirm trigger may have reverted)'
+SELECT s.id AS session_id, s.triad_group_id, g.cohort_id,
+  coalesce(s.proposed_start_time, s.start_time) AS effective_time,
+  s.updated_at > coalesce(s.proposed_start_time, s.start_time) AS updated_after_start,
+  (SELECT count(*) FROM public.triad_reflections r WHERE r.triad_session_id = s.id) AS reflections,
+  (SELECT count(*) FROM public.goal_checkins gc WHERE gc.source_activity_type = 'triad' AND gc.source_activity_id = s.id) AS goal_checkins
+FROM public.triad_sessions s
+JOIN public.triad_groups g ON g.id = s.triad_group_id
+WHERE s.status = 'confirmed'
+  AND coalesce(s.proposed_start_time, s.start_time) < now()
+ORDER BY coalesce(s.proposed_start_time, s.start_time);
+
 ROLLBACK;

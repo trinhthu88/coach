@@ -10,7 +10,7 @@ export interface ProgrammeStatRow {
   enrolledCount: number
   quizCompletionPct: number | null
   reflectionCompletionPct: number | null
-  triadCompletionPct: number | null
+  triadReflectionPct: number | null
   promptResponseRatePct: number | null
 }
 
@@ -68,7 +68,7 @@ export const WeeklyAdminSummaryEmail = ({
             programmeStats.map((p) => (
               <Text style={row} key={p.programmeName}>
                 <strong>{p.programmeName}</strong> ({p.enrolledCount} enrolled) — quiz {pct(p.quizCompletionPct)} ·
-                {' '}reflection {pct(p.reflectionCompletionPct)} · triads {pct(p.triadCompletionPct)} · daily prompt{' '}
+                {' '}reflection {pct(p.reflectionCompletionPct)} · triad reflections {pct(p.triadReflectionPct)} · daily prompt{' '}
                 {pct(p.promptResponseRatePct)}
               </Text>
             ))

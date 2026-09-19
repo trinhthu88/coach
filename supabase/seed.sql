@@ -437,12 +437,8 @@ BEGIN
   DELETE FROM public.training_progress p
     USING public.programme_enrollments e
     WHERE p.enrollment_id=e.id AND e.cohort_id=cc;
-  DELETE FROM public.triad_sessions s
-    USING public.triad_groups g, public.cohort_requirement_dates d
-    WHERE s.triad_group_id=g.id AND g.cohort_requirement_date_id=d.id AND d.cohort_id=cc;
-  DELETE FROM public.triad_groups g
-    USING public.cohort_requirement_dates d
-    WHERE g.cohort_requirement_date_id=d.id AND d.cohort_id=cc;
+  -- Triad groups / sessions are not deleted: a completed Triad session is
+  -- history (triad_sessions_guard_delete). They are upserted below by id.
 
   FOR i IN 1..12 LOOP
     uid:=('13131313-1313-4131-8131-'||lpad(i::text,12,'0'))::uuid;
@@ -622,13 +618,20 @@ BEGIN
         ('15151515-1515-4151-8151-000000000004'::uuid, unit2, ARRAY[e9,e10], '1c1c1c1c-1c1c-41c1-81c1-000000000004'::uuid, '2026-07-05'::timestamptz)
       ) AS g(group_id, requirement_id, members, session_id, starts_at)
     LOOP
-      INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language) VALUES(grp.group_id,grp.requirement_id,'vi');
+      INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language) VALUES(grp.group_id,grp.requirement_id,'vi')
+        ON CONFLICT(id) DO NOTHING;
       INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
-        SELECT grp.group_id, m.enrollment_id, m.ord FROM unnest(grp.members) WITH ORDINALITY AS m(enrollment_id, ord);
+        SELECT grp.group_id, m.enrollment_id, m.ord FROM unnest(grp.members) WITH ORDINALITY AS m(enrollment_id, ord)
+        ON CONFLICT(triad_group_id,enrollment_id) DO NOTHING;
       INSERT INTO triad_sessions(id,triad_group_id,scheduled_start_time,scheduled_end_time,status)
-        VALUES(grp.session_id,grp.group_id,grp.starts_at,grp.starts_at + interval '1 hour','completed');
+        VALUES(grp.session_id,grp.group_id,grp.starts_at,grp.starts_at + interval '1 hour','completed')
+        ON CONFLICT(id) DO NOTHING;
       INSERT INTO triad_session_responses(triad_session_id,enrollment_id,response,responded_at)
-        SELECT grp.session_id, m, 'accepted', grp.starts_at - interval '7 days' FROM unnest(grp.members) m;
+        SELECT grp.session_id, m, 'accepted', grp.starts_at - interval '7 days' FROM unnest(grp.members) m
+        ON CONFLICT(triad_session_id,enrollment_id) DO NOTHING;
+      -- The reset above cleared the cohort's evidence; rebuild it through the
+      -- one Triad attribution writer (membership x session time).
+      PERFORM public.triad_sync_session_attributions(grp.session_id);
     END LOOP;
   END;
 

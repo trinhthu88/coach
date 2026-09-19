@@ -189,6 +189,9 @@ Deno.serve(async (req) => {
       const langs = byUser.get(id)?.spoken_languages ?? [];
       return langs.includes("en") && !langs.includes("vi");
     });
+    // Eligible learners in neither pool (no Vietnamese or English on their
+    // profile) are never grouped silently: Admin assigns them manually.
+    const noLanguage = participantIds.filter((id) => !viPool.includes(id) && !enPool.includes(id));
 
     const overlapCache = new Map<string, number>();
     function overlapOf(a: string, b: string): number {
@@ -201,7 +204,10 @@ Deno.serve(async (req) => {
       return v;
     }
 
-    const adminAlerts: { id: string; reason: string }[] = [];
+    const adminAlerts: { id: string; reason: string }[] = noLanguage.map((id) => ({
+      id: byUser.get(id)?.enrollment_id ?? id,
+      reason: "no_spoken_language",
+    }));
     let groupsCreated = 0;
     let dyadsCreated = 0;
     const roundTitle = `Triad round ${unitNumber}`;
