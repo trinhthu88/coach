@@ -26,7 +26,11 @@ SELECT (SELECT count(*) FROM public.triad_groups) AS groups,
   (SELECT count(*) FROM public.programme_triad_rounds) AS legacy_programme_rounds;
 
 \echo '== 2. Conflicting legacy Triad records (cleanup 20260918185900): DEMO/SEED are removed; REAL/UNKNOWN block without a reviewed decision'
-WITH facts AS (
+-- Reviewed decisions shipped in 20260918185850_triad_reviewed_decisions
+-- (kept identical to that migration by src/test/migrationChain.test.ts).
+WITH reviewed_decisions(triad_group_id) AS (VALUES
+  ('fc234f05-c98a-465e-8122-9f32e35ecf33'::uuid)
+), facts AS (
   SELECT g.id AS triad_group_id,
     g.id::text ~ '^[0-9a-f]{8}-0000-0000-0000-[0-9a-f]{12}$' AS seed_group_id,
     o.name = 'Clariva Demo Organization' AS demo_organization,
@@ -72,15 +76,21 @@ WITH facts AS (
     AND NOT EXISTS (SELECT 1 FROM public.triad_reflections r WHERE r.triad_session_id = s.id)
     AND NOT EXISTS (SELECT 1 FROM public.goal_checkins gc WHERE gc.source_activity_type = 'triad' AND gc.source_activity_id = s.id)
 )
-SELECT c.triad_group_id, c.triad_session_id, string_agg(DISTINCT c.conflict, ', ') AS conflicts,
-  CASE WHEN f.has_goal_checkins THEN 'REAL/UNKNOWN'
-       WHEN f.seed_group_id OR coalesce(f.demo_organization, false) OR coalesce(f.all_members_demo_accounts, false) THEN 'DEMO/SEED'
-       ELSE 'REAL/UNKNOWN' END AS classification,
-  jsonb_strip_nulls(jsonb_build_object('seed_group_id', f.seed_group_id, 'demo_organization', f.demo_organization,
-    'all_members_demo_accounts', f.all_members_demo_accounts, 'organization', f.organization, 'cohort', f.cohort)) AS evidence,
-  (to_regclass('public.triad_cutover_review_decisions') IS NOT NULL) AS decision_ledger_exists
-FROM conflicts c JOIN facts f ON f.triad_group_id = c.triad_group_id
-GROUP BY c.triad_group_id, c.triad_session_id, f.has_goal_checkins, f.seed_group_id, f.demo_organization, f.all_members_demo_accounts, f.organization, f.cohort
+), classified AS (
+  SELECT c.triad_group_id, c.triad_session_id, string_agg(DISTINCT c.conflict, ', ') AS conflicts,
+    CASE WHEN f.has_goal_checkins THEN 'REAL/UNKNOWN'
+         WHEN f.seed_group_id OR coalesce(f.demo_organization, false) OR coalesce(f.all_members_demo_accounts, false) THEN 'DEMO/SEED'
+         ELSE 'REAL/UNKNOWN' END AS classification,
+    jsonb_strip_nulls(jsonb_build_object('seed_group_id', f.seed_group_id, 'demo_organization', f.demo_organization,
+      'all_members_demo_accounts', f.all_members_demo_accounts, 'organization', f.organization, 'cohort', f.cohort)) AS evidence
+  FROM conflicts c JOIN facts f ON f.triad_group_id = c.triad_group_id
+  GROUP BY c.triad_group_id, c.triad_session_id, f.has_goal_checkins, f.seed_group_id, f.demo_organization, f.all_members_demo_accounts, f.organization, f.cohort
+)
+SELECT x.*,
+  CASE WHEN x.classification = 'DEMO/SEED' THEN 'removed by 20260918185900 (DEMO/SEED, archived)'
+       WHEN x.triad_group_id IN (SELECT triad_group_id FROM reviewed_decisions) THEN 'removed by reviewed decision (20260918185850, archived)'
+       ELSE 'UNRESOLVED — blocks deployment 1' END AS resolution
+FROM classified x
 ORDER BY 4 DESC, 1, 2;
 
 \echo '== 2b. Evidence for every conflicting group: members, sessions, reflections, goal check-ins, legacy round'
@@ -111,7 +121,9 @@ WHERE g.cohort_id IS NULL
 ORDER BY g.created_at;
 
 \echo '== 3. Blocking after cleanup (cutover section 1) — every list must be empty (groups removed by section 2 excluded)'
-WITH facts AS (
+WITH reviewed_decisions(triad_group_id) AS (VALUES
+  ('fc234f05-c98a-465e-8122-9f32e35ecf33'::uuid)
+), facts AS (
   SELECT g.id AS triad_group_id,
     g.id::text ~ '^[0-9a-f]{8}-0000-0000-0000-[0-9a-f]{12}$' AS seed_group_id,
     o.name = 'Clariva Demo Organization' AS demo_organization,
@@ -163,7 +175,9 @@ WITH facts AS (
          ELSE 'REAL/UNKNOWN' END AS classification
   FROM conflicts c JOIN facts f ON f.triad_group_id = c.triad_group_id
 ), removed_groups AS (
-  SELECT DISTINCT triad_group_id AS id FROM classified WHERE triad_session_id IS NULL AND classification = 'DEMO/SEED'
+  SELECT DISTINCT triad_group_id AS id FROM classified
+  WHERE triad_session_id IS NULL
+    AND (classification = 'DEMO/SEED' OR triad_group_id IN (SELECT triad_group_id FROM reviewed_decisions))
 ), removed_sessions AS (
   SELECT s.id FROM public.triad_sessions s WHERE s.triad_group_id IN (SELECT id FROM removed_groups)
   UNION SELECT triad_session_id FROM classified WHERE triad_session_id IS NOT NULL AND classification = 'DEMO/SEED'
@@ -196,7 +210,9 @@ WHERE g.is_active AND slot.e IS NOT NULL
 GROUP BY slot.e HAVING count(*) > 1;
 
 \echo '== 5. Informational: Triad completion per enrollment — today vs after deployment 1 (same rule; only removed duplicate / demo evidence differs)'
-WITH facts AS (
+WITH reviewed_decisions(triad_group_id) AS (VALUES
+  ('fc234f05-c98a-465e-8122-9f32e35ecf33'::uuid)
+), facts AS (
   SELECT g.id AS triad_group_id,
     g.id::text ~ '^[0-9a-f]{8}-0000-0000-0000-[0-9a-f]{12}$' AS seed_group_id,
     o.name = 'Clariva Demo Organization' AS demo_organization,
@@ -248,7 +264,9 @@ WITH facts AS (
          ELSE 'REAL/UNKNOWN' END AS classification
   FROM conflicts c JOIN facts f ON f.triad_group_id = c.triad_group_id
 ), removed_groups AS (
-  SELECT DISTINCT triad_group_id AS id FROM classified WHERE triad_session_id IS NULL AND classification = 'DEMO/SEED'
+  SELECT DISTINCT triad_group_id AS id FROM classified
+  WHERE triad_session_id IS NULL
+    AND (classification = 'DEMO/SEED' OR triad_group_id IN (SELECT triad_group_id FROM reviewed_decisions))
 ), removed_sessions AS (
   SELECT s.id FROM public.triad_sessions s WHERE s.triad_group_id IN (SELECT id FROM removed_groups)
   UNION SELECT triad_session_id FROM classified WHERE triad_session_id IS NOT NULL AND classification = 'DEMO/SEED'
@@ -302,5 +320,227 @@ WHERE slot.e IS NOT NULL AND s.status <> 'cancelled' AND coalesce(s.proposed_sta
   AND NOT EXISTS (SELECT 1 FROM public.session_activity_attributions a
                   WHERE a.source_activity_type = 'triad' AND a.source_activity_id = s.id AND a.enrollment_id = slot.e)
 ORDER BY 1, 2;
+
+
+\echo '== 8. Migration ledger vs repository (B3): every row must be empty'
+-- Repository versions (kept identical to supabase/migrations by
+-- src/test/migrationChain.test.ts). Deployment-1 versions (> 20260918180000)
+-- may be absent before the deployment.
+WITH repo(version) AS (VALUES
+  ('20260429193745'),
+  ('20260429193811'),
+  ('20260429193831'),
+  ('20260429200449'),
+  ('20260429210100'),
+  ('20260429210119'),
+  ('20260429212627'),
+  ('20260429212650'),
+  ('20260429212714'),
+  ('20260430092124'),
+  ('20260430100320'),
+  ('20260430100615'),
+  ('20260430110754'),
+  ('20260430115945'),
+  ('20260430130143'),
+  ('20260430143232'),
+  ('20260430144449'),
+  ('20260430145056'),
+  ('20260430154641'),
+  ('20260430171032'),
+  ('20260430172516'),
+  ('20260430181819'),
+  ('20260430183307'),
+  ('20260430195858'),
+  ('20260430201457'),
+  ('20260501105315'),
+  ('20260501140432'),
+  ('20260501185440'),
+  ('20260501190702'),
+  ('20260501191113'),
+  ('20260501205544'),
+  ('20260501213615'),
+  ('20260807203836'),
+  ('20260807211209'),
+  ('20260810120000'),
+  ('20260810121500'),
+  ('20260810123000'),
+  ('20260810130000'),
+  ('20260810140000'),
+  ('20260810150000'),
+  ('20260811100000'),
+  ('20260811100100'),
+  ('20260811110000'),
+  ('20260811111500'),
+  ('20260811120000'),
+  ('20260811130000'),
+  ('20260811131000'),
+  ('20260811132000'),
+  ('20260812170000'),
+  ('20260814080000'),
+  ('20260814090000'),
+  ('20260814100000'),
+  ('20260814110000'),
+  ('20260816090000'),
+  ('20260816120000'),
+  ('20260817090000'),
+  ('20260818120000'),
+  ('20260818130000'),
+  ('20260818130100'),
+  ('20260818140000'),
+  ('20260818140100'),
+  ('20260818140200'),
+  ('20260818140300'),
+  ('20260818140400'),
+  ('20260818140500'),
+  ('20260818140600'),
+  ('20260818150000'),
+  ('20260830120000'),
+  ('20260830120100'),
+  ('20260830130000'),
+  ('20260830130100'),
+  ('20260830140000'),
+  ('20260830150000'),
+  ('20260903100000'),
+  ('20260903100100'),
+  ('20260903100200'),
+  ('20260903100300'),
+  ('20260903110000'),
+  ('20260903110100'),
+  ('20260903110200'),
+  ('20260903110250'),
+  ('20260903110260'),
+  ('20260903110300'),
+  ('20260903120000'),
+  ('20260903120100'),
+  ('20260903120200'),
+  ('20260903120300'),
+  ('20260903120400'),
+  ('20260903120500'),
+  ('20260903130000'),
+  ('20260903130100'),
+  ('20260903130200'),
+  ('20260903130300'),
+  ('20260903130400'),
+  ('20260903140000'),
+  ('20260903150000'),
+  ('20260904100000'),
+  ('20260904400000'),
+  ('20260905100000'),
+  ('20260905100100'),
+  ('20260905100200'),
+  ('20260905100300'),
+  ('20260905100400'),
+  ('20260905100500'),
+  ('20260905100600'),
+  ('20260905100700'),
+  ('20260905200000'),
+  ('20260905200100'),
+  ('20260905200200'),
+  ('20260906120000'),
+  ('20260906130000'),
+  ('20260907120000'),
+  ('20260907140000'),
+  ('20260907150000'),
+  ('20260907160000'),
+  ('20260908090000'),
+  ('20260908100000'),
+  ('20260908110000'),
+  ('20260908130000'),
+  ('20260908140000'),
+  ('20260908150000'),
+  ('20260908160000'),
+  ('20260909043650'),
+  ('20260910100000'),
+  ('20260910110000'),
+  ('20260910120000'),
+  ('20260910130000'),
+  ('20260910140000'),
+  ('20260910150000'),
+  ('20260910161000'),
+  ('20260910170000'),
+  ('20260910170500'),
+  ('20260910171000'),
+  ('20260910172000'),
+  ('20260910173000'),
+  ('20260910174000'),
+  ('20260910174100'),
+  ('20260911120000'),
+  ('20260911130000'),
+  ('20260911140000'),
+  ('20260911141000'),
+  ('20260911150000'),
+  ('20260911160000'),
+  ('20260911170000'),
+  ('20260911180000'),
+  ('20260911190000'),
+  ('20260911200000'),
+  ('20260914071301'),
+  ('20260914071400'),
+  ('20260914071401'),
+  ('20260914071402'),
+  ('20260914071403'),
+  ('20260914071404'),
+  ('20260914071405'),
+  ('20260914071406'),
+  ('20260914071407'),
+  ('20260914100000'),
+  ('20260914110000'),
+  ('20260914120000'),
+  ('20260914130000'),
+  ('20260914140000'),
+  ('20260914150000'),
+  ('20260915100000'),
+  ('20260915110000'),
+  ('20260915120000'),
+  ('20260915130000'),
+  ('20260915150000'),
+  ('20260915155000'),
+  ('20260915160000'),
+  ('20260915170000'),
+  ('20260915180000'),
+  ('20260915190000'),
+  ('20260916100000'),
+  ('20260916110000'),
+  ('20260916112000'),
+  ('20260916113000'),
+  ('20260916140000'),
+  ('20260916141000'),
+  ('20260917100000'),
+  ('20260917110000'),
+  ('20260917120000'),
+  ('20260917130000'),
+  ('20260917140000'),
+  ('20260917150000'),
+  ('20260917160000'),
+  ('20260917170000'),
+  ('20260917171000'),
+  ('20260917172000'),
+  ('20260917173000'),
+  ('20260917180000'),
+  ('20260917181000'),
+  ('20260917190000'),
+  ('20260918090000'),
+  ('20260918120000'),
+  ('20260918130000'),
+  ('20260918140000'),
+  ('20260918160000'),
+  ('20260918170000'),
+  ('20260918180000'),
+  ('20260918185800'),
+  ('20260918185850'),
+  ('20260918185900'),
+  ('20260918189000'),
+  ('20260918190000'),
+  ('20260918195000')
+)
+SELECT 'ledger version not in the repository' AS mismatch, s.version, s.name
+FROM supabase_migrations.schema_migrations s
+WHERE s.version NOT IN (SELECT version FROM repo)
+UNION ALL
+SELECT 'repository version missing from the ledger', r.version, NULL
+FROM repo r
+WHERE r.version <= '20260918180000'
+  AND NOT EXISTS (SELECT 1 FROM supabase_migrations.schema_migrations s WHERE s.version = r.version)
+ORDER BY 2;
 
 ROLLBACK;

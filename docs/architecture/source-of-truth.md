@@ -29,7 +29,7 @@ never a second answer to a business question.
 
 ## Triad ownership map
 
-Established by `20260918185800_triad_cutover_ledgers`, `20260918185900_triad_legacy_data_cleanup` and `20260918190000_triad_canonical_cutover` (deployment 1). Legacy storage is dropped by `supabase/deployment-2/20260918199000_triad_retire_legacy.sql` (deployment 2, only after deployment 1 is verified in production).
+Established by `20260918185800_triad_cutover_ledgers`, `20260918185850_triad_reviewed_decisions`, `20260918185900_triad_legacy_data_cleanup`, `20260918189000_demo_generator_triad_model` and `20260918190000_triad_canonical_cutover` (deployment 1). Legacy storage is dropped by `supabase/deployment-2/20260918199000_triad_retire_legacy.sql` (deployment 2, only after deployment 1 is verified in production).
 
 The business model:
 
@@ -56,7 +56,7 @@ A group is never tied to a requirement unit. A session is never assigned to a de
 | Completion evidence | session × historical membership → `session_activity_attributions` (one writer: `triad_sync_session_attributions`) | `sponsor_canonical_activity` | Session evidence only: `milestone_id` is always NULL for Triads. Dated on the session's scheduled start. A cancelled session is no evidence. |
 | **Completion** | distinct completed Triad sessions of the enrollment's (historical) groups, capped at the programme's required units | `canonical_module_progress` → `canonical_triad_completion` (`raw_completed_sessions`, `completed_units`, `completed_by_as_of`) | A third session is kept as activity beyond the requirement. It doesn't depend on staying in one group. |
 | **Due / overdue** | cumulative due dates compared with cumulative completed session evidence | `canonical_module_progress` → `canonical_triad_completion` (`due_units`, `overdue_units`, `next_due_on`), journeys | `due_units` = Triad dates ≤ as-of. `overdue_units` = max(due − min(completed by as-of, due), 0). Journey checkpoints use activity dates ≤ the checkpoint. |
-| Triad reflection rate | `triad_reflection_rate_internal` | `admin_programme_triad_reflection_rate`, `send-weekly-admin-summary` | An engagement signal, labelled "Triad reflection". It is never Triad completion. |
+| Triad reflection rate | `triad_reflection_rate_internal` | `admin_programme_triad_reflection_rate`, `send-weekly-admin-summary` | An engagement signal, labelled "Triad reflection". It is never Triad completion. Weeks come from the canonical training schedule (`canonical_training_learning_items`); nothing rebuilds cohort weeks. |
 | My Journey / Your Sessions / Dashboard | projections only | `learner_reflection_feed`, `learner_session_history`, `canonical_enrollment_journey` | No Triad data is copied into another table. No round or week label. |
 
 Every role reads these facts from the same place: Admin (`admin_cohort_triad_learners`), Learner (`learner_triad_status`, `learner_canonical_progress`), Sponsor (`sponsor_canonical_leader_progress` / journey) and a coach enrolled as a learner (the learner path). Privacy can hide reflection content, but never changes a programme fact.

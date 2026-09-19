@@ -11,7 +11,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 DB="${REHEARSAL_DB_URL:?set REHEARSAL_DB_URL to a local pre-cutover database}"
 case "$DB" in *127.0.0.1*|*localhost*) ;; *) echo "Refusing to run against a non-local database" >&2; exit 2;; esac
-CHAIN=(supabase/migrations/20260918185800_*.sql supabase/migrations/20260918185900_*.sql supabase/migrations/20260918189000_*.sql
+CHAIN=(supabase/migrations/20260918185800_*.sql supabase/migrations/20260918185850_*.sql supabase/migrations/20260918185900_*.sql supabase/migrations/20260918189000_*.sql
        supabase/migrations/20260918190000_*.sql supabase/migrations/20260918195000_*.sql)
 run() {
   { echo "BEGIN;"; echo "\\i scripts/triad-cutover-rehearsal/fixture.sql"; [[ -n "${1:-}" ]] && echo "\\i $1";

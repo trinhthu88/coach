@@ -338,6 +338,13 @@ describe("programme profile architecture", () => {
       expect(files.filter((f) => /from\("triad_reflections"\)/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
     });
 
+    it("reflection-rate consumers never reconstruct cohort weeks (one canonical week schedule)", () => {
+      for (const file of ["src/hooks/admin/useAdminProgrammeEngagement.ts", "supabase/functions/send-weekly-admin-summary/index.ts"]) {
+        const text = readFileSync(join(process.cwd(), file), "utf8");
+        expect(text, file).not.toMatch(/cohort_week_overrides|week_number\s*-\s*1|weekNumber\s*-\s*1|start_date[^\n]*\+|unlock_date/);
+      }
+    });
+
     it("membership has one read path per role: learners via learner_triad_members / overview, Admin via its RPC", () => {
       expect(files.filter((f) => /from\("triad_group_members"\)/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
     });

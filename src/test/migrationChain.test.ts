@@ -242,6 +242,24 @@ describe("migration chain — canonical final state", () => {
       }
     });
 
+    it("the readiness report carries exactly the shipped reviewed decisions and the repository's migration versions", () => {
+      const readiness = readFileSync(join(process.cwd(), "scripts/triad-cutover-readiness.sql"), "utf8");
+      const decisions = readFileSync(join(DIR, "20260918185850_triad_reviewed_decisions.sql"), "utf8");
+      const uuid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
+      const decided = [...new Set(decisions.match(/DECLARE g uuid := '([^']+)'/g)?.map((m) => m.match(uuid)![0]) ?? [])].sort();
+      const blocks = readiness.match(/reviewed_decisions\(triad_group_id\) AS \(VALUES[\s\S]*?\)\n\)/g) ?? [];
+      expect(blocks.length).toBeGreaterThan(0);
+      for (const block of blocks) expect([...new Set(block.match(uuid))].sort()).toEqual(decided);
+      const repoBlock = readiness.match(/WITH repo\(version\) AS \(VALUES([\s\S]*?)\n\)/)?.[1] ?? "";
+      expect(repoBlock.match(/\d{14}/g)).toEqual(files.map((f) => f.split("_")[0]));
+    });
+
+    it("the Triad reflection rate buckets weeks through the canonical training schedule, never its own week formula", () => {
+      const rate = lastDefinition("triad_reflection_rate_internal")?.body ?? "";
+      expect(rate).toMatch(/canonical_training_learning_items\(m\.enrollment_id/);
+      expect(rate).not.toMatch(/week_number|cohort_week_overrides|start_date|interval\s*'7 days'|\*\s*7\b/i);
+    });
+
     it("the legacy cleanup removes only DEMO/SEED conflicts and stops on REAL/UNKNOWN ones", () => {
       const sql = readFileSync(join(DIR, CLEANUP), "utf8");
       expect(sql).toMatch(/'REAL\/UNKNOWN' AND NOT x\.reviewed_delete/);

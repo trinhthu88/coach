@@ -74,10 +74,12 @@ END $$;
 -- 2. Triad reflection rate. Expected: one reflection per member of each
 --    COMPLETED Triad session of the programme's groups (membership of the
 --    session's historical group; optionally within a session-date window).
---    Submitted: that member's reflection exists. Rows per Training week —
---    the cohort week the session took place in (week start = the cohort's
---    unlock override, else cohort start + 7 days per week) — plus one total
---    row (is_total). A session belongs to no requirement unit.
+--    Submitted: that member's reflection exists. Rows per Training week plus
+--    one total row (is_total). A session belongs to no requirement unit.
+--    Week bucketing reuses THE canonical training schedule
+--    (canonical_training_learning_items: the member enrollment's weeks and
+--    their cohort dates) — the session falls in the latest week dated on or
+--    before it. No week boundary is computed here.
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.triad_reflection_rate_internal(p_programme_id uuid, p_from date DEFAULT NULL, p_to date DEFAULT NULL)
 RETURNS TABLE (training_week_id uuid, is_total boolean, expected_reflections integer, submitted_reflections integer, rate_pct numeric)
@@ -85,19 +87,19 @@ LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
   WITH expected AS (
-    SELECT (
-        SELECT tw.id FROM public.training_weeks tw
-        JOIN public.cohorts c ON c.id = g.cohort_id
-        LEFT JOIN public.cohort_week_overrides cwo ON cwo.cohort_id = c.id AND cwo.training_week_id = tw.id
-        WHERE tw.programme_id = p_programme_id
-          AND coalesce(cwo.unlock_date, c.start_date + (tw.week_number - 1) * 7) <= s.scheduled_start_time::date
-        ORDER BY tw.week_number DESC LIMIT 1) AS training_week_id,
+    SELECT wk.training_week_id,
       EXISTS (SELECT 1 FROM public.triad_reflections r
               WHERE r.triad_session_id = s.id AND r.enrollment_id = m.enrollment_id) AS submitted
     FROM public.triad_sessions s
-    JOIN public.triad_groups g ON g.id = s.triad_group_id
-    JOIN public.triad_group_members m ON m.triad_group_id = g.id
+    JOIN public.triad_group_members m ON m.triad_group_id = s.triad_group_id
     JOIN public.programme_enrollments e ON e.id = m.enrollment_id
+    LEFT JOIN LATERAL (
+      SELECT i.training_week_id
+      FROM public.canonical_training_learning_items(m.enrollment_id, current_date) i
+      WHERE i.training_week_id IS NOT NULL AND i.due_on <= s.scheduled_start_time::date
+      ORDER BY i.due_on DESC, i.training_week_id
+      LIMIT 1
+    ) wk ON true
     WHERE e.programme_id = p_programme_id
       AND s.status = 'completed'
       AND (p_from IS NULL OR s.scheduled_start_time::date >= p_from)

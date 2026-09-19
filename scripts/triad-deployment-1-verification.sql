@@ -13,7 +13,7 @@ DO $$
 DECLARE bad text; n bigint;
 BEGIN
   -- Ledger: deployment 1 applied, deployment 2 not.
-  SELECT string_agg(v, ', ') INTO bad FROM unnest(ARRAY['20260918185800', '20260918185900', '20260918189000', '20260918190000', '20260918195000']) v
+  SELECT string_agg(v, ', ') INTO bad FROM unnest(ARRAY['20260918185800', '20260918185850', '20260918185900', '20260918189000', '20260918190000', '20260918195000']) v
   WHERE NOT EXISTS (SELECT 1 FROM supabase_migrations.schema_migrations s WHERE s.version = v);
   IF bad IS NOT NULL THEN RAISE EXCEPTION 'deployment 1 migrations missing from the ledger: %', bad; END IF;
   IF to_regclass('public.triad_rounds') IS NULL THEN RAISE EXCEPTION 'legacy storage already dropped (deployment 2 ran early)'; END IF;
