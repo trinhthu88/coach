@@ -758,24 +758,24 @@
     },
     "triads": {
       "title": "Triads",
-      "subtitle": "Thực hành theo nhóm ba: coach, coachee và người quan sát. Vòng hiện tại và lịch sử session được hiển thị riêng.",
-      "roundCurrent": "Vòng {{n}} hiện tại",
-      "noRoundPill": "Chưa mở vòng",
+      "subtitle": "Thực hành theo nhóm ba: coach, coachee và người quan sát. Nhóm của bạn luyện tập cùng nhau cho mọi session Triad yêu cầu.",
       "myGroup": "Nhóm Triad của tôi",
       "noGroup": "Bạn chưa được xếp vào nhóm Triad.",
       "member": "Thành viên",
       "nextTitle": "Session Triad tiếp theo",
       "openSession": "Mở session Triad",
-      "roundsTitle": "Các vòng",
+      "roundsTitle": "Các session Triad của tôi",
       "roundsSubtitle": "Mọi session Triad trong chương trình, kèm trạng thái tự phản tư của bạn",
-      "earlierPractice": "Thực hành Triad",
       "session": "Session",
       "selfRating": "Tự đánh giá",
       "selfReflection": "Tự phản tư",
       "submitted": "Đã nộp",
       "due": "Cần nộp",
       "afterSession": "Sau session",
-      "rotateRoles": "Mọi người lần lượt đảm nhận vai trò coach, coachee và observer."
+      "rotateRoles": "Mọi người lần lượt đảm nhận vai trò coach, coachee và observer.",
+      "progressPill": "Hoàn thành {{completed}}/{{required}}",
+      "noRequirementPill": "Không bắt buộc",
+      "sessionPractice": "Thực hành Triad"
     }
   }
 }

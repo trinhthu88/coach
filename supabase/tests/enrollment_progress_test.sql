@@ -294,12 +294,10 @@ values
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Past mentoring', '2026-01-22 10:00:00+00', 60, 'completed', 'test/past.pdf', 'e1000000-0000-0000-0000-000000000001'),
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Future mentoring', '2026-03-22 10:00:00+00', 60, 'completed', 'test/future.pdf', 'e1000000-0000-0000-0000-000000000001');
 
--- A dyad for the cohort's Triad requirement unit 1; both completed sessions
--- are evidence for both member enrollments.
-insert into public.triad_groups (id, cohort_requirement_date_id)
-select 'a5000000-0000-0000-0000-000000000001', d.id
-from public.cohort_requirement_dates d
-where d.cohort_id = 'd1000000-0000-0000-0000-000000000001' and d.module = 'triads' and d.ordinal = 1;
+-- A cohort dyad; both completed sessions are evidence for both member
+-- enrollments (a group belongs to its cohort, not to a requirement unit).
+insert into public.triad_groups (id, cohort_id)
+values ('a5000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001');
 
 insert into public.triad_group_members (triad_group_id, enrollment_id, member_order)
 values

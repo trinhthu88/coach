@@ -21,6 +21,7 @@ second_seed_output="$(mktemp)"
 targeted_auth_output="$(mktemp)"
 targeted_isolation_output="$(mktemp)"
 targeted_pg_output="$(mktemp)"
+deployment2_test_output="$(mktemp)"
 stack_started=false
 
 supabase_cli() {
@@ -44,7 +45,7 @@ run_guarded_local_seed() {
 
 cleanup() {
   local exit_code=$?
-  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$second_database_test_output" "$isolation_test_output" "$lint_output" "$types_check_output" "$tsc_output" "$snapshot_diff_output" "$third_seed_output" "$second_seed_output" "$targeted_auth_output" "$targeted_isolation_output" "$targeted_pg_output"
+  rm -f "$types_output" "$snapshot_before" "$snapshot_after" "$snapshot_sql_file" "$database_test_output" "$second_database_test_output" "$isolation_test_output" "$lint_output" "$types_check_output" "$tsc_output" "$snapshot_diff_output" "$third_seed_output" "$second_seed_output" "$targeted_auth_output" "$targeted_isolation_output" "$targeted_pg_output" "$deployment2_test_output"
   if [[ "$stack_started" == true ]]; then
     supabase_cli stop --no-backup || true
   fi
@@ -312,6 +313,34 @@ if ! supabase_cli test db --local supabase/tests >"$second_database_test_output"
   exit 1
 fi
 cat "$second_database_test_output"
+printf '%s\n' '==> Applying deployment 2 (supabase/deployment-2) and re-running database tests'
+# Deployment 2 retires the legacy Triad storage after deployment 1 is
+# verified in production. It is not in supabase/migrations, so a plain push
+# of deployment 1 can never apply it; here it is applied on top of the
+# replayed chain so both stages stay valid, and the generated types below are
+# checked against the final (deployment 2) schema.
+for deployment2_migration in supabase/deployment-2/*.sql; do
+  if ! psql --no-psqlrc --set=ON_ERROR_STOP=1 --single-transaction \
+    --file "$deployment2_migration" "${DB_URL:?local database URL unavailable}" >"$deployment2_test_output" 2>&1; then
+    cat "$deployment2_test_output"
+    [[ "${GITHUB_ACTIONS:-}" == true ]] && printf '::error title=Deployment 2 migration::%s failed\n' "$deployment2_migration"
+    exit 1
+  fi
+done
+if ! supabase_cli test db --local supabase/tests >"$deployment2_test_output" 2>&1; then
+  cat "$deployment2_test_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    while IFS= read -r failure_line; do
+      [[ -z "$failure_line" ]] && continue
+      failure_line="${failure_line//'%'/'%25'}"
+      failure_line="${failure_line//$'\r'/'%0D'}"
+      failure_line="${failure_line//$'\n'/'%0A'}"
+      printf '::error title=Deployment 2 database validation::%s\n' "$failure_line"
+    done < "$deployment2_test_output"
+  fi
+  exit 1
+fi
+cat "$deployment2_test_output"
 printf '%s\n' '==> Linting local database'
 if ! supabase_cli db lint --local >"$lint_output" 2>&1; then
   cat "$lint_output"

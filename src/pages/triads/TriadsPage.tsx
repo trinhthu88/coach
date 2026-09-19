@@ -1,43 +1,45 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useMyTriads, type TriadGroupEntry } from "@/hooks/triads/useMyTriads";
+import { useMyTriads, useMyTriadStatus, type TriadGroupEntry, type TriadStatusView } from "@/hooks/triads/useMyTriads";
 import { useModuleWorkspace } from "@/hooks/journey/useModuleWorkspace";
 import type { DevelopmentSessionItem } from "@/hooks/journey/developmentSessionTypes";
-import { formatProfileDate, formatProfileDateTime } from "@/lib/programmeProfile";
-import { nextOpenSession, sessionStatusTone } from "@/lib/moduleSessions";
+import { formatProfileDate } from "@/lib/programmeProfile";
+import { sessionStatusTone } from "@/lib/moduleSessions";
 import { sessionDetailPath } from "@/lib/sessionPaths";
 import { ModuleCard, ModuleEyebrow, ModulePageHeader } from "@/components/programme/module/ModulePage";
 import { ProfileLoadError } from "@/components/programme/primitives";
 import { TriadSessionCard } from "./components/TriadSessionCard";
+import { TriadAlternativeProposal } from "./components/TriadAlternativeProposal";
 
 /**
  * Triads (Coachee prototype → Triads). Every fact comes from a canonical source:
- *  1. Current round — the learner's open group for a cohort Triad requirement
- *     unit, with that unit's canonical due date (learner_triad_overview).
- *  2. My Triad group — canonical membership (triad_group_members, names via
- *     learner_triad_members). Everyone rotates roles, so no member owns one.
- *  3. Rounds / history — every Triad session in the enrollment from
- *     learner_session_history, with the learner's own reflection state from
- *     the same overview.
- * Triads progress (x / y) is quoted from the canonical progress row.
+ *  1. Progress — programme required units, the cohort's cumulative Triad
+ *     deadlines and the canonical completion (learner_triad_status: distinct
+ *     completed sessions, capped at required). No rounds.
+ *  2. My Triad group — the learner's active cohort group (membership from
+ *     triad_group_members, names via learner_triad_members). Everyone
+ *     rotates roles, so no member owns one. The same group schedules
+ *     Session 1, Session 2, … across the requirement.
+ *  3. Sessions — every Triad session of the enrollment's groups (active and
+ *     closed) from learner_session_history, with the learner's own
+ *     reflection state from learner_triad_overview.
  */
 export default function TriadsPage() {
   const { t } = useTranslation("triads");
   const { t: tDash } = useTranslation("dashboard");
   const ws = useModuleWorkspace("triads");
-  const { groups, loading: roundsLoading, error: roundsError, refetch } = useMyTriads(ws.enrollmentId ?? null);
+  const { groups, loading: groupsLoading, error: groupsError, refetch } = useMyTriads(ws.enrollmentId ?? null);
+  const { status, loading: statusLoading, error: statusError } = useMyTriadStatus(ws.enrollmentId ?? null);
 
-  const openGroups = groups
-    .filter((g) => g.isActive && (!g.session || g.session.status === "proposed" || g.session.status === "confirmed"))
-    .sort((a, b) => (a.unitNumber ?? 0) - (b.unitNumber ?? 0));
-  const openRound = openGroups[0] ?? null;
+  const activeGroup = groups.find((g) => g.isActive) ?? null;
+  const focus = activeGroup ?? groups[0] ?? null;
+  const openSession = activeGroup?.session && (activeGroup.session.status === "proposed" || activeGroup.session.status === "confirmed") ? activeGroup : null;
   const history = [...ws.sessions].sort((a, b) => new Date(a.startTime ?? 0).getTime() - new Date(b.startTime ?? 0).getTime());
-  const next = nextOpenSession(ws.sessions);
-  const focusSessionId = next?.sourceId ?? history[history.length - 1]?.sourceId;
-  const focus = openRound ?? groups.find((g) => g.sessions.some((s) => s.id === focusSessionId)) ?? groups[groups.length - 1] ?? null;
+  const sessionNumberById = new Map(groups.flatMap((g) => g.sessions.map((s) => [s.id, s.sessionNumber] as const)));
   const reflectionBySession = new Map(
     groups.flatMap((g) => g.sessions.map((s) => [s.id, { submitted: s.reflectionSubmitted, selfRating: s.reflectionSatisfaction }] as const))
   );
@@ -49,21 +51,27 @@ export default function TriadsPage() {
         subtitle={tDash("learnerModules.triads.subtitle")}
         action={
           <span
-            data-testid="triad-round-pill"
+            data-testid="triad-progress-pill"
             className="rounded-full bg-[#e4f1f5] px-[13px] py-2 text-[9px] font-extrabold uppercase tracking-[.08em] text-[#226d80]"
           >
-            {openRound ? tDash("learnerModules.triads.roundCurrent", { n: openRound.unitNumber ?? "—" }) : tDash("learnerModules.triads.noRoundPill")}
+            {status && status.requiredUnits > 0
+              ? tDash("learnerModules.triads.progressPill", { completed: status.completedUnits, required: status.requiredUnits })
+              : status
+                ? tDash("learnerModules.triads.noRequirementPill")
+                : "—"}
           </span>
         }
       />
 
-      <div data-testid="triad-current-rounds" className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(290px,1fr))]">
-        <TriadGroupCard entry={focus} loading={roundsLoading} />
-        {roundsLoading ? (
+      <TriadProgressCard status={status} loading={statusLoading} error={statusError} />
+
+      <div data-testid="triad-current" className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(290px,1fr))]">
+        <TriadGroupCard entry={focus} loading={groupsLoading} />
+        {groupsLoading ? (
           <div className="flex items-center justify-center rounded-[16px] bg-[#062f3e] p-5">
             <Loader2 className="h-5 w-5 animate-spin text-white" />
           </div>
-        ) : roundsError ? (
+        ) : groupsError ? (
           <ModuleCard>
             <div role="alert" className="flex flex-col items-center gap-3 text-center text-sm">
               <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -73,11 +81,13 @@ export default function TriadsPage() {
               </Button>
             </div>
           </ModuleCard>
-        ) : openRound?.session ? (
+        ) : openSession ? (
           // Accept / propose another time / mark completed live on the existing card.
-          <TriadSessionCard entry={openRound} />
+          <TriadSessionCard entry={openSession} untilDate={status?.nextDueOn ?? null} />
+        ) : activeGroup ? (
+          <ScheduleNextCard entry={activeGroup} untilDate={status?.nextDueOn ?? null} />
         ) : (
-          <NextTriadCard next={next} />
+          <NoGroupCard />
         )}
       </div>
 
@@ -85,10 +95,10 @@ export default function TriadsPage() {
         <h2 className="font-serif text-[19px] font-normal tracking-[-.02em] text-[#062f3e]">{tDash("learnerModules.triads.roundsTitle")}</h2>
         <p className="mb-4 mt-[5px] text-[11.5px] text-[#7d7468]">
           {tDash("learnerModules.triads.roundsSubtitle")}
-          {ws.required != null && (
+          {status && status.requiredUnits > 0 && (
             <>
               {" · "}
-              <span data-testid="triad-progress">{t("history.progress", { completed: ws.completed, required: ws.required })}</span>
+              <span data-testid="triad-progress">{t("history.progress", { completed: status.completedUnits, required: status.requiredUnits })}</span>
             </>
           )}
         </p>
@@ -101,12 +111,66 @@ export default function TriadsPage() {
         ) : (
           <div className="flex flex-col gap-2.5">
             {history.map((session) => (
-              <TriadRoundRow key={session.id} session={session} status={reflectionBySession.get(session.sourceId) ?? null} statusLoading={roundsLoading} />
+              <TriadSessionRow
+                key={session.id}
+                session={session}
+                sessionNumber={sessionNumberById.get(session.sourceId) ?? null}
+                status={reflectionBySession.get(session.sourceId) ?? null}
+                statusLoading={groupsLoading}
+              />
             ))}
           </div>
         )}
       </ModuleCard>
     </div>
+  );
+}
+
+function TriadProgressCard({ status, loading, error }: { status: TriadStatusView | null; loading: boolean; error: boolean }) {
+  const { t } = useTranslation("triads");
+  if (loading) return <div className="h-20 animate-pulse rounded-[16px] bg-[#eee8de]" />;
+  if (error) return <ProfileLoadError text={t("loadError")} />;
+  if (!status) return null;
+  if (status.requiredUnits === 0) {
+    return (
+      <ModuleCard testId="triad-status">
+        <p className="text-[12px] text-[#7d7468]">{t("progress.notRequired")}</p>
+      </ModuleCard>
+    );
+  }
+  const extra = Math.max(status.rawCompletedSessions - status.requiredUnits, 0);
+  return (
+    <ModuleCard testId="triad-status">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <p data-testid="triad-status-progress" className="font-serif text-[22px] font-normal text-[#062f3e]">
+          {t("progress.label", { completed: status.completedUnits, required: status.requiredUnits })}
+        </p>
+        <p className="text-[11.5px] text-[#7d7468]">
+          {status.completedUnits >= status.requiredUnits
+            ? t("progress.allDone")
+            : status.nextDueOn
+              ? <span data-testid="triad-next-deadline">{t("progress.nextDeadline", { date: formatProfileDate(status.nextDueOn) })}</span>
+              : null}
+        </p>
+      </div>
+      {status.overdueUnits > 0 && (
+        <p data-testid="triad-overdue" className="mt-1 text-[11.5px] font-semibold text-[#a8541c]">{t("progress.overdue", { count: status.overdueUnits })}</p>
+      )}
+      {extra > 0 && <p className="mt-1 text-[11px] text-[#7d7468]">{t("progress.extra", { count: extra })}</p>}
+      <ol className="mt-3 flex flex-wrap gap-2" data-testid="triad-schedule">
+        {status.schedule.map((m) => (
+          <li
+            key={m.milestone}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-[11px]",
+              m.satisfied ? "border-[#cfe6d8] bg-[#e8f1ec] text-[#17663f]" : m.isDue ? "border-[#f0d6c4] bg-[#fbeee5] text-[#a8541c]" : "border-[#efeae1] bg-white text-[#4a463f]",
+            )}
+          >
+            {`${m.milestone} · ${formatProfileDate(m.dueOn)}`}
+          </li>
+        ))}
+      </ol>
+    </ModuleCard>
   );
 }
 
@@ -122,14 +186,7 @@ function TriadGroupCard({ entry, loading }: { entry: TriadGroupEntry | null; loa
         <p className="mt-3 text-[12px] text-[#7d7468]">{tDash("learnerModules.triads.noGroup")}</p>
       ) : (
         <>
-          <h2 className="mt-[7px] font-serif text-[19px] font-normal tracking-[-.02em] text-[#062f3e]">
-            {entry.unitNumber != null ? t("roundLabel", { n: entry.unitNumber }) : tDash("learnerModules.triads.myGroup")}
-          </h2>
-          {entry.dueOn && (
-            <p data-testid="triad-due" className="mt-1 text-[11.5px] text-[#7d7468]">
-              {t("deadlineLabel")} {formatProfileDate(entry.dueOn)}
-            </p>
-          )}
+          {!entry.isActive && <p className="mt-[7px] text-[11.5px] text-[#7d7468]">{t("closedGroup")}</p>}
           {entry.memberCount === 2 && <p className="mt-1.5 text-[11.5px] text-[#7d7468]">{t("dyadNote")}</p>}
           <div className="mt-4 grid gap-[9px] [grid-template-columns:repeat(auto-fit,minmax(130px,1fr))]">
             {entry.members.map((member) => (
@@ -152,53 +209,56 @@ function TriadGroupCard({ entry, loading }: { entry: TriadGroupEntry | null; loa
   );
 }
 
-function NextTriadCard({ next }: { next: DevelopmentSessionItem | null }) {
+/** The active group has no open session: propose the next one. */
+function ScheduleNextCard({ entry, untilDate }: { entry: TriadGroupEntry; untilDate: string | null }) {
   const { t } = useTranslation("triads");
-  const { t: tDash } = useTranslation("dashboard");
-  const path = next ? sessionDetailPath(next) : null;
+  const [open, setOpen] = useState(false);
   return (
-    <section data-testid="triad-next" className="rounded-[16px] bg-[#062f3e] p-5 text-white">
-      <div className="text-[9.5px] font-extrabold uppercase tracking-[.18em] text-[#3db4d0]">{tDash("learnerModules.triads.nextTitle")}</div>
-      {next ? (
-        <>
-          <div className="mt-3 font-serif text-[32px] font-light leading-none">{next.startTime ? formatProfileDate(next.startTime) : "—"}</div>
-          <div className="mt-2 text-[11.5px] text-white/65">
-            {[
-              next.startTime ? formatProfileDateTime(next.startTime) : null,
-              next.roundLabel,
-              next.trainingWeekLabel,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </div>
-          {path && (
-            <Link to={path} className="mt-[18px] inline-block rounded-full bg-[#3db4d0] px-[18px] py-[11px] text-[11.5px] font-bold text-[#062f3e]">
-              {tDash("learnerModules.triads.openSession")}
-            </Link>
-          )}
-          {/* Availability is a separate fact: this session exists, but no admin round is open. */}
-          <p className="mt-4 border-t border-white/10 pt-3 text-[10.5px] text-white/55">{t("currentRounds.noneTitle")}</p>
-        </>
+    <section data-testid="triad-schedule-next" className="rounded-[16px] bg-[#062f3e] p-5 text-white">
+      <div className="text-[9.5px] font-extrabold uppercase tracking-[.18em] text-[#3db4d0]">{t("schedule.noOpenTitle")}</div>
+      <p className="mt-2 text-[11.5px] leading-relaxed text-white/65">{t("schedule.noOpenBody")}</p>
+      {open ? (
+        <div className="mt-4 rounded-xl bg-white p-4 text-foreground">
+          <TriadAlternativeProposal entry={entry} mode="schedule" untilDate={untilDate} onDone={() => setOpen(false)} />
+        </div>
       ) : (
-        <>
-          <div className="mt-3 font-serif text-[22px] font-light leading-snug">{t("currentRounds.noneTitle")}</div>
-          <p className="mt-2 text-[11.5px] leading-relaxed text-white/65">{t("currentRounds.noneBody")}</p>
-        </>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-[18px] inline-block rounded-full bg-[#3db4d0] px-[18px] py-[11px] text-[11.5px] font-bold text-[#062f3e]"
+        >
+          {t("schedule.cta")}
+        </button>
       )}
     </section>
   );
 }
 
-function TriadRoundRow({
+function NoGroupCard() {
+  const { t } = useTranslation("triads");
+  const { t: tDash } = useTranslation("dashboard");
+  return (
+    <section data-testid="triad-no-group" className="rounded-[16px] bg-[#062f3e] p-5 text-white">
+      <div className="text-[9.5px] font-extrabold uppercase tracking-[.18em] text-[#3db4d0]">{tDash("learnerModules.triads.nextTitle")}</div>
+      <div className="mt-3 font-serif text-[22px] font-light leading-snug">{tDash("learnerModules.triads.noGroup")}</div>
+      <p className="mt-2 text-[11.5px] leading-relaxed text-white/65">{t("noGroupBody")}</p>
+    </section>
+  );
+}
+
+function TriadSessionRow({
   session,
+  sessionNumber,
   status,
   statusLoading,
 }: {
   session: DevelopmentSessionItem;
+  sessionNumber: number | null;
   status: { submitted: boolean; selfRating: number | null } | null;
   statusLoading: boolean;
 }) {
   const { t } = useTranslation("journey");
+  const { t: tTriads } = useTranslation("triads");
   const { t: tDash } = useTranslation("dashboard");
   const path = sessionDetailPath(session);
   const completed = session.status === "completed";
@@ -206,16 +266,6 @@ function TriadRoundRow({
   const tone = (kind: "done" | "due" | "later" | "none") =>
     kind === "done" ? "text-[#17663f]" : kind === "due" ? "text-[#a8541c]" : "text-[#9a9287]";
   const reflectionKind: "done" | "due" | "later" | "none" = status?.submitted ? "done" : cancelled ? "none" : completed ? "due" : "later";
-  const ratingText =
-    status?.selfRating != null
-      ? `${status.selfRating} / 5`
-      : reflectionKind === "done"
-        ? tDash("learnerModules.triads.submitted")
-        : reflectionKind === "due"
-          ? tDash("learnerModules.triads.due")
-          : reflectionKind === "later"
-            ? tDash("learnerModules.triads.afterSession")
-            : "—";
   const reflectionText =
     reflectionKind === "done"
       ? tDash("learnerModules.triads.submitted")
@@ -224,13 +274,14 @@ function TriadRoundRow({
         : reflectionKind === "later"
           ? tDash("learnerModules.triads.afterSession")
           : "—";
+  const ratingText = status?.selfRating != null ? `${status.selfRating} / 5` : reflectionText;
 
   return (
     <div data-testid="session-row" data-source={session.sourceType} data-status={session.status} className="rounded-[13px] border border-[#efeae1] bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-[14px]">
         <div className="min-w-0">
           <div className="text-[8.5px] font-extrabold uppercase tracking-[.14em] text-[#2c8fa8]">
-            {[session.roundLabel ?? tDash("learnerModules.triads.earlierPractice"), session.trainingWeekLabel].filter(Boolean).join(" · ")}
+            {sessionNumber != null ? tTriads("sessionLabel", { n: sessionNumber }) : tDash("learnerModules.triads.sessionPractice")}
           </div>
           <div className="mt-[5px] text-[13px] font-semibold text-[#062f3e]">{session.title || t("developmentSessions.types.triad")}</div>
           {session.counterpartNames?.length ? (

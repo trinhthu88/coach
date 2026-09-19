@@ -75,6 +75,10 @@ describe("migration chain — canonical final state", () => {
       // except the proposal layer itself, where policy changes belong.
       for (const { name, body } of namedFunctionDefinitions(sql)) {
         if (name === "cohort_requirement_proposal_internal") continue;
+        // The out-of-band demo data generator (20260918189000) copies stored
+        // snapshot columns (distribution_mode = EXCLUDED.distribution_mode);
+        // it writes fixture data and interprets no policy.
+        if (name.startsWith("demo_")) continue;
         expect(body, `${file} ${name}`).not.toMatch(/distribution_mode\s*=|\*\s*units\.sequence_no\s*\//);
       }
       for (const body of functionDefinitions(sql, "sponsor_canonical_module_schedule")) {
@@ -148,44 +152,70 @@ describe("migration chain — canonical final state", () => {
   });
 
   describe("Triad canonical cutover", () => {
+    const CLEANUP = "20260918185900_triad_legacy_data_cleanup.sql";
     const CUTOVER = "20260918190000_triad_canonical_cutover.sql";
+    const DEPLOYMENT_2 = join(process.cwd(), "supabase/deployment-2");
     const RETIRE_TRIAD = "20260918199000_triad_retire_legacy.sql";
     const RETIRED_TRIAD_FIELDS = /(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|completion_deadline|programme_triad_rounds|\btriad_rounds\b|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)/;
+    const UNIT_OWNERSHIP = /cohort_requirement_date_id|canonical_triad_requirement_fulfilment|triad_requirement_units_internal|triad_unit_enrollment_status_internal|cohort_triad_operations/;
 
-    it("the legacy round tables and slot / role / answer columns are dropped after the cutover", () => {
-      const sql = readFileSync(join(DIR, RETIRE_TRIAD), "utf8");
+    it("deployment 1 never drops legacy data: the retirement lives outside supabase/migrations (deployment 2)", () => {
+      expect(files).toContain(CLEANUP);
       expect(files).toContain(CUTOVER);
+      expect(files.filter((f) => /retire_legacy/.test(f) && /triad/.test(f))).toEqual([]);
+      for (const file of files.filter((f) => f >= CLEANUP)) {
+        const sql = readFileSync(join(DIR, file), "utf8");
+        expect(sql, file).not.toMatch(/DROP TABLE public\.(programme_)?triad_rounds|DROP COLUMN (member_[123]_id|enrollment_[123]_id|(coach|coachee|observer)_enrollment_id|participant_id|learned_as_|will_use_as_)/);
+      }
+      expect(readdirSync(DEPLOYMENT_2)).toEqual([RETIRE_TRIAD]);
+    });
+
+    it("deployment 2 drops the legacy round tables and slot / role / response / answer columns, and keeps the group's cohort", () => {
+      const sql = readFileSync(join(DEPLOYMENT_2, RETIRE_TRIAD), "utf8");
       expect(sql).toMatch(/DROP TABLE public\.triad_rounds;/);
       expect(sql).toMatch(/DROP TABLE public\.programme_triad_rounds;/);
       for (const column of ["member_1_id", "enrollment_1_id", "coach_enrollment_id", "coachee_enrollment_id", "observer_enrollment_id",
-        "member_1_response", "proposed_start_time", "participant_id", "learned_as_coach", "will_use_as_observer"]) {
+        "member_1_response", "proposed_start_time", "participant_id", "learned_as_coach", "will_use_as_observer", "round_number", "triad_round_id", "programme_id"]) {
         expect(sql, column).toMatch(new RegExp(`DROP COLUMN ${column}`));
       }
+      expect(sql).not.toMatch(/DROP COLUMN cohort_id/);
     });
 
-    it("the legacy retirement is the last Triad migration (it ships in a second deployment)", () => {
-      const triadFiles = files.filter((f) => f >= CUTOVER && /triad|engagement_signals/.test(f));
-      expect(triadFiles[triadFiles.length - 1]).toBe(RETIRE_TRIAD);
-      expect(files[files.length - 1] >= RETIRE_TRIAD).toBe(true);
-    });
-
-    it("no migration after the cutover (other than the retirement itself) re-creates a round table or reads a retired Triad field", () => {
-      for (const file of files.filter((f) => f > CUTOVER && f !== RETIRE_TRIAD)) {
+    it("no final function reads a retired Triad field or ties a group / session to a requirement unit", () => {
+      for (const file of files.filter((f) => f > CUTOVER)) {
         const sql = readFileSync(join(DIR, file), "utf8");
         expect(sql, file).not.toMatch(/CREATE TABLE[^;]*\b(programme_)?triad_rounds\b/i);
         for (const { name, body } of namedFunctionDefinitions(sql)) {
           expect(body, `${file} ${name}`).not.toMatch(RETIRED_TRIAD_FIELDS);
+          expect(body, `${file} ${name}`).not.toMatch(UNIT_OWNERSHIP);
         }
+      }
+      for (const { name, body } of namedFunctionDefinitions(readFileSync(join(DIR, CUTOVER), "utf8"))) {
+        expect(body, name).not.toMatch(UNIT_OWNERSHIP);
       }
     });
 
-    it("every final Triad-reading function derives participants from membership", () => {
-      for (const name of ["learner_session_history", "attribute_activity_to_cadence_milestone", "record_goal_checkins",
-        "canonical_triad_group_members", "validate_triad_session_cap", "notify_triad_session_booked", "triad_sync_session_attributions"]) {
+    it("a group belongs to a cohort; membership is enrollment-based, cohort-checked, final once a session exists, one active group per enrollment", () => {
+      const sql = readFileSync(join(DIR, CUTOVER), "utf8");
+      expect(sql).toMatch(/ALTER TABLE public\.triad_groups\s+ALTER COLUMN cohort_id SET NOT NULL/);
+      expect(sql).not.toMatch(/ADD COLUMN cohort_requirement_date_id/);
+      const member = lastDefinition("triad_validate_group_member")?.body ?? "";
+      expect(member).toMatch(/e\.cohort_id IS DISTINCT FROM g\.cohort_id/);
+      expect(member).toMatch(/triad_sessions s WHERE s\.triad_group_id = g\.id/);
+      expect(member).toMatch(/og\.is_active/);
+      const create = lastDefinition("triad_create_group_internal")?.body ?? "";
+      expect(create).toMatch(/e\.cohort_id IS DISTINCT FROM p_cohort_id/);
+    });
+
+    it("every final Triad-reading function derives participants from historical membership", () => {
+      for (const name of ["learner_session_history", "record_goal_checkins", "canonical_triad_group_members", "validate_triad_session_cap",
+        "notify_triad_session_booked", "triad_sync_session_attributions", "sponsor_canonical_activity"]) {
         const last = lastDefinition(name);
         expect(last?.body, name).toMatch(/triad_group_members/);
         expect(last?.body, name).not.toMatch(RETIRED_TRIAD_FIELDS);
       }
+      // Triad evidence has one writer: the generic cadence attributor refuses it.
+      expect(lastDefinition("attribute_activity_to_cadence_milestone")?.body).toMatch(/p_module='triads' THEN\s+RAISE EXCEPTION/);
     });
 
     it("the reflection feed reads normalized answers and the goal source stays separate", () => {
@@ -193,36 +223,31 @@ describe("migration chain — canonical final state", () => {
       expect(feed).toMatch(/triad_reflection_answers/);
       expect(feed).toMatch(/goal_checkins/);
       expect(feed).not.toMatch(RETIRED_TRIAD_FIELDS);
+      expect(feed).not.toMatch(/round_number/);
     });
 
-    it("the only Triad due date is the cohort requirement date", () => {
-      for (const name of ["triad_requirement_units_internal", "triad_unit_enrollment_status_internal", "learner_triad_overview"]) {
-        const body = lastDefinition(name)?.body ?? "";
-        expect(body, name).toMatch(/cohort_requirement_dates/);
-        expect(body, name).not.toMatch(/completion_deadline|triad_rounds/);
-      }
-      // Unit overdue / completed come from the one fulfilment rule, not a local rule.
-      for (const name of ["triad_unit_enrollment_status_internal", "learner_triad_overview"]) {
-        expect(lastDefinition(name)?.body, name).toMatch(/canonical_triad_requirement_fulfilment\(/);
-      }
-    });
-
-    it("Triad completion is requirement fulfilment: the activity feed counts requirements, never sessions", () => {
-      const rule = lastDefinition("canonical_triad_requirement_fulfilment")?.body ?? "";
-      expect(rule).toMatch(/g\.cohort_requirement_date_id = d\.id/);
-      expect(rule).toMatch(/session_activity_attributions/);
+    it("Triad completion = distinct completed sessions of the enrollment's groups, capped, against cumulative cohort dates", () => {
       const activity = lastDefinition("sponsor_canonical_activity")?.body ?? "";
-      expect(activity).toMatch(/canonical_triad_requirement_fulfilment\(p_enrollment_id\)/);
-      expect(activity).not.toMatch(/source_activity_type = 'triad'/);
+      // One activity row per (enrollment, session) — never per requirement.
+      expect(activity).toMatch(/JOIN public\.triad_sessions s ON s\.id = a\.source_activity_id/);
+      const completion = lastDefinition("canonical_triad_completion")?.body ?? "";
+      expect(completion).toMatch(/canonical_module_progress\(p_enrollment_id, p_as_of\)/);
+      expect(completion).toMatch(/cohort_requirement_dates/);
+      const sync = lastDefinition("triad_sync_session_attributions")?.body ?? "";
+      expect(sync).toMatch(/occurred_on, milestone_id\)[\s\S]*NULL/);
+      expect(sync).toMatch(/s\.scheduled_start_time::date/);
+      // The shared progress / journey engines are unchanged by the cutover.
       for (const name of ["canonical_module_progress", "canonical_enrollment_journey", "get_sponsor_programme_journey"]) {
-        expect(lastDefinition(name)?.body, name).toMatch(/requirement_due_on/);
+        expect(lastDefinition(name)?.body, name).not.toMatch(/requirement_due_on/);
       }
     });
 
-    it("group creation is requirement-scoped and cohort-first", () => {
-      const create = lastDefinition("triad_create_group_internal")?.body ?? "";
-      expect(create).toMatch(/cohort_requirement_date_id/);
-      expect(create).toMatch(/cohort_id IS DISTINCT FROM unit\.cohort_id/);
+    it("the legacy cleanup removes only DEMO/SEED conflicts and stops on REAL/UNKNOWN ones", () => {
+      const sql = readFileSync(join(DIR, CLEANUP), "utf8");
+      expect(sql).toMatch(/'REAL\/UNKNOWN' AND NOT x\.reviewed_delete/);
+      expect(sql).toMatch(/RAISE EXCEPTION 'Triad cleanup: REAL\/UNKNOWN/);
+      expect(sql).toMatch(/INSERT INTO public\.triad_cutover_archive/);
+      expect(sql).toMatch(/duplicate_completed_session/);
     });
   });
 

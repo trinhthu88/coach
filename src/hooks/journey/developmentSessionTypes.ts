@@ -19,13 +19,9 @@ export interface DevelopmentSessionItem {
   sourceId: string;
   /** Source table: sessions | peer_sessions | coachee_peer_sessions | mentoring_sessions | triad_sessions. */
   sourceType: string;
-  roundLabel?: string | null;
-  trainingWeekLabel?: string | null;
   /** The learner's role in the session (coachee, receiver, provider, mentee, coach, observer). */
   participantRole?: string | null;
   /** Completed AND attributed to this enrollment — i.e. counted by canonical module progress (before the requirement cap). */
   isProgrammeEvidence?: boolean;
   counterpartNames?: string[];
-  roundNumber?: number | null;
-  trainingWeekNumber?: number | null;
 }

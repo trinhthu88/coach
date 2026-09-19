@@ -1,38 +1,48 @@
 -- ============================================================================
--- TRIAD CANONICAL CUTOVER (data model + source-of-truth).
+-- TRIAD CANONICAL CUTOVER (data model + source of truth). DEPLOYMENT 1.
 --
--- Final ownership:
---   required Triad units ........ programme_modules (config.required_units)
---   Triad unit N due date ....... cohort_requirement_dates (module 'triads',
---                                 ordinal N, units = 1) — THE round identity
---   group ....................... triad_groups.cohort_requirement_date_id
---   membership .................. triad_group_members.enrollment_id
---   actual session .............. triad_sessions.scheduled_start/end_time
---   candidate times ............. triad_alternative_proposals
---   acceptance .................. triad_session_responses /
---                                 triad_alternative_proposal_responses
---   completion evidence ......... completed triad_session x group membership
---                                 -> session_activity_attributions
---   progress / overdue .......... canonical_module_progress (unchanged)
+-- One authoritative source per Triad fact:
+--   required Triad sessions ..... programme_modules (triads, config.required_units)
+--   cumulative due dates ........ cohort_requirement_dates (module 'triads',
+--                                 ordinal N, units = 1): "N completed Triad
+--                                 sessions by this date". A date identifies
+--                                 no group and no session.
+--   group ....................... triad_groups.cohort_id (a group belongs to a
+--                                 COHORT, never to a requirement unit)
+--   membership .................. triad_group_members.enrollment_id (final
+--                                 once the group has a session)
+--   actual session .............. triad_sessions (scheduled_start/end_time,
+--                                 status proposed -> confirmed -> completed |
+--                                 cancelled)
+--   acceptance .................. triad_session_responses
+--   candidate times ............. triad_alternative_proposals + responses
+--   completion evidence ......... session x historical group membership ->
+--                                 session_activity_attributions (never a
+--                                 requirement unit)
+--   completion / due / overdue .. canonical_module_progress, projected for
+--                                 Triads by canonical_triad_completion:
+--                                 distinct completed sessions (activity date
+--                                 = scheduled start) capped at required,
+--                                 against cumulative due dates
 --   reflection .................. triad_reflections (session x enrollment)
---   reflection answers .......... triad_reflection_answers x questions
---   goal rating / comment ....... goal_checkins (unchanged)
+--                                 + triad_reflection_answers x questions
+--   goal rating / comment ....... goal_checkins (unchanged, never copied)
 --
--- Every learner rotates through Coach / Coachee / Observer, so the session
--- role columns (coach/coachee/observer_enrollment_id) are NOT ownership: they
--- were positional copies of the group's enrollment slots (enforced by the
--- retired validate_triad_session_enrollment_scope trigger). Membership is the
--- only participant source from here on.
+-- Every learner rotates through Coach / Coachee / Observer, so the legacy
+-- session role columns were never ownership. There is no Triad "round":
+-- triad_rounds / programme_triad_rounds are archived and retired, and nothing
+-- replaces them.
 --
--- This migration is additive for storage: legacy columns and triad_rounds /
--- programme_triad_rounds keep their data (clients lose access) and are
--- removed by 20260918199000_triad_retire_legacy after archiving. It runs as
--- one transaction and FAILS on any ambiguity or on any unexplained difference
--- between the pre- and post-cutover facts (see the verification block).
+-- Storage is additive: legacy columns / tables keep their data (no client
+-- access, never written) until 20260918199000_triad_retire_legacy
+-- (DEPLOYMENT 2, supabase/deployment-2/). The migration runs as one
+-- transaction and FAILS on any legacy inconsistency or on any unexplained
+-- difference between the pre- and post-cutover facts.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- 0. Pre-cutover snapshot of the facts that must survive unchanged.
+-- 0. Pre-cutover snapshot of the facts that must survive unchanged
+--    (taken after 20260918185900 removed conflicting DEMO/SEED rows).
 -- ----------------------------------------------------------------------------
 CREATE TEMP TABLE _triad_before_progress ON COMMIT DROP AS
 SELECT e.id AS enrollment_id, p.required_units, p.completed_activity_units, p.completed_units,
@@ -55,6 +65,10 @@ WHERE a.source_activity_type = 'triad';
 CREATE TEMP TABLE _triad_before_reflections ON COMMIT DROP AS
 SELECT r.* FROM public.triad_reflections r;
 
+CREATE TEMP TABLE _triad_before_sessions ON COMMIT DROP AS
+SELECT s.id, s.triad_group_id, s.status, coalesce(s.proposed_start_time, s.start_time) AS start_time
+FROM public.triad_sessions s;
+
 CREATE TEMP TABLE _triad_before_counts ON COMMIT DROP AS
 SELECT (SELECT count(*) FROM public.triad_groups) AS groups,
   (SELECT count(*) FROM public.triad_sessions) AS sessions,
@@ -62,43 +76,30 @@ SELECT (SELECT count(*) FROM public.triad_groups) AS groups,
   (SELECT count(*) FROM public.triad_reflections) AS reflections;
 
 -- ----------------------------------------------------------------------------
--- 1. Validate the legacy data. Anything inconsistent stops the cutover.
+-- 1. Validate the legacy data. Anything inconsistent stops the cutover
+--    (20260918185900 has already removed conflicting DEMO/SEED rows and
+--    stopped on REAL/UNKNOWN ones).
 -- ----------------------------------------------------------------------------
 DO $$
 DECLARE bad text;
 BEGIN
-  -- Every group's slot enrollments are its slot learners (identity: never
-  -- waivable).
+  -- Every group: a cohort, 2-3 slot enrollments that are its slot learners,
+  -- all enrolled in the group's cohort and programme.
   SELECT string_agg(g.id::text, ', ') INTO bad
   FROM public.triad_groups g
-  WHERE EXISTS (
+  WHERE g.cohort_id IS NULL
+     OR g.enrollment_1_id IS NULL OR g.enrollment_2_id IS NULL
+     OR EXISTS (
        SELECT 1
        FROM (VALUES (g.member_1_id, g.enrollment_1_id), (g.member_2_id, g.enrollment_2_id), (g.member_3_id, g.enrollment_3_id)) slot(user_id, enrollment_id)
        LEFT JOIN public.programme_enrollments e ON e.id = slot.enrollment_id
        WHERE (slot.user_id IS NULL) <> (slot.enrollment_id IS NULL)
-          OR (slot.enrollment_id IS NOT NULL AND (e.id IS NULL OR e.user_id <> slot.user_id))
-     )
-     OR g.enrollment_1_id IS NULL OR g.enrollment_2_id IS NULL;
+          OR (slot.enrollment_id IS NOT NULL AND (
+                e.id IS NULL OR e.user_id <> slot.user_id
+                OR e.cohort_id IS DISTINCT FROM g.cohort_id
+                OR e.programme_id IS DISTINCT FROM g.programme_id)));
   IF bad IS NOT NULL THEN
-    RAISE EXCEPTION 'Triad cutover: group slots are inconsistent with their enrollments (groups: %)', bad;
-  END IF;
-
-  -- Every group has a cohort and all its enrollments are in that cohort and
-  -- programme — unless a reviewed decision keeps it as history only
-  -- (historical_unlinked: it never becomes an operational group).
-  SELECT string_agg(g.id::text, ', ') INTO bad
-  FROM public.triad_groups g
-  WHERE (g.cohort_id IS NULL
-     OR EXISTS (
-       SELECT 1
-       FROM (VALUES (g.enrollment_1_id), (g.enrollment_2_id), (g.enrollment_3_id)) slot(enrollment_id)
-       JOIN public.programme_enrollments e ON e.id = slot.enrollment_id
-       WHERE e.programme_id <> g.programme_id OR e.cohort_id IS DISTINCT FROM g.cohort_id))
-    AND NOT EXISTS (SELECT 1 FROM public.triad_cutover_group_decisions dec
-                    WHERE dec.triad_group_id = g.id AND dec.decision = 'historical_unlinked');
-  IF bad IS NOT NULL THEN
-    RAISE EXCEPTION 'Triad cutover: group members are outside the group''s cohort / programme (groups: %)', bad
-      USING HINT = 'Correct the enrollments, or record a reviewed historical_unlinked decision for the group.';
+    RAISE EXCEPTION 'Triad cutover: groups inconsistent with their cohort / enrollments (groups: %)', bad;
   END IF;
 
   -- Every session's stored role enrollments are exactly its group's
@@ -122,17 +123,26 @@ BEGIN
     RAISE EXCEPTION 'Triad cutover: sessions with two different start times (sessions: %)', bad;
   END IF;
 
-  -- Every non-retired reflection is authored by an enrollment of the session's
-  -- group; one reflection per session and enrollment.
+  -- A completed session has a time (its activity date).
+  SELECT string_agg(s.id::text, ', ') INTO bad
+  FROM public.triad_sessions s
+  WHERE s.status = 'completed' AND coalesce(s.proposed_start_time, s.start_time) IS NULL;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'Triad cutover: completed sessions without a session time (sessions: %)', bad;
+  END IF;
+
+  -- Every non-retired reflection is authored by an enrollment of the
+  -- session's group, on a completed session; one per session and enrollment.
   SELECT string_agg(r.id::text, ', ') INTO bad
   FROM public.triad_reflections r
   JOIN public.triad_sessions s ON s.id = r.triad_session_id
   JOIN public.triad_groups g ON g.id = s.triad_group_id
   WHERE r.enrollment_id IS NOT NULL
-    AND r.enrollment_id NOT IN (g.enrollment_1_id, g.enrollment_2_id)
-    AND r.enrollment_id IS DISTINCT FROM g.enrollment_3_id;
+    AND (r.enrollment_id NOT IN (g.enrollment_1_id, g.enrollment_2_id)
+         AND r.enrollment_id IS DISTINCT FROM g.enrollment_3_id
+         OR s.status <> 'completed');
   IF bad IS NOT NULL THEN
-    RAISE EXCEPTION 'Triad cutover: reflections authored outside the session group (reflections: %)', bad;
+    RAISE EXCEPTION 'Triad cutover: reflections outside the session group or on an open session (reflections: %)', bad;
   END IF;
   SELECT string_agg(r.id::text, ', ') INTO bad
   FROM public.triad_reflections r
@@ -149,11 +159,22 @@ BEGIN
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'Triad cutover: duplicate reflections per session and enrollment (%)', bad;
   END IF;
+
+  -- At most one open (proposed / confirmed) session per group.
+  SELECT string_agg(s.triad_group_id::text, ', ') INTO bad
+  FROM public.triad_sessions s
+  WHERE s.status IN ('proposed', 'confirmed')
+  GROUP BY s.triad_group_id
+  HAVING count(*) > 1;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'Triad cutover: groups with more than one open session (groups: %)', bad;
+  END IF;
 END $$;
 
 -- ----------------------------------------------------------------------------
--- 2. One cohort Triad requirement row per unit. A Triad round is one unit, so
---    a multi-unit Triad row (only the 'flexible' policy produced them) is
+-- 2. One cohort Triad requirement date per required session: row N is the
+--    cumulative deadline "N Triad sessions completed by this date". A
+--    multi-unit Triad row (only the 'flexible' policy produced them) is
 --    split into single-unit rows with the SAME due date. Dates are unchanged;
 --    ordinals are renumbered in their existing order.
 -- ----------------------------------------------------------------------------
@@ -275,7 +296,7 @@ AS $function$
       AND cm.distribution_mode = 'training_linked'
       AND selected.selection_order <= cm.required_units
   )
-  -- A Triad round is one unit: a multi-unit Triad item becomes that many
+  -- One cumulative Triad deadline per required session: a multi-unit item becomes that many
   -- single-unit rows on the same date.
   SELECT i.module,
     row_number() OVER (PARTITION BY i.module ORDER BY i.due_on, i.sort_key, split.n)::integer,
@@ -292,13 +313,16 @@ AS $function$
 $function$;
 
 -- ----------------------------------------------------------------------------
--- 3. The Triad group -> requirement link and normalized membership.
+-- 3. Groups belong to a cohort; normalized, enrollment-based membership.
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.triad_groups
-  ADD COLUMN cohort_requirement_date_id uuid REFERENCES public.cohort_requirement_dates(id) ON DELETE RESTRICT;
-CREATE INDEX triad_groups_requirement_idx ON public.triad_groups(cohort_requirement_date_id, is_active);
-COMMENT ON COLUMN public.triad_groups.cohort_requirement_date_id IS
-  'The cohort Triad requirement unit (round) this group practises for. Cohort, programme, unit number and due date are derived from it. NULL only for historical groups recorded as historical_unlinked in triad_cutover_group_decisions.';
+  ALTER COLUMN cohort_id SET NOT NULL,
+  ADD COLUMN closed_at timestamptz;
+CREATE INDEX IF NOT EXISTS triad_groups_cohort_idx ON public.triad_groups(cohort_id, is_active);
+COMMENT ON COLUMN public.triad_groups.cohort_id IS
+  'THE Triad group scope: the cohort whose enrollments practise together across all of the cohort''s required Triad sessions. A group belongs to no requirement unit.';
+COMMENT ON COLUMN public.triad_groups.closed_at IS
+  'When the group was closed (is_active = false). Closed groups keep their sessions and membership as history.';
 
 CREATE TABLE public.triad_group_members (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -311,173 +335,15 @@ CREATE TABLE public.triad_group_members (
 );
 CREATE INDEX triad_group_members_enrollment_idx ON public.triad_group_members(enrollment_id);
 COMMENT ON TABLE public.triad_group_members IS
-  'THE Triad membership source: which learner enrollments practise together. Learner / profile identity is derived through the enrollment. member_order is display order only — not a role.';
-
--- Admin regenerate used to delete and re-insert every row, which would drop
--- the identity Triad groups reference. It now updates each unit in place,
--- inserts missing units and removes surplus ones (never one with groups).
-CREATE OR REPLACE FUNCTION public.admin_save_cohort_requirement_dates(p_cohort_id uuid, p_items jsonb, p_regenerate boolean DEFAULT false)
- RETURNS integer
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'pg_temp'
-AS $function$
-DECLARE
-  c public.cohorts;
-  item record;
-  proposal record;
-  saved integer := 0;
-BEGIN
-  IF NOT public.has_role(auth.uid(), 'admin'::public.app_role) THEN
-    RAISE EXCEPTION 'Only admins can edit cohort requirement dates' USING ERRCODE = '42501';
-  END IF;
-  SELECT * INTO c FROM public.cohorts WHERE id = p_cohort_id FOR UPDATE;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Cohort not found' USING ERRCODE = 'P0002';
-  END IF;
-  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN
-    RAISE EXCEPTION 'Requirement dates must be a JSON array' USING ERRCODE = '22023';
-  END IF;
-
-  CREATE TEMP TABLE IF NOT EXISTS pg_temp.crd_items (
-    programme_id uuid, module public.programme_module_type, ordinal integer, due_on date
-  ) ON COMMIT DROP;
-  TRUNCATE pg_temp.crd_items;
-
-  INSERT INTO pg_temp.crd_items
-  SELECT (x->>'programme_id')::uuid,
-    (x->>'module')::public.programme_module_type,
-    (x->>'ordinal')::integer,
-    (x->>'due_on')::date
-  FROM jsonb_array_elements(p_items) x;
-
-  IF EXISTS (SELECT 1 FROM pg_temp.crd_items i
-             WHERE i.programme_id IS NULL OR i.module IS NULL OR i.ordinal IS NULL OR i.ordinal < 1) THEN
-    RAISE EXCEPTION 'Each requirement date needs a programme, module and unit number' USING ERRCODE = '22023';
-  END IF;
-  IF EXISTS (SELECT 1 FROM pg_temp.crd_items i WHERE i.due_on IS NULL) THEN
-    RAISE EXCEPTION 'Every requirement needs a due date' USING ERRCODE = '22023';
-  END IF;
-  IF EXISTS (SELECT 1 FROM pg_temp.crd_items i GROUP BY i.programme_id, i.module, i.ordinal HAVING count(*) > 1) THEN
-    RAISE EXCEPTION 'Duplicate requirement unit numbers' USING ERRCODE = '22023';
-  END IF;
-  IF EXISTS (
-    SELECT 1 FROM pg_temp.crd_items i
-    WHERE i.programme_id NOT IN (SELECT sp.programme_id FROM public.cohort_scheduled_programmes(p_cohort_id) sp)
-  ) THEN
-    RAISE EXCEPTION 'Requirement dates must belong to the cohort''s programme' USING ERRCODE = '22023';
-  END IF;
-  IF EXISTS (
-    SELECT 1 FROM pg_temp.crd_items i
-    WHERE i.module = 'training'::public.programme_module_type
-       OR NOT EXISTS (
-         SELECT 1 FROM public.programme_modules pm
-         WHERE pm.programme_id = i.programme_id
-           AND pm.module = i.module
-           AND pm.enabled
-           AND coalesce((pm.config->>'required')::boolean, false)
-           AND coalesce(public.programme_config_integer(pm.config, 'required_units'), 0) > 0
-       )
-  ) THEN
-    RAISE EXCEPTION 'Requirement dates must match the programme''s required modules' USING ERRCODE = '22023';
-  END IF;
-  IF c.start_date IS NOT NULL AND c.end_date IS NOT NULL AND EXISTS (
-    SELECT 1 FROM pg_temp.crd_items i WHERE i.due_on < c.start_date OR i.due_on > c.end_date
-  ) THEN
-    RAISE EXCEPTION 'Requirement dates must fall within the cohort dates (% – %)', c.start_date, c.end_date
-      USING ERRCODE = '22023';
-  END IF;
-
-  IF p_regenerate THEN
-    -- Units that the regenerated schedule no longer has are removed — unless
-    -- Triad groups practise for them.
-    IF EXISTS (
-      SELECT 1
-      FROM public.cohort_requirement_dates d
-      JOIN (SELECT DISTINCT i.programme_id, i.module FROM pg_temp.crd_items i) pairs
-        ON pairs.programme_id = d.programme_id AND pairs.module = d.module
-      WHERE d.cohort_id = p_cohort_id
-        AND NOT EXISTS (SELECT 1 FROM pg_temp.crd_items i
-                        WHERE i.programme_id = d.programme_id AND i.module = d.module AND i.ordinal = d.ordinal)
-        AND EXISTS (SELECT 1 FROM public.triad_groups g WHERE g.cohort_requirement_date_id = d.id)
-    ) THEN
-      RAISE EXCEPTION 'A Triad requirement that has assigned groups cannot be removed' USING ERRCODE = '22023';
-    END IF;
-
-    DELETE FROM public.cohort_requirement_dates d
-    USING (SELECT DISTINCT i.programme_id, i.module FROM pg_temp.crd_items i) pairs
-    WHERE d.cohort_id = p_cohort_id
-      AND d.programme_id = pairs.programme_id
-      AND d.module = pairs.module
-      AND NOT EXISTS (SELECT 1 FROM pg_temp.crd_items i
-                      WHERE i.programme_id = d.programme_id AND i.module = d.module AND i.ordinal = d.ordinal);
-
-    INSERT INTO public.cohort_requirement_dates (
-      cohort_id, programme_id, module, ordinal, due_on, units, training_week_id,
-      generation_method, materialized_via, generated_due_on, is_overridden, updated_by
-    )
-    SELECT p_cohort_id, i.programme_id, i.module, i.ordinal, i.due_on,
-      coalesce(p.units, 1), p.training_week_id,
-      coalesce(p.generation_method, 'manual'), 'admin_regenerate', p.due_on,
-      p.due_on IS DISTINCT FROM i.due_on, auth.uid()
-    FROM pg_temp.crd_items i
-    LEFT JOIN LATERAL (
-      SELECT pr.* FROM public.cohort_requirement_proposal_internal(i.programme_id, p_cohort_id, c.start_date, c.end_date) pr
-      WHERE pr.module = i.module AND pr.ordinal = i.ordinal
-    ) p ON true
-    ON CONFLICT (cohort_id, programme_id, module, ordinal) DO UPDATE SET
-      due_on = excluded.due_on,
-      units = excluded.units,
-      training_week_id = excluded.training_week_id,
-      generation_method = excluded.generation_method,
-      materialized_via = excluded.materialized_via,
-      generated_due_on = excluded.generated_due_on,
-      is_overridden = excluded.is_overridden,
-      updated_by = excluded.updated_by;
-    GET DIAGNOSTICS saved = ROW_COUNT;
-    RETURN saved;
-  END IF;
-
-  FOR item IN SELECT * FROM pg_temp.crd_items LOOP
-    UPDATE public.cohort_requirement_dates d
-    SET due_on = item.due_on,
-      is_overridden = d.generated_due_on IS DISTINCT FROM item.due_on,
-      updated_by = auth.uid()
-    WHERE d.cohort_id = p_cohort_id
-      AND d.programme_id = item.programme_id
-      AND d.module = item.module
-      AND d.ordinal = item.ordinal;
-
-    IF NOT FOUND THEN
-      -- A unit that has no date yet (e.g. required units increased): add it,
-      -- recording the policy date it would have had.
-      SELECT pr.* INTO proposal
-      FROM public.cohort_requirement_proposal_internal(item.programme_id, p_cohort_id, c.start_date, c.end_date) pr
-      WHERE pr.module = item.module AND pr.ordinal = item.ordinal;
-
-      INSERT INTO public.cohort_requirement_dates (
-        cohort_id, programme_id, module, ordinal, due_on, units, training_week_id,
-        generation_method, materialized_via, generated_due_on, is_overridden, updated_by
-      ) VALUES (
-        p_cohort_id, item.programme_id, item.module, item.ordinal, item.due_on,
-        coalesce(proposal.units, 1), proposal.training_week_id,
-        coalesce(proposal.generation_method, 'manual'), 'admin_save', proposal.due_on,
-        proposal.due_on IS DISTINCT FROM item.due_on, auth.uid()
-      );
-    END IF;
-    saved := saved + 1;
-  END LOOP;
-  RETURN saved;
-END;
-$function$;
+  'THE Triad membership source: which learner enrollments practise together. Learner, programme and cohort are derived through the enrollment. member_order is display order only — not a role. Final once the group has a session.';
 
 -- ----------------------------------------------------------------------------
--- 4. Session time, acceptance, proposals, reflections, operations, archive.
+-- 4. Session time, acceptance, proposals, reflections.
 -- ----------------------------------------------------------------------------
 
 -- The session's current effective time. Before agreement it is the proposed
--- time; once agreed it is simply the session time. Candidate replacement
--- times live only in triad_alternative_proposals.
+-- time; once agreed it is the session time, and the Triad activity date.
+-- Candidate replacement times live only in triad_alternative_proposals.
 ALTER TABLE public.triad_sessions
   ADD COLUMN scheduled_start_time timestamptz,
   ADD COLUMN scheduled_end_time timestamptz;
@@ -485,9 +351,9 @@ ALTER TABLE public.triad_sessions
   ADD CONSTRAINT triad_sessions_scheduled_range
   CHECK (scheduled_start_time IS NULL OR scheduled_end_time IS NULL OR scheduled_end_time > scheduled_start_time) NOT VALID;
 COMMENT ON COLUMN public.triad_sessions.scheduled_start_time IS
-  'Current effective session start (proposed until every member accepts, then the agreed time). THE Triad session time.';
+  'Current effective session start (proposed until every member accepts, then the agreed time). THE Triad session time and activity date.';
 COMMENT ON COLUMN public.triad_sessions.status IS
-  'Session lifecycle: proposed -> confirmed -> completed, or cancelled. Proposal state lives on triad_alternative_proposals.status.';
+  'Session lifecycle: proposed -> confirmed -> completed, or cancelled. completed and cancelled are final. Proposal state lives on triad_alternative_proposals.status.';
 
 CREATE TABLE public.triad_session_responses (
   triad_session_id uuid NOT NULL REFERENCES public.triad_sessions(id) ON DELETE CASCADE,
@@ -501,7 +367,7 @@ CREATE INDEX triad_session_responses_enrollment_idx ON public.triad_session_resp
 ALTER TABLE public.triad_alternative_proposals
   ADD COLUMN proposed_by_enrollment_id uuid REFERENCES public.programme_enrollments(id) ON DELETE RESTRICT;
 COMMENT ON TABLE public.triad_alternative_proposals IS
-  'Candidate replacement times for a Triad session. status: pending -> accepted | superseded. Never the session time until accepted.';
+  'Candidate replacement times for a Triad session. status: pending -> accepted | superseded | withdrawn. Never the session time until accepted.';
 
 CREATE TABLE public.triad_alternative_proposal_responses (
   proposal_id uuid NOT NULL REFERENCES public.triad_alternative_proposals(id) ON DELETE CASCADE,
@@ -551,35 +417,13 @@ CREATE TABLE public.triad_reflection_answers (
 COMMENT ON TABLE public.triad_reflection_answers IS
   'Learner-authored answers to Triad reflection questions. THE Triad reflection text source.';
 
--- Narrow operational metadata for one cohort Triad requirement unit. No
--- deadline here: the due date is cohort_requirement_dates.due_on.
-CREATE TABLE public.cohort_triad_operations (
-  cohort_requirement_date_id uuid PRIMARY KEY REFERENCES public.cohort_requirement_dates(id) ON DELETE CASCADE,
-  assignment_status text NOT NULL DEFAULT 'not_started'
-    CHECK (assignment_status IN ('not_started', 'running', 'completed', 'failed')),
-  last_assignment_run_at timestamptz,
-  last_assignment_summary jsonb,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-COMMENT ON TABLE public.cohort_triad_operations IS
-  'Auto-assignment run state for one cohort Triad requirement unit. Operational only; never a date, membership or completion source.';
-
--- Internal archive of retired Triad structures (rounds, legacy columns), kept
--- for audit so no historical value is lost when the legacy shapes are dropped.
-CREATE TABLE public.triad_cutover_archive (
-  object_name text NOT NULL,
-  record_id uuid NOT NULL,
-  payload jsonb NOT NULL,
-  archived_at timestamptz NOT NULL DEFAULT now(),
-  migration_id text NOT NULL,
-  PRIMARY KEY (object_name, record_id)
-);
-COMMENT ON TABLE public.triad_cutover_archive IS
-  'Read-only audit archive of retired Triad structures (triad_rounds, programme_triad_rounds, legacy slot/role/answer columns). Internal; answers no current business question.';
+ALTER TABLE public.triad_alternative_proposals DROP CONSTRAINT IF EXISTS triad_alternative_proposals_status_check;
+ALTER TABLE public.triad_alternative_proposals
+  ADD CONSTRAINT triad_alternative_proposals_status_check CHECK (status IN ('pending', 'accepted', 'superseded', 'withdrawn'));
 
 -- ----------------------------------------------------------------------------
--- 5. Retire the legacy triggers / policies / helpers that read slot or role
---    columns. The replacements (below) read membership only.
+-- 5. Retire the legacy triggers / policies / helpers that read slot, role or
+--    round columns. The replacements (below) read membership only.
 -- ----------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS triad_groups_enrollment_scope ON public.triad_groups;
 DROP TRIGGER IF EXISTS triad_sessions_enrollment_scope ON public.triad_sessions;
@@ -614,13 +458,15 @@ DROP POLICY IF EXISTS "Triad rounds: participant read" ON public.triad_rounds;
 DROP POLICY IF EXISTS "Programme triad rounds: authenticated view" ON public.programme_triad_rounds;
 DROP POLICY IF EXISTS "Programme triad rounds: admin manage" ON public.programme_triad_rounds;
 
--- DEPRECATED (dropped by 20260918199000_triad_retire_legacy): no client or
--- runtime access from here on.
+-- There is no Triad round. DEPRECATED (dropped by 20260918199000, deployment
+-- 2): no client or runtime access from here on, and no group follows a round.
 REVOKE ALL ON public.triad_rounds, public.programme_triad_rounds FROM PUBLIC, anon, authenticated;
-COMMENT ON TABLE public.triad_rounds IS 'DEPRECATED — retired by the Triad cutover; archived and dropped in 20260918199000 (second deployment).';
-COMMENT ON TABLE public.programme_triad_rounds IS 'DEPRECATED — never consumed; archived and dropped in 20260918199000 (second deployment).';
+COMMENT ON TABLE public.triad_rounds IS 'DEPRECATED — there is no Triad round (programme = quantity, cohort = cumulative dates, group = participants). Archived; dropped in 20260918199000 (deployment 2).';
+COMMENT ON TABLE public.programme_triad_rounds IS 'DEPRECATED — never consumed. Archived; dropped in 20260918199000 (deployment 2).';
+-- A deleted round must never cascade into groups (and their history).
+ALTER TABLE public.triad_groups DROP CONSTRAINT IF EXISTS triad_groups_triad_round_id_fkey;
 
--- Legacy slot / role / answer columns are no longer written.
+-- Legacy slot / role / round / answer columns are no longer written.
 ALTER TABLE public.triad_groups
   ALTER COLUMN member_1_id DROP NOT NULL,
   ALTER COLUMN member_2_id DROP NOT NULL,
@@ -631,7 +477,12 @@ ALTER TABLE public.triad_sessions
   ALTER COLUMN coach_enrollment_id DROP NOT NULL,
   ALTER COLUMN coachee_enrollment_id DROP NOT NULL;
 ALTER TABLE public.triad_alternative_proposals
-  ALTER COLUMN proposed_by DROP NOT NULL;
+  ALTER COLUMN proposed_by DROP NOT NULL,
+  ALTER COLUMN member_1_response DROP NOT NULL,
+  ALTER COLUMN member_2_response DROP NOT NULL;
+ALTER TABLE public.triad_sessions
+  ALTER COLUMN member_1_response DROP NOT NULL,
+  ALTER COLUMN member_2_response DROP NOT NULL;
 ALTER TABLE public.triad_reflections
   ALTER COLUMN participant_id DROP NOT NULL;
 
@@ -646,76 +497,22 @@ FROM public.triad_groups g
 CROSS JOIN LATERAL (VALUES (g.enrollment_1_id, 1), (g.enrollment_2_id, 2), (g.enrollment_3_id, 3)) AS slot(enrollment_id, member_order)
 WHERE slot.enrollment_id IS NOT NULL;
 
--- 6b. Group -> cohort Triad requirement unit. Explicit decisions first; then
---     the stored round number within the group's own cohort; then a cohort
---     with exactly one Triad unit. Anything else is ambiguous -> stop.
-CREATE TEMP TABLE _triad_group_link ON COMMIT DROP AS
-SELECT g.id AS triad_group_id,
-  dec.decision,
-  CASE
-    WHEN dec.decision = 'link' THEN dec.cohort_requirement_date_id
-    WHEN dec.decision = 'historical_unlinked' THEN NULL
-    WHEN coalesce(tr.round_number, g.round_number) IS NOT NULL THEN (
-      SELECT d.id FROM public.cohort_requirement_dates d
-      WHERE d.cohort_id = g.cohort_id AND d.programme_id = g.programme_id
-        AND d.module = 'triads' AND d.ordinal = coalesce(tr.round_number, g.round_number))
-    ELSE (
-      SELECT CASE WHEN count(*) = 1 THEN (array_agg(d.id))[1] END
-      FROM public.cohort_requirement_dates d
-      WHERE d.cohort_id = g.cohort_id AND d.programme_id = g.programme_id AND d.module = 'triads')
-  END AS cohort_requirement_date_id,
-  coalesce(tr.round_number, g.round_number) AS round_number,
-  g.cohort_id, g.programme_id,
-  (SELECT count(*) FROM public.cohort_requirement_dates d
-   WHERE d.cohort_id = g.cohort_id AND d.programme_id = g.programme_id AND d.module = 'triads') AS cohort_triad_units
-FROM public.triad_groups g
-LEFT JOIN public.triad_rounds tr ON tr.id = g.triad_round_id
-LEFT JOIN public.triad_cutover_group_decisions dec ON dec.triad_group_id = g.id;
-
-DO $$
-DECLARE bad text;
-BEGIN
-  SELECT string_agg(format('%s (cohort %s, round %s, cohort Triad units %s)', l.triad_group_id, l.cohort_id,
-           coalesce(l.round_number::text, 'none'), l.cohort_triad_units), '; ') INTO bad
-  FROM _triad_group_link l
-  WHERE l.cohort_requirement_date_id IS NULL
-    AND l.decision IS DISTINCT FROM 'historical_unlinked';
-  IF bad IS NOT NULL THEN
-    RAISE EXCEPTION 'Triad cutover: cannot determine the cohort Triad requirement for groups: %', bad
-      USING HINT = 'Record a reviewed decision in triad_cutover_group_decisions (migration before 20260918190000) for each group, then re-run.';
-  END IF;
-  -- An explicit link must point at a Triad unit of the group's own cohort.
-  SELECT string_agg(l.triad_group_id::text, ', ') INTO bad
-  FROM _triad_group_link l
-  JOIN public.cohort_requirement_dates d ON d.id = l.cohort_requirement_date_id
-  WHERE d.module <> 'triads' OR d.cohort_id IS DISTINCT FROM l.cohort_id OR d.programme_id IS DISTINCT FROM l.programme_id;
-  IF bad IS NOT NULL THEN
-    RAISE EXCEPTION 'Triad cutover: requirement link outside the group''s cohort Triad schedule (groups: %)', bad;
-  END IF;
-END $$;
-
-UPDATE public.triad_groups g
-SET cohort_requirement_date_id = l.cohort_requirement_date_id
-FROM _triad_group_link l
-WHERE l.triad_group_id = g.id AND l.cohort_requirement_date_id IS NOT NULL;
-
--- One active group per enrollment and requirement unit.
-DO $$
-DECLARE bad text;
-BEGIN
-  SELECT string_agg(format('enrollment %s in groups %s', x.enrollment_id, x.groups), '; ') INTO bad
-  FROM (
-    SELECT m.enrollment_id, g.cohort_requirement_date_id, string_agg(g.id::text, ',') AS groups
-    FROM public.triad_group_members m
-    JOIN public.triad_groups g ON g.id = m.triad_group_id
-    WHERE g.is_active AND g.cohort_requirement_date_id IS NOT NULL
-    GROUP BY m.enrollment_id, g.cohort_requirement_date_id
-    HAVING count(*) > 1
-  ) x;
-  IF bad IS NOT NULL THEN
-    RAISE EXCEPTION 'Triad cutover: an enrollment is in more than one active group for the same requirement (%)', bad;
-  END IF;
-END $$;
+-- 6b. One active group per enrollment. Legacy "round" groups could hold the
+--     same learners concurrently; a group is now cohort-level, so for an
+--     enrollment in several active groups the most recent stays active and
+--     the older ones are closed (sessions and membership stay as history).
+CREATE TEMP TABLE _triad_closed_groups ON COMMIT DROP AS
+SELECT DISTINCT older.id AS triad_group_id
+FROM public.triad_group_members m
+JOIN public.triad_groups older ON older.id = m.triad_group_id AND older.is_active
+WHERE EXISTS (
+  SELECT 1 FROM public.triad_group_members m2
+  JOIN public.triad_groups newer ON newer.id = m2.triad_group_id AND newer.is_active
+  WHERE m2.enrollment_id = m.enrollment_id AND newer.id <> older.id
+    AND (newer.created_at, newer.id) > (older.created_at, older.id));
+UPDATE public.triad_groups g SET is_active = false, closed_at = now()
+FROM _triad_closed_groups c WHERE c.triad_group_id = g.id;
+UPDATE public.triad_groups SET closed_at = coalesce(updated_at, created_at) WHERE NOT is_active AND closed_at IS NULL;
 
 -- 6c. Session time: the single effective time.
 UPDATE public.triad_sessions s
@@ -773,29 +570,24 @@ WHERE nullif(btrim(a.answer_text), '') IS NOT NULL;
 CREATE UNIQUE INDEX triad_reflections_session_enrollment_key
   ON public.triad_reflections(triad_session_id, enrollment_id);
 
--- 6f. Round operational state -> the requirement units its groups practise for.
-INSERT INTO public.cohort_triad_operations (cohort_requirement_date_id, assignment_status)
-SELECT DISTINCT ON (g.cohort_requirement_date_id) g.cohort_requirement_date_id,
-  CASE tr.auto_assign_status WHEN 'pending' THEN 'not_started' ELSE tr.auto_assign_status END
-FROM public.triad_groups g
-JOIN public.triad_rounds tr ON tr.id = g.triad_round_id
-WHERE g.cohort_requirement_date_id IS NOT NULL
-ORDER BY g.cohort_requirement_date_id, tr.updated_at DESC;
+-- At most one open session per group: a group schedules its next session
+-- once the current one is completed or cancelled.
+CREATE UNIQUE INDEX triad_sessions_one_open_per_group
+  ON public.triad_sessions(triad_group_id) WHERE status IN ('proposed', 'confirmed');
 
--- 6g. Archive the retired round structures (with the canonical date each
---     round's groups now follow, for audit).
+-- 6f. Evidence belongs to sessions, never to a requirement unit: legacy
+--     cadence-milestone links on Triad evidence are removed.
+UPDATE public.session_activity_attributions SET milestone_id = NULL
+WHERE source_activity_type = 'triad' AND milestone_id IS NOT NULL;
+
+-- 6g. Archive the retired round structures (audit only; nothing maps to them).
 INSERT INTO public.triad_cutover_archive (object_name, record_id, payload, migration_id)
-SELECT 'triad_rounds', tr.id,
-  to_jsonb(tr) || jsonb_build_object('canonical_due_dates', coalesce((
-    SELECT jsonb_agg(DISTINCT jsonb_build_object('cohort_id', d.cohort_id, 'due_on', d.due_on))
-    FROM public.triad_groups g JOIN public.cohort_requirement_dates d ON d.id = g.cohort_requirement_date_id
-    WHERE g.triad_round_id = tr.id), '[]'::jsonb)),
-  '20260918190000_triad_canonical_cutover'
+SELECT 'triad_rounds', tr.id, to_jsonb(tr), '20260918190000_triad_canonical_cutover'
 FROM public.triad_rounds tr;
-
 INSERT INTO public.triad_cutover_archive (object_name, record_id, payload, migration_id)
 SELECT 'programme_triad_rounds', p.id, to_jsonb(p), '20260918190000_triad_canonical_cutover'
 FROM public.programme_triad_rounds p;
+
 
 -- ----------------------------------------------------------------------------
 -- 7. Integrity rules (enforced for every writer: RPCs, service role, SQL).
@@ -824,13 +616,32 @@ $$;
 
 -- A session may be marked completed only once it is confirmed and its time
 -- has started. One rule, used by the guard trigger and the learner RPCs.
+-- STABLE (not IMMUTABLE): it reads now().
 CREATE OR REPLACE FUNCTION public.triad_session_can_complete(p_status text, p_scheduled_start timestamptz)
 RETURNS boolean
-LANGUAGE sql IMMUTABLE
+LANGUAGE sql STABLE
 AS $$
   SELECT p_status = 'confirmed' AND p_scheduled_start IS NOT NULL AND p_scheduled_start <= now();
 $$;
 
+-- Does the enrollment's programme require Triads? (programme = quantity)
+CREATE OR REPLACE FUNCTION public.triad_required_units_for_programme(p_programme_id uuid)
+RETURNS integer
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT coalesce((
+    SELECT CASE WHEN coalesce((pm.config->>'required')::boolean, false)
+      THEN coalesce(public.programme_config_integer(pm.config, 'required_units'), 0) ELSE 0 END
+    FROM public.programme_modules pm
+    WHERE pm.programme_id = p_programme_id AND pm.module = 'triads'::public.programme_module_type AND pm.enabled
+  ), 0);
+$$;
+
+-- Membership: cohort-scoped, one programme per group, one active group per
+-- enrollment, and FINAL once the group has any session (historical sessions
+-- always keep their participants; regrouping closes the group and creates a
+-- new one).
 CREATE OR REPLACE FUNCTION public.triad_validate_group_member()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
@@ -838,35 +649,49 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   g public.triad_groups;
-  req public.cohort_requirement_dates;
   e public.programme_enrollments;
 BEGIN
-  SELECT * INTO g FROM public.triad_groups WHERE id = NEW.triad_group_id;
-  SELECT * INTO e FROM public.programme_enrollments WHERE id = NEW.enrollment_id;
-  IF g.cohort_requirement_date_id IS NULL THEN
-    RAISE EXCEPTION 'Historical Triad groups without a requirement cannot change membership' USING ERRCODE = '42501';
+  IF TG_OP = 'UPDATE' THEN
+    RAISE EXCEPTION 'Triad membership rows are not edited: remove and add a member instead' USING ERRCODE = '42501';
   END IF;
-  SELECT * INTO req FROM public.cohort_requirement_dates WHERE id = g.cohort_requirement_date_id;
-  IF e.cohort_id IS DISTINCT FROM req.cohort_id OR e.programme_id IS DISTINCT FROM req.programme_id THEN
-    RAISE EXCEPTION 'Triad members must be enrolled in the requirement''s cohort and programme' USING ERRCODE = '42501';
+  -- An existing (group, enrollment) row: the unique constraint decides
+  -- (ON CONFLICT DO NOTHING, or a duplicate-key error). Nothing new is added.
+  IF EXISTS (SELECT 1 FROM public.triad_group_members x
+             WHERE x.triad_group_id = NEW.triad_group_id AND x.enrollment_id = NEW.enrollment_id) THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT * INTO g FROM public.triad_groups WHERE id = NEW.triad_group_id FOR UPDATE;
+  SELECT * INTO e FROM public.programme_enrollments WHERE id = NEW.enrollment_id;
+  -- Serialise membership changes per enrollment (one active group).
+  PERFORM pg_advisory_xact_lock(hashtextextended('triad_member:' || NEW.enrollment_id::text, 0));
+
+  IF EXISTS (SELECT 1 FROM public.triad_sessions s WHERE s.triad_group_id = g.id) THEN
+    RAISE EXCEPTION 'Membership of a Triad group with sessions is final: close it and create a new group' USING ERRCODE = '42501';
+  END IF;
+  IF NOT g.is_active THEN
+    RAISE EXCEPTION 'A closed Triad group cannot change membership' USING ERRCODE = '42501';
+  END IF;
+  IF e.cohort_id IS DISTINCT FROM g.cohort_id THEN
+    RAISE EXCEPTION 'Triad members must be enrolled in the group''s cohort' USING ERRCODE = '42501';
+  END IF;
+  IF public.triad_required_units_for_programme(e.programme_id) = 0 THEN
+    RAISE EXCEPTION 'This learner''s programme requires no Triads' USING ERRCODE = '42501';
   END IF;
   IF EXISTS (
     SELECT 1 FROM public.triad_group_members o
     JOIN public.programme_enrollments oe ON oe.id = o.enrollment_id
-    WHERE o.triad_group_id = NEW.triad_group_id AND o.id <> NEW.id AND oe.user_id = e.user_id
+    WHERE o.triad_group_id = NEW.triad_group_id AND o.id <> NEW.id
+      AND (oe.user_id = e.user_id OR oe.programme_id IS DISTINCT FROM e.programme_id)
   ) THEN
-    RAISE EXCEPTION 'A learner can appear only once in a Triad group' USING ERRCODE = '23505';
+    RAISE EXCEPTION 'A Triad group holds different learners of one programme' USING ERRCODE = '23505';
   END IF;
-  IF g.is_active AND EXISTS (
+  IF EXISTS (
     SELECT 1 FROM public.triad_group_members o
     JOIN public.triad_groups og ON og.id = o.triad_group_id
     WHERE o.enrollment_id = NEW.enrollment_id AND og.id <> g.id AND og.is_active
-      AND og.cohort_requirement_date_id = g.cohort_requirement_date_id
   ) THEN
-    RAISE EXCEPTION 'This learner is already in a Triad group for this requirement' USING ERRCODE = '23505';
-  END IF;
-  IF EXISTS (SELECT 1 FROM public.triad_sessions s WHERE s.triad_group_id = g.id AND s.status = 'completed') THEN
-    RAISE EXCEPTION 'Membership of a Triad group with a completed session is final' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'This learner is already in an active Triad group' USING ERRCODE = '23505';
   END IF;
   RETURN NEW;
 END $$;
@@ -883,8 +708,8 @@ AS $$
 BEGIN
   -- A cascade from deleting the whole group is governed by the group rule.
   IF EXISTS (SELECT 1 FROM public.triad_groups g WHERE g.id = OLD.triad_group_id)
-     AND EXISTS (SELECT 1 FROM public.triad_sessions s WHERE s.triad_group_id = OLD.triad_group_id AND s.status = 'completed') THEN
-    RAISE EXCEPTION 'Membership of a Triad group with a completed session is final' USING ERRCODE = '42501';
+     AND EXISTS (SELECT 1 FROM public.triad_sessions s WHERE s.triad_group_id = OLD.triad_group_id) THEN
+    RAISE EXCEPTION 'Membership of a Triad group with sessions is final: close it and create a new group' USING ERRCODE = '42501';
   END IF;
   RETURN OLD;
 END $$;
@@ -923,37 +748,66 @@ CREATE CONSTRAINT TRIGGER triad_groups_size
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION public.triad_check_group_size();
 
+-- The one privileged correction path for Triad history: the demo reset
+-- (demo_delete_batch_4_owned_resources) may remove rows registered as demo
+-- resources while it runs (transaction-local clariva.demo_reset = on). There
+-- is no other way to delete completed sessions or groups with history.
+CREATE OR REPLACE FUNCTION public.triad_demo_reset_allows(p_resource_type text, p_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE allowed boolean := false;
+BEGIN
+  IF coalesce(current_setting('clariva.demo_reset', true), '') <> 'on'
+     OR to_regclass('public.demo_resource_registry') IS NULL THEN
+    RETURN false;
+  END IF;
+  EXECUTE 'SELECT EXISTS (SELECT 1 FROM public.demo_resource_registry WHERE resource_type = $1 AND resource_id = $2)'
+    INTO allowed USING p_resource_type, p_id;
+  RETURN coalesce(allowed, false);
+END $$;
+
+-- Groups: the cohort is fixed; closing records closed_at; reopening is
+-- refused while a member is in another active group; a group with history
+-- (completed sessions, reflections, goal check-ins) is never deleted.
 CREATE OR REPLACE FUNCTION public.triad_guard_group()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  IF TG_OP = 'INSERT' THEN
-    IF NEW.cohort_requirement_date_id IS NULL
-       OR NOT EXISTS (SELECT 1 FROM public.cohort_requirement_dates d
-                      WHERE d.id = NEW.cohort_requirement_date_id AND d.module = 'triads') THEN
-      RAISE EXCEPTION 'A Triad group belongs to one cohort Triad requirement' USING ERRCODE = '23502';
-    END IF;
-    RETURN NEW;
-  END IF;
   IF TG_OP = 'DELETE' THEN
-    IF EXISTS (SELECT 1 FROM public.triad_sessions s WHERE s.triad_group_id = OLD.id AND s.status = 'completed')
-       OR EXISTS (SELECT 1 FROM public.triad_sessions s JOIN public.triad_reflections r ON r.triad_session_id = s.id WHERE s.triad_group_id = OLD.id) THEN
+    IF NOT public.triad_demo_reset_allows('triad_group', OLD.id) AND EXISTS (
+      SELECT 1 FROM public.triad_sessions s
+      WHERE s.triad_group_id = OLD.id
+        AND (s.status = 'completed'
+             OR EXISTS (SELECT 1 FROM public.triad_reflections r WHERE r.triad_session_id = s.id)
+             OR EXISTS (SELECT 1 FROM public.goal_checkins gc WHERE gc.source_activity_type = 'triad' AND gc.source_activity_id = s.id))
+    ) THEN
       RAISE EXCEPTION 'A Triad group with completed sessions or reflections is history and cannot be deleted' USING ERRCODE = '42501';
     END IF;
     RETURN OLD;
   END IF;
-  IF NEW.cohort_requirement_date_id IS DISTINCT FROM OLD.cohort_requirement_date_id THEN
-    RAISE EXCEPTION 'A Triad group''s requirement cannot change' USING ERRCODE = '42501';
+  IF TG_OP = 'INSERT' THEN
+    NEW.closed_at := CASE WHEN NEW.is_active THEN NULL ELSE coalesce(NEW.closed_at, now()) END;
+    RETURN NEW;
   END IF;
-  IF NEW.is_active AND NOT OLD.is_active AND EXISTS (
-    SELECT 1 FROM public.triad_group_members m
-    JOIN public.triad_group_members o ON o.enrollment_id = m.enrollment_id AND o.triad_group_id <> m.triad_group_id
-    JOIN public.triad_groups og ON og.id = o.triad_group_id
-    WHERE m.triad_group_id = NEW.id AND og.is_active AND og.cohort_requirement_date_id = NEW.cohort_requirement_date_id
-  ) THEN
-    RAISE EXCEPTION 'A member is already in another active group for this requirement' USING ERRCODE = '23505';
+  IF NEW.cohort_id IS DISTINCT FROM OLD.cohort_id THEN
+    RAISE EXCEPTION 'A Triad group''s cohort cannot change' USING ERRCODE = '42501';
+  END IF;
+  IF NOT NEW.is_active AND OLD.is_active THEN
+    NEW.closed_at := now();
+  ELSIF NEW.is_active AND NOT OLD.is_active THEN
+    IF EXISTS (
+      SELECT 1 FROM public.triad_group_members m
+      JOIN public.triad_group_members o ON o.enrollment_id = m.enrollment_id AND o.triad_group_id <> m.triad_group_id
+      JOIN public.triad_groups og ON og.id = o.triad_group_id
+      WHERE m.triad_group_id = NEW.id AND og.is_active
+    ) THEN
+      RAISE EXCEPTION 'A member is already in another active Triad group' USING ERRCODE = '23505';
+    END IF;
+    NEW.closed_at := NULL;
   END IF;
   RETURN NEW;
 END $$;
@@ -962,7 +816,10 @@ CREATE TRIGGER triad_groups_guard
   BEFORE INSERT OR UPDATE OR DELETE ON public.triad_groups
   FOR EACH ROW EXECUTE FUNCTION public.triad_guard_group();
 
--- Session lifecycle is enforced server-side for every writer.
+-- Session lifecycle, enforced server-side for every writer:
+--   proposed -> confirmed (has a time) -> completed (time started)
+--   proposed | confirmed -> cancelled
+--   completed and cancelled are final (status and time).
 CREATE OR REPLACE FUNCTION public.triad_guard_session()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
@@ -975,11 +832,17 @@ BEGIN
   END IF;
   IF TG_OP = 'INSERT' THEN
     SELECT * INTO g FROM public.triad_groups WHERE id = NEW.triad_group_id;
-    IF g.cohort_requirement_date_id IS NULL THEN
-      RAISE EXCEPTION 'New Triad sessions belong to a requirement-scoped group' USING ERRCODE = '42501';
+    IF NOT FOUND OR NOT g.is_active THEN
+      RAISE EXCEPTION 'New Triad sessions belong to an active Triad group' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.status = 'confirmed' AND NEW.scheduled_start_time IS NULL THEN
+      RAISE EXCEPTION 'A Triad session needs a time before it is confirmed' USING ERRCODE = '42501';
     END IF;
     IF NEW.status = 'completed' AND NOT public.triad_session_can_complete('confirmed', NEW.scheduled_start_time) THEN
       RAISE EXCEPTION 'A Triad session can only be completed after its scheduled time' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.status = 'cancelled' THEN
+      RAISE EXCEPTION 'A Triad session is created proposed, confirmed or completed' USING ERRCODE = '42501';
     END IF;
     RETURN NEW;
   END IF;
@@ -987,23 +850,24 @@ BEGIN
   IF NEW.triad_group_id IS DISTINCT FROM OLD.triad_group_id THEN
     RAISE EXCEPTION 'A Triad session cannot move to another group' USING ERRCODE = '42501';
   END IF;
-  IF OLD.status = 'completed' THEN
-    IF NEW.status <> 'completed'
+  IF OLD.status IN ('completed', 'cancelled') THEN
+    IF NEW.status IS DISTINCT FROM OLD.status
        OR NEW.scheduled_start_time IS DISTINCT FROM OLD.scheduled_start_time
        OR NEW.scheduled_end_time IS DISTINCT FROM OLD.scheduled_end_time THEN
-      RAISE EXCEPTION 'A completed Triad session is final' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'A % Triad session is final', OLD.status USING ERRCODE = '42501';
     END IF;
     RETURN NEW;
   END IF;
   IF NEW.status IS DISTINCT FROM OLD.status THEN
-    IF NEW.status = 'completed' AND NOT public.triad_session_can_complete(OLD.status, NEW.scheduled_start_time) THEN
-      RAISE EXCEPTION 'A Triad session can only be completed once it is confirmed and its time has started' USING ERRCODE = '42501';
+    IF NOT ((OLD.status = 'proposed' AND NEW.status IN ('confirmed', 'cancelled'))
+         OR (OLD.status = 'confirmed' AND NEW.status IN ('completed', 'cancelled'))) THEN
+      RAISE EXCEPTION 'A Triad session cannot go from % to %', OLD.status, NEW.status USING ERRCODE = '42501';
     END IF;
     IF NEW.status = 'confirmed' AND NEW.scheduled_start_time IS NULL THEN
       RAISE EXCEPTION 'A Triad session needs a time before it is confirmed' USING ERRCODE = '42501';
     END IF;
-    IF OLD.status = 'cancelled' AND NEW.status <> 'proposed' THEN
-      RAISE EXCEPTION 'A cancelled Triad session can only be re-proposed' USING ERRCODE = '42501';
+    IF NEW.status = 'completed' AND NOT public.triad_session_can_complete(OLD.status, NEW.scheduled_start_time) THEN
+      RAISE EXCEPTION 'A Triad session can only be completed once it is confirmed and its time has started' USING ERRCODE = '42501';
     END IF;
   END IF;
   RETURN NEW;
@@ -1013,8 +877,62 @@ CREATE TRIGGER triad_sessions_guard
   BEFORE INSERT OR UPDATE ON public.triad_sessions
   FOR EACH ROW EXECUTE FUNCTION public.triad_guard_session();
 
--- Acceptance: a proposed session with a time is confirmed once every current
--- member has accepted it.
+-- A completed session, or one with reflections / goal check-ins, is history:
+-- no writer deletes it (children cascade from triad_sessions).
+CREATE OR REPLACE FUNCTION public.triad_guard_session_delete()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF public.triad_demo_reset_allows('triad_session', OLD.id) THEN
+    RETURN OLD;
+  END IF;
+  IF OLD.status = 'completed'
+     OR EXISTS (SELECT 1 FROM public.triad_reflections r WHERE r.triad_session_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM public.goal_checkins gc WHERE gc.source_activity_type = 'triad' AND gc.source_activity_id = OLD.id) THEN
+    RAISE EXCEPTION 'A completed Triad session or one with reflections is history and cannot be deleted' USING ERRCODE = '42501';
+  END IF;
+  RETURN OLD;
+END $$;
+
+CREATE TRIGGER triad_sessions_guard_delete
+  BEFORE DELETE ON public.triad_sessions
+  FOR EACH ROW EXECUTE FUNCTION public.triad_guard_session_delete();
+
+-- Responses (session and alternative) belong to members of the session's
+-- historical group.
+CREATE OR REPLACE FUNCTION public.triad_validate_response()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE sid uuid;
+BEGIN
+  IF TG_TABLE_NAME = 'triad_session_responses' THEN
+    sid := NEW.triad_session_id;
+  ELSE
+    SELECT p.triad_session_id INTO sid FROM public.triad_alternative_proposals p WHERE p.id = NEW.proposal_id;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.triad_sessions s
+    JOIN public.triad_group_members m ON m.triad_group_id = s.triad_group_id AND m.enrollment_id = NEW.enrollment_id
+    WHERE s.id = sid
+  ) THEN
+    RAISE EXCEPTION 'Triad responses belong to members of the session''s group' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER triad_session_responses_validate
+  BEFORE INSERT OR UPDATE ON public.triad_session_responses
+  FOR EACH ROW EXECUTE FUNCTION public.triad_validate_response();
+CREATE TRIGGER triad_alternative_proposal_responses_validate
+  BEFORE INSERT OR UPDATE ON public.triad_alternative_proposal_responses
+  FOR EACH ROW EXECUTE FUNCTION public.triad_validate_response();
+
+-- Acceptance: a proposed session with a time is confirmed once every member
+-- has accepted it.
 CREATE OR REPLACE FUNCTION public.triad_confirm_session_if_accepted(p_session_id uuid)
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER
@@ -1101,14 +1019,18 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  IF NEW.status NOT IN ('pending', 'accepted', 'superseded') THEN
-    RAISE EXCEPTION 'Unknown alternative proposal status %', NEW.status USING ERRCODE = '23514';
-  END IF;
   IF TG_OP = 'UPDATE' AND OLD.status <> 'pending' AND NEW.status IS DISTINCT FROM OLD.status THEN
-    RAISE EXCEPTION 'An accepted or superseded alternative is history' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'An accepted, superseded or withdrawn alternative is history' USING ERRCODE = '42501';
   END IF;
   IF NEW.proposed_end_time <= NEW.proposed_start_time THEN
     RAISE EXCEPTION 'An alternative must end after it starts' USING ERRCODE = '23514';
+  END IF;
+  IF TG_OP = 'INSERT' AND NOT EXISTS (
+    SELECT 1 FROM public.triad_sessions s
+    JOIN public.triad_group_members m ON m.triad_group_id = s.triad_group_id AND m.enrollment_id = NEW.proposed_by_enrollment_id
+    WHERE s.id = NEW.triad_session_id
+  ) THEN
+    RAISE EXCEPTION 'An alternative is proposed by a member of the session''s group' USING ERRCODE = '42501';
   END IF;
   RETURN NEW;
 END $$;
@@ -1117,7 +1039,8 @@ CREATE TRIGGER triad_alternative_proposals_guard
   BEFORE INSERT OR UPDATE ON public.triad_alternative_proposals
   FOR EACH ROW EXECUTE FUNCTION public.triad_guard_proposal();
 
--- A reflection belongs to one member enrollment of a completed session.
+-- A reflection belongs to one member enrollment of a completed session, and
+-- is final once submitted.
 CREATE OR REPLACE FUNCTION public.triad_validate_reflection()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
@@ -1144,10 +1067,19 @@ CREATE TRIGGER triad_reflections_validate
   BEFORE INSERT OR UPDATE ON public.triad_reflections
   FOR EACH ROW EXECUTE FUNCTION public.triad_validate_reflection();
 
+
 -- ----------------------------------------------------------------------------
--- 8. Completion evidence: one attribution writer, driven by membership.
---    triad_session -> triad_group -> triad_group_members -> enrollments.
+-- 8. Completion evidence: session evidence only, one writer, driven by the
+--    session's historical group membership:
+--      triad_session -> triad_group -> triad_group_members -> enrollment.
+--    Every member of a live (proposed / confirmed / completed) session with a
+--    time has one attribution, dated on the session's scheduled start. It is
+--    never linked to a requirement unit (milestone_id stays NULL); canonical
+--    progress counts completed sessions and compares them with the cohort's
+--    cumulative dates.
 -- ----------------------------------------------------------------------------
+
+-- Triad evidence is written only by triad_sync_session_attributions.
 CREATE OR REPLACE FUNCTION public.attribute_activity_to_cadence_milestone(p_enrollment_id uuid, p_module text, p_activity_id uuid, p_occurred_on date)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -1181,15 +1113,7 @@ BEGIN
     SELECT count(*), (array_agg(enrollment_id))[1], max(start_time::date) INTO source_count,source_enrollment,source_date
       FROM public.mentoring_sessions WHERE id=p_activity_id;
   ELSIF p_module='triads' THEN
-    -- Ownership = membership of the session's group (every member practises
-    -- every role); the evidence date is the session's effective time.
-    source_type := 'triad';
-    SELECT count(*), max(s.scheduled_start_time::date),
-           (array_agg(m.enrollment_id))[1]
-      INTO source_count, source_date, source_enrollment
-      FROM public.triad_sessions s
-      JOIN public.triad_group_members m ON m.triad_group_id = s.triad_group_id AND m.enrollment_id = p_enrollment_id
-      WHERE s.id=p_activity_id;
+    RAISE EXCEPTION 'Triad evidence is session evidence written by triad_sync_session_attributions' USING ERRCODE='P0001';
   ELSIF p_module='training' THEN
     source_type := 'training';
     SELECT count(*), (array_agg(enrollment_id))[1], max(completed_at::date) INTO source_count,source_enrollment,source_date
@@ -1233,15 +1157,16 @@ BEGIN
   RETURN milestone;
 END $function$;
 
--- THE Triad attribution maintainer: one attribution per member enrollment,
--- dated on the session's effective time. Re-run whenever the time or the
--- membership changes, so evidence never keeps a stale date or owner.
+-- THE Triad evidence maintainer: one attribution per member enrollment of a
+-- live session with a time, dated on the scheduled start. Re-run whenever the
+-- time, status or membership changes, so evidence never keeps a stale date,
+-- owner or a cancelled session.
 CREATE OR REPLACE FUNCTION public.triad_sync_session_attributions(p_session_id uuid)
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-DECLARE s public.triad_sessions; occurred date; member record;
+DECLARE s public.triad_sessions; occurred date;
 BEGIN
   SELECT * INTO s FROM public.triad_sessions WHERE id = p_session_id;
   IF NOT FOUND THEN
@@ -1250,7 +1175,7 @@ BEGIN
     RETURN;
   END IF;
   IF public.is_historical_ownership_retired('triad', p_session_id) THEN RETURN; END IF;
-  occurred := s.scheduled_start_time::date;
+  occurred := CASE WHEN s.status <> 'cancelled' THEN s.scheduled_start_time::date END;
 
   DELETE FROM public.session_activity_attributions a
   WHERE a.source_activity_type = 'triad' AND a.source_activity_id = p_session_id
@@ -1259,16 +1184,12 @@ BEGIN
                         WHERE m.triad_group_id = s.triad_group_id AND m.enrollment_id = a.enrollment_id));
   IF occurred IS NULL THEN RETURN; END IF;
 
-  FOR member IN
-    SELECT m.enrollment_id FROM public.triad_group_members m
-    WHERE m.triad_group_id = s.triad_group_id
-      AND NOT EXISTS (SELECT 1 FROM public.session_activity_attributions a
-                      WHERE a.source_activity_type = 'triad' AND a.source_activity_id = p_session_id
-                        AND a.enrollment_id = m.enrollment_id)
-    ORDER BY m.member_order
-  LOOP
-    PERFORM public.attribute_activity_to_cadence_milestone(member.enrollment_id, 'triads', p_session_id, occurred);
-  END LOOP;
+  INSERT INTO public.session_activity_attributions
+    (enrollment_id, module, source_activity_type, source_activity_id, occurred_on, milestone_id)
+  SELECT m.enrollment_id, 'triads'::public.programme_module_type, 'triad', p_session_id, occurred, NULL
+  FROM public.triad_group_members m
+  WHERE m.triad_group_id = s.triad_group_id
+  ON CONFLICT (source_activity_type, source_activity_id, enrollment_id) DO NOTHING;
 END $$;
 
 CREATE OR REPLACE FUNCTION public.triad_session_attribution_trigger()
@@ -1282,11 +1203,10 @@ BEGIN
 END $$;
 
 CREATE TRIGGER triad_sessions_attribute_activity
-  AFTER INSERT OR UPDATE OF scheduled_start_time ON public.triad_sessions
+  AFTER INSERT OR UPDATE OF scheduled_start_time, status ON public.triad_sessions
   FOR EACH ROW EXECUTE FUNCTION public.triad_session_attribution_trigger();
 
--- A deleted session is no evidence. (sponsor_canonical_activity treats an
--- attribution whose session row is gone as completed, so it must not remain.)
+-- A deleted session is no evidence.
 CREATE OR REPLACE FUNCTION public.triad_session_attribution_delete_trigger()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
@@ -1602,7 +1522,145 @@ CREATE OR REPLACE VIEW public.enrollment_scope_backfill_audit WITH (security_inv
    FROM candidates;
 
 -- ----------------------------------------------------------------------------
--- 9. Learner projections read membership and normalized answers.
+-- 9. Canonical Triad completion.
+--
+--    Activity: one row per (enrollment, Triad session) from the session
+--    evidence, with the session's current status. Only an existing session
+--    counts (a missing session is never "completed").
+--
+--    canonical_module_progress (unchanged, shared by every module) then
+--    computes, for Triads:
+--      completed_activity_units = distinct completed sessions dated <= as_of
+--      completed_units          = LEAST(that, programme required units)
+--      due_units                = cohort Triad dates <= as_of (one per unit)
+--      overdue_units            = GREATEST(due - LEAST(completed, due), 0)
+--    and journeys compare the same cumulative counts at every checkpoint.
+--    canonical_triad_completion is the Triad projection every Admin, Learner,
+--    reminder and Sponsor surface reads.
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.sponsor_canonical_activity(p_enrollment_id uuid)
+ RETURNS TABLE(module programme_module_type, occurred_on date, status text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  SELECT a.module, a.occurred_on, coalesce(s.status::text, 'completed')
+  FROM public.session_activity_attributions a
+  LEFT JOIN public.sessions s ON s.id = a.source_activity_id
+  WHERE a.enrollment_id = p_enrollment_id
+    AND a.source_activity_type = 'coaching'
+
+  UNION ALL
+  SELECT a.module, a.occurred_on, coalesce(s.status::text, 'completed')
+  FROM public.session_activity_attributions a
+  LEFT JOIN public.peer_sessions s ON s.id = a.source_activity_id
+  WHERE a.enrollment_id = p_enrollment_id
+    AND a.source_activity_type = 'peer_coaching'
+
+  UNION ALL
+  SELECT a.module, a.occurred_on, coalesce(s.status::text, 'completed')
+  FROM public.session_activity_attributions a
+  LEFT JOIN public.coachee_peer_sessions s ON s.id = a.source_activity_id
+  WHERE a.enrollment_id = p_enrollment_id
+    AND a.source_activity_type = 'peer_coaching'
+    AND NOT EXISTS (
+      SELECT 1 FROM public.peer_sessions existing_peer
+      WHERE existing_peer.id = a.source_activity_id
+    )
+
+  UNION ALL
+  SELECT a.module, a.occurred_on, coalesce(s.status::text, 'completed')
+  FROM public.session_activity_attributions a
+  LEFT JOIN public.mentoring_sessions s ON s.id = a.source_activity_id
+  WHERE a.enrollment_id = p_enrollment_id
+    AND a.source_activity_type = 'mentoring'
+
+  UNION ALL
+  -- Triads: one row per session of the enrollment's (historical) groups,
+  -- dated on the session's scheduled start. Never per requirement unit.
+  SELECT a.module, a.occurred_on, s.status
+  FROM public.session_activity_attributions a
+  JOIN public.triad_sessions s ON s.id = a.source_activity_id
+  JOIN public.triad_group_members m ON m.triad_group_id = s.triad_group_id AND m.enrollment_id = a.enrollment_id
+  WHERE a.enrollment_id = p_enrollment_id
+    AND a.source_activity_type = 'triad'
+
+  UNION ALL
+  SELECT a.module, a.occurred_on, 'completed'
+  FROM public.session_activity_attributions a
+  WHERE a.enrollment_id = p_enrollment_id
+    AND a.source_activity_type IN ('quiz', 'daily_prompt')
+
+  UNION ALL
+  SELECT 'training'::public.programme_module_type,
+    i.completed_on,
+    'completed'
+  FROM public.canonical_training_learning_items(p_enrollment_id, current_date) i
+  WHERE i.completed_units > 0
+    AND i.completed_on IS NOT NULL;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.canonical_triad_completion(p_enrollment_id uuid, p_as_of date DEFAULT current_date)
+RETURNS TABLE (
+  enrollment_id uuid, programme_id uuid, cohort_id uuid,
+  required_units integer,
+  raw_completed_sessions integer,
+  completed_by_as_of integer,
+  completed_units integer,
+  due_units integer,
+  overdue_units integer,
+  booked_units integer,
+  pace_status text,
+  next_due_on date,
+  schedule jsonb)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  WITH e AS (
+    SELECT pe.id, pe.programme_id, pe.cohort_id FROM public.programme_enrollments pe WHERE pe.id = p_enrollment_id
+  ), progress AS (
+    SELECT p.* FROM public.canonical_module_progress(p_enrollment_id, p_as_of) p
+    WHERE p.module = 'triads'::public.programme_module_type
+  ), activity AS (
+    SELECT count(*) FILTER (WHERE a.status = 'completed')::integer AS all_completed,
+      count(*) FILTER (WHERE a.status = 'completed' AND a.occurred_on <= p_as_of)::integer AS completed_as_of
+    FROM public.sponsor_canonical_activity(p_enrollment_id) a
+    WHERE a.module = 'triads'::public.programme_module_type
+  ), dates AS (
+    SELECT d.ordinal, d.due_on, d.training_week_id
+    FROM e JOIN public.cohort_requirement_dates d
+      ON d.cohort_id = e.cohort_id AND d.programme_id = e.programme_id AND d.module = 'triads'::public.programme_module_type
+  )
+  SELECT e.id, e.programme_id, e.cohort_id,
+    coalesce(p.required_units, 0),
+    a.all_completed,
+    coalesce(p.completed_activity_units, a.completed_as_of),
+    coalesce(p.completed_units, 0),
+    coalesce(p.due_units, 0),
+    coalesce(p.overdue_units, 0),
+    coalesce(p.booked_units, 0),
+    coalesce(p.pace_status, 'not_required'),
+    (SELECT d.due_on FROM dates d WHERE d.ordinal > coalesce(p.completed_units, 0) ORDER BY d.ordinal LIMIT 1),
+    coalesce((SELECT jsonb_agg(jsonb_build_object(
+        'milestone', d.ordinal,
+        'due_on', d.due_on,
+        'training_week_id', d.training_week_id,
+        'is_due', d.due_on <= p_as_of,
+        -- cumulative: "d.ordinal sessions completed by now", never a session
+        -- assigned to this date
+        'satisfied', coalesce(p.completed_units, 0) >= d.ordinal)
+      ORDER BY d.ordinal)
+      FROM dates d WHERE d.ordinal <= coalesce(p.required_units, 0)), '[]'::jsonb)
+  FROM e
+  CROSS JOIN activity a
+  LEFT JOIN progress p ON true;
+$$;
+COMMENT ON FUNCTION public.canonical_triad_completion(uuid, date) IS
+  'THE Triad completion projection (from canonical_module_progress): distinct completed sessions of the enrollment''s historical groups, capped at the programme''s required units, against the cohort''s cumulative due dates. Internal.';
+
+
+-- ----------------------------------------------------------------------------
+-- 10. Learner projections read membership, sessions and normalized answers.
 -- ----------------------------------------------------------------------------
 DROP FUNCTION IF EXISTS public.learner_triad_members(uuid[]);
 DROP FUNCTION IF EXISTS public.canonical_triad_group_members(uuid[]);
@@ -1634,7 +1692,9 @@ AS $$
   ORDER BY c.triad_group_id, c.member_slot;
 $$;
 
-CREATE OR REPLACE FUNCTION public.learner_session_history(
+-- A Triad session belongs to no round / week: the history carries neither.
+DROP FUNCTION IF EXISTS public.learner_session_history(uuid);
+CREATE FUNCTION public.learner_session_history(
   p_enrollment_id uuid
 )
 RETURNS TABLE (
@@ -1648,8 +1708,6 @@ RETURNS TABLE (
   start_time timestamptz,
   status text,
   counterpart_names text[],
-  round_number integer,
-  training_week_number integer,
   attributed_to_enrollment boolean,
   is_programme_evidence boolean
 )
@@ -1672,60 +1730,56 @@ AS $$
     SELECT 'coaching'::text AS session_type, 'sessions'::text AS source_table, s.id AS source_id,
       'coaching'::public.programme_module_type AS module, 'coachee'::text AS participant_role,
       s.topic AS title, s.start_time, s.status::text AS status,
-      ARRAY[s.coach_id] AS counterpart_ids, NULL::integer AS round_number, NULL::integer AS training_week_number
+      ARRAY[s.coach_id] AS counterpart_ids
     FROM public.sessions s
     JOIN me ON s.enrollment_id = me.enrollment_id AND s.coachee_id = me.user_id
 
     UNION ALL
     SELECT 'peer_coaching', 'coachee_peer_sessions', cps.id, 'peer_coaching', 'receiver',
-      cps.topic, cps.start_time, cps.status::text, ARRAY[cps.peer_provider_id], NULL, NULL
+      cps.topic, cps.start_time, cps.status::text, ARRAY[cps.peer_provider_id]
     FROM public.coachee_peer_sessions cps
     JOIN me ON cps.enrollment_id = me.enrollment_id AND cps.peer_receiver_id = me.user_id
 
     UNION ALL
     SELECT 'peer_coaching', 'coachee_peer_sessions', cps.id, 'peer_coaching', 'provider',
-      cps.topic, cps.start_time, cps.status::text, ARRAY[cps.peer_receiver_id], NULL, NULL
+      cps.topic, cps.start_time, cps.status::text, ARRAY[cps.peer_receiver_id]
     FROM public.coachee_peer_sessions cps
     JOIN me ON cps.peer_provider_id = me.user_id
     WHERE cps.enrollment_id IN (SELECT id FROM cohort_enrollments)
 
     UNION ALL
     SELECT 'peer_coaching', 'peer_sessions', ps.id, 'peer_coaching', 'receiver',
-      ps.topic, ps.start_time, ps.status::text, ARRAY[ps.peer_coach_id], NULL, NULL
+      ps.topic, ps.start_time, ps.status::text, ARRAY[ps.peer_coach_id]
     FROM public.peer_sessions ps
     JOIN me ON ps.enrollment_id = me.enrollment_id AND ps.peer_coachee_id = me.user_id
 
     UNION ALL
     SELECT 'peer_coaching', 'peer_sessions', ps.id, 'peer_coaching', 'provider',
-      ps.topic, ps.start_time, ps.status::text, ARRAY[ps.peer_coachee_id], NULL, NULL
+      ps.topic, ps.start_time, ps.status::text, ARRAY[ps.peer_coachee_id]
     FROM public.peer_sessions ps
     JOIN me ON ps.peer_coach_id = me.user_id
     WHERE ps.enrollment_id IN (SELECT id FROM cohort_enrollments)
 
     UNION ALL
     SELECT 'mentoring', 'mentoring_sessions', ms.id, 'mentoring', 'mentee',
-      ms.topic, ms.start_time, ms.status::text, ARRAY[ms.mentor_id], NULL, NULL
+      ms.topic, ms.start_time, ms.status::text, ARRAY[ms.mentor_id]
     FROM public.mentoring_sessions ms
     JOIN me ON ms.enrollment_id = me.enrollment_id AND ms.mentee_id = me.user_id
 
     UNION ALL
-    -- Triads: every member of the group owns the session (roles rotate, so
-    -- there is no per-session role). Unit number / week come from the
-    -- group's cohort Triad requirement.
+    -- Triads: every member of the session's (historical) group owns the
+    -- session (roles rotate, so there is no per-session role). A session
+    -- belongs to no requirement unit: no round, no week.
     SELECT 'triad', 'triad_sessions', ts.id, 'triads', 'participant',
       NULL::text, ts.scheduled_start_time, ts.status::text,
       coalesce(ARRAY(
         SELECT oe.user_id FROM public.triad_group_members om
         JOIN public.programme_enrollments oe ON oe.id = om.enrollment_id
         WHERE om.triad_group_id = ts.triad_group_id AND om.enrollment_id <> gm.enrollment_id
-        ORDER BY om.member_order), ARRAY[]::uuid[]),
-      crd.ordinal, tw.week_number
+        ORDER BY om.member_order), ARRAY[]::uuid[])
     FROM public.triad_group_members gm
     JOIN me ON gm.enrollment_id = me.enrollment_id
     JOIN public.triad_sessions ts ON ts.triad_group_id = gm.triad_group_id
-    JOIN public.triad_groups tg ON tg.id = ts.triad_group_id
-    LEFT JOIN public.cohort_requirement_dates crd ON crd.id = tg.cohort_requirement_date_id
-    LEFT JOIN public.training_weeks tw ON tw.id = crd.training_week_id
   )
   SELECT
     r.session_type || ':' || r.source_table || ':' || r.source_id::text,
@@ -1742,8 +1796,6 @@ AS $$
       FROM public.profiles pr
       WHERE pr.id = ANY (r.counterpart_ids)
     ), ARRAY[]::text[]),
-    r.round_number,
-    r.training_week_number,
     EXISTS (
       SELECT 1 FROM public.session_activity_attributions a
       JOIN me ON a.enrollment_id = me.enrollment_id
@@ -1857,7 +1909,8 @@ AS $$
     UNION ALL
     SELECT 'triad_reflection', 'triad_reflections', trf.id, 'triads', trf.submitted_at, NULL::text,
       ans.body,
-      jsonb_strip_nulls(jsonb_build_object('answers', ans.answers, 'round_number', crd.ordinal)),
+      jsonb_strip_nulls(jsonb_build_object('answers', ans.answers,
+        'session_start_time', ts.scheduled_start_time, 'triad_group_id', ts.triad_group_id)),
       trf.satisfaction_rating::numeric, NULL,
       'triad_sessions', trf.triad_session_id, NULL, trf.triad_session_id, false
     FROM public.triad_reflections trf
@@ -1873,8 +1926,6 @@ AS $$
       WHERE a.triad_reflection_id = trf.id AND nullif(btrim(a.answer_text), '') IS NOT NULL
     ) ans
     LEFT JOIN public.triad_sessions ts ON ts.id = trf.triad_session_id
-    LEFT JOIN public.triad_groups tg ON tg.id = ts.triad_group_id
-    LEFT JOIN public.cohort_requirement_dates crd ON crd.id = tg.cohort_requirement_date_id
     WHERE ans.body IS NOT NULL
 
     -- Goal check-ins the learner wrote, with their comment.
@@ -1952,77 +2003,13 @@ AS $$
 $$;
 
 -- ----------------------------------------------------------------------------
--- 10. Canonical Triad constructions shared by Admin, Learner, reminders and
+-- 11. Canonical Triad constructions shared by Admin, Learner, reminders and
 --     auto-assignment. None of them owns a date or a completion rule: dates
---     are cohort_requirement_dates, completion is canonical_module_progress.
+--     are cohort_requirement_dates, completion is canonical_triad_completion.
 -- ----------------------------------------------------------------------------
 
--- The cohort's Triad requirement units. required_units / operational come
--- from the canonical required-vs-scheduled construction.
-CREATE OR REPLACE FUNCTION public.triad_requirement_units_internal(p_cohort_id uuid)
-RETURNS TABLE (cohort_requirement_date_id uuid, cohort_id uuid, programme_id uuid, unit_number integer,
-  due_on date, training_week_id uuid, required_units integer, is_operational boolean)
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-  SELECT d.id, d.cohort_id, d.programme_id, d.ordinal, d.due_on, d.training_week_id,
-    coalesce(st.required_units, 0), d.ordinal <= coalesce(st.required_units, 0)
-  FROM public.cohort_requirement_dates d
-  LEFT JOIN LATERAL (
-    SELECT s.required_units FROM public.cohort_programme_schedule_state(d.cohort_id, d.programme_id) s
-    WHERE s.module = 'triads'::public.programme_module_type
-  ) st ON true
-  WHERE d.cohort_id = p_cohort_id AND d.module = 'triads'::public.programme_module_type
-  ORDER BY d.programme_id, d.ordinal;
-$$;
-
--- Per enrollment of the requirement's cohort: its group for this unit and
--- the unit's canonical state. Unit N is completed when canonical completed
--- units >= N, and overdue when N is within canonical due units and not yet
--- completed — the same numbers canonical_module_progress reports (the sum
--- of overdue units over all units equals its overdue_units).
-CREATE OR REPLACE FUNCTION public.triad_unit_enrollment_status_internal(p_cohort_requirement_date_id uuid, p_as_of date DEFAULT current_date)
-RETURNS TABLE (cohort_requirement_date_id uuid, unit_number integer, due_on date, enrollment_id uuid, user_id uuid,
-  enrollment_status public.enrollment_status, is_eligible boolean, triad_group_id uuid, session_id uuid,
-  session_status text, scheduled_start_time timestamptz, unit_completed boolean, unit_overdue boolean)
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-  WITH req AS (
-    SELECT d.* FROM public.cohort_requirement_dates d
-    WHERE d.id = p_cohort_requirement_date_id AND d.module = 'triads'::public.programme_module_type
-  ), grp AS (
-    SELECT DISTINCT ON (m.enrollment_id) m.enrollment_id, g.id AS triad_group_id
-    FROM req
-    JOIN public.triad_groups g ON g.cohort_requirement_date_id = req.id AND g.is_active
-    JOIN public.triad_group_members m ON m.triad_group_id = g.id
-    ORDER BY m.enrollment_id, g.created_at DESC
-  ), pop AS (
-    SELECT e.* FROM req
-    JOIN public.programme_enrollments e ON e.cohort_id = req.cohort_id AND e.programme_id = req.programme_id
-    WHERE e.status IN ('active', 'at_risk', 'paused') OR e.id IN (SELECT enrollment_id FROM grp)
-  )
-  SELECT req.id, req.ordinal, req.due_on, e.id, e.user_id, e.status,
-    e.status IN ('active', 'at_risk', 'paused'),
-    grp.triad_group_id, ses.id, ses.status, ses.scheduled_start_time,
-    coalesce(p.completed_units, 0) >= req.ordinal,
-    req.ordinal <= coalesce(p.due_units, 0) AND coalesce(p.completed_units, 0) < req.ordinal
-  FROM req
-  CROSS JOIN pop e
-  LEFT JOIN grp ON grp.enrollment_id = e.id
-  LEFT JOIN LATERAL (
-    SELECT s.id, s.status, s.scheduled_start_time FROM public.triad_sessions s
-    WHERE s.triad_group_id = grp.triad_group_id ORDER BY s.created_at DESC LIMIT 1
-  ) ses ON true
-  LEFT JOIN LATERAL (
-    SELECT mp.completed_units, mp.due_units
-    FROM public.canonical_module_progress(e.id, p_as_of) mp
-    WHERE mp.module = 'triads'::public.programme_module_type
-  ) p ON true;
-$$;
-
--- One group view (members, sessions, responses, proposals, reflection
--- state) for a set of groups, from the viewpoint of one member enrollment.
+-- A group's sessions (numbered in time order), responses, open alternatives
+-- and the viewer's own reflection state. p_viewer_enrollment_id NULL = Admin.
 CREATE OR REPLACE FUNCTION public.triad_group_sessions_internal(p_group_id uuid, p_viewer_enrollment_id uuid)
 RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER
@@ -2030,6 +2017,7 @@ SET search_path = public, pg_temp
 AS $$
   SELECT coalesce(jsonb_agg(jsonb_build_object(
       'id', s.id,
+      'session_number', s.session_number,
       'status', s.status,
       'scheduled_start_time', s.scheduled_start_time,
       'scheduled_end_time', s.scheduled_end_time,
@@ -2043,6 +2031,7 @@ AS $$
         FROM public.triad_group_members m
         LEFT JOIN public.triad_session_responses r ON r.triad_session_id = s.id AND r.enrollment_id = m.enrollment_id
         WHERE m.triad_group_id = s.triad_group_id), '[]'::jsonb),
+      'reflection_count', (SELECT count(*) FROM public.triad_reflections tr WHERE tr.triad_session_id = s.id),
       'reflection_submitted', EXISTS (SELECT 1 FROM public.triad_reflections tr
                                       WHERE tr.triad_session_id = s.id AND tr.enrollment_id = p_viewer_enrollment_id),
       'reflection_satisfaction', (SELECT tr.satisfaction_rating FROM public.triad_reflections tr
@@ -2060,43 +2049,77 @@ AS $$
           ORDER BY p.created_at)
         FROM public.triad_alternative_proposals p
         WHERE p.triad_session_id = s.id AND p.status = 'pending'), '[]'::jsonb))
-    ORDER BY s.created_at), '[]'::jsonb)
-  FROM public.triad_sessions s
-  WHERE s.triad_group_id = p_group_id;
+    ORDER BY s.session_number), '[]'::jsonb)
+  FROM (
+    SELECT ts.*, row_number() OVER (ORDER BY coalesce(ts.scheduled_start_time, ts.created_at), ts.created_at, ts.id)::integer AS session_number
+    FROM public.triad_sessions ts WHERE ts.triad_group_id = p_group_id
+  ) s;
 $$;
 
--- Learner (and coach-as-learner) self-view: every Triad group of the
--- caller's enrollment (or of all the caller's enrollments when NULL).
-CREATE OR REPLACE FUNCTION public.learner_triad_overview(p_enrollment_id uuid DEFAULT NULL)
-RETURNS TABLE (enrollment_id uuid, triad_group_id uuid, cohort_requirement_date_id uuid, unit_number integer,
-  due_on date, training_week_number integer, training_week_title text, training_week_title_vi text,
-  group_language text, is_active boolean, member_count integer, my_member_slot integer,
-  unit_completed boolean, unit_overdue boolean, sessions jsonb)
+-- One row per enrollment of a cohort in a programme that requires Triads:
+-- eligibility, current active group and the canonical completion.
+CREATE OR REPLACE FUNCTION public.triad_cohort_learners_internal(p_cohort_id uuid, p_as_of date DEFAULT current_date)
+RETURNS TABLE (enrollment_id uuid, user_id uuid, full_name text, spoken_languages text[], programme_id uuid,
+  enrollment_status public.enrollment_status, is_eligible boolean, active_group_id uuid,
+  required_units integer, raw_completed_sessions integer, completed_units integer, due_units integer,
+  overdue_units integer, next_due_on date)
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT m.enrollment_id, g.id, g.cohort_requirement_date_id, d.ordinal, d.due_on,
-    tw.week_number, tw.title, tw.title_vi, g.group_language, g.is_active,
+  SELECT e.id, e.user_id, pr.full_name, coalesce(pr.spoken_languages, ARRAY[]::text[]), e.programme_id,
+    e.status, e.status IN ('active', 'at_risk', 'paused'),
+    (SELECT g.id FROM public.triad_group_members m JOIN public.triad_groups g ON g.id = m.triad_group_id
+     WHERE m.enrollment_id = e.id AND g.is_active LIMIT 1),
+    c.required_units, c.raw_completed_sessions, c.completed_units, c.due_units, c.overdue_units, c.next_due_on
+  FROM public.programme_enrollments e
+  JOIN public.profiles pr ON pr.id = e.user_id
+  CROSS JOIN LATERAL public.canonical_triad_completion(e.id, p_as_of) c
+  WHERE e.cohort_id = p_cohort_id
+    AND public.triad_required_units_for_programme(e.programme_id) > 0
+  ORDER BY pr.full_name, e.id;
+$$;
+
+-- Learner (and coach-as-learner) self-view: every Triad group of the
+-- caller's enrollment (or of all the caller's enrollments when NULL) —
+-- the active group and closed historical ones.
+DROP FUNCTION IF EXISTS public.learner_triad_overview(uuid);
+CREATE FUNCTION public.learner_triad_overview(p_enrollment_id uuid DEFAULT NULL)
+RETURNS TABLE (enrollment_id uuid, triad_group_id uuid, cohort_id uuid, group_language text, is_active boolean,
+  closed_at timestamptz, created_at timestamptz, member_count integer, my_member_slot integer, sessions jsonb)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT m.enrollment_id, g.id, g.cohort_id, g.group_language, g.is_active, g.closed_at, g.created_at,
     (SELECT count(*)::integer FROM public.triad_group_members x WHERE x.triad_group_id = g.id),
     m.member_order::integer,
-    CASE WHEN d.id IS NOT NULL THEN coalesce(p.completed_units, 0) >= d.ordinal END,
-    CASE WHEN d.id IS NOT NULL THEN d.ordinal <= coalesce(p.due_units, 0) AND coalesce(p.completed_units, 0) < d.ordinal END,
     public.triad_group_sessions_internal(g.id, m.enrollment_id)
   FROM public.programme_enrollments e
   JOIN public.triad_group_members m ON m.enrollment_id = e.id
   JOIN public.triad_groups g ON g.id = m.triad_group_id
-  LEFT JOIN public.cohort_requirement_dates d ON d.id = g.cohort_requirement_date_id
-  LEFT JOIN public.training_weeks tw ON tw.id = d.training_week_id
-  LEFT JOIN LATERAL (
-    SELECT mp.completed_units, mp.due_units FROM public.canonical_module_progress(e.id, current_date) mp
-    WHERE mp.module = 'triads'::public.programme_module_type
-  ) p ON true
   WHERE e.user_id = auth.uid()
     AND auth.uid() IS NOT NULL
     AND (p_enrollment_id IS NULL OR e.id = p_enrollment_id)
-  ORDER BY d.ordinal NULLS FIRST, g.created_at;
+  ORDER BY g.is_active DESC, g.created_at DESC;
 $$;
 
+-- The learner's own canonical Triad status (same projection Admin and Sponsor read).
+CREATE OR REPLACE FUNCTION public.learner_triad_status(p_enrollment_id uuid)
+RETURNS TABLE (enrollment_id uuid, required_units integer, raw_completed_sessions integer, completed_units integer,
+  due_units integer, overdue_units integer, booked_units integer, pace_status text, next_due_on date, schedule jsonb)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT c.enrollment_id, c.required_units, c.raw_completed_sessions, c.completed_units, c.due_units,
+    c.overdue_units, c.booked_units, c.pace_status, c.next_due_on, c.schedule
+  FROM public.programme_enrollments e
+  CROSS JOIN LATERAL public.canonical_triad_completion(e.id, current_date) c
+  WHERE e.id = p_enrollment_id AND e.user_id = auth.uid() AND auth.uid() IS NOT NULL;
+$$;
+
+
+-- ----------------------------------------------------------------------------
+-- 12. Reflections (questions, visibility) and learner write paths.
+-- ----------------------------------------------------------------------------
 -- Reflection questions for a session's programme: the programme's own active
 -- set when it has one, else the default set.
 CREATE OR REPLACE FUNCTION public.triad_reflection_questions_for_session(p_session_id uuid)
@@ -2171,7 +2194,7 @@ AS $$
 $$;
 
 -- ----------------------------------------------------------------------------
--- 11. Learner write paths (the only way a learner changes Triad state).
+--     Learner write paths (the only way a learner changes Triad state).
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.triad_caller_member_enrollment(p_session_id uuid)
 RETURNS uuid
@@ -2305,32 +2328,55 @@ BEGIN
   RETURN reflection;
 END $$;
 
+-- A member of an active group proposes the group's next session (the first
+-- one, or the next after the previous session was completed / cancelled).
+-- The proposer has accepted it; the session confirms once everyone accepts.
+CREATE OR REPLACE FUNCTION public.learner_triad_schedule_session(p_group_id uuid, p_start timestamptz, p_end timestamptz)
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE me uuid := public.triad_member_enrollment_for_user(p_group_id, auth.uid()); session_id uuid;
+BEGIN
+  IF me IS NULL THEN
+    RAISE EXCEPTION 'Only members of this Triad group can do this' USING ERRCODE = '42501';
+  END IF;
+  IF p_start IS NULL OR p_end IS NULL OR p_end <= p_start THEN
+    RAISE EXCEPTION 'A session needs a start before its end' USING ERRCODE = '22023';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.triad_sessions s WHERE s.triad_group_id = p_group_id AND s.status IN ('proposed', 'confirmed')) THEN
+    RAISE EXCEPTION 'This group already has an open Triad session' USING ERRCODE = '23505';
+  END IF;
+  INSERT INTO public.triad_sessions (triad_group_id, scheduled_start_time, scheduled_end_time, status)
+  VALUES (p_group_id, p_start, p_end, 'proposed')
+  RETURNING id INTO session_id;
+  INSERT INTO public.triad_session_responses (triad_session_id, enrollment_id, response, responded_at)
+  SELECT session_id, m.enrollment_id,
+    CASE WHEN m.enrollment_id = me THEN 'accepted' ELSE 'pending' END,
+    CASE WHEN m.enrollment_id = me THEN now() END
+  FROM public.triad_group_members m WHERE m.triad_group_id = p_group_id;
+  RETURN session_id;
+END $$;
+
 -- ----------------------------------------------------------------------------
--- 12. Requirement-scoped assignment (Admin manual + service auto-assign).
---     Always: cohort Triad requirement -> that cohort's eligible enrollments.
+-- 13. Cohort-scoped assignment (Admin manual + Admin-run auto-assign).
+--     Always: one cohort -> that cohort's eligible enrollments. A group is
+--     for the cohort's whole Triad requirement, never for one unit.
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.triad_create_group_internal(
-  p_cohort_requirement_date_id uuid, p_enrollment_ids uuid[], p_group_language text,
+  p_cohort_id uuid, p_enrollment_ids uuid[], p_group_language text,
   p_assigned_by text, p_start timestamptz DEFAULT NULL, p_end timestamptz DEFAULT NULL)
 RETURNS uuid
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  unit record;
   group_id uuid;
   session_id uuid;
   n integer := coalesce(array_length(p_enrollment_ids, 1), 0);
 BEGIN
-  SELECT u.* INTO unit
-  FROM public.cohort_requirement_dates d
-  CROSS JOIN LATERAL public.triad_requirement_units_internal(d.cohort_id) u
-  WHERE d.id = p_cohort_requirement_date_id AND u.cohort_requirement_date_id = d.id;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Triad requirement not found' USING ERRCODE = 'P0002';
-  END IF;
-  IF NOT unit.is_operational THEN
-    RAISE EXCEPTION 'Triad unit % is beyond the programme requirement', unit.unit_number USING ERRCODE = '22023';
+  IF NOT EXISTS (SELECT 1 FROM public.cohorts WHERE id = p_cohort_id) THEN
+    RAISE EXCEPTION 'Cohort not found' USING ERRCODE = 'P0002';
   END IF;
   IF n NOT BETWEEN 2 AND 3 OR (SELECT count(DISTINCT x) FROM unnest(p_enrollment_ids) x) <> n THEN
     RAISE EXCEPTION 'A Triad group needs 2 or 3 different learners' USING ERRCODE = '22023';
@@ -2338,7 +2384,7 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM unnest(p_enrollment_ids) x
     LEFT JOIN public.programme_enrollments e ON e.id = x
-    WHERE e.id IS NULL OR e.cohort_id IS DISTINCT FROM unit.cohort_id OR e.programme_id IS DISTINCT FROM unit.programme_id
+    WHERE e.id IS NULL OR e.cohort_id IS DISTINCT FROM p_cohort_id
        OR e.status NOT IN ('active', 'at_risk', 'paused')
   ) THEN
     RAISE EXCEPTION 'Triad members must be ongoing enrollments of this cohort' USING ERRCODE = '42501';
@@ -2346,38 +2392,42 @@ BEGIN
   IF p_assigned_by NOT IN ('auto', 'admin') OR p_group_language NOT IN ('vi', 'en') THEN
     RAISE EXCEPTION 'Invalid assignment source or language' USING ERRCODE = '22023';
   END IF;
+  IF (p_start IS NULL) <> (p_end IS NULL) OR p_end <= p_start THEN
+    RAISE EXCEPTION 'A proposed time needs a start before its end' USING ERRCODE = '22023';
+  END IF;
 
-  INSERT INTO public.triad_groups (cohort_requirement_date_id, assigned_by, group_language)
-  VALUES (p_cohort_requirement_date_id, p_assigned_by, p_group_language)
+  INSERT INTO public.triad_groups (cohort_id, assigned_by, group_language)
+  VALUES (p_cohort_id, p_assigned_by, p_group_language)
   RETURNING id INTO group_id;
   INSERT INTO public.triad_group_members (triad_group_id, enrollment_id, member_order)
   SELECT group_id, x.enrollment_id, x.ord FROM unnest(p_enrollment_ids) WITH ORDINALITY AS x(enrollment_id, ord);
-  INSERT INTO public.triad_sessions (triad_group_id, scheduled_start_time, scheduled_end_time, status)
-  VALUES (group_id, p_start, p_end, 'proposed')
-  RETURNING id INTO session_id;
-  INSERT INTO public.triad_session_responses (triad_session_id, enrollment_id)
-  SELECT session_id, m.enrollment_id FROM public.triad_group_members m WHERE m.triad_group_id = group_id;
+  -- The system may propose a common available time as the first session.
+  IF p_start IS NOT NULL THEN
+    INSERT INTO public.triad_sessions (triad_group_id, scheduled_start_time, scheduled_end_time, status)
+    VALUES (group_id, p_start, p_end, 'proposed')
+    RETURNING id INTO session_id;
+    INSERT INTO public.triad_session_responses (triad_session_id, enrollment_id)
+    SELECT session_id, m.enrollment_id FROM public.triad_group_members m WHERE m.triad_group_id = group_id;
+  END IF;
   RETURN group_id;
 END $$;
 
--- Candidate pool for one requirement: ongoing enrollments of THAT cohort not
--- yet in an active group for this unit, with spoken languages.
-CREATE OR REPLACE FUNCTION public.triad_requirement_candidates_internal(p_cohort_requirement_date_id uuid)
-RETURNS TABLE (enrollment_id uuid, user_id uuid, full_name text, spoken_languages text[], enrollment_status public.enrollment_status, triad_group_id uuid)
+-- Auto-assignment pool: eligible ongoing enrollments of THIS cohort that are
+-- not in an active Triad group, with spoken languages.
+CREATE OR REPLACE FUNCTION public.triad_cohort_candidates_internal(p_cohort_id uuid)
+RETURNS TABLE (enrollment_id uuid, user_id uuid, full_name text, spoken_languages text[], programme_id uuid)
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT st.enrollment_id, st.user_id, pr.full_name, coalesce(pr.spoken_languages, ARRAY[]::text[]),
-    st.enrollment_status, st.triad_group_id
-  FROM public.triad_unit_enrollment_status_internal(p_cohort_requirement_date_id, current_date) st
-  JOIN public.profiles pr ON pr.id = st.user_id
-  WHERE st.is_eligible
-  ORDER BY pr.full_name;
+  SELECT l.enrollment_id, l.user_id, l.full_name, l.spoken_languages, l.programme_id
+  FROM public.triad_cohort_learners_internal(p_cohort_id, current_date) l
+  WHERE l.is_eligible AND l.active_group_id IS NULL
+  ORDER BY l.full_name;
 $$;
 
 -- Re-running auto-assignment replaces only its own groups that nobody has
--- acted on yet (every session still proposed, no responses, no reflections).
-CREATE OR REPLACE FUNCTION public.triad_clear_unconfirmed_auto_groups_internal(p_cohort_requirement_date_id uuid)
+-- acted on yet (no session, or only a proposed one nobody responded to).
+CREATE OR REPLACE FUNCTION public.triad_clear_unconfirmed_auto_groups_internal(p_cohort_id uuid)
 RETURNS integer
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp
@@ -2385,48 +2435,46 @@ AS $$
 DECLARE cleared integer;
 BEGIN
   DELETE FROM public.triad_groups g
-  WHERE g.cohort_requirement_date_id = p_cohort_requirement_date_id
+  WHERE g.cohort_id = p_cohort_id
+    AND g.is_active
     AND g.assigned_by = 'auto'
     AND NOT EXISTS (SELECT 1 FROM public.triad_sessions s WHERE s.triad_group_id = g.id AND s.status <> 'proposed')
     AND NOT EXISTS (SELECT 1 FROM public.triad_sessions s JOIN public.triad_session_responses r ON r.triad_session_id = s.id
-                    WHERE s.triad_group_id = g.id AND r.response <> 'pending');
+                    WHERE s.triad_group_id = g.id AND r.response <> 'pending')
+    AND NOT EXISTS (SELECT 1 FROM public.triad_sessions s JOIN public.triad_alternative_proposals p ON p.triad_session_id = s.id
+                    WHERE s.triad_group_id = g.id);
   GET DIAGNOSTICS cleared = ROW_COUNT;
   RETURN cleared;
 END $$;
 
-CREATE OR REPLACE FUNCTION public.triad_set_assignment_status_internal(p_cohort_requirement_date_id uuid, p_status text, p_summary jsonb DEFAULT NULL)
-RETURNS void
-LANGUAGE sql SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-  INSERT INTO public.cohort_triad_operations (cohort_requirement_date_id, assignment_status, last_assignment_run_at, last_assignment_summary, updated_at)
-  VALUES (p_cohort_requirement_date_id, p_status, CASE WHEN p_status <> 'running' THEN now() END, p_summary, now())
-  ON CONFLICT (cohort_requirement_date_id) DO UPDATE SET
-    assignment_status = excluded.assignment_status,
-    last_assignment_run_at = coalesce(excluded.last_assignment_run_at, cohort_triad_operations.last_assignment_run_at),
-    last_assignment_summary = coalesce(excluded.last_assignment_summary, cohort_triad_operations.last_assignment_summary),
-    updated_at = now();
-$$;
-
--- Reminder targets per unit and member, from the canonical due date and the
--- canonical unit state (used by the triad-reminders Edge Function).
-CREATE OR REPLACE FUNCTION public.triad_reminder_targets_internal(p_as_of date DEFAULT current_date, p_cohort_requirement_date_id uuid DEFAULT NULL)
-RETURNS TABLE (cohort_requirement_date_id uuid, cohort_id uuid, unit_number integer, due_on date, days_until_due integer,
-  enrollment_id uuid, user_id uuid, triad_group_id uuid, session_status text, unit_completed boolean, unit_overdue boolean)
+-- Reminder targets: per cohort Triad due date (cumulative milestone N) and
+-- eligible enrollment — met when the enrollment's canonical completed
+-- sessions reach N, overdue when the date has passed and they do not.
+CREATE OR REPLACE FUNCTION public.triad_reminder_targets_internal(p_as_of date DEFAULT current_date, p_cohort_id uuid DEFAULT NULL)
+RETURNS TABLE (cohort_id uuid, programme_id uuid, milestone_number integer, due_on date, days_until_due integer,
+  enrollment_id uuid, user_id uuid, triad_group_id uuid, open_session_status text, completed_units integer,
+  milestone_met boolean, milestone_overdue boolean)
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT d.id, d.cohort_id, st.unit_number, st.due_on, (st.due_on - p_as_of)::integer,
-    st.enrollment_id, st.user_id, st.triad_group_id, st.session_status, st.unit_completed, st.unit_overdue
+  SELECT d.cohort_id, d.programme_id, d.ordinal, d.due_on, (d.due_on - p_as_of)::integer,
+    l.enrollment_id, l.user_id, l.active_group_id,
+    (SELECT s.status FROM public.triad_sessions s
+     WHERE s.triad_group_id = l.active_group_id AND s.status IN ('proposed', 'confirmed') LIMIT 1),
+    l.completed_units,
+    l.completed_units >= d.ordinal,
+    d.due_on <= p_as_of AND l.completed_units < d.ordinal
   FROM public.cohort_requirement_dates d
-  CROSS JOIN LATERAL public.triad_unit_enrollment_status_internal(d.id, p_as_of) st
+  CROSS JOIN LATERAL public.triad_cohort_learners_internal(d.cohort_id, p_as_of) l
   WHERE d.module = 'triads'::public.programme_module_type
-    AND (p_cohort_requirement_date_id IS NULL OR d.id = p_cohort_requirement_date_id)
-    AND st.is_eligible;
+    AND (p_cohort_id IS NULL OR d.cohort_id = p_cohort_id)
+    AND l.programme_id = d.programme_id
+    AND d.ordinal <= l.required_units
+    AND l.is_eligible;
 $$;
 
 -- ----------------------------------------------------------------------------
--- 13. Admin (cohort context).
+-- 14. Admin (Admin -> Cohort -> Triads).
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.triad_assert_admin()
 RETURNS void
@@ -2439,116 +2487,115 @@ BEGIN
   END IF;
 END $$;
 
--- Admin -> Cohort -> Triads: each Triad requirement unit with its canonical
--- due date, groups and canonical unit state. Admin never enters a date here.
-CREATE OR REPLACE FUNCTION public.admin_cohort_triad_requirements(p_cohort_id uuid, p_as_of date DEFAULT current_date)
-RETURNS TABLE (cohort_requirement_date_id uuid, programme_id uuid, unit_number integer, due_on date,
-  required_units integer, is_operational boolean, assignment_status text, last_assignment_run_at timestamptz,
-  last_assignment_summary jsonb, eligible_enrollments integer, assigned_enrollments integer,
-  completed_enrollments integer, overdue_enrollments integer, groups jsonb)
+-- The requirement: per programme scheduled in the cohort, the programme's
+-- required Triad count and the cohort's cumulative Triad due dates. Read-only
+-- here (dates are edited in the Cohort Requirement Schedule). Loaded on its
+-- own, so a group/session failure never turns the requirement into 0.
+CREATE OR REPLACE FUNCTION public.admin_cohort_triad_requirement(p_cohort_id uuid)
+RETURNS TABLE (programme_id uuid, programme_name text, required_units integer, schedule jsonb, schedule_state text)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  PERFORM public.triad_assert_admin();
+  IF NOT EXISTS (SELECT 1 FROM public.cohorts WHERE id = p_cohort_id) THEN
+    RAISE EXCEPTION 'Cohort not found' USING ERRCODE = 'P0002';
+  END IF;
+  RETURN QUERY
+  SELECT sp.programme_id, p.name,
+    public.triad_required_units_for_programme(sp.programme_id),
+    coalesce((SELECT jsonb_agg(jsonb_build_object('milestone', d.ordinal, 'due_on', d.due_on) ORDER BY d.ordinal)
+              FROM public.cohort_requirement_dates d
+              WHERE d.cohort_id = p_cohort_id AND d.programme_id = sp.programme_id AND d.module = 'triads'::public.programme_module_type),
+             '[]'::jsonb),
+    coalesce((SELECT st.state FROM public.cohort_programme_schedule_state(p_cohort_id, sp.programme_id) st
+              WHERE st.module = 'triads'::public.programme_module_type), 'not_required')
+  FROM public.cohort_scheduled_programmes(p_cohort_id) sp
+  JOIN public.programmes p ON p.id = sp.programme_id
+  ORDER BY p.name;
+END $$;
+
+-- Operational data: every group of the cohort (active first) with members
+-- and numbered sessions.
+CREATE OR REPLACE FUNCTION public.admin_cohort_triad_groups(p_cohort_id uuid)
+RETURNS TABLE (triad_group_id uuid, assigned_by text, group_language text, is_active boolean, created_at timestamptz,
+  closed_at timestamptz, members jsonb, sessions jsonb)
 LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
   PERFORM public.triad_assert_admin();
   RETURN QUERY
-  SELECT u.cohort_requirement_date_id, u.programme_id, u.unit_number, u.due_on, u.required_units, u.is_operational,
-    coalesce(ops.assignment_status, 'not_started'), ops.last_assignment_run_at, ops.last_assignment_summary,
-    coalesce(st.eligible, 0), coalesce(st.assigned, 0), coalesce(st.completed, 0), coalesce(st.overdue, 0),
-    coalesce((
-      SELECT jsonb_agg(jsonb_build_object(
-          'id', g.id,
-          'assigned_by', g.assigned_by,
-          'group_language', g.group_language,
-          'is_active', g.is_active,
-          'created_at', g.created_at,
-          'members', (SELECT jsonb_agg(jsonb_build_object('enrollment_id', m.enrollment_id, 'user_id', e.user_id,
-                        'full_name', pr.full_name, 'member_order', m.member_order) ORDER BY m.member_order)
-                      FROM public.triad_group_members m
-                      JOIN public.programme_enrollments e ON e.id = m.enrollment_id
-                      JOIN public.profiles pr ON pr.id = e.user_id
-                      WHERE m.triad_group_id = g.id),
-          'session', (SELECT jsonb_build_object('id', s.id, 'status', s.status,
-                        'scheduled_start_time', s.scheduled_start_time, 'scheduled_end_time', s.scheduled_end_time)
-                      FROM public.triad_sessions s WHERE s.triad_group_id = g.id ORDER BY s.created_at DESC LIMIT 1),
-          'reflection_count', (SELECT count(*) FROM public.triad_reflections r
-                               JOIN public.triad_sessions s ON s.id = r.triad_session_id
-                               WHERE s.triad_group_id = g.id
-                                 AND s.id = (SELECT s2.id FROM public.triad_sessions s2 WHERE s2.triad_group_id = g.id ORDER BY s2.created_at DESC LIMIT 1)))
-        ORDER BY g.is_active DESC, g.created_at)
-      FROM public.triad_groups g WHERE g.cohort_requirement_date_id = u.cohort_requirement_date_id), '[]'::jsonb)
-  FROM public.triad_requirement_units_internal(p_cohort_id) u
-  LEFT JOIN public.cohort_triad_operations ops ON ops.cohort_requirement_date_id = u.cohort_requirement_date_id
-  LEFT JOIN LATERAL (
-    SELECT count(*) FILTER (WHERE x.is_eligible)::integer AS eligible,
-      count(*) FILTER (WHERE x.triad_group_id IS NOT NULL)::integer AS assigned,
-      count(*) FILTER (WHERE x.unit_completed)::integer AS completed,
-      count(*) FILTER (WHERE x.unit_overdue)::integer AS overdue
-    FROM public.triad_unit_enrollment_status_internal(u.cohort_requirement_date_id, p_as_of) x
-  ) st ON true
-  ORDER BY u.programme_id, u.unit_number;
+  SELECT g.id, g.assigned_by, g.group_language, g.is_active, g.created_at, g.closed_at,
+    coalesce((SELECT jsonb_agg(jsonb_build_object('enrollment_id', m.enrollment_id, 'user_id', e.user_id,
+                'full_name', pr.full_name, 'member_order', m.member_order) ORDER BY m.member_order)
+              FROM public.triad_group_members m
+              JOIN public.programme_enrollments e ON e.id = m.enrollment_id
+              JOIN public.profiles pr ON pr.id = e.user_id
+              WHERE m.triad_group_id = g.id), '[]'::jsonb),
+    public.triad_group_sessions_internal(g.id, NULL)
+  FROM public.triad_groups g
+  WHERE g.cohort_id = p_cohort_id
+  ORDER BY g.is_active DESC, g.created_at;
 END $$;
 
-CREATE OR REPLACE FUNCTION public.admin_triad_requirement_candidates(p_cohort_requirement_date_id uuid)
-RETURNS TABLE (enrollment_id uuid, user_id uuid, full_name text, spoken_languages text[], enrollment_status public.enrollment_status, triad_group_id uuid)
+-- Every learner of the cohort (in a programme that requires Triads) with the
+-- canonical completion — the same numbers Learner and Sponsor see.
+CREATE OR REPLACE FUNCTION public.admin_cohort_triad_learners(p_cohort_id uuid, p_as_of date DEFAULT current_date)
+RETURNS TABLE (enrollment_id uuid, user_id uuid, full_name text, spoken_languages text[], programme_id uuid,
+  enrollment_status public.enrollment_status, is_eligible boolean, active_group_id uuid,
+  required_units integer, raw_completed_sessions integer, completed_units integer, due_units integer,
+  overdue_units integer, next_due_on date)
 LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
   PERFORM public.triad_assert_admin();
-  RETURN QUERY SELECT * FROM public.triad_requirement_candidates_internal(p_cohort_requirement_date_id);
+  RETURN QUERY SELECT * FROM public.triad_cohort_learners_internal(p_cohort_id, p_as_of);
 END $$;
 
-CREATE OR REPLACE FUNCTION public.admin_triad_create_group(p_cohort_requirement_date_id uuid, p_enrollment_ids uuid[], p_group_language text)
+CREATE OR REPLACE FUNCTION public.admin_triad_create_group(p_cohort_id uuid, p_enrollment_ids uuid[], p_group_language text)
 RETURNS uuid
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
   PERFORM public.triad_assert_admin();
-  RETURN public.triad_create_group_internal(p_cohort_requirement_date_id, p_enrollment_ids, p_group_language, 'admin');
+  RETURN public.triad_create_group_internal(p_cohort_id, p_enrollment_ids, p_group_language, 'admin');
 END $$;
 
--- Replace, add (p_remove NULL) or remove (p_add NULL) one member. Open
--- sessions keep one response per current member.
+-- Before the group's first session only: replace, add (p_remove NULL) or
+-- remove (p_add NULL) one member. After that, regroup = close + create.
 CREATE OR REPLACE FUNCTION public.admin_triad_change_member(p_group_id uuid, p_remove_enrollment_id uuid DEFAULT NULL, p_add_enrollment_id uuid DEFAULT NULL)
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-DECLARE g public.triad_groups; slot smallint; req record;
+DECLARE g public.triad_groups; slot smallint;
 BEGIN
   PERFORM public.triad_assert_admin();
   SELECT * INTO g FROM public.triad_groups WHERE id = p_group_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Triad group not found' USING ERRCODE = 'P0002'; END IF;
   IF p_add_enrollment_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM public.triad_requirement_candidates_internal(g.cohort_requirement_date_id) c
-    WHERE c.enrollment_id = p_add_enrollment_id AND c.triad_group_id IS NULL
+    SELECT 1 FROM public.triad_cohort_candidates_internal(g.cohort_id) c WHERE c.enrollment_id = p_add_enrollment_id
   ) THEN
-    RAISE EXCEPTION 'The new member must be an unassigned, ongoing enrollment of this cohort' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'The new member must be an ungrouped, ongoing enrollment of this cohort' USING ERRCODE = '42501';
   END IF;
   IF p_remove_enrollment_id IS NOT NULL THEN
     DELETE FROM public.triad_group_members WHERE triad_group_id = p_group_id AND enrollment_id = p_remove_enrollment_id
     RETURNING member_order INTO slot;
     IF slot IS NULL THEN RAISE EXCEPTION 'That learner is not in this group' USING ERRCODE = 'P0002'; END IF;
-    DELETE FROM public.triad_session_responses r USING public.triad_sessions s
-    WHERE s.id = r.triad_session_id AND s.triad_group_id = p_group_id AND r.enrollment_id = p_remove_enrollment_id;
   END IF;
   IF p_add_enrollment_id IS NOT NULL THEN
     slot := coalesce(slot, (SELECT min(x) FROM generate_series(1, 3) x
                             WHERE x NOT IN (SELECT member_order FROM public.triad_group_members WHERE triad_group_id = p_group_id)));
     INSERT INTO public.triad_group_members (triad_group_id, enrollment_id, member_order)
     VALUES (p_group_id, p_add_enrollment_id, slot);
-    INSERT INTO public.triad_session_responses (triad_session_id, enrollment_id)
-    SELECT s.id, p_add_enrollment_id FROM public.triad_sessions s
-    WHERE s.triad_group_id = p_group_id AND s.status IN ('proposed', 'confirmed')
-    ON CONFLICT DO NOTHING;
-    -- A new member has not agreed to the time yet.
-    UPDATE public.triad_sessions SET status = 'proposed'
-    WHERE triad_group_id = p_group_id AND status = 'confirmed';
   END IF;
 END $$;
 
+-- Close (regroup) or reopen a group. Closing keeps its sessions and members as
+-- history; an open session of a closed group is cancelled.
 CREATE OR REPLACE FUNCTION public.admin_triad_set_group_active(p_group_id uuid, p_is_active boolean)
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER
@@ -2556,22 +2603,26 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
   PERFORM public.triad_assert_admin();
+  IF NOT p_is_active THEN
+    UPDATE public.triad_sessions SET status = 'cancelled'
+    WHERE triad_group_id = p_group_id AND status IN ('proposed', 'confirmed');
+  END IF;
   UPDATE public.triad_groups SET is_active = p_is_active WHERE id = p_group_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Triad group not found' USING ERRCODE = 'P0002'; END IF;
 END $$;
 
+
 -- ----------------------------------------------------------------------------
--- 14. Row-level security. Learners READ their own groups; every Triad write
---     goes through the validated functions above. Sponsors have no Triad
---     table access at all (they see canonical progress / journey only).
+-- 15. Row-level security. Learners READ their own groups; every Triad write
+--     goes through the validated functions above (or Admin, still through
+--     the guard triggers). Sponsors have no Triad table access at all: they
+--     see canonical progress / journey only.
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.triad_group_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.triad_session_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.triad_alternative_proposal_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.triad_reflection_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.triad_reflection_answers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.cohort_triad_operations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.triad_cutover_archive ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Triad groups: admin manage" ON public.triad_groups FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
@@ -2619,21 +2670,24 @@ CREATE POLICY "Triad reflection questions: read" ON public.triad_reflection_ques
 CREATE POLICY "Triad reflection questions: admin manage" ON public.triad_reflection_questions FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
-REVOKE ALL ON public.cohort_triad_operations, public.triad_cutover_archive FROM PUBLIC, anon, authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.triad_group_members, public.triad_session_responses,
   public.triad_alternative_proposal_responses, public.triad_reflection_answers FROM anon;
 
 -- ----------------------------------------------------------------------------
--- 15. Function access. Internal constructions are never client-callable.
+-- 16. Function access. Internal constructions are never client-callable.
 -- ----------------------------------------------------------------------------
 REVOKE ALL ON FUNCTION
   public.triad_member_enrollment_for_user(uuid, uuid),
   public.triad_session_can_complete(text, timestamptz),
+  public.triad_required_units_for_programme(uuid),
   public.triad_validate_group_member(),
   public.triad_protect_group_member_removal(),
   public.triad_check_group_size(),
   public.triad_guard_group(),
   public.triad_guard_session(),
+  public.triad_guard_session_delete(),
+  public.triad_demo_reset_allows(text, uuid),
+  public.triad_validate_response(),
   public.triad_confirm_session_if_accepted(uuid),
   public.triad_session_responses_changed(),
   public.triad_accept_proposal_if_unanimous(uuid),
@@ -2647,16 +2701,16 @@ REVOKE ALL ON FUNCTION
   public.triad_membership_attribution_trigger(),
   public.validate_triad_session_cap(),
   public.notify_triad_session_booked(),
+  public.sponsor_canonical_activity(uuid),
+  public.canonical_triad_completion(uuid, date),
   public.canonical_triad_group_members(uuid[]),
-  public.triad_requirement_units_internal(uuid),
-  public.triad_unit_enrollment_status_internal(uuid, date),
   public.triad_group_sessions_internal(uuid, uuid),
+  public.triad_cohort_learners_internal(uuid, date),
   public.triad_reflection_questions_for_session(uuid),
   public.triad_caller_member_enrollment(uuid),
   public.triad_create_group_internal(uuid, uuid[], text, text, timestamptz, timestamptz),
-  public.triad_requirement_candidates_internal(uuid),
+  public.triad_cohort_candidates_internal(uuid),
   public.triad_clear_unconfirmed_auto_groups_internal(uuid),
-  public.triad_set_assignment_status_internal(uuid, text, jsonb),
   public.triad_reminder_targets_internal(date, uuid),
   public.triad_assert_admin(),
   public.triad_reflections_visible_to_group(uuid),
@@ -2669,20 +2723,23 @@ REVOKE ALL ON FUNCTION public.is_triad_member(uuid) FROM PUBLIC, anon;
 
 -- The auto-assign / reminder Edge Functions run as service_role.
 GRANT EXECUTE ON FUNCTION
+  public.sponsor_canonical_activity(uuid),
+  public.canonical_triad_completion(uuid, date),
   public.triad_create_group_internal(uuid, uuid[], text, text, timestamptz, timestamptz),
-  public.triad_requirement_candidates_internal(uuid),
+  public.triad_cohort_candidates_internal(uuid),
+  public.triad_cohort_learners_internal(uuid, date),
   public.triad_clear_unconfirmed_auto_groups_internal(uuid),
-  public.triad_set_assignment_status_internal(uuid, text, jsonb),
   public.triad_reminder_targets_internal(date, uuid),
-  public.triad_requirement_units_internal(uuid),
   public.canonical_triad_group_members(uuid[])
 TO service_role;
 
 REVOKE ALL ON FUNCTION
   public.learner_triad_members(uuid[]),
   public.learner_triad_overview(uuid),
+  public.learner_triad_status(uuid),
   public.learner_triad_reflection_questions(uuid),
   public.learner_triad_session_reflections(uuid),
+  public.learner_triad_schedule_session(uuid, timestamptz, timestamptz),
   public.learner_triad_respond_session(uuid, text),
   public.learner_triad_propose_alternative(uuid, timestamptz, timestamptz),
   public.learner_triad_respond_alternative(uuid, text),
@@ -2690,8 +2747,9 @@ REVOKE ALL ON FUNCTION
   public.learner_triad_submit_reflection(uuid, smallint, jsonb),
   public.learner_session_history(uuid),
   public.learner_reflection_feed(uuid),
-  public.admin_cohort_triad_requirements(uuid, date),
-  public.admin_triad_requirement_candidates(uuid),
+  public.admin_cohort_triad_requirement(uuid),
+  public.admin_cohort_triad_groups(uuid),
+  public.admin_cohort_triad_learners(uuid, date),
   public.admin_triad_create_group(uuid, uuid[], text),
   public.admin_triad_change_member(uuid, uuid, uuid),
   public.admin_triad_set_group_active(uuid, boolean)
@@ -2699,8 +2757,10 @@ FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION
   public.learner_triad_members(uuid[]),
   public.learner_triad_overview(uuid),
+  public.learner_triad_status(uuid),
   public.learner_triad_reflection_questions(uuid),
   public.learner_triad_session_reflections(uuid),
+  public.learner_triad_schedule_session(uuid, timestamptz, timestamptz),
   public.learner_triad_respond_session(uuid, text),
   public.learner_triad_propose_alternative(uuid, timestamptz, timestamptz),
   public.learner_triad_respond_alternative(uuid, text),
@@ -2708,17 +2768,22 @@ GRANT EXECUTE ON FUNCTION
   public.learner_triad_submit_reflection(uuid, smallint, jsonb),
   public.learner_session_history(uuid),
   public.learner_reflection_feed(uuid),
-  public.admin_cohort_triad_requirements(uuid, date),
-  public.admin_triad_requirement_candidates(uuid),
+  public.admin_cohort_triad_requirement(uuid),
+  public.admin_cohort_triad_groups(uuid),
+  public.admin_cohort_triad_learners(uuid, date),
   public.admin_triad_create_group(uuid, uuid[], text),
   public.admin_triad_change_member(uuid, uuid, uuid),
   public.admin_triad_set_group_active(uuid, boolean)
 TO authenticated;
 
 -- ----------------------------------------------------------------------------
--- 16. Rebuild Triad evidence from membership, then prove equivalence.
+-- 17. Rebuild Triad evidence from membership, then prove equivalence with the
+--     legitimate legacy data. The completion rule itself (distinct completed
+--     sessions, capped, against cumulative dates) is the rule production
+--     already applies, so canonical progress may only change where evidence
+--     was stale (a date that no longer matches the session) or missing.
 -- ----------------------------------------------------------------------------
-SELECT public.triad_sync_session_attributions(s.id) FROM public.triad_sessions s;
+DO $$ BEGIN PERFORM public.triad_sync_session_attributions(s.id) FROM public.triad_sessions s; END $$;
 
 DO $$
 DECLARE bad text; n bigint;
@@ -2730,7 +2795,12 @@ BEGIN
     RAISE EXCEPTION 'Triad cutover verification: record counts changed';
   END IF;
 
-  -- Session ownership: membership == the old role enrollments, per session.
+  -- Sessions: same group, status and time.
+  SELECT count(*) INTO n FROM _triad_before_sessions b JOIN public.triad_sessions s ON s.id = b.id
+  WHERE row(b.triad_group_id, b.status, b.start_time) IS DISTINCT FROM row(s.triad_group_id, s.status, s.scheduled_start_time);
+  IF n > 0 THEN RAISE EXCEPTION 'Triad cutover verification: % sessions changed group, status or time', n; END IF;
+
+  -- Session ownership: historical membership == the old role enrollments.
   SELECT count(*) INTO n FROM (
     (SELECT session_id, enrollment_id FROM _triad_before_ownership
      EXCEPT SELECT s.id, m.enrollment_id FROM public.triad_sessions s JOIN public.triad_group_members m ON m.triad_group_id = s.triad_group_id)
@@ -2739,18 +2809,22 @@ BEGIN
      EXCEPT SELECT session_id, enrollment_id FROM _triad_before_ownership)) diff;
   IF n > 0 THEN RAISE EXCEPTION 'Triad cutover verification: % session ownership differences', n; END IF;
 
-  -- Evidence: the same (enrollment, session) attributions as before. The one
-  -- accepted difference is evidence backfilled for a session that had NONE
-  -- (a legacy session never attributed): it is reported, never silent.
+  -- Evidence: the same (enrollment, session) pairs as before, except
+  --   * evidence backfilled for a live session that had none (reported), and
+  --   * evidence of a cancelled session or a session without a time (removed:
+  --     never completion, never booked; reported).
   SELECT count(*) INTO n FROM (
-    (SELECT enrollment_id, session_id FROM _triad_before_attributions
-     EXCEPT SELECT enrollment_id, source_activity_id FROM public.session_activity_attributions WHERE source_activity_type = 'triad')
-    UNION ALL
-    (SELECT a.enrollment_id, a.source_activity_id FROM public.session_activity_attributions a
-     WHERE a.source_activity_type = 'triad'
-       AND EXISTS (SELECT 1 FROM _triad_before_attributions b WHERE b.session_id = a.source_activity_id)
-     EXCEPT SELECT enrollment_id, session_id FROM _triad_before_attributions)) diff;
-  IF n > 0 THEN RAISE EXCEPTION 'Triad cutover verification: % Triad evidence differences', n; END IF;
+    SELECT b.enrollment_id, b.session_id FROM _triad_before_attributions b
+    JOIN public.triad_sessions s ON s.id = b.session_id
+    WHERE s.status <> 'cancelled' AND s.scheduled_start_time IS NOT NULL
+    EXCEPT SELECT enrollment_id, source_activity_id FROM public.session_activity_attributions WHERE source_activity_type = 'triad') diff;
+  IF n > 0 THEN RAISE EXCEPTION 'Triad cutover verification: % Triad evidence rows lost', n; END IF;
+  SELECT count(*) INTO n FROM (
+    SELECT a.enrollment_id, a.source_activity_id FROM public.session_activity_attributions a
+    WHERE a.source_activity_type = 'triad'
+      AND EXISTS (SELECT 1 FROM _triad_before_attributions b WHERE b.session_id = a.source_activity_id)
+    EXCEPT SELECT enrollment_id, session_id FROM _triad_before_attributions) diff;
+  IF n > 0 THEN RAISE EXCEPTION 'Triad cutover verification: % Triad evidence rows gained on attributed sessions', n; END IF;
   SELECT count(*), string_agg(DISTINCT a.source_activity_id::text, ', ') INTO n, bad
   FROM public.session_activity_attributions a
   WHERE a.source_activity_type = 'triad'
@@ -2760,9 +2834,9 @@ BEGIN
   END IF;
   bad := NULL;
 
-  -- Canonical Triad progress per enrollment is unchanged, except where an old
-  -- attribution carried a stale date (session later rescheduled) — then the
-  -- difference is the correction, and is reported.
+  -- Canonical Triad progress per enrollment is unchanged, except where the
+  -- enrollment's evidence was corrected (stale date / backfilled / removed
+  -- for a cancelled or timeless session) — reported.
   SELECT string_agg(b.enrollment_id::text, ', ') INTO bad
   FROM _triad_before_progress b
   JOIN LATERAL (SELECT * FROM public.canonical_module_progress(b.enrollment_id, current_date) p
@@ -2772,7 +2846,8 @@ BEGIN
     AND NOT EXISTS (
       SELECT 1 FROM _triad_before_attributions ba
       JOIN public.triad_sessions s ON s.id = ba.session_id
-      WHERE ba.enrollment_id = b.enrollment_id AND ba.occurred_on IS DISTINCT FROM s.scheduled_start_time::date)
+      WHERE ba.enrollment_id = b.enrollment_id
+        AND (ba.occurred_on IS DISTINCT FROM s.scheduled_start_time::date OR s.status = 'cancelled'))
     AND NOT EXISTS (
       SELECT 1 FROM public.session_activity_attributions a
       WHERE a.enrollment_id = b.enrollment_id AND a.source_activity_type = 'triad'
@@ -2782,7 +2857,16 @@ BEGIN
   END IF;
   SELECT count(*) INTO n FROM _triad_before_attributions ba JOIN public.triad_sessions s ON s.id = ba.session_id
   WHERE ba.occurred_on IS DISTINCT FROM s.scheduled_start_time::date;
-  IF n > 0 THEN RAISE NOTICE 'Triad cutover: % evidence dates corrected to the session''s effective time', n; END IF;
+  IF n > 0 THEN RAISE NOTICE 'Triad cutover: % evidence dates corrected to the session''s scheduled start', n; END IF;
+
+  -- canonical_triad_completion is exactly canonical_module_progress for Triads.
+  SELECT count(*) INTO n
+  FROM public.programme_enrollments e
+  JOIN LATERAL (SELECT * FROM public.canonical_module_progress(e.id, current_date) p WHERE p.module = 'triads'::public.programme_module_type) p ON true
+  CROSS JOIN LATERAL public.canonical_triad_completion(e.id, current_date) c
+  WHERE row(c.required_units, c.completed_by_as_of, c.completed_units, c.due_units, c.overdue_units, c.booked_units, c.pace_status)
+        IS DISTINCT FROM row(p.required_units, p.completed_activity_units, p.completed_units, p.due_units, p.overdue_units, p.booked_units, p.pace_status);
+  IF n > 0 THEN RAISE EXCEPTION 'Triad cutover verification: % Triad completion projections differ from canonical progress', n; END IF;
 
   -- Reflections: every legacy answer is preserved verbatim; ratings and
   -- authorship unchanged.
@@ -2803,20 +2887,33 @@ BEGIN
         IS DISTINCT FROM row(r.triad_session_id, r.enrollment_id, r.satisfaction_rating, r.submitted_at);
   IF n > 0 THEN RAISE EXCEPTION 'Triad cutover verification: % reflections changed', n; END IF;
 
-  -- Every group has 2-3 members; every open session has one response per member.
+  -- Groups: 2-3 members, all in the group's cohort; one active group per enrollment.
   SELECT string_agg(g.id::text, ', ') INTO bad FROM public.triad_groups g
-  WHERE (SELECT count(*) FROM public.triad_group_members m WHERE m.triad_group_id = g.id) NOT BETWEEN 2 AND 3;
-  IF bad IS NOT NULL THEN RAISE EXCEPTION 'Triad cutover verification: groups without 2-3 members: %', bad; END IF;
+  WHERE (SELECT count(*) FROM public.triad_group_members m WHERE m.triad_group_id = g.id) NOT BETWEEN 2 AND 3
+     OR EXISTS (SELECT 1 FROM public.triad_group_members m JOIN public.programme_enrollments e ON e.id = m.enrollment_id
+                WHERE m.triad_group_id = g.id AND e.cohort_id IS DISTINCT FROM g.cohort_id);
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'Triad cutover verification: invalid groups: %', bad; END IF;
+  SELECT string_agg(m.enrollment_id::text, ', ') INTO bad FROM (
+    SELECT m.enrollment_id FROM public.triad_group_members m JOIN public.triad_groups g ON g.id = m.triad_group_id
+    WHERE g.is_active GROUP BY m.enrollment_id HAVING count(*) > 1) m;
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'Triad cutover verification: enrollments in several active groups: %', bad; END IF;
+  SELECT count(*) INTO n FROM _triad_closed_groups;
+  IF n > 0 THEN
+    RAISE NOTICE 'Triad cutover: % older legacy group(s) closed so each enrollment has one active group: %', n,
+      (SELECT string_agg(triad_group_id::text, ', ') FROM _triad_closed_groups);
+  END IF;
 END $$;
 
--- Final state: nothing live reads a retired Triad field.
+-- Final state: nothing live reads a retired Triad field or a requirement-unit
+-- ownership of groups / sessions.
 DO $$
 DECLARE offenders text;
 BEGIN
   SELECT string_agg(p.proname, ', ') INTO offenders
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.prokind = 'f'
-    AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)|completion_deadline|programme_triad_rounds|public\.triad_rounds';
+    AND p.proname NOT IN ('triad_is_seed_identifier')
+    AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)|completion_deadline|programme_triad_rounds|public\.triad_rounds|triad_round_id|cohort_requirement_date_id|cohort_triad_operations';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad cutover: functions still read retired Triad fields: %', offenders;
   END IF;

@@ -91,12 +91,10 @@ values ('f7000000-0000-0000-0000-000000000021', 'e7000000-0000-0000-0000-0000000
   'a7000000-0000-0000-0000-000000000001', 'Mentoring one', '2026-01-19T10:00:00Z', 60, 'completed', 'prep/file.pdf',
   'Mentoring reflection: map stakeholders earlier.', 'MENTOR NOTE');
 
--- Triads: the cohort's Triad unit 1 group; one completed + one confirmed
--- session (the reported case). Membership is by enrollment.
-insert into public.triad_groups (id, cohort_requirement_date_id, is_active)
-select 'f7000000-0000-0000-0000-000000000030', d.id, true
-from public.cohort_requirement_dates d
-where d.cohort_id = 'd7000000-0000-0000-0000-000000000001' and d.module = 'triads' and d.ordinal = 1;
+-- Triads: one cohort group; one completed + one confirmed session (the
+-- reported case). Membership is by enrollment.
+insert into public.triad_groups (id, cohort_id, is_active)
+values ('f7000000-0000-0000-0000-000000000030', 'd7000000-0000-0000-0000-000000000001', true);
 insert into public.triad_group_members (triad_group_id, enrollment_id, member_order) values
   ('f7000000-0000-0000-0000-000000000030', 'e7000000-0000-0000-0000-000000000001', 1),
   ('f7000000-0000-0000-0000-000000000030', 'e7000000-0000-0000-0000-000000000002', 2),
@@ -156,8 +154,8 @@ select results_eq(
 );
 select is((select count(*)::integer from history where session_type = 'triad' and is_programme_evidence), 1,
   'exactly the completed triad session is programme evidence');
-select ok((select bool_and(round_number = 1) from history where session_type = 'triad'),
-  'triad sessions carry their requirement unit number');
+select ok(pg_get_function_result('public.learner_session_history(uuid)'::regprocedure) !~ 'round_number|training_week_number',
+  'triad sessions carry no round / requirement unit (a session belongs to its group only)');
 
 select is((select completed_units || '/' || required_units from modules where module = 'peer_coaching'), '2/2',
   'peer module progress caps at 2/2');

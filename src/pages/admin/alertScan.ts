@@ -348,12 +348,10 @@ export function buildFlaggedSessionAlerts(opts: {
 }
 
 // buildTriadNotScheduledAlerts (and its "triad_not_scheduled" alert type)
-// was removed with the Phase 3 triad redesign: triad_sessions no longer has
-// a repeating session_date to measure "hasn't met in 7 days" against
-// (triads are now one deadline-bound session per round, not an open-ended
-// series). Deadline-driven escalation for unconfirmed/overdue triads is now
-// handled by the triad-reminders Edge Function's own 'triad_admin_alert'
-// notifications instead. "triad_not_scheduled" is kept in AdminAlerts.tsx's
+// was removed: Triad timing is the cohort's cumulative Triad deadlines
+// compared with each learner's canonical completed sessions, and escalation
+// for learners behind a deadline is handled by the triad-reminders Edge
+// Function's own 'triad_admin_alert' notifications instead. "triad_not_scheduled" is kept in AdminAlerts.tsx's
 // cleanup delete-list so any pre-existing rows still get cleared.
 
 export interface ScanActionRow {

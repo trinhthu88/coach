@@ -21,12 +21,6 @@ const REFLECTION_TITLE: Record<string, string> = {
   journey_reflection: "Private reflection",
 };
 
-function triadTitle(prefix: string, fallback: string, roundNumber: number | null, weekNumber: number | null) {
-  if (roundNumber != null && weekNumber != null) return `${prefix} — Week ${weekNumber} / Round ${roundNumber}`;
-  if (roundNumber != null) return `${prefix} — Round ${roundNumber}`;
-  return fallback;
-}
-
 /**
  * The single Development Journey projection: every event is derived from a
  * canonical record scoped to one enrollment and converted to a
@@ -223,7 +217,7 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
       events.push({
         ...base,
         type: "triad",
-        title: triadTitle("Triad", "Triad completed", h.round_number, h.training_week_number),
+        title: "Triad completed",
         summary: h.title,
       });
     }
@@ -326,8 +320,6 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
 
   for (const f of reflectionFeedRes.data ?? []) {
     if (f.source_type === "goal_checkin") continue;
-    const details = (f.details && typeof f.details === "object" && !Array.isArray(f.details) ? f.details : {}) as Record<string, unknown>;
-    const roundNumber = typeof details.round_number === "number" ? details.round_number : null;
     events.push({
       id: `reflection-${f.reflection_key}`,
       enrollmentId,
@@ -336,7 +328,7 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
       subtype: f.source_type,
       title:
         f.source_type === "triad_reflection"
-          ? triadTitle("Triad Self-Reflection", "Triad Self-Reflection", roundNumber, null)
+          ? "Triad Self-Reflection"
           : REFLECTION_TITLE[f.source_type] ?? "Reflection",
       summary: f.body,
       sourceId: f.source_id,

@@ -15,15 +15,14 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 const session = (id: string, status: string, extra: Record<string, unknown> = {}) => ({
-  id, status, scheduled_start_time: "2026-02-16T03:00:00Z", scheduled_end_time: null, meeting_url: null,
+  id, session_number: id === "t1" ? 1 : 2, status, scheduled_start_time: "2026-02-16T03:00:00Z", scheduled_end_time: null, meeting_url: null,
   created_at: "2026-02-01T00:00:00Z", can_complete: false, my_response: "accepted", responses: [],
   reflection_submitted: false, reflection_satisfaction: null, pending_proposals: [], ...extra,
 });
 
 const OVERVIEW = [{
-  enrollment_id: "enrollment-1", triad_group_id: "g1", cohort_requirement_date_id: "r1", unit_number: 1, due_on: "2026-03-01",
-  training_week_number: null, training_week_title: null, training_week_title_vi: null, group_language: "en", is_active: true,
-  member_count: 3, my_member_slot: 1, unit_completed: true, unit_overdue: false,
+  enrollment_id: "enrollment-1", triad_group_id: "g1", cohort_id: "c1", group_language: "en", is_active: true,
+  closed_at: null, created_at: "2026-01-20T00:00:00Z", member_count: 3, my_member_slot: 1,
   // An earlier completed session and the group's later session.
   sessions: [session("t1", "completed", { reflection_submitted: true, reflection_satisfaction: 4 }), session("t2", "confirmed")],
 }];
@@ -43,11 +42,12 @@ describe("useTriadSessionEntry", () => {
     );
   });
 
-  it("resolves an earlier completed session of the learner's group, with its requirement unit and reflection state", async () => {
+  it("resolves an earlier completed session of the learner's cohort group, with its session number and reflection state", async () => {
     const { result } = renderHook(() => useTriadSessionEntry("t1"), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.entry?.unitNumber).toBe(1);
-    expect(result.current.entry?.dueOn).toBe("2026-03-01");
+    expect(result.current.entry?.cohortId).toBe("c1");
+    expect(result.current.entry?.session?.sessionNumber).toBe(1);
+    expect(result.current.entry).not.toHaveProperty("dueOn");
     expect(result.current.entry?.session?.id).toBe("t1");
     expect(result.current.entry?.session?.status).toBe("completed");
     expect(result.current.entry?.session?.reflectionSubmitted).toBe(true);

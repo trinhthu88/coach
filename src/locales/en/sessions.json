@@ -106,8 +106,6 @@
     "kindLabelTriad": "Triad session",
     "triadSessionTitle": "Triad session",
     "triadParticipantsUnavailable": "your triad",
-    "triadRound": "Round {{count}}",
-    "triadWeek": "Week {{count}}",
     "noTimeYet": "Time not set",
     "roleBadge": {
       "coach": "Coach",
@@ -132,7 +130,8 @@
     "actionItems": {
       "title": "Action items",
       "more": "+{{count}} more"
-    }
+    },
+    "triadSession": "Session {{count}}"
   },
   "detail": {
     "sessionNotFound": {

@@ -47,8 +47,6 @@ type HistoryRow = {
   title: string | null;
   start_time: string | null;
   status: string;
-  round_number?: number | null;
-  training_week_number?: number | null;
 };
 
 type FeedRow = {
@@ -183,28 +181,26 @@ describe("useEnrollmentDevelopmentJourney", () => {
     expect(result.current.events.map((e) => e.subtype)).toEqual(expect.arrayContaining(["session_completed", "mentoring_session_reflection", "mentoring_feedback"]));
   });
 
-  it("produces a triad event only for a completed session, with week/round context when it resolves", async () => {
+  it("produces a triad event only for a completed session, dated on the session, never with a round", async () => {
     const result = await load({}, [
-      { session_type: "triad", source_table: "triad_sessions", source_id: "t1", title: "Round 2: Delegation practice", start_time: "2026-10-14T10:00:00Z", status: "completed", round_number: 2, training_week_number: 4 },
-      { session_type: "triad", source_table: "triad_sessions", source_id: "t2", title: null, start_time: "2026-11-01T10:00:00Z", status: "confirmed", round_number: 2 },
-      { session_type: "triad", source_table: "triad_sessions", source_id: "t3", title: null, start_time: "2026-10-20T10:00:00Z", status: "completed", round_number: 1 },
-      { session_type: "triad", source_table: "triad_sessions", source_id: "t4", title: null, start_time: "2026-10-21T10:00:00Z", status: "completed" },
+      { session_type: "triad", source_table: "triad_sessions", source_id: "t1", title: null, start_time: "2026-10-14T10:00:00Z", status: "completed" },
+      { session_type: "triad", source_table: "triad_sessions", source_id: "t2", title: null, start_time: "2026-11-01T10:00:00Z", status: "confirmed" },
+      { session_type: "triad", source_table: "triad_sessions", source_id: "t3", title: null, start_time: "2026-10-20T10:00:00Z", status: "completed" },
     ]);
     const triads = result.current.events.filter((e) => e.type === "triad");
-    expect(triads.map((e) => e.sourceId).sort()).toEqual(["t1", "t3", "t4"]);
-    expect(find(triads, (e) => e.sourceId === "t1")?.title).toBe("Triad — Week 4 / Round 2");
-    expect(find(triads, (e) => e.sourceId === "t1")?.summary).toBe("Round 2: Delegation practice");
-    expect(find(triads, (e) => e.sourceId === "t3")?.title).toBe("Triad — Round 1");
-    expect(find(triads, (e) => e.sourceId === "t4")?.title).toBe("Triad completed");
+    expect(triads.map((e) => e.sourceId).sort()).toEqual(["t1", "t3"]);
+    expect(find(triads, (e) => e.sourceId === "t1")?.title).toBe("Triad completed");
+    expect(find(triads, (e) => e.sourceId === "t1")?.occurredAt).toBe("2026-10-14T10:00:00Z");
+    expect(triads.some((e) => /Round/.test(e.title))).toBe(false);
   });
 
   it("produces a Triad Self-Reflection as a REFLECTION, never FEEDBACK", async () => {
     const result = await load({}, [], [
-      { reflection_key: "triad_reflection:tr1", source_type: "triad_reflection", source_table: "triad_reflections", source_id: "tr1", occurred_at: "2026-10-14T11:00:00Z", body: "Stayed curious longer than usual.", details: { round_number: 2 } },
+      { reflection_key: "triad_reflection:tr1", source_type: "triad_reflection", source_table: "triad_reflections", source_id: "tr1", occurred_at: "2026-10-14T11:00:00Z", body: "Stayed curious longer than usual.", details: { session_start_time: "2026-10-14T10:00:00Z", triad_group_id: "g1" } },
     ]);
     const event = find(result.current.events, (e) => e.sourceId === "tr1");
     expect(event?.type).toBe("reflection");
-    expect(event?.title).toBe("Triad Self-Reflection — Round 2");
+    expect(event?.title).toBe("Triad Self-Reflection");
     expect(event?.summary).toBe("Stayed curious longer than usual.");
     expect(result.current.events.some((e) => e.sourceId === "tr1" && e.type === "feedback")).toBe(false);
   });

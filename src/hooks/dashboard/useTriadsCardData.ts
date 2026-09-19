@@ -17,8 +17,11 @@ const empty: TriadsData = { nextSession: null, pendingReflections: 0, upcomingCo
 /** Dashboard summary, projected from the one learner Triad read model. */
 async function fetchTriadsData(): Promise<TriadsData> {
   const groups = await fetchMyTriads(null);
+  // Open sessions belong to the active group; reflections are owed on any
+  // completed session, including those of an earlier (closed) group.
   const sessions = groups.filter((g) => g.isActive).flatMap((g) => g.sessions);
-  if (sessions.length === 0) return empty;
+  const completedSessions = groups.flatMap((g) => g.sessions).filter((s) => s.status === "completed");
+  if (sessions.length === 0 && completedSessions.length === 0) return empty;
 
   const now = Date.now();
   const upcoming = sessions
@@ -28,7 +31,7 @@ async function fetchTriadsData(): Promise<TriadsData> {
 
   return {
     nextSession: next ? { id: next.id, status: next.status, scheduledStartTime: next.scheduledStartTime, myResponse: next.myResponse } : null,
-    pendingReflections: sessions.filter((s) => s.status === "completed" && !s.reflectionSubmitted).length,
+    pendingReflections: completedSessions.filter((s) => !s.reflectionSubmitted).length,
     upcomingCount: upcoming.length,
   };
 }

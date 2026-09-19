@@ -1,34 +1,36 @@
 -- ============================================================================
--- TRIAD LEGACY RETIREMENT — SECOND DEPLOYMENT ONLY.
+-- TRIAD LEGACY RETIREMENT — DEPLOYMENT 2 ONLY.
 --
--- Deployment 1 ships 20260918185900 .. 20260918195000 (cutover, backfill,
--- in-migration equivalence proof, requirement fulfilment, engagement
--- signals) while every legacy column stays in place (archived, no longer
--- read or written). This file is applied in a separate, later deployment,
--- only after deployment 1 has been verified on production. It was
--- 20260918191000 before; it is versioned last so migration order == deploy order.
+-- Lives in supabase/deployment-2/, NOT supabase/migrations/, so an ordinary
+-- `supabase db push` of deployment 1 can never apply it. Deployment 1 ships
+-- 20260918185900 .. 20260918195000 (cleanup, cutover, backfill,
+-- in-migration equivalence proof, canonical completion, engagement signals)
+-- while every legacy column stays in place (no longer read or written). This
+-- file is moved into supabase/migrations/ and applied in a separate, later
+-- deployment, only after deployment 1 has been verified on production and no
+-- runtime consumer of a legacy shape remains.
 --
--- The canonical Triad structures are live and proven equivalent (the cutover
--- migration fails otherwise). Nothing reads the legacy shapes any more, so
--- they are archived into triad_cutover_archive (internal, audit-only) and
--- removed:
---   triad_rounds, programme_triad_rounds ........ -> cohort_requirement_dates
---                                                    (+ cohort_triad_operations)
+-- Legacy shape ............................... canonical replacement
+--   triad_rounds, programme_triad_rounds ..... none (programme = quantity,
+--                                              cohort_requirement_dates = dates)
 --   triad_groups.member_1/2/3_id,
---     enrollment_1/2/3_id ....................... -> triad_group_members
---   triad_groups.cohort_id / programme_id /
---     round_number / triad_round_id / name ...... -> cohort_requirement_date_id
+--     enrollment_1/2/3_id .................... triad_group_members
+--   triad_groups.programme_id / round_number /
+--     triad_round_id / name .................. none (triad_groups.cohort_id
+--                                              is the group's scope; programme
+--                                              comes from the members'
+--                                              enrollments)
 --   triad_sessions.coach/coachee/observer_
---     enrollment_id ............................. -> triad_group_members
+--     enrollment_id .......................... triad_group_members
 --   triad_sessions.member_1/2/3_response,
 --     triad_alternative_proposals.member_N_
---     response .................................. -> *_responses tables
+--     response ............................... *_responses tables
 --   triad_sessions.proposed_start/end_time,
---     start_time, proposed_by ................... -> scheduled_start/end_time
---   triad_alternative_proposals.proposed_by ..... -> proposed_by_enrollment_id
---   triad_reflections.participant_id ............ -> enrollment_id
+--     start_time, proposed_by ................ scheduled_start/end_time
+--   triad_alternative_proposals.proposed_by .. proposed_by_enrollment_id
+--   triad_reflections.participant_id ......... enrollment_id
 --   triad_reflections.learned_as_* / will_use_
---     as_* ...................................... -> triad_reflection_answers
+--     as_* ................................... triad_reflection_answers
 -- ============================================================================
 
 -- 1. Archive every legacy value (one row per record and object).
@@ -102,7 +104,6 @@ ALTER TABLE public.triad_groups
   DROP COLUMN enrollment_1_id,
   DROP COLUMN enrollment_2_id,
   DROP COLUMN enrollment_3_id,
-  DROP COLUMN cohort_id,
   DROP COLUMN programme_id,
   DROP COLUMN round_number,
   DROP COLUMN triad_round_id,
@@ -138,22 +139,8 @@ ALTER TABLE public.triad_reflections
 DROP TABLE public.triad_rounds;
 DROP TABLE public.programme_triad_rounds;
 
--- 3. A group without a requirement is only ever an explicitly reviewed
---    historical group.
-CREATE OR REPLACE FUNCTION public.triad_group_is_historical_unlinked(p_group_id uuid)
-RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-  SELECT EXISTS (SELECT 1 FROM public.triad_cutover_group_decisions d
-                 WHERE d.triad_group_id = p_group_id AND d.decision = 'historical_unlinked');
-$$;
-REVOKE ALL ON FUNCTION public.triad_group_is_historical_unlinked(uuid) FROM PUBLIC, anon, authenticated;
-
-ALTER TABLE public.triad_groups
-  ADD CONSTRAINT triad_groups_requirement_required
-  CHECK (cohort_requirement_date_id IS NOT NULL OR public.triad_group_is_historical_unlinked(id)) NOT VALID;
-ALTER TABLE public.triad_groups VALIDATE CONSTRAINT triad_groups_requirement_required;
+-- 3. Unused legacy helpers.
+DROP FUNCTION IF EXISTS public.triad_is_seed_identifier(uuid);
 
 -- 4. Final-state guard: the retired Triad shapes are gone and no live
 --    function, view or policy refers to them.
@@ -167,14 +154,14 @@ BEGIN
   FROM information_schema.columns
   WHERE table_schema = 'public'
     AND table_name IN ('triad_groups', 'triad_sessions', 'triad_alternative_proposals', 'triad_reflections')
-    AND column_name ~ '^(member_[123]_(id|response)|enrollment_[123]_id|(coach|coachee|observer)_enrollment_id|participant_id|(learned|will_use)_as_.*|proposed_(start|end)_time_legacy|start_time|round_number|triad_round_id|cohort_id|programme_id|proposed_by)$';
+    AND column_name ~ '^(member_[123]_(id|response)|enrollment_[123]_id|(coach|coachee|observer)_enrollment_id|participant_id|(learned|will_use)_as_.*|proposed_(start|end)_time_legacy|start_time|round_number|triad_round_id|programme_id|name|proposed_by)$';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: legacy columns remain: %', offenders;
   END IF;
   SELECT string_agg(p.proname, ', ') INTO offenders
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.prokind = 'f'
-    AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|triad_rounds|completion_deadline|[a-z]\.(learned|will_use)_as_';
+    AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|triad_rounds|triad_round_id|cohort_requirement_date_id|completion_deadline|[a-z]\.(learned|will_use)_as_';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: functions still refer to retired Triad fields: %', offenders;
   END IF;

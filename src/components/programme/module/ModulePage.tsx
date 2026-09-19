@@ -210,7 +210,7 @@ export function ModuleSessionRow({ session, context }: { session: DevelopmentSes
           {session.participantRole && ` · ${t(`developmentSessions.roles.${session.participantRole}`, { defaultValue: session.participantRole })}`}
         </div>
         <div className="mt-[5px] truncate text-[13px] font-semibold text-[#062f3e]">
-          {session.title || [session.trainingWeekLabel, session.roundLabel].filter(Boolean).join(" · ") || t(`developmentSessions.types.${session.type}`)}
+          {session.title || t(`developmentSessions.types.${session.type}`)}
         </div>
         <div className="mt-[3px] text-[10.5px] text-[#7d7468]">{[people, when, context].filter(Boolean).join(" · ")}</div>
       </div>

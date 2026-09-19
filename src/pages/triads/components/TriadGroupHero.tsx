@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Users } from "lucide-react";
-import { formatProfileDate } from "@/lib/programmeProfile";
 import type { TriadGroupEntry } from "@/hooks/triads/useMyTriads";
 
 function initials(name: string) {
@@ -10,7 +9,7 @@ function initials(name: string) {
 /** "My Triad group" card — white, per the approved prototype's Triads workspace (paired with the navy "Next Triad session" card, TriadSessionCard, for contrast). */
 export function TriadGroupHero({ entry }: { entry: TriadGroupEntry }) {
   const { t } = useTranslation("triads");
-  const { unitNumber, members, session, trainingWeek, dueOn } = entry;
+  const { members, session } = entry;
   const responseBySlot = new Map((session?.responses ?? []).map((r) => [r.slot, r.response]));
 
   return (
@@ -19,7 +18,7 @@ export function TriadGroupHero({ entry }: { entry: TriadGroupEntry }) {
         <Users className="h-3.5 w-3.5" /> {t("myGroup.label")}
       </p>
       <h3 className="font-display mt-3 text-[1.6rem] font-light leading-[1.15] tracking-[-0.025em] sm:text-[1.85rem]">
-        {unitNumber != null ? t("roundLabel", { n: unitNumber }) : t("myGroup.label")}
+        {entry.isActive ? t("myGroup.heading") : t("closedGroup")}
       </h3>
       {entry.memberCount === 2 && <p className="mt-1.5 text-[11.5px] text-muted-foreground">{t("dyadNote")}</p>}
 
@@ -35,11 +34,6 @@ export function TriadGroupHero({ entry }: { entry: TriadGroupEntry }) {
         ))}
       </div>
 
-      {dueOn && (
-        <p className="mt-5 border-t border-border pt-4 text-[11.5px] text-muted-foreground">
-          {[trainingWeek?.title, `${t("deadlineLabel")} ${formatProfileDate(dueOn)}`].filter(Boolean).join(" · ")}
-        </p>
-      )}
     </section>
   );
 }

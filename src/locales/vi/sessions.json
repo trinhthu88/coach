@@ -107,8 +107,6 @@
     "kindLabelTriad": "Session triad",
     "triadSessionTitle": "Session triad",
     "triadParticipantsUnavailable": "triad của bạn",
-    "triadRound": "Vòng {{count}}",
-    "triadWeek": "Tuần {{count}}",
     "noTimeYet": "Chưa có thời gian",
     "roleBadge": {
       "coach": "Coach",
@@ -132,7 +130,8 @@
     "actionItems": {
       "title": "Hành động cần làm",
       "more": "+{{count}} thêm"
-    }
+    },
+    "triadSession": "Session {{count}}"
   },
   "detail": {
     "sessionNotFound": {

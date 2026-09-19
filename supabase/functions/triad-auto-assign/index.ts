@@ -2,23 +2,28 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 
 // Admin-invoked (verify_jwt = true), cohort-first:
-//   cohort Triad requirement unit (cohort_requirement_dates row)
-//   -> ongoing enrollments of THAT cohort (triad_requirement_candidates_internal)
-//   -> minus learners already grouped for this unit
-//   -> spoken-language pools -> coachee_availability overlap -> groups.
-// A mixed-cohort group can never be formed: the pool is one cohort, and
-// triad_create_group_internal + the membership trigger enforce it again.
+//   selected cohort
+//   -> its eligible ongoing enrollments whose programme requires Triads
+//   -> minus enrollments already in an active Triad group
+//      (triad_cohort_candidates_internal)
+//   -> spoken-language pools -> coachee_availability overlap -> groups of 3
+//   -> optional dyad -> unmatched list + admin alert.
+// A group is cohort-level: it practises together across ALL the cohort's
+// required Triad sessions (never one requirement unit). A mixed-cohort group
+// can never be formed: the pool is one cohort, and triad_create_group_internal
+// + the membership trigger enforce it again. There is no scheduled run and
+// no stored run status: Admin runs it and gets the summary back.
 //
-// Idempotent: re-running clears this unit's auto-assigned groups nobody has
-// acted on yet (every session still proposed, no responses) and rebuilds;
-// anything a member already responded to is kept.
+// Idempotent: re-running clears this cohort's auto-assigned groups nobody has
+// acted on yet (no session beyond a proposed one, no responses, no
+// alternatives) and rebuilds; anything a member already acted on is kept.
 
 interface CandidateRow {
   enrollment_id: string;
   user_id: string;
   full_name: string | null;
   spoken_languages: string[];
-  triad_group_id: string | null;
+  programme_id: string;
 }
 
 interface AvailabilityRow {
@@ -119,8 +124,6 @@ Deno.serve(async (req) => {
   const json = (payload: unknown, status = 200) =>
     new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  let requirementId: string | null = null;
-
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Missing authorization" }, 401);
@@ -131,48 +134,45 @@ Deno.serve(async (req) => {
     if (!(roleRows ?? []).some((r: { role: string }) => r.role === "admin")) return json({ error: "Forbidden" }, 403);
 
     const body = await req.json().catch(() => ({}));
-    requirementId = body.cohort_requirement_date_id ?? null;
-    if (!requirementId) return json({ error: "cohort_requirement_date_id is required" }, 400);
+    const cohortId: string | null = body.cohort_id ?? null;
+    if (!cohortId) return json({ error: "cohort_id is required" }, 400);
+    const { data: cohort } = await admin.from("cohorts").select("id, name").eq("id", cohortId).maybeSingle();
+    if (!cohort) return json({ error: "Cohort not found" }, 404);
+    const adminLink = `/admin/cohorts/${cohortId}/triads`;
 
-    const { data: requirement } = await admin
-      .from("cohort_requirement_dates")
-      .select("id, cohort_id, ordinal, due_on, module")
-      .eq("id", requirementId)
-      .maybeSingle();
-    if (!requirement || requirement.module !== "triads") return json({ error: "Triad requirement not found" }, 404);
-    const unitNumber = requirement.ordinal as number;
-    const dueOn = requirement.due_on as string;
-    const adminLink = `/admin/cohorts/${requirement.cohort_id}/triads`;
+    // --- Idempotent re-run: clear this cohort's untouched auto groups ---
+    await admin.rpc("triad_clear_unconfirmed_auto_groups_internal", { p_cohort_id: cohortId });
 
-    await admin.rpc("triad_set_assignment_status_internal", { p_cohort_requirement_date_id: requirementId, p_status: "running" });
-
-    // --- Idempotent re-run: clear this unit's untouched auto groups ---
-    await admin.rpc("triad_clear_unconfirmed_auto_groups_internal", { p_cohort_requirement_date_id: requirementId });
-
-    // --- The pool: this cohort's ongoing enrollments not yet grouped for this unit ---
-    const { data: candidates, error: candidatesErr } = await admin.rpc("triad_requirement_candidates_internal", {
-      p_cohort_requirement_date_id: requirementId,
-    });
+    // --- The pool: this cohort's eligible enrollments not in an active group ---
+    const { data: candidates, error: candidatesErr } = await admin.rpc("triad_cohort_candidates_internal", { p_cohort_id: cohortId });
     if (candidatesErr) throw candidatesErr;
-    const pool = ((candidates ?? []) as CandidateRow[]).filter((c) => !c.triad_group_id);
+    const pool = (candidates ?? []) as CandidateRow[];
     const byUser = new Map(pool.map((c) => [c.user_id, c]));
     const participantIds = [...byUser.keys()];
 
-    if (participantIds.length === 0) {
-      const summary = { groups: 0, dyads: 0, flagged: 0 };
-      await admin.rpc("triad_set_assignment_status_internal", { p_cohort_requirement_date_id: requirementId, p_status: "completed", p_summary: summary });
-      return json({ ok: true, ...summary });
-    }
+    if (participantIds.length === 0) return json({ ok: true, groups: 0, dyads: 0, flagged: 0 });
 
-    // Availability in the week leading up to the unit's canonical due date.
-    const windowStart = new Date(new Date(`${dueOn}T00:00:00Z`).getTime() - 7 * 24 * HOUR_MS).toISOString().slice(0, 10);
+    // Availability window: from today to the cohort's next Triad deadline
+    // (or two weeks when none is upcoming). It only helps pick a first
+    // common time; the group then schedules every later session itself.
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: nextDue } = await admin
+      .from("cohort_requirement_dates")
+      .select("due_on")
+      .eq("cohort_id", cohortId)
+      .eq("module", "triads")
+      .gte("due_on", today)
+      .order("due_on", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const windowEnd = (nextDue?.due_on as string | undefined) ?? new Date(Date.now() + 14 * 24 * HOUR_MS).toISOString().slice(0, 10);
     const { data: availability } = await admin
       .from("coachee_availability")
       .select("coachee_id, slot_date, start_time, end_time")
       .in("coachee_id", participantIds)
       .eq("is_booked", false)
-      .gte("slot_date", windowStart)
-      .lte("slot_date", dueOn);
+      .gte("slot_date", today)
+      .lte("slot_date", windowEnd);
 
     const availByUser = new Map<string, AvailabilityRow[]>();
     for (const row of (availability ?? []) as AvailabilityRow[]) {
@@ -183,15 +183,25 @@ Deno.serve(async (req) => {
     const bucketsByUser = new Map<string, BucketSet>();
     for (const id of participantIds) bucketsByUser.set(id, bucketsFor(availByUser.get(id) ?? []));
 
-    // --- Language pools: 'vi' pool includes bilinguals, 'en' pool is English-only ---
-    const viPool = participantIds.filter((id) => byUser.get(id)?.spoken_languages?.includes("vi"));
-    const enPool = participantIds.filter((id) => {
-      const langs = byUser.get(id)?.spoken_languages ?? [];
-      return langs.includes("en") && !langs.includes("vi");
-    });
+    // --- Pools per programme (a group holds one programme's learners) and
+    //     language: 'vi' includes bilinguals, 'en' is English-only ---
+    const programmeIds = [...new Set(pool.map((c) => c.programme_id))];
+    const pools: { ids: string[]; language: "vi" | "en" }[] = [];
+    for (const programmeId of programmeIds) {
+      const ids = participantIds.filter((id) => byUser.get(id)?.programme_id === programmeId);
+      pools.push({ ids: ids.filter((id) => byUser.get(id)?.spoken_languages?.includes("vi")), language: "vi" });
+      pools.push({
+        ids: ids.filter((id) => {
+          const langs = byUser.get(id)?.spoken_languages ?? [];
+          return langs.includes("en") && !langs.includes("vi");
+        }),
+        language: "en",
+      });
+    }
+    const pooled = new Set(pools.flatMap((p) => p.ids));
     // Eligible learners in neither pool (no Vietnamese or English on their
     // profile) are never grouped silently: Admin assigns them manually.
-    const noLanguage = participantIds.filter((id) => !viPool.includes(id) && !enPool.includes(id));
+    const noLanguage = participantIds.filter((id) => !pooled.has(id));
 
     const overlapCache = new Map<string, number>();
     function overlapOf(a: string, b: string): number {
@@ -210,8 +220,6 @@ Deno.serve(async (req) => {
     }));
     let groupsCreated = 0;
     let dyadsCreated = 0;
-    const roundTitle = `Triad round ${unitNumber}`;
-    const roundTitleVi = `Vòng triad ${unitNumber}`;
 
     async function createGroup(memberIds: string[], language: string): Promise<boolean> {
       const sets = memberIds.map((id) => bucketsByUser.get(id) ?? new Set<string>());
@@ -219,7 +227,7 @@ Deno.serve(async (req) => {
       const range = commonBucket ? bucketToRange(commonBucket) : null;
 
       const { data: groupId, error: groupErr } = await admin.rpc("triad_create_group_internal", {
-        p_cohort_requirement_date_id: requirementId,
+        p_cohort_id: cohortId,
         p_enrollment_ids: memberIds.map((id) => byUser.get(id)!.enrollment_id),
         p_group_language: language,
         p_assigned_by: "auto",
@@ -239,32 +247,32 @@ Deno.serve(async (req) => {
         await admin.from("notifications").insert({
           user_id: memberId,
           notification_type: "triad_assigned",
-          title: `You've been grouped for ${roundTitle}`,
-          title_vi: `Bạn đã được ghép nhóm cho ${roundTitleVi}`,
+          title: "You've been placed in a Triad group",
+          title_vi: "Bạn đã được xếp vào một nhóm Triad",
           body: range
-            ? `Your triad is with ${others.join(", ")}. Proposed: ${new Date(range.start).toLocaleString()}.`
-            : `Your triad is with ${others.join(", ")}. No common time was found yet — propose one.`,
+            ? `Your Triad group is with ${others.join(", ")} for all your Triad sessions. First session proposed: ${new Date(range.start).toLocaleString()}.`
+            : `Your Triad group is with ${others.join(", ")} for all your Triad sessions. No common time was found yet — propose one.`,
           link: "/triads",
         });
       }
       return true;
     }
 
-    for (const pool of [viPool, enPool]) {
-      if (pool.length === 0) continue;
-      const { triads, dyad, leftover } = groupPool(pool, overlapOf);
+    for (const pool of pools) {
+      if (pool.ids.length === 0) continue;
+      const { triads, dyad, leftover } = groupPool(pool.ids, overlapOf);
       for (const triad of triads) {
-        if (await createGroup(triad, pool === viPool ? "vi" : "en")) groupsCreated++;
+        if (await createGroup(triad, pool.language)) groupsCreated++;
       }
-      if (dyad && (await createGroup(dyad, pool === viPool ? "vi" : "en"))) dyadsCreated++;
+      if (dyad && (await createGroup(dyad, pool.language))) dyadsCreated++;
       if (leftover) {
-        adminAlerts.push({ id: byUser.get(leftover)?.enrollment_id ?? leftover, reason: pool === enPool ? "english_only_no_partner" : "odd_one_out" });
+        adminAlerts.push({ id: byUser.get(leftover)?.enrollment_id ?? leftover, reason: pool.language === "en" ? "english_only_no_partner" : "odd_one_out" });
         await admin.from("notifications").insert({
           user_id: leftover,
           notification_type: "triad_no_availability",
-          title: "We couldn't group you yet for this triad round",
-          title_vi: "Chúng tôi chưa thể ghép nhóm bạn cho vòng triad này",
-          body: "There wasn't a compatible partner available this round. An admin will follow up.",
+          title: "We couldn't place you in a Triad group yet",
+          title_vi: "Chúng tôi chưa thể xếp bạn vào nhóm Triad",
+          body: "There wasn't a compatible partner available. An admin will follow up.",
           link: "/triads",
         });
       }
@@ -276,8 +284,8 @@ Deno.serve(async (req) => {
         await admin.from("notifications").insert({
           user_id: id,
           notification_type: "triad_no_availability",
-          title: "Add your availability for the next triad round",
-          title_vi: "Thêm thời gian rảnh của bạn cho vòng triad tiếp theo",
+          title: "Add your availability for your Triad sessions",
+          title_vi: "Thêm thời gian rảnh cho các session Triad của bạn",
           body: "You don't have any availability on file, so we couldn't find a shared time for your triad.",
           link: "/triads",
         });
@@ -291,21 +299,16 @@ Deno.serve(async (req) => {
         await admin.from("notifications").insert({
           user_id: a.user_id,
           notification_type: "triad_admin_alert",
-          title: `Auto-assign for "${roundTitle}" needs attention`,
+          title: `Triad auto assign for "${cohort.name}" needs attention`,
           body: `${adminAlerts.length} item(s) need manual review: ${summaryText}`,
           link: adminLink,
         });
       }
     }
 
-    const summary = { groups: groupsCreated, dyads: dyadsCreated, flagged: adminAlerts.length };
-    await admin.rpc("triad_set_assignment_status_internal", { p_cohort_requirement_date_id: requirementId, p_status: "completed", p_summary: summary });
-    return json({ ok: true, ...summary });
+    return json({ ok: true, groups: groupsCreated, dyads: dyadsCreated, flagged: adminAlerts.length });
   } catch (err) {
     console.error("triad-auto-assign failed", err);
-    if (requirementId) {
-      await admin.rpc("triad_set_assignment_status_internal", { p_cohort_requirement_date_id: requirementId, p_status: "failed" });
-    }
     return json({ error: err instanceof Error ? err.message : String(err) }, 500);
   }
 });

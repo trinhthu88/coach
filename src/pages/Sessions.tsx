@@ -297,8 +297,7 @@ function SessionCard({
     : counterpart?.full_name || counterpart?.email || "—";
   const contextLabels = isTriad
     ? [
-        session.triad?.roundNumber != null ? t("list.triadRound", { count: session.triad.roundNumber }) : null,
-        session.triad?.weekNumber != null ? t("list.triadWeek", { count: session.triad.weekNumber }) : null,
+        session.triad ? t("list.triadSession", { count: session.triad.sessionNumber }) : null,
       ].filter(Boolean).join(" · ")
     : "";
   const displayTitle = session.topic || t("list.triadSessionTitle");

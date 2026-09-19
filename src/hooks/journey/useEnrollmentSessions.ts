@@ -37,7 +37,7 @@ async function fetchEnrollmentSessions(enrollmentId: string): Promise<Developmen
         id: row.session_key,
         enrollmentId,
         type,
-        title: row.title ?? (type === "triad" && row.round_number != null ? `Round ${row.round_number}` : ""),
+        title: row.title ?? "",
         startTime: row.start_time,
         status: row.status,
         counterpartName: type === "triad" ? null : names[0] ?? null,
@@ -47,10 +47,6 @@ async function fetchEnrollmentSessions(enrollmentId: string): Promise<Developmen
         // Triad members rotate roles; only the other session types have one.
         participantRole: type === "triad" ? null : row.participant_role,
         isProgrammeEvidence: row.is_programme_evidence,
-        roundNumber: row.round_number,
-        trainingWeekNumber: row.training_week_number,
-        roundLabel: row.round_number != null ? `Round ${row.round_number}` : null,
-        trainingWeekLabel: row.training_week_number != null ? `Week ${row.training_week_number}` : null,
       };
     });
 }

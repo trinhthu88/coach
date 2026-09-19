@@ -25,6 +25,8 @@ export interface TriadAlternativeView {
 
 export interface TriadSessionView {
   id: string;
+  /** Position within the group's sessions, in time order. */
+  sessionNumber: number;
   status: TriadSessionStatus;
   /** The session's current effective time (proposed until everyone accepts, then agreed). */
   scheduledStartTime: string | null;
@@ -44,27 +46,24 @@ export interface TriadSessionView {
 export interface TriadGroupEntry {
   enrollmentId: string;
   groupId: string;
-  requirementId: string | null;
-  /** The cohort Triad requirement unit (round) number. */
-  unitNumber: number | null;
-  /** Canonical due date (cohort_requirement_dates). */
-  dueOn: string | null;
-  trainingWeek: { number: number; title: string | null; titleVi: string | null } | null;
+  /** The group's scope: its cohort. A group belongs to no requirement unit. */
+  cohortId: string;
   groupLanguage: string;
   isActive: boolean;
+  closedAt: string | null;
+  createdAt: string;
   memberCount: number;
   mySlot: number;
-  /** Canonical unit state (from canonical module progress). */
-  unitCompleted: boolean | null;
-  unitOverdue: boolean | null;
+  /** Every session of the group, numbered in time order (Session 1, 2, …). */
   sessions: TriadSessionView[];
-  /** The group's current session: the latest open one, else the latest. */
+  /** The group's current session: the open one, else the latest. */
   session: TriadSessionView | null;
   members: TriadMemberProfile[];
 }
 
 interface RawSession {
   id: string;
+  session_number: number;
   status: TriadSessionStatus;
   scheduled_start_time: string | null;
   scheduled_end_time: string | null;
@@ -81,6 +80,7 @@ interface RawSession {
 function toSession(raw: RawSession): TriadSessionView {
   return {
     id: raw.id,
+    sessionNumber: raw.session_number,
     status: raw.status,
     scheduledStartTime: raw.scheduled_start_time,
     scheduledEndTime: raw.scheduled_end_time,
@@ -111,10 +111,11 @@ function toMembers(members: TriadMember[] | undefined): TriadMemberProfile[] {
 }
 
 /**
- * THE learner Triad read model: learner_triad_overview (requirement unit,
- * canonical due date and unit state, sessions, responses, alternatives,
- * own reflection state) + learner_triad_members for names. Nothing here
- * computes a date, a completion or an overdue state.
+ * THE learner Triad read model: learner_triad_overview (the learner's
+ * cohort-level groups — the active one and closed historical ones — with
+ * numbered sessions, responses, alternatives and own reflection state) +
+ * learner_triad_members for names. Nothing here computes a date, a
+ * completion or an overdue state (see useMyTriadStatus).
  */
 export async function fetchMyTriads(enrollmentId: string | null): Promise<TriadGroupEntry[]> {
   const { data, error } = await supabase.rpc("learner_triad_overview", { p_enrollment_id: enrollmentId ?? undefined });
@@ -126,23 +127,77 @@ export async function fetchMyTriads(enrollmentId: string | null): Promise<TriadG
     return {
       enrollmentId: row.enrollment_id,
       groupId: row.triad_group_id,
-      requirementId: row.cohort_requirement_date_id,
-      unitNumber: row.unit_number,
-      dueOn: row.due_on,
-      trainingWeek: row.training_week_number != null
-        ? { number: row.training_week_number, title: row.training_week_title, titleVi: row.training_week_title_vi }
-        : null,
+      cohortId: row.cohort_id,
       groupLanguage: row.group_language,
       isActive: row.is_active,
+      closedAt: row.closed_at,
+      createdAt: row.created_at,
       memberCount: row.member_count,
       mySlot: row.my_member_slot,
-      unitCompleted: row.unit_completed,
-      unitOverdue: row.unit_overdue,
       sessions,
       session: currentSession(sessions),
       members: toMembers(membersByGroup.get(row.triad_group_id)),
     };
   });
+}
+
+export interface TriadMilestoneView {
+  milestone: number;
+  /** Cumulative deadline: `milestone` completed Triad sessions by this date. */
+  dueOn: string;
+  trainingWeekId: string | null;
+  isDue: boolean;
+  /** Cumulative: completed sessions >= milestone (never a session mapped to it). */
+  satisfied: boolean;
+}
+
+/** The learner's canonical Triad status — the same projection Admin and Sponsor read. */
+export interface TriadStatusView {
+  requiredUnits: number;
+  completedUnits: number;
+  rawCompletedSessions: number;
+  dueUnits: number;
+  overdueUnits: number;
+  bookedUnits: number;
+  paceStatus: string;
+  nextDueOn: string | null;
+  schedule: TriadMilestoneView[];
+}
+
+export async function fetchMyTriadStatus(enrollmentId: string): Promise<TriadStatusView | null> {
+  const { data, error } = await supabase.rpc("learner_triad_status", { p_enrollment_id: enrollmentId });
+  if (error) throw error;
+  const row = (data ?? [])[0];
+  if (!row) return null;
+  return {
+    requiredUnits: row.required_units,
+    completedUnits: row.completed_units,
+    rawCompletedSessions: row.raw_completed_sessions,
+    dueUnits: row.due_units,
+    overdueUnits: row.overdue_units,
+    bookedUnits: row.booked_units,
+    paceStatus: row.pace_status,
+    nextDueOn: row.next_due_on,
+    schedule: ((row.schedule ?? []) as unknown as { milestone: number; due_on: string; training_week_id: string | null; is_due: boolean; satisfied: boolean }[]).map((m) => ({
+      milestone: m.milestone,
+      dueOn: m.due_on,
+      trainingWeekId: m.training_week_id,
+      isDue: m.is_due,
+      satisfied: m.satisfied,
+    })),
+  };
+}
+
+export const MY_TRIAD_STATUS_KEY = "my-triad-status";
+
+export function useMyTriadStatus(enrollmentId: string | null | undefined) {
+  const { user } = useAuth();
+  const query = useQuery({
+    queryKey: [MY_TRIAD_STATUS_KEY, user?.id, enrollmentId ?? null],
+    queryFn: () => fetchMyTriadStatus(enrollmentId as string),
+    enabled: !!user && !!enrollmentId,
+  });
+  return { status: query.data ?? null, loading: !!enrollmentId && query.isLoading, error: query.isError, refetch: query.refetch };
 }
 
 export const MY_TRIADS_KEY = "my-triads";

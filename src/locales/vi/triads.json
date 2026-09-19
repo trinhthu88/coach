@@ -6,13 +6,13 @@
   "subtitle": "Luyện tập coaching theo nhóm nhỏ — chấp nhận thời gian được đề xuất hoặc đề xuất thời gian khác, sau đó viết phản hồi.",
   "you": "Bạn",
   "myGroup": {
-    "label": "Nhóm của tôi"
+    "label": "Nhóm của tôi",
+    "heading": "Cùng luyện tập qua các session Triad của bạn"
   },
   "loadError": "Không thể tải triad của bạn. Vui lòng thử lại.",
   "retry": "Thử lại",
-  "roundLabel": "Vòng {{n}}",
   "deadlineLabel": "Hạn chót",
-  "dyadNote": "Đây là nhóm đôi (dyad) — không có thành viên thứ ba khả dụng cho vòng này.",
+  "dyadNote": "Đây là nhóm đôi (dyad) — không có thành viên thứ ba khả dụng.",
   "status": {
     "proposed": "Đã đề xuất",
     "confirmed": "Đã xác nhận",
@@ -88,15 +88,31 @@
     "notFound": "Session này hiện không khả dụng.",
     "afterCompletion": "Bạn có thể phản hồi về session này sau khi session được đánh dấu hoàn thành."
   },
-  "currentRounds": {
-    "title": "Các vòng triad hiện tại",
-    "noneTitle": "Hiện không có vòng triad nào đang mở",
-    "noneBody": "Quản trị viên chưa mở vòng triad mới cho chương trình của bạn. Các session triad hiện có được liệt kê bên dưới."
-  },
   "history": {
     "title": "Các session triad của tôi",
     "progress": "Tiến độ Triads: đã hoàn thành {{completed}}/{{required}}",
     "loadError": "Không thể tải các session triad của bạn.",
     "empty": "Chưa có session triad nào."
-  }
+  },
+  "sessionLabel": "Session {{n}}",
+  "closedGroup": "Nhóm trước đây (đã đóng)",
+  "progress": {
+    "label": "Triads đã hoàn thành {{completed}}/{{required}}",
+    "extra_one": "{{count}} session vượt yêu cầu",
+    "extra_other": "{{count}} session vượt yêu cầu",
+    "nextDeadline": "Hạn tiếp theo: {{date}}",
+    "overdue_one": "{{count}} session Triad quá hạn",
+    "overdue_other": "{{count}} session Triad quá hạn",
+    "allDone": "Đã hoàn thành tất cả session Triad yêu cầu",
+    "notRequired": "Chương trình này không yêu cầu Triad"
+  },
+  "schedule": {
+    "title": "Đề xuất thời gian cho session tiếp theo",
+    "submit": "Đề xuất thời gian này",
+    "successToast": "Đã đề xuất thời gian cho nhóm",
+    "cta": "Lên lịch session tiếp theo",
+    "noOpenTitle": "Chưa có session nào được lên lịch",
+    "noOpenBody": "Nhóm của bạn chưa có session đang mở. Hãy đề xuất một thời gian — session được xác nhận khi mọi người chấp nhận."
+  },
+  "noGroupBody": "Quản trị viên sẽ xếp bạn vào một nhóm Triad của cohort. Các session Triad trước đây của bạn được liệt kê bên dưới."
 }

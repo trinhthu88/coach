@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
-import { fetchMyTriads, type TriadGroupEntry } from "@/hooks/triads/useMyTriads";
+import { fetchMyTriadStatus, fetchMyTriads, type TriadGroupEntry, type TriadStatusView } from "@/hooks/triads/useMyTriads";
 
 export interface TimelineWeek {
   id: string;
@@ -42,7 +42,7 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
   const weekNumbers = weeks.map((w) => w.week_number);
   const programmeId = await getProgrammeIdForEnrollment(enrollmentId);
 
-  const [{ data: assignments }, { data: prompts }, { data: reflections }, triadGroups] = await Promise.all([
+  const [{ data: assignments }, { data: prompts }, { data: reflections }, triadGroups, triadCanonical] = await Promise.all([
     supabase
       .from("assignments")
       .select("id, training_week_id, assignment_type")
@@ -58,9 +58,10 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
       .select("id, appears_at_week")
       .eq("programme_id", programmeId)
       .in("appears_at_week", weekNumbers),
-    // The learner's Triad groups for this enrollment; a group belongs to a
-    // week when its cohort Triad requirement is linked to that week.
+    // The learner's cohort Triad groups and canonical Triad status. A week
+    // shows a Triad state only when a cohort Triad deadline is linked to it.
     hasTriads ? fetchMyTriads(enrollmentId) : Promise.resolve([] as TriadGroupEntry[]),
+    hasTriads ? fetchMyTriadStatus(enrollmentId) : Promise.resolve(null as TriadStatusView | null),
   ]);
 
   const assignmentIds = (assignments || []).map((a) => a.id as string);
@@ -113,14 +114,18 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
       const weekPrompts = (prompts || []).filter((p) => p.training_week_id === w.id);
       const promptsDone = weekPrompts.filter((p) => respondedPromptIds.has(p.id)).length;
 
-      // Completion is the unit's canonical state (the same one Admin and the
-      // Triads page show), never a local reading of session statuses.
+      // A week's Triad deadline is met when the canonical completed sessions
+      // reach that cumulative milestone (the same rule Admin and the Triads
+      // page show) — never a local reading of session statuses, never a
+      // session assigned to the week.
       let triadStatus: TimelineWeek["triadStatus"] = null;
-      if (hasTriads) {
-        const weekGroups = triadGroups.filter((g) => g.trainingWeek?.number === w.week_number);
-        if (weekGroups.some((g) => g.unitCompleted)) triadStatus = "completed";
-        else if (weekGroups.every((g) => g.sessions.length === 0)) triadStatus = "not_scheduled";
-        else triadStatus = "scheduled";
+      const weekMilestones = triadCanonical?.schedule.filter((m) => m.trainingWeekId === w.id) ?? [];
+      if (hasTriads && weekMilestones.length > 0) {
+        const activeGroup = triadGroups.find((g) => g.isActive);
+        const hasOpenSession = !!activeGroup?.sessions.some((s) => s.status === "proposed" || s.status === "confirmed");
+        if (weekMilestones.every((m) => m.satisfied)) triadStatus = "completed";
+        else if (hasOpenSession) triadStatus = "scheduled";
+        else triadStatus = "not_scheduled";
       }
 
       let status: TimelineWeek["status"];

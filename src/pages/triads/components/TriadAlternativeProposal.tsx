@@ -17,24 +17,32 @@ interface AvailabilitySlot {
 }
 
 /**
- * Propose / accept candidate times for the group's current session. A
- * candidate never changes the session until every member accepts it (server
- * rule); the learner's own availability is offered up to the unit's
- * canonical due date.
+ * Propose a time for the group.
+ *  - mode "alternative": a candidate replacement time for the group's open
+ *    session (never the session time until every member accepts it — server
+ *    rule), plus the pending candidates to accept.
+ *  - mode "schedule": the group's next session (after the previous one was
+ *    completed or cancelled); the proposer has accepted it.
+ * The learner's own availability is offered up to their next canonical
+ * Triad deadline (untilDate), when there is one.
  */
 export function TriadAlternativeProposal({
   entry,
   onDone,
   listOnly = false,
+  mode = "alternative",
+  untilDate = null,
 }: {
   entry: TriadGroupEntry;
   onDone: () => void;
   listOnly?: boolean;
+  mode?: "alternative" | "schedule";
+  untilDate?: string | null;
 }) {
   const { t } = useTranslation("triads");
   const { user } = useAuth();
-  const { proposeAlternative, acceptAlternative, isPending } = useTriadSession();
-  const session = entry.session;
+  const { proposeAlternative, acceptAlternative, scheduleSession, isPending } = useTriadSession();
+  const session = mode === "alternative" ? entry.session : null;
   const proposals = session?.pendingAlternatives ?? [];
 
   const [date, setDate] = useState("");
@@ -50,13 +58,13 @@ export function TriadAlternativeProposal({
       .eq("is_booked", false)
       .gte("slot_date", format(new Date(), "yyyy-MM-dd"))
       .order("slot_date", { ascending: true });
-    if (entry.dueOn) query = query.lte("slot_date", entry.dueOn);
+    if (untilDate) query = query.lte("slot_date", untilDate);
     query.then(({ data }) => setMySlots((data ?? []) as AvailabilitySlot[]));
-  }, [user, entry.dueOn, listOnly]);
+  }, [user, untilDate, listOnly]);
 
   const nameBySlot = useMemo(() => new Map(entry.members.map((m) => [m.slot, m.isSelf ? t("you") : m.full_name])), [entry.members, t]);
 
-  if (!session) return null;
+  if (mode === "alternative" && !session) return null;
 
   const handlePropose = async () => {
     if (!date || !time) {
@@ -66,8 +74,12 @@ export function TriadAlternativeProposal({
     const start = new Date(`${date}T${time}:00`);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     try {
-      await proposeAlternative({ sessionId: session.id, startTime: start.toISOString(), endTime: end.toISOString() });
-      toast.success(t("alternative.successToast"));
+      if (mode === "schedule") {
+        await scheduleSession({ groupId: entry.groupId, startTime: start.toISOString(), endTime: end.toISOString() });
+      } else {
+        await proposeAlternative({ sessionId: (session as NonNullable<typeof session>).id, startTime: start.toISOString(), endTime: end.toISOString() });
+      }
+      toast.success(t(mode === "schedule" ? "schedule.successToast" : "alternative.successToast"));
       setDate("");
       setTime("");
       onDone();
@@ -89,7 +101,7 @@ export function TriadAlternativeProposal({
     <div className="space-y-4 rounded-[16px] border border-[#efeae1] bg-[#faf8f4] p-4">
       {!listOnly && (
         <>
-          <p className="text-[10.5px] font-bold uppercase tracking-[.2em] text-muted-foreground">{t("alternative.title")}</p>
+          <p className="text-[10.5px] font-bold uppercase tracking-[.2em] text-muted-foreground">{t(mode === "schedule" ? "schedule.title" : "alternative.title")}</p>
 
           {mySlots.length > 0 && (
             <div>
@@ -126,7 +138,7 @@ export function TriadAlternativeProposal({
             className="inline-flex items-center gap-1.5 rounded-xl bg-secondary px-[18px] py-[11px] text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50"
           >
             {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {t("alternative.submit")}
+            {t(mode === "schedule" ? "schedule.submit" : "alternative.submit")}
           </button>
         </>
       )}

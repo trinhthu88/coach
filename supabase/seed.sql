@@ -294,16 +294,12 @@ BEGIN
         ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id;
     END IF;
   END LOOP;
-  -- Triad: one group for the cohort's Triad requirement unit 1, membership by
-  -- enrollment; the session time is its scheduled time.
-  INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language)
-    SELECT 'eeeeeeee-eeee-4eee-8eee-000000000001', d.id, 'vi'
-    FROM cohort_requirement_dates d
-    WHERE d.cohort_id=cb AND d.programme_id=pb AND d.module='triads' AND d.ordinal=1
+  -- Triad: one cohort-level group (membership by enrollment) that practises
+  -- together across the cohort's required Triad sessions; the session time is
+  -- its scheduled time. A group belongs to no requirement unit.
+  INSERT INTO triad_groups(id,cohort_id,group_language)
+    VALUES('eeeeeeee-eeee-4eee-8eee-000000000001', cb, 'vi')
     ON CONFLICT(id) DO NOTHING;
-  IF NOT FOUND AND NOT EXISTS (SELECT 1 FROM triad_groups WHERE id='eeeeeeee-eeee-4eee-8eee-000000000001') THEN
-    RAISE EXCEPTION 'Demo seed: cohort B has no Triad requirement unit 1';
-  END IF;
   INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
     SELECT v.triad_group_id, v.enrollment_id, v.member_order
     FROM (VALUES
@@ -599,8 +595,12 @@ BEGIN
     END LOOP;
   END;
 
-  -- Triads: a completed session is evidence for every member of its group.
-  -- Each group practises for one cohort Triad requirement unit (1 or 2).
+  -- Triads: a completed session is evidence for every member of its
+  -- (historical) group; progress counts distinct completed sessions, capped at
+  -- the 2 required, against cohort C's cumulative Triad due dates. Groups are
+  -- cohort-level: after a group's session a learner may be regrouped (the old
+  -- group is closed, its session stays theirs) and practise again in a new
+  -- group — completion follows the enrollment, not the group.
   DECLARE
     e1 uuid := '14141414-1414-4141-8141-000000000001';
     e2 uuid := '14141414-1414-4141-8141-000000000002';
@@ -608,27 +608,23 @@ BEGIN
     e4 uuid := '14141414-1414-4141-8141-000000000004';
     e9 uuid := '14141414-1414-4141-8141-000000000009';
     e10 uuid := '14141414-1414-4141-8141-000000000010';
-    unit1 uuid; unit2 uuid;
     grp record;
   BEGIN
-    SELECT id INTO unit1 FROM cohort_requirement_dates WHERE cohort_id=cc AND programme_id=pc AND module='triads' AND ordinal=1;
-    SELECT id INTO unit2 FROM cohort_requirement_dates WHERE cohort_id=cc AND programme_id=pc AND module='triads' AND ordinal=2;
-    IF unit1 IS NULL OR unit2 IS NULL THEN
-      RAISE EXCEPTION 'Demo seed: cohort C needs Triad requirement units 1 and 2';
-    END IF;
     FOR grp IN
       SELECT * FROM (VALUES
-        -- Leaders 1, 2 and 3 each earn their first triad unit together.
-        ('15151515-1515-4151-8151-000000000001'::uuid, unit1, ARRAY[e1,e2,e3], '1c1c1c1c-1c1c-41c1-81c1-000000000001'::uuid, '2026-05-03'::timestamptz),
-        -- Leaders 1 and 2 each earn their second (final) triad unit.
-        ('15151515-1515-4151-8151-000000000002'::uuid, unit2, ARRAY[e1,e2], '1c1c1c1c-1c1c-41c1-81c1-000000000002'::uuid, '2026-07-05'::timestamptz),
-        -- Leaders 4 and 9 each earn their first triad unit.
-        ('15151515-1515-4151-8151-000000000003'::uuid, unit1, ARRAY[e4,e9], '1c1c1c1c-1c1c-41c1-81c1-000000000003'::uuid, '2026-05-03'::timestamptz),
-        -- Leaders 9 and 10 each earn their second/first triad unit.
-        ('15151515-1515-4151-8151-000000000004'::uuid, unit2, ARRAY[e9,e10], '1c1c1c1c-1c1c-41c1-81c1-000000000004'::uuid, '2026-07-05'::timestamptz)
-      ) AS g(group_id, requirement_id, members, session_id, starts_at)
+        -- Leaders 1, 2 and 3 complete their first Triad session together;
+        -- the group then closes (regrouped).
+        (1, '15151515-1515-4151-8151-000000000001'::uuid, ARRAY[e1,e2,e3], '1c1c1c1c-1c1c-41c1-81c1-000000000001'::uuid, '2026-05-03'::timestamptz, false),
+        -- Leaders 4 and 9 (a dyad) complete their first session; regrouped.
+        (2, '15151515-1515-4151-8151-000000000003'::uuid, ARRAY[e4,e9], '1c1c1c1c-1c1c-41c1-81c1-000000000003'::uuid, '2026-05-03'::timestamptz, false),
+        -- Leaders 1 and 2 complete their second (final) session in a new group.
+        (3, '15151515-1515-4151-8151-000000000002'::uuid, ARRAY[e1,e2], '1c1c1c1c-1c1c-41c1-81c1-000000000002'::uuid, '2026-07-05'::timestamptz, true),
+        -- Leader 9's second and leader 10's first session, in a new group.
+        (4, '15151515-1515-4151-8151-000000000004'::uuid, ARRAY[e9,e10], '1c1c1c1c-1c1c-41c1-81c1-000000000004'::uuid, '2026-07-05'::timestamptz, true)
+      ) AS g(ord, group_id, members, session_id, starts_at, stays_active)
+      ORDER BY ord
     LOOP
-      INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language) VALUES(grp.group_id,grp.requirement_id,'vi')
+      INSERT INTO triad_groups(id,cohort_id,group_language) VALUES(grp.group_id,cc,'vi')
         ON CONFLICT(id) DO NOTHING;
       INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
         SELECT grp.group_id, m.enrollment_id, m.ord
@@ -639,14 +635,18 @@ BEGIN
           WHERE existing.triad_group_id = grp.group_id
             AND existing.enrollment_id = m.enrollment_id
         );
+      -- Completed sessions are history (never re-inserted or updated).
       INSERT INTO triad_sessions(id,triad_group_id,scheduled_start_time,scheduled_end_time,status)
-        VALUES(grp.session_id,grp.group_id,grp.starts_at,grp.starts_at + interval '1 hour','completed')
-        ON CONFLICT(id) DO NOTHING;
+        SELECT grp.session_id,grp.group_id,grp.starts_at,grp.starts_at + interval '1 hour','completed'
+        WHERE NOT EXISTS (SELECT 1 FROM triad_sessions WHERE id = grp.session_id);
       INSERT INTO triad_session_responses(triad_session_id,enrollment_id,response,responded_at)
         SELECT grp.session_id, m, 'accepted', grp.starts_at - interval '7 days' FROM unnest(grp.members) m
         ON CONFLICT(triad_session_id,enrollment_id) DO NOTHING;
+      IF NOT grp.stays_active THEN
+        UPDATE triad_groups SET is_active = false WHERE id = grp.group_id AND is_active;
+      END IF;
       -- The reset above cleared the cohort's evidence; rebuild it through the
-      -- one Triad attribution writer (membership x session time).
+      -- one Triad attribution writer (historical membership x session time).
       PERFORM public.triad_sync_session_attributions(grp.session_id);
     END LOOP;
   END;

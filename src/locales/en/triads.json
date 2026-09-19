@@ -6,13 +6,13 @@
   "subtitle": "Practice coaching in small groups — accept a proposed time or suggest another, then reflect afterwards.",
   "you": "You",
   "myGroup": {
-    "label": "My group"
+    "label": "My group",
+    "heading": "Practising together across your Triad sessions"
   },
   "loadError": "Couldn't load your triads. Please try again.",
   "retry": "Retry",
-  "roundLabel": "Round {{n}}",
   "deadlineLabel": "Deadline",
-  "dyadNote": "This is a pair (dyad) — no third member was available for this round.",
+  "dyadNote": "This is a pair (dyad) — no third member was available.",
   "status": {
     "proposed": "Proposed",
     "confirmed": "Confirmed",
@@ -88,15 +88,31 @@
     "notFound": "This session isn't available.",
     "afterCompletion": "You can reflect on this session once it has been marked as completed."
   },
-  "currentRounds": {
-    "title": "Current triad rounds",
-    "noneTitle": "No triad round is open right now",
-    "noneBody": "Your admin hasn't opened a new triad round for your programme. Your existing triad sessions are listed below."
-  },
   "history": {
     "title": "My triad sessions",
     "progress": "Triads programme progress: {{completed}}/{{required}} completed",
     "loadError": "Your triad sessions could not be loaded.",
     "empty": "No triad sessions yet."
-  }
+  },
+  "sessionLabel": "Session {{n}}",
+  "closedGroup": "Earlier group (closed)",
+  "progress": {
+    "label": "Triads {{completed}}/{{required}} completed",
+    "extra_one": "{{count}} extra session beyond the requirement",
+    "extra_other": "{{count}} extra sessions beyond the requirement",
+    "nextDeadline": "Next deadline: {{date}}",
+    "overdue_one": "{{count}} Triad session overdue",
+    "overdue_other": "{{count}} Triad sessions overdue",
+    "allDone": "All required Triad sessions completed",
+    "notRequired": "No Triads are required in this programme"
+  },
+  "schedule": {
+    "title": "Propose the next session time",
+    "submit": "Propose this time",
+    "successToast": "Session time proposed to your group",
+    "cta": "Schedule the next session",
+    "noOpenTitle": "No session scheduled",
+    "noOpenBody": "Your group has no open session. Propose a time — it is confirmed once everyone accepts."
+  },
+  "noGroupBody": "Your admin places you in a Triad group for your cohort. Your earlier Triad sessions are listed below."
 }

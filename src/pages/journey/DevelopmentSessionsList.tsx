@@ -81,7 +81,6 @@ export function DevelopmentSessionsList({
         {filtered.map((item) => {
           const Icon = ICON_BY_TYPE[item.type];
           const path = sessionDetailPath(item);
-          const contextLabel = [item.trainingWeekLabel, item.roundLabel].filter(Boolean).join(" / ");
           const body = (
             <Card data-testid="session-row" data-source={item.sourceType} data-status={item.status} className="flex items-start gap-3 p-4 transition-colors hover:border-primary/40">
               <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
@@ -99,7 +98,7 @@ export function DevelopmentSessionsList({
                     </span>
                   )}
                 </div>
-                <p className="truncate text-sm font-semibold">{contextLabel || item.title}</p>
+                <p className="truncate text-sm font-semibold">{item.title || t(`developmentSessions.types.${item.type}`)}</p>
                 {(programmeName || cohortName) && (
                   <p className="truncate text-[11px] text-muted-foreground">
                     {[programmeName, cohortName].filter(Boolean).join(" · ")}

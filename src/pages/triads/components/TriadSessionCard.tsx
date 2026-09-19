@@ -10,7 +10,7 @@ import { pendingMembers, type TriadGroupEntry } from "@/hooks/triads/useMyTriads
 import { TriadAlternativeProposal } from "./TriadAlternativeProposal";
 
 /** "Next Triad session" card — navy, per the approved prototype's Triads workspace ("Next Triad session" is navy, "My Triad group" is white — the reverse of TriadGroupHero). The no-session empty state stays a plain light card, matching every other empty state in the app. */
-export function TriadSessionCard({ entry }: { entry: TriadGroupEntry }) {
+export function TriadSessionCard({ entry, untilDate = null }: { entry: TriadGroupEntry; untilDate?: string | null }) {
   const { t } = useTranslation("triads");
   const { acceptSession, markCompleted, isPending } = useTriadSession();
   const { session, members } = entry;
@@ -50,6 +50,8 @@ export function TriadSessionCard({ entry }: { entry: TriadGroupEntry }) {
     <div className="rounded-[18px] bg-secondary p-6 text-secondary-foreground shadow-[0_18px_55px_-30px_rgba(6,47,62,0.6)] sm:p-7">
       <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-primary-glow">
         {session.status === "confirmed" ? t("session.upcomingLabel") : t("session.needsSchedulingLabel")}
+        {" · "}
+        {t("sessionLabel", { n: session.sessionNumber })}
       </p>
 
       {session.scheduledStartTime ? (
@@ -100,7 +102,7 @@ export function TriadSessionCard({ entry }: { entry: TriadGroupEntry }) {
           </div>
           {showAlternative && (
             <div className="mt-4 rounded-xl bg-white p-4 text-foreground">
-              <TriadAlternativeProposal entry={entry} onDone={() => setShowAlternative(false)} />
+              <TriadAlternativeProposal entry={entry} untilDate={untilDate} onDone={() => setShowAlternative(false)} />
             </div>
           )}
           {!showAlternative && session.pendingAlternatives.length > 0 && (

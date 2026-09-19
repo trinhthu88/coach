@@ -1156,38 +1156,6 @@ export type Database = {
           },
         ]
       }
-      cohort_triad_operations: {
-        Row: {
-          assignment_status: string
-          cohort_requirement_date_id: string
-          last_assignment_run_at: string | null
-          last_assignment_summary: Json | null
-          updated_at: string
-        }
-        Insert: {
-          assignment_status?: string
-          cohort_requirement_date_id: string
-          last_assignment_run_at?: string | null
-          last_assignment_summary?: Json | null
-          updated_at?: string
-        }
-        Update: {
-          assignment_status?: string
-          cohort_requirement_date_id?: string
-          last_assignment_run_at?: string | null
-          last_assignment_summary?: Json | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cohort_triad_operations_cohort_requirement_date_id_fkey"
-            columns: ["cohort_requirement_date_id"]
-            isOneToOne: true
-            referencedRelation: "cohort_requirement_dates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       cohort_week_overrides: {
         Row: {
           cohort_id: string
@@ -3472,43 +3440,32 @@ export type Database = {
         }
         Relationships: []
       }
-      triad_cutover_group_decisions: {
+      triad_cutover_review_decisions: {
         Row: {
-          cohort_requirement_date_id: string | null
           decided_at: string
           decision: string
-          evidence: Json
           migration_id: string
           reason: string
+          reviewed_by: string
           triad_group_id: string
         }
         Insert: {
-          cohort_requirement_date_id?: string | null
           decided_at?: string
           decision: string
-          evidence?: Json
           migration_id: string
           reason: string
+          reviewed_by: string
           triad_group_id: string
         }
         Update: {
-          cohort_requirement_date_id?: string | null
           decided_at?: string
           decision?: string
-          evidence?: Json
           migration_id?: string
           reason?: string
+          reviewed_by?: string
           triad_group_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "triad_cutover_group_decisions_cohort_requirement_date_id_fkey"
-            columns: ["cohort_requirement_date_id"]
-            isOneToOne: false
-            referencedRelation: "cohort_requirement_dates"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       triad_group_members: {
         Row: {
@@ -3552,7 +3509,8 @@ export type Database = {
       triad_groups: {
         Row: {
           assigned_by: string
-          cohort_requirement_date_id: string | null
+          closed_at: string | null
+          cohort_id: string
           created_at: string
           group_language: string
           id: string
@@ -3561,7 +3519,8 @@ export type Database = {
         }
         Insert: {
           assigned_by?: string
-          cohort_requirement_date_id?: string | null
+          closed_at?: string | null
+          cohort_id: string
           created_at?: string
           group_language?: string
           id?: string
@@ -3570,7 +3529,8 @@ export type Database = {
         }
         Update: {
           assigned_by?: string
-          cohort_requirement_date_id?: string | null
+          closed_at?: string | null
+          cohort_id?: string
           created_at?: string
           group_language?: string
           id?: string
@@ -3579,10 +3539,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "triad_groups_cohort_requirement_date_id_fkey"
-            columns: ["cohort_requirement_date_id"]
+            foreignKeyName: "triad_groups_cohort_id_fkey"
+            columns: ["cohort_id"]
             isOneToOne: false
-            referencedRelation: "cohort_requirement_dates"
+            referencedRelation: "cohorts"
             referencedColumns: ["id"]
           },
         ]
@@ -3935,23 +3895,46 @@ export type Database = {
           state: string
         }[]
       }
-      admin_cohort_triad_requirements: {
+      admin_cohort_triad_groups: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          assigned_by: string
+          closed_at: string
+          created_at: string
+          group_language: string
+          is_active: boolean
+          members: Json
+          sessions: Json
+          triad_group_id: string
+        }[]
+      }
+      admin_cohort_triad_learners: {
         Args: { p_as_of?: string; p_cohort_id: string }
         Returns: {
-          assigned_enrollments: number
-          assignment_status: string
-          cohort_requirement_date_id: string
-          completed_enrollments: number
-          due_on: string
-          eligible_enrollments: number
-          groups: Json
-          is_operational: boolean
-          last_assignment_run_at: string
-          last_assignment_summary: Json
-          overdue_enrollments: number
+          active_group_id: string
+          completed_units: number
+          due_units: number
+          enrollment_id: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_name: string
+          is_eligible: boolean
+          next_due_on: string
+          overdue_units: number
           programme_id: string
+          raw_completed_sessions: number
           required_units: number
-          unit_number: number
+          spoken_languages: string[]
+          user_id: string
+        }[]
+      }
+      admin_cohort_triad_requirement: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          programme_id: string
+          programme_name: string
+          required_units: number
+          schedule: Json
+          schedule_state: string
         }[]
       }
       admin_create_programme_enrollment: {
@@ -4040,22 +4023,11 @@ export type Database = {
       }
       admin_triad_create_group: {
         Args: {
-          p_cohort_requirement_date_id: string
+          p_cohort_id: string
           p_enrollment_ids: string[]
           p_group_language: string
         }
         Returns: string
-      }
-      admin_triad_requirement_candidates: {
-        Args: { p_cohort_requirement_date_id: string }
-        Returns: {
-          enrollment_id: string
-          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
-          full_name: string
-          spoken_languages: string[]
-          triad_group_id: string
-          user_id: string
-        }[]
       }
       admin_triad_set_group_active: {
         Args: { p_group_id: string; p_is_active: boolean }
@@ -4373,6 +4345,24 @@ export type Database = {
           requirement_mismatch: boolean
         }[]
       }
+      canonical_triad_completion: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          cohort_id: string
+          completed_by_as_of: number
+          completed_units: number
+          due_units: number
+          enrollment_id: string
+          next_due_on: string
+          overdue_units: number
+          pace_status: string
+          programme_id: string
+          raw_completed_sessions: number
+          required_units: number
+          schedule: Json
+        }[]
+      }
       canonical_triad_group_members: {
         Args: { p_group_ids: string[] }
         Returns: {
@@ -4381,17 +4371,6 @@ export type Database = {
           member_id: string
           member_slot: number
           triad_group_id: string
-        }[]
-      }
-      canonical_triad_requirement_fulfilment: {
-        Args: { p_enrollment_id: string }
-        Returns: {
-          booked_on: string
-          cohort_requirement_date_id: string
-          due_on: string
-          fulfilled_on: string
-          proposed_on: string
-          unit_number: number
         }[]
       }
       check_can_book_mentoring_session: {
@@ -4905,7 +4884,6 @@ export type Database = {
           is_programme_evidence: boolean
           module: Database["public"]["Enums"]["programme_module_type"]
           participant_role: string
-          round_number: number
           session_key: string
           session_type: string
           source_id: string
@@ -4913,7 +4891,6 @@ export type Database = {
           start_time: string
           status: string
           title: string
-          training_week_number: number
         }[]
       }
       learner_triad_complete_session: {
@@ -4934,21 +4911,16 @@ export type Database = {
       learner_triad_overview: {
         Args: { p_enrollment_id?: string }
         Returns: {
-          cohort_requirement_date_id: string
-          due_on: string
+          closed_at: string
+          cohort_id: string
+          created_at: string
           enrollment_id: string
           group_language: string
           is_active: boolean
           member_count: number
           my_member_slot: number
           sessions: Json
-          training_week_number: number
-          training_week_title: string
-          training_week_title_vi: string
           triad_group_id: string
-          unit_completed: boolean
-          unit_number: number
-          unit_overdue: boolean
         }[]
       }
       learner_triad_propose_alternative: {
@@ -4984,6 +4956,10 @@ export type Database = {
         Args: { p_response: string; p_session_id: string }
         Returns: undefined
       }
+      learner_triad_schedule_session: {
+        Args: { p_end: string; p_group_id: string; p_start: string }
+        Returns: string
+      }
       learner_triad_session_reflections: {
         Args: { p_session_id: string }
         Returns: {
@@ -4992,6 +4968,21 @@ export type Database = {
           member_slot: number
           satisfaction_rating: number
           submitted_at: string
+        }[]
+      }
+      learner_triad_status: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_units: number
+          due_units: number
+          enrollment_id: string
+          next_due_on: string
+          overdue_units: number
+          pace_status: string
+          raw_completed_sessions: number
+          required_units: number
+          schedule: Json
         }[]
       }
       learner_triad_submit_reflection: {
@@ -5094,7 +5085,6 @@ export type Database = {
         Returns: {
           module: Database["public"]["Enums"]["programme_module_type"]
           occurred_on: string
-          requirement_due_on: string
           status: string
         }[]
       }
@@ -5500,8 +5490,37 @@ export type Database = {
         Returns: string
       }
       triad_clear_unconfirmed_auto_groups_internal: {
-        Args: { p_cohort_requirement_date_id: string }
+        Args: { p_cohort_id: string }
         Returns: number
+      }
+      triad_cohort_candidates_internal: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          enrollment_id: string
+          full_name: string
+          programme_id: string
+          spoken_languages: string[]
+          user_id: string
+        }[]
+      }
+      triad_cohort_learners_internal: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: {
+          active_group_id: string
+          completed_units: number
+          due_units: number
+          enrollment_id: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_name: string
+          is_eligible: boolean
+          next_due_on: string
+          overdue_units: number
+          programme_id: string
+          raw_completed_sessions: number
+          required_units: number
+          spoken_languages: string[]
+          user_id: string
+        }[]
       }
       triad_confirm_session_if_accepted: {
         Args: { p_session_id: string }
@@ -5510,7 +5529,7 @@ export type Database = {
       triad_create_group_internal: {
         Args: {
           p_assigned_by: string
-          p_cohort_requirement_date_id: string
+          p_cohort_id: string
           p_end?: string
           p_enrollment_ids: string[]
           p_group_language: string
@@ -5518,8 +5537,8 @@ export type Database = {
         }
         Returns: string
       }
-      triad_group_is_historical_unlinked: {
-        Args: { p_group_id: string }
+      triad_demo_reset_allows: {
+        Args: { p_id: string; p_resource_type: string }
         Returns: boolean
       }
       triad_group_sessions_internal: {
@@ -5566,78 +5585,33 @@ export type Database = {
         Returns: boolean
       }
       triad_reminder_targets_internal: {
-        Args: { p_as_of?: string; p_cohort_requirement_date_id?: string }
+        Args: { p_as_of?: string; p_cohort_id?: string }
         Returns: {
           cohort_id: string
-          cohort_requirement_date_id: string
+          completed_units: number
           days_until_due: number
           due_on: string
           enrollment_id: string
-          session_status: string
-          triad_group_id: string
-          unit_completed: boolean
-          unit_number: number
-          unit_overdue: boolean
-          user_id: string
-        }[]
-      }
-      triad_requirement_candidates_internal: {
-        Args: { p_cohort_requirement_date_id: string }
-        Returns: {
-          enrollment_id: string
-          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
-          full_name: string
-          spoken_languages: string[]
-          triad_group_id: string
-          user_id: string
-        }[]
-      }
-      triad_requirement_units_internal: {
-        Args: { p_cohort_id: string }
-        Returns: {
-          cohort_id: string
-          cohort_requirement_date_id: string
-          due_on: string
-          is_operational: boolean
+          milestone_met: boolean
+          milestone_number: number
+          milestone_overdue: boolean
+          open_session_status: string
           programme_id: string
-          required_units: number
-          training_week_id: string
-          unit_number: number
+          triad_group_id: string
+          user_id: string
         }[]
+      }
+      triad_required_units_for_programme: {
+        Args: { p_programme_id: string }
+        Returns: number
       }
       triad_session_can_complete: {
         Args: { p_scheduled_start: string; p_status: string }
         Returns: boolean
       }
-      triad_set_assignment_status_internal: {
-        Args: {
-          p_cohort_requirement_date_id: string
-          p_status: string
-          p_summary?: Json
-        }
-        Returns: undefined
-      }
       triad_sync_session_attributions: {
         Args: { p_session_id: string }
         Returns: undefined
-      }
-      triad_unit_enrollment_status_internal: {
-        Args: { p_as_of?: string; p_cohort_requirement_date_id: string }
-        Returns: {
-          cohort_requirement_date_id: string
-          due_on: string
-          enrollment_id: string
-          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
-          is_eligible: boolean
-          scheduled_start_time: string
-          session_id: string
-          session_status: string
-          triad_group_id: string
-          unit_completed: boolean
-          unit_number: number
-          unit_overdue: boolean
-          user_id: string
-        }[]
       }
       update_session_notes: {
         Args: {

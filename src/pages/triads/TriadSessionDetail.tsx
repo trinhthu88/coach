@@ -61,7 +61,7 @@ export default function TriadSessionDetail() {
       <div>
         <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-primary">{t("eyebrow")}</p>
         <h1 className="font-display mt-2 text-[1.9rem] leading-[1.08] tracking-[-0.02em]">
-          {entry.unitNumber != null ? t("roundLabel", { n: entry.unitNumber }) : t("eyebrow")}
+          {entry.session ? t("sessionLabel", { n: entry.session.sessionNumber }) : t("eyebrow")}
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">{t("sessionDetail.subtitle")}</p>
       </div>

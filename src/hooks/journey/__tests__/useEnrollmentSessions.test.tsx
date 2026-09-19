@@ -28,8 +28,6 @@ const row = (over: Record<string, unknown>) => ({
   start_time: "2026-02-01T10:00:00Z",
   status: "completed",
   counterpart_names: [],
-  round_number: null,
-  training_week_number: null,
   attributed_to_enrollment: true,
   is_programme_evidence: true,
   ...over,
@@ -43,8 +41,8 @@ const REPORTED_CASE = [
   row({ session_type: "peer_coaching", source_table: "coachee_peer_sessions", source_id: "g1", module: "peer_coaching", participant_role: "provider", start_time: "2026-02-03T08:00:00Z", attributed_to_enrollment: false, is_programme_evidence: false }),
   row({ session_type: "peer_coaching", source_table: "coachee_peer_sessions", source_id: "g2", module: "peer_coaching", participant_role: "provider", status: "confirmed", start_time: "2026-04-05T08:00:00Z", attributed_to_enrollment: false, is_programme_evidence: false }),
   row({ session_type: "mentoring", source_table: "mentoring_sessions", source_id: "m1", module: "mentoring", participant_role: "mentee", counterpart_names: ["Morgan Mentor"] }),
-  row({ session_type: "triad", source_table: "triad_sessions", source_id: "t1", module: "triads", participant_role: "coach", title: null, round_number: 1, start_time: "2026-02-16T03:00:00Z", counterpart_names: ["A", "B"] }),
-  row({ session_type: "triad", source_table: "triad_sessions", source_id: "t2", module: "triads", participant_role: "coach", title: null, round_number: 1, status: "confirmed", start_time: "2026-04-20T03:00:00Z", is_programme_evidence: false }),
+  row({ session_type: "triad", source_table: "triad_sessions", source_id: "t1", module: "triads", participant_role: "coach", title: null, start_time: "2026-02-16T03:00:00Z", counterpart_names: ["A", "B"] }),
+  row({ session_type: "triad", source_table: "triad_sessions", source_id: "t2", module: "triads", participant_role: "coach", title: null, status: "confirmed", start_time: "2026-04-20T03:00:00Z", is_programme_evidence: false }),
 ];
 
 describe("useEnrollmentSessions (learner_session_history)", () => {
@@ -70,7 +68,9 @@ describe("useEnrollmentSessions (learner_session_history)", () => {
       ["completed", true],
       ["confirmed", false],
     ]);
-    expect(triads[0].title).toBe("Round 1");
+    // A Triad session belongs to its group only: no round / week label.
+    expect(triads[0].title).toBe("");
+    expect(triads[0]).not.toHaveProperty("roundLabel");
     expect(triads[0].counterpartNames).toEqual(["A", "B"]);
   });
 

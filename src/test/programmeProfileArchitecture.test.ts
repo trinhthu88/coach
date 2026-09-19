@@ -246,23 +246,47 @@ describe("programme profile architecture", () => {
     const label = (f: string) => relative(process.cwd(), f);
 
     it("no runtime code reads a retired Triad table or field", () => {
-      const retired = /\b(programme_)?triad_rounds\b|completion_deadline|(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|(learned|will_use)_as_(coach|coachee|observer)/;
+      const retired = /\b(programme_)?triad_rounds\b|completion_deadline|(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|(learned|will_use)_as_(coach|coachee|observer)|cohort_triad_operations/;
       expect(runtime.filter((f) => retired.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
     });
 
-    it("auto-assignment is requirement-first: one cohort Triad requirement, never a programme-wide pool", () => {
-      const fn = readFileSync(join(FUNCTIONS, "triad-auto-assign", "index.ts"), "utf8");
-      expect(fn).toMatch(/body\.cohort_requirement_date_id/);
-      expect(fn).toMatch(/rpc\("triad_requirement_candidates_internal"/);
-      expect(fn).toMatch(/rpc\("triad_create_group_internal"/);
-      expect(fn).not.toMatch(/programme_id|from\("(programme_enrollments|triad_groups|triad_group_members)"\)/);
+    it("no runtime code ties a Triad group or session to a requirement unit / round", () => {
+      // A group belongs to a cohort; a session to its group. Cohort dates are
+      // cumulative deadlines, never an owner of a group or a session.
+      const unitOwnership = /cohort_requirement_date_id|requirementId|unit_number|unitNumber|round_number|roundNumber|roundLabel|triad_requirement_(units|candidates)_internal|triad_unit_enrollment_status_internal|canonical_triad_requirement_fulfilment/;
+      expect(runtime.filter((f) => unitOwnership.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
     });
 
-    it("Triad completion is never derived from reflections or session rows outside canonical progress", () => {
+    it("auto-assignment is cohort-first: one selected cohort, never a programme-wide pool", () => {
+      const fn = readFileSync(join(FUNCTIONS, "triad-auto-assign", "index.ts"), "utf8");
+      expect(fn).toMatch(/body\.cohort_id/);
+      expect(fn).toMatch(/rpc\("triad_cohort_candidates_internal", \{ p_cohort_id: cohortId \}\)/);
+      expect(fn).toMatch(/rpc\("triad_create_group_internal"/);
+      expect(fn).not.toMatch(/body\.programme_id|from\("(programme_enrollments|triad_groups|triad_group_members)"\)/);
+      const hook = read("hooks/triads/useAdminTriads.ts");
+      expect(hook).toMatch(/functions\.invoke\("triad-auto-assign", \{ body: \{ cohort_id: cohortId \} \}\)/);
+    });
+
+    it("Triad completion is read from the canonical projection, never computed on a surface", () => {
       // A reflection rate is labelled as one; no surface names it "completion".
       expect(runtime.filter((f) => /triadCompletion/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+      // Learner and Admin read canonical_triad_completion through their RPCs.
+      expect(read("hooks/triads/useMyTriads.ts")).toMatch(/rpc\("learner_triad_status"/);
+      expect(read("hooks/triads/useAdminTriads.ts")).toMatch(/rpc\("admin_cohort_triad_learners"/);
+      for (const file of [
+        "hooks/triads/useMyTriads.ts",
+        "hooks/triads/useAdminTriads.ts",
+        "pages/triads/TriadsPage.tsx",
+        "pages/admin/AdminCohortTriads.tsx",
+        "pages/admin/AdminTriadGroupManagement.tsx",
+        "hooks/journey/useProgrammeTimeline.ts",
+      ]) {
+        const text = read(file);
+        // No local count of completed sessions / capping at the requirement.
+        expect(text, file).not.toMatch(/filter\([^)]*status\s*===\s*"completed"[^)]*\)\.length|Math\.min\([^)]*required|completedUnits\s*[+-]?=/);
+      }
       const timeline = read("hooks/journey/useProgrammeTimeline.ts");
-      expect(timeline).toMatch(/\.unitCompleted\)/);
+      expect(timeline).toMatch(/\.satisfied\)/);
       expect(timeline).not.toMatch(/status\s*===\s*"completed"/);
     });
 
@@ -272,13 +296,23 @@ describe("programme profile architecture", () => {
         "hooks/triads/useAdminTriads.ts",
         "pages/triads/TriadsPage.tsx",
         "pages/triads/components/TriadGroupHero.tsx",
-        "pages/admin/AdminTriadRequirementCard.tsx",
+        "pages/admin/AdminTriadGroupManagement.tsx",
         "pages/admin/AdminCohortTriads.tsx",
       ]) {
         const text = read(file);
         expect(text, file).not.toMatch(/Date\.now\(\)|isPast|isBefore|isAfter|differenceIn|addDays|addMonths/);
         expect(text, file).not.toMatch(/from\("(triad_[a-z_]+|cohort_requirement_dates)"\)/);
       }
+    });
+
+    it("Admin Triads never turns a load failure into \"0 required\"", () => {
+      const page = read("pages/admin/AdminCohortTriads.tsx");
+      // The requirement is its own query; its error state renders no number.
+      expect(page).toMatch(/useAdminCohortTriadRequirement\(/);
+      expect(page).toMatch(/admin-triads-requirement-error/);
+      // "N required" is only ever rendered from a loaded requirement.
+      expect(page).toMatch(/requirement\.requirements \? t\("triads\.requiredTitle"/);
+      expect(read("hooks/triads/useAdminTriads.ts")).toMatch(/requirements: query\.data \?\? null/);
     });
 
     it("\"inactive 7+ days\" has one canonical calculation read by Admin and the Edge Functions", () => {
