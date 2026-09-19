@@ -75,7 +75,6 @@ WITH reviewed_decisions(triad_group_id) AS (VALUES
                   AND coalesce(o.proposed_start_time, o.start_time) IS NOT DISTINCT FROM coalesce(s.proposed_start_time, s.start_time))
     AND NOT EXISTS (SELECT 1 FROM public.triad_reflections r WHERE r.triad_session_id = s.id)
     AND NOT EXISTS (SELECT 1 FROM public.goal_checkins gc WHERE gc.source_activity_type = 'triad' AND gc.source_activity_id = s.id)
-)
 ), classified AS (
   SELECT c.triad_group_id, c.triad_session_id, string_agg(DISTINCT c.conflict, ', ') AS conflicts,
     CASE WHEN f.has_goal_checkins THEN 'REAL/UNKNOWN'
