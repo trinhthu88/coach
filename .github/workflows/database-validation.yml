@@ -69,8 +69,8 @@ jobs:
         run: |
           test -f supabase/tests/sponsor_canonical_admin_activity_spine_test.sql
           test -f supabase/tests/sponsor_cohort_c_reconciliation_test.sql
-          test "$(grep -Ec '^select (is|ok|lives_ok|isnt|matches)\(' supabase/tests/sponsor_canonical_admin_activity_spine_test.sql)" = "50"
-          grep -q '^select plan(50);' supabase/tests/sponsor_canonical_admin_activity_spine_test.sql
+          test "$(grep -Ec '^select (is|ok|lives_ok|isnt|matches)\(' supabase/tests/sponsor_canonical_admin_activity_spine_test.sql)" = "51"
+          grep -q '^select plan(51);' supabase/tests/sponsor_canonical_admin_activity_spine_test.sql
 
       - name: Capture Supabase diagnostics on failure
         if: failure()
