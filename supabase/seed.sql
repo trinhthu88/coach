@@ -305,8 +305,18 @@ BEGIN
     RAISE EXCEPTION 'Demo seed: cohort B has no Triad requirement unit 1';
   END IF;
   INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
-    VALUES('eeeeeeee-eeee-4eee-8eee-000000000001',e1,1),('eeeeeeee-eeee-4eee-8eee-000000000001',e2,2),('eeeeeeee-eeee-4eee-8eee-000000000001',e3,3)
-    ON CONFLICT(triad_group_id,enrollment_id) DO NOTHING;
+    SELECT v.triad_group_id, v.enrollment_id, v.member_order
+    FROM (VALUES
+      ('eeeeeeee-eeee-4eee-8eee-000000000001'::uuid,e1,1),
+      ('eeeeeeee-eeee-4eee-8eee-000000000001'::uuid,e2,2),
+      ('eeeeeeee-eeee-4eee-8eee-000000000001'::uuid,e3,3)
+    ) AS v(triad_group_id,enrollment_id,member_order)
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM triad_group_members existing
+      WHERE existing.triad_group_id = v.triad_group_id
+        AND existing.enrollment_id = v.enrollment_id
+    );
   SELECT id INTO w FROM training_weeks WHERE programme_id=pb AND week_number=1;
   INSERT INTO triad_sessions(id,triad_group_id,scheduled_start_time,scheduled_end_time,status,notes)
     VALUES('eeeeeeee-eeee-4eee-8eee-000000000002','eeeeeeee-eeee-4eee-8eee-000000000001','2026-10-10T10:00:00Z','2026-10-10T11:00:00Z','confirmed','Private triad notes')
@@ -621,8 +631,14 @@ BEGIN
       INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language) VALUES(grp.group_id,grp.requirement_id,'vi')
         ON CONFLICT(id) DO NOTHING;
       INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
-        SELECT grp.group_id, m.enrollment_id, m.ord FROM unnest(grp.members) WITH ORDINALITY AS m(enrollment_id, ord)
-        ON CONFLICT(triad_group_id,enrollment_id) DO NOTHING;
+        SELECT grp.group_id, m.enrollment_id, m.ord
+        FROM unnest(grp.members) WITH ORDINALITY AS m(enrollment_id, ord)
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM triad_group_members existing
+          WHERE existing.triad_group_id = grp.group_id
+            AND existing.enrollment_id = m.enrollment_id
+        );
       INSERT INTO triad_sessions(id,triad_group_id,scheduled_start_time,scheduled_end_time,status)
         VALUES(grp.session_id,grp.group_id,grp.starts_at,grp.starts_at + interval '1 hour','completed')
         ON CONFLICT(id) DO NOTHING;
