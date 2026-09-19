@@ -91,18 +91,22 @@ values ('f7000000-0000-0000-0000-000000000021', 'e7000000-0000-0000-0000-0000000
   'a7000000-0000-0000-0000-000000000001', 'Mentoring one', '2026-01-19T10:00:00Z', 60, 'completed', 'prep/file.pdf',
   'Mentoring reflection: map stakeholders earlier.', 'MENTOR NOTE');
 
--- Triads: one cohort group; one completed + one confirmed session (the
--- reported case). Membership is by enrollment.
-insert into public.triad_groups (id, cohort_id, is_active)
-values ('f7000000-0000-0000-0000-000000000030', 'd7000000-0000-0000-0000-000000000001', true);
-insert into public.triad_group_members (triad_group_id, enrollment_id, member_order) values
-  ('f7000000-0000-0000-0000-000000000030', 'e7000000-0000-0000-0000-000000000001', 1),
-  ('f7000000-0000-0000-0000-000000000030', 'e7000000-0000-0000-0000-000000000002', 2),
-  ('f7000000-0000-0000-0000-000000000030', 'e7000000-0000-0000-0000-000000000003', 3);
+-- Triads: a Triad 1 group with a completed session and a Triad 2 group with
+-- a confirmed one (every required Triad has its own group assignment).
+-- Membership is by enrollment.
+insert into public.triad_groups (id, cohort_requirement_date_id, is_active)
+select g.id, d.id, true
+from (values ('f7000000-0000-0000-0000-000000000030'::uuid, 1), ('f7000000-0000-0000-0000-000000000040'::uuid, 2)) g(id, ordinal)
+join public.cohort_requirement_dates d on d.cohort_id = 'd7000000-0000-0000-0000-000000000001'
+  and d.programme_id = 'c7000000-0000-0000-0000-000000000001' and d.module = 'triads' and d.ordinal = g.ordinal;
+insert into public.triad_group_members (triad_group_id, enrollment_id, member_order)
+select g, e, o from unnest(array['f7000000-0000-0000-0000-000000000030', 'f7000000-0000-0000-0000-000000000040']::uuid[]) g
+cross join (values ('e7000000-0000-0000-0000-000000000001'::uuid, 1), ('e7000000-0000-0000-0000-000000000002'::uuid, 2),
+                   ('e7000000-0000-0000-0000-000000000003'::uuid, 3)) m(e, o);
 insert into public.triad_sessions (id, triad_group_id, scheduled_start_time, status)
 values
   ('f7000000-0000-0000-0000-000000000031', 'f7000000-0000-0000-0000-000000000030', '2026-02-16T10:00:00Z', 'completed'),
-  ('f7000000-0000-0000-0000-000000000032', 'f7000000-0000-0000-0000-000000000030', '2099-04-20T10:00:00Z', 'confirmed');
+  ('f7000000-0000-0000-0000-000000000032', 'f7000000-0000-0000-0000-000000000040', '2099-04-20T10:00:00Z', 'confirmed');
 
 insert into public.triad_reflections (id, triad_session_id, enrollment_id, satisfaction_rating)
 values ('f7000000-0000-0000-0000-000000000033', 'f7000000-0000-0000-0000-000000000031',

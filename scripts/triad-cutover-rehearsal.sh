@@ -7,6 +7,9 @@
 #   pass 1: legacy fixture (DEMO/SEED conflicts, real groups, duplicates,
 #           regrouping, same-time genuine sessions) -> deployment 1 -> assertions
 #   pass 2: + a REAL/UNKNOWN conflicting group -> the cleanup must stop
+#   pass 3: deployment 1 + 20260919120000 (requirement-specific groups): a
+#           REAL learner whose two completed sessions sit in ONE group (H)
+#           would drop from 2/2 to 1/2 -> the migration must stop for review
 set -uo pipefail
 cd "$(dirname "$0")/.."
 DB="${REHEARSAL_DB_URL:?set REHEARSAL_DB_URL to a local pre-cutover database}"
@@ -34,5 +37,12 @@ if [[ $rc2 -ne 0 ]] && echo "$out2" | grep -q "REAL/UNKNOWN Triad records confli
   echo "pass 2: the cleanup stopped on the REAL/UNKNOWN group, as required"
 else
   echo "PASS 2 FAILED: the cleanup did not stop on a REAL/UNKNOWN conflict"; echo "$out2" | tail -5; exit 1
+fi
+out3=$( { echo "BEGIN;"; echo "\\i scripts/triad-cutover-rehearsal/fixture.sql";
+  for f in "${CHAIN[@]}" supabase/migrations/20260919120000_*.sql; do echo "\\i $f"; done; echo "ROLLBACK;"; } | psql "$DB" -X -q -v ON_ERROR_STOP=1 2>&1); rc3=$?
+if [[ $rc3 -ne 0 ]] && echo "$out3" | grep -q "Triad progress changed for real enrollments e9000000-0000-0000-0000-000000000008"; then
+  echo "pass 3: the requirement-groups migration stopped on the real learner whose progress would change (H), as required"
+else
+  echo "PASS 3 FAILED: the requirement-groups migration did not stop on a real progress change"; echo "$out3" | grep -E "ERROR|NOTICE:  Triad" | tail -5; exit 1
 fi
 echo "Triad cutover rehearsal: OK"

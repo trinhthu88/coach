@@ -294,20 +294,26 @@ values
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Past mentoring', '2026-01-22 10:00:00+00', 60, 'completed', 'test/past.pdf', 'e1000000-0000-0000-0000-000000000001'),
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Future mentoring', '2026-03-22 10:00:00+00', 60, 'completed', 'test/future.pdf', 'e1000000-0000-0000-0000-000000000001');
 
--- A cohort dyad; both completed sessions are evidence for both member
--- enrollments (a group belongs to its cohort, not to a requirement unit).
-insert into public.triad_groups (id, cohort_id)
-values ('a5000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001');
+-- A dyad for Triad 1 and a dyad for Triad 2 (every required Triad has its
+-- own group assignment); each completed session fulfils its own Triad for
+-- both member enrollments.
+insert into public.triad_groups (id, cohort_requirement_date_id)
+select g.id, d.id
+from (values ('a5000000-0000-0000-0000-000000000001'::uuid, 1), ('a5000000-0000-0000-0000-000000000002'::uuid, 2)) g(id, ordinal)
+join public.cohort_requirement_dates d on d.cohort_id = 'd1000000-0000-0000-0000-000000000001'
+  and d.programme_id = 'c1000000-0000-0000-0000-000000000001' and d.module = 'triads' and d.ordinal = g.ordinal;
 
 insert into public.triad_group_members (triad_group_id, enrollment_id, member_order)
 values
   ('a5000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000001', 1),
-  ('a5000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002', 2);
+  ('a5000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002', 2),
+  ('a5000000-0000-0000-0000-000000000002', 'e1000000-0000-0000-0000-000000000001', 1),
+  ('a5000000-0000-0000-0000-000000000002', 'e2000000-0000-0000-0000-000000000002', 2);
 
 insert into public.triad_sessions (triad_group_id, scheduled_start_time, scheduled_end_time, status)
 values
   ('a5000000-0000-0000-0000-000000000001', '2026-01-23 10:00:00+00', '2026-01-23 11:00:00+00', 'completed'),
-  ('a5000000-0000-0000-0000-000000000001', '2026-03-23 10:00:00+00', '2026-03-23 11:00:00+00', 'completed');
+  ('a5000000-0000-0000-0000-000000000002', '2026-03-23 10:00:00+00', '2026-03-23 11:00:00+00', 'completed');
 
 insert into public.training_progress (user_id, training_week_id, completed_at, enrollment_id)
 values

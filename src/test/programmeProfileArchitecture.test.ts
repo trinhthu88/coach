@@ -250,21 +250,52 @@ describe("programme profile architecture", () => {
       expect(runtime.filter((f) => retired.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
     });
 
-    it("no runtime code ties a Triad group or session to a requirement unit / round", () => {
-      // A group belongs to a cohort; a session to its group. Cohort dates are
-      // cumulative deadlines, never an owner of a group or a session.
-      const unitOwnership = /cohort_requirement_date_id|requirementId|unit_number|unitNumber|round_number|roundNumber|roundLabel|triad_requirement_(units|candidates)_internal|triad_unit_enrollment_status_internal|canonical_triad_requirement_fulfilment/;
-      expect(runtime.filter((f) => unitOwnership.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+    it("no runtime code keeps a Triad round or the retired cohort-scoped assignment", () => {
+      // There is no Triad round: the unit is the cohort Triad requirement.
+      const round = /round_number|roundNumber|roundLabel|triad_requirement_units_internal|triad_unit_enrollment_status_internal/;
+      expect(runtime.filter((f) => round.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+      // A group was once for the whole cohort; now every required Triad has its own group.
+      const cohortScoped = /triad_cohort_candidates_internal|p_cohort_id: cohortId,\s*p_enrollment_ids|activeGroupId|active_group_id/;
+      expect(runtime.filter((f) => cohortScoped.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
     });
 
-    it("auto-assignment is cohort-first: one selected cohort, never a programme-wide pool", () => {
+    it("EVERY REQUIRED TRIAD HAS ITS OWN GROUP: auto-assignment is for one requirement and avoids repeated partners", () => {
       const fn = readFileSync(join(FUNCTIONS, "triad-auto-assign", "index.ts"), "utf8");
-      expect(fn).toMatch(/body\.cohort_id/);
-      expect(fn).toMatch(/rpc\("triad_cohort_candidates_internal", \{ p_cohort_id: cohortId \}\)/);
-      expect(fn).toMatch(/rpc\("triad_create_group_internal"/);
-      expect(fn).not.toMatch(/body\.programme_id|from\("(programme_enrollments|triad_groups|triad_group_members)"\)/);
+      expect(fn).toMatch(/body\.cohort_requirement_date_id/);
+      expect(fn).not.toMatch(/body\.cohort_id|body\.programme_id/);
+      expect(fn).toMatch(/rpc\("triad_clear_unconfirmed_auto_groups_internal", \{ p_cohort_requirement_date_id: requirementId \}\)/);
+      expect(fn).toMatch(/rpc\("triad_requirement_candidates_internal", \{\s*p_cohort_requirement_date_id: requirementId,?\s*\}\)/);
+      expect(fn).toMatch(/rpc\("triad_create_group_internal", \{\s*p_cohort_requirement_date_id: requirementId,/);
+      expect(fn).toMatch(/groupPool\(pool\.ids, overlapOf, wasPartner\)/);
+      expect(fn).toMatch(/repeated_pairs: repeatedPairs/);
+      expect(fn).not.toMatch(/from\("(programme_enrollments|triad_groups|triad_group_members)"\)/);
       const hook = read("hooks/triads/useAdminTriads.ts");
-      expect(hook).toMatch(/functions\.invoke\("triad-auto-assign", \{ body: \{ cohort_id: cohortId \} \}\)/);
+      expect(hook).toMatch(/functions\.invoke\("triad-auto-assign", \{\s*body: \{ cohort_requirement_date_id: requirementId \},?\s*\}\)/);
+      expect(hook).toMatch(/rpc\("admin_triad_create_group", \{\s*p_cohort_requirement_date_id: requirementId,/);
+      expect(hook).toMatch(/rpc\("admin_triad_requirement_candidates"/);
+      expect(hook).toMatch(/rpc\("admin_cohort_triad_requirements"/);
+    });
+
+    it("Admin and Learner show one block per required Triad; Sessions are labelled \"Triad N\"", () => {
+      const admin = read("pages/admin/AdminTriadGroupManagement.tsx");
+      expect(admin).toMatch(/units\.map\(\(r\) => \(\s*<TriadRequirementCard/);
+      expect(admin).toMatch(/groups\.filter\(\(g\) => g\.requirementId === r\.requirementId\)/);
+      expect(admin).toMatch(/priorPartnerNames/);
+      const learner = read("pages/triads/TriadsPage.tsx");
+      expect(learner).toMatch(/\(status\?\.schedule \?\? \[\]\)\.map\(\(m\) => <TriadRequirementSection/);
+      expect(learner).toMatch(/g\.requirementId === requirementId/);
+      expect(learner).toMatch(/<PendingAssignmentCard/);
+      expect(read("hooks/sessions/useSessionsData.ts")).toMatch(/unitNumber: group\.unitNumber/);
+      expect(read("pages/Sessions.tsx")).toMatch(/t\("list\.triadSession", \{ n: session\.triad\.unitNumber \}\)/);
+    });
+
+    it("Triad reminders are per requirement; a fulfilled Triad group is never nagged to schedule", () => {
+      const reminders = readFileSync(join(FUNCTIONS, "triad-reminders", "index.ts"), "utf8");
+      expect(reminders).toMatch(/t\.cohort_requirement_date_id/);
+      expect(reminders).not.toMatch(/completed_units/);
+      const programme = readFileSync(join(FUNCTIONS, "send-programme-reminders", "index.ts"), "utf8");
+      expect(programme).toMatch(/!sessions\.some\(\(s\) => s\.status === "completed"\)/);
+      expect(programme).not.toMatch(/triad_cohort_learners_internal/);
     });
 
     it("Triad completion is read from the canonical projection, never computed on a surface", () => {

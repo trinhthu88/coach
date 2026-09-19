@@ -2,19 +2,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 
 // Daily cron sweep (CRON_SECRET-gated, same shape as send-daily-prompt /
-// send-programme-reminders) driven by each cohort's CUMULATIVE Triad
-// deadlines (cohort_requirement_dates: "N completed Triad sessions by this
-// date") and each learner's canonical completion
-// (triad_reminder_targets_internal -> canonical_triad_completion):
-//   - milestone N due in 3 days, not yet met, no confirmed session -> member
-//   - milestone N due tomorrow, learners not met / ungrouped      -> admin
-//   - milestone N overdue (canonical)                              -> member + admin
-// A reminder never refers to a round or to a session assigned to a date.
+// send-programme-reminders) driven by each cohort's Triad REQUIREMENTS
+// (cohort_requirement_dates: "Triad N", each with its own deadline) and each
+// learner's fulfilment of THAT requirement (triad_reminder_targets_internal
+// -> canonical_triad_requirement_fulfilment). Every required Triad has its
+// own group assignment, so each reminder names one Triad:
+//   - Triad N due in 3 days, not fulfilled, no confirmed session -> member
+//   - Triad N due tomorrow, learners unfulfilled / ungrouped     -> admin
+//   - Triad N overdue (its deadline passed, not fulfilled)        -> member + admin
 // This is distinct from send-programme-reminders' triad_reminder checks
 // (which watch individual session times / reflections).
 //
-// Overdue milestones are swept for OVERDUE_WINDOW_DAYS after their date (the
-// 30-day notification dedupe keeps that to one notice per milestone).
+// Overdue requirements are swept for OVERDUE_WINDOW_DAYS after their date (the
+// 30-day notification dedupe keeps that to one notice per requirement).
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OVERDUE_WINDOW_DAYS = 60;
@@ -28,6 +28,7 @@ function todayISO(offsetDays = 0): string {
 interface Target {
   cohort_id: string;
   programme_id: string;
+  cohort_requirement_date_id: string;
   milestone_number: number;
   due_on: string;
   days_until_due: number;
@@ -35,7 +36,6 @@ interface Target {
   user_id: string;
   triad_group_id: string | null;
   open_session_status: string | null;
-  completed_units: number;
   milestone_met: boolean;
   milestone_overdue: boolean;
 }
@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
     const isCron = !!CRON_SECRET && req.headers.get("x-cron-secret") === CRON_SECRET;
 
     let scopedCohortId: string | null = null;
+    let scopedRequirementId: string | null = null;
     if (!isCron) {
       const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
       const { data: userData } = token ? await admin.auth.getUser(token) : { data: null };
@@ -70,6 +71,8 @@ Deno.serve(async (req) => {
       if (!(roleRows ?? []).some((r: { role: string }) => r.role === "admin")) return json({ error: "Forbidden" }, 403);
       const body = await req.json().catch(() => ({}));
       scopedCohortId = body.cohort_id ?? null;
+      // Optional: one Triad requirement of that cohort (Admin "Send reminder" on a Triad N card).
+      scopedRequirementId = body.cohort_requirement_date_id ?? null;
       if (!scopedCohortId) return json({ error: "cohort_id is required" }, 400);
     }
 
@@ -129,20 +132,21 @@ Deno.serve(async (req) => {
         continue;
       }
       const targets = (data ?? []) as Target[];
-      // One pass per cumulative milestone of the cohort.
-      const milestones = [...new Set(targets.map((t) => `${t.programme_id}|${t.milestone_number}`))];
-      for (const key of milestones) {
-        const rows = targets.filter((t) => `${t.programme_id}|${t.milestone_number}` === key);
-        const { milestone_number: milestone, due_on: dueOn, days_until_due: daysUntilDue } = rows[0];
-        // Scheduled sweep: only milestones in a reminder window.
+      // One pass per requirement ("Triad N") of the cohort.
+      const requirements = [...new Set(targets.map((t) => t.cohort_requirement_date_id))];
+      for (const requirementId of requirements) {
+        if (scopedRequirementId && requirementId !== scopedRequirementId) continue;
+        const rows = targets.filter((t) => t.cohort_requirement_date_id === requirementId);
+        const { milestone_number: unit, due_on: dueOn, days_until_due: daysUntilDue } = rows[0];
+        // Scheduled sweep: only requirements in a reminder window.
         if (!scopedCohortId && !(daysUntilDue === 3 || daysUntilDue === 1 || (daysUntilDue < 0 && daysUntilDue >= -OVERDUE_WINDOW_DAYS))) continue;
-        const title = `${milestone} Triad session${milestone === 1 ? "" : "s"} by ${dueOn}`;
-        const titleVi = `${milestone} session Triad trước ${dueOn}`;
+        const title = `Triad ${unit} due ${dueOn}`;
+        const titleVi = `Triad ${unit} hạn ${dueOn}`;
         // The 30-day dedupe is per (user, link), so each notice kind gets its
         // own link: a pre-due reminder must never suppress the overdue notice.
-        const memberLink = (notice: "reminder" | "overdue") => `/triads?milestone=${milestone}&due=${dueOn}&notice=${notice}`;
+        const memberLink = (notice: "reminder" | "overdue") => `/triads?triad=${unit}&due=${dueOn}&notice=${notice}`;
         const adminLink = (notice: "due_tomorrow" | "overdue") =>
-          `/admin/cohorts/${cohortId}/triads?milestone=${milestone}&due=${dueOn}&notice=${notice}`;
+          `/admin/cohorts/${cohortId}/triads?triad=${unit}&due=${dueOn}&notice=${notice}`;
         const open = rows.filter((t) => !t.milestone_met);
         const ungrouped = open.filter((t) => !t.triad_group_id);
 
@@ -150,15 +154,19 @@ Deno.serve(async (req) => {
           if (t.milestone_overdue) {
             if (await notifyOnce(t.user_id, memberLink("overdue"), "triad_round_reminder",
               `Triad deadline passed: ${title}`,
-              `You have completed ${t.completed_units} of the ${milestone} Triad session(s) due by ${dueOn}. Schedule and complete your next session as soon as possible.`,
+              t.triad_group_id
+                ? `Your Triad ${unit} session was due by ${dueOn}. Schedule and complete it with your Triad ${unit} group as soon as possible.`
+                : `Triad ${unit} was due by ${dueOn} and your group assignment is still pending. An admin will follow up.`,
               `Đã quá hạn Triad: ${titleVi}`,
-              `Bạn đã hoàn thành ${t.completed_units}/${milestone} session Triad cần hoàn thành trước ${dueOn}. Hãy lên lịch và hoàn thành session tiếp theo càng sớm càng tốt.`)) overdueSent++;
-          } else if (daysUntilDue === 3 && t.open_session_status !== "confirmed") {
+              t.triad_group_id
+                ? `Session Triad ${unit} của bạn cần hoàn thành trước ${dueOn}. Hãy lên lịch và hoàn thành cùng nhóm Triad ${unit} càng sớm càng tốt.`
+                : `Triad ${unit} cần hoàn thành trước ${dueOn} và bạn chưa được xếp nhóm. Quản trị viên sẽ liên hệ.`)) overdueSent++;
+          } else if (daysUntilDue === 3 && t.triad_group_id && t.open_session_status !== "confirmed") {
             if (await notifyOnce(t.user_id, memberLink("reminder"), "triad_round_reminder",
               `Triad deadline in 3 days: ${title}`,
-              "You don't have a confirmed Triad session yet. Accept a proposed time or propose one to your group.",
+              `You don't have a confirmed Triad ${unit} session yet. Accept a proposed time or propose one to your Triad ${unit} group.`,
               `Còn 3 ngày đến hạn Triad: ${titleVi}`,
-              "Bạn chưa có session Triad nào được xác nhận. Hãy chấp nhận thời gian đã đề xuất hoặc đề xuất thời gian cho nhóm.")) remindersSent++;
+              `Bạn chưa có session Triad ${unit} nào được xác nhận. Hãy chấp nhận thời gian đã đề xuất hoặc đề xuất thời gian cho nhóm Triad ${unit}.`)) remindersSent++;
           }
         }
 
@@ -167,10 +175,10 @@ Deno.serve(async (req) => {
         for (const userId of adminIds) {
           if (overdueCount > 0) {
             if (await notifyOnce(userId, adminLink("overdue"), "triad_admin_alert", `Triad overdue: ${title}`,
-              `${overdueCount} learner(s) have not completed ${milestone} Triad session(s) due by ${dueOn}.`)) overdueSent++;
+              `${overdueCount} learner(s) have not completed Triad ${unit} (due ${dueOn}); ${ungrouped.length} of them have no Triad ${unit} group.`)) overdueSent++;
           } else if (daysUntilDue === 1 && (unconfirmed > 0 || ungrouped.length > 0)) {
             if (await notifyOnce(userId, adminLink("due_tomorrow"), "triad_admin_alert", `Triad deadline tomorrow: ${title}`,
-              `${unconfirmed} learner(s) without a confirmed session and ${ungrouped.length} learner(s) without a group (due ${dueOn}).`)) escalationsSent++;
+              `${unconfirmed} learner(s) without a confirmed Triad ${unit} session and ${ungrouped.length} learner(s) without a Triad ${unit} group (due ${dueOn}).`)) escalationsSent++;
           }
         }
       }

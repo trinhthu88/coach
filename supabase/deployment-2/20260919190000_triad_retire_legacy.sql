@@ -5,7 +5,9 @@
 -- `supabase db push` of deployment 1 can never apply it. Deployment 1 ships
 -- 20260918185900 .. 20260918195000 (cleanup, cutover, backfill,
 -- in-migration equivalence proof, canonical completion, engagement signals)
--- while every legacy column stays in place (no longer read or written). This
+-- and 20260919120000 (requirement-specific groups: every required Triad has
+-- its own group assignment) while every legacy column stays in place (no
+-- longer read or written). Its version sorts after 20260919120000. This
 -- file is moved into supabase/migrations/ and applied in a separate, later
 -- deployment, only after deployment 1 has been verified on production and no
 -- runtime consumer of a legacy shape remains.
@@ -16,10 +18,10 @@
 --   triad_groups.member_1/2/3_id,
 --     enrollment_1/2/3_id .................... triad_group_members
 --   triad_groups.programme_id / round_number /
---     triad_round_id / name .................. none (triad_groups.cohort_id
---                                              is the group's scope; programme
---                                              comes from the members'
---                                              enrollments)
+--     triad_round_id / name .................. triad_groups.cohort_requirement_date_id
+--                                              (the cohort Triad requirement the
+--                                              group is for: unit, deadline,
+--                                              cohort and programme)
 --   triad_sessions.coach/coachee/observer_
 --     enrollment_id .......................... triad_group_members
 --   triad_sessions.member_1/2/3_response,
@@ -40,7 +42,7 @@ SELECT 'triad_groups.legacy', g.id,
     'round_number', g.round_number, 'triad_round_id', g.triad_round_id,
     'member_1_id', g.member_1_id, 'member_2_id', g.member_2_id, 'member_3_id', g.member_3_id,
     'enrollment_1_id', g.enrollment_1_id, 'enrollment_2_id', g.enrollment_2_id, 'enrollment_3_id', g.enrollment_3_id),
-  '20260918199000_triad_retire_legacy'
+  '20260919190000_triad_retire_legacy'
 FROM public.triad_groups g
 ON CONFLICT (object_name, record_id) DO NOTHING;
 
@@ -51,7 +53,7 @@ SELECT 'triad_sessions.legacy', s.id,
     'member_2_response', s.member_2_response, 'member_3_response', s.member_3_response,
     'proposed_start_time', s.proposed_start_time, 'proposed_end_time', s.proposed_end_time,
     'start_time', s.start_time, 'proposed_by', s.proposed_by),
-  '20260918199000_triad_retire_legacy'
+  '20260919190000_triad_retire_legacy'
 FROM public.triad_sessions s
 ON CONFLICT (object_name, record_id) DO NOTHING;
 
@@ -59,7 +61,7 @@ INSERT INTO public.triad_cutover_archive (object_name, record_id, payload, migra
 SELECT 'triad_alternative_proposals.legacy', p.id,
   jsonb_build_object('proposed_by', p.proposed_by, 'member_1_response', p.member_1_response,
     'member_2_response', p.member_2_response, 'member_3_response', p.member_3_response),
-  '20260918199000_triad_retire_legacy'
+  '20260919190000_triad_retire_legacy'
 FROM public.triad_alternative_proposals p
 ON CONFLICT (object_name, record_id) DO NOTHING;
 
@@ -69,17 +71,17 @@ SELECT 'triad_reflections.legacy', r.id,
     'learned_as_coach', r.learned_as_coach, 'will_use_as_coach', r.will_use_as_coach,
     'learned_as_coachee', r.learned_as_coachee, 'will_use_as_coachee', r.will_use_as_coachee,
     'learned_as_observer', r.learned_as_observer, 'will_use_as_observer', r.will_use_as_observer),
-  '20260918199000_triad_retire_legacy'
+  '20260919190000_triad_retire_legacy'
 FROM public.triad_reflections r
 ON CONFLICT (object_name, record_id) DO NOTHING;
 
 -- Rounds were archived by the cutover; anything created since is archived too.
 INSERT INTO public.triad_cutover_archive (object_name, record_id, payload, migration_id)
-SELECT 'triad_rounds', tr.id, to_jsonb(tr), '20260918199000_triad_retire_legacy'
+SELECT 'triad_rounds', tr.id, to_jsonb(tr), '20260919190000_triad_retire_legacy'
 FROM public.triad_rounds tr
 ON CONFLICT (object_name, record_id) DO NOTHING;
 INSERT INTO public.triad_cutover_archive (object_name, record_id, payload, migration_id)
-SELECT 'programme_triad_rounds', p.id, to_jsonb(p), '20260918199000_triad_retire_legacy'
+SELECT 'programme_triad_rounds', p.id, to_jsonb(p), '20260919190000_triad_retire_legacy'
 FROM public.programme_triad_rounds p
 ON CONFLICT (object_name, record_id) DO NOTHING;
 
@@ -161,9 +163,15 @@ BEGIN
   SELECT string_agg(p.proname, ', ') INTO offenders
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.prokind = 'f'
-    AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|triad_rounds|triad_round_id|cohort_requirement_date_id|completion_deadline|[a-z]\.(learned|will_use)_as_';
+    AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|triad_rounds|triad_round_id|completion_deadline|[a-z]\.(learned|will_use)_as_';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: functions still refer to retired Triad fields: %', offenders;
+  END IF;
+  -- Every group is assigned for one cohort Triad requirement.
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_schema = 'public' AND table_name = 'triad_groups'
+                   AND column_name = 'cohort_requirement_date_id' AND is_nullable = 'NO') THEN
+    RAISE EXCEPTION 'Triad retirement: triad_groups.cohort_requirement_date_id must exist and be required (apply 20260919120000 first)';
   END IF;
   -- Internal Triad constructions stay internal.
   SELECT string_agg(p.proname, ', ') INTO offenders

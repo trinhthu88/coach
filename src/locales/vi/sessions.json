@@ -131,7 +131,7 @@
       "title": "Hành động cần làm",
       "more": "+{{count}} thêm"
     },
-    "triadSession": "Session {{count}}"
+    "triadSession": "Triad {{n}}"
   },
   "detail": {
     "sessionNotFound": {

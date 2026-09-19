@@ -31,7 +31,7 @@ describe("TriadSessionDetail — co-member identity", () => {
       fn === "learner_triad_overview"
         ? Promise.resolve({
             data: [{
-              enrollment_id: "enrollment-a", triad_group_id: "g1", cohort_id: "c1", group_language: "en", is_active: true,
+              enrollment_id: "enrollment-a", triad_group_id: "g1", cohort_requirement_date_id: "req-2", unit_number: 2, due_on: "2026-07-05", cohort_id: "c1", group_language: "en", is_active: true,
               closed_at: null, created_at: "2026-01-20T00:00:00Z", member_count: 3, my_member_slot: 1,
               sessions: [{
                 id: "t1", session_number: 1, status: "completed", scheduled_start_time: "2026-02-16T03:00:00Z", scheduled_end_time: null, meeting_url: null,
@@ -65,9 +65,9 @@ describe("TriadSessionDetail — co-member identity", () => {
     expect(from).not.toHaveBeenCalled();
   });
 
-  it("shows the session's place in its group, never a round or a requirement deadline", async () => {
+  it("labels the session with its group's Triad requirement (Triad 2), never a round", async () => {
     renderDetail();
-    expect(await screen.findAllByText("Session 1")).not.toHaveLength(0);
+    expect(await screen.findAllByText("Triad 2")).not.toHaveLength(0);
     expect(screen.queryByText(/Round \d/)).toBeNull();
     expect(screen.queryByText(/Deadline/)).toBeNull();
     expect(from).not.toHaveBeenCalled();

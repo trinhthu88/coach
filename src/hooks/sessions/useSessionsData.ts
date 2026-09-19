@@ -19,8 +19,8 @@ export type SessionKind =
 /** A Triad session in the unified list. Every member practises every role, so there is no per-session role. */
 export interface TriadSessionContext {
   groupId: string;
-  /** Position of the session within its group's sessions (Session 1, 2, …). No round. */
-  sessionNumber: number;
+  /** The Triad requirement of the session's group ("Triad N"). */
+  unitNumber: number;
   participantIds: string[];
   participantNames: string[];
   meetingUrl: string | null;
@@ -81,7 +81,7 @@ export function normalizeTriadSession(group: TriadGroupEntry, session: TriadSess
     kind: "triad" as const,
     triad: {
       groupId: group.groupId,
-      sessionNumber: session.sessionNumber,
+      unitNumber: group.unitNumber,
       participantIds: group.members.map((m) => m.id),
       participantNames: group.members.map((m) => m.full_name),
       meetingUrl: session.meetingUrl,

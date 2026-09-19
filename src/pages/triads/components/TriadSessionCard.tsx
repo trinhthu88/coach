@@ -51,7 +51,7 @@ export function TriadSessionCard({ entry, untilDate = null }: { entry: TriadGrou
       <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-primary-glow">
         {session.status === "confirmed" ? t("session.upcomingLabel") : t("session.needsSchedulingLabel")}
         {" · "}
-        {t("sessionLabel", { n: session.sessionNumber })}
+        {t("sessionLabel", { n: entry.unitNumber })}
       </p>
 
       {session.scheduledStartTime ? (

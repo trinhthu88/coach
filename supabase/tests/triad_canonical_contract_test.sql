@@ -1,29 +1,32 @@
--- Triad canonical contract.
---   PROGRAMME  = how many Triad sessions are required (programme_modules)
---   COHORT     = cumulative deadlines for them (cohort_requirement_dates)
---   GROUP      = which enrollments of the cohort practise together
---   SESSION    = one actual practice session of that group
---   COMPLETED SESSION = one unit of evidence for every member of its group
---   PROGRESS   = distinct completed sessions, capped at required units,
---                against the cumulative due dates
+-- Triad canonical contract. EVERY REQUIRED TRIAD HAS ITS OWN GROUP ASSIGNMENT.
+--   PROGRAMME   = how many Triads are required (programme_modules)
+--   REQUIREMENT = the cohort's Triad 1..N, each with its own deadline
+--                 (cohort_requirement_dates — the only Triad "round")
+--   GROUP       = the enrollments assigned together for ONE requirement
+--                 (triad_groups.cohort_requirement_date_id)
+--   SESSION     = the actual practice session of that group
+--   FULFILMENT  = a completed session of a requirement's group fulfils THAT
+--                 requirement, once, for every member
+--   PROGRESS    = fulfilled requirements, capped at required, each against
+--                 its own deadline
 -- Admin, Learner, Sponsor (and a coach enrolled as a learner) read the same
 -- Triad facts; privacy may hide reflection detail, never change a fact.
 --
--- Cohort C1 (programme P, Triads required 2, due today-30 / today+30):
---   E1..E6 active, E7 completed (not eligible), E8 in cohort C2 (never
---   assignable to C1). E6's learner is also a coach.
--- Cohort DC (programme PD, Triads required 2, due 2026-04-05 / 2026-07-05):
---   F1..F10 for the completion and due/overdue scenarios.
+-- Cohort C1 (programme P, Triads required 2, Triad 1 due today-30, Triad 2
+-- due today+30): E1..E6 active, E7 completed (not eligible), E8 in cohort C2
+-- (never assignable to C1). E6's learner is also a coach.
+-- Cohort DC (programme PD, Triads required 2, Triad 1 due 2026-04-05,
+-- Triad 2 due 2026-07-05): F1..F12 for the completion and due/overdue scenarios.
 begin;
 
-select plan(128);
+select plan(153);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
 select ('a8800000-0000-0000-0000-0000000000' || lpad(n::text, 2, '0'))::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
   'authenticated', 'authenticated', 'triad-contract-' || n || '@example.test', 'test', now(),
   jsonb_build_object('full_name', 'Triad Learner ' || n), now(), now(), '', '', ''
-from generate_series(1, 20) n
+from generate_series(1, 22) n
 union all
 select ('a8800000-0000-0000-0000-0000000000' || s)::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
   'authenticated', 'authenticated', 'triad-contract-' || s || '@example.test', 'test', now(),
@@ -70,7 +73,7 @@ union all
 select ('f8800000-0000-0000-0000-0000000000' || lpad(n::text, 2, '0'))::uuid, ('a8800000-0000-0000-0000-0000000000' || (10 + n))::uuid,
   'c8800000-0000-0000-0000-000000000003'::uuid, 'd8800000-0000-0000-0000-000000000004'::uuid,
   'b8800000-0000-0000-0000-000000000001'::uuid, '2026-01-05'::date, '2026-07-31'::date, 'active'::public.enrollment_status
-from generate_series(1, 10) n;
+from generate_series(1, 12) n;
 -- A learner of the No-Triad programme placed in cohort C1 (a cohort can
 -- schedule several programmes).
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
@@ -82,6 +85,10 @@ insert into unit select d.ordinal, d.id, d.due_on from public.cohort_requirement
 where d.cohort_id = 'd8800000-0000-0000-0000-000000000001' and d.module = 'triads'
   and d.programme_id = 'c8800000-0000-0000-0000-000000000001';
 grant select on unit to authenticated;
+create temporary table dcu (n integer primary key, id uuid);
+insert into dcu select d.ordinal, d.id from public.cohort_requirement_dates d
+where d.cohort_id = 'd8800000-0000-0000-0000-000000000004' and d.module = 'triads';
+grant select on dcu to authenticated;
 
 -- ===========================================================================
 -- PROGRAMME / COHORT / NO ROUND
@@ -89,22 +96,25 @@ grant select on unit to authenticated;
 select results_eq(
   $$select n, due_on from unit order by n$$,
   $$values (1, current_date - 30), (2, current_date + 30)$$,
-  '1. Triads required = 2 -> two cumulative cohort Triad due dates');
+  'A. Triads required = 2 -> exactly two cohort Triad requirements (Triad 1, Triad 2), each with its own deadline');
 select is(
   (select count(*)::integer || '/' || max(units) from public.cohort_requirement_dates
    where cohort_id = 'd8800000-0000-0000-0000-000000000003' and module = 'triads'),
-  '3/1', '1b. flexible Triads required = 3 materialize as three cumulative single-unit dates');
+  '3/1', '1b. flexible Triads required = 3 materialize as three single-unit requirements');
 select throws_ok(
   $$insert into public.cohort_requirement_dates (cohort_id, programme_id, module, ordinal, due_on, units, generation_method, materialized_via)
     values ('d8800000-0000-0000-0000-000000000001', 'c8800000-0000-0000-0000-000000000001', 'triads', 9, current_date, 2, 'manual', 'admin_save')$$,
-  '23514', null, '2. a Triad due date is always one unit ("N sessions by this date")');
-select hasnt_column('public', 'triad_groups', 'cohort_requirement_date_id', '4. a group belongs to no requirement unit');
-select col_not_null('public', 'triad_groups', 'cohort_id', '4b. a group belongs to a cohort');
+  '23514', null, '2. a Triad requirement is always one unit');
+select col_not_null('public', 'triad_groups', 'cohort_requirement_date_id', '4. every group is assigned for one cohort Triad requirement');
+select fk_ok('public', 'triad_groups', 'cohort_requirement_date_id', 'public', 'cohort_requirement_dates', 'id',
+  '4a. the group references the requirement that owns the deadline (the group owns no date)');
+select col_not_null('public', 'triad_groups', 'cohort_id', '4b. the group''s cohort is kept (derived from the requirement)');
 select ok((to_regclass('public.triad_rounds') is null or not has_table_privilege('authenticated', 'public.triad_rounds', 'SELECT'))
   and (to_regclass('public.programme_triad_rounds') is null or not has_table_privilege('authenticated', 'public.programme_triad_rounds', 'SELECT')),
   '4c. there is no Triad round: legacy round tables are unreachable (dropped in deployment 2)');
 select hasnt_table('public', 'cohort_triad_operations', '4d. no replacement round/operations structure exists');
-select hasnt_function('public', 'triad_requirement_units_internal', '4e. no per-requirement-unit Triad construction remains');
+select hasnt_function('public', 'triad_requirement_units_internal', '4e. no legacy per-unit Triad construction remains');
+select hasnt_function('public', 'triad_cohort_candidates_internal', '4f. the cohort-scoped assignment pool is gone (assignment is per requirement)');
 
 -- ===========================================================================
 -- GROUPS (as Admin)
@@ -114,37 +124,69 @@ select set_config('request.jwt.claim.role', 'authenticated', true);
 set local role authenticated;
 
 select results_eq(
-  $$select enrollment_id from public.admin_cohort_triad_learners('d8800000-0000-0000-0000-000000000001')
-    where is_eligible and active_group_id is null order by enrollment_id$$,
+  $$select enrollment_id from public.admin_triad_requirement_candidates((select id from unit where n = 1)) order by enrollment_id$$,
   $$select ('e8800000-0000-0000-0000-00000000000' || n)::uuid from generate_series(1, 6) n order by 1$$,
-  '5. the assignment pool is the cohort''s ongoing enrollments requiring Triads (no other cohort, no completed enrollment, no No-Triad programme)');
+  '5. the Triad 1 pool is the cohort''s ongoing enrollments requiring Triads (no other cohort, no completed enrollment, no No-Triad programme)');
 select throws_ok(
-  $$select public.admin_triad_create_group('d8800000-0000-0000-0000-000000000001',
+  $$select public.admin_triad_create_group((select id from unit where n = 1),
       array['e8800000-0000-0000-0000-000000000001', 'e8800000-0000-0000-0000-000000000008']::uuid[], 'vi')$$,
   '42501', null, '6. a mixed-cohort group can never be created');
 select throws_ok(
-  $$select public.admin_triad_create_group('d8800000-0000-0000-0000-000000000001',
+  $$select public.admin_triad_create_group((select id from unit where n = 1),
       array['e8800000-0000-0000-0000-000000000001', 'e8800000-0000-0000-0000-000000000009']::uuid[], 'vi')$$,
   '42501', null, '6c. a learner whose programme requires no Triads cannot be grouped');
 select throws_ok(
-  $$select public.admin_triad_create_group('d8800000-0000-0000-0000-000000000001',
+  $$select public.admin_triad_create_group((select id from unit where n = 1),
       array['e8800000-0000-0000-0000-000000000001']::uuid[], 'vi')$$,
   '22023', null, '8a. a group needs at least 2 learners');
+select throws_ok(
+  $$select public.admin_triad_create_group('d8800000-0000-0000-0000-000000000001',
+      array['e8800000-0000-0000-0000-000000000001', 'e8800000-0000-0000-0000-000000000002']::uuid[], 'vi')$$,
+  'P0002', null, 'F0. a group is created for a Triad requirement, never for a cohort');
 
 create temporary table grp (name text primary key, id uuid);
 grant select, insert on grp to authenticated;
 insert into grp values
-  ('G1', public.admin_triad_create_group('d8800000-0000-0000-0000-000000000001',
+  ('G1', public.admin_triad_create_group((select id from unit where n = 1),
      array['e8800000-0000-0000-0000-000000000001', 'e8800000-0000-0000-0000-000000000002', 'e8800000-0000-0000-0000-000000000003']::uuid[], 'vi')),
-  ('G2', public.admin_triad_create_group('d8800000-0000-0000-0000-000000000001',
+  ('G2', public.admin_triad_create_group((select id from unit where n = 1),
      array['e8800000-0000-0000-0000-000000000004', 'e8800000-0000-0000-0000-000000000005']::uuid[], 'en'));
 
+select results_eq(
+  $$select enrollment_id from public.admin_triad_requirement_candidates((select id from unit where n = 1)) order by 1$$,
+  $$values ('e8800000-0000-0000-0000-000000000006'::uuid)$$,
+  'F. Triad 1 candidates exclude learners grouped for Triad 1 ...');
+select results_eq(
+  $$select enrollment_id from public.admin_triad_requirement_candidates((select id from unit where n = 2)) order by 1$$,
+  $$select ('e8800000-0000-0000-0000-00000000000' || n)::uuid from generate_series(1, 6) n order by 1$$,
+  'D/F2. ... while Triad 2 is assigned independently: every eligible learner is still a Triad 2 candidate');
+select results_eq(
+  $$select prior_partner_enrollment_ids from public.admin_triad_requirement_candidates((select id from unit where n = 2))
+    where enrollment_id = 'e8800000-0000-0000-0000-000000000002'$$,
+  $$values (array['e8800000-0000-0000-0000-000000000001', 'e8800000-0000-0000-0000-000000000003']::uuid[])$$,
+  'E. Triad 2 candidates carry their prior Triad partners (so assignment can prefer new partners)');
+insert into grp values
+  ('G3', public.admin_triad_create_group((select id from unit where n = 2),
+     array['e8800000-0000-0000-0000-000000000001', 'e8800000-0000-0000-0000-000000000004']::uuid[], 'en'));
+select results_eq(
+  $$select d.ordinal, count(*)::integer from public.triad_group_members m
+    join public.triad_groups g on g.id = m.triad_group_id and g.is_active
+    join public.cohort_requirement_dates d on d.id = g.cohort_requirement_date_id
+    where m.enrollment_id = 'e8800000-0000-0000-0000-000000000001' group by d.ordinal order by 1$$,
+  $$values (1, 1), (2, 1)$$,
+  'B. a learner belongs to Triad 1 Group G1 AND Triad 2 Group G3 (different members)');
+select is((select cohort_id from public.triad_groups where id = (select id from grp where name = 'G3')),
+  'd8800000-0000-0000-0000-000000000001'::uuid, '4g. the group''s cohort is derived from its requirement');
 select is((select count(*)::integer from public.triad_group_members where triad_group_id = (select id from grp where name = 'G2')), 2,
   '8b. dyads remain supported');
 select throws_ok(
-  $$select public.admin_triad_create_group('d8800000-0000-0000-0000-000000000001',
+  $$select public.admin_triad_create_group((select id from unit where n = 1),
       array['e8800000-0000-0000-0000-000000000001', 'e8800000-0000-0000-0000-000000000006']::uuid[], 'vi')$$,
-  '23505', null, '9a. an enrollment is in only one active Triad group at a time');
+  '23505', null, 'C. a learner cannot belong to two active groups for Triad 1');
+select throws_ok(
+  $$select public.admin_triad_create_group((select id from unit where n = 2),
+      array['e8800000-0000-0000-0000-000000000004', 'e8800000-0000-0000-0000-000000000006']::uuid[], 'vi')$$,
+  '23505', null, 'C2. ... nor two active groups for Triad 2');
 select hasnt_column('public', 'triad_group_members', 'user_id', '9b. membership is the enrollment (no duplicated learner identity)');
 select is((select count(*)::integer from public.triad_groups g where g.id in (select id from grp)
              and (to_jsonb(g) ->> 'member_1_id' is not null or to_jsonb(g) ->> 'enrollment_1_id' is not null or to_jsonb(g) ->> 'programme_id' is not null)), 0,
@@ -160,6 +202,16 @@ select throws_ok(
   $$insert into public.triad_group_members (triad_group_id, enrollment_id, member_order)
     values ((select id from grp where name = 'G2'), 'e8800000-0000-0000-0000-000000000008', 3)$$,
   '42501', null, '6b. even a direct write cannot put another cohort''s enrollment in a group');
+select throws_ok(
+  $$insert into public.triad_groups (cohort_requirement_date_id, cohort_id, assigned_by, group_language)
+    values ((select id from unit where n = 1), 'd8800000-0000-0000-0000-000000000002', 'admin', 'en')$$,
+  '42501', null, '6d. a group''s cohort can never differ from its requirement''s cohort');
+select throws_ok(
+  $$update public.triad_groups set cohort_requirement_date_id = (select id from unit where n = 2) where id = (select id from grp where name = 'G1')$$,
+  '42501', null, '6e. a group''s requirement never changes (a replacement group is created instead)');
+select throws_ok(
+  $$insert into public.triad_groups (assigned_by, group_language, cohort_id) values ('admin', 'en', 'd8800000-0000-0000-0000-000000000001')$$,
+  '23502', null, '6f. a group without a requirement is refused');
 set local role authenticated;
 
 -- ===========================================================================
@@ -175,8 +227,13 @@ select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000001
 insert into ses values ('G1a', public.learner_triad_schedule_session((select id from grp where name = 'G1'),
   now() - interval '35 days', now() - interval '35 days' + interval '1 hour'));
 select is(
-  (select jsonb_array_length(sessions) from public.learner_triad_overview('e8800000-0000-0000-0000-000000000001')), 1,
+  (select jsonb_array_length(sessions) from public.learner_triad_overview('e8800000-0000-0000-0000-000000000001')
+   where triad_group_id = (select id from grp where name = 'G1')), 1,
   '12b. the learner sees the group''s proposed session');
+select results_eq(
+  $$select unit_number, due_on from public.learner_triad_overview('e8800000-0000-0000-0000-000000000001') order by unit_number$$,
+  $$select n, due_on from unit order by n$$,
+  'B2. the learner sees both groups independently: Triad 1 and Triad 2, each with its own deadline');
 select throws_ok($$select public.learner_triad_complete_session((select id from ses where name = 'G1a'))$$,
   '42501', null, '16a. a proposed (unagreed) session cannot be completed');
 select throws_ok($$select public.learner_triad_schedule_session((select id from grp where name = 'G1'), now(), now() + interval '1 hour')$$,
@@ -219,15 +276,17 @@ select throws_ok($$update public.triad_group_members set enrollment_id = 'e88000
   '42501', null, '42c. membership rows are never rewritten');
 set local role authenticated;
 
--- G1 practises again: second session (A: two distinct sessions -> 2/2).
+-- Triad 1 is fulfilled for G1: the group schedules no further programme session.
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000002', true);
-insert into ses values ('G1b', public.learner_triad_schedule_session((select id from grp where name = 'G1'),
+select throws_ok($$select public.learner_triad_schedule_session((select id from grp where name = 'G1'), now() - interval '3 days', now() - interval '3 days' + interval '1 hour')$$,
+  '23505', null, '12e. a group whose Triad session is completed schedules no second programme session');
+-- Triad 2 (G3: E1, E4): its own group and session.
+select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000004', true);
+insert into ses values ('G3a', public.learner_triad_schedule_session((select id from grp where name = 'G3'),
   now() - interval '3 days', now() - interval '3 days' + interval '1 hour'));
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000001', true);
-select lives_ok($$select public.learner_triad_respond_session((select id from ses where name = 'G1b'), 'accepted')$$, 'E1 accepts G1b');
-select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000003', true);
-select lives_ok($$select public.learner_triad_respond_session((select id from ses where name = 'G1b'), 'accepted')$$, 'E3 accepts G1b');
-select lives_ok($$select public.learner_triad_complete_session((select id from ses where name = 'G1b'))$$, 'E3 completes G1b');
+select lives_ok($$select public.learner_triad_respond_session((select id from ses where name = 'G3a'), 'accepted')$$, 'E1 accepts G3a');
+select lives_ok($$select public.learner_triad_complete_session((select id from ses where name = 'G3a'))$$, 'E1 completes G3a (Triad 2)');
 
 -- Alternatives on G2 (E4, E5): a confirmed future session.
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000004', true);
@@ -278,23 +337,36 @@ select results_eq(
   '33. a completed session is evidence for every group member, linked to no requirement unit');
 select results_eq(
   $$select c.required_units, c.raw_completed_sessions, c.completed_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000003') c$$,
-  $$values (2, 2, 2)$$,
-  'A. required 2, same group, two distinct completed sessions -> 2/2');
--- B. a third completed session is kept as activity beyond the requirement.
+  $$values (2, 1, 1)$$,
+  'G. a completed Triad 1 session -> 1/2');
+select results_eq(
+  $$select c.required_units, c.raw_completed_sessions, c.completed_units, c.overdue_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000001') c$$,
+  $$values (2, 2, 2, 0)$$,
+  'I. completed Triad 1 (G1) + completed Triad 2 (G3) -> 2/2');
+select results_eq(
+  $$select x->>'milestone', x->>'fulfilled', x->>'triad_group_id' from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000001') c,
+      jsonb_array_elements(c.schedule) x order by 1$$,
+  $$values ('1', 'true', (select id::text from grp where name = 'G1')), ('2', 'true', (select id::text from grp where name = 'G3'))$$,
+  'I2. each requirement is fulfilled by ITS group');
+-- H. a second completed session under Triad 1 (same group) is raw activity only.
 insert into public.triad_sessions (triad_group_id, scheduled_start_time, scheduled_end_time, status)
 values ((select id from grp where name = 'G1'), now() - interval '1 day', now() - interval '1 day' + interval '1 hour', 'completed');
 select results_eq(
-  $$select c.raw_completed_sessions, c.completed_units, c.overdue_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000001') c$$,
-  $$values (3, 2, 0)$$,
-  'B. three completed sessions -> raw 3, canonical 2/2 (history kept)');
+  $$select c.raw_completed_sessions, c.completed_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000002') c$$,
+  $$values (2, 1)$$,
+  'H/J. two completed sessions under Triad 1 -> raw 2, still 1/2 (never fulfils Triad 2)');
+select results_eq(
+  $$select c.raw_completed_sessions, c.completed_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000001') c$$,
+  $$values (3, 2)$$,
+  'J2. an extra session never creates an extra programme unit (raw 3, 2/2)');
 select is((select count(*)::integer from public.session_activity_attributions a
-           where a.enrollment_id = 'e8800000-0000-0000-0000-000000000001' and a.source_activity_type = 'triad'), 3,
-  'B2. the third session is not lost from the learner''s evidence');
--- C. one completed + one confirmed.
+           where a.enrollment_id = 'e8800000-0000-0000-0000-000000000002' and a.source_activity_type = 'triad'), 2,
+  'B2. the extra session is not lost from the learner''s evidence');
+-- K. E4: Triad 2 fulfilled early (G3a), Triad 1 (due today-30) only booked.
 select results_eq(
   $$select c.completed_units, c.booked_units, c.due_units, c.overdue_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000004') c$$,
-  $$values (0, 1, 1, 1)$$,
-  'C0. E4 before completing: 0/2, one booked, unit 1 overdue');
+  $$values (1, 1, 1, 1)$$,
+  'K. an early Triad 2 never hides an overdue Triad 1: 1/2 fulfilled, Triad 1 booked and overdue');
 -- G2's open session is cancelled; an earlier completed session (history) and
 -- a new confirmed one follow (one open session per group).
 update public.triad_sessions set status = 'cancelled' where id = (select id from ses where name = 'G2a');
@@ -302,9 +374,13 @@ insert into public.triad_sessions (triad_group_id, scheduled_start_time, schedul
 values ((select id from grp where name = 'G2'), now() - interval '40 days', now() - interval '40 days' + interval '1 hour', 'completed'),
        ((select id from grp where name = 'G2'), now() + interval '5 days', now() + interval '5 days 1 hour', 'confirmed');
 select results_eq(
-  $$select c.required_units, c.completed_units, c.booked_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000004') c$$,
-  $$values (2, 1, 1)$$,
-  'C. one completed + one confirmed -> 1/2 (the confirmed one is booked, not completed)');
+  $$select c.required_units, c.completed_units, c.overdue_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000004') c$$,
+  $$values (2, 2, 0)$$,
+  'K2. once Triad 1 is fulfilled by its own group, E4 reads 2/2 with nothing overdue');
+select results_eq(
+  $$select c.completed_units, c.due_units, c.overdue_units, c.next_due_on from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000005') c$$,
+  $$select 1, 1, 0, (select due_on from unit where n = 2)$$,
+  'K3. E5 (Triad 1 only): 1/2, next deadline = Triad 2''s own date');
 select is((select count(*)::integer from public.session_activity_attributions a
            where a.source_activity_type = 'triad' and a.source_activity_id = (select id from ses where name = 'G2a')), 0,
   '10b. a cancelled session is no evidence');
@@ -316,10 +392,10 @@ select throws_ok($$update public.triad_sessions set status = 'proposed' where id
 -- ===========================================================================
 create temporary table dc (name text primary key, id uuid);
 grant select on dc to authenticated;
-create or replace function pg_temp.dc_group(p_members text[], p_starts timestamptz[]) returns uuid language plpgsql as $f$
+create or replace function pg_temp.dc_group(p_unit integer, p_members text[], p_starts timestamptz[]) returns uuid language plpgsql as $f$
 declare g uuid; t timestamptz;
 begin
-  g := public.triad_create_group_internal('d8800000-0000-0000-0000-000000000004',
+  g := public.triad_create_group_internal((select id from dcu where n = p_unit),
          array(select ('f8800000-0000-0000-0000-0000000000' || lpad(m, 2, '0'))::uuid from unnest(p_members) m), 'en', 'admin');
   foreach t in array p_starts loop
     insert into public.triad_sessions (triad_group_id, scheduled_start_time, scheduled_end_time, status)
@@ -327,86 +403,101 @@ begin
   end loop;
   return g;
 end $f$;
--- F1: Mar 1 + Jun 20 (D, E). F2: Apr 20 + Jun 20 (F). F3: no session.
--- F4: Mar 1. F5: Mar 1 + Mar 2. F10 partners each in turn (groups closed).
-insert into dc values
-  ('F1', pg_temp.dc_group(array['1', '10'], array['2026-03-01 09:00+00', '2026-06-20 09:00+00']::timestamptz[]));
-update public.triad_groups set is_active = false where id = (select id from dc where name = 'F1');
-insert into dc values
-  ('F2', pg_temp.dc_group(array['2', '10'], array['2026-04-20 09:00+00', '2026-06-20 10:00+00']::timestamptz[]));
-update public.triad_groups set is_active = false where id = (select id from dc where name = 'F2');
-insert into dc values
-  ('F4', pg_temp.dc_group(array['4', '10'], array['2026-03-01 11:00+00']::timestamptz[]));
+-- F10 partners each learner in turn (its groups are closed after use).
+-- F1: Triad 1 Mar 1, Triad 2 Jun 20. F2: Triad 1 Apr 20, Triad 2 Jun 20.
+-- F3: nothing. F4: Triad 1 Mar 1. F5: two sessions in its Triad 1 group.
+insert into dc values ('F1-1', pg_temp.dc_group(1, array['1', '10'], array['2026-03-01 09:00+00']::timestamptz[]));
+update public.triad_groups set is_active = false where id = (select id from dc where name = 'F1-1');
+insert into dc values ('F1-2', pg_temp.dc_group(2, array['1', '10'], array['2026-06-20 09:00+00']::timestamptz[]));
+update public.triad_groups set is_active = false where id = (select id from dc where name = 'F1-2');
+insert into dc values ('F2-1', pg_temp.dc_group(1, array['2', '10'], array['2026-04-20 09:00+00']::timestamptz[]));
+update public.triad_groups set is_active = false where id = (select id from dc where name = 'F2-1');
+insert into dc values ('F2-2', pg_temp.dc_group(2, array['2', '10'], array['2026-06-20 10:00+00']::timestamptz[]));
+update public.triad_groups set is_active = false where id = (select id from dc where name = 'F2-2');
+insert into dc values ('F4', pg_temp.dc_group(1, array['4', '10'], array['2026-03-01 11:00+00']::timestamptz[]));
 update public.triad_groups set is_active = false where id = (select id from dc where name = 'F4');
-insert into dc values
-  ('F5', pg_temp.dc_group(array['5', '10'], array['2026-03-01 12:00+00', '2026-03-02 12:00+00']::timestamptz[]));
+insert into dc values ('F5', pg_temp.dc_group(1, array['5', '10'], array['2026-03-01 12:00+00', '2026-03-02 12:00+00']::timestamptz[]));
 update public.triad_groups set is_active = false where id = (select id from dc where name = 'F5');
--- G: F6 changes group: old group (F6, F7) session Mar 1, closed; new group (F6, F8) session Jun 20.
-insert into dc values ('G-old', pg_temp.dc_group(array['6', '7'], array['2026-03-01 13:00+00']::timestamptz[]));
-select throws_ok($$select public.triad_create_group_internal('d8800000-0000-0000-0000-000000000004',
+-- Replacement for the SAME requirement: F6's Triad 1 group (F6, F7) is closed
+-- after its session; a replacement Triad 1 group (F6, F8) completes again.
+insert into dc values ('G-old', pg_temp.dc_group(1, array['6', '7'], array['2026-03-01 13:00+00']::timestamptz[]));
+select throws_ok($$select public.triad_create_group_internal((select id from dcu where n = 1),
    array['f8800000-0000-0000-0000-000000000006', 'f8800000-0000-0000-0000-000000000008']::uuid[], 'en', 'admin')$$,
-  '23505', null, '42d. a learner cannot join a second active group');
+  '23505', null, '42d. a learner cannot join a second active group for the same Triad');
 update public.triad_groups set is_active = false where id = (select id from dc where name = 'G-old');
-insert into dc values ('G-new', pg_temp.dc_group(array['6', '8'], array['2026-06-20 13:00+00']::timestamptz[]));
--- H: two genuine sessions at the same timestamp (distinct records).
-insert into dc values ('H', pg_temp.dc_group(array['9', '10'], array['2026-03-10 09:00+00', '2026-03-10 09:00+00']::timestamptz[]));
+insert into dc values ('G-new', pg_temp.dc_group(1, array['6', '8'], array['2026-06-20 13:00+00']::timestamptz[]));
+-- F9: Triad 1 and Triad 2 sessions at the same timestamp (distinct groups).
+insert into dc values ('H-1', pg_temp.dc_group(1, array['9', '12'], array['2026-03-10 09:00+00']::timestamptz[]));
+insert into dc values ('H-2', pg_temp.dc_group(2, array['9', '11'], array['2026-03-10 09:00+00']::timestamptz[]));
+-- F11: only Triad 2, completed early (Mar 1 via H-2 at Mar 10).
 
 select results_eq(
   $$select c.completed_by_as_of, c.due_units, c.overdue_units, (c.schedule->0->>'satisfied')::boolean
     from public.canonical_triad_completion('f8800000-0000-0000-0000-000000000001', '2026-04-06') c$$,
   $$values (1, 1, 0, true)$$,
-  'D. first completed session before the first due date -> milestone 1 satisfied');
+  'D2. Triad 1 fulfilled before its deadline -> 06 Apr: 1/2, 0 overdue');
 select results_eq(
   $$select c.completed_units, c.overdue_units from public.canonical_triad_completion('f8800000-0000-0000-0000-000000000001', '2026-07-06') c$$,
   $$values (2, 0)$$,
-  'E. second completed after the first deadline, before the second -> 2/2');
+  'E2. Triad 2 fulfilled by its own group before its deadline -> 06 Jul: 2/2');
 select results_eq(
   $$select (cp->>'checkpoint_number')::integer, (cp->>'completed_units')::integer, cp->>'state'
     from jsonb_array_elements(public.canonical_enrollment_journey('f8800000-0000-0000-0000-000000000001', '2026-07-06')) cp order by 1$$,
   $$values (1, 1, 'completed'), (2, 2, 'completed')$$,
-  'E2. journey checkpoints are computed from the activity dates (Apr 5: 1/1, Jul 5: 2/2)');
+  'E3. journey checkpoints are computed from requirement fulfilment (Apr 5: 1/1, Jul 5: 2/2)');
 select results_eq(
   $$select c.completed_by_as_of, c.overdue_units from public.canonical_triad_completion('f8800000-0000-0000-0000-000000000002', '2026-04-10') c$$,
   $$values (0, 1)$$,
-  'F. both sessions after the first deadline: on 10 Apr, 0 completed -> 1 overdue');
+  'K4. Triad 1 fulfilled after its deadline: on 10 Apr, Triad 1 is overdue');
 select results_eq(
   $$select c.completed_units, c.overdue_units from public.canonical_triad_completion('f8800000-0000-0000-0000-000000000002', current_date) c$$,
   $$values (2, 0)$$,
-  'F2. ... and current progress still becomes 2/2');
+  'K5. ... and current progress still becomes 2/2');
 select results_eq(
   $$select (cp->>'completed_units')::integer, cp->>'state'
     from jsonb_array_elements(public.canonical_enrollment_journey('f8800000-0000-0000-0000-000000000002', current_date)) cp
     where (cp->>'checkpoint_number')::integer = 1$$,
   $$values (0, 'overdue')$$,
-  'F3. the first checkpoint stays historically overdue');
+  'K6. the first checkpoint stays historically overdue');
 select results_eq(
   $$select e, c.completed_units from unnest(array['f8800000-0000-0000-0000-000000000006', 'f8800000-0000-0000-0000-000000000007', 'f8800000-0000-0000-0000-000000000008']::uuid[]) e
     cross join lateral public.canonical_triad_completion(e) c order by e$$,
-  $$values ('f8800000-0000-0000-0000-000000000006'::uuid, 2), ('f8800000-0000-0000-0000-000000000007'::uuid, 1), ('f8800000-0000-0000-0000-000000000008'::uuid, 1)$$,
-  'G. old group session + new group session -> 2/2 (completion follows the enrollment)');
+  $$values ('f8800000-0000-0000-0000-000000000006'::uuid, 1), ('f8800000-0000-0000-0000-000000000007'::uuid, 1), ('f8800000-0000-0000-0000-000000000008'::uuid, 1)$$,
+  'J3. a replacement group for the same Triad fulfils that Triad once (F6: 1/2, never 2/2)');
 select results_eq(
   $$select m.enrollment_id from public.triad_sessions s join public.triad_group_members m on m.triad_group_id = s.triad_group_id
     where s.triad_group_id = (select id from dc where name = 'G-old') order by 1$$,
   $$values ('f8800000-0000-0000-0000-000000000006'::uuid), ('f8800000-0000-0000-0000-000000000007'::uuid)$$,
-  '42e. regrouping never rewrites the old session''s participants');
+  'P. regrouping never rewrites the old session''s participants');
 select results_eq(
   $$select c.raw_completed_sessions, c.completed_units from public.canonical_triad_completion('f8800000-0000-0000-0000-000000000009') c$$,
   $$values (2, 2)$$,
-  'H. two genuine sessions at the same timestamp both count');
+  'I3. Triad 1 and Triad 2 sessions at the same timestamp both count (distinct requirements)');
+select results_eq(
+  $$select c.completed_units, c.due_units, c.overdue_units from public.canonical_triad_completion('f8800000-0000-0000-0000-000000000011', '2026-04-06') c$$,
+  $$values (1, 1, 1)$$,
+  'K7. only Triad 2 fulfilled (early): on 06 Apr Triad 1 is still overdue');
+select results_eq(
+  $$select (cp->>'completed_units')::integer, cp->>'state'
+    from jsonb_array_elements(public.canonical_enrollment_journey('f8800000-0000-0000-0000-000000000011', '2026-04-06')) cp
+    where (cp->>'checkpoint_number')::integer = 1$$,
+  $$values (0, 'overdue')$$,
+  'K8. ... and the Triad 1 checkpoint is overdue in the journey (an early Triad 2 never counts for it)');
 
--- Due / overdue matrix (Apr 5, Jul 5) — F3 (0 sessions), F4 (1: Mar 1), F5 (2: Mar 1, Mar 2).
+-- Due / overdue matrix (Triad 1 due Apr 5, Triad 2 due Jul 5) — F3 (nothing),
+-- F4 (Triad 1: Mar 1), F5 (Triad 1: Mar 1 + Mar 2 in the same group).
 create temporary table matrix (e uuid, as_of date, due integer, done integer, overdue integer);
 insert into matrix values
-  ('f8800000-0000-0000-0000-000000000003', '2026-04-04', 0, 0, 0), ('f8800000-0000-0000-0000-000000000004', '2026-04-04', 0, 1, 0), ('f8800000-0000-0000-0000-000000000005', '2026-04-04', 0, 2, 0),
-  ('f8800000-0000-0000-0000-000000000003', '2026-04-06', 1, 0, 1), ('f8800000-0000-0000-0000-000000000004', '2026-04-06', 1, 1, 0), ('f8800000-0000-0000-0000-000000000005', '2026-04-06', 1, 2, 0),
-  ('f8800000-0000-0000-0000-000000000003', '2026-07-04', 1, 0, 1), ('f8800000-0000-0000-0000-000000000004', '2026-07-04', 1, 1, 0), ('f8800000-0000-0000-0000-000000000005', '2026-07-04', 1, 2, 0),
-  ('f8800000-0000-0000-0000-000000000003', '2026-07-06', 2, 0, 2), ('f8800000-0000-0000-0000-000000000004', '2026-07-06', 2, 1, 1), ('f8800000-0000-0000-0000-000000000005', '2026-07-06', 2, 2, 0);
+  ('f8800000-0000-0000-0000-000000000003', '2026-04-04', 0, 0, 0), ('f8800000-0000-0000-0000-000000000004', '2026-04-04', 0, 1, 0), ('f8800000-0000-0000-0000-000000000005', '2026-04-04', 0, 1, 0),
+  ('f8800000-0000-0000-0000-000000000003', '2026-04-06', 1, 0, 1), ('f8800000-0000-0000-0000-000000000004', '2026-04-06', 1, 1, 0), ('f8800000-0000-0000-0000-000000000005', '2026-04-06', 1, 1, 0),
+  ('f8800000-0000-0000-0000-000000000003', '2026-07-04', 1, 0, 1), ('f8800000-0000-0000-0000-000000000004', '2026-07-04', 1, 1, 0), ('f8800000-0000-0000-0000-000000000005', '2026-07-04', 1, 1, 0),
+  ('f8800000-0000-0000-0000-000000000003', '2026-07-06', 2, 0, 2), ('f8800000-0000-0000-0000-000000000004', '2026-07-06', 2, 1, 1), ('f8800000-0000-0000-0000-000000000005', '2026-07-06', 2, 1, 1);
 grant select on matrix to authenticated;
 select results_eq(
   $$select m.e, m.as_of, c.due_units, c.completed_units, c.overdue_units
     from matrix m cross join lateral public.canonical_triad_completion(m.e, m.as_of) c order by 1, 2$$,
   $$select e, as_of, due, done, overdue from matrix order by 1, 2$$,
-  '41a. cumulative due vs cumulative completed at Apr 4 / Apr 6 / Jul 4 / Jul 6 for 0 / 1 / 2 sessions');
+  'K9. due / fulfilled / overdue per requirement at Apr 4 / Apr 6 / Jul 4 / Jul 6 (two sessions in one Triad 1 group fulfil only Triad 1)');
 
 create temporary table role_matrix (who text, e uuid, as_of date, facts jsonb, journey jsonb);
 grant select, insert on role_matrix to authenticated;
@@ -446,7 +537,7 @@ reset role;
 select is((select count(*)::integer from role_matrix where facts is null or (who <> 'admin-triads' and journey is null)), 0,
   '41b. every role received the facts for every as-of date');
 select is((select count(distinct (e, as_of, facts, journey))::integer from role_matrix where who <> 'admin-triads'), 12,
-  '41c. Learner, Sponsor and Admin agree on required / completed / due / overdue / adherence / pace / journey at every as-of date');
+  'L. Learner, Sponsor and Admin agree on required / completed / due / overdue / adherence / pace / journey at every as-of date');
 select is(
   (select count(*)::integer from role_matrix a join role_matrix l on l.e = a.e and l.as_of = a.as_of and l.who = 'learner'
    where a.who = 'admin-triads'
@@ -461,9 +552,13 @@ select is(
 select results_eq(
   $$select t.enrollment_id, t.milestone_number, t.milestone_met, t.milestone_overdue
     from public.triad_reminder_targets_internal('2026-04-06', 'd8800000-0000-0000-0000-000000000004') t
-    where t.enrollment_id in ('f8800000-0000-0000-0000-000000000003', 'f8800000-0000-0000-0000-000000000004') and t.milestone_number = 1 order by 1$$,
-  $$values ('f8800000-0000-0000-0000-000000000003'::uuid, 1, false, true), ('f8800000-0000-0000-0000-000000000004'::uuid, 1, true, false)$$,
-  '41g. reminders read the same cumulative rule (milestone 1 overdue for 0 sessions, met for 1)');
+    where t.enrollment_id in ('f8800000-0000-0000-0000-000000000003', 'f8800000-0000-0000-0000-000000000004', 'f8800000-0000-0000-0000-000000000011')
+      and t.milestone_number = 1 order by 1$$,
+  $$values ('f8800000-0000-0000-0000-000000000003'::uuid, 1, false, true), ('f8800000-0000-0000-0000-000000000004'::uuid, 1, true, false),
+           ('f8800000-0000-0000-0000-000000000011'::uuid, 1, false, true)$$,
+  '41g. reminders read the same per-requirement rule (Triad 1 overdue without its own fulfilment, even after an early Triad 2)');
+select is((select count(distinct cohort_requirement_date_id)::integer from public.triad_reminder_targets_internal('2026-04-06', 'd8800000-0000-0000-0000-000000000004')),
+  2, '41h. reminder targets are per Triad requirement');
 
 -- ===========================================================================
 -- REFLECTIONS + GOAL CHECK-IN (E1, E2, E3 on G1a)
@@ -500,10 +595,10 @@ select throws_ok(
   '42501', null, 'learners cannot write reflections directly');
 select is(
   (select satisfaction_rating::integer from public.triad_reflections where enrollment_id = 'e8800000-0000-0000-0000-000000000001'),
-  4, '43d. satisfaction stays on the reflection submission');
+  4, 'N. the reflection stays linked to its session and enrollment (satisfaction on the submission)');
 select lives_ok($$select public.record_goal_checkins('e8800000-0000-0000-0000-000000000001', 'triad', (select id from ses where name = 'G1a'),
   '[{"goal_id":"98800000-0000-0000-0000-000000000001","new_rating":60,"note":"Clearer after the triad"}]'::jsonb)$$,
-  '43e. a Triad goal check-in is recorded in the goal source');
+  'O. a Triad goal check-in is recorded in the goal source (separate from the reflection)');
 select results_eq(
   $$select source_type, rating::integer from public.learner_reflection_feed('e8800000-0000-0000-0000-000000000001')
     where linked_session_id = (select id from ses where name = 'G1a') order by source_type$$,
@@ -511,9 +606,14 @@ select results_eq(
   '43f. My Journey projects the goal check-in and the Triad reflection side by side (no copy)');
 select ok(
   (select (details->>'session_start_time')::timestamptz = (select scheduled_start_time from public.triad_sessions where id = (select id from ses where name = 'G1a'))
-     and details ? 'triad_group_id' and not details ? 'round_number'
+     and details ? 'triad_group_id' and (details->>'requirement_unit')::integer = 1 and not details ? 'round_number'
    from public.learner_reflection_feed('e8800000-0000-0000-0000-000000000001') where source_type = 'triad_reflection'),
-  '43g. My Journey carries the session date and group context, never a round');
+  'Q. My Journey labels the reflection "Triad 1" with its session date and group — never a round');
+select results_eq(
+  $$select source_id, requirement_unit_number, participant_role from public.learner_session_history('e8800000-0000-0000-0000-000000000001')
+    where session_type = 'triad' and status = 'completed' and source_id in (select id from ses) order by 2$$,
+  $$values ((select id from ses where name = 'G1a'), 1, 'participant'::text), ((select id from ses where name = 'G3a'), 2, 'participant'::text)$$,
+  'Q2/R. Your Sessions labels sessions "Triad 1" / "Triad 2"; every member is a participant (no fixed coach / coachee / observer)');
 select is(
   (select details->'answers'->0->>'question_id' || '|' || (details->'answers'->0->>'answer')
    from public.learner_reflection_feed('e8800000-0000-0000-0000-000000000001') where source_type = 'triad_reflection'),
@@ -599,22 +699,36 @@ select throws_ok($$select * from public.admin_cohort_triad_requirement('d8800000
   'P0002', null, '26d. an unknown cohort is an error, never "0 required"');
 select lives_ok($$select public.admin_save_cohort_requirement_dates('d8800000-0000-0000-0000-000000000001',
   jsonb_build_array(jsonb_build_object('programme_id', 'c8800000-0000-0000-0000-000000000001', 'module', 'triads', 'ordinal', 2, 'due_on', (current_date + 45)::text)))$$,
-  'Admin moves the second cumulative date in the cohort schedule');
+  'M. Admin moves the Triad 2 deadline in the cohort schedule');
 select is((select (schedule->1->>'due_on')::date from public.admin_cohort_triad_requirement('d8800000-0000-0000-0000-000000000001')
            where programme_id = 'c8800000-0000-0000-0000-000000000001'),
   current_date + 45, '3a. Admin Triads shows the new date');
 select lives_ok($$select public.admin_save_cohort_requirement_dates('d8800000-0000-0000-0000-000000000001',
   jsonb_build_array(jsonb_build_object('programme_id', 'c8800000-0000-0000-0000-000000000001', 'module', 'triads', 'ordinal', 1, 'due_on', (current_date - 30)::text),
                     jsonb_build_object('programme_id', 'c8800000-0000-0000-0000-000000000001', 'module', 'triads', 'ordinal', 2, 'due_on', (current_date + 45)::text)), true)$$,
-  '3b. regenerating the cohort schedule is independent of groups (no group references a date)');
-select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000004', true);
-select is((select next_due_on from public.learner_triad_status('e8800000-0000-0000-0000-000000000004')),
-  current_date + 45, '3c. the learner''s next deadline follows (1 completed -> the second date)');
-select ok(public.learner_canonical_journey('e8800000-0000-0000-0000-000000000004', current_date)::text like '%' || (current_date + 45)::text || '%',
-  '3d. the learner journey has a checkpoint on the new date');
+  '3b. regenerating the cohort schedule updates requirements in place');
+select results_eq(
+  $$select d.id from public.cohort_requirement_dates d
+    where d.cohort_id = 'd8800000-0000-0000-0000-000000000001' and d.programme_id = 'c8800000-0000-0000-0000-000000000001' and d.module = 'triads' order by d.ordinal$$,
+  $$select id from unit order by n$$,
+  '3b2. ... so every requirement keeps its identity (its groups stay attached)');
+select throws_ok($$select public.admin_save_cohort_requirement_dates('d8800000-0000-0000-0000-000000000001',
+  jsonb_build_array(jsonb_build_object('programme_id', 'c8800000-0000-0000-0000-000000000001', 'module', 'triads', 'ordinal', 1, 'due_on', (current_date - 30)::text)), true)$$,
+  '22023', null, '3b3. a Triad requirement with assigned groups cannot be removed');
+select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000005', true);
+select is((select next_due_on from public.learner_triad_status('e8800000-0000-0000-0000-000000000005')),
+  current_date + 45, 'M2. the learner''s next deadline follows (Triad 1 fulfilled -> Triad 2''s new date)');
+select ok(public.learner_canonical_journey('e8800000-0000-0000-0000-000000000005', current_date)::text like '%' || (current_date + 45)::text || '%',
+  'M3. the learner journey has a checkpoint on the new date');
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000099', true);
-select ok(public.sponsor_canonical_leader_journey('e8800000-0000-0000-0000-000000000004', current_date)::text like '%' || (current_date + 45)::text || '%',
-  '3e. the sponsor journey has the same checkpoint');
+select ok(public.sponsor_canonical_leader_journey('e8800000-0000-0000-0000-000000000005', current_date)::text like '%' || (current_date + 45)::text || '%',
+  'M4. the sponsor journey has the same checkpoint');
+select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000098', true);
+select is((select (x->>'due_on')::date from public.admin_cohort_triad_learners('d8800000-0000-0000-0000-000000000001') l,
+             jsonb_array_elements(l.requirements) x where l.enrollment_id = 'e8800000-0000-0000-0000-000000000005' and x->>'milestone' = '2'),
+  current_date + 45, 'M5. Admin -> Cohort -> Triads reads the same Triad 2 deadline');
+select is((select due_on from public.admin_cohort_triad_requirements('d8800000-0000-0000-0000-000000000001') where unit_number = 2),
+  current_date + 45, 'M6. ... on the Triad 2 card too');
 
 -- Coach enrolled as a learner: the learner path, no coach-of-record role.
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000006', true);
@@ -633,14 +747,14 @@ select is((select count(*)::integer from public.triad_sessions where triad_group
   '42g. closing cancels the group''s open session; completed history stays');
 select is((select count(*)::integer from public.triad_sessions where triad_group_id = (select id from grp where name = 'G2') and status = 'completed'), 1,
   '42h. the closed group''s completed session remains');
-select lives_ok($$select public.admin_triad_create_group('d8800000-0000-0000-0000-000000000001',
+select lives_ok($$select public.admin_triad_create_group((select id from unit where n = 1),
   array['e8800000-0000-0000-0000-000000000004', 'e8800000-0000-0000-0000-000000000006']::uuid[], 'en')$$,
-  '42i. the learner joins a new active group (old inactive group retained)');
+  '42i. a replacement Triad 1 group is created for the same requirement (old inactive group retained)');
 select throws_ok($$select public.admin_triad_set_group_active((select id from grp where name = 'G2'), true)$$,
   '23505', null, '42j. a closed group cannot reopen while a member is in another active group');
 reset role;
-select is((select completed_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000004')), 1,
-  '20. progress across a group change keeps the old group''s completed session');
+select is((select completed_units from public.canonical_triad_completion('e8800000-0000-0000-0000-000000000004')), 2,
+  '20. progress across a group change keeps the old group''s fulfilment');
 set local role authenticated;
 
 -- ===========================================================================
@@ -686,7 +800,8 @@ select is(
   (select string_agg(p.proname, ', ' order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and p.prokind = 'f'
      and (p.proname like 'triad\_%' or p.proname in ('canonical_triad_group_members', 'canonical_triad_completion', 'sponsor_canonical_activity',
-                                                    'attribute_activity_to_cadence_milestone', 'cohort_requirement_proposal_internal'))
+                                                    'canonical_triad_requirement_fulfilment', 'attribute_activity_to_cadence_milestone',
+                                                    'cohort_requirement_proposal_internal'))
      and p.proname <> 'triad_reflections_visible_to_group'
      and has_function_privilege('authenticated', p.oid, 'EXECUTE')),
   null, '30. internal Triad constructions and helpers are not client-callable');
@@ -699,8 +814,8 @@ select isnt(
 -- ===========================================================================
 select results_eq(
   $$select expected_reflections, submitted_reflections from public.triad_reflection_rate_internal('c8800000-0000-0000-0000-000000000001') where is_total$$,
-  $$values (11, 3)$$,
-  '32a. reflection rate = reflections / one per member of each completed session (G1: 3 sessions x 3, G2: 1 x 2; E1-E3 reflected on G1a)');
+  $$values (10, 3)$$,
+  '32a. reflection rate = reflections / one per member of each completed session (G1: 2 x 3, G2: 1 x 2, G3: 1 x 2; E1-E3 reflected on G1a)');
 create temporary table rate_internal as
   select training_week_id, is_total, expected_reflections, submitted_reflections from public.triad_reflection_rate_internal('c8800000-0000-0000-0000-000000000001');
 grant select on rate_internal to authenticated;

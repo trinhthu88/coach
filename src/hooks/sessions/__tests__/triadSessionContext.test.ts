@@ -21,6 +21,9 @@ const session: TriadSessionView = {
 const group = (overrides: Partial<TriadGroupEntry> = {}): TriadGroupEntry => ({
   enrollmentId: "enrollment-member",
   groupId: "group-1",
+  requirementId: "req-2",
+  unitNumber: 2,
+  dueOn: "2026-10-06",
   cohortId: "cohort-1",
   groupLanguage: "en",
   isActive: true,
@@ -39,13 +42,13 @@ const group = (overrides: Partial<TriadGroupEntry> = {}): TriadGroupEntry => ({
 });
 
 describe("unified Triad session context", () => {
-  it("owns the session through the learner's member enrollment; its only context is its place in the group", () => {
+  it("owns the session through the learner's member enrollment; it is labelled by its group's Triad requirement", () => {
     const normalized = normalizeTriadSession(group(), session);
     expect(normalized.kind).toBe("triad");
     expect(normalized.enrollment_id).toBe("enrollment-member");
     expect(normalized.start_time).toBe("2026-09-20T10:00:00Z");
-    expect(normalized.triad.sessionNumber).toBe(2);
-    // A session belongs to its group, never to a requirement round / week.
+    // "Triad 2": the requirement of the session's group — no round, no week.
+    expect(normalized.triad.unitNumber).toBe(2);
     expect(normalized.triad).not.toHaveProperty("roundNumber");
     expect(normalized.triad).not.toHaveProperty("weekNumber");
     expect(normalized.triad.participantNames).toEqual(["One", "Two", "Three"]);

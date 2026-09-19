@@ -47,6 +47,7 @@ async function fetchEnrollmentSessions(enrollmentId: string): Promise<Developmen
         // Triad members rotate roles; only the other session types have one.
         participantRole: type === "triad" ? null : row.participant_role,
         isProgrammeEvidence: row.is_programme_evidence,
+        requirementUnitNumber: row.requirement_unit_number ?? null,
       };
     });
 }

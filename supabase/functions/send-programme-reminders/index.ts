@@ -363,46 +363,39 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 5. Active triad groups with no open session (none yet, or the last
-    //    one was completed / cancelled) whose members still owe required
-    //    sessions — canonical completion (triad_cohort_learners_internal),
-    //    never a local count.
+    // 5. Active triad groups with neither an open nor a completed session.
+    //    Every group is for ONE required Triad (its cohort requirement): a
+    //    completed session fulfils it, so only groups whose Triad is still
+    //    unfulfilled and unscheduled are reminded — no local counting.
     // ------------------------------------------------------------------
     const { data: activeGroups } = await admin
       .from("triad_groups")
-      .select("id, cohort_id, triad_sessions(status, scheduled_start_time)")
+      .select("id, cohort_requirement_dates(ordinal), triad_sessions(status, scheduled_start_time)")
       .eq("is_active", true);
 
     let triadUnscheduledSent = 0;
-    const groupsWithoutOpenSession = ((activeGroups || []) as unknown as {
+    const unscheduledGroups = ((activeGroups || []) as unknown as {
       id: string;
-      cohort_id: string;
+      cohort_requirement_dates: { ordinal: number } | null;
       triad_sessions: { status: string; scheduled_start_time: string | null }[];
-    }[]).filter((g) => !(g.triad_sessions || []).some((s) => (s.status === "proposed" || s.status === "confirmed") && s.scheduled_start_time !== null));
-    const owingEnrollments = new Set<string>();
-    for (const cohortId of [...new Set(groupsWithoutOpenSession.map((g) => g.cohort_id))]) {
-      const { data: learners, error: learnersErr } = await admin.rpc("triad_cohort_learners_internal", { p_cohort_id: cohortId });
-      if (learnersErr) {
-        console.error("Triad cohort learners failed", { cohortId, learnersErr });
-        continue;
-      }
-      for (const l of (learners || []) as { enrollment_id: string; completed_units: number; required_units: number }[]) {
-        if (l.completed_units < l.required_units) owingEnrollments.add(l.enrollment_id);
-      }
-    }
-    const unscheduledGroupIds = groupsWithoutOpenSession.map((g) => g.id);
-    if (unscheduledGroupIds.length > 0) {
-      const membersByGroup = await triadMembersByGroup(unscheduledGroupIds);
-      for (const groupId of unscheduledGroupIds) {
-        for (const member of (membersByGroup.get(groupId) || []).filter((m) => owingEnrollments.has(m.enrollmentId))) {
+    }[]).filter((g) => {
+      const sessions = g.triad_sessions || [];
+      return !sessions.some((s) => s.status === "completed")
+        && !sessions.some((s) => (s.status === "proposed" || s.status === "confirmed") && s.scheduled_start_time !== null);
+    });
+    if (unscheduledGroups.length > 0) {
+      const membersByGroup = await triadMembersByGroup(unscheduledGroups.map((g) => g.id));
+      for (const group of unscheduledGroups) {
+        const unit = group.cohort_requirement_dates?.ordinal ?? 1;
+        for (const member of membersByGroup.get(group.id) || []) {
           const sent = await notifyOnce({
             userId: member.userId,
-            link: "/triads",
+            link: `/triads?triad=${unit}`,
             type: "triad_reminder",
-            title: "Schedule your triad session",
-            titleVi: "Đặt lịch session triad của bạn",
-            body: "Your triad group has no session scheduled and you still have required triad sessions to complete. Propose a time to your group.",
-            bodyVi: "Nhóm triad của bạn chưa có session nào được lên lịch và bạn vẫn còn session triad bắt buộc cần hoàn thành. Hãy đề xuất thời gian cho nhóm.",
+            title: `Schedule your Triad ${unit} session`,
+            titleVi: `Đặt lịch session Triad ${unit} của bạn`,
+            body: `Your Triad ${unit} group has no session scheduled yet. Propose a time to your group.`,
+            bodyVi: `Nhóm Triad ${unit} của bạn chưa có session nào được lên lịch. Hãy đề xuất thời gian cho nhóm.`,
             ctaLabel: "Schedule session",
             ctaLabelVi: "Đặt lịch session",
           });

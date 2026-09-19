@@ -1,8 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
-import { AlertTriangle, ArrowLeft, CalendarClock, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,11 @@ import { useAdminCohortTriadRequirement, type AdminTriadRequirement } from "@/ho
 /**
  * Admin -> Cohort -> Triads.
  *
- * The requirement (programme required count + the cohort's cumulative due
- * dates) is read on its own, so its states never mix with the operational
- * data:
+ * EVERY REQUIRED TRIAD HAS ITS OWN GROUP ASSIGNMENT: below the requirement,
+ * one card per Triad requirement (Triad 1, Triad 2, …, each with its own
+ * deadline, groups, sessions and actions). The requirement (programme
+ * required count + the cohort's Triad deadlines) is read on its own, so its
+ * states never mix with the operational data:
  *   A  requirement loaded, required = 0 -> "0 required · No Triads configured"
  *   B  required > 0, groups/learners loaded -> full management
  *   C  required > 0, groups/learners failed -> required + schedule + operational error
@@ -68,37 +69,27 @@ export default function AdminCohortTriads() {
         // STATE B / C
         <div className="space-y-4">
           {requiring.map((r) => (
-            <TriadRequirementSchedule key={r.programmeId} requirement={r} showProgramme={requiring.length > 1} />
+            <TriadScheduleWarning key={r.programmeId} requirement={r} showProgramme={requiring.length > 1} />
           ))}
-          <AdminTriadGroupManagement cohortId={cohortId as string} />
+          <AdminTriadGroupManagement
+            cohortId={cohortId as string}
+            programmeNames={Object.fromEntries(requiring.map((r) => [r.programmeId, r.programmeName]))}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function TriadRequirementSchedule({ requirement, showProgramme }: { requirement: AdminTriadRequirement; showProgramme: boolean }) {
+/** Missing Triad deadlines: a Triad without a cohort date gets no card. */
+function TriadScheduleWarning({ requirement, showProgramme }: { requirement: AdminTriadRequirement; showProgramme: boolean }) {
   const { t } = useTranslation("admin");
   const scheduled = requirement.schedule.filter((m) => m.milestone <= requirement.requiredUnits);
+  if (scheduled.length >= requirement.requiredUnits) return null;
   return (
-    <Card className="p-5" data-testid="admin-triad-schedule">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-        {t("triads.scheduleHeading")}
-        {showProgramme ? ` · ${requirement.programmeName}` : ""}
-      </p>
-      <ol className="mt-3 space-y-1.5">
-        {scheduled.map((m) => (
-          <li key={m.milestone} className="flex flex-wrap items-baseline gap-x-2 text-sm" data-testid="admin-triad-milestone">
-            <CalendarClock className="h-3.5 w-3.5 self-center text-muted-foreground" />
-            <span className="font-medium">{t("triads.scheduleMilestone", { n: m.milestone, date: format(new Date(`${m.dueOn}T00:00:00`), "dd MMM yyyy") })}</span>
-            <span className="text-xs text-muted-foreground">{t("triads.scheduleMilestoneMeaning", { count: m.milestone })}</span>
-          </li>
-        ))}
-      </ol>
-      {scheduled.length < requirement.requiredUnits && (
-        <p className="mt-2 text-xs text-warning">{t("triads.scheduleMissing", { scheduled: scheduled.length, required: requirement.requiredUnits })}</p>
-      )}
-      <p className="mt-3 text-[11px] text-muted-foreground">{t("triads.scheduleHint")}</p>
+    <Card className="p-4 text-xs text-warning" role="status" data-testid="admin-triad-schedule-missing">
+      {showProgramme ? `${requirement.programmeName}: ` : ""}
+      {t("triads.scheduleMissing", { scheduled: scheduled.length, required: requirement.requiredUnits })}
     </Card>
   );
 }

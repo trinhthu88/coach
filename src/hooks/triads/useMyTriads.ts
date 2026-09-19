@@ -46,7 +46,11 @@ export interface TriadSessionView {
 export interface TriadGroupEntry {
   enrollmentId: string;
   groupId: string;
-  /** The group's scope: its cohort. A group belongs to no requirement unit. */
+  /** The cohort Triad requirement this group was assigned for ("Triad N"). */
+  requirementId: string;
+  unitNumber: number;
+  /** That requirement's deadline. */
+  dueOn: string;
   cohortId: string;
   groupLanguage: string;
   isActive: boolean;
@@ -54,7 +58,7 @@ export interface TriadGroupEntry {
   createdAt: string;
   memberCount: number;
   mySlot: number;
-  /** Every session of the group, numbered in time order (Session 1, 2, …). */
+  /** Every session of the group (normally one; a cancelled one may be replaced). */
   sessions: TriadSessionView[];
   /** The group's current session: the open one, else the latest. */
   session: TriadSessionView | null;
@@ -112,7 +116,7 @@ function toMembers(members: TriadMember[] | undefined): TriadMemberProfile[] {
 
 /**
  * THE learner Triad read model: learner_triad_overview (the learner's
- * cohort-level groups — the active one and closed historical ones — with
+ * groups — one per Triad requirement, plus closed historical ones — with
  * numbered sessions, responses, alternatives and own reflection state) +
  * learner_triad_members for names. Nothing here computes a date, a
  * completion or an overdue state (see useMyTriadStatus).
@@ -127,6 +131,9 @@ export async function fetchMyTriads(enrollmentId: string | null): Promise<TriadG
     return {
       enrollmentId: row.enrollment_id,
       groupId: row.triad_group_id,
+      requirementId: row.cohort_requirement_date_id,
+      unitNumber: row.unit_number,
+      dueOn: row.due_on,
       cohortId: row.cohort_id,
       groupLanguage: row.group_language,
       isActive: row.is_active,
@@ -141,14 +148,30 @@ export async function fetchMyTriads(enrollmentId: string | null): Promise<TriadG
   });
 }
 
+/** One required Triad ("Triad N") of the learner, with its own deadline and group. */
 export interface TriadMilestoneView {
   milestone: number;
-  /** Cumulative deadline: `milestone` completed Triad sessions by this date. */
+  requirementId: string;
   dueOn: string;
   trainingWeekId: string | null;
   isDue: boolean;
-  /** Cumulative: completed sessions >= milestone (never a session mapped to it). */
+  /** Fulfilled by a completed session of THIS requirement's group. */
   satisfied: boolean;
+  fulfilledOn: string | null;
+  overdue: boolean;
+  triadGroupId: string | null;
+}
+
+interface RawMilestone {
+  milestone: number;
+  cohort_requirement_date_id: string;
+  due_on: string;
+  training_week_id: string | null;
+  is_due: boolean;
+  satisfied: boolean;
+  fulfilled_on: string | null;
+  overdue: boolean;
+  triad_group_id: string | null;
 }
 
 /** The learner's canonical Triad status — the same projection Admin and Sponsor read. */
@@ -178,12 +201,16 @@ export async function fetchMyTriadStatus(enrollmentId: string): Promise<TriadSta
     bookedUnits: row.booked_units,
     paceStatus: row.pace_status,
     nextDueOn: row.next_due_on,
-    schedule: ((row.schedule ?? []) as unknown as { milestone: number; due_on: string; training_week_id: string | null; is_due: boolean; satisfied: boolean }[]).map((m) => ({
+    schedule: ((row.schedule ?? []) as unknown as RawMilestone[]).map((m) => ({
       milestone: m.milestone,
+      requirementId: m.cohort_requirement_date_id,
       dueOn: m.due_on,
       trainingWeekId: m.training_week_id,
       isDue: m.is_due,
       satisfied: m.satisfied,
+      fulfilledOn: m.fulfilled_on,
+      overdue: m.overdue,
+      triadGroupId: m.triad_group_id,
     })),
   };
 }

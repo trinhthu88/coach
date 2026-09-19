@@ -297,7 +297,7 @@ function SessionCard({
     : counterpart?.full_name || counterpart?.email || "—";
   const contextLabels = isTriad
     ? [
-        session.triad ? t("list.triadSession", { count: session.triad.sessionNumber }) : null,
+        session.triad ? t("list.triadSession", { n: session.triad.unitNumber }) : null,
       ].filter(Boolean).join(" · ")
     : "";
   const displayTitle = session.topic || t("list.triadSessionTitle");

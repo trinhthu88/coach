@@ -1,8 +1,8 @@
 -- Triad deployment 1 verification (READ-ONLY). Gate for deployment 2.
 --
 -- Run against production AFTER deployment 1 (20260918185800 ..
--- 20260918195000) and BEFORE moving supabase/deployment-2/ into
--- supabase/migrations:
+-- 20260918195000) AND the requirement-groups correction (20260919120000),
+-- and BEFORE moving supabase/deployment-2/ into supabase/migrations:
 --   psql "$PROD_DB_URL" -v ON_ERROR_STOP=1 -f scripts/triad-deployment-1-verification.sql
 -- Needs a role that can execute the canonical functions (postgres); nothing
 -- is written. Every check raises on failure; the last line says PASSED.
@@ -13,22 +13,28 @@ DO $$
 DECLARE bad text; n bigint;
 BEGIN
   -- Ledger: deployment 1 applied, deployment 2 not.
-  SELECT string_agg(v, ', ') INTO bad FROM unnest(ARRAY['20260918185800', '20260918185850', '20260918185900', '20260918189000', '20260918190000', '20260918195000']) v
+  SELECT string_agg(v, ', ') INTO bad FROM unnest(ARRAY['20260918185800', '20260918185850', '20260918185900', '20260918189000', '20260918190000', '20260918195000', '20260919120000']) v
   WHERE NOT EXISTS (SELECT 1 FROM supabase_migrations.schema_migrations s WHERE s.version = v);
   IF bad IS NOT NULL THEN RAISE EXCEPTION 'deployment 1 migrations missing from the ledger: %', bad; END IF;
   IF to_regclass('public.triad_rounds') IS NULL THEN RAISE EXCEPTION 'legacy storage already dropped (deployment 2 ran early)'; END IF;
 
-  -- Groups: cohort-level, 2-3 members of the group's cohort, one active group per enrollment.
+  -- Groups: every group is for one Triad requirement of its own cohort, 2-3
+  -- members of that requirement's cohort and programme, and an enrollment has
+  -- at most one active group PER REQUIREMENT.
   SELECT string_agg(g.id::text, ', ') INTO bad FROM public.triad_groups g
-  WHERE g.cohort_id IS NULL
+  LEFT JOIN public.cohort_requirement_dates d ON d.id = g.cohort_requirement_date_id
+  WHERE d.id IS NULL OR d.module <> 'triads' OR d.cohort_id IS DISTINCT FROM g.cohort_id
      OR (SELECT count(*) FROM public.triad_group_members m WHERE m.triad_group_id = g.id) NOT BETWEEN 2 AND 3
      OR EXISTS (SELECT 1 FROM public.triad_group_members m JOIN public.programme_enrollments e ON e.id = m.enrollment_id
-                WHERE m.triad_group_id = g.id AND e.cohort_id IS DISTINCT FROM g.cohort_id);
+                WHERE m.triad_group_id = g.id AND (e.cohort_id IS DISTINCT FROM d.cohort_id OR e.programme_id IS DISTINCT FROM d.programme_id));
   IF bad IS NOT NULL THEN RAISE EXCEPTION 'invalid Triad groups: %', bad; END IF;
   SELECT string_agg(enrollment_id::text, ', ') INTO bad FROM (
     SELECT m.enrollment_id FROM public.triad_group_members m JOIN public.triad_groups g ON g.id = m.triad_group_id
-    WHERE g.is_active GROUP BY m.enrollment_id HAVING count(*) > 1) x;
-  IF bad IS NOT NULL THEN RAISE EXCEPTION 'enrollments in several active groups: %', bad; END IF;
+    WHERE g.is_active GROUP BY m.enrollment_id, g.cohort_requirement_date_id HAVING count(*) > 1) x;
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'enrollments in several active groups for one Triad requirement: %', bad; END IF;
+  IF to_regprocedure('public.triad_cohort_candidates_internal(uuid)') IS NOT NULL THEN
+    RAISE EXCEPTION 'the cohort-scoped assignment pool still exists';
+  END IF;
 
   -- Sessions and evidence: historical membership owns every live session.
   SELECT count(*) INTO n FROM public.triad_sessions s
@@ -66,7 +72,7 @@ BEGIN
   SELECT string_agg(p.proname, ', ') INTO bad
   FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
   WHERE ns.nspname = 'public' AND p.prokind = 'f' AND p.proname <> 'triad_is_seed_identifier'
-    AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)|completion_deadline|programme_triad_rounds|public\.triad_rounds|triad_round_id|cohort_requirement_date_id';
+    AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)|completion_deadline|programme_triad_rounds|public\.triad_rounds|triad_round_id';
   IF bad IS NOT NULL THEN RAISE EXCEPTION 'functions still read retired Triad fields: %', bad; END IF;
 
   -- No REAL/UNKNOWN data was removed without a reviewed decision.
@@ -78,8 +84,11 @@ BEGIN
   RAISE NOTICE 'Triad deployment 1 verification PASSED';
 END $$;
 
-\echo '== Canonical Triad completion per enrollment (compare with the readiness report, section 5)'
-SELECT c.enrollment_id, c.required_units, c.raw_completed_sessions, c.completed_units, c.due_units, c.overdue_units, c.next_due_on
+\echo '== Canonical Triad completion per enrollment, with each requirement''s group and fulfilment'
+SELECT c.enrollment_id, c.required_units, c.raw_completed_sessions, c.completed_units, c.due_units, c.overdue_units, c.next_due_on,
+  (SELECT string_agg('Triad ' || (x->>'milestone') || ': ' || CASE WHEN (x->>'fulfilled')::boolean THEN 'fulfilled ' || (x->>'fulfilled_on')
+     WHEN x->>'triad_group_id' IS NULL THEN 'no group' ELSE 'group ' || left(x->>'triad_group_id', 8) END, '; ' ORDER BY (x->>'milestone')::int)
+   FROM jsonb_array_elements(c.schedule) x) AS requirements
 FROM public.programme_enrollments e CROSS JOIN LATERAL public.canonical_triad_completion(e.id, current_date) c
 WHERE c.required_units > 0 AND EXISTS (SELECT 1 FROM public.triad_group_members m WHERE m.enrollment_id = e.id)
 ORDER BY 1;

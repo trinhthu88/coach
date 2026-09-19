@@ -50,9 +50,11 @@ insert into public.user_roles (user_id, role) values ('a6000000-0000-0000-0000-0
 insert into public.sponsor_profiles (user_id, organization_id) values ('a6000000-0000-0000-0000-000000000007', 'b6000000-0000-0000-0000-000000000001');
 
 -- G1 = A, B, C in cohort 1; G2 is another programme's (cohort 2's) group.
-insert into public.triad_groups (id, cohort_id, is_active) values
-  ('f6000000-0000-0000-0000-000000000001', 'd6000000-0000-0000-0000-000000000001', true),
-  ('f6000000-0000-0000-0000-000000000002', 'd6000000-0000-0000-0000-000000000002', true);
+insert into public.triad_groups (id, cohort_requirement_date_id, is_active)
+select g.id, d.id, true
+from (values ('f6000000-0000-0000-0000-000000000001'::uuid, 'd6000000-0000-0000-0000-000000000001'::uuid),
+             ('f6000000-0000-0000-0000-000000000002'::uuid, 'd6000000-0000-0000-0000-000000000002'::uuid)) g(id, cohort_id)
+join public.cohort_requirement_dates d on d.cohort_id = g.cohort_id and d.module = 'triads' and d.ordinal = 1;
 insert into public.triad_group_members (triad_group_id, enrollment_id, member_order) values
   ('f6000000-0000-0000-0000-000000000001', 'e6000000-0000-0000-0000-000000000001', 1),
   ('f6000000-0000-0000-0000-000000000001', 'e6000000-0000-0000-0000-000000000002', 2),

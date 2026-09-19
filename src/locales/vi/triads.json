@@ -94,7 +94,7 @@
     "loadError": "Không thể tải các session triad của bạn.",
     "empty": "Chưa có session triad nào."
   },
-  "sessionLabel": "Session {{n}}",
+  "sessionLabel": "Triad {{n}}",
   "closedGroup": "Nhóm trước đây (đã đóng)",
   "progress": {
     "label": "Triads đã hoàn thành {{completed}}/{{required}}",
@@ -114,5 +114,15 @@
     "noOpenTitle": "Chưa có session nào được lên lịch",
     "noOpenBody": "Nhóm của bạn chưa có session đang mở. Hãy đề xuất một thời gian — session được xác nhận khi mọi người chấp nhận."
   },
-  "noGroupBody": "Quản trị viên sẽ xếp bạn vào một nhóm Triad của cohort. Các session Triad trước đây của bạn được liệt kê bên dưới."
+  "requirement": {
+    "title": "Triad {{n}}",
+    "due": "Hạn {{date}}",
+    "completed": "Hoàn thành {{date}}",
+    "overdue": "Quá hạn",
+    "assigned": "Đã có nhóm",
+    "pending": "Đang chờ xếp nhóm",
+    "pendingBody": "Ban tổ chức sẽ xếp bạn vào một nhóm Triad {{n}}. Bạn sẽ nhận được thông báo khi nhóm sẵn sàng.",
+    "completedBody": "Triad {{n}} đã hoàn thành. Các session thêm với nhóm này chỉ để luyện tập.",
+    "group": "Nhóm Triad {{n}} của tôi"
+  }
 }

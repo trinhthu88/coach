@@ -131,7 +131,7 @@
       "title": "Action items",
       "more": "+{{count}} more"
     },
-    "triadSession": "Session {{count}}"
+    "triadSession": "Triad {{n}}"
   },
   "detail": {
     "sessionNotFound": {

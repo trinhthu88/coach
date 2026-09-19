@@ -94,7 +94,7 @@
     "loadError": "Your triad sessions could not be loaded.",
     "empty": "No triad sessions yet."
   },
-  "sessionLabel": "Session {{n}}",
+  "sessionLabel": "Triad {{n}}",
   "closedGroup": "Earlier group (closed)",
   "progress": {
     "label": "Triads {{completed}}/{{required}} completed",
@@ -114,5 +114,15 @@
     "noOpenTitle": "No session scheduled",
     "noOpenBody": "Your group has no open session. Propose a time — it is confirmed once everyone accepts."
   },
-  "noGroupBody": "Your admin places you in a Triad group for your cohort. Your earlier Triad sessions are listed below."
+  "requirement": {
+    "title": "Triad {{n}}",
+    "due": "Due {{date}}",
+    "completed": "Completed {{date}}",
+    "overdue": "Overdue",
+    "assigned": "Group assigned",
+    "pending": "Group assignment pending",
+    "pendingBody": "The programme team will place you in a Triad {{n}} group. You'll be notified when it's ready.",
+    "completedBody": "Triad {{n}} is complete. Extra sessions with this group are practice only.",
+    "group": "My Triad {{n}} group"
+  }
 }

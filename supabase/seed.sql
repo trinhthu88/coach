@@ -294,12 +294,17 @@ BEGIN
         ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id;
     END IF;
   END LOOP;
-  -- Triad: one cohort-level group (membership by enrollment) that practises
-  -- together across the cohort's required Triad sessions; the session time is
-  -- its scheduled time. A group belongs to no requirement unit.
-  INSERT INTO triad_groups(id,cohort_id,group_language)
-    VALUES('eeeeeeee-eeee-4eee-8eee-000000000001', cb, 'vi')
+  -- Triad: every required Triad has its own group assignment. This is the
+  -- cohort's Triad 1 group (membership by enrollment); the session time is
+  -- its scheduled time.
+  INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language)
+    SELECT 'eeeeeeee-eeee-4eee-8eee-000000000001', d.id, 'vi'
+    FROM cohort_requirement_dates d
+    WHERE d.cohort_id = cb AND d.programme_id = pb AND d.module = 'triads' AND d.ordinal = 1
     ON CONFLICT(id) DO NOTHING;
+  IF NOT EXISTS (SELECT 1 FROM triad_groups WHERE id = 'eeeeeeee-eeee-4eee-8eee-000000000001') THEN
+    RAISE EXCEPTION 'seed: cohort B has no Triad 1 requirement date';
+  END IF;
   INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
     SELECT v.triad_group_id, v.enrollment_id, v.member_order
     FROM (VALUES
@@ -595,12 +600,10 @@ BEGIN
     END LOOP;
   END;
 
-  -- Triads: a completed session is evidence for every member of its
-  -- (historical) group; progress counts distinct completed sessions, capped at
-  -- the 2 required, against cohort C's cumulative Triad due dates. Groups are
-  -- cohort-level: after a group's session a learner may be regrouped (the old
-  -- group is closed, its session stays theirs) and practise again in a new
-  -- group — completion follows the enrollment, not the group.
+  -- Triads: every required Triad has its own group assignment. A completed
+  -- session of a Triad N group fulfils Triad N for every member; progress
+  -- counts fulfilled requirements (capped at the 2 required), each against its
+  -- own cohort C deadline. Triad 2 groups mix learners differently.
   DECLARE
     e1 uuid := '14141414-1414-4141-8141-000000000001';
     e2 uuid := '14141414-1414-4141-8141-000000000002';
@@ -612,20 +615,24 @@ BEGIN
   BEGIN
     FOR grp IN
       SELECT * FROM (VALUES
-        -- Leaders 1, 2 and 3 complete their first Triad session together;
-        -- the group then closes (regrouped).
-        (1, '15151515-1515-4151-8151-000000000001'::uuid, ARRAY[e1,e2,e3], '1c1c1c1c-1c1c-41c1-81c1-000000000001'::uuid, '2026-05-03'::timestamptz, false),
-        -- Leaders 4 and 9 (a dyad) complete their first session; regrouped.
-        (2, '15151515-1515-4151-8151-000000000003'::uuid, ARRAY[e4,e9], '1c1c1c1c-1c1c-41c1-81c1-000000000003'::uuid, '2026-05-03'::timestamptz, false),
-        -- Leaders 1 and 2 complete their second (final) session in a new group.
-        (3, '15151515-1515-4151-8151-000000000002'::uuid, ARRAY[e1,e2], '1c1c1c1c-1c1c-41c1-81c1-000000000002'::uuid, '2026-07-05'::timestamptz, true),
-        -- Leader 9's second and leader 10's first session, in a new group.
-        (4, '15151515-1515-4151-8151-000000000004'::uuid, ARRAY[e9,e10], '1c1c1c1c-1c1c-41c1-81c1-000000000004'::uuid, '2026-07-05'::timestamptz, true)
-      ) AS g(ord, group_id, members, session_id, starts_at, stays_active)
+        -- Triad 1: leaders 1, 2 and 3 complete it together.
+        (1, 1, '15151515-1515-4151-8151-000000000001'::uuid, ARRAY[e1,e2,e3], '1c1c1c1c-1c1c-41c1-81c1-000000000001'::uuid, '2026-05-03'::timestamptz, true),
+        -- Triad 1: leaders 4 and 9 (a dyad) complete it.
+        (2, 1, '15151515-1515-4151-8151-000000000003'::uuid, ARRAY[e4,e9], '1c1c1c1c-1c1c-41c1-81c1-000000000003'::uuid, '2026-05-03'::timestamptz, true),
+        -- Triad 2: leaders 1 and 9 (new partners) complete it.
+        (3, 2, '15151515-1515-4151-8151-000000000002'::uuid, ARRAY[e1,e9], '1c1c1c1c-1c1c-41c1-81c1-000000000002'::uuid, '2026-07-05'::timestamptz, true),
+        -- Triad 2: leaders 2 and 10 complete it (leader 10 has no Triad 1 group yet).
+        (4, 2, '15151515-1515-4151-8151-000000000004'::uuid, ARRAY[e2,e10], '1c1c1c1c-1c1c-41c1-81c1-000000000004'::uuid, '2026-07-05'::timestamptz, true)
+      ) AS g(ord, unit, group_id, members, session_id, starts_at, stays_active)
       ORDER BY ord
     LOOP
-      INSERT INTO triad_groups(id,cohort_id,group_language) VALUES(grp.group_id,cc,'vi')
+      INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language)
+        SELECT grp.group_id, d.id, 'vi' FROM cohort_requirement_dates d
+        WHERE d.cohort_id = cc AND d.programme_id = pc AND d.module = 'triads' AND d.ordinal = grp.unit
         ON CONFLICT(id) DO NOTHING;
+      IF NOT EXISTS (SELECT 1 FROM triad_groups WHERE id = grp.group_id) THEN
+        RAISE EXCEPTION 'seed: cohort C has no Triad % requirement date', grp.unit;
+      END IF;
       INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
         SELECT grp.group_id, m.enrollment_id, m.ord
         FROM unnest(grp.members) WITH ORDINALITY AS m(enrollment_id, ord)

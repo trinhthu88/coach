@@ -24,4 +24,6 @@ export interface DevelopmentSessionItem {
   /** Completed AND attributed to this enrollment — i.e. counted by canonical module progress (before the requirement cap). */
   isProgrammeEvidence?: boolean;
   counterpartNames?: string[];
+  /** Triad sessions: the requirement of the session's group ("Triad N"). */
+  requirementUnitNumber?: number | null;
 }

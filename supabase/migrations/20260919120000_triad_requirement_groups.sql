@@ -843,8 +843,11 @@ AS $$
         'milestone', f.unit_number,
         'cohort_requirement_date_id', f.cohort_requirement_date_id,
         'due_on', f.due_on,
+        'training_week_id', (SELECT d.training_week_id FROM public.cohort_requirement_dates d WHERE d.id = f.cohort_requirement_date_id),
         'is_due', f.due_on <= p_as_of,
         'fulfilled', coalesce(f.fulfilled_on <= p_as_of, false),
+        -- this requirement is fulfilled (by its own group's session), never cumulative
+        'satisfied', coalesce(f.fulfilled_on <= p_as_of, false),
         'fulfilled_on', CASE WHEN f.fulfilled_on <= p_as_of THEN f.fulfilled_on END,
         'overdue', f.due_on <= p_as_of AND NOT coalesce(f.fulfilled_on <= p_as_of, false),
         'triad_group_id', f.triad_group_id)

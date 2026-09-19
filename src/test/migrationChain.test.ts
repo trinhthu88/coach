@@ -155,9 +155,11 @@ describe("migration chain — canonical final state", () => {
     const CLEANUP = "20260918185900_triad_legacy_data_cleanup.sql";
     const CUTOVER = "20260918190000_triad_canonical_cutover.sql";
     const DEPLOYMENT_2 = join(process.cwd(), "supabase/deployment-2");
-    const RETIRE_TRIAD = "20260918199000_triad_retire_legacy.sql";
+    const REQUIREMENT_GROUPS = "20260919120000_triad_requirement_groups.sql";
+    const RETIRE_TRIAD = "20260919190000_triad_retire_legacy.sql";
     const RETIRED_TRIAD_FIELDS = /(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|completion_deadline|programme_triad_rounds|\btriad_rounds\b|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)/;
-    const UNIT_OWNERSHIP = /cohort_requirement_date_id|canonical_triad_requirement_fulfilment|triad_requirement_units_internal|triad_unit_enrollment_status_internal|cohort_triad_operations/;
+    // Retired cohort-scoped assignment: a group was once for the whole cohort.
+    const COHORT_SCOPED_ASSIGNMENT = /triad_cohort_candidates_internal|admin_triad_create_group\(p_cohort_id|triad_create_group_internal\(\s*p_cohort_id|cohort_triad_operations/;
 
     it("deployment 1 never drops legacy data: the retirement lives outside supabase/migrations (deployment 2)", () => {
       expect(files).toContain(CLEANUP);
@@ -170,8 +172,12 @@ describe("migration chain — canonical final state", () => {
       expect(readdirSync(DEPLOYMENT_2)).toEqual([RETIRE_TRIAD]);
     });
 
-    it("deployment 2 drops the legacy round tables and slot / role / response / answer columns, and keeps the group's cohort", () => {
+    it("deployment 2 drops the legacy round tables and slot / role / response / answer columns, and keeps the group's requirement and cohort", () => {
       const sql = readFileSync(join(DEPLOYMENT_2, RETIRE_TRIAD), "utf8");
+      // It sorts after the requirement-groups migration and requires its link.
+      expect(RETIRE_TRIAD > REQUIREMENT_GROUPS).toBe(true);
+      expect(sql).not.toMatch(/DROP COLUMN cohort_requirement_date_id/);
+      expect(sql).toMatch(/column_name = 'cohort_requirement_date_id' AND is_nullable = 'NO'/);
       expect(sql).toMatch(/DROP TABLE public\.triad_rounds;/);
       expect(sql).toMatch(/DROP TABLE public\.programme_triad_rounds;/);
       for (const column of ["member_1_id", "enrollment_1_id", "coach_enrollment_id", "coachee_enrollment_id", "observer_enrollment_id",
@@ -181,35 +187,55 @@ describe("migration chain — canonical final state", () => {
       expect(sql).not.toMatch(/DROP COLUMN cohort_id/);
     });
 
-    it("no final function reads a retired Triad field or ties a group / session to a requirement unit", () => {
+    it("no final function reads a retired Triad field or keeps the cohort-scoped assignment", () => {
       for (const file of files.filter((f) => f > CUTOVER)) {
         const sql = readFileSync(join(DIR, file), "utf8");
         expect(sql, file).not.toMatch(/CREATE TABLE[^;]*\b(programme_)?triad_rounds\b/i);
         for (const { name, body } of namedFunctionDefinitions(sql)) {
           expect(body, `${file} ${name}`).not.toMatch(RETIRED_TRIAD_FIELDS);
-          expect(body, `${file} ${name}`).not.toMatch(UNIT_OWNERSHIP);
         }
       }
-      for (const { name, body } of namedFunctionDefinitions(readFileSync(join(DIR, CUTOVER), "utf8"))) {
-        expect(body, name).not.toMatch(UNIT_OWNERSHIP);
+      for (const name of ["triad_create_group_internal", "admin_triad_create_group", "triad_clear_unconfirmed_auto_groups_internal",
+        "admin_triad_change_member", "triad_reminder_targets_internal", "admin_cohort_triad_groups"]) {
+        expect(lastDefinition(name)?.body, name).not.toMatch(COHORT_SCOPED_ASSIGNMENT);
       }
+      const sql = readFileSync(join(DIR, REQUIREMENT_GROUPS), "utf8");
+      expect(sql).toMatch(/DROP FUNCTION IF EXISTS public\.triad_cohort_candidates_internal\(uuid\)/);
     });
 
-    it("a group belongs to a cohort; membership is enrollment-based, cohort-checked, final once a session exists, one active group per enrollment", () => {
-      const sql = readFileSync(join(DIR, CUTOVER), "utf8");
-      expect(sql).toMatch(/ALTER TABLE public\.triad_groups\s+ALTER COLUMN cohort_id SET NOT NULL/);
-      expect(sql).not.toMatch(/ADD COLUMN cohort_requirement_date_id/);
+    it("EVERY REQUIRED TRIAD HAS ITS OWN GROUP: a group is for one cohort requirement; one active group per enrollment PER REQUIREMENT", () => {
+      const sql = readFileSync(join(DIR, REQUIREMENT_GROUPS), "utf8");
+      expect(sql).toMatch(/ADD COLUMN cohort_requirement_date_id uuid REFERENCES public\.cohort_requirement_dates\(id\) ON DELETE RESTRICT/);
+      expect(sql).toMatch(/ALTER COLUMN cohort_requirement_date_id SET NOT NULL/);
       const member = lastDefinition("triad_validate_group_member")?.body ?? "";
-      expect(member).toMatch(/e\.cohort_id IS DISTINCT FROM g\.cohort_id/);
+      // Members belong to the requirement's cohort AND programme.
+      expect(member).toMatch(/e\.cohort_id IS DISTINCT FROM req\.cohort_id OR e\.programme_id IS DISTINCT FROM req\.programme_id/);
+      // Final once the group has a session.
       expect(member).toMatch(/triad_sessions s WHERE s\.triad_group_id = g\.id/);
-      expect(member).toMatch(/og\.is_active/);
+      // One active group per enrollment and requirement — never per cohort.
+      const activeCheck = member.match(/JOIN public\.triad_groups og[\s\S]*?\) THEN/)?.[0] ?? "";
+      expect(activeCheck).toMatch(/og\.is_active/);
+      expect(activeCheck).toMatch(/og\.cohort_requirement_date_id = g\.cohort_requirement_date_id/);
+      expect(member).toMatch(/pg_advisory_xact_lock\(hashtextextended\('triad_member:'/);
+      // The group's cohort is derived from its requirement and immutable.
+      const guard = lastDefinition("triad_guard_group")?.body ?? "";
+      expect(guard).toMatch(/NEW\.cohort_id := req\.cohort_id/);
+      expect(guard).toMatch(/requirement \(and cohort\) cannot change/);
+      expect(guard).toMatch(/og\.cohort_requirement_date_id = NEW\.cohort_requirement_date_id/);
+      // Assignment is requirement-scoped.
       const create = lastDefinition("triad_create_group_internal")?.body ?? "";
-      expect(create).toMatch(/e\.cohort_id IS DISTINCT FROM p_cohort_id/);
+      expect(create).toMatch(/INSERT INTO public\.triad_groups \(cohort_requirement_date_id/);
+      const candidates = lastDefinition("triad_requirement_learners_internal")?.body ?? "";
+      expect(candidates).toMatch(/g\.cohort_requirement_date_id = req\.id AND g\.is_active/);
+      expect(candidates).toMatch(/prior_partner|og\.cohort_requirement_date_id <> req\.id/);
+      // A requirement with groups cannot be removed; regenerating keeps identities.
+      expect(sql).toMatch(/CREATE TRIGGER cohort_requirement_dates_keep_triad_groups/);
+      expect(lastDefinition("admin_save_cohort_requirement_dates")?.body).toMatch(/ON CONFLICT \(cohort_id, programme_id, module, ordinal\) DO UPDATE/);
     });
 
     it("every final Triad-reading function derives participants from historical membership", () => {
       for (const name of ["learner_session_history", "record_goal_checkins", "canonical_triad_group_members", "validate_triad_session_cap",
-        "notify_triad_session_booked", "triad_sync_session_attributions", "sponsor_canonical_activity"]) {
+        "notify_triad_session_booked", "triad_sync_session_attributions", "canonical_triad_requirement_fulfilment"]) {
         const last = lastDefinition(name);
         expect(last?.body, name).toMatch(/triad_group_members/);
         expect(last?.body, name).not.toMatch(RETIRED_TRIAD_FIELDS);
@@ -226,20 +252,35 @@ describe("migration chain — canonical final state", () => {
       expect(feed).not.toMatch(/round_number/);
     });
 
-    it("Triad completion = distinct completed sessions of the enrollment's groups, capped, against cumulative cohort dates", () => {
+    it("Triad completion = requirements fulfilled by a completed session of THEIR group, capped, each against its own deadline", () => {
+      const fulfilment = lastDefinition("canonical_triad_requirement_fulfilment")?.body ?? "";
+      expect(fulfilment).toMatch(/WHERE g\.cohort_requirement_date_id = d\.id/);
+      expect(fulfilment).toMatch(/min\(ev\.occurred_on\) FILTER \(WHERE ev\.status = 'completed'\)/);
       const activity = lastDefinition("sponsor_canonical_activity")?.body ?? "";
-      // One activity row per (enrollment, session) — never per requirement.
-      expect(activity).toMatch(/JOIN public\.triad_sessions s ON s\.id = a\.source_activity_id/);
+      // One activity row per requirement — never per session.
+      expect(activity).toMatch(/FROM public\.canonical_triad_requirement_fulfilment\(p_enrollment_id\) f/);
+      expect(activity).not.toMatch(/JOIN public\.triad_sessions s ON s\.id = a\.source_activity_id/);
+      const progress = lastDefinition("canonical_module_progress")?.body ?? "";
+      expect(progress).toMatch(/a\.requirement_due_on IS NULL OR a\.requirement_due_on <= p_as_of/);
+      for (const name of ["canonical_enrollment_journey", "get_sponsor_programme_journey"]) {
+        expect(lastDefinition(name)?.body, name).toMatch(/a\.requirement_due_on IS NULL OR a\.requirement_due_on <= sm\.due_on/);
+      }
       const completion = lastDefinition("canonical_triad_completion")?.body ?? "";
       expect(completion).toMatch(/canonical_module_progress\(p_enrollment_id, p_as_of\)/);
-      expect(completion).toMatch(/cohort_requirement_dates/);
+      expect(completion).toMatch(/canonical_triad_requirement_fulfilment\(p_enrollment_id\)/);
+      expect(completion).not.toMatch(/completed_units, 0\) >= d\.ordinal/);
       const sync = lastDefinition("triad_sync_session_attributions")?.body ?? "";
       expect(sync).toMatch(/occurred_on, milestone_id\)[\s\S]*NULL/);
       expect(sync).toMatch(/s\.scheduled_start_time::date/);
-      // The shared progress / journey engines are unchanged by the cutover.
-      for (const name of ["canonical_module_progress", "canonical_enrollment_journey", "get_sponsor_programme_journey"]) {
-        expect(lastDefinition(name)?.body, name).not.toMatch(/requirement_due_on/);
-      }
+      // A group whose requirement is fulfilled schedules no more programme sessions.
+      expect(lastDefinition("learner_triad_schedule_session")?.body).toMatch(/s\.status = 'completed'/);
+    });
+
+    it("existing groups are mapped to a requirement deterministically; ambiguity stops the deployment", () => {
+      const sql = readFileSync(join(DIR, REQUIREMENT_GROUPS), "utf8");
+      expect(sql).toMatch(/RAISE EXCEPTION 'Triad requirement groups: cannot map groups to one requirement: %'/);
+      expect(sql).toMatch(/Triad progress changed for real enrollments/);
+      expect(sql).toMatch(/several active groups for one requirement/);
     });
 
     it("the readiness report carries exactly the shipped reviewed decisions and the repository's migration versions", () => {
