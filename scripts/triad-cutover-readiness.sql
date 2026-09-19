@@ -143,7 +143,12 @@ WHERE a.source_activity_type = 'triad'
 \echo '== 6. Review: past confirmed sessions (a "Mark complete" the legacy auto-confirm trigger may have reverted)'
 SELECT s.id AS session_id, s.triad_group_id, g.cohort_id,
   coalesce(s.proposed_start_time, s.start_time) AS effective_time,
-  s.updated_at > coalesce(s.proposed_start_time, s.start_time) AS updated_after_start,
+  s.created_at, s.updated_at,
+  -- trg_triad_sessions_updated stamps every UPDATE, so a reverted "Mark
+  -- complete" leaves updated_at after both the insert and the start time.
+  -- Rows inserted after their start (seeds, imports) and never updated are
+  -- not candidates.
+  s.updated_at > greatest(s.created_at, coalesce(s.proposed_start_time, s.start_time)) AS updated_after_start,
   (SELECT count(*) FROM public.triad_reflections r WHERE r.triad_session_id = s.id) AS reflections,
   (SELECT count(*) FROM public.goal_checkins gc WHERE gc.source_activity_type = 'triad' AND gc.source_activity_id = s.id) AS goal_checkins
 FROM public.triad_sessions s

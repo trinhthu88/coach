@@ -29,7 +29,7 @@ never a second answer to a business question.
 
 ## Triad ownership map
 
-Established by `20260918190000_triad_canonical_cutover` and `20260918191000_triad_retire_legacy`, with `20260918192000_triad_completion_rule_stable` and `20260918193000_triad_history_guards`.
+Established by `20260918190000_triad_canonical_cutover` and `20260918199000_triad_retire_legacy`, with `20260918192000_triad_completion_rule_stable` and `20260918193000_triad_history_guards`.
 
 | Triad fact | Authoritative source | Read through | Notes |
 |---|---|---|---|
@@ -157,5 +157,5 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
    - the final-state guard at the end of
      `20260918170000_single_source_of_truth.sql`, which fails the deployment
      if the canonical definitions aren't in place, and the final-state guard
-     in `20260918191000_triad_retire_legacy.sql` (no retired Triad field or
+     in `20260918199000_triad_retire_legacy.sql` (no retired Triad field or
      client-callable internal Triad function).
