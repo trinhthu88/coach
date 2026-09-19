@@ -3985,6 +3985,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_enrollment_inactivity: {
+        Args: { p_programme_id?: string }
+        Returns: {
+          cohort_id: string
+          days_since_last_activity: number
+          enrollment_id: string
+          full_name: string
+          is_inactive: boolean
+          last_activity_at: string
+          programme_id: string
+          user_id: string
+        }[]
+      }
       admin_list_report_requests: {
         Args: never
         Returns: {
@@ -4001,6 +4014,16 @@ export type Database = {
           status: string
           updated_at: string
           updated_by: string
+        }[]
+      }
+      admin_programme_triad_reflection_rate: {
+        Args: { p_from?: string; p_programme_id: string; p_to?: string }
+        Returns: {
+          expected_reflections: number
+          is_total: boolean
+          rate_pct: number
+          submitted_reflections: number
+          training_week_id: string
         }[]
       }
       admin_save_cohort_requirement_dates: {
@@ -4226,6 +4249,18 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
+      canonical_enrollment_inactivity_internal: {
+        Args: { p_as_of?: string }
+        Returns: {
+          cohort_id: string
+          days_since_last_activity: number
+          enrollment_id: string
+          is_inactive: boolean
+          last_activity_at: string
+          programme_id: string
+          user_id: string
+        }[]
+      }
       canonical_enrollment_journey: {
         Args: { p_as_of: string; p_enrollment_id: string }
         Returns: Json
@@ -4346,6 +4381,17 @@ export type Database = {
           member_id: string
           member_slot: number
           triad_group_id: string
+        }[]
+      }
+      canonical_triad_requirement_fulfilment: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_on: string
+          cohort_requirement_date_id: string
+          due_on: string
+          fulfilled_on: string
+          proposed_on: string
+          unit_number: number
         }[]
       }
       check_can_book_mentoring_session: {
@@ -5048,6 +5094,7 @@ export type Database = {
         Returns: {
           module: Database["public"]["Enums"]["programme_module_type"]
           occurred_on: string
+          requirement_due_on: string
           status: string
         }[]
       }
@@ -5503,6 +5550,16 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      triad_reflection_rate_internal: {
+        Args: { p_from?: string; p_programme_id: string; p_to?: string }
+        Returns: {
+          expected_reflections: number
+          is_total: boolean
+          rate_pct: number
+          submitted_reflections: number
+          training_week_id: string
+        }[]
       }
       triad_reflections_visible_to_group: {
         Args: { p_session_id: string }

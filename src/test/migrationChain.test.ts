@@ -149,7 +149,7 @@ describe("migration chain — canonical final state", () => {
 
   describe("Triad canonical cutover", () => {
     const CUTOVER = "20260918190000_triad_canonical_cutover.sql";
-    const RETIRE_TRIAD = "20260918191000_triad_retire_legacy.sql";
+    const RETIRE_TRIAD = "20260918199000_triad_retire_legacy.sql";
     const RETIRED_TRIAD_FIELDS = /(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|completion_deadline|programme_triad_rounds|\btriad_rounds\b|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)/;
 
     it("the legacy round tables and slot / role / answer columns are dropped after the cutover", () => {
@@ -163,8 +163,14 @@ describe("migration chain — canonical final state", () => {
       }
     });
 
-    it("no migration after the retirement re-creates a round table or reads a retired Triad field", () => {
-      for (const file of files.filter((f) => f > RETIRE_TRIAD)) {
+    it("the legacy retirement is the last Triad migration (it ships in a second deployment)", () => {
+      const triadFiles = files.filter((f) => f >= CUTOVER && /triad|engagement_signals/.test(f));
+      expect(triadFiles[triadFiles.length - 1]).toBe(RETIRE_TRIAD);
+      expect(files[files.length - 1] >= RETIRE_TRIAD).toBe(true);
+    });
+
+    it("no migration after the cutover (other than the retirement itself) re-creates a round table or reads a retired Triad field", () => {
+      for (const file of files.filter((f) => f > CUTOVER && f !== RETIRE_TRIAD)) {
         const sql = readFileSync(join(DIR, file), "utf8");
         expect(sql, file).not.toMatch(/CREATE TABLE[^;]*\b(programme_)?triad_rounds\b/i);
         for (const { name, body } of namedFunctionDefinitions(sql)) {
@@ -195,8 +201,22 @@ describe("migration chain — canonical final state", () => {
         expect(body, name).toMatch(/cohort_requirement_dates/);
         expect(body, name).not.toMatch(/completion_deadline|triad_rounds/);
       }
-      // Unit overdue / completed come from canonical module progress, not a local rule.
-      expect(lastDefinition("triad_unit_enrollment_status_internal")?.body).toMatch(/canonical_module_progress/);
+      // Unit overdue / completed come from the one fulfilment rule, not a local rule.
+      for (const name of ["triad_unit_enrollment_status_internal", "learner_triad_overview"]) {
+        expect(lastDefinition(name)?.body, name).toMatch(/canonical_triad_requirement_fulfilment\(/);
+      }
+    });
+
+    it("Triad completion is requirement fulfilment: the activity feed counts requirements, never sessions", () => {
+      const rule = lastDefinition("canonical_triad_requirement_fulfilment")?.body ?? "";
+      expect(rule).toMatch(/g\.cohort_requirement_date_id = d\.id/);
+      expect(rule).toMatch(/session_activity_attributions/);
+      const activity = lastDefinition("sponsor_canonical_activity")?.body ?? "";
+      expect(activity).toMatch(/canonical_triad_requirement_fulfilment\(p_enrollment_id\)/);
+      expect(activity).not.toMatch(/source_activity_type = 'triad'/);
+      for (const name of ["canonical_module_progress", "canonical_enrollment_journey", "get_sponsor_programme_journey"]) {
+        expect(lastDefinition(name)?.body, name).toMatch(/requirement_due_on/);
+      }
     });
 
     it("group creation is requirement-scoped and cohort-first", () => {

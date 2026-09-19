@@ -25,18 +25,18 @@ const emailById = new Map([
 ]);
 
 describe("programme alerts — enrollment scoping", () => {
-  it("aggregates stale activity by enrollment, not person", () => {
+  it("formats one alert per canonical inactive enrollment, not per person", () => {
     const alerts = buildStaleProgrammeParticipantAlerts({
-      activeEnrollments: [
-        { enrollmentId: "enrol-old", userId: "coachee-1" },
-        { enrollmentId: "enrol-new", userId: "coachee-1" },
+      inactive: [
+        { enrollmentId: "enrol-old", userId: "coachee-1", lastActivityAt: "2026-08-01T10:00:00.000Z" },
+        { enrollmentId: "enrol-new", userId: "coachee-1", lastActivityAt: null },
       ],
-      activity: [{ userId: "coachee-1", enrollmentId: "enrol-old", timestamp: "2026-08-01T10:00:00.000Z" }],
       nameById,
       emailById,
-      now: NOW,
     });
     expect(alerts.map((a) => a.related_enrollment_id)).toEqual(["enrol-old", "enrol-new"]);
+    expect(alerts[0].message).toMatch(/last activity 1 Aug 2026/);
+    expect(alerts[1].message).toMatch(/no activity recorded since enrolling/);
   });
 
   it("aggregates quiz scores by enrollment", () => {

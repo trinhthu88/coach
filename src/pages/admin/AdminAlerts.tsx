@@ -8,7 +8,7 @@ import { AdminPageHeader, Pill } from "./_shared";
 import {
   buildFeedbackAlerts, buildMentoringPrepFileOverdueAlerts, buildMentoringFeedbackOverdueAlerts,
   buildStaleProgrammeParticipantAlerts, buildLowQuizScoreAlerts, buildFlaggedSessionAlerts,
-  type ScanActivityRow, type ScanQuizSubmissionRow,
+  type ScanQuizSubmissionRow,
   countOverdueActions,
   type ScanActionRow,
 } from "./alertScan";
@@ -117,9 +117,7 @@ export default function AdminAlerts() {
         { data: mentoringSessions },
         { data: assignments },
         { data: submissions },
-        { data: promptResponses },
-        { data: reflections },
-        { data: trainingProgress },
+        { data: inactivity },
         { data: flaggedFeedback },
         { data: actionRows },
       ] = await Promise.all([
@@ -137,9 +135,8 @@ export default function AdminAlerts() {
           .select("id, enrollment_id, mentee_id, status, start_time, prep_file_path, feedback_submitted_at"),
         supabase.from("assignments").select("id, assignment_type"),
         supabase.from("assignment_submissions").select("user_id, enrollment_id, assignment_id, score_pct, submitted_at"),
-        supabase.from("daily_prompt_responses").select("user_id, enrollment_id, responded_at"),
-        supabase.from("triad_reflections").select("enrollment_id, submitted_at, programme_enrollments(user_id)"),
-        supabase.from("training_progress").select("user_id, enrollment_id, completed_at"),
+        // "Inactive 7+ days" has one canonical rule (also used by the daily reminders and the weekly email).
+        supabase.rpc("admin_enrollment_inactivity", { p_programme_id: undefined }),
         supabase.from("coach_session_feedback").select("session_id, coach_id, flag_notes").eq("flag_for_admin", true),
         supabase.from("enrollment_actions").select("enrollment_id, status, due_date").neq("status", "completed"),
       ]);
@@ -215,21 +212,15 @@ export default function AdminAlerts() {
         })
       );
 
-      // Programme engagement (Phase 4) — stale participants, low quiz scores.
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-       const activeEnrollments = (enrollments || [])
-         .filter((e: AlertsScanEnrollmentRow) => effectiveStatus(e) === "active" && new Date(e.start_date) <= weekAgo)
-         .map((e: AlertsScanEnrollmentRow) => ({ enrollmentId: e.id, userId: e.user_id }));
-      const activity: ScanActivityRow[] = [
-         ...(submissions || []).filter((s: { enrollment_id: string | null }) => !!s.enrollment_id).map((s: { user_id: string; enrollment_id: string; submitted_at: string }) => ({ userId: s.user_id, enrollmentId: s.enrollment_id, timestamp: s.submitted_at })),
-         ...(promptResponses || []).filter((r: { enrollment_id: string | null }) => !!r.enrollment_id).map((r: { user_id: string; enrollment_id: string; responded_at: string | null }) => ({ userId: r.user_id, enrollmentId: r.enrollment_id, timestamp: r.responded_at })),
-         ...(reflections || [])
-           .filter((r): r is typeof r & { enrollment_id: string } => !!r.enrollment_id)
-           .map((r) => ({ userId: (r.programme_enrollments as { user_id: string } | null)?.user_id ?? "", enrollmentId: r.enrollment_id, timestamp: r.submitted_at })),
-         ...(trainingProgress || []).filter((p: { enrollment_id: string | null }) => !!p.enrollment_id).map((p: { user_id: string; enrollment_id: string; completed_at: string | null }) => ({ userId: p.user_id, enrollmentId: p.enrollment_id, timestamp: p.completed_at })),
-      ];
+      // Programme engagement (Phase 4) — stale participants (canonical rule), low quiz scores.
       newAlerts.push(
-         ...buildStaleProgrammeParticipantAlerts({ activeEnrollments, activity, nameById: profById, emailById, now })
+        ...buildStaleProgrammeParticipantAlerts({
+          inactive: (inactivity || [])
+            .filter((row) => row.is_inactive)
+            .map((row) => ({ enrollmentId: row.enrollment_id, userId: row.user_id, lastActivityAt: row.last_activity_at })),
+          nameById: profById,
+          emailById,
+        })
       );
 
       const quizAssignmentIds = new Set((assignments || []).filter((a: { id: string; assignment_type: string }) => a.assignment_type === "quiz").map((a) => a.id));

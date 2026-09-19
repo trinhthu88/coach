@@ -106,35 +106,16 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Triad reflection rate: reflections on this programme's sessions
-      // completed this week, out of one per group member (dyads have two).
-      // An engagement signal only — Triad completion is canonical progress.
-      const { data: groups } = await admin
-        .from("triad_groups")
-        .select("id, cohort_requirement_dates!inner(programme_id), triad_group_members(enrollment_id)")
-        .eq("cohort_requirement_dates.programme_id", programme.id)
-        .eq("is_active", true);
-      const memberCountByGroup = new Map(
-        ((groups || []) as unknown as { id: string; triad_group_members: { enrollment_id: string }[] }[]).map((g) => [g.id, g.triad_group_members.length]),
-      );
-      let triadReflectionPct: number | null = null;
-      if (memberCountByGroup.size > 0) {
-        const { data: sessions } = await admin
-          .from("triad_sessions")
-          .select("id, triad_group_id")
-          .in("triad_group_id", [...memberCountByGroup.keys()])
-          .eq("status", "completed")
-          .gte("scheduled_start_time", weekAgoISO);
-        const sessionIds = (sessions || []).map((s) => s.id as string);
-        const expected = (sessions || []).reduce((sum, s) => sum + (memberCountByGroup.get(s.triad_group_id as string) ?? 0), 0);
-        if (sessionIds.length > 0) {
-          const { count } = await admin
-            .from("triad_reflections")
-            .select("id", { count: "exact", head: true })
-            .in("triad_session_id", sessionIds);
-          triadReflectionPct = ratio(count || 0, expected);
-        }
-      }
+      // Triad reflection rate — THE canonical calculation
+      // (triad_reflection_rate_internal, also read by Admin Analytics) for
+      // sessions completed this week. Engagement only, never completion.
+      const { data: triadRate } = await admin.rpc("triad_reflection_rate_internal", {
+        p_programme_id: programme.id,
+        p_from: weekAgoISO.slice(0, 10),
+        p_to: now.toISOString().slice(0, 10),
+      });
+      const triadTotal = ((triadRate || []) as { is_total: boolean; rate_pct: number | null }[]).find((r) => r.is_total);
+      const triadReflectionPct: number | null = triadTotal?.rate_pct ?? null;
 
       let promptResponseRatePct: number | null = null;
       if (weekIds.length > 0) {
@@ -171,16 +152,13 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // Red flags (reuses the same admin_alerts rows send-programme-reminders
-    // writes — this just reports on them rather than recomputing them)
+    // Red flags — THE canonical "inactive 7+ days" rule
+    // (canonical_enrollment_inactivity_internal), the same one the daily
+    // reminders and Admin Alerts / Analytics read.
     // ------------------------------------------------------------------
-    const { data: staleAlerts } = await admin
-      .from("admin_alerts")
-      .select("related_coachee_id")
-      .eq("alert_type", "stale_participant")
-      .eq("resolved", false)
-      .gte("created_at", weekAgoISO);
-    const staleIds = [...new Set((staleAlerts || []).map((a) => a.related_coachee_id as string).filter(Boolean))];
+    const { data: inactivity } = await admin.rpc("canonical_enrollment_inactivity_internal", {});
+    const inactiveRows = ((inactivity || []) as { user_id: string; is_inactive: boolean }[]).filter((r) => r.is_inactive);
+    const staleIds = [...new Set(inactiveRows.map((r) => r.user_id))];
     let redFlagNames: string[] = [];
     if (staleIds.length > 0) {
       const { data: staleProfiles } = await admin.from("profiles").select("full_name").in("id", staleIds.slice(0, 20));

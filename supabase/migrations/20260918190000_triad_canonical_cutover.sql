@@ -26,7 +26,7 @@
 --
 -- This migration is additive for storage: legacy columns and triad_rounds /
 -- programme_triad_rounds keep their data (clients lose access) and are
--- removed by 20260918191000_triad_retire_legacy after archiving. It runs as
+-- removed by 20260918199000_triad_retire_legacy after archiving. It runs as
 -- one transaction and FAILS on any ambiguity or on any unexplained difference
 -- between the pre- and post-cutover facts (see the verification block).
 -- ============================================================================
@@ -67,24 +67,38 @@ SELECT (SELECT count(*) FROM public.triad_groups) AS groups,
 DO $$
 DECLARE bad text;
 BEGIN
-  -- Every group has a cohort, and its slot enrollments match its slot learners,
-  -- programme and cohort.
+  -- Every group's slot enrollments are its slot learners (identity: never
+  -- waivable).
   SELECT string_agg(g.id::text, ', ') INTO bad
   FROM public.triad_groups g
-  WHERE g.cohort_id IS NULL
-     OR EXISTS (
+  WHERE EXISTS (
        SELECT 1
        FROM (VALUES (g.member_1_id, g.enrollment_1_id), (g.member_2_id, g.enrollment_2_id), (g.member_3_id, g.enrollment_3_id)) slot(user_id, enrollment_id)
        LEFT JOIN public.programme_enrollments e ON e.id = slot.enrollment_id
        WHERE (slot.user_id IS NULL) <> (slot.enrollment_id IS NULL)
-          OR (slot.enrollment_id IS NOT NULL AND (
-                e.id IS NULL OR e.user_id <> slot.user_id
-                OR e.programme_id <> g.programme_id
-                OR e.cohort_id IS DISTINCT FROM g.cohort_id))
+          OR (slot.enrollment_id IS NOT NULL AND (e.id IS NULL OR e.user_id <> slot.user_id))
      )
      OR g.enrollment_1_id IS NULL OR g.enrollment_2_id IS NULL;
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'Triad cutover: group slots are inconsistent with their enrollments (groups: %)', bad;
+  END IF;
+
+  -- Every group has a cohort and all its enrollments are in that cohort and
+  -- programme — unless a reviewed decision keeps it as history only
+  -- (historical_unlinked: it never becomes an operational group).
+  SELECT string_agg(g.id::text, ', ') INTO bad
+  FROM public.triad_groups g
+  WHERE (g.cohort_id IS NULL
+     OR EXISTS (
+       SELECT 1
+       FROM (VALUES (g.enrollment_1_id), (g.enrollment_2_id), (g.enrollment_3_id)) slot(enrollment_id)
+       JOIN public.programme_enrollments e ON e.id = slot.enrollment_id
+       WHERE e.programme_id <> g.programme_id OR e.cohort_id IS DISTINCT FROM g.cohort_id))
+    AND NOT EXISTS (SELECT 1 FROM public.triad_cutover_group_decisions dec
+                    WHERE dec.triad_group_id = g.id AND dec.decision = 'historical_unlinked');
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'Triad cutover: group members are outside the group''s cohort / programme (groups: %)', bad
+      USING HINT = 'Correct the enrollments, or record a reviewed historical_unlinked decision for the group.';
   END IF;
 
   -- Every session's stored role enrollments are exactly its group's
@@ -600,11 +614,11 @@ DROP POLICY IF EXISTS "Triad rounds: participant read" ON public.triad_rounds;
 DROP POLICY IF EXISTS "Programme triad rounds: authenticated view" ON public.programme_triad_rounds;
 DROP POLICY IF EXISTS "Programme triad rounds: admin manage" ON public.programme_triad_rounds;
 
--- DEPRECATED (dropped by 20260918191000_triad_retire_legacy): no client or
+-- DEPRECATED (dropped by 20260918199000_triad_retire_legacy): no client or
 -- runtime access from here on.
 REVOKE ALL ON public.triad_rounds, public.programme_triad_rounds FROM PUBLIC, anon, authenticated;
-COMMENT ON TABLE public.triad_rounds IS 'DEPRECATED — retired by the Triad cutover; archived and dropped in 20260918191000.';
-COMMENT ON TABLE public.programme_triad_rounds IS 'DEPRECATED — never consumed; archived and dropped in 20260918191000.';
+COMMENT ON TABLE public.triad_rounds IS 'DEPRECATED — retired by the Triad cutover; archived and dropped in 20260918199000 (second deployment).';
+COMMENT ON TABLE public.programme_triad_rounds IS 'DEPRECATED — never consumed; archived and dropped in 20260918199000 (second deployment).';
 
 -- Legacy slot / role / answer columns are no longer written.
 ALTER TABLE public.triad_groups
@@ -2725,14 +2739,26 @@ BEGIN
      EXCEPT SELECT session_id, enrollment_id FROM _triad_before_ownership)) diff;
   IF n > 0 THEN RAISE EXCEPTION 'Triad cutover verification: % session ownership differences', n; END IF;
 
-  -- Evidence: the same (enrollment, session) attributions as before.
+  -- Evidence: the same (enrollment, session) attributions as before. The one
+  -- accepted difference is evidence backfilled for a session that had NONE
+  -- (a legacy session never attributed): it is reported, never silent.
   SELECT count(*) INTO n FROM (
     (SELECT enrollment_id, session_id FROM _triad_before_attributions
      EXCEPT SELECT enrollment_id, source_activity_id FROM public.session_activity_attributions WHERE source_activity_type = 'triad')
     UNION ALL
-    (SELECT enrollment_id, source_activity_id FROM public.session_activity_attributions WHERE source_activity_type = 'triad'
+    (SELECT a.enrollment_id, a.source_activity_id FROM public.session_activity_attributions a
+     WHERE a.source_activity_type = 'triad'
+       AND EXISTS (SELECT 1 FROM _triad_before_attributions b WHERE b.session_id = a.source_activity_id)
      EXCEPT SELECT enrollment_id, session_id FROM _triad_before_attributions)) diff;
   IF n > 0 THEN RAISE EXCEPTION 'Triad cutover verification: % Triad evidence differences', n; END IF;
+  SELECT count(*), string_agg(DISTINCT a.source_activity_id::text, ', ') INTO n, bad
+  FROM public.session_activity_attributions a
+  WHERE a.source_activity_type = 'triad'
+    AND NOT EXISTS (SELECT 1 FROM _triad_before_attributions b WHERE b.session_id = a.source_activity_id);
+  IF n > 0 THEN
+    RAISE NOTICE 'Triad cutover: % evidence row(s) backfilled for legacy sessions that had none (sessions: %)', n, bad;
+  END IF;
+  bad := NULL;
 
   -- Canonical Triad progress per enrollment is unchanged, except where an old
   -- attribution carried a stale date (session later rescheduled) — then the
@@ -2746,7 +2772,11 @@ BEGIN
     AND NOT EXISTS (
       SELECT 1 FROM _triad_before_attributions ba
       JOIN public.triad_sessions s ON s.id = ba.session_id
-      WHERE ba.enrollment_id = b.enrollment_id AND ba.occurred_on IS DISTINCT FROM s.scheduled_start_time::date);
+      WHERE ba.enrollment_id = b.enrollment_id AND ba.occurred_on IS DISTINCT FROM s.scheduled_start_time::date)
+    AND NOT EXISTS (
+      SELECT 1 FROM public.session_activity_attributions a
+      WHERE a.enrollment_id = b.enrollment_id AND a.source_activity_type = 'triad'
+        AND NOT EXISTS (SELECT 1 FROM _triad_before_attributions x WHERE x.session_id = a.source_activity_id));
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'Triad cutover verification: canonical Triad progress changed for enrollments %', bad;
   END IF;

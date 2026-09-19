@@ -1,5 +1,12 @@
 -- ============================================================================
--- TRIAD LEGACY RETIREMENT (contract step after 20260918190000).
+-- TRIAD LEGACY RETIREMENT — SECOND DEPLOYMENT ONLY.
+--
+-- Deployment 1 ships 20260918185900 .. 20260918195000 (cutover, backfill,
+-- in-migration equivalence proof, requirement fulfilment, engagement
+-- signals) while every legacy column stays in place (archived, no longer
+-- read or written). This file is applied in a separate, later deployment,
+-- only after deployment 1 has been verified on production. It was
+-- 20260918191000 before; it is versioned last so migration order == deploy order.
 --
 -- The canonical Triad structures are live and proven equivalent (the cutover
 -- migration fails otherwise). Nothing reads the legacy shapes any more, so
@@ -31,7 +38,7 @@ SELECT 'triad_groups.legacy', g.id,
     'round_number', g.round_number, 'triad_round_id', g.triad_round_id,
     'member_1_id', g.member_1_id, 'member_2_id', g.member_2_id, 'member_3_id', g.member_3_id,
     'enrollment_1_id', g.enrollment_1_id, 'enrollment_2_id', g.enrollment_2_id, 'enrollment_3_id', g.enrollment_3_id),
-  '20260918191000_triad_retire_legacy'
+  '20260918199000_triad_retire_legacy'
 FROM public.triad_groups g
 ON CONFLICT (object_name, record_id) DO NOTHING;
 
@@ -42,7 +49,7 @@ SELECT 'triad_sessions.legacy', s.id,
     'member_2_response', s.member_2_response, 'member_3_response', s.member_3_response,
     'proposed_start_time', s.proposed_start_time, 'proposed_end_time', s.proposed_end_time,
     'start_time', s.start_time, 'proposed_by', s.proposed_by),
-  '20260918191000_triad_retire_legacy'
+  '20260918199000_triad_retire_legacy'
 FROM public.triad_sessions s
 ON CONFLICT (object_name, record_id) DO NOTHING;
 
@@ -50,7 +57,7 @@ INSERT INTO public.triad_cutover_archive (object_name, record_id, payload, migra
 SELECT 'triad_alternative_proposals.legacy', p.id,
   jsonb_build_object('proposed_by', p.proposed_by, 'member_1_response', p.member_1_response,
     'member_2_response', p.member_2_response, 'member_3_response', p.member_3_response),
-  '20260918191000_triad_retire_legacy'
+  '20260918199000_triad_retire_legacy'
 FROM public.triad_alternative_proposals p
 ON CONFLICT (object_name, record_id) DO NOTHING;
 
@@ -60,17 +67,17 @@ SELECT 'triad_reflections.legacy', r.id,
     'learned_as_coach', r.learned_as_coach, 'will_use_as_coach', r.will_use_as_coach,
     'learned_as_coachee', r.learned_as_coachee, 'will_use_as_coachee', r.will_use_as_coachee,
     'learned_as_observer', r.learned_as_observer, 'will_use_as_observer', r.will_use_as_observer),
-  '20260918191000_triad_retire_legacy'
+  '20260918199000_triad_retire_legacy'
 FROM public.triad_reflections r
 ON CONFLICT (object_name, record_id) DO NOTHING;
 
 -- Rounds were archived by the cutover; anything created since is archived too.
 INSERT INTO public.triad_cutover_archive (object_name, record_id, payload, migration_id)
-SELECT 'triad_rounds', tr.id, to_jsonb(tr), '20260918191000_triad_retire_legacy'
+SELECT 'triad_rounds', tr.id, to_jsonb(tr), '20260918199000_triad_retire_legacy'
 FROM public.triad_rounds tr
 ON CONFLICT (object_name, record_id) DO NOTHING;
 INSERT INTO public.triad_cutover_archive (object_name, record_id, payload, migration_id)
-SELECT 'programme_triad_rounds', p.id, to_jsonb(p), '20260918191000_triad_retire_legacy'
+SELECT 'programme_triad_rounds', p.id, to_jsonb(p), '20260918199000_triad_retire_legacy'
 FROM public.programme_triad_rounds p
 ON CONFLICT (object_name, record_id) DO NOTHING;
 

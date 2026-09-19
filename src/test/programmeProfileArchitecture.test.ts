@@ -281,6 +281,29 @@ describe("programme profile architecture", () => {
       }
     });
 
+    it("\"inactive 7+ days\" has one canonical calculation read by Admin and the Edge Functions", () => {
+      const readers = runtime.filter((f) => /rpc\(\s*"(admin_enrollment_inactivity|canonical_enrollment_inactivity_internal)"/.test(readFileSync(f, "utf8")));
+      expect(readers.map(label).sort()).toEqual([
+        "src/hooks/admin/useAdminProgrammeEngagement.ts",
+        "src/pages/admin/AdminAlerts.tsx",
+        "supabase/functions/send-programme-reminders/index.ts",
+        "supabase/functions/send-weekly-admin-summary/index.ts",
+      ]);
+      // Nobody re-derives last activity or the 7-day window locally.
+      const local = /lastActive|last_active_by|stale_participant"|7 \* (DAY_MS|24 \* 60 \* 60 \* 1000)[^;]*(activ|stale)/i;
+      expect(runtime.filter((f) => local.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+    });
+
+    it("the Triad reflection rate has one canonical calculation read by Admin Analytics and the weekly email", () => {
+      const readers = runtime.filter((f) => /rpc\(\s*"(admin_programme_triad_reflection_rate|triad_reflection_rate_internal)"/.test(readFileSync(f, "utf8")));
+      expect(readers.map(label).sort()).toEqual([
+        "src/hooks/admin/useAdminProgrammeEngagement.ts",
+        "supabase/functions/send-weekly-admin-summary/index.ts",
+      ]);
+      // No Admin surface counts Triad reflections itself.
+      expect(files.filter((f) => /from\("triad_reflections"\)/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+    });
+
     it("membership has one read path per role: learners via learner_triad_members / overview, Admin via its RPC", () => {
       expect(files.filter((f) => /from\("triad_group_members"\)/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
     });

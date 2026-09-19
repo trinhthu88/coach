@@ -16,7 +16,7 @@ export interface ProgrammeWeekEngagement {
   skillCardCompletionPct: number | null;
   quizAvgScore: number | null;
   quizCompletionPct: number | null;
-  /** Triad reflection rate (members who reflected on that week's Triad sessions). Engagement only — Triad completion is canonical progress. */
+  /** Canonical Triad reflection rate for the week (admin_programme_triad_reflection_rate). Engagement only — never completion. */
   triadReflectionPct: number | null;
   promptResponseRate: number | null;
 }
@@ -28,8 +28,6 @@ export interface ProgrammeRedFlag {
   daysSinceLastActivity: number | null;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export function useAdminProgrammes() {
   const [programmes, setProgrammes] = useState<ProgrammeOption[]>([]);
   useEffect(() => {
@@ -39,11 +37,10 @@ export function useAdminProgrammes() {
 }
 
 /**
- * Direct-table version of the sponsor_programme_engagement() /
- * sponsor_engagement_red_flags() SECURITY DEFINER functions, scoped to admin
- * instead of a sponsor's org — admin already has "view all" RLS on every
- * table touched here, so there's no need for a privilege-escalation-prone
- * server function the way the sponsor-facing equivalent needs one.
+ * Admin per-programme engagement. Per-week Training / quiz / prompt counts
+ * are read from their tables; the Triad reflection rate and the red flags
+ * ("inactive 7+ days") come from their one canonical calculation
+ * (admin_programme_triad_reflection_rate, admin_enrollment_inactivity).
  */
 export function useAdminProgrammeEngagement(programmeId: string | null) {
   const [weeks, setWeeks] = useState<ProgrammeWeekEngagement[]>([]);
@@ -60,11 +57,29 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
     (async () => {
       setLoading(true);
 
-      const [{ data: enrollments }, { data: trainingWeeks }] = await Promise.all([
+      // Engagement facts with one canonical calculation are read, never
+      // recomputed here: the Triad reflection rate (per Training week) and
+      // "inactive 7+ days" (the same rule the reminders and email use).
+      const [{ data: enrollments }, { data: trainingWeeks }, { data: reflectionRate }, { data: inactivity }] = await Promise.all([
         supabase.from("programme_enrollments").select("id, user_id, status, start_date").eq("programme_id", programmeId),
         supabase.from("training_weeks").select("id, week_number, title").eq("programme_id", programmeId).eq("is_visible", true).order("week_number"),
+        supabase.rpc("admin_programme_triad_reflection_rate", { p_programme_id: programmeId }),
+        supabase.rpc("admin_enrollment_inactivity", { p_programme_id: programmeId }),
       ]);
       if (!mounted) return;
+
+      const flags: ProgrammeRedFlag[] = (inactivity ?? [])
+        .filter((row) => row.is_inactive)
+        .map((row) => ({
+          userId: row.user_id,
+          enrollmentId: row.enrollment_id,
+          fullName: row.full_name || "—",
+          daysSinceLastActivity: row.days_since_last_activity,
+        }))
+        .sort((a, b) => (b.daysSinceLastActivity ?? 999) - (a.daysSinceLastActivity ?? 999));
+      const triadRateByWeek = new Map(
+        (reflectionRate ?? []).filter((row) => !row.is_total && row.training_week_id).map((row) => [row.training_week_id as string, row.rate_pct])
+      );
 
       const currentByUser = new Map<string, string>();
       for (const userId of [...new Set((enrollments ?? []).map((e) => e.user_id as string))]) {
@@ -81,58 +96,35 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
 
       if (enrolledIds.length === 0 || weekIds.length === 0) {
         setWeeks([]);
-        setRedFlags([]);
+        setRedFlags(flags);
         setLoading(false);
         return;
       }
 
-      const [{ data: progress }, { data: assignments }, { data: groups }, { data: profiles }] = await Promise.all([
+      const [{ data: progress }, { data: assignments }] = await Promise.all([
         supabase.from("training_progress").select("user_id, enrollment_id, training_week_id, completed_at").in("training_week_id", weekIds).in("enrollment_id", enrollmentIds),
         supabase.from("assignments").select("id, training_week_id, assignment_type").eq("is_visible", true).in("training_week_id", weekIds),
-        // A group's week is its cohort Triad requirement's Training week.
-        supabase
-          .from("triad_groups")
-          .select("id, cohort_requirement_dates!inner(programme_id, training_week_id)")
-          .eq("cohort_requirement_dates.programme_id", programmeId)
-          .eq("is_active", true),
-        supabase.from("profiles").select("id, full_name").in("id", enrolledIds),
       ]);
       if (!mounted) return;
 
       const quizAssignments = (assignments ?? []).filter((a) => a.assignment_type === "quiz");
       const quizAssignmentIds = quizAssignments.map((a) => a.id as string);
-      const groupIds = (groups ?? []).map((g) => g.id as string);
-      const weekByGroup = new Map(
-        (groups ?? []).map((g) => [g.id as string, (g.cohort_requirement_dates as { training_week_id: string | null } | null)?.training_week_id ?? null])
-      );
-      const userByEnrollment = new Map([...currentByUser.entries()].map(([userId, enrollmentId]) => [enrollmentId, userId]));
 
-      const [{ data: submissions }, { data: triadSessions }, { data: prompts }] = await Promise.all([
+      const [{ data: submissions }, { data: prompts }] = await Promise.all([
         quizAssignmentIds.length
           ? supabase.from("assignment_submissions").select("user_id, enrollment_id, assignment_id, score_pct, submitted_at").in("assignment_id", quizAssignmentIds).in("enrollment_id", enrollmentIds)
           : Promise.resolve({ data: [] as { user_id: string; assignment_id: string; score_pct: number | null; submitted_at: string }[] }),
-        groupIds.length
-          ? supabase.from("triad_sessions").select("id, triad_group_id").in("triad_group_id", groupIds)
-          : Promise.resolve({ data: [] as { id: string; triad_group_id: string }[] }),
         supabase.from("daily_prompts").select("id, training_week_id").in("training_week_id", weekIds),
       ]);
       if (!mounted) return;
 
-      const sessionIds = (triadSessions ?? []).map((s) => s.id as string);
       const promptIds = (prompts ?? []).map((p) => p.id as string);
-
-      const [{ data: reflections }, { data: promptResponses }] = await Promise.all([
-        sessionIds.length
-          ? supabase.from("triad_reflections").select("enrollment_id, triad_session_id, submitted_at").in("triad_session_id", sessionIds)
-          : Promise.resolve({ data: [] as { enrollment_id: string | null; triad_session_id: string; submitted_at: string }[] }),
-        promptIds.length
-          ? supabase.from("daily_prompt_responses").select("user_id, enrollment_id, daily_prompt_id, responded_at").in("daily_prompt_id", promptIds).in("enrollment_id", enrollmentIds)
-          : Promise.resolve({ data: [] as { user_id: string; daily_prompt_id: string; responded_at: string | null }[] }),
-      ]);
+      const { data: promptResponses } = promptIds.length
+        ? await supabase.from("daily_prompt_responses").select("user_id, enrollment_id, daily_prompt_id, responded_at").in("daily_prompt_id", promptIds).in("enrollment_id", enrollmentIds)
+        : { data: [] as { user_id: string; daily_prompt_id: string; responded_at: string | null }[] };
       if (!mounted) return;
 
       const promptToWeek = new Map((prompts ?? []).map((p) => [p.id as string, p.training_week_id as string]));
-      const sessionToWeek = new Map((triadSessions ?? []).map((s) => [s.id as string, weekByGroup.get(s.triad_group_id as string) ?? null]));
       const enrolledCount = enrolledIds.length;
 
       const weeksOut: ProgrammeWeekEngagement[] = (trainingWeeks ?? []).map((w) => {
@@ -143,11 +135,6 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
         const weekSubs = (submissions ?? []).filter((s) => weekQuizIds.has(s.assignment_id));
         const quizAvgScore = weekSubs.length > 0 ? weekSubs.reduce((sum, s) => sum + (s.score_pct ?? 0), 0) / weekSubs.length : null;
         const quizSubmittedUsers = new Set(weekSubs.map((s) => s.user_id));
-
-        const weekSessionIds = new Set([...sessionToWeek.entries()].filter(([, tw]) => tw === weekId).map(([id]) => id));
-        const weekReflectedUsers = new Set(
-          (reflections ?? []).filter((r) => weekSessionIds.has(r.triad_session_id) && r.enrollment_id && userByEnrollment.has(r.enrollment_id)).map((r) => r.enrollment_id)
-        );
 
         const weekPromptIds = new Set([...promptToWeek.entries()].filter(([, tw]) => tw === weekId).map(([id]) => id));
         const weekResponses = (promptResponses ?? []).filter((r) => weekPromptIds.has(r.daily_prompt_id) && r.responded_at);
@@ -162,41 +149,10 @@ export function useAdminProgrammeEngagement(programmeId: string | null) {
           skillCardCompletionPct: enrolledCount > 0 ? (completedUsers.size * 100) / enrolledCount : null,
           quizAvgScore,
           quizCompletionPct: weekQuizIds.size > 0 && enrolledCount > 0 ? (quizSubmittedUsers.size * 100) / enrolledCount : null,
-          triadReflectionPct: weekSessionIds.size > 0 && enrolledCount > 0 ? (weekReflectedUsers.size * 100) / enrolledCount : null,
+          triadReflectionPct: triadRateByWeek.get(weekId) ?? null,
           promptResponseRate: weekPromptIds.size > 0 && enrolledCount > 0 ? (respondedUsers.size * 100) / enrolledCount : null,
         };
       });
-
-      // Red flags: enrolled participants with no recorded activity in the
-      // past 7 days (or ever) — same 4 signals send-programme-reminders
-      // checks server-side, computed here client-side since admin already
-      // has direct RLS access to every table involved.
-      const nameById = new Map((profiles ?? []).map((p) => [p.id as string, p.full_name as string | null]));
-      const lastActiveByUser = new Map<string, number>();
-      const bump = (userId: string, ts: string | null) => {
-        if (!ts) return;
-        const t = new Date(ts).getTime();
-        if (!lastActiveByUser.has(userId) || t > (lastActiveByUser.get(userId) ?? 0)) lastActiveByUser.set(userId, t);
-      };
-      (progress ?? []).forEach((p) => bump(p.user_id as string, p.completed_at as string | null));
-      (submissions ?? []).forEach((s) => bump(s.user_id, s.submitted_at));
-      (reflections ?? []).forEach((r) => {
-        const userId = r.enrollment_id ? userByEnrollment.get(r.enrollment_id) : undefined;
-        if (userId) bump(userId, r.submitted_at);
-      });
-      (promptResponses ?? []).forEach((r) => bump(r.user_id, r.responded_at));
-
-      const cutoff = Date.now() - 7 * DAY_MS;
-      const enrollmentByUser = currentByUser;
-      const flags: ProgrammeRedFlag[] = enrolledIds
-        .filter((id) => !lastActiveByUser.has(id) || (lastActiveByUser.get(id) ?? 0) < cutoff)
-        .map((id) => ({
-          userId: id,
-          enrollmentId: enrollmentByUser.get(id)!,
-          fullName: nameById.get(id) || "—",
-          daysSinceLastActivity: lastActiveByUser.has(id) ? Math.floor((Date.now() - lastActiveByUser.get(id)!) / DAY_MS) : null,
-        }))
-        .sort((a, b) => (b.daysSinceLastActivity ?? 999) - (a.daysSinceLastActivity ?? 999));
 
       setWeeks(weeksOut);
       setRedFlags(flags);

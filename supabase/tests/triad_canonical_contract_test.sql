@@ -9,7 +9,7 @@
 --   same programme (never assignable to C1). E6's learner is also a coach.
 begin;
 
-select plan(89);
+select plan(97);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -245,8 +245,8 @@ select results_eq(
   $$select e, p.completed_units, p.completed_activity_units, p.required_units
     from unnest(array['e8800000-0000-0000-0000-000000000001', 'e8800000-0000-0000-0000-000000000003', 'e8800000-0000-0000-0000-000000000004']::uuid[]) e
     cross join lateral public.canonical_module_progress(e, current_date) p where p.module = 'triads' order by e$$,
-  $$values ('e8800000-0000-0000-0000-000000000001'::uuid, 2, 3, 2), ('e8800000-0000-0000-0000-000000000003'::uuid, 1, 1, 2), ('e8800000-0000-0000-0000-000000000004'::uuid, 0, 0, 2)$$,
-  '15b/16. completion counts per member and is capped at the programme requirement (3 sessions -> 2/2)');
+  $$values ('e8800000-0000-0000-0000-000000000001'::uuid, 2, 2, 2), ('e8800000-0000-0000-0000-000000000003'::uuid, 1, 1, 2), ('e8800000-0000-0000-0000-000000000004'::uuid, 0, 0, 2)$$,
+  '15b/16. completion is per requirement and capped at the programme requirement (3 sessions over units 1 + 2 -> 2/2)');
 select is(
   (select occurred_on from public.session_activity_attributions a
    where a.source_activity_type = 'triad' and a.source_activity_id = (select id from ses where name = 'G2')
@@ -461,6 +461,66 @@ select is(
 select isnt(
   (select p.provolatile::text from pg_proc p where p.oid = 'public.triad_session_can_complete(text,timestamptz)'::regprocedure),
   'i', '16e. the completion rule reads now(), so it is never IMMUTABLE');
+
+
+-- ===========================================================================
+-- REQUIREMENT FULFILMENT (a completed session fulfils its group's requirement)
+-- ===========================================================================
+reset role;
+select results_eq(
+  $$select is_total, expected_reflections, submitted_reflections, rate_pct
+    from public.triad_reflection_rate_internal('c8800000-0000-0000-0000-000000000001') order by is_total$$,
+  $$values (false, 7, 3, 42.9::numeric), (true, 7, 3, 42.9::numeric)$$,
+  '32a. reflection rate = reflections / one per member of each completed session (G1 3/3, G3 2 sessions x 2 members 0/4)');
+create temporary table rate_internal as
+  select expected_reflections, submitted_reflections from public.triad_reflection_rate_internal('c8800000-0000-0000-0000-000000000001') where is_total;
+grant select on rate_internal to authenticated;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000099', true);
+select throws_ok($$select * from public.admin_programme_triad_reflection_rate('c8800000-0000-0000-0000-000000000001')$$,
+  '42501', null, '32b. only Admin reads the reflection rate');
+select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000098', true);
+select results_eq(
+  $$select expected_reflections, submitted_reflections from public.admin_programme_triad_reflection_rate('c8800000-0000-0000-0000-000000000001') where is_total$$,
+  $$select expected_reflections, submitted_reflections from rate_internal$$,
+  '32c. Admin and the Edge Functions read the same reflection-rate calculation');
+reset role;
+
+-- E3 is only in G1 (unit 1). A second completed G1 session is the same requirement.
+insert into public.triad_sessions (triad_group_id, scheduled_start_time, scheduled_end_time, status)
+values ((select id from grp where name = 'G1'), now() - interval '20 days', now() - interval '20 days' + interval '1 hour', 'completed');
+select results_eq(
+  $$select p.completed_units, p.completed_activity_units, p.required_units
+    from public.canonical_module_progress('e8800000-0000-0000-0000-000000000003', current_date) p where p.module = 'triads'$$,
+  $$values (1, 1, 2)$$,
+  '31a. two completed sessions for the same requirement fulfil it once (1/2, never 2/2)');
+
+-- E4 / E5 fulfil unit 2 early while unit 1 (due 30 days ago) is still open.
+create temporary table g5 as select public.triad_create_group_internal((select id from unit where n = 2),
+  array['e8800000-0000-0000-0000-000000000004', 'e8800000-0000-0000-0000-000000000005']::uuid[], 'en', 'admin') as id;
+update public.triad_sessions set scheduled_start_time = now() - interval '1 day', scheduled_end_time = now() - interval '1 day' + interval '1 hour', status = 'confirmed'
+where triad_group_id = (select id from g5);
+update public.triad_sessions set status = 'completed' where triad_group_id = (select id from g5);
+select results_eq(
+  $$select p.completed_units, p.due_units, p.overdue_units
+    from public.canonical_module_progress('e8800000-0000-0000-0000-000000000004', current_date) p where p.module = 'triads'$$,
+  $$values (1, 1, 1)$$,
+  '31b. an early unit 2 never hides the overdue unit 1 (completed 1, due 1, overdue 1)');
+select results_eq(
+  $$select s.unit_number, s.unit_completed, s.unit_overdue from unit u
+    cross join lateral public.triad_unit_enrollment_status_internal(u.id, current_date) s
+    where s.enrollment_id = 'e8800000-0000-0000-0000-000000000004' order by 1$$,
+  $$values (1, false, true), (2, true, false)$$,
+  '31c. unit state is per requirement: unit 1 overdue, unit 2 fulfilled');
+select is(
+  (select (cp->>'completed_units')::integer from jsonb_array_elements(public.canonical_enrollment_journey('e8800000-0000-0000-0000-000000000004', current_date)) cp
+   where (cp->>'due_on')::date = current_date - 30),
+  0, '31d. the journey checkpoint for unit 1 is not credited with unit 2''s fulfilment');
+select is(
+  (select sum(overdue_units)::integer from public.canonical_module_progress('e8800000-0000-0000-0000-000000000004', current_date) where module = 'triads'),
+  (select count(*)::integer from unit u cross join lateral public.triad_unit_enrollment_status_internal(u.id, current_date) s
+   where s.enrollment_id = 'e8800000-0000-0000-0000-000000000004' and s.unit_overdue),
+  '31e. canonical overdue units equal the per-unit overdue count (one rule)');
 
 select * from finish();
 rollback;

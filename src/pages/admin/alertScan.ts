@@ -221,55 +221,41 @@ export interface ProgrammeAlert {
   resolved: false;
 }
 
-export interface ScanActivityRow {
-  userId: string;
+export interface InactiveEnrollmentRow {
   enrollmentId: string;
-  timestamp: string | null;
+  userId: string;
+  lastActivityAt: string | null;
 }
 
 /**
- * Active enrollees with no recorded activity (training completion, quiz/
- * reflection submission, triad reflection, or daily prompt response) in the
- * last 7 days, or ever. Each activity kind is passed pre-flattened to
- * (userId, timestamp) pairs so this stays agnostic of which table each
- * signal came from.
+ * Formats the canonical "inactive 7+ days" enrollments
+ * (admin_enrollment_inactivity -> canonical_enrollment_inactivity_internal:
+ * population, activity signals and window live there) as admin alerts. No
+ * activity is interpreted here.
  */
 export function buildStaleProgrammeParticipantAlerts(opts: {
-  activeEnrollments: { enrollmentId: string; userId: string }[];
-  activity: ScanActivityRow[];
+  inactive: InactiveEnrollmentRow[];
   nameById: Map<string, string | null | undefined>;
   emailById: Map<string, string | null | undefined>;
-  now: Date;
 }): ProgrammeAlert[] {
-  const { activeEnrollments, activity, nameById, emailById, now } = opts;
-  const lastActiveByEnrollment = new Map<string, number>();
-  activity.forEach(({ enrollmentId, timestamp }) => {
-    if (!timestamp) return;
-    const t = new Date(timestamp).getTime();
-    if (!lastActiveByEnrollment.has(enrollmentId) || t > (lastActiveByEnrollment.get(enrollmentId) ?? 0)) lastActiveByEnrollment.set(enrollmentId, t);
+  const { inactive, nameById, emailById } = opts;
+  return inactive.map(({ enrollmentId, userId, lastActivityAt }) => {
+    const name = nameById.get(userId) || "Participant";
+    const email = emailById.get(userId);
+    const contact = email ? ` (${email})` : "";
+    const sinceText = lastActivityAt
+      ? `last activity ${format(new Date(lastActivityAt), "d MMM yyyy")}`
+      : "no activity recorded since enrolling";
+    return {
+      severity: "warning" as const,
+      alert_type: "stale_programme_participant" as const,
+      title: `${name} — no programme activity in 7+ days`,
+      message: `${name}${contact} hasn't completed a training week, quiz, reflection, triad reflection, or daily prompt in over a week (${sinceText}).`,
+      related_coachee_id: userId,
+      related_enrollment_id: enrollmentId,
+      resolved: false,
+    };
   });
-
-  const cutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-  return activeEnrollments
-    .filter(({ enrollmentId }) => !lastActiveByEnrollment.has(enrollmentId) || (lastActiveByEnrollment.get(enrollmentId) ?? 0) < cutoff)
-    .map(({ enrollmentId, userId }) => {
-      const name = nameById.get(userId) || "Participant";
-      const email = emailById.get(userId);
-      const contact = email ? ` (${email})` : "";
-      const lastActive = lastActiveByEnrollment.get(enrollmentId);
-      const sinceText = lastActive
-        ? `last activity ${format(new Date(lastActive), "d MMM yyyy")}`
-        : "no activity recorded since enrolling";
-      return {
-        severity: "warning" as const,
-        alert_type: "stale_programme_participant" as const,
-        title: `${name} — no programme activity in 7+ days`,
-        message: `${name}${contact} hasn't completed a training week, quiz, triad reflection, or daily prompt in over a week (${sinceText}).`,
-        related_coachee_id: userId,
-        related_enrollment_id: enrollmentId,
-        resolved: false,
-      };
-    });
 }
 
 export interface ScanQuizSubmissionRow {

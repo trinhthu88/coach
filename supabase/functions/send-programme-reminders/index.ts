@@ -320,49 +320,36 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 4. Stale participants (no activity in the past 7 days)
+    // 4. Stale participants — THE canonical "inactive 7+ days" rule
+    //    (canonical_enrollment_inactivity_internal: population, signals and
+    //    window live there; Admin Alerts / Analytics read the same rule).
+    //    One alert per enrollment, never re-raised while one is unresolved.
     // ------------------------------------------------------------------
-    const { data: activeEnrollments } = await admin
-      .from("programme_enrollments")
-      .select("user_id, start_date")
-      .eq("status", "active")
-      .lte("start_date", weekAgo); // skip anyone enrolled less than 7 days ago
-    const activeUserIds = [...new Set((activeEnrollments || []).map((e) => e.user_id as string))];
-
-    if (activeUserIds.length > 0) {
-      const cutoffISO = new Date(Date.now() - 7 * DAY_MS).toISOString();
-      const [{ data: subs }, { data: prompts }, { data: reflections }, { data: recentAlerts }] = await Promise.all([
-        admin.from("assignment_submissions").select("user_id").in("user_id", activeUserIds).gte("submitted_at", cutoffISO),
-        admin.from("daily_prompt_responses").select("user_id").in("user_id", activeUserIds).gte("responded_at", cutoffISO).not("responded_at", "is", null),
-        admin.from("triad_reflections").select("programme_enrollments!inner(user_id)").in("programme_enrollments.user_id", activeUserIds).gte("submitted_at", cutoffISO),
-        admin
-          .from("admin_alerts")
-          .select("related_coachee_id")
-          .eq("alert_type", "stale_participant")
-          .eq("resolved", false)
-          .gte("created_at", cutoffISO),
-      ]);
-
-      const activeIds = new Set<string>([
-        ...(subs || []).map((r) => r.user_id as string),
-        ...(prompts || []).map((r) => r.user_id as string),
-        ...(reflections || []).map((r) => (r.programme_enrollments as { user_id: string }).user_id),
-      ]);
-      const alreadyAlerted = new Set((recentAlerts || []).map((r) => r.related_coachee_id as string));
-
-      const staleIds = activeUserIds.filter((id) => !activeIds.has(id) && !alreadyAlerted.has(id));
-      if (staleIds.length > 0) {
-        const profiles = await getProfiles(staleIds);
-        const rows = staleIds.map((id) => {
-          const p = profiles.get(id);
+    const { data: inactivity, error: inactivityErr } = await admin.rpc("canonical_enrollment_inactivity_internal", {});
+    if (inactivityErr) console.error("Inactivity rule failed", inactivityErr);
+    const inactive = ((inactivity || []) as { enrollment_id: string; user_id: string; is_inactive: boolean }[]).filter((r) => r.is_inactive);
+    if (inactive.length > 0) {
+      const { data: openAlerts } = await admin
+        .from("admin_alerts")
+        .select("related_enrollment_id")
+        .eq("alert_type", "stale_programme_participant")
+        .eq("resolved", false)
+        .in("related_enrollment_id", inactive.map((r) => r.enrollment_id));
+      const alreadyAlerted = new Set((openAlerts || []).map((r) => r.related_enrollment_id as string));
+      const toAlert = inactive.filter((r) => !alreadyAlerted.has(r.enrollment_id));
+      if (toAlert.length > 0) {
+        const profiles = await getProfiles([...new Set(toAlert.map((r) => r.user_id))]);
+        const rows = toAlert.map((r) => {
+          const p = profiles.get(r.user_id);
           const name = p?.full_name || "A participant";
           const email = p?.email ? ` (${p.email})` : "";
           return {
             severity: "warning" as const,
-            alert_type: "stale_participant",
-            title: `${name} — no activity in 7 days`,
-            message: `${name}${email} hasn't submitted an assignment, responded to a daily prompt, or completed a triad reflection in the past 7 days.`,
-            related_coachee_id: id,
+            alert_type: "stale_programme_participant",
+            title: `${name} — no programme activity in 7+ days`,
+            message: `${name}${email} hasn't completed a training week, quiz, reflection, triad reflection, or daily prompt in over a week.`,
+            related_coachee_id: r.user_id,
+            related_enrollment_id: r.enrollment_id,
             resolved: false,
           };
         });

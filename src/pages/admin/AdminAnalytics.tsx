@@ -120,7 +120,7 @@ export default function AdminAnalytics() {
       severity: "warning",
       alert_type: "stale_programme_participant",
       title: `${fullName} — no programme activity in 7+ days`,
-      message: `${fullName} hasn't completed a training week, quiz, triad reflection, or daily prompt in over a week.`,
+      message: `${fullName} hasn't completed a training week, quiz, reflection, triad reflection, or daily prompt in over a week.`,
       related_coachee_id: userId,
       related_enrollment_id: enrollmentId,
       resolved: false,
