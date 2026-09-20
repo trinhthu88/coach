@@ -243,21 +243,22 @@ END $$;
 DO $$
 DECLARE missing text;
 BEGIN
-  SELECT string_agg(name, ', ')
+  SELECT string_agg(expected.name, ', ')
   INTO missing
   FROM (
     VALUES
-      ('learner_canonical_progress'),
-      ('admin_canonical_enrollment_progress'),
-      ('sponsor_canonical_enrollment_progress'),
-      ('sponsor_canonical_cohort_progress'),
-      ('sponsor_canonical_organisation_progress')
-  ) expected(name)
+      ('learner_canonical_progress', 'canonical_enrollment_progress'),
+      ('admin_canonical_enrollment_progress', 'canonical_enrollment_progress'),
+      ('sponsor_canonical_enrollment_progress', 'canonical_enrollment_progress'),
+      ('sponsor_canonical_cohort_progress_one', 'sponsor_canonical_enrollment_progress'),
+      ('sponsor_canonical_cohort_progress', 'sponsor_canonical_cohort_progress_one'),
+      ('sponsor_canonical_organisation_progress', 'sponsor_canonical_cohort_progress')
+  ) expected(name, dependency)
   WHERE NOT EXISTS (
     SELECT 1
     FROM pg_proc p
     WHERE p.proname = expected.name
-      AND pg_get_functiondef(p.oid) ~ 'canonical_enrollment_progress'
+      AND pg_get_functiondef(p.oid) ~ ('\m' || expected.dependency || '\M')
   );
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'Deployment 2 verification: projections no longer use canonical progress: %', missing;
@@ -331,19 +332,23 @@ BEGIN
       pg_get_functiondef(p.oid) ~ '\m(public\.)?(triad_rounds|programme_triad_rounds)\M'
       OR (
         pg_get_functiondef(p.oid) ~ '\m(public\.)?triad_groups\M'
-        AND pg_get_functiondef(p.oid) ~ 'member_[123]_id|enrollment_[123]_id|programme_id|round_number|triad_round_id|name'
+        AND pg_get_functiondef(p.oid) ~
+          '(^|[^a-z_])(member_[123]_id|enrollment_[123]_id|programme_id|round_number|triad_round_id|name)([^a-z_]|$)'
       )
       OR (
         pg_get_functiondef(p.oid) ~ '\m(public\.)?triad_sessions\M'
-        AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_response|proposed_start_time|proposed_end_time|start_time|proposed_by'
+        AND pg_get_functiondef(p.oid) ~
+          '(^|[^a-z_])((coach|coachee|observer)_enrollment_id|member_[123]_response|proposed_start_time|proposed_end_time|start_time|proposed_by)([^a-z_]|$)'
       )
       OR (
         pg_get_functiondef(p.oid) ~ '\m(public\.)?triad_alternative_proposals\M'
-        AND pg_get_functiondef(p.oid) ~ 'proposed_by|member_[123]_response'
+        AND pg_get_functiondef(p.oid) ~
+          '(^|[^a-z_])(proposed_by|member_[123]_response)([^a-z_]|$)'
       )
       OR (
         pg_get_functiondef(p.oid) ~ '\m(public\.)?triad_reflections\M'
-        AND pg_get_functiondef(p.oid) ~ 'participant_id|learned_as_|will_use_as_'
+        AND pg_get_functiondef(p.oid) ~
+          '(^|[^a-z_])(participant_id|learned_as_(coach|coachee|observer)|will_use_as_(coach|coachee|observer))([^a-z_]|$)'
       )
     );
   IF offenders IS NOT NULL THEN
@@ -356,7 +361,7 @@ BEGIN
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind IN ('v', 'm')
     AND pg_get_viewdef(c.oid, true) ~
-      'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+      '(^|[^a-z_])(member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by)([^a-z_]|$)';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Deployment 2 verification: views or materialized views refer to retired objects: %', offenders;
   END IF;
@@ -368,7 +373,7 @@ BEGIN
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE coalesce(pg_get_expr(p.polqual, p.polrelid), '') ||
         coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '') ~
-    'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+    '(^|[^a-z_])(member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by)([^a-z_]|$)';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Deployment 2 verification: policies refer to retired objects: %', offenders;
   END IF;
@@ -380,7 +385,7 @@ BEGIN
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE NOT t.tgisinternal
     AND pg_get_triggerdef(t.oid, true) ~
-      'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+      '(^|[^a-z_])(member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by)([^a-z_]|$)';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Deployment 2 verification: triggers refer to retired objects: %', offenders;
   END IF;
@@ -392,7 +397,7 @@ BEGIN
   JOIN pg_namespace n ON n.oid = c.relnamespace
   JOIN pg_attribute a ON a.attrelid = d.adrelid AND a.attnum = d.adnum
   WHERE pg_get_expr(d.adbin, d.adrelid) ~
-    'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+    '(^|[^a-z_])(member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by)([^a-z_]|$)';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Deployment 2 verification: defaults or generated expressions refer to retired objects: %', offenders;
   END IF;
@@ -402,8 +407,8 @@ BEGIN
   FROM pg_constraint con
   JOIN pg_class c ON c.oid = con.conrelid
   JOIN pg_namespace n ON n.oid = c.relnamespace
-  WHERE pg_get_constraintdef(con.oid, true) ~
-    'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+   WHERE pg_get_constraintdef(con.oid, true) ~
+     '(^|[^a-z_])(member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by)([^a-z_]|$)';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Deployment 2 verification: constraints refer to retired objects: %', offenders;
   END IF;
