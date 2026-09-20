@@ -163,12 +163,16 @@ Deno.serve(async (req) => {
       .eq("id", session_id);
     if (updateErr) throw updateErr;
 
-    if (!is_peer && row.slot_id) {
-      await admin
-        .from("coach_availability")
-        .update({ is_booked: true, session_id })
-        .eq("id", row.slot_id);
-    }
+    // Coaching slots are reserved the moment the learner requests them, by
+    // sync_coaching_slot_reservation() on `sessions` -- not here. Re-reserving
+    // at confirmation was the old model, where the slot stayed available until
+    // the Coach acted and two learners could hold the same time. Writing it
+    // again would be a second ownership action over state the database
+    // already owns.
+    //
+    // Peer sessions never reserved availability here either -- book_peer_session()
+    // does it at booking time -- so there is nothing left for this function to
+    // write. Confirmation now only sets the session's own status and meeting URL.
 
     const { data: participants } = await admin
       .from("profiles")

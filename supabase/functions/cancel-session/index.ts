@@ -91,22 +91,44 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { error: updateErr } = await admin
-      .from(tableName)
-      .update({
-        status: "cancelled",
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: callerId,
-        cancel_reason: reason || null,
-      })
-      .eq("id", session_id);
-    if (updateErr) throw updateErr;
-
-    if (!is_peer && row.slot_id) {
-      await admin
-        .from("coach_availability")
-        .update({ is_booked: false, session_id: null })
-        .eq("id", row.slot_id);
+    // The database owns the state transition. For Coaching this function calls
+    // cancel_coaching_session(), which records the actor, time and reason,
+    // releases the availability slot and frees the Coaching requirement for
+    // rebooking -- all in one transaction.
+    //
+    // It previously wrote sessions.status and coach_availability itself. That
+    // made it a second lifecycle writer alongside the canonical RPC and the
+    // slot-reservation trigger, and it bypassed the authorisation and
+    // late-cancellation rules the RPC enforces. Notification failures below
+    // can no longer corrupt session state, because the state is already
+    // committed by the time they run.
+    if (is_peer) {
+      const { error: updateErr } = await admin
+        .from(tableName)
+        .update({
+          status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: callerId,
+          cancel_reason: reason || null,
+        })
+        .eq("id", session_id);
+      if (updateErr) throw updateErr;
+    } else {
+      // Run as the caller so the RPC's own authorisation applies, rather than
+      // the service role silently passing every check.
+      const asCaller = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { error: rpcErr } = await asCaller.rpc("cancel_coaching_session", {
+        p_session_id: session_id,
+        p_reason: reason || null,
+      });
+      if (rpcErr) {
+        return new Response(JSON.stringify({ error: rpcErr.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { data: participants } = await admin
