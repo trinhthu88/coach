@@ -61,7 +61,22 @@ insert into public.coachee_coach_allowlist (coachee_id, coach_id)
 values ('a7700000-0000-0000-0000-000000000001', 'a7700000-0000-0000-0000-000000000097');
 select set_config('request.jwt.claim.sub', 'a7700000-0000-0000-0000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+-- Programme Coaching eligibility is the COHORT Coach pool
+-- (20260920100000_cohort_coach_assignments); coachee_coach_allowlist above is
+-- only the historical pairing and no longer grants programme Coaching. This
+-- mirrors that migration's own backfill: every (cohort, coach) pair the
+-- fixture already declares becomes an assignment.
+insert into public.cohort_coach_assignments (cohort_id, coach_id)
+select distinct e.cohort_id, a.coach_id
+from public.coachee_coach_allowlist a
+join public.programme_enrollments e on e.user_id = a.coachee_id
+where e.cohort_id is not null
+on conflict (cohort_id, coach_id) do nothing;
+
 set local role authenticated;
+
+
+
 insert into public.sessions (coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id)
 values ('a7700000-0000-0000-0000-000000000097', 'a7700000-0000-0000-0000-000000000001',
   'SoT session', '2026-02-10T10:00:00Z', 60, 'completed', 'e7700000-0000-0000-0000-000000000001');
