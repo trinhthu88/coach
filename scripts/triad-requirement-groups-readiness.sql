@@ -62,13 +62,21 @@ WHERE NOT EXISTS (SELECT 1 FROM public.cohort_requirement_dates d
 ORDER BY 1, 3;
 
 \echo '== 5. Demo (Clariva Demo Organization): Triad 1 groups holding a second session (moved to its own Triad 2 group by the migration)'
+-- The demo reset tooling (incl. demo_resource_registry) exists only on hosted
+-- production. A to_regclass() guard inside the query does NOT help: the missing
+-- relation is resolved at parse time and would abort the script under
+-- ON_ERROR_STOP=1 before section 6. Gate it at the psql level instead.
+SELECT to_regclass('public.demo_resource_registry') IS NOT NULL AS has_demo_registry \gset
+\if :has_demo_registry
 SELECT s.id, s.triad_group_id, s.status, s.scheduled_start_time
 FROM public.triad_sessions s
-WHERE to_regclass('public.demo_resource_registry') IS NOT NULL
-  AND s.triad_group_id IN (SELECT resource_id FROM public.demo_resource_registry WHERE resource_type = 'triad_group')
+WHERE s.triad_group_id IN (SELECT resource_id FROM public.demo_resource_registry WHERE resource_type = 'triad_group')
   AND EXISTS (SELECT 1 FROM public.triad_sessions x WHERE x.triad_group_id = s.triad_group_id
               AND (x.scheduled_start_time, x.id) < (s.scheduled_start_time, s.id))
 ORDER BY s.triad_group_id, s.scheduled_start_time;
+\else
+\echo '   (skipped: demo_resource_registry not present in this environment)'
+\endif
 
 \echo '== 6. Migration ledger: 20260919120000 must not be applied yet'
 SELECT version, name FROM supabase_migrations.schema_migrations WHERE version >= '20260919120000';
