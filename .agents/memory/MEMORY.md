@@ -24,3 +24,4 @@
 - [Hosted demo fixture alignment](hosted-demo-fixture-alignment.md) — resolve live Sponsor identity from the target cohort organization; hosted demo identities may differ from repository seed aliases.
 - [Sponsor RPC retirement tests](sponsor-rpc-retirement-tests.md) — update live isolation checks with canonical RPCs when legacy Sponsor reporting functions are intentionally dropped.
 - [Startup bundle loading](startup-bundle-loading.md) — keep authenticated layout features and translation namespaces out of the public entry bundle; preload them only in tests.
+- [Deployment 2 retirement hardening](deployment-2-retirement-hardening.md) — exact archive conflicts fail closed; preserve prior provenance only for exact round snapshots and allow only expected auto-drops.

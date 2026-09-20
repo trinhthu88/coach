@@ -13,16 +13,23 @@ BEGIN TRANSACTION READ ONLY;
 DO $$
 DECLARE bad text;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM supabase_migrations.schema_migrations
+  IF (
+    SELECT count(*) FILTER (WHERE version IN (
+      '20260918185800', '20260918185850', '20260918185900',
+      '20260918189000', '20260918190000', '20260918195000',
+      '20260919120000'
+    ))
+    FROM supabase_migrations.schema_migrations
+  ) <> 7
+  OR (
+    SELECT count(DISTINCT version)
+    FROM supabase_migrations.schema_migrations
     WHERE version IN (
       '20260918185800', '20260918185850', '20260918185900',
       '20260918189000', '20260918190000', '20260918195000',
       '20260919120000'
     )
-    GROUP BY version
-    HAVING count(*) = 1
-  ) THEN
+  ) <> 7 THEN
     RAISE EXCEPTION 'Deployment 2 readiness: required migration ledger rows are missing';
   END IF;
   IF EXISTS (
@@ -200,7 +207,41 @@ BEGIN
 END $$;
 
 -- PostgreSQL catalog dependency check. Automatic indexes on the retiring
--- columns/tables are expected; all other dependencies are a hard failure.
+-- columns/tables and constraints attached to those columns are expected;
+-- all other dependencies are a hard failure.
+CREATE TEMP TABLE _triad_retirement_constraints AS
+SELECT con.oid AS constraint_oid
+FROM pg_constraint con
+JOIN pg_class c ON c.oid = con.conrelid
+JOIN pg_namespace ns ON ns.oid = c.relnamespace
+WHERE ns.nspname = 'public'
+  AND c.relname IN (
+    'triad_groups', 'triad_sessions',
+    'triad_alternative_proposals', 'triad_reflections',
+    'triad_rounds', 'programme_triad_rounds'
+  )
+  AND (
+    c.relname IN ('triad_rounds', 'programme_triad_rounds')
+    OR EXISTS (
+      SELECT 1
+      FROM unnest(con.conkey) key(attnum)
+      JOIN pg_attribute a
+        ON a.attrelid = con.conrelid AND a.attnum = key.attnum
+      WHERE a.attname IN (
+        'member_1_id', 'member_2_id', 'member_3_id',
+        'enrollment_1_id', 'enrollment_2_id', 'enrollment_3_id',
+        'programme_id', 'round_number', 'triad_round_id', 'name',
+        'coach_enrollment_id', 'coachee_enrollment_id',
+        'observer_enrollment_id', 'member_1_response',
+        'member_2_response', 'member_3_response',
+        'proposed_start_time', 'proposed_end_time', 'start_time',
+        'proposed_by', 'participant_id', 'learned_as_coach',
+        'will_use_as_coach', 'learned_as_coachee',
+        'will_use_as_observer'
+      )
+    )
+  );
+
 DO $$
 DECLARE offenders text;
 BEGIN
@@ -235,7 +276,11 @@ BEGIN
         )
       )
     )
-    AND NOT (d.classid = 'pg_class'::regclass AND dep.relkind = 'i');
+    AND NOT (d.classid = 'pg_class'::regclass AND dep.relkind = 'i')
+    AND NOT (
+      d.classid = 'pg_constraint'::regclass
+      AND d.objid IN (SELECT constraint_oid FROM _triad_retirement_constraints)
+    );
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Deployment 2 readiness: unexpected catalog dependencies: %', offenders;
   END IF;

@@ -245,8 +245,9 @@ BEGIN
   IF n > 0 THEN RAISE EXCEPTION 'Triad retirement: % reflection archive payloads miss retired keys', n; END IF;
 END $$;
 
--- Preserve the names of dependent indexes so their removal is verified rather
--- than assumed. Indexes are the only expected automatic dependencies.
+-- Preserve the names of dependent indexes and constraints so their removal is
+-- verified rather than assumed. They are the only expected auto-dropped
+-- dependencies.
 CREATE TEMP TABLE _triad_retirement_indexes AS
 SELECT DISTINCT ns.nspname AS schema_name, c.relname AS index_name
 FROM pg_depend d
@@ -269,7 +270,31 @@ WHERE refns.nspname = 'public'
     )
   );
 
--- Reject any dependency other than an automatic index dependency before DROP.
+CREATE TEMP TABLE _triad_retirement_constraints AS
+SELECT con.oid AS constraint_oid, ns.nspname AS schema_name,
+  c.relname AS table_name, con.conname
+FROM pg_constraint con
+JOIN pg_class c ON c.oid = con.conrelid
+JOIN pg_namespace ns ON ns.oid = c.relnamespace
+WHERE ns.nspname = 'public'
+  AND c.relname IN (
+    'triad_groups', 'triad_sessions',
+    'triad_alternative_proposals', 'triad_reflections',
+    'triad_rounds', 'programme_triad_rounds'
+  )
+  AND (
+    c.relname IN ('triad_rounds', 'programme_triad_rounds')
+    OR EXISTS (
+      SELECT 1
+      FROM unnest(con.conkey) key(attnum)
+      JOIN pg_attribute a
+        ON a.attrelid = con.conrelid AND a.attnum = key.attnum
+      WHERE a.attname IN (SELECT column_name FROM _triad_retired_columns)
+    )
+  );
+
+-- Reject any dependency other than an automatic index/retirement constraint
+-- dependency before DROP.
 DO $$
 DECLARE offenders text;
 BEGIN
@@ -292,7 +317,11 @@ BEGIN
         AND a.attname IN (SELECT column_name FROM _triad_retired_columns)
       )
     )
-    AND NOT (d.classid = 'pg_class'::regclass AND dep.relkind = 'i');
+    AND NOT (d.classid = 'pg_class'::regclass AND dep.relkind = 'i')
+    AND NOT (
+      d.classid = 'pg_constraint'::regclass
+      AND d.objid IN (SELECT constraint_oid FROM _triad_retirement_constraints)
+    );
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: unexpected dependencies remain: %', offenders;
   END IF;
@@ -310,16 +339,11 @@ BEGIN
   JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public'
     AND p.prokind = 'f'
-    AND (
-      pg_get_functiondef(p.oid) ~
-        '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number'
-      OR (
-        pg_get_functiondef(p.oid) ~
-          '\m(triad_groups|triad_sessions|triad_alternative_proposals|triad_reflections)\M'
-        AND pg_get_functiondef(p.oid) ~
-          '(^|[^a-z_])(programme_id|name|start_time|proposed_start_time|proposed_end_time|proposed_by)([^a-z_]|$)'
-      )
-    );
+    AND pg_get_functiondef(p.oid) ~ '\mEXECUTE\M'
+    AND pg_get_functiondef(p.oid) ~
+      '\m(public\.)?(triad_groups|triad_sessions|triad_alternative_proposals|triad_reflections|triad_rounds|programme_triad_rounds)\M'
+    AND pg_get_functiondef(p.oid) ~
+      '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: functions still refer to retired Triad fields: %', offenders;
   END IF;
@@ -346,7 +370,12 @@ BEGIN
   FROM pg_policy p
   JOIN pg_class c ON c.oid = p.polrelid
   JOIN pg_namespace n ON n.oid = c.relnamespace
-  WHERE coalesce(pg_get_expr(p.polqual, p.polrelid), '') ||
+  WHERE c.relname IN (
+      'triad_groups', 'triad_sessions',
+      'triad_alternative_proposals', 'triad_reflections',
+      'triad_rounds', 'programme_triad_rounds'
+    )
+    AND coalesce(pg_get_expr(p.polqual, p.polrelid), '') ||
         coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '') ~
         '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by';
   IF offenders IS NOT NULL THEN
@@ -358,6 +387,11 @@ BEGIN
   JOIN pg_class c ON c.oid = t.tgrelid
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE NOT t.tgisinternal
+    AND c.relname IN (
+      'triad_groups', 'triad_sessions',
+      'triad_alternative_proposals', 'triad_reflections',
+      'triad_rounds', 'programme_triad_rounds'
+    )
     AND coalesce(pg_get_expr(t.tgqual, t.tgrelid), '') ~
       '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by';
   IF offenders IS NOT NULL THEN
@@ -369,7 +403,12 @@ BEGIN
   JOIN pg_class c ON c.oid = d.adrelid
   JOIN pg_namespace n ON n.oid = c.relnamespace
   JOIN pg_attribute a ON a.attrelid = d.adrelid AND a.attnum = d.adnum
-  WHERE pg_get_expr(d.adbin, d.adrelid) ~
+  WHERE c.relname IN (
+      'triad_groups', 'triad_sessions',
+      'triad_alternative_proposals', 'triad_reflections',
+      'triad_rounds', 'programme_triad_rounds'
+    )
+    AND pg_get_expr(d.adbin, d.adrelid) ~
     '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: defaults/generated expressions still refer to retired fields: %', offenders;
@@ -380,7 +419,11 @@ BEGIN
   JOIN pg_class c ON c.oid = con.conrelid
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE pg_get_constraintdef(con.oid, true) ~
-    '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by';
+    '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by'
+    AND NOT EXISTS (
+      SELECT 1 FROM _triad_retirement_constraints x
+      WHERE x.constraint_oid = con.oid
+    );
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: constraints still refer to retired fields: %', offenders;
   END IF;
@@ -394,10 +437,9 @@ INSERT INTO public.triad_cutover_archive AS archive
 SELECT object_name, record_id, payload, migration_id
 FROM _triad_retirement_expected
 ON CONFLICT (object_name, record_id) DO UPDATE
-SET payload = EXCLUDED.payload,
-    migration_id = EXCLUDED.migration_id
-WHERE archive.payload IS NOT DISTINCT FROM EXCLUDED.payload
-  AND archive.migration_id IS NOT DISTINCT FROM EXCLUDED.migration_id;
+SET payload = archive.payload,
+    migration_id = archive.migration_id
+WHERE archive.payload IS NOT DISTINCT FROM EXCLUDED.payload;
 
 DO $$
 DECLARE n bigint;
@@ -407,7 +449,6 @@ BEGIN
   LEFT JOIN public.triad_cutover_archive a
     ON a.object_name = e.object_name
    AND a.record_id = e.record_id
-   AND a.migration_id = e.migration_id
    AND a.payload IS NOT DISTINCT FROM e.payload
   WHERE a.record_id IS NULL;
   IF n > 0 THEN
@@ -432,8 +473,11 @@ BEGIN
   FROM _triad_retirement_expected e
   JOIN public.triad_cutover_archive a
     ON a.object_name = e.object_name AND a.record_id = e.record_id
-  WHERE a.migration_id <> e.migration_id
-     OR a.payload IS DISTINCT FROM e.payload;
+  WHERE a.payload IS DISTINCT FROM e.payload
+     OR (
+       a.migration_id <> e.migration_id
+       AND e.object_name NOT IN ('triad_rounds', 'programme_triad_rounds')
+     );
   IF n > 0 THEN
     RAISE EXCEPTION 'Triad retirement: % archive conflicts differ from the typed source projection', n;
   END IF;
@@ -475,6 +519,14 @@ BEGIN
    AND i.column_name = c.column_name;
   IF n > 0 THEN
     RAISE EXCEPTION 'Triad retirement: % retired columns remain', n;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM _triad_retirement_constraints x
+    JOIN pg_constraint con ON con.oid = x.constraint_oid
+  ) THEN
+    RAISE EXCEPTION 'Triad retirement: expected legacy constraints remain';
   END IF;
 
   IF to_regprocedure('public.triad_is_seed_identifier(uuid)') IS NOT NULL THEN
@@ -525,13 +577,11 @@ BEGIN
   SELECT string_agg(p.proname, ', ') INTO offenders
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.prokind = 'f'
+    AND pg_get_functiondef(p.oid) ~ '\mEXECUTE\M'
     AND pg_get_functiondef(p.oid) ~
-      '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number'
-    OR (
-      pg_get_functiondef(p.oid) ~ '\mtriad_sessions\M'
-      AND pg_get_functiondef(p.oid) ~
-        '(^|[^a-z_])(proposed_start_time|proposed_end_time|start_time|proposed_by)([^a-z_]|$)'
-    );
+      '\m(public\.)?(triad_groups|triad_sessions|triad_alternative_proposals|triad_reflections|triad_rounds|programme_triad_rounds)\M'
+    AND pg_get_functiondef(p.oid) ~
+      '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: post-drop functions refer to retired fields: %', offenders;
   END IF;
@@ -540,12 +590,7 @@ BEGIN
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind IN ('v', 'm')
     AND pg_get_viewdef(c.oid, true) ~
-      '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number'
-    OR (
-      pg_get_viewdef(c.oid, true) ~ '\mtriad_sessions\M'
-      AND pg_get_viewdef(c.oid, true) ~
-        '(^|[^a-z_])(proposed_start_time|proposed_end_time|start_time|proposed_by)([^a-z_]|$)'
-    );
+      '\m(public\.)?(triad_rounds|programme_triad_rounds)\M';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: post-drop views refer to retired fields: %', offenders;
   END IF;

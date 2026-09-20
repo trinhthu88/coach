@@ -186,9 +186,22 @@ describe("migration chain — canonical final state", () => {
       expect(sql).toMatch(/DROP TABLE public\.programme_triad_rounds;/);
       for (const column of ["member_1_id", "enrollment_1_id", "coach_enrollment_id", "coachee_enrollment_id", "observer_enrollment_id",
         "member_1_response", "proposed_start_time", "participant_id", "learned_as_coach", "will_use_as_observer", "round_number", "triad_round_id", "programme_id"]) {
-        expect(sql, column).toMatch(new RegExp(`DROP COLUMN ${column}`));
+        expect(sql, column).toMatch(new RegExp(`'${column}'`));
       }
+      expect(sql).toMatch(/string_agg\(format\('DROP COLUMN %I'/);
       expect(sql).not.toMatch(/DROP COLUMN cohort_id/);
+    });
+
+    it("deployment 2 archives every source object transactionally and rejects stale conflicts", () => {
+      const sql = readFileSync(join(DEPLOYMENT_2, RETIRE_TRIAD), "utf8");
+      expect(sql).toMatch(/\\set ON_ERROR_STOP on/);
+      expect(sql).toMatch(/^BEGIN;$/m);
+      expect(sql).toMatch(/^COMMIT;$/m);
+      expect(sql).toMatch(/ON CONFLICT \(object_name, record_id\) DO UPDATE/);
+      expect(sql).not.toMatch(/ON CONFLICT[\s\S]{0,100}DO NOTHING/);
+      expect(sql).toMatch(/archive rows are missing or stale/);
+      expect(sql).toMatch(/typed source projection/);
+      expect(sql).toMatch(/unexpected dependencies remain/);
     });
 
     it("no final function reads a retired Triad field or keeps the cohort-scoped assignment", () => {
