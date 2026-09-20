@@ -2322,6 +2322,45 @@ export type Database = {
         }
         Relationships: []
       }
+      peer_cohort_permissions: {
+        Row: {
+          allowed_peer_cohort_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          source_cohort_id: string
+        }
+        Insert: {
+          allowed_peer_cohort_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          source_cohort_id: string
+        }
+        Update: {
+          allowed_peer_cohort_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          source_cohort_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_cohort_permissions_allowed_peer_cohort_id_fkey"
+            columns: ["allowed_peer_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "peer_cohort_permissions_source_cohort_id_fkey"
+            columns: ["source_cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       peer_session_competency_feedback: {
         Row: {
           coaching_mindset: number | null
@@ -2385,6 +2424,7 @@ export type Database = {
           participant_role: string
           peer_session_id: string
           session_kind: string
+          session_status: Database["public"]["Enums"]["session_status"]
           updated_at: string
           user_id: string
         }
@@ -2396,6 +2436,7 @@ export type Database = {
           participant_role: string
           peer_session_id: string
           session_kind: string
+          session_status?: Database["public"]["Enums"]["session_status"]
           updated_at?: string
           user_id: string
         }
@@ -2407,6 +2448,7 @@ export type Database = {
           participant_role?: string
           peer_session_id?: string
           session_kind?: string
+          session_status?: Database["public"]["Enums"]["session_status"]
           updated_at?: string
           user_id?: string
         }
@@ -5414,6 +5456,19 @@ export type Database = {
       do_tap:
         | { Args: never; Returns: string[] }
         | { Args: { "": string }; Returns: string[] }
+      eligible_peer_partners: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          cohort_id: string
+          cohort_name: string
+          display_name: string
+          enrollment_id: string
+          is_own_cohort: boolean
+          programme_id: string
+          programme_name: string
+          user_id: string
+        }[]
+      }
       enrollment_activity_participants: {
         Args: {
           p_enrollment_id: string
@@ -5989,6 +6044,24 @@ export type Database = {
       pass:
         | { Args: never; Returns: string }
         | { Args: { "": string }; Returns: string }
+      peer_cohort_permission_issues: {
+        Args: never
+        Returns: {
+          allowed_cohort_name: string
+          allowed_peer_cohort_id: string
+          issue: string
+          permission_id: string
+          source_cohort_id: string
+          source_cohort_name: string
+        }[]
+      }
+      peer_eligible_cohorts: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          cohort_id: string
+          is_own_cohort: boolean
+        }[]
+      }
       peer_participants_without_requirement: {
         Args: never
         Returns: {
@@ -6001,6 +6074,14 @@ export type Database = {
           status: string
           user_id: string
         }[]
+      }
+      peer_partner_enrollment: {
+        Args: { p_enrollment_id: string; p_partner_user_id: string }
+        Returns: string
+      }
+      peer_partner_is_eligible: {
+        Args: { p_enrollment_id: string; p_partner_user_id: string }
+        Returns: boolean
       }
       pg_version: { Args: never; Returns: string }
       pg_version_num: { Args: never; Returns: number }
@@ -6509,6 +6590,15 @@ export type Database = {
         | { Args: { "": string }; Returns: boolean[] }
       transition_mentoring_session_status: {
         Args: { p_reason?: string; p_session_id: string; p_status: string }
+        Returns: string
+      }
+      transition_peer_session_status: {
+        Args: {
+          p_reason?: string
+          p_session_id: string
+          p_session_kind: string
+          p_status: string
+        }
         Returns: string
       }
       transition_session_status: {
