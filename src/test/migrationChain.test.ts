@@ -204,6 +204,12 @@ describe("migration chain — canonical final state", () => {
       expect(sql).toMatch(/unexpected dependencies remain/);
     });
 
+    it("deployment 2 post-verification treats the standalone artifact as intentionally unledgered", () => {
+      const sql = readFileSync(join(process.cwd(), "scripts/triad-deployment-2-verification.sql"), "utf8");
+      expect(sql).toMatch(/standalone artifact outside/);
+      expect(sql).not.toMatch(/version\s*=\s*'20260919190000'/);
+    });
+
     it("no final function reads a retired Triad field or keeps the cohort-scoped assignment", () => {
       for (const file of files.filter((f) => f > CUTOVER)) {
         const sql = readFileSync(join(DIR, file), "utf8");
