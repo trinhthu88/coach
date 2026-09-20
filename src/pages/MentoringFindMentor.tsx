@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ interface MentorRow {
 
 export default function MentoringFindMentor() {
   const { user, role } = useAuth();
+  const { selectedEnrollment } = useEnrollmentContext(user?.id);
+  const enrollmentId = selectedEnrollment?.id;
   const isLearner = role === "coachee";
   const { t: tDash } = useTranslation("dashboard");
   const { t } = useTranslation("mentoring");
@@ -35,10 +38,23 @@ export default function MentoringFindMentor() {
     if (!user) return;
     setLoading(true);
     setError(null);
-    // Single source of truth: get_my_mentors() (mentoring_get_my_mentors
-    // migration) does the allowlist + is_active filtering server-side, so
-    // this list can't drift from what can_book_mentoring_session() allows.
-    const { data, error: err } = await supabase.rpc("get_my_mentors");
+    // Single source of truth: get_mentors_for_enrollment() resolves the
+    // enrollment's cohort server-side and returns its mentor pool, already
+    // filtered to active mentor profiles -- the same conditions
+    // can_book_mentoring_session_reason() applies, so the list cannot drift
+    // from what booking allows.
+    //
+    // It replaces get_my_mentors(), which took no arguments and merged the
+    // mentors of every enrollment a learner had ever held. The enrollment id
+    // is required: without it there is no cohort, and therefore no pool.
+    if (!enrollmentId) {
+      setMentors([]);
+      setLoading(false);
+      return;
+    }
+    const { data, error: err } = await supabase.rpc("get_mentors_for_enrollment", {
+      p_enrollment_id: enrollmentId,
+    });
     if (err) {
       setError(getFriendlyErrorMessage(err, t));
       setLoading(false);
@@ -48,7 +64,7 @@ export default function MentoringFindMentor() {
     setMentors(rows);
     setLoading(false);
 
-    // Small N (allowlists are curated), cheap to check each mentor's given-side
+    // Small N (a cohort pool is curated), cheap to check each mentor's given-side
     // capacity so a full mentor shows as unavailable before the user picks them.
     const withCapacity = await Promise.all(
       rows.map(async (m) => {
@@ -61,7 +77,7 @@ export default function MentoringFindMentor() {
       })
     );
     setMentors(withCapacity);
-  }, [user, t]);
+  }, [user, enrollmentId, t]);
 
   useEffect(() => {
     load();

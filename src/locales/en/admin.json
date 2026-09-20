@@ -79,6 +79,18 @@
       "assigned": "Coach assigned to this cohort.",
       "unassigned": "Coach removed from this cohort.",
       "toggleLabel": "Assign {{name}} to this cohort"
+    },
+    "mentoring": {
+      "title": "Mentoring",
+      "intro": "Mentors assigned here may deliver Mentoring for every learner in this cohort.",
+      "assignedCount": "{{count}} assigned",
+      "noMentors": "No mentors exist yet.",
+      "noneAssignedWarning": "No mentor is assigned. Learners in this cohort cannot book Mentoring until at least one is.",
+      "inactiveAssignedWarning": "{{count}} assigned mentor(s) have an inactive mentor profile and cannot be booked.",
+      "profileInactive": "profile inactive",
+      "assigned": "Mentor assigned to this cohort.",
+      "unassigned": "Mentor removed from this cohort.",
+      "toggleLabel": "Assign {{name}} to this cohort"
     }
   },
   "dashboard": {
@@ -937,7 +949,8 @@
     "cancel": "Cancel",
     "save": "Save",
     "saved": "Saved",
-    "saveFailed": "Couldn't save. Please try again."
+    "saveFailed": "Couldn't save. Please try again.",
+    "mentorAssignmentMovedToCohort": "Programme Mentoring is assigned per cohort. Manage the mentor pool in Admin → Cohorts → Mentoring."
   },
   "triads": {
     "eyebrow": "Programmes",
