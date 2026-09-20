@@ -142,4 +142,26 @@ describe("CohortPeerPanel", () => {
     renderPanel();
     expect(await screen.findByText(/This programme has no other cohort to connect to/)).toBeInTheDocument();
   });
+
+  it("shows a load error instead of misreporting a failed permission query as no siblings", async () => {
+    from.mockImplementation((table: string) => {
+      if (table === "cohorts") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { id: "A", programme_id: "P" }, error: null }),
+              neq: () => ({ order: () => Promise.resolve({ data: [{ id: "B", name: "Cohort B" }], error: null }) }),
+            }),
+          }),
+        };
+      }
+      if (table === "peer_cohort_permissions") {
+        return { select: () => ({ or: () => Promise.resolve({ data: null, error: { message: "relation does not exist" } }) }) };
+      }
+      throw new Error(`unexpected table ${table}`);
+    });
+    renderPanel();
+    expect(await screen.findByTestId("cohort-peer-error")).toBeInTheDocument();
+    expect(screen.queryByText(/This programme has no other cohort to connect to/)).not.toBeInTheDocument();
+  });
 });

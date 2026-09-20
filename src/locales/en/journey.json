@@ -34,7 +34,10 @@
     "goalProgress": "Goal progress",
     "assignedCoaches": "Assigned coaches",
     "sponsorDisclaimer": "If your organization sponsors this programme, they can see your participation, progress, and completion status — never your session notes, chat messages, or personal reflections.",
-    "postSessionPending": "{{n}} awaiting post-session learning"
+    "postSessionPending": "{{n}} awaiting post-session learning",
+    "coachingNotRequired": "Not a requirement of this programme",
+    "progressUnavailable": "Progress unavailable",
+    "progressUnavailableHint": "Canonical progress could not be loaded. Reload, or contact an admin if it persists."
   },
   "programmeTimeline": {
     "heading": "Programme timeline",

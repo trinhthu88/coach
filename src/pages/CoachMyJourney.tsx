@@ -115,7 +115,6 @@ export default function CoachMyJourney() {
   const coachSummaries = useCoachSummaries(sessions, coachNames, now);
 
   const programmeWeeks = useProgrammeWeeks(programme, now);
-  const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
   const { isGoalLocked } = useGoalLock(sessions);
   const sessionRatingSeries = useSessionRatingSeries(sessionRatings, sessions);
   const { pendingReflectionSession, needsRatingUpdate } = usePendingReflection(sessions, sessionRatings, goals.length > 0);
@@ -182,7 +181,6 @@ export default function CoachMyJourney() {
         programme={programme}
         programmeWeeks={programmeWeeks}
         coachSummaries={coachSummaries}
-        sessionsCompletedCount={sessionsCompletedCount}
         coaching={coaching}
         avgGoalProgress={avgGoalProgress}
       />

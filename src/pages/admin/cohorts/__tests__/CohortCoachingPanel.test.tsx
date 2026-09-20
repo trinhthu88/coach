@@ -141,6 +141,24 @@ describe("CohortCoachingPanel", () => {
     expect(await screen.findByTestId("cohort-coaching-warning")).toBeInTheDocument();
   });
 
+  it("shows a load error instead of misreporting a failed query as zero Coaches", async () => {
+    from.mockImplementation((table: string) => {
+      if (table === "cohort_coach_assignments") {
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ data: null, error: { message: "relation does not exist" } }),
+          }),
+          upsert,
+        };
+      }
+      return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) };
+    });
+    renderPanel();
+    expect(await screen.findByTestId("cohort-coaching-error")).toBeInTheDocument();
+    expect(screen.queryByTestId("cohort-coaching-warning")).not.toBeInTheDocument();
+    expect(screen.queryByText(/No Coaches are available to assign/i)).not.toBeInTheDocument();
+  });
+
   // Coaching and Mentoring draw the same Coach population, so an inactive
   // Coach account has to read the same way in both panels: the cohort looks
   // staffed while nobody can actually be booked.

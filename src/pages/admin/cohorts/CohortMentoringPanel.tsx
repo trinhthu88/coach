@@ -28,7 +28,7 @@ import {
  */
 export function CohortMentoringPanel({ cohortId }: { cohortId: string | undefined }) {
   const { t } = useTranslation("admin");
-  const { data: mentors, isLoading } = useAdminCohortMentors(cohortId);
+  const { data: mentors, isLoading, isError } = useAdminCohortMentors(cohortId);
   const setAssignment = useSetCohortMentorAssignment(cohortId);
 
   if (!cohortId) return null;
@@ -65,7 +65,11 @@ export function CohortMentoringPanel({ cohortId }: { cohortId: string | undefine
         </Badge>
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <p role="alert" data-testid="cohort-mentoring-error" className="text-sm text-destructive">
+          {t("cohorts.mentoring.loadError")}
+        </p>
+      ) : isLoading ? (
         <div className="flex justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
         </div>
@@ -101,14 +105,14 @@ export function CohortMentoringPanel({ cohortId }: { cohortId: string | undefine
         </ul>
       )}
 
-      {!isLoading && assigned.length === 0 && (
+      {!isLoading && !isError && assigned.length === 0 && (
         // Without a pool no learner in this cohort can book Mentoring, so this
         // is a configuration error rather than an empty state.
         <p className="text-xs text-warning" data-testid="cohort-mentoring-warning">
           {t("cohorts.mentoring.noneAssignedWarning")}
         </p>
       )}
-      {!isLoading && assignedButInactive.length > 0 && (
+      {!isLoading && !isError && assignedButInactive.length > 0 && (
         <p className="text-xs text-warning" data-testid="cohort-mentoring-inactive-warning">
           {t("cohorts.mentoring.inactiveAssignedWarning", { count: assignedButInactive.length })}
         </p>

@@ -13,12 +13,12 @@ never a second answer to a business question.
 | Business fact | Authoritative source | Read through (all roles) | Notes |
 |---|---|---|---|
 | **Programme required units** (what is required) | `programme_modules.config` (`required`, `required_units`) | `canonical_module_progress` → `canonical_enrollment_progress` | Admin edits the programme template. |
-| **Default scheduling policy** | `programme_modules.config.distribution_mode` + `distribution_settings` | `cohort_requirement_proposal_internal` only | Proposal/generation layer only. Nothing downstream re-runs the policy. |
-| **Cohort requirement due dates** (Coaching / Peer / Mentoring / Triads) | `cohort_requirement_dates` | `sponsor_canonical_module_schedule` | Materialized on cohort creation. Only missing modules are auto-filled. Changed only by Admin save or explicit "Regenerate schedule". |
+| **Cohort completion deadline** | `cohort_module_deadlines.completion_deadline` (one per cohort × module) | `sync_cohort_requirement_dates` → `cohort_requirement_dates.due_on` | The cohort answers BY WHEN, and only that. `distribution_mode` and the proposal functions were retired in `20260922100000`: a policy that materialised one row for a four-unit requirement could never record more than one completed unit. |
+| **Cohort requirement identity** (Coaching / Peer / Mentoring / Triads) | `cohort_requirement_dates` — exactly `required_units` rows, `units = 1`, ordinals 1..N | `sponsor_canonical_module_schedule` | Materialised in full on cohort creation and reconciled by `sync_cohort_requirement_dates` whenever the programme, the cohort or the deadline changes. **A mismatch is an integrity violation, not an operational state** — see below. |
 | **Training / Learning cohort timing** | `training_weeks.unlock_date` + `cohort_week_overrides` | `canonical_training_learning_items` → `sponsor_canonical_module_schedule` | Training-linked *other* modules copy these dates at materialization and don't follow later changes (Admin regenerates explicitly). |
-| **Required vs scheduled (mismatch)** | derived from the two rows above | `cohort_programme_schedule_state` → `learner_/sponsor_canonical_leader_/admin_canonical_schedule_state`, `cohort_requirement_schedule_issues` | For example "Coaching 5 required / 4 scheduled". Nothing is invented; every role sees the same state. |
+| **Required vs scheduled (mismatch)** | derived from the two rows above | `cohort_module_schedule_violation`, `cohort_schedule_violations`, `cohort_requirement_schedule_issues` | **Diagnostic only.** "Coaching 5 required / 4 scheduled" is a migration or corruption state that the deferred guards refuse to commit and the booking RPCs refuse to operate against. Nothing is invented, and no projection compensates. |
 | **Enrollment applicability** | `programme_enrollments` (programme, cohort, status) | canonical progress / journey wrappers | *Effective* status (after the programme end date) is computed once in `canonical_enrollment_progress`. |
-| **Activity completion** | the session lifecycle, per requirement (Coaching / Mentoring / Triads); `session_activity_attributions` for Peer, quiz, daily prompt and Training | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. See the operational-vs-evidence rule below. |
+| **Activity completion** | the session lifecycle, per requirement (Coaching / Mentoring / Triads); `peer_session_participants` for Peer (`20260921210000`); `session_activity_attributions` for quiz, daily prompt and Training | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. See the operational-vs-evidence rule below. |
 | **Coaching provider** | `cohort_coach_assignments` | `cohort_coaching_coach_pool` → `enrollment_coaching_coach_pool` | The learner-level allowlists are not programme Coaching authority. |
 | **Coaching requirement link** | `sessions.cohort_requirement_id` (server-assigned) | `canonical_coaching_requirement_fulfilment` | One live session per LEARNER per requirement. |
 | **Coaching completion** | a COMPLETED session attributed to a requirement | `canonical_coaching_requirement_fulfilment` → `sponsor_canonical_activity` | Evidence never gates it (`20260921130000`). |
@@ -33,6 +33,45 @@ never a second answer to a business question.
 | **Reflections** | original reflection records; for Coaching and Mentoring `session_learning_reflections` | `learner_reflection_feed` | `sessions.coachee_notes` is historical for Coaching (`20260921190000`): it was a second place a reflection could live, so the feed and the Admin alert disagreed with the evidence record. |
 | **Feedback** | original feedback records | learner feedback source (`useLearnerFeedback`) | Author-private notes are never selected. |
 | **Triad membership** | `triad_group_members.enrollment_id` | `canonical_triad_group_members` → `learner_triad_members` | Never derived from session records or role columns. See the Triad ownership map below. |
+
+## The quantity invariant
+
+```
+programme_modules.config.required_units = N      the ONLY answer to "how many?"
+        ↓
+exactly N rows in cohort_requirement_dates       units = 1, ordinals 1..N
+        ↓
+each row carries one deadline                    projected from cohort_module_deadlines
+```
+
+**One programme unit = one cohort requirement = one ordinal = one deadline.**
+The cohort never decides quantity; it decides only when each
+programme-defined requirement is due.
+
+A state such as `Programme = 4, Cohort = 3` is an **integrity violation**, not
+a supported operational state. Since `20260923100000` it is enforced rather
+than reported:
+
+| Guard | Where | What it refuses |
+|---|---|---|
+| `cohort_requirement_dates_one_unit_per_row` | CHECK | any row with `units <> 1` |
+| `cohort_requirement_dates_assert_schedule` | deferred constraint trigger | a commit leaving the wrong count, an ordinal gap or a duplicate |
+| `programme_modules_assert_schedules` | deferred constraint trigger | a quantity change that leaves any cohort of that programme invalid — which is how "reduce 4 → 3 while requirement 4 holds a session" is blocked |
+| `assert_enrollment_schedule_valid` | booking RPCs / eligibility | operating against an invalid schedule, with the named cause `cohort_schedule_invalid` |
+
+Both triggers are `DEFERRABLE INITIALLY DEFERRED` on purpose: they judge the
+**final** state at COMMIT, so `sync_cohort_requirement_dates()` can delete and
+re-insert a whole module's schedule inside one transaction without tripping a
+guard halfway through its own work.
+
+The one state allowed to persist is `missing_deadline`: a cohort with no
+completion deadline cannot materialise requirements, and no date may be
+invented for it. It is **pending**, blocks booking, and is cleared by an Admin
+setting the deadline — after which the full schedule materialises by itself.
+
+`cohort_requirement_schedule_issues()` remains for readiness checks and
+corruption detection. It is not the normal way a mismatch gets resolved,
+because a mismatch can no longer normally occur.
 
 ## Triad ownership map
 
@@ -161,7 +200,7 @@ Rollups only aggregate canonical rows (sums, counts of effective status and pace
 | `cohort_requirement_dates` | CANONICAL | Cohort due dates (non-Training) |
 | `training_weeks`, `cohort_week_overrides` | CANONICAL | Training cohort timing. For requirement dates the precedence is cohort override → cohort calendar → programme template date. |
 | `session_activity_attributions` | CANONICAL | Completion evidence |
-| `canonical_module_progress`, `canonical_enrollment_progress`, `canonical_enrollment_journey`, `canonical_enrollment_experience(_base)`, `canonical_enrollment_engagement`, `canonical_goal_progress`, `canonical_training_learning_items`, `canonical_learning_breakdown`, `sponsor_canonical_module_schedule`, `sponsor_canonical_activity`, `cohort_programme_schedule_state`, `canonical_enrollment_schedule_state`, `cohort_requirement_proposal_internal` | CANONICAL (INTERNAL) | Shared constructions. Not client-callable. |
+| `canonical_module_progress`, `canonical_enrollment_progress`, `canonical_enrollment_journey`, `canonical_enrollment_experience(_base)`, `canonical_enrollment_engagement`, `canonical_goal_progress`, `canonical_training_learning_items`, `canonical_learning_breakdown`, `sponsor_canonical_module_schedule`, `sponsor_canonical_activity`, `cohort_programme_schedule_state`, `canonical_enrollment_schedule_state`, `sync_cohort_requirement_dates`, `cohort_module_schedule_violation` | CANONICAL (INTERNAL) | Shared constructions. Not client-callable. |
 | `learner_canonical_*`, `sponsor_canonical_*`, `admin_canonical_*` | CANONICAL wrappers | Role eligibility only |
 | `get_sponsor_programme_progress`, `get_sponsor_programme_journey`, `sponsor_canonical_cohort_progress_one` | INTERNAL | Projections used inside canonical functions; not client-callable |
 | `attribute_activity_to_cadence_milestone`, `generate_enrollment_schedule`, `backfill_enrollment_schedule_snapshots` | INTERNAL / HISTORICAL | Maintain the snapshot history only |
@@ -203,7 +242,7 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
    the shared construction (`canonical_enrollment_progress`,
    `canonical_enrollment_journey`, `canonical_enrollment_schedule_state`).
    Never write a new aggregation.
-3. **Changing scheduling policy** belongs in `cohort_requirement_proposal_internal`
+3. **Changing when a requirement is due** belongs in `cohort_module_deadlines` (the cohort's completion deadline), never in a per-unit edit
    only. Materialized cohort dates are never rewritten implicitly.
 4. **Snapshots and caches** must not be read by user-facing current-state
    surfaces.

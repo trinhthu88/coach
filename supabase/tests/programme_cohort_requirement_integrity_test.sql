@@ -17,7 +17,7 @@
 -- force the check with SET CONSTRAINTS ALL IMMEDIATE.
 begin;
 
-select plan(34);
+select plan(36);
 
 -- ---------------------------------------------------------------------------
 -- Fixture
@@ -254,7 +254,7 @@ insert into public.cohort_mentors (cohort_id, mentor_user_id)
   values ('a2000000-0000-0000-0000-00000000b1b1'::uuid, 'a2000000-0000-0000-0000-000000000001'::uuid);
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status) values
   ('a2000000-0000-0000-0000-00000000e0f0'::uuid, 'a2000000-0000-0000-0000-00000000a0a0'::uuid,
-   'a2000000-0000-0000-0000-000000000006'::uuid, 'a2000000-0000-0000-0000-00000000b1b1'::uuid, 'active');
+   'a2000000-0000-0000-0000-000000000008'::uuid, 'a2000000-0000-0000-0000-00000000b1b1'::uuid, 'active');
 
 select is(
   (select count(*)::int from public.cohort_requirement_dates
@@ -268,18 +268,18 @@ select is(
   'missing_deadline', 'the cohort is reported as pending an Admin deadline');
 
 select set_config('request.jwt.claims',
-  json_build_object('sub', 'a2000000-0000-0000-0000-000000000006')::text, true);
+  json_build_object('sub', 'a2000000-0000-0000-0000-000000000008')::text, true);
 
 select ok(
   not public.can_book_session(
-    'a2000000-0000-0000-0000-000000000006'::uuid,
+    'a2000000-0000-0000-0000-000000000008'::uuid,
     'a2000000-0000-0000-0000-000000000001'::uuid,
     'a2000000-0000-0000-0000-00000000e0f0'::uuid),
   'Coaching booking refuses to operate against an incomplete schedule');
 
 select is(
   public.can_book_mentoring_session_reason(
-    'a2000000-0000-0000-0000-000000000006'::uuid,
+    'a2000000-0000-0000-0000-000000000008'::uuid,
     'a2000000-0000-0000-0000-000000000001'::uuid,
     'a2000000-0000-0000-0000-00000000e0f0'::uuid),
   'cohort_schedule_invalid',
@@ -303,7 +303,7 @@ select is(
 
 select ok(
   public.can_book_session(
-    'a2000000-0000-0000-0000-000000000006'::uuid,
+    'a2000000-0000-0000-0000-000000000008'::uuid,
     'a2000000-0000-0000-0000-000000000001'::uuid,
     'a2000000-0000-0000-0000-00000000e0f0'::uuid),
   'and booking is allowed again');
@@ -316,15 +316,31 @@ select ok(
 -- fulfil nothing, so they must not exhaust the allowance either.
 
 insert into public.mentoring_sessions
-  (id, enrollment_id, cohort_requirement_id, mentor_id, mentee_id, topic,
+  (id, enrollment_id, mentor_id, mentee_id, topic,
    start_time, duration_minutes, status)
 values
-  ('a2000000-0000-0000-0000-0000000000m1'::uuid, 'a2000000-0000-0000-0000-00000000e0f0'::uuid, NULL,
-   'a2000000-0000-0000-0000-000000000001'::uuid, 'a2000000-0000-0000-0000-000000000006'::uuid,
+  ('a2000000-0000-0000-0000-0000000000f1'::uuid, 'a2000000-0000-0000-0000-00000000e0f0'::uuid,
+   'a2000000-0000-0000-0000-000000000001'::uuid, 'a2000000-0000-0000-0000-000000000008'::uuid,
    'Pre-cutover one', now() - interval '80 days', 60, 'completed'),
-  ('a2000000-0000-0000-0000-0000000000m2'::uuid, 'a2000000-0000-0000-0000-00000000e0f0'::uuid, NULL,
-   'a2000000-0000-0000-0000-000000000001'::uuid, 'a2000000-0000-0000-0000-000000000006'::uuid,
+  ('a2000000-0000-0000-0000-0000000000f2'::uuid, 'a2000000-0000-0000-0000-00000000e0f0'::uuid,
+   'a2000000-0000-0000-0000-000000000001'::uuid, 'a2000000-0000-0000-0000-000000000008'::uuid,
    'Pre-cutover two', now() - interval '70 days', 60, 'completed');
+
+-- A session created TODAY is auto-attributed on insert
+-- (validate_mentoring_session_requirement), so an unattributed row can only be
+-- what it is in production: a pre-cutover session the backfill could not map.
+-- Stripping the attribution reproduces that shape exactly.
+select set_config('app.session_transition', 'on', true);
+update public.mentoring_sessions set cohort_requirement_id = NULL
+ where id in ('a2000000-0000-0000-0000-0000000000f1'::uuid,
+              'a2000000-0000-0000-0000-0000000000f2'::uuid);
+select set_config('app.session_transition', 'off', true);
+
+select is(
+  (select count(*)::int from public.mentoring_sessions
+    where enrollment_id = 'a2000000-0000-0000-0000-00000000e0f0'::uuid
+      and cohort_requirement_id is null),
+  2, 'the fixture holds two genuinely unattributed historical Mentoring sessions');
 
 select is(
   (select completed_units from public.canonical_module_progress('a2000000-0000-0000-0000-00000000e0f0'::uuid, current_date)
@@ -333,7 +349,7 @@ select is(
 
 select is(
   public.can_book_mentoring_session_reason(
-    'a2000000-0000-0000-0000-000000000006'::uuid,
+    'a2000000-0000-0000-0000-000000000008'::uuid,
     'a2000000-0000-0000-0000-000000000001'::uuid,
     'a2000000-0000-0000-0000-00000000e0f0'::uuid),
   'ok',
@@ -348,8 +364,9 @@ select is(
 
 select set_config('request.jwt.claims',
   json_build_object('sub', 'a2000000-0000-0000-0000-000000000001')::text, true);
-select public.transition_session_status(
-  'a2000000-0000-0000-0000-0000000000c4'::uuid, 'completed');
+-- Operational completion, through the canonical RPC. Evidence gates nothing
+-- (20260921130000), so no reflection or note is supplied.
+select public.complete_coaching_session('a2000000-0000-0000-0000-0000000000c4'::uuid);
 
 select is(
   (select completed_units from public.canonical_module_progress('a2000000-0000-0000-0000-00000000e001'::uuid, current_date)

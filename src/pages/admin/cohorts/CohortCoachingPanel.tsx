@@ -31,7 +31,7 @@ import {
  */
 export function CohortCoachingPanel({ cohortId }: { cohortId: string | undefined }) {
   const { t } = useTranslation("admin");
-  const { data: coaches, isLoading } = useAdminCohortCoaches(cohortId);
+  const { data: coaches, isLoading, isError } = useAdminCohortCoaches(cohortId);
   const setAssignment = useSetCohortCoachAssignment(cohortId);
 
   if (!cohortId) return null;
@@ -66,7 +66,11 @@ export function CohortCoachingPanel({ cohortId }: { cohortId: string | undefined
         </Badge>
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <p role="alert" data-testid="cohort-coaching-error" className="text-sm text-destructive">
+          {t("cohorts.coaching.loadError")}
+        </p>
+      ) : isLoading ? (
         <div className="flex justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
         </div>
@@ -102,14 +106,14 @@ export function CohortCoachingPanel({ cohortId }: { cohortId: string | undefined
         </ul>
       )}
 
-      {assigned.length === 0 && !isLoading && (
+      {assigned.length === 0 && !isLoading && !isError && (
         // Without a pool no learner in this cohort can book Coaching at all,
         // so this is a configuration error rather than an empty state.
         <p className="text-xs text-warning" data-testid="cohort-coaching-warning">
           {t("cohorts.coaching.noneAssignedWarning")}
         </p>
       )}
-      {!isLoading && assignedButInactive.length > 0 && (
+      {!isLoading && !isError && assignedButInactive.length > 0 && (
         // Assigned, but the Coach account is inactive: bookable by nobody, and
         // worth surfacing because the cohort looks staffed when it is not.
         <p className="text-xs text-warning" data-testid="cohort-coaching-inactive-warning">

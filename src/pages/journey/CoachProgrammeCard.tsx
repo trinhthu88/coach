@@ -64,15 +64,19 @@ export function CoachProgrammeCard({
   programme,
   programmeWeeks,
   coachSummaries,
-  sessionsCompletedCount,
   coaching,
   avgGoalProgress,
 }: {
   programme: ProgrammeInfo | null;
   programmeWeeks: ProgrammeWeeks | null;
   coachSummaries: CoachSummary[];
-  sessionsCompletedCount: number;
-  /** Canonical Coaching programme progress; null when Coaching is not required. */
+  /**
+   * Canonical Coaching programme progress.
+   *   object     the canonical figures
+   *   null       Coaching is not a required module of this programme
+   *   undefined  canonical progress has not loaded (or failed to)
+   * Nothing else may answer these numbers.
+   */
   coaching?: {
     requiredUnits: number;
     completedUnits: number;
@@ -127,29 +131,50 @@ export function CoachProgrammeCard({
       <div className="grid gap-3 p-4 md:grid-cols-3">
         <div className="rounded-lg border bg-muted/20 p-3">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmeCard.sessionsReceived")}</p>
-          {/* Canonical Coaching units. A session that has been held but whose
-              post-session evidence is outstanding counts as booked, not
-              completed, so this can read lower than the number of sessions
-              that took place. Falls back to the raw count only when Coaching
-              is not a scheduled requirement for this enrollment. */}
-          <p className="mt-1 text-xl font-semibold">
-            {coaching ? coaching.completedUnits : sessionsCompletedCount}
-            <span className="text-sm font-normal text-muted-foreground">
-              {" "}/ {coaching ? coaching.requiredUnits : programme.sessionsAllowed || "—"}
-            </span>
-          </p>
-          <Progress
-            value={
-              coaching
-                ? coaching.requiredUnits
-                  ? Math.min(100, (coaching.completedUnits / coaching.requiredUnits) * 100)
-                  : 0
-                : programme.sessionsAllowed
-                  ? Math.min(100, (sessionsCompletedCount / programme.sessionsAllowed) * 100)
-                  : 0
-            }
-            className="mt-2 h-1.5"
-          />
+          {/* Canonical Coaching units, or nothing. A session that has been
+              held but whose post-session evidence is outstanding counts as
+              booked, not completed, so this can read lower than the number of
+              sessions that took place.
+
+              There is deliberately no fallback. This tile used to fall back to
+              a raw completed-session count over programmes.coachee_session_limit
+              when canonical progress was absent -- a second answer to a
+              programme question, produced in the browser, that disagreed with
+              every other surface. Absent canonical progress now means one of
+              two honest states: Coaching is not a requirement of this
+              programme (null), or the figures could not be loaded
+              (undefined). */}
+          {coaching ? (
+            <>
+              <p className="mt-1 text-xl font-semibold">
+                {coaching.completedUnits}
+                <span className="text-sm font-normal text-muted-foreground">
+                  {" "}/ {coaching.requiredUnits}
+                </span>
+              </p>
+              <Progress
+                value={
+                  coaching.requiredUnits
+                    ? Math.min(100, (coaching.completedUnits / coaching.requiredUnits) * 100)
+                    : 0
+                }
+                className="mt-2 h-1.5"
+              />
+            </>
+          ) : coaching === null ? (
+            <p className="mt-1 text-sm text-muted-foreground" data-testid="coaching-not-required">
+              {t("programmeCard.coachingNotRequired")}
+            </p>
+          ) : (
+            <div data-testid="coaching-progress-unavailable">
+              <p className="mt-1 text-sm font-semibold text-warning">
+                {t("programmeCard.progressUnavailable")}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {t("programmeCard.progressUnavailableHint")}
+              </p>
+            </div>
+          )}
           {coaching && coaching.postSessionPending > 0 && (
             <p className="mt-1 text-[11px] text-muted-foreground">
               {t("programmeCard.postSessionPending", { n: coaching.postSessionPending })}
