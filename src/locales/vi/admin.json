@@ -83,12 +83,12 @@
     },
     "mentoring": {
       "title": "Mentoring",
-      "intro": "Các mentor được phân công tại đây có thể thực hiện Mentoring cho mọi học viên trong nhóm này.",
+      "intro": "Chọn các Coach đóng vai trò Mentor cho cohort này. Độc lập với phân công Coaching của họ.",
       "assignedCount": "Đã phân công {{count}}",
-      "noMentors": "Chưa có mentor nào.",
-      "noneAssignedWarning": "Chưa phân công mentor nào. Học viên trong nhóm này chưa thể đặt lịch Mentoring.",
+      "noCoaches": "Chưa có Coach nào để phân công làm Mentor. Hãy thêm Coach trong Quản trị → Coaches trước.",
+      "noneAssignedWarning": "Chưa có Coach nào được phân công làm Mentor cho cohort này, nên chưa ai đặt được buổi Mentoring.",
       "inactiveAssignedWarning": "{{count}} mentor được phân công có hồ sơ không hoạt động và không thể đặt lịch.",
-      "profileInactive": "hồ sơ không hoạt động",
+      "accountInactive": "tài khoản không hoạt động",
       "assigned": "Đã phân công mentor cho nhóm này.",
       "unassigned": "Đã gỡ mentor khỏi nhóm này.",
       "toggleLabel": "Phân công {{name}} cho nhóm này"
@@ -892,7 +892,7 @@
     "title": "Quản lý",
     "titleEmphasis": "Mentoring",
     "subtitle": "Chỉ định mentor, cấp quyền truy cập module, và ghép cặp mentee-mentor.",
-    "kpiMentors": "Mentor đang hoạt động",
+    "kpiMentors": "Coach được phân công làm Mentor",
     "kpiWithAccess": "Người dùng có quyền truy cập",
     "kpiPairs": "Cặp đã ghép",
     "mentorsSection": "Mentor",
@@ -931,7 +931,10 @@
     "save": "Lưu",
     "saved": "Đã lưu",
     "saveFailed": "Không thể lưu. Vui lòng thử lại.",
-    "mentorAssignmentMovedToCohort": "Mentoring của chương trình được phân công theo nhóm. Quản lý danh sách mentor tại Quản trị → Nhóm → Mentoring."
+    "mentorAssignmentMovedToCohort": "Mentoring của chương trình được phân công theo nhóm. Quản lý danh sách mentor tại Quản trị → Nhóm → Mentoring.",
+    "assignmentMovedBody": "Mentor là một Coach được phân công làm Mentor cho một cohort cụ thể — không phải tài khoản riêng. Phân công Mentor theo cohort tại Cohorts → Sửa cohort → Mentoring. Danh tính, hồ sơ và trạng thái tài khoản Coach được quản lý tại Coaches.",
+    "goToCohorts": "Tới Cohorts",
+    "goToCoaches": "Tới Coaches"
   },
   "triads": {
     "eyebrow": "Chương trình",

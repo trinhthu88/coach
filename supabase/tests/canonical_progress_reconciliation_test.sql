@@ -35,8 +35,11 @@ select ('e1000000-0000-0000-0000-00000000000' || n)::uuid, '00000000-0000-0000-0
 from generate_series(1, 8) n;
 -- 1=Coach  2=Mentor  3..7=Learners L1..L5  8=Sponsor
 
+-- The Mentor is a Coach with a cohort Mentoring assignment, so user 2 holds
+-- the Coach role too (20260921200000). There is no separate Mentor role.
 insert into public.user_roles (user_id, role) values
   ('e1000000-0000-0000-0000-000000000001', 'coach'),
+  ('e1000000-0000-0000-0000-000000000002', 'coach'),
   ('e1000000-0000-0000-0000-000000000003', 'coachee'),
   ('e1000000-0000-0000-0000-000000000004', 'coachee'),
   ('e1000000-0000-0000-0000-000000000005', 'coachee'),

@@ -9,7 +9,7 @@
 -- Mentor X is in no pool at all.
 begin;
 
-select plan(67);
+select plan(77);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -19,7 +19,13 @@ select ('d1000000-0000-0000-0000-00000000000' || n)::uuid, '00000000-0000-0000-0
 from generate_series(1, 4) n;
 -- 1=Mentor A  2=Mentor B  3=Learner L  4=Mentor X (unassigned)
 
+-- A Mentor is a Coach with a cohort assignment, so every mentor in this
+-- fixture holds the Coach role. mentor_profiles below is presentation
+-- metadata only and decides nothing (20260921200000).
 insert into public.user_roles (user_id, role) values
+  ('d1000000-0000-0000-0000-000000000001', 'coach'),
+  ('d1000000-0000-0000-0000-000000000002', 'coach'),
+  ('d1000000-0000-0000-0000-000000000004', 'coach'),
   ('d1000000-0000-0000-0000-000000000003', 'coachee') on conflict do nothing;
 
 insert into public.mentor_profiles (coach_user_id, is_active) values
@@ -115,12 +121,15 @@ select ok(
               where mentor_user_id = 'd1000000-0000-0000-0000-000000000004'::uuid),
   'an unassigned mentor is in no pool');
 
--- An inactive MENTOR PROFILE removes them from the pool even while assigned.
+-- A mentor profile decides NOTHING now: eligibility is Coach identity plus an
+-- active cohort assignment (20260921200000). Deactivating the profile leaves
+-- the Coach bookable; deactivating the ASSIGNMENT is what removes them.
 update public.mentor_profiles set is_active = false
   where coach_user_id = 'd1000000-0000-0000-0000-000000000002'::uuid;
 select ok(
-  not exists (select 1 from public.cohort_mentoring_mentor_pool('d1000000-0000-0000-0000-00000000b2b2'::uuid)),
-  'a mentor with an inactive profile cannot be booked even when assigned');
+  exists (select 1 from public.cohort_mentoring_mentor_pool('d1000000-0000-0000-0000-00000000b2b2'::uuid)
+          where mentor_user_id = 'd1000000-0000-0000-0000-000000000002'::uuid),
+  'an inactive mentor profile no longer removes an assigned Coach from the pool');
 update public.mentor_profiles set is_active = true
   where coach_user_id = 'd1000000-0000-0000-0000-000000000002'::uuid;
 
@@ -741,6 +750,93 @@ select is(
 select is(
   (select action_count from public.mentoring_session_evidence('d1000000-0000-0000-0000-00000000c8c8'::uuid)),
   1, 'only the evidence-completeness fields move');
+
+-- ---------------------------------------------------------------------------
+-- A Mentor is a Coach with a cohort assignment, not a user type
+-- ---------------------------------------------------------------------------
+--
+-- Eligibility used to require a mentor_profiles row as well as the cohort
+-- assignment, which made "Mentor" a second provider identity and left a Coach
+-- with no such row unbookable however the Admin had assigned them.
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
+values ('d1000000-0000-0000-0000-000000000007'::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
+  'authenticated', 'authenticated', 'mentoring-canon-7@example.test', 'test', now(),
+  jsonb_build_object('full_name', 'Coach No Profile'), now(), now(), '', '', ''),
+ ('d1000000-0000-0000-0000-000000000008'::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
+  'authenticated', 'authenticated', 'mentoring-canon-8@example.test', 'test', now(),
+  jsonb_build_object('full_name', 'Ordinary Learner'), now(), now(), '', '', '');
+-- Coach identity only. No mentor_profiles row is created for this user.
+insert into public.user_roles (user_id, role)
+  values ('d1000000-0000-0000-0000-000000000007', 'coach') on conflict do nothing;
+insert into public.user_roles (user_id, role)
+  values ('d1000000-0000-0000-0000-000000000008', 'coachee') on conflict do nothing;
+
+select ok(
+  not exists (select 1 from public.mentor_profiles
+              where coach_user_id = 'd1000000-0000-0000-0000-000000000007'::uuid),
+  'the Coach under test deliberately has no mentor profile');
+
+insert into public.cohort_mentors (cohort_id, mentor_user_id)
+  values ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-000000000007'::uuid);
+
+select ok(
+  exists (select 1 from public.cohort_mentoring_mentor_pool('d1000000-0000-0000-0000-00000000b3b3'::uuid)
+          where mentor_user_id = 'd1000000-0000-0000-0000-000000000007'::uuid),
+  'a Coach with no mentor profile is in the cohort Mentor pool');
+
+-- An ordinary learner can never be made a Mentor, enforced on the table so the
+-- Admin screen's filtering is a convenience rather than the integrity rule.
+select throws_ok($$
+  insert into public.cohort_mentors (cohort_id, mentor_user_id)
+  values ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-000000000008'::uuid)
+$$, '42501', NULL, 'a non-Coach cannot be assigned as Mentor');
+
+-- Coaching and Mentoring assignments are independent.
+insert into public.cohort_coach_assignments (cohort_id, coach_id)
+  values ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid);
+
+select ok(
+  exists (select 1 from public.cohort_coaching_coach_pool('d1000000-0000-0000-0000-00000000b3b3'::uuid)
+          where coach_id = 'd1000000-0000-0000-0000-000000000002'::uuid),
+  'a Coach assigned for Coaching is in the Coaching pool');
+
+select ok(
+  not exists (select 1 from public.cohort_mentoring_mentor_pool('d1000000-0000-0000-0000-00000000b3b3'::uuid)
+              where mentor_user_id = 'd1000000-0000-0000-0000-000000000002'::uuid),
+  'and is NOT in the Mentoring pool: assignment is never copied across');
+
+select ok(
+  not exists (select 1 from public.cohort_coaching_coach_pool('d1000000-0000-0000-0000-00000000b3b3'::uuid)
+              where coach_id = 'd1000000-0000-0000-0000-000000000007'::uuid),
+  'the Mentor-only Coach is NOT in the Coaching pool');
+
+-- Deactivating an assignment removes future eligibility and nothing else.
+select is(
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+    where module = 'mentoring'),
+  1, 'Mentoring progress before the mentor is unassigned');
+
+update public.cohort_mentors set is_active = false
+ where cohort_id = 'd1000000-0000-0000-0000-00000000b3b3'::uuid
+   and mentor_user_id = 'd1000000-0000-0000-0000-000000000001'::uuid;
+
+select ok(
+  not exists (select 1 from public.cohort_mentoring_mentor_pool('d1000000-0000-0000-0000-00000000b3b3'::uuid)
+              where mentor_user_id = 'd1000000-0000-0000-0000-000000000001'::uuid),
+  'an unassigned Coach leaves the Mentoring pool');
+
+select is(
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+    where module = 'mentoring'),
+  1, 'unassigning a mentor does not change completed Mentoring progress');
+
+select is(
+  (select mentor_id from public.mentoring_sessions
+    where id = 'd1000000-0000-0000-0000-00000000c7c7'::uuid),
+  'd1000000-0000-0000-0000-000000000001'::uuid,
+  'and the historical session still shows the Coach who actually delivered it');
 
 select * from finish();
 rollback;

@@ -61,8 +61,9 @@ export default function CoachAvailability() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [peerOptIn, setPeerOptIn] = useState(false);
   const [savingOptIn, setSavingOptIn] = useState(false);
-  // Only active mentors (admin-set via mentor_profiles, see AdminMentoring.tsx) may
-  // open mentoring slots — unlike peer coaching, this isn't a self-service opt-in.
+  // A Coach may open Mentoring slots when a cohort has assigned them as Mentor
+  // (Admin → Cohorts → Mentoring). Unlike peer coaching this is not a
+  // self-service opt-in, and there is no separate Mentor account.
   const [isMentor, setIsMentor] = useState(false);
 
   const load = useCallback(async () => {
@@ -103,16 +104,19 @@ export default function CoachAvailability() {
     })();
   }, [user]);
 
-  // Load mentor status
+  // May this Coach publish Mentoring availability? They can if any cohort has
+  // them assigned as Mentor. There is no separate Mentor account to check:
+  // mentor_profiles decides nothing (20260921200000).
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data } = await supabase
-        .from("mentor_profiles")
-        .select("is_active")
-        .eq("coach_user_id", user.id)
-        .maybeSingle();
-      setIsMentor(!!data?.is_active);
+        .from("cohort_mentors")
+        .select("cohort_id")
+        .eq("mentor_user_id", user.id)
+        .eq("is_active", true)
+        .limit(1);
+      setIsMentor((data ?? []).length > 0);
     })();
   }, [user]);
 

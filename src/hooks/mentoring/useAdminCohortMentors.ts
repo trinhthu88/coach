@@ -6,59 +6,71 @@ export const ADMIN_COHORT_MENTORS_KEY = "admin-cohort-mentors";
 export interface CohortMentorRow {
   mentorUserId: string;
   fullName: string;
+  title: string | null;
   isActive: boolean;
-  /** The mentor's own profile flag. An inactive profile is unbookable even if assigned. */
-  profileActive: boolean;
+  /** The Coach's account state. An inactive account cannot deliver anything. */
+  accountActive: boolean;
   assignedAt: string | null;
+  /** True when this Coach has no assignment row yet (an available candidate). */
+  isCandidate: boolean;
 }
 
 /**
- * Admin view of a cohort's mentor pool: who is assigned, plus every other
- * active mentor who could be.
+ * Admin view of a cohort's Mentoring assignments: which Coaches act as Mentor
+ * here, plus every other Coach who could.
  *
- * This is the programme Mentoring assignment mechanism. The user-global
- * mentoring_allowlist no longer governs it — a mentor delivers for a COHORT,
- * and every learner enrolled in that cohort may book any of them.
+ * A Mentor is not a user type. It is a Coach with a cohort Mentoring
+ * assignment, so the candidate population is the SAME Coach population
+ * useAdminCohortCoaches draws on. This hook previously listed mentor_profiles
+ * rows, which is why a system full of Coaches showed "no mentors exist yet".
+ *
+ * Coaching and Mentoring assignments stay independent: appearing here says
+ * nothing about cohort_coach_assignments, and nothing is copied between them.
  */
 export function useAdminCohortMentors(cohortId: string | undefined) {
   return useQuery({
     queryKey: [ADMIN_COHORT_MENTORS_KEY, cohortId],
     enabled: !!cohortId,
     queryFn: async (): Promise<CohortMentorRow[]> => {
-      const [{ data: assignments, error: aErr }, { data: profiles, error: pErr }] =
+      const [{ data: assignments, error: aErr }, { data: coachRoles, error: rErr }] =
         await Promise.all([
           supabase
             .from("cohort_mentors")
             .select("mentor_user_id, is_active, assigned_at")
             .eq("cohort_id", cohortId!),
-          supabase.from("mentor_profiles").select("coach_user_id, is_active"),
+          supabase.from("user_roles").select("user_id").eq("role", "coach"),
         ]);
       if (aErr) throw aErr;
-      if (pErr) throw pErr;
+      if (rErr) throw rErr;
 
       const assignedById = new Map((assignments ?? []).map((a) => [a.mentor_user_id, a]));
       const ids = Array.from(
         new Set([
-          ...(profiles ?? []).map((p) => p.coach_user_id),
+          ...(coachRoles ?? []).map((r) => r.user_id),
+          // Anyone already assigned stays listed even if their Coach role has
+          // since been removed, so the Admin can see and undo it.
           ...assignedById.keys(),
         ]),
       );
       if (ids.length === 0) return [];
 
-      const { data: names } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", ids);
+      const [{ data: profiles }, { data: coachProfiles }] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, status").in("id", ids),
+        supabase.from("coach_profiles").select("id, title").in("id", ids),
+      ]);
 
       return ids
         .map((id) => {
           const a = assignedById.get(id);
+          const profile = profiles?.find((p) => p.id === id);
           return {
             mentorUserId: id,
-            fullName: names?.find((n) => n.id === id)?.full_name ?? "Mentor",
+            fullName: profile?.full_name ?? "Coach",
+            title: coachProfiles?.find((p) => p.id === id)?.title ?? null,
             isActive: !!a?.is_active,
-            profileActive: !!profiles?.find((p) => p.coach_user_id === id)?.is_active,
+            accountActive: profile?.status === "active",
             assignedAt: a?.assigned_at ?? null,
+            isCandidate: !a,
           };
         })
         .sort((x, y) => {
