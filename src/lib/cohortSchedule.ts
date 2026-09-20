@@ -1,36 +1,27 @@
 /**
- * Admin cohort requirement schedule — presentation helpers only.
+ * Admin cohort requirement deadlines — presentation helpers only.
  *
- * The dates themselves are produced by the database: proposals by
- * cohort_requirement_schedule_proposal (the programme's default scheduling
- * policy), saved dates in cohort_requirement_dates. Nothing here generates a
- * date; it groups, compares and serialises what the backend returned.
+ * The cohort answers ONE question per module: by when must it be complete.
+ * The N canonical requirement rows are the database's business
+ * (sync_cohort_requirement_dates), never something an Admin types in one by
+ * one. Nothing here computes a date; it orders, compares and serialises what
+ * the backend returned.
  */
-export interface CohortRequirementItem {
+export interface CohortModuleDeadline {
   programme_id: string;
+  programme_name?: string | null;
   module: string;
-  ordinal: number;
-  due_on: string;
-  units: number;
-  generation_method: string;
-  /** Saved rows only: the policy date recorded when the row was materialized. */
-  generated_due_on?: string | null;
-  is_overridden?: boolean;
+  required_units: number;
+  scheduled_units: number;
+  completion_deadline: string | null;
+  /** 'cohort_end' (the system default), 'legacy_schedule', or 'admin'. */
+  source?: string | null;
 }
 
-export interface CohortRequirementGroup {
+export interface CohortDeadlineChange {
   key: string;
   programme_id: string;
   module: string;
-  items: CohortRequirementItem[];
-  requiredUnits: number;
-}
-
-export interface CohortScheduleChange {
-  key: string;
-  programme_id: string;
-  module: string;
-  ordinal: number;
   from: string | null;
   to: string | null;
 }
@@ -38,50 +29,63 @@ export interface CohortScheduleChange {
 /** Display order of scheduled modules (Training / Learning is scheduled by its weeks, not here). */
 const MODULE_ORDER = ["coaching", "peer_coaching", "mentoring", "triads"];
 
-export const itemKey = (item: Pick<CohortRequirementItem, "programme_id" | "module" | "ordinal">) =>
-  `${item.programme_id}:${item.module}:${item.ordinal}`;
+export const deadlineKey = (item: Pick<CohortModuleDeadline, "programme_id" | "module">) =>
+  `${item.programme_id}:${item.module}`;
 
 function moduleRank(module: string) {
   const idx = MODULE_ORDER.indexOf(module);
   return idx === -1 ? MODULE_ORDER.length : idx;
 }
 
-export function groupRequirementItems(items: CohortRequirementItem[]): CohortRequirementGroup[] {
-  const groups = new Map<string, CohortRequirementGroup>();
-  for (const item of items) {
-    const key = `${item.programme_id}:${item.module}`;
-    const group = groups.get(key) ?? { key, programme_id: item.programme_id, module: item.module, items: [], requiredUnits: 0 };
-    group.items.push(item);
-    group.requiredUnits += item.units;
-    groups.set(key, group);
-  }
-  return [...groups.values()]
-    .map((g) => ({ ...g, items: [...g.items].sort((a, b) => a.ordinal - b.ordinal) }))
-    .sort((a, b) => a.programme_id.localeCompare(b.programme_id) || moduleRank(a.module) - moduleRank(b.module) || a.module.localeCompare(b.module));
+export function sortModuleDeadlines(items: CohortModuleDeadline[]): CohortModuleDeadline[] {
+  return [...items].sort(
+    (a, b) =>
+      (a.programme_name ?? a.programme_id).localeCompare(b.programme_name ?? b.programme_id)
+      || moduleRank(a.module) - moduleRank(b.module)
+      || a.module.localeCompare(b.module),
+  );
 }
 
-/** Per-unit differences between two schedules (e.g. saved → regenerated). */
-export function diffRequirementSchedules(from: CohortRequirementItem[], to: CohortRequirementItem[]): CohortScheduleChange[] {
-  const before = new Map(from.map((i) => [itemKey(i), i]));
-  const after = new Map(to.map((i) => [itemKey(i), i]));
+/** Per-module differences between two sets of deadlines (e.g. saved → edited). */
+export function diffModuleDeadlines(
+  from: CohortModuleDeadline[],
+  to: CohortModuleDeadline[],
+): CohortDeadlineChange[] {
+  const before = new Map(from.map((i) => [deadlineKey(i), i]));
+  const after = new Map(to.map((i) => [deadlineKey(i), i]));
   const keys = [...new Set([...before.keys(), ...after.keys()])];
   return keys
     .map((key) => {
       const a = before.get(key);
       const b = after.get(key);
-      const ref = (b ?? a) as CohortRequirementItem;
-      return { key, programme_id: ref.programme_id, module: ref.module, ordinal: ref.ordinal, from: a?.due_on ?? null, to: b?.due_on ?? null };
+      const ref = (b ?? a) as CohortModuleDeadline;
+      return {
+        key,
+        programme_id: ref.programme_id,
+        module: ref.module,
+        from: a?.completion_deadline ?? null,
+        to: b?.completion_deadline ?? null,
+      };
     })
     .filter((c) => c.from !== c.to)
-    .sort((a, b) => moduleRank(a.module) - moduleRank(b.module) || a.ordinal - b.ordinal);
+    .sort((a, b) => moduleRank(a.module) - moduleRank(b.module) || a.module.localeCompare(b.module));
 }
 
-/** Only the units whose date differs from the baseline — an Admin edit touches exactly those. */
-export function changedRequirementItems(baseline: CohortRequirementItem[], current: CohortRequirementItem[]) {
-  const base = new Map(baseline.map((i) => [itemKey(i), i.due_on]));
-  return current.filter((i) => base.get(itemKey(i)) !== i.due_on);
+/** Only the modules whose deadline differs from the baseline. */
+export function changedModuleDeadlines(
+  baseline: CohortModuleDeadline[],
+  current: CohortModuleDeadline[],
+) {
+  const base = new Map(baseline.map((i) => [deadlineKey(i), i.completion_deadline]));
+  return current.filter(
+    (i) => i.completion_deadline && base.get(deadlineKey(i)) !== i.completion_deadline,
+  );
 }
 
-export function toSavePayload(items: CohortRequirementItem[]) {
-  return items.map(({ programme_id, module, ordinal, due_on }) => ({ programme_id, module, ordinal, due_on }));
+export function toDeadlinePayload(items: CohortModuleDeadline[]) {
+  return items.map(({ programme_id, module, completion_deadline }) => ({
+    programme_id,
+    module,
+    completion_deadline,
+  }));
 }

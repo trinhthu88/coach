@@ -280,8 +280,8 @@ select is(
    )
    where module = 'coaching'::public.programme_module_type
      and due_on IS NOT NULL),
-  '2026-04-01'::date,
-  'canonical schedule uses Cohort start date when enrollment dates differ'
+  '2026-07-05'::date,
+  'canonical schedule uses the Cohort Coaching deadline, not the enrollment dates'
 );
 select is(
   (select max(due_on)
@@ -296,8 +296,9 @@ select is(
 set local role authenticated;
 
 -- A late enrollment is evaluated against the already-running Cohort timeline.
--- Leader C7 has no coaching activity, so the first Cohort checkpoint is behind
--- even though its enrollment starts after that checkpoint.
+-- Leader C7 has no coaching activity, so once the Cohort's Coaching deadline
+-- has passed every unit is overdue -- even though the enrollment itself ends
+-- before that deadline.
 reset role;
 update public.programme_enrollments
 set start_date = '2026-04-15'::date,
@@ -308,19 +309,19 @@ select is(
    (select coaching_due_units
     from public.sponsor_canonical_enrollment_progress(
       '11111111-1111-4111-8111-111111111119'::uuid,
-      '2026-04-02'::date)
+      '2026-07-06'::date)
     where enrollment_id = '14141414-1414-4141-8141-000000000007'::uuid),
-  1,
+  4,
   'late enrollment is due against the existing Cohort timeline'
 );
 select is(
   (select pace_status
     from public.sponsor_canonical_enrollment_progress(
       '11111111-1111-4111-8111-111111111119'::uuid,
-      '2026-04-02'::date)
+      '2026-07-06'::date)
     where enrollment_id = '14141414-1414-4141-8141-000000000007'::uuid),
   'behind',
-  'late enrollment can be behind before its enrollment start date'
+  'late enrollment can be behind on a Cohort deadline that falls outside its own dates'
 );
 select is(
   (select min((point->>'due_on')::date)
@@ -331,8 +332,8 @@ select is(
      )
    ) point
    where point->'module_scope' @> '["coaching"]'::jsonb),
-  '2026-04-01'::date,
-  'Sponsor journey checkpoints remain anchored to the Cohort start date'
+  '2026-07-05'::date,
+  'Sponsor journey checkpoints remain anchored to the Cohort deadlines, not the enrollment'
 );
 
 -- An empty cohort is suppressed: population is not exposed as a detail

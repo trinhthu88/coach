@@ -261,7 +261,8 @@ WITH repo(version, name) AS (VALUES
   ('20260921180000', 'coaching_requirement_backfill'),
   ('20260921190000', 'coaching_reflection_single_store'),
   ('20260921200000', 'mentor_is_a_coach'),
-  ('20260921210000', 'peer_participant_enrollment')
+  ('20260921210000', 'peer_participant_enrollment'),
+  ('20260922100000', 'cohort_module_deadlines')
 -- END REPO MANIFEST
 ),
 

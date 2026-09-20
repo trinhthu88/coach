@@ -1,6 +1,6 @@
 begin;
 
-select plan(22);
+select plan(17);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -57,14 +57,14 @@ values
 
 insert into public.programme_modules (programme_id, module, enabled, config)
 values
-  ('c1000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":3,"receive_limit":3,"distribution_mode":"flexible","distribution_settings":{}}'),
-  ('c1000000-0000-0000-0000-000000000001', 'peer_coaching', true, '{"required":true,"required_units":3,"receive_limit":3,"monthly_limit":3,"distribution_mode":"evenly_distributed","distribution_settings":{}}'),
-  ('c1000000-0000-0000-0000-000000000001', 'mentoring', true, '{"required":true,"required_units":3,"receive_limit":3,"distribution_mode":"monthly_frequency","distribution_settings":{"interval_months":1}}'),
-  ('c1000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":3,"max_triads":3,"distribution_mode":"custom","distribution_settings":{"milestones":[{"due_on":"2026-01-15","required_units":1},{"due_on":"2026-03-15","window_end_on":"2026-03-20","required_units":2}]}}'),
-  ('c1000000-0000-0000-0000-000000000001', 'training', true, jsonb_build_object('required', true, 'required_units', 2, 'distribution_mode', 'training_linked', 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f1000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000002')))),
-  ('c1000000-0000-0000-0000-000000000001', 'quiz', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}'),
-  ('c1000000-0000-0000-0000-000000000001', 'daily_prompt', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}'),
-  ('c1000000-0000-0000-0000-000000000001', 'assessment', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}');
+  ('c1000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":3,"receive_limit":3}'),
+  ('c1000000-0000-0000-0000-000000000001', 'peer_coaching', true, '{"required":true,"required_units":3,"receive_limit":3,"monthly_limit":3}'),
+  ('c1000000-0000-0000-0000-000000000001', 'mentoring', true, '{"required":true,"required_units":3,"receive_limit":3}'),
+  ('c1000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":3,"max_triads":3}'),
+  ('c1000000-0000-0000-0000-000000000001', 'training', true, jsonb_build_object('required', true, 'required_units', 2, 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f1000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000002')))),
+  ('c1000000-0000-0000-0000-000000000001', 'quiz', true, '{"required":true,"required_units":2}'),
+  ('c1000000-0000-0000-0000-000000000001', 'daily_prompt', true, '{"required":true,"required_units":2}'),
+  ('c1000000-0000-0000-0000-000000000001', 'assessment', true, '{"required":true,"required_units":2}');
 
 insert into public.coachee_coach_allowlist(coachee_id, coach_id)
 values ('a1000000-0000-0000-0000-000000000001','a3000000-0000-0000-0000-000000000003');
@@ -81,44 +81,37 @@ select is(
   'generation snapshots every enabled module'
 );
 
+-- Every requirement module: one milestone per required unit, all on the
+-- cohort-module completion deadline. No module has a cadence of its own.
 select results_eq(
-  $$select m.due_on, m.required_units
-      from public.enrollment_module_milestones m
-      join public.enrollment_module_snapshots s on s.id = m.enrollment_module_snapshot_id
-     where s.enrollment_id = 'e1000000-0000-0000-0000-000000000001' and s.module = 'coaching'
-     order by m.sequence$$,
-  $$values (date '2026-04-01', 3)$$,
-  'flexible places all required units at the enrollment deadline'
+  $$select s.module::text, count(*)::int, count(distinct m.due_on)::int, max(m.due_on), sum(m.required_units)::int
+      from public.enrollment_module_snapshots s
+      join public.enrollment_module_milestones m on m.enrollment_module_snapshot_id = s.id
+     where s.enrollment_id = 'e1000000-0000-0000-0000-000000000001'
+       and s.module in ('coaching', 'peer_coaching', 'mentoring', 'triads')
+     group by s.module::text order by s.module::text$$,
+  $$values
+      ('coaching'::text, 3, 1, date '2026-04-01', 3),
+      ('mentoring'::text, 3, 1, date '2026-04-01', 3),
+      ('peer_coaching'::text, 3, 1, date '2026-04-01', 3),
+      ('triads'::text, 3, 1, date '2026-04-01', 3)$$,
+  'every scheduled module places its required units on the one cohort deadline'
 );
 
+-- The rule is the same for quiz, daily prompt and assessment: a required
+-- module is a required module, whatever kind of activity fulfils it.
 select results_eq(
-  $$select m.due_on, m.required_units
-      from public.enrollment_module_milestones m
-      join public.enrollment_module_snapshots s on s.id = m.enrollment_module_snapshot_id
-     where s.enrollment_id = 'e1000000-0000-0000-0000-000000000001' and s.module = 'peer_coaching'
-     order by m.sequence$$,
-  $$values (date '2026-01-31', 1), (date '2026-03-02', 1), (date '2026-04-01', 1)$$,
-  'even distribution uses exact enrollment-relative deadlines and unit total'
-);
-
-select results_eq(
-  $$select m.due_on, m.required_units
-      from public.enrollment_module_milestones m
-      join public.enrollment_module_snapshots s on s.id = m.enrollment_module_snapshot_id
-     where s.enrollment_id = 'e1000000-0000-0000-0000-000000000001' and s.module = 'mentoring'
-     order by m.sequence$$,
-  $$values (date '2026-01-01', 1), (date '2026-02-01', 1), (date '2026-03-01', 1)$$,
-  'monthly frequency uses its positive month interval and preserves unit total'
-);
-
-select results_eq(
-  $$select m.due_on, m.window_end_on, m.required_units
-      from public.enrollment_module_milestones m
-      join public.enrollment_module_snapshots s on s.id = m.enrollment_module_snapshot_id
-     where s.enrollment_id = 'e1000000-0000-0000-0000-000000000001' and s.module = 'triads'
-     order by m.sequence$$,
-  $$values (date '2026-01-15', null::date, 1), (date '2026-03-15', date '2026-03-20', 2)$$,
-  'custom distribution preserves configured deadlines, windows, and unit total'
+  $$select s.module::text, count(*)::int, max(m.due_on), sum(m.required_units)::int
+      from public.enrollment_module_snapshots s
+      join public.enrollment_module_milestones m on m.enrollment_module_snapshot_id = s.id
+     where s.enrollment_id = 'e1000000-0000-0000-0000-000000000001'
+       and s.module in ('quiz', 'daily_prompt', 'assessment')
+     group by s.module::text order by s.module::text$$,
+  $$values
+      ('assessment'::text, 2, date '2026-04-01', 2),
+      ('daily_prompt'::text, 2, date '2026-04-01', 2),
+      ('quiz'::text, 2, date '2026-04-01', 2)$$,
+  'quiz, daily prompt and assessment follow the same one-deadline rule'
 );
 
 select results_eq(
@@ -133,22 +126,8 @@ select results_eq(
   'training-linked distribution uses cohort overrides and preserves selected units'
 );
 
-select results_eq(
-  $$select s.module::text, m.due_on, m.required_units
-      from public.enrollment_module_snapshots s
-      join public.enrollment_module_milestones m on m.enrollment_module_snapshot_id = s.id
-     where s.enrollment_id = 'e1000000-0000-0000-0000-000000000001'
-       and s.module in ('quiz', 'daily_prompt', 'assessment')
-     order by s.module::text$$,
-  $$values
-      ('assessment'::text, date '2026-04-01', 2),
-      ('daily_prompt'::text, date '2026-04-01', 2),
-      ('quiz'::text, date '2026-04-01', 2)$$,
-  'flexible applies to quiz, daily-prompt, and assessment requirements too'
-);
-
 create temporary table schedule_snapshot_before as
-select s.id, s.module, s.required, s.required_units, s.distribution_mode,
+select s.id, s.module, s.required, s.required_units,
        s.distribution_settings, s.weight, s.starts_on, s.ends_on
 from public.enrollment_module_snapshots s
 where s.enrollment_id = 'e1000000-0000-0000-0000-000000000001';
@@ -167,11 +146,11 @@ where programme_id = 'c1000000-0000-0000-0000-000000000001' and module = 'coachi
 select public.generate_enrollment_schedule('e1000000-0000-0000-0000-000000000001');
 
 select results_eq(
-  $$select id, module, required, required_units, distribution_mode, distribution_settings, weight, starts_on, ends_on
+  $$select id, module, required, required_units, distribution_settings, weight, starts_on, ends_on
       from public.enrollment_module_snapshots
      where enrollment_id = 'e1000000-0000-0000-0000-000000000001'
      order by module$$,
-  $$select id, module, required, required_units, distribution_mode, distribution_settings, weight, starts_on, ends_on
+  $$select id, module, required, required_units, distribution_settings, weight, starts_on, ends_on
       from schedule_snapshot_before
      order by module$$,
   'repeated generation leaves existing enrollment snapshots unchanged'
@@ -189,21 +168,20 @@ select results_eq(
   'repeated generation leaves existing enrollment milestone identities unchanged'
 );
 
+-- What is still refused. The scheduling policies are gone, so what is left is
+-- the module CONFIG contradicting itself -- caught where it is written when it
+-- can be, and by the snapshot engine otherwise.
 insert into public.programmes (id, name)
 values
-  ('c2000000-0000-0000-0000-000000000001', 'Invalid custom total programme'),
-  ('c2000000-0000-0000-0000-000000000002', 'Invalid custom window programme'),
-  ('c2000000-0000-0000-0000-000000000003', 'Invalid monthly interval programme'),
-  ('c2000000-0000-0000-0000-000000000004', 'Missing linked weeks programme'),
-  ('c2000000-0000-0000-0000-000000000005', 'Outside linked date programme'),
-  ('c2000000-0000-0000-0000-000000000006', 'Foreign linked week programme');
+  ('c2000000-0000-0000-0000-000000000001', 'Non-object settings programme'),
+  ('c2000000-0000-0000-0000-000000000002', 'Negative weight programme');
 
 insert into public.cohorts (id, name, programme_id, start_date, end_date)
 select ('d2000000-0000-0000-0000-00000000000' || n)::uuid,
        'Invalid schedule cohort ' || n,
        ('c2000000-0000-0000-0000-00000000000' || n)::uuid,
        date '2026-01-01', date '2026-04-01'
-from generate_series(1, 6) as n;
+from generate_series(1, 2) as n;
 
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, start_date, end_date, status)
 select ('e3000000-0000-0000-0000-00000000000' || n)::uuid,
@@ -211,68 +189,41 @@ select ('e3000000-0000-0000-0000-00000000000' || n)::uuid,
        ('c2000000-0000-0000-0000-00000000000' || n)::uuid,
        ('d2000000-0000-0000-0000-00000000000' || n)::uuid,
        date '2026-01-01', date '2026-04-01', 'completed'
-from generate_series(1, 6) as n;
+from generate_series(1, 2) as n;
 
 insert into public.programme_modules (programme_id, module, config)
 values
-  ('c2000000-0000-0000-0000-000000000001', 'coaching', '{"required":true,"required_units":3,"distribution_mode":"custom","distribution_settings":{"milestones":[{"due_on":"2026-02-01","required_units":2}]}}'),
-  ('c2000000-0000-0000-0000-000000000002', 'coaching', '{"required":true,"required_units":1,"distribution_mode":"custom","distribution_settings":{"milestones":[{"due_on":"2026-02-01","window_end_on":"2026-01-31","required_units":1}]}}'),
-  ('c2000000-0000-0000-0000-000000000003', 'coaching', '{"required":true,"required_units":2,"distribution_mode":"monthly_frequency","distribution_settings":{"interval_months":0}}'),
-  ('c2000000-0000-0000-0000-000000000004', 'training', '{"required":true,"required_units":1,"distribution_mode":"training_linked","distribution_settings":{"training_week_ids":[]}}');
+  ('c2000000-0000-0000-0000-000000000001', 'coaching', '{"required":true,"required_units":1,"distribution_settings":[]}'),
+  ('c2000000-0000-0000-0000-000000000002', 'coaching', '{"required":true,"required_units":1,"weight":-5}');
 
-insert into public.training_weeks (id, programme_id, week_number, title)
-values
-  ('f2000000-0000-0000-0000-000000000005', 'c2000000-0000-0000-0000-000000000005', 1, 'Outside override week'),
-  ('f2000000-0000-0000-0000-000000000006', 'c2000000-0000-0000-0000-000000000006', 1, 'Foreign selection owner week');
+select throws_ok(
+  $$insert into public.programme_modules (programme_id, module, config)
+    values ('c2000000-0000-0000-0000-000000000001', 'mentoring', '{"required":true,"required_units":0}')$$,
+  '22023',
+  'Required modules must have at least one required unit',
+  'a module cannot be required and require nothing'
+);
 
-insert into public.cohort_week_overrides (cohort_id, training_week_id, unlock_date)
-values ('d2000000-0000-0000-0000-000000000005', 'f2000000-0000-0000-0000-000000000005', date '2026-04-02');
-
-insert into public.programme_modules (programme_id, module, config)
-values
-  ('c2000000-0000-0000-0000-000000000005', 'training', jsonb_build_object('required', true, 'required_units', 1, 'distribution_mode', 'training_linked', 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f2000000-0000-0000-0000-000000000005')))),
-  ('c2000000-0000-0000-0000-000000000006', 'training', jsonb_build_object('required', true, 'required_units', 1, 'distribution_mode', 'training_linked', 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f2000000-0000-0000-0000-000000000005'))));
+select throws_ok(
+  $$insert into public.programme_modules (programme_id, module, config)
+    values ('c2000000-0000-0000-0000-000000000001', 'triads', '{"required":false,"required_units":-1}')$$,
+  '22023',
+  'required_units must be a non-negative integer',
+  'required_units cannot be negative'
+);
 
 select throws_ok(
   $$select public.generate_enrollment_schedule('e3000000-0000-0000-0000-000000000001')$$,
   'P0001',
-  'Custom milestone required_units must total module required_units',
-  'custom schedules reject a unit-total mismatch'
+  'Module distribution_settings must be a JSON object',
+  'module settings must be an object'
 );
 
 select throws_ok(
   $$select public.generate_enrollment_schedule('e3000000-0000-0000-0000-000000000002')$$,
   'P0001',
-  'Custom milestone window must end on or after its due date and within the enrollment dates',
-  'custom schedules reject an invalid milestone window'
-);
-
-select throws_ok(
-  $$select public.generate_enrollment_schedule('e3000000-0000-0000-0000-000000000003')$$,
-  'P0001',
-  'Monthly module schedules require a positive interval_months',
-  'monthly schedules reject a non-positive interval'
-);
-
-select throws_ok(
-  $$select public.generate_enrollment_schedule('e3000000-0000-0000-0000-000000000004')$$,
-  'P0001',
-  'Training-linked module schedules require exactly required_units selected training weeks',
-  'training-linked schedules require selected training week IDs'
-);
-
-select throws_ok(
-  $$select public.generate_enrollment_schedule('e3000000-0000-0000-0000-000000000005')$$,
-  'P0001',
-  'Training-linked milestone dates must fall within the enrollment dates',
-  'training-linked schedules reject cohort overrides outside enrollment dates'
-);
-
-select throws_ok(
-  $$select public.generate_enrollment_schedule('e3000000-0000-0000-0000-000000000006')$$,
-  'P0001',
-  'Training-linked selections must belong to the enrollment programme',
-  'training-linked schedules reject training weeks from another programme'
+  'Module weight must be nonnegative',
+  'module weight cannot be negative'
 );
 
 select set_config('request.jwt.claim.sub', 'a1000000-0000-0000-0000-000000000001', true);

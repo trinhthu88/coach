@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       access_requests: {
@@ -579,27 +604,33 @@ export type Database = {
         Row: {
           coach_id: string
           created_at: string
+          engagement_level: string | null
           flag_for_admin: boolean
           flag_notes: string | null
           id: string
+          quality_rating: number | null
           session_id: string
           updated_at: string
         }
         Insert: {
           coach_id: string
           created_at?: string
+          engagement_level?: string | null
           flag_for_admin?: boolean
           flag_notes?: string | null
           id?: string
+          quality_rating?: number | null
           session_id: string
           updated_at?: string
         }
         Update: {
           coach_id?: string
           created_at?: string
+          engagement_level?: string | null
           flag_for_admin?: boolean
           flag_notes?: string | null
           id?: string
+          quality_rating?: number | null
           session_id?: string
           updated_at?: string
         }
@@ -619,30 +650,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      coach_session_feedback_retired_ratings: {
-        Row: {
-          archived_at: string
-          coach_id: string | null
-          engagement_level: string | null
-          quality_rating: number | null
-          session_id: string
-        }
-        Insert: {
-          archived_at?: string
-          coach_id?: string | null
-          engagement_level?: string | null
-          quality_rating?: number | null
-          session_id: string
-        }
-        Update: {
-          archived_at?: string
-          coach_id?: string | null
-          engagement_level?: string | null
-          quality_rating?: number | null
-          session_id?: string
-        }
-        Relationships: []
       }
       coach_session_limits: {
         Row: {
@@ -1192,6 +1199,57 @@ export type Database = {
           },
         ]
       }
+      cohort_module_deadlines: {
+        Row: {
+          cohort_id: string
+          completion_deadline: string
+          created_at: string
+          id: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          source: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cohort_id: string
+          completion_deadline: string
+          created_at?: string
+          id?: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cohort_id?: string
+          completion_deadline?: string
+          created_at?: string
+          id?: string
+          module?: Database["public"]["Enums"]["programme_module_type"]
+          programme_id?: string
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_module_deadlines_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_module_deadlines_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cohort_requirement_dates: {
         Row: {
           cohort_id: string
@@ -1201,6 +1259,7 @@ export type Database = {
           generation_method: string
           id: string
           is_overridden: boolean
+          legacy_due_on: string | null
           materialized_via: string
           module: Database["public"]["Enums"]["programme_module_type"]
           ordinal: number
@@ -1218,6 +1277,7 @@ export type Database = {
           generation_method: string
           id?: string
           is_overridden?: boolean
+          legacy_due_on?: string | null
           materialized_via: string
           module: Database["public"]["Enums"]["programme_module_type"]
           ordinal: number
@@ -1235,6 +1295,7 @@ export type Database = {
           generation_method?: string
           id?: string
           is_overridden?: boolean
+          legacy_due_on?: string | null
           materialized_via?: string
           module?: Database["public"]["Enums"]["programme_module_type"]
           ordinal?: number
@@ -1610,7 +1671,7 @@ export type Database = {
         Row: {
           config: Json
           created_at: string
-          distribution_mode: string
+          distribution_mode: string | null
           distribution_settings: Json
           ends_on: string
           enrollment_id: string
@@ -1625,7 +1686,7 @@ export type Database = {
         Insert: {
           config?: Json
           created_at?: string
-          distribution_mode?: string
+          distribution_mode?: string | null
           distribution_settings?: Json
           ends_on: string
           enrollment_id: string
@@ -1640,7 +1701,7 @@ export type Database = {
         Update: {
           config?: Json
           created_at?: string
-          distribution_mode?: string
+          distribution_mode?: string | null
           distribution_settings?: Json
           ends_on?: string
           enrollment_id?: string
@@ -2668,6 +2729,35 @@ export type Database = {
           },
         ]
       }
+      programme_triad_rounds: {
+        Row: {
+          at_week: number
+          id: string
+          programme_id: string
+          round_number: number
+        }
+        Insert: {
+          at_week: number
+          id?: string
+          programme_id: string
+          round_number: number
+        }
+        Update: {
+          at_week?: number
+          id?: string
+          programme_id?: string
+          round_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programme_triad_rounds_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programmes: {
         Row: {
           coach_session_limit: number
@@ -3619,6 +3709,10 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          member_1_response: string | null
+          member_2_response: string | null
+          member_3_response: string | null
+          proposed_by: string | null
           proposed_by_enrollment_id: string | null
           proposed_end_time: string
           proposed_start_time: string
@@ -3628,6 +3722,10 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          member_1_response?: string | null
+          member_2_response?: string | null
+          member_3_response?: string | null
+          proposed_by?: string | null
           proposed_by_enrollment_id?: string | null
           proposed_end_time: string
           proposed_start_time: string
@@ -3637,6 +3735,10 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          member_1_response?: string | null
+          member_2_response?: string | null
+          member_3_response?: string | null
+          proposed_by?: string | null
           proposed_by_enrollment_id?: string | null
           proposed_end_time?: string
           proposed_start_time?: string
@@ -3649,6 +3751,13 @@ export type Database = {
             columns: ["proposed_by_enrollment_id"]
             isOneToOne: false
             referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_alternative_proposals_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3757,9 +3866,19 @@ export type Database = {
           cohort_id: string
           cohort_requirement_date_id: string
           created_at: string
+          enrollment_1_id: string | null
+          enrollment_2_id: string | null
+          enrollment_3_id: string | null
           group_language: string
           id: string
           is_active: boolean
+          member_1_id: string | null
+          member_2_id: string | null
+          member_3_id: string | null
+          name: string | null
+          programme_id: string | null
+          round_number: number | null
+          triad_round_id: string | null
           updated_at: string
         }
         Insert: {
@@ -3768,9 +3887,19 @@ export type Database = {
           cohort_id: string
           cohort_requirement_date_id: string
           created_at?: string
+          enrollment_1_id?: string | null
+          enrollment_2_id?: string | null
+          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
+          member_1_id?: string | null
+          member_2_id?: string | null
+          member_3_id?: string | null
+          name?: string | null
+          programme_id?: string | null
+          round_number?: number | null
+          triad_round_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -3779,9 +3908,19 @@ export type Database = {
           cohort_id?: string
           cohort_requirement_date_id?: string
           created_at?: string
+          enrollment_1_id?: string | null
+          enrollment_2_id?: string | null
+          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
+          member_1_id?: string | null
+          member_2_id?: string | null
+          member_3_id?: string | null
+          name?: string | null
+          programme_id?: string | null
+          round_number?: number | null
+          triad_round_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3797,6 +3936,55 @@ export type Database = {
             columns: ["cohort_requirement_date_id"]
             isOneToOne: false
             referencedRelation: "cohort_requirement_dates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_enrollment_1_id_fkey"
+            columns: ["enrollment_1_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_enrollment_2_id_fkey"
+            columns: ["enrollment_2_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_enrollment_3_id_fkey"
+            columns: ["enrollment_3_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_member_1_id_fkey"
+            columns: ["member_1_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_member_2_id_fkey"
+            columns: ["member_2_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_member_3_id_fkey"
+            columns: ["member_3_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
             referencedColumns: ["id"]
           },
         ]
@@ -3891,23 +4079,44 @@ export type Database = {
         Row: {
           enrollment_id: string | null
           id: string
+          learned_as_coach: string | null
+          learned_as_coachee: string | null
+          learned_as_observer: string | null
+          participant_id: string | null
           satisfaction_rating: number | null
           submitted_at: string
           triad_session_id: string
+          will_use_as_coach: string | null
+          will_use_as_coachee: string | null
+          will_use_as_observer: string | null
         }
         Insert: {
           enrollment_id?: string | null
           id?: string
+          learned_as_coach?: string | null
+          learned_as_coachee?: string | null
+          learned_as_observer?: string | null
+          participant_id?: string | null
           satisfaction_rating?: number | null
           submitted_at?: string
           triad_session_id: string
+          will_use_as_coach?: string | null
+          will_use_as_coachee?: string | null
+          will_use_as_observer?: string | null
         }
         Update: {
           enrollment_id?: string | null
           id?: string
+          learned_as_coach?: string | null
+          learned_as_coachee?: string | null
+          learned_as_observer?: string | null
+          participant_id?: string | null
           satisfaction_rating?: number | null
           submitted_at?: string
           triad_session_id?: string
+          will_use_as_coach?: string | null
+          will_use_as_coachee?: string | null
+          will_use_as_observer?: string | null
         }
         Relationships: [
           {
@@ -3918,10 +4127,77 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "triad_reflections_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "triad_reflections_triad_session_id_fkey"
             columns: ["triad_session_id"]
             isOneToOne: false
             referencedRelation: "triad_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      triad_rounds: {
+        Row: {
+          auto_assign_date: string
+          auto_assign_status: string
+          completion_deadline: string
+          created_at: string
+          id: string
+          is_visible: boolean
+          programme_id: string
+          round_number: number
+          title: string
+          title_vi: string | null
+          training_week_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_assign_date: string
+          auto_assign_status?: string
+          completion_deadline: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          programme_id: string
+          round_number: number
+          title: string
+          title_vi?: string | null
+          training_week_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_assign_date?: string
+          auto_assign_status?: string
+          completion_deadline?: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          programme_id?: string
+          round_number?: number
+          title?: string
+          title_vi?: string | null
+          training_week_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_rounds_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_rounds_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
             referencedColumns: ["id"]
           },
         ]
@@ -3964,39 +4240,90 @@ export type Database = {
       }
       triad_sessions: {
         Row: {
+          coach_enrollment_id: string | null
+          coachee_enrollment_id: string | null
           created_at: string
           id: string
           meeting_url: string | null
+          member_1_response: string | null
+          member_2_response: string | null
+          member_3_response: string | null
           notes: string | null
+          observer_enrollment_id: string | null
+          proposed_by: string
+          proposed_end_time: string | null
+          proposed_start_time: string | null
           scheduled_end_time: string | null
           scheduled_start_time: string | null
+          start_time: string | null
           status: string
           triad_group_id: string
           updated_at: string
         }
         Insert: {
+          coach_enrollment_id?: string | null
+          coachee_enrollment_id?: string | null
           created_at?: string
           id?: string
           meeting_url?: string | null
+          member_1_response?: string | null
+          member_2_response?: string | null
+          member_3_response?: string | null
           notes?: string | null
+          observer_enrollment_id?: string | null
+          proposed_by?: string
+          proposed_end_time?: string | null
+          proposed_start_time?: string | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
+          start_time?: string | null
           status?: string
           triad_group_id: string
           updated_at?: string
         }
         Update: {
+          coach_enrollment_id?: string | null
+          coachee_enrollment_id?: string | null
           created_at?: string
           id?: string
           meeting_url?: string | null
+          member_1_response?: string | null
+          member_2_response?: string | null
+          member_3_response?: string | null
           notes?: string | null
+          observer_enrollment_id?: string | null
+          proposed_by?: string
+          proposed_end_time?: string | null
+          proposed_start_time?: string | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
+          start_time?: string | null
           status?: string
           triad_group_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "triad_sessions_coach_enrollment_id_fkey"
+            columns: ["coach_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_coachee_enrollment_id_fkey"
+            columns: ["coachee_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_observer_enrollment_id_fkey"
+            columns: ["observer_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "triad_sessions_triad_group_id_fkey"
             columns: ["triad_group_id"]
@@ -4204,6 +4531,18 @@ export type Database = {
           state: string
         }[]
       }
+      admin_cohort_module_deadlines: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          completion_deadline: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          programme_name: string
+          required_units: number
+          scheduled_units: number
+          source: string
+        }[]
+      }
       admin_cohort_triad_groups: {
         Args: { p_cohort_id: string }
         Returns: {
@@ -4337,8 +4676,8 @@ export type Database = {
           training_week_id: string
         }[]
       }
-      admin_save_cohort_requirement_dates: {
-        Args: { p_cohort_id: string; p_items: Json; p_regenerate?: boolean }
+      admin_set_cohort_module_deadlines: {
+        Args: { p_cohort_id: string; p_items: Json }
         Returns: number
       }
       admin_triad_change_member: {
@@ -4923,6 +5262,15 @@ export type Database = {
           mentor_user_id: string
         }[]
       }
+      cohort_module_deadline_proposal: {
+        Args: { p_end: string; p_programme_id: string }
+        Returns: {
+          completion_deadline: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          required_units: number
+        }[]
+      }
       cohort_programme_schedule_state: {
         Args: { p_cohort_id: string; p_programme_id: string }
         Returns: {
@@ -4932,19 +5280,28 @@ export type Database = {
           state: string
         }[]
       }
-      cohort_requirement_proposal_internal: {
-        Args: {
-          p_cohort_id: string
-          p_end: string
-          p_programme_id: string
-          p_start: string
-        }
+      cohort_required_module_units: {
+        Args: { p_cohort_id: string }
         Returns: {
-          due_on: string
-          generation_method: string
           module: Database["public"]["Enums"]["programme_module_type"]
-          ordinal: number
-          training_week_id: string
+          programme_id: string
+          required_units: number
+        }[]
+      }
+      cohort_requirement_is_referenced: {
+        Args: { p_id: string }
+        Returns: boolean
+      }
+      cohort_requirement_legacy_spread: {
+        Args: never
+        Returns: {
+          cohort_id: string
+          cohort_name: string
+          completion_deadline: string
+          legacy_first_due: string
+          legacy_last_due: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
           units: number
         }[]
       }
@@ -4956,23 +5313,6 @@ export type Database = {
           programme_id: string
           required_units: number
           scheduled_units: number
-        }[]
-      }
-      cohort_requirement_schedule_proposal: {
-        Args: {
-          p_cohort_id?: string
-          p_end: string
-          p_programme_id: string
-          p_start: string
-        }
-        Returns: {
-          due_on: string
-          generation_method: string
-          module: Database["public"]["Enums"]["programme_module_type"]
-          ordinal: number
-          programme_id: string
-          training_week_id: string
-          units: number
         }[]
       }
       cohort_scheduled_programmes: {
@@ -5579,10 +5919,6 @@ export type Database = {
         Returns: string
       }
       lives_ok: { Args: { "": string }; Returns: string }
-      materialize_missing_cohort_requirement_dates: {
-        Args: { p_cohort_id: string }
-        Returns: number
-      }
       mentoring_allowlist_unmapped: {
         Args: never
         Returns: {
@@ -6157,6 +6493,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      sync_cohort_requirement_dates: {
+        Args: { p_cohort_id: string }
+        Returns: number
+      }
       throws_ok: { Args: { "": string }; Returns: string }
       todo:
         | { Args: { how_many: number }; Returns: boolean[] }
@@ -6235,6 +6575,7 @@ export type Database = {
         Args: { p_group_id: string; p_viewer_enrollment_id: string }
         Returns: Json
       }
+      triad_is_seed_identifier: { Args: { p_id: string }; Returns: boolean }
       triad_member_enrollment_for_user: {
         Args: { p_group_id: string; p_user_id: string }
         Returns: string
@@ -6518,6 +6859,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       alert_severity: ["info", "warning", "critical"],

@@ -45,29 +45,26 @@
     "cancel": "Cancel",
     "save": "Save",
     "schedule": {
-      "title": "Requirement schedule",
-      "subtitleNew": "Proposed from the programme's default scheduling rule. Adjust any date before saving — saved dates become this cohort's canonical deadlines.",
-      "subtitleSaved": "This cohort's saved requirement deadlines. Learner, Sponsor and Admin journeys all use these dates.",
-      "regenerate": "Regenerate schedule",
-      "reviewTitle": "Review regenerated dates",
-      "reviewNoChanges": "The programme rule produces the same dates as the saved schedule.",
-      "useRegenerated": "Use regenerated dates",
-      "regeneratedNote": "Regenerated dates will replace the saved schedule when you save.",
-      "datesChangedNote": "Changing the cohort dates does not move saved requirement deadlines. Use Regenerate schedule to review new dates.",
+      "title": "Completion deadlines",
+      "subtitleNew": "One deadline per module: by when this cohort must complete it. Defaults to the cohort end date; the required units themselves come from the programme.",
+      "subtitleSaved": "This cohort's saved completion deadlines. Learner, Sponsor and Admin journeys all use these dates.",
+      "datesChangedNote": "Changing the cohort dates moves only the deadlines still set to the cohort end date. A deadline you chose stays where you put it.",
       "loadError": "The requirement schedule could not be loaded.",
-      "needProgrammeAndDates": "Choose a programme, start date and end date to see the proposed requirement dates.",
-      "empty": "No requirement dates are scheduled for this cohort.",
+      "needProgrammeAndDates": "Choose a programme, start date and end date to see the proposed deadlines.",
+      "empty": "No completion deadlines are set for this cohort.",
       "required_one": "{{count}} required",
       "required_other": "{{count}} required",
-      "dateLabel": "{{module}} requirement {{n}} due date",
       "edited": "Edited",
       "trainingNote": "Training / Learning deadlines follow the cohort's training week dates.",
       "issues": {
-        "missing_dates": "{{module}}: {{scheduled}} of {{required}} required units have a date.",
-        "surplus_dates": "{{module}}: {{scheduled}} dated units but only {{required}} required.",
+        "missing_dates": "{{module}}: {{scheduled}} of {{required}} required units exist.",
+        "surplus_dates": "{{module}}: {{scheduled}} units exist but only {{required}} are required — the extra ones already carry activity and were kept.",
         "outside_cohort": "{{module}}: a date falls outside the cohort dates.",
-        "out_of_scope": "{{module}}: dates exist but the module is no longer required by the programme."
-      }
+        "out_of_scope": "{{module}}: dates exist but the module is no longer required by the programme.",
+        "missing_deadline": "{{module}}: no completion deadline is set, so no requirement can be created."
+      },
+      "deadlineLabel": "{{module}} completion deadline",
+      "unitsNote": "How many units each module requires is set on the programme; the required units are created automatically and are all due on the deadline above."
     },
     "triads": "Triads",
     "coaching": {
@@ -460,37 +457,18 @@
         "requiredToggle": "Required or optional",
         "requiredUnits": "Required units",
         "weightOptional": "Weight (optional)",
-        "distributionMode": "Schedule",
-        "monthlyInterval": "Interval (months)",
         "trainingWeeks": "Training weeks",
         "trainingWeekOption": "Week {{week}}: {{title}}",
         "allTrainingWeeksHint": "Select exactly one training week for each required unit.",
         "noTrainingWeeks": "No training weeks are configured for this programme yet.",
-        "customMilestones": "Custom milestones",
-        "addMilestone": "Add milestone",
-        "dueDate": "Due date {{number}}",
-        "milestoneUnits": "Units {{number}}",
-        "windowEnd": "Window end {{number}}",
-        "removeMilestone": "Remove milestone {{number}}",
-        "modes": {
-          "evenly_distributed": "Evenly distributed",
-          "monthly_frequency": "Monthly frequency",
-          "training_linked": "Linked to training weeks",
-          "custom": "Custom milestones",
-          "flexible": "Flexible"
-        }
+        "deadlineNote": "When these units are due is the cohort's decision: set one completion deadline per module in Admin → Cohorts."
       },
       "validation": {
         "requiredUnitsWholeNonNegative": "Required units must be a whole number of zero or more.",
         "weightNonNegative": "Weight must be zero or more.",
         "requiredUnitsPositive": "Required modules must have at least one unit.",
-        "distributionModeInvalid": "Choose a valid schedule.",
         "distributionSettingsInvalid": "Schedule settings are invalid.",
-        "monthlyIntervalPositive": "Monthly interval must be a positive whole number.",
         "trainingWeekIdsInvalid": "The selected training weeks are invalid.",
-        "customMilestonesRequired": "Add at least one custom milestone.",
-        "customMilestoneInvalid": "Each custom milestone needs a valid date, positive whole units, and a window ending on or after its due date.",
-        "customUnitsMismatch": "Custom milestone units must add up to the required units.",
         "trainingWeeksInsufficient": "Select exactly as many training weeks as required units."
       }
     }

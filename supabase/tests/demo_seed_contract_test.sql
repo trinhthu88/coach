@@ -1,5 +1,5 @@
 begin;
-select plan(86);
+select plan(85);
 select is((select count(*)::int from programmes where id in
  ('11111111-1111-4111-8111-111111111112','11111111-1111-4111-8111-111111111113')),2,'exactly two programmes');
 select is((select count(*)::int from cohorts where id in
@@ -152,11 +152,25 @@ select is((select count(*)::int from assignment_submissions where id::text like 
 select is((select count(*)::int from peer_sessions where id::text like 'ee000000-%'),0,'obsolete peer range absent');
 select is((select count(*)::int from mentoring_sessions where id::text like 'ee000000-%'),0,'obsolete mentoring range absent');
 select is((select count(*)::int from triad_sessions where id::text like 'ee000000-%'),0,'obsolete triad range absent');
-select is((select pace_status from get_enrollment_progress('12121212-1212-4121-8121-000000000001','2026-11-01') where module='coaching'),'ahead','A1 coaching fixed-as-of ahead');
-select is((select pace_status from get_enrollment_progress('12121212-1212-4121-8121-000000000002','2026-11-01') where module='coaching'),'on_track','A2 coaching fixed-as-of on track');
-select is((select pace_status from get_enrollment_progress('12121212-1212-4121-8121-000000000003','2026-11-01') where module='coaching'),'behind','A3 coaching fixed-as-of behind');
-select is((select pace_status from get_enrollment_progress('12121212-1212-4121-8121-000000000004','2026-11-01') where module='coaching'),'scheduled','A4 coaching fixed-as-of scheduled');
-select is((select count(*)::int from get_enrollment_progress('12121212-1212-4121-8121-000000000010','2026-11-01') where pace_status='not_yet_due'),5,'B5 all modules fixed-as-of not yet due');
+-- Cohort A's Coaching deadline is its end date, 2026-12-01. Before it nothing
+-- is due, so no learner can be behind however little they have done; after it
+-- the four demo learners are separated by how much they left outstanding.
+-- (There is no interim cadence any more, so 'ahead' and 'on_track' are not
+-- reachable for a requirement module: due is 0 or it is all of it.)
+select is((select count(distinct pace_status)::int from unnest(array[
+    '12121212-1212-4121-8121-000000000001','12121212-1212-4121-8121-000000000002',
+    '12121212-1212-4121-8121-000000000003','12121212-1212-4121-8121-000000000004']::uuid[]) e
+    cross join lateral get_enrollment_progress(e, '2026-11-01') p where p.module='coaching'),
+  1, 'A. before the Coaching deadline every demo learner has the same pace');
+select is((select pace_status from get_enrollment_progress('12121212-1212-4121-8121-000000000001','2026-11-01') where module='coaching'),
+  'not_yet_due', 'A1 coaching before the deadline: nothing is due');
+select results_eq($$select p.completed_units, p.due_units from unnest(array[
+    '12121212-1212-4121-8121-000000000001','12121212-1212-4121-8121-000000000002',
+    '12121212-1212-4121-8121-000000000003','12121212-1212-4121-8121-000000000004']::uuid[]) e
+    cross join lateral get_enrollment_progress(e, '2026-12-02') p where p.module='coaching'$$,
+  $$values (5, 6), (4, 6), (2, 6), (3, 6)$$,
+  'A2-A4 after the deadline all six units are due and the four demo learners differ by what they completed');
+select is((select count(*)::int from get_enrollment_progress('12121212-1212-4121-8121-000000000010','2026-11-01') where pace_status='not_yet_due'),4,'B5 every requirement module of the recent cohort is not yet due');
 select is((select start_date from programme_enrollments where id='12121212-1212-4121-8121-000000000010'),'2026-11-15','B5 exact recent start date');
 select is((select count(*)::int from coachee_goals where enrollment_id='12121212-1212-4121-8121-000000000010'),0,'B5 has no goals');
 select is((select count(*)::int from enrollment_actions where enrollment_id='12121212-1212-4121-8121-000000000010'),0,'B5 has no actions');

@@ -57,8 +57,8 @@ values
 
 insert into public.programme_modules (programme_id, module, enabled, config)
 values
-  ('c8000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":2,"receive_limit":2,"distribution_mode":"flexible","distribution_settings":{}}'),
-  ('c8000000-0000-0000-0000-000000000001', 'training', true, jsonb_build_object('required', true, 'required_units', 2, 'distribution_mode', 'training_linked', 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f8000000-0000-0000-0000-000000000001', 'f8000000-0000-0000-0000-000000000002'))));
+  ('c8000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":2,"receive_limit":2,"distribution_settings":{}}'),
+  ('c8000000-0000-0000-0000-000000000001', 'training', true, jsonb_build_object('required', true, 'required_units', 2, 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f8000000-0000-0000-0000-000000000001', 'f8000000-0000-0000-0000-000000000002'))));
 
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
 select

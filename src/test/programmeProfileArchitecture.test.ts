@@ -185,20 +185,47 @@ describe("programme profile architecture", () => {
     expect(layout).toMatch(/staticGroups=\{role === "coachee"\}/);
   });
 
-  it("scheduling policy is only ever interpreted by the database — no frontend date generation", () => {
-    // The policy names appear only in the Admin programme template editor / its validation.
-    const policyFiles = files.filter((f) => /evenly_distributed|monthly_frequency/.test(readFileSync(f, "utf8")) && !/__tests__|\.test\./.test(f));
-    expect(policyFiles.map((f) => relative(SRC, f)).sort()).toEqual(["lib/programmeModuleConfig.ts", "pages/admin/ProgrammeModuleScheduleFields.tsx"]);
-    for (const file of ["lib/programmeModuleConfig.ts", "pages/admin/ProgrammeModuleScheduleFields.tsx"]) {
-      expect(read(file), file).not.toMatch(/addDays|addMonths|differenceInDays|\/\s*required_?[uU]nits/);
-    }
-    // Proposals come only from the canonical RPC, and only the Admin schedule hook asks for them.
-    const proposalCallers = files.filter((f) => /rpc\(\s*"(cohort_requirement_schedule_proposal|admin_save_cohort_requirement_dates)"/.test(readFileSync(f, "utf8")));
-    expect(proposalCallers.map((f) => relative(SRC, f))).toEqual(["hooks/admin/useCohortRequirementSchedule.ts"]);
-    const tableReaders = files.filter((f) => /from\("cohort_requirement_dates"\)/.test(readFileSync(f, "utf8")));
-    expect(tableReaders.map((f) => relative(SRC, f))).toEqual(["hooks/admin/useCohortRequirementSchedule.ts"]);
-    // The Admin schedule helpers group and compare backend dates; they never compute one.
+  it("there is no scheduling policy left to interpret — the cohort owns one deadline per module", () => {
+    // The distribution modes are gone from the product, not just from the UI.
+    // Comments are stripped (they legitimately explain what was retired), and
+    // the generated Supabase types are excluded: they still describe the
+    // historical enrollment_module_snapshots column.
+    const stripComments = (text: string) =>
+      text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const policyFiles = files.filter(
+      (f) => /evenly_distributed|monthly_frequency|training_linked|distribution_mode/.test(
+        stripComments(readFileSync(f, "utf8")),
+      )
+        && !/__tests__|\.test\.|integrations\/supabase\/types\.ts/.test(f),
+    );
+    // programmeModuleConfig is the one place the legacy key is named, and only
+    // to DELETE it from a config loaded from an older programme.
+    expect(policyFiles.map((f) => relative(SRC, f)).sort()).toEqual(["lib/programmeModuleConfig.ts"]);
+    expect(stripComments(read("lib/programmeModuleConfig.ts"))).toMatch(
+      /distribution_mode: _legacyMode/,
+    );
+    expect(stripComments(read("lib/programmeModuleConfig.ts"))).not.toMatch(
+      /evenly_distributed|monthly_frequency|training_linked/,
+    );
+    // Deadlines are read and written through the canonical RPCs only, and only
+    // by the Admin cohort deadline hook.
+    const deadlineCallers = files.filter((f) =>
+      /rpc\(\s*"(admin_cohort_module_deadlines|admin_set_cohort_module_deadlines|cohort_module_deadline_proposal)"/.test(
+        readFileSync(f, "utf8"),
+      ),
+    );
+    expect(deadlineCallers.map((f) => relative(SRC, f))).toEqual(["hooks/admin/useCohortRequirementSchedule.ts"]);
+    // Nothing reads the requirement rows directly: they are the database's
+    // materialisation of required_units against the deadline.
+    const tableReaders = files.filter((f) =>
+      /from\("(cohort_requirement_dates|cohort_module_deadlines)"\)/.test(readFileSync(f, "utf8")),
+    );
+    expect(tableReaders.map((f) => relative(SRC, f))).toEqual([]);
+    // The Admin helpers order and compare backend dates; they never compute one.
     expect(read("lib/cohortSchedule.ts")).not.toMatch(/addDays|addMonths|getTime\(\)|setDate\(|differenceIn/);
+    expect(read("pages/admin/ProgrammeModuleScheduleFields.tsx")).not.toMatch(
+      /addDays|addMonths|differenceInDays|\/\s*required_?[uU]nits/,
+    );
   });
 
   it("no role-specific checkpoint reinterpretation: every journey renders the backend's checkpoints as returned", () => {
@@ -246,7 +273,9 @@ describe("programme profile architecture", () => {
     const label = (f: string) => relative(process.cwd(), f);
 
     it("no runtime code reads a retired Triad table or field", () => {
-      const retired = /\b(programme_)?triad_rounds\b|completion_deadline|(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|(learned|will_use)_as_(coach|coachee|observer)|cohort_triad_operations/;
+      // completion_deadline is deliberately NOT here any more: it is the name of
+      // the canonical cohort-module deadline, checked by its own test above.
+      const retired = /\b(programme_)?triad_rounds\b|(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|(learned|will_use)_as_(coach|coachee|observer)|cohort_triad_operations/;
       expect(runtime.filter((f) => retired.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
     });
 

@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  changedRequirementItems,
-  diffRequirementSchedules,
-  toSavePayload,
-  type CohortRequirementItem,
-  type CohortScheduleChange,
+  changedModuleDeadlines,
+  sortModuleDeadlines,
+  toDeadlinePayload,
+  type CohortModuleDeadline,
 } from "@/lib/cohortSchedule";
 
 export interface CohortScheduleIssue {
@@ -25,57 +24,31 @@ interface Params {
 }
 
 /**
- * Admin cohort requirement schedule.
- *  - New cohort: shows the programme policy's PROPOSED dates
- *    (cohort_requirement_schedule_proposal) and lets the Admin edit them
- *    before they are saved as the cohort's canonical dates.
- *  - Existing cohort: shows the SAVED canonical dates
- *    (cohort_requirement_dates). Editing a date changes only that unit.
- *    Changing cohort start/end never rewrites them; "Regenerate schedule"
- *    fetches a proposal, shows the per-unit changes for review, and is only
- *    saved when the Admin confirms.
- * No date is calculated in the browser.
+ * Admin cohort requirement deadlines.
+ *
+ * One date per module: by when this cohort must have completed it. The
+ * required unit COUNT belongs to the programme, and the canonical requirement
+ * rows are materialised by the database from the two together. There is
+ * nothing per-unit to edit and nothing to "regenerate".
+ *
+ *  - New cohort: the proposal offers the cohort end date being entered.
+ *  - Existing cohort: the saved deadlines, with the units actually materialised
+ *    against each, so a mismatch is visible rather than inferred.
  */
 export function useCohortRequirementSchedule({ open, cohortId, programmeId, start, end }: Params) {
   const isNew = !cohortId;
-  const [items, setItems] = useState<CohortRequirementItem[]>([]);
-  const [baseline, setBaseline] = useState<CohortRequirementItem[]>([]);
+  const [items, setItems] = useState<CohortModuleDeadline[]>([]);
+  const [baseline, setBaseline] = useState<CohortModuleDeadline[]>([]);
   const [issues, setIssues] = useState<CohortScheduleIssue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [regenerated, setRegenerated] = useState(false);
-  const [review, setReview] = useState<{ proposal: CohortRequirementItem[]; changes: CohortScheduleChange[] } | null>(null);
-
-  const fetchProposal = useCallback(async (): Promise<CohortRequirementItem[]> => {
-    if (!programmeId || !start || !end) return [];
-    const { data, error: rpcError } = await supabase.rpc("cohort_requirement_schedule_proposal", {
-      p_programme_id: programmeId,
-      p_start: start,
-      p_end: end,
-      ...(cohortId ? { p_cohort_id: cohortId } : {}),
-    });
-    if (rpcError) throw rpcError;
-    return (data ?? []).map((row) => ({
-      programme_id: row.programme_id,
-      module: row.module,
-      ordinal: row.ordinal,
-      due_on: row.due_on,
-      units: row.units,
-      generation_method: row.generation_method,
-    }));
-  }, [programmeId, start, end, cohortId]);
 
   const loadSaved = useCallback(async () => {
     if (!cohortId) return;
     setLoading(true);
     setError(null);
     const [rows, health] = await Promise.all([
-      supabase
-        .from("cohort_requirement_dates")
-        .select("programme_id, module, ordinal, due_on, units, generation_method, generated_due_on, is_overridden")
-        .eq("cohort_id", cohortId)
-        .order("module")
-        .order("ordinal"),
+      supabase.rpc("admin_cohort_module_deadlines", { p_cohort_id: cohortId }),
       supabase.rpc("cohort_requirement_schedule_issues", { p_cohort_id: cohortId }),
     ]);
     if (rows.error || health.error) {
@@ -83,21 +56,20 @@ export function useCohortRequirementSchedule({ open, cohortId, programmeId, star
       setLoading(false);
       return;
     }
-    const saved = (rows.data ?? []) as CohortRequirementItem[];
+    const saved = sortModuleDeadlines((rows.data ?? []) as CohortModuleDeadline[]);
     setItems(saved);
     setBaseline(saved);
     setIssues((health.data ?? []) as CohortScheduleIssue[]);
-    setRegenerated(false);
-    setReview(null);
     setLoading(false);
   }, [cohortId]);
 
-  // Existing cohort: saved dates (never re-derived when start/end change in the form).
+  // Existing cohort: the saved deadlines. Editing start/end in the form never
+  // re-derives them; only saving the cohort moves a deadline the system set.
   useEffect(() => {
     if (open && cohortId) void loadSaved();
   }, [open, cohortId, loadSaved]);
 
-  // New cohort: proposal follows the chosen programme / dates until saved.
+  // New cohort: the proposal follows the chosen programme and end date.
   useEffect(() => {
     if (!open || !isNew) return;
     let cancelled = false;
@@ -108,63 +80,49 @@ export function useCohortRequirementSchedule({ open, cohortId, programmeId, star
       return;
     }
     setLoading(true);
-    fetchProposal()
-      .then((proposal) => {
+    supabase
+      .rpc("cohort_module_deadline_proposal", { p_programme_id: programmeId, p_end: end })
+      .then(({ data, error: rpcError }) => {
         if (cancelled) return;
-        setItems(proposal);
-        setBaseline(proposal);
-      })
-      .catch((e: { message?: string }) => !cancelled && setError(e?.message ?? "error"))
-      .finally(() => !cancelled && setLoading(false));
+        if (rpcError) {
+          setError(rpcError.message);
+        } else {
+          const proposal = sortModuleDeadlines(
+            (data ?? []).map((row) => ({
+              programme_id: row.programme_id,
+              module: row.module,
+              required_units: row.required_units,
+              scheduled_units: row.required_units,
+              completion_deadline: row.completion_deadline,
+              source: "cohort_end",
+            })),
+          );
+          setItems(proposal);
+          setBaseline(proposal);
+        }
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [open, isNew, programmeId, start, end, fetchProposal]);
+  }, [open, isNew, programmeId, start, end]);
 
-  const setDate = (key: { programme_id: string; module: string; ordinal: number }, due_on: string) =>
+  const setDeadline = (key: { programme_id: string; module: string }, completion_deadline: string) =>
     setItems((prev) =>
       prev.map((i) =>
-        i.programme_id === key.programme_id && i.module === key.module && i.ordinal === key.ordinal ? { ...i, due_on } : i
-      )
+        i.programme_id === key.programme_id && i.module === key.module ? { ...i, completion_deadline } : i,
+      ),
     );
 
-  /** Step 1 of "Regenerate schedule": fetch the proposal and show what would change. */
-  const startRegenerate = async () => {
-    setError(null);
-    try {
-      const proposal = await fetchProposal();
-      setReview({ proposal, changes: diffRequirementSchedules(items, proposal) });
-    } catch (e) {
-      setError((e as { message?: string })?.message ?? "error");
-    }
-  };
-  /** Step 2: the Admin accepted the reviewed proposal (still unsaved until Save). */
-  const acceptRegenerate = () => {
-    if (!review) return;
-    setItems(review.proposal);
-    setRegenerated(true);
-    setReview(null);
-  };
-  const cancelRegenerate = () => setReview(null);
+  const changed = changedModuleDeadlines(baseline, items);
+  const dirty = changed.length > 0;
 
-  const changed = changedRequirementItems(baseline, items);
-  const dirty = regenerated || changed.length > 0;
-
-  /** Persist to the canonical cohort schedule. Returns the number of saved units. */
+  /** Persist to the canonical cohort deadlines. Returns the number of modules saved. */
   const save = async (targetCohortId: string) => {
-    if (regenerated) {
-      const { data, error: rpcError } = await supabase.rpc("admin_save_cohort_requirement_dates", {
-        p_cohort_id: targetCohortId,
-        p_items: toSavePayload(items),
-        p_regenerate: true,
-      });
-      if (rpcError) throw rpcError;
-      return data ?? 0;
-    }
     if (changed.length === 0) return 0;
-    const { data, error: rpcError } = await supabase.rpc("admin_save_cohort_requirement_dates", {
+    const { data, error: rpcError } = await supabase.rpc("admin_set_cohort_module_deadlines", {
       p_cohort_id: targetCohortId,
-      p_items: toSavePayload(changed),
+      p_items: toDeadlinePayload(changed),
     });
     if (rpcError) throw rpcError;
     return data ?? 0;
@@ -178,13 +136,8 @@ export function useCohortRequirementSchedule({ open, cohortId, programmeId, star
     loading,
     error,
     dirty,
-    changedKeys: new Set(changed.map((i) => `${i.programme_id}:${i.module}:${i.ordinal}`)),
-    regenerated,
-    review,
-    setDate,
-    startRegenerate,
-    acceptRegenerate,
-    cancelRegenerate,
+    changedKeys: new Set(changed.map((i) => `${i.programme_id}:${i.module}`)),
+    setDeadline,
     save,
     reload: loadSaved,
   };

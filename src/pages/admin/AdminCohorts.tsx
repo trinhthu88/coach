@@ -211,7 +211,6 @@ export default function AdminCohorts() {
                 schedule={schedule}
                 programmeNames={Object.fromEntries(progs.map((p) => [p.id, p.name]))}
                 datesChanged={!!savedCohort && (savedCohort.start_date !== (editing.start_date || null) || savedCohort.end_date !== (editing.end_date || null))}
-                canRegenerate={!!editing.programme_id && !!editing.start_date && !!editing.end_date}
               />
               {/* Programme owns how many Coaching units are required and the
                   schedule above owns their dates; the cohort owns who may
