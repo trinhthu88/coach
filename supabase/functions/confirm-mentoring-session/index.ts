@@ -166,22 +166,37 @@ Deno.serve(async (req) => {
       meetingUrl = meeting.join_url;
     }
 
-    const { error: updateErr } = await admin
-      .from("mentoring_sessions")
-      .update({
-        status: "confirmed",
-        confirmed_at: new Date().toISOString(),
-        meeting_url: meetingUrl,
-      })
-      .eq("id", session_id);
-    if (updateErr) throw updateErr;
-
-    if (row.slot_id) {
-      await admin
-        .from("coach_availability")
-        .update({ is_booked: true, session_id })
-        .eq("id", row.slot_id);
+    // The database owns the state transition. This function used to write
+    // mentoring_sessions.status and coach_availability itself, which made it a
+    // second lifecycle writer alongside the client's direct update, and it
+    // enforced no transition rule at all. It now calls
+    // transition_mentoring_session_status() as the CALLER, so the RPC's own
+    // authorisation and transition rules apply rather than the service role
+    // silently passing every check. Notification failures below can no longer
+    // corrupt session state, because the state is already committed.
+    const asCaller = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { error: rpcErr } = await asCaller.rpc("transition_mentoring_session_status", {
+      p_session_id: session_id,
+      p_status: "confirmed",
+    });
+    if (rpcErr) {
+      return new Response(JSON.stringify({ error: rpcErr.message }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+
+    // The Zoom link is the mentor's to set, and is not a lifecycle field.
+    const { error: linkErr } = await asCaller.rpc("update_mentoring_session_notes", {
+      p_session_id: session_id,
+      p_meeting_url: meetingUrl,
+    });
+    if (linkErr) throw linkErr;
+
+    // The slot is reserved by sync_mentoring_slot_reservation() from the moment
+    // the request was created, so there is nothing to mark booked here.
 
     const { data: participants } = await admin
       .from("profiles")

@@ -427,6 +427,74 @@ describe("programme profile architecture", () => {
     });
   });
 
+  describe("Mentoring source of truth", () => {
+    const MIGRATIONS = join(process.cwd(), "supabase/migrations");
+    const FN_DIR = join(process.cwd(), "supabase", "functions");
+    const edgeFunctionFiles = (dir = FN_DIR): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) return edgeFunctionFiles(path);
+        return /\.(ts|tsx)$/.test(name) ? [path] : [];
+      });
+    const migrationSql = readdirSync(MIGRATIONS)
+      .filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(join(MIGRATIONS, f), "utf8"))
+      .join("\n");
+
+    // The lifecycle had three writers: a raw client INSERT, a service-role
+    // UPDATE in an Edge Function, and a raw client UPDATE for completion.
+    //
+    // prep_file_* is deliberately excluded: the preparation document is the
+    // learner's own optional evidence, it is not a protected lifecycle field,
+    // and useMentoringPrepFile writes it directly by design.
+    const LIFECYCLE_FIELDS =
+      /\b(status|enrollment_id|cohort_requirement_id|cohort_id|mentor_id|mentee_id|confirmed_at|cancelled_at|cancelled_by|cancel_reason|start_time|duration_minutes)\s*:/;
+
+    it("no runtime code creates or mutates a Mentoring session's lifecycle directly", () => {
+      for (const file of [...files, ...edgeFunctionFiles()]) {
+        const text = readFileSync(file, "utf8");
+        expect(text, file).not.toMatch(/from\(\s*"mentoring_sessions"\s*\)[\s\S]{0,120}\.insert\(/);
+        const updates = [...text.matchAll(/from\(\s*"mentoring_sessions"\s*\)[\s\S]{0,60}\.update\(\{([\s\S]{0,300}?)\}\)/g)];
+        for (const [, body] of updates) {
+          expect(body, `${file} writes a lifecycle field directly`).not.toMatch(LIFECYCLE_FIELDS);
+        }
+      }
+    });
+
+    it("booking, lifecycle and notes go through the canonical RPCs", () => {
+      expect(read("pages/MentoringBookSession.tsx")).toMatch(/"book_mentoring_session"/);
+      const core = read("hooks/mentoring/useMentoringSessionCore.ts");
+      expect(core).toMatch(/"transition_mentoring_session_status"/);
+      expect(core).toMatch(/"update_mentoring_session_notes"/);
+      const confirm = readFileSync(
+        join(process.cwd(), "supabase/functions/confirm-mentoring-session/index.ts"), "utf8");
+      expect(confirm).toMatch(/"transition_mentoring_session_status"/);
+      // Slot reservation belongs to the database trigger now.
+      expect(confirm).not.toMatch(/is_booked/);
+    });
+
+    // The prep document is optional evidence and gates nothing.
+    it("no Mentoring path requires a preparation document", () => {
+      for (const file of [...files, ...edgeFunctionFiles()]) {
+        const text = readFileSync(file, "utf8");
+        expect(text, file).not.toMatch(/prep_file_path[\s\S]{0,60}(required|must|cannot complete)/i);
+      }
+      expect(migrationSql).toMatch(/DROP FUNCTION IF EXISTS public\.enforce_mentoring_prep_file_before_completion/);
+    });
+
+    // src/lib/pendingRpc.ts is a temporary bridge until types are regenerated.
+    // It must never name a function that no migration defines.
+    it("every pending RPC is backed by a committed migration", () => {
+      const shim = read("lib/pendingRpc.ts");
+      const names = [...shim.matchAll(/^\s*"([a-z_]+)",$/gm)].map((m) => m[1]);
+      expect(names.length).toBeGreaterThan(0);
+      for (const name of names) {
+        expect(migrationSql, `${name} has no migration`)
+          .toMatch(new RegExp(`CREATE\\s+(OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.${name}\\s*\\(`));
+      }
+    });
+  });
+
   it("schedule mismatch state comes from one canonical source for every role", () => {
     const hook = read("hooks/useCanonicalScheduleState.ts");
     expect(hook).toMatch(/learner_canonical_schedule_state/);

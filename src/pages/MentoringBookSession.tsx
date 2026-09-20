@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { callPendingRpc } from "@/lib/pendingRpc";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
@@ -184,20 +185,18 @@ export default function MentoringBookSession() {
     const ds = dateKey(selectedDate);
     const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
 
-    const { data, error } = await supabase
-      .from("mentoring_sessions")
-      .insert({
-        mentor_id: mentor.coach_user_id,
-        mentee_id: user.id,
-        enrollment_id: enrollmentId,
-        topic: topic.trim(),
-        start_time: startISO,
-        duration_minutes: duration,
-        status: "pending_coach_approval",
-        slot_id: opt.slotId,
-      })
-      .select("id")
-      .single();
+    // Canonical atomic booking. The server owns enrollment validation, mentor
+    // eligibility, requirement resolution, the slot window, slot reservation
+    // and collision protection -- none of it is reconstructed here, and
+    // mentee_id comes from the enrollment rather than from this screen.
+    const { data, error } = await callPendingRpc<string>("book_mentoring_session", {
+      p_enrollment_id: enrollmentId,
+      p_mentor_id: mentor.coach_user_id,
+      p_slot_id: opt.slotId,
+      p_topic: topic.trim(),
+      p_start_time: startISO,
+      p_duration_minutes: duration,
+    });
     setSubmitting(false);
     if (error) {
       if ((error as { code?: string }).code === "23505") {
@@ -213,7 +212,7 @@ export default function MentoringBookSession() {
       return toast.error(getFriendlyErrorMessage(error, t));
     }
     toast.success(t("bookSession.toast.success"));
-    navigate(data ? `/mentoring/sessions/${data.id}` : "/sessions");
+    navigate(data ? `/mentoring/sessions/${data}` : "/sessions");
   };
 
   if (loading) {

@@ -9,7 +9,7 @@
 -- Mentor X is in no pool at all.
 begin;
 
-select plan(50);
+select plan(67);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -516,6 +516,199 @@ select is(
   (select overdue_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
     where module = 'mentoring'),
   1, 'an early Mentoring 2 does not hide an overdue Mentoring 1');
+
+-- ---------------------------------------------------------------------------
+-- Phase 2: canonical booking, lifecycle, protection, slot safety
+-- ---------------------------------------------------------------------------
+--
+-- Cohort C already has Mentoring 1 (due) unfulfilled and Mentoring 2 fulfilled
+-- early by c7c7. Learner 5 books against it through the canonical RPC.
+
+insert into public.coach_availability (id, coach_id, slot_date, start_time, end_time, slot_type) values
+  ('d1000000-0000-0000-0000-0000000000f1'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid,
+   current_date + 7, '09:00', '10:00', 'mentoring'),
+  ('d1000000-0000-0000-0000-0000000000f2'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid,
+   current_date + 8, '09:00', '10:00', 'mentoring'),
+  ('d1000000-0000-0000-0000-0000000000f3'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid,
+   current_date + 9, '09:00', '10:00', 'mentoring');
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'd1000000-0000-0000-0000-000000000005')::text, true);
+
+-- The internal validator is not reachable from a client role.
+select ok(
+  not has_function_privilege('authenticated',
+    'public.book_mentoring_session_internal(uuid, uuid, uuid, text, uuid, timestamptz, integer)', 'EXECUTE'),
+  'the internal Mentoring booking function is not client-callable');
+
+-- Booking with no requirement named resolves the next unfulfilled one, which
+-- here is Mentoring 1 -- not Mentoring 2, which c7c7 already holds.
+select lives_ok($$
+  select public.book_mentoring_session(
+    'd1000000-0000-0000-0000-00000000e3e3'::uuid,
+    'd1000000-0000-0000-0000-000000000001'::uuid,
+    'd1000000-0000-0000-0000-0000000000f1'::uuid,
+    'Booked through the RPC')
+$$, 'the canonical RPC books a Mentoring session');
+
+select is(
+  (select cohort_requirement_id from public.mentoring_sessions
+    where enrollment_id = 'd1000000-0000-0000-0000-00000000e3e3'::uuid
+      and slot_id = 'd1000000-0000-0000-0000-0000000000f1'::uuid),
+  'd1000000-0000-0000-0000-0000000000d1'::uuid,
+  'booking resolves the next unfulfilled requirement, not an occupied one');
+
+select is(
+  (select mentee_id from public.mentoring_sessions
+    where slot_id = 'd1000000-0000-0000-0000-0000000000f1'::uuid),
+  'd1000000-0000-0000-0000-000000000005'::uuid,
+  'mentee_id comes from the enrollment, never from the caller');
+
+-- The slot is reserved from the moment the request exists, not at confirmation.
+select ok(
+  (select is_booked from public.coach_availability where id = 'd1000000-0000-0000-0000-0000000000f1'::uuid),
+  'the slot is reserved at request time, not at mentor confirmation');
+
+-- Every requirement is now taken, so a further booking has nothing to fulfil.
+select throws_ok($$
+  select public.book_mentoring_session(
+    'd1000000-0000-0000-0000-00000000e3e3'::uuid,
+    'd1000000-0000-0000-0000-000000000001'::uuid,
+    'd1000000-0000-0000-0000-0000000000f2'::uuid,
+    'No requirement left')
+$$, '23505', NULL, 'booking is refused once every Mentoring requirement is taken');
+
+-- An explicit requirement that is already occupied is refused by name.
+select throws_ok($$
+  select public.book_mentoring_session(
+    'd1000000-0000-0000-0000-00000000e3e3'::uuid,
+    'd1000000-0000-0000-0000-000000000001'::uuid,
+    'd1000000-0000-0000-0000-0000000000f2'::uuid,
+    'Occupied', 'd1000000-0000-0000-0000-0000000000d2'::uuid)
+$$, '23505', NULL, 'an explicitly named fulfilled requirement is refused');
+
+-- A requirement belonging to another cohort is refused.
+select throws_ok($$
+  select public.book_mentoring_session(
+    'd1000000-0000-0000-0000-00000000e3e3'::uuid,
+    'd1000000-0000-0000-0000-000000000001'::uuid,
+    'd1000000-0000-0000-0000-0000000000f2'::uuid,
+    'Wrong cohort',
+    (select id from public.cohort_requirement_dates
+      where cohort_id = 'd1000000-0000-0000-0000-00000000b2b2'::uuid
+        and module = 'mentoring' and ordinal = 1))
+$$, '42501', NULL, 'a requirement from another cohort is refused');
+
+-- A mentor outside the cohort pool is refused.
+select throws_ok($$
+  select public.book_mentoring_session(
+    'd1000000-0000-0000-0000-00000000e3e3'::uuid,
+    'd1000000-0000-0000-0000-000000000002'::uuid,
+    'd1000000-0000-0000-0000-0000000000f3'::uuid,
+    'Wrong mentor')
+$$, '42501', NULL, 'a mentor outside the cohort pool is refused');
+
+-- Another learner cannot book against this enrollment.
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'd1000000-0000-0000-0000-000000000003')::text, true);
+select throws_ok($$
+  select public.book_mentoring_session(
+    'd1000000-0000-0000-0000-00000000e3e3'::uuid,
+    'd1000000-0000-0000-0000-000000000001'::uuid,
+    'd1000000-0000-0000-0000-0000000000f2'::uuid,
+    'Not mine')
+$$, '42501', NULL, 'a learner cannot book against another learner''s enrollment');
+
+-- Lifecycle: the mentee cannot confirm on the mentor's behalf.
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'd1000000-0000-0000-0000-000000000005')::text, true);
+select throws_ok($$
+  select public.transition_mentoring_session_status(
+    (select id from public.mentoring_sessions where slot_id = 'd1000000-0000-0000-0000-0000000000f1'::uuid),
+    'confirmed')
+$$, '42501', NULL, 'the mentee cannot confirm a Mentoring session');
+
+-- A participant cannot rewrite a protected lifecycle field directly.
+select throws_ok($$
+  update public.mentoring_sessions set status = 'completed'
+   where slot_id = 'd1000000-0000-0000-0000-0000000000f1'::uuid
+$$, '42501', NULL, 'a direct status update is refused by the lifecycle guard');
+
+-- ---------------------------------------------------------------------------
+-- Evidence independence: a bare completed session is a completed unit
+-- ---------------------------------------------------------------------------
+--
+-- The product rule, proved rather than asserted: a legitimately completed
+-- Mentoring session with NO prep file, NO reflection, NO mentor feedback, NO
+-- goal check-in and NO actions still counts. Evidence is then added one item
+-- at a time and completed_units must not move again.
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
+values ('d1000000-0000-0000-0000-000000000006'::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
+  'authenticated', 'authenticated', 'mentoring-canon-6@example.test', 'test', now(),
+  jsonb_build_object('full_name', 'Mentoring Person 6'), now(), now(), '', '', '');
+insert into public.user_roles (user_id, role)
+  values ('d1000000-0000-0000-0000-000000000006', 'coachee') on conflict do nothing;
+
+insert into public.cohorts (id, name, programme_id) values
+  ('d1000000-0000-0000-0000-00000000b4b4'::uuid, 'Cohort D', 'd1000000-0000-0000-0000-00000000a1a1'::uuid);
+insert into public.cohort_requirement_dates
+  (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
+  ('d1000000-0000-0000-0000-0000000000d5'::uuid, 'd1000000-0000-0000-0000-00000000b4b4'::uuid,
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 3, 'manual', 'admin_save');
+insert into public.cohort_mentors (cohort_id, mentor_user_id) values
+  ('d1000000-0000-0000-0000-00000000b4b4'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid);
+insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status) values
+  ('d1000000-0000-0000-0000-00000000e4e4'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid,
+   'd1000000-0000-0000-0000-000000000006'::uuid, 'd1000000-0000-0000-0000-00000000b4b4'::uuid, 'active');
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'd1000000-0000-0000-0000-000000000006')::text, true);
+
+-- A meeting that already happened, carrying no evidence of any kind.
+insert into public.mentoring_sessions
+  (id, enrollment_id, mentor_id, mentee_id, topic, start_time, duration_minutes, status)
+values ('d1000000-0000-0000-0000-00000000c8c8'::uuid, 'd1000000-0000-0000-0000-00000000e4e4'::uuid,
+        'd1000000-0000-0000-0000-000000000001'::uuid, 'd1000000-0000-0000-0000-000000000006'::uuid,
+        'Bare session', now() - interval '2 days', 60, 'confirmed');
+
+-- The mentor marks it held. No prep document exists, and none is asked for.
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'd1000000-0000-0000-0000-000000000001')::text, true);
+select lives_ok($$
+  select public.transition_mentoring_session_status(
+    'd1000000-0000-0000-0000-00000000c8c8'::uuid, 'completed')
+$$, 'a Mentoring session completes with no preparation document and no evidence');
+
+select is(
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e4e4'::uuid, current_date)
+    where module = 'mentoring'),
+  1, 'a bare completed session is one completed programme unit');
+
+select ok(
+  (select not has_prep_file and not has_mentee_reflection and not has_mentor_feedback
+     from public.mentoring_session_evidence('d1000000-0000-0000-0000-00000000c8c8'::uuid)),
+  'the evidence contract reports every item as outstanding');
+
+-- Now add every piece of evidence.
+insert into public.session_learning_reflections (enrollment_id, source_activity_type, source_activity_id, body)
+  values ('d1000000-0000-0000-0000-00000000e4e4'::uuid, 'mentoring',
+          'd1000000-0000-0000-0000-00000000c8c8'::uuid, 'What I took from it');
+insert into public.enrollment_actions
+  (enrollment_id, source_activity_type, source_activity_id, title, owner_user_id)
+  values ('d1000000-0000-0000-0000-00000000e4e4'::uuid, 'mentoring',
+          'd1000000-0000-0000-0000-00000000c8c8'::uuid, 'Follow up',
+          'd1000000-0000-0000-0000-000000000006'::uuid);
+
+select is(
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e4e4'::uuid, current_date)
+    where module = 'mentoring'),
+  1, 'adding evidence does not change the completed unit count');
+
+select is(
+  (select action_count from public.mentoring_session_evidence('d1000000-0000-0000-0000-00000000c8c8'::uuid)),
+  1, 'only the evidence-completeness fields move');
 
 select * from finish();
 rollback;
