@@ -127,6 +127,9 @@ ALTER TABLE public.cohort_requirement_dates
   DROP CONSTRAINT IF EXISTS cohort_requirement_dates_units_check;
 
 ALTER TABLE public.cohort_requirement_dates
+  DROP CONSTRAINT IF EXISTS cohort_requirement_dates_one_unit_per_row;
+
+ALTER TABLE public.cohort_requirement_dates
   ADD CONSTRAINT cohort_requirement_dates_one_unit_per_row CHECK (units = 1);
 
 COMMENT ON COLUMN public.cohort_requirement_dates.units IS
@@ -264,15 +267,22 @@ STABLE
 SECURITY DEFINER
 SET search_path TO 'public', 'pg_temp'
 AS $$
-  WITH pairs AS (
+  WITH in_scope AS (
     SELECT c.id AS cohort_id, r.programme_id, r.module, r.required_units
     FROM public.cohorts c
     CROSS JOIN LATERAL public.cohort_required_module_units(c.id) r
-    UNION
+  ), pairs AS (
+    SELECT * FROM in_scope
+    UNION ALL
     -- Rows whose module is no longer in scope have no entry above, and are the
-    -- state an attempted quantity reduction leaves behind.
-    SELECT d.cohort_id, d.programme_id, d.module, NULL::integer
+    -- state an attempted quantity reduction leaves behind. Only those: a
+    -- plain UNION would list every in-scope module a second time with a NULL
+    -- required_units, and report each violation twice.
+    SELECT DISTINCT d.cohort_id, d.programme_id, d.module, NULL::integer
     FROM public.cohort_requirement_dates d
+    WHERE NOT EXISTS (
+      SELECT 1 FROM in_scope s
+      WHERE s.cohort_id = d.cohort_id AND s.programme_id = d.programme_id AND s.module = d.module)
   )
   SELECT p.cohort_id, p.programme_id, p.module, p.required_units,
     (SELECT count(*)::integer FROM public.cohort_requirement_dates d

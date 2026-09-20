@@ -44,11 +44,12 @@ export function useAdminCohortMentors(cohortId: string | undefined) {
       if (rErr) throw rErr;
 
       const assignedById = new Map((assignments ?? []).map((a) => [a.mentor_user_id, a]));
+      const roleIds = Array.from(new Set((coachRoles ?? []).map((r) => r.user_id)));
       const ids = Array.from(
         new Set([
-          ...(coachRoles ?? []).map((r) => r.user_id),
-          // Anyone already assigned stays listed even if their Coach role has
-          // since been removed, so the Admin can see and undo it.
+          ...roleIds,
+          // Anyone already assigned stays listed even if their Coach role or
+          // account status has since changed, so the Admin can see and undo it.
           ...assignedById.keys(),
         ]),
       );
@@ -59,10 +60,16 @@ export function useAdminCohortMentors(cohortId: string | undefined) {
         supabase.from("coach_profiles").select("id, title").in("id", ids),
       ]);
 
-      return ids
+      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      const activeCoachIds = new Set(
+        roleIds.filter((id) => profileById.get(id)?.status === "active"),
+      );
+      const visibleIds = ids.filter((id) => assignedById.has(id) || activeCoachIds.has(id));
+
+      return visibleIds
         .map((id) => {
           const a = assignedById.get(id);
-          const profile = profiles?.find((p) => p.id === id);
+          const profile = profileById.get(id);
           return {
             mentorUserId: id,
             fullName: profile?.full_name ?? "Coach",

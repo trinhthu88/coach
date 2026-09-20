@@ -13,7 +13,7 @@ import { CohortCoachingPanel } from "../CohortCoachingPanel";
 
 const upsert = vi.fn().mockResolvedValue({ error: null });
 
-/** Assignments: Anna active, Paul inactive. Hương is a candidate with no row. */
+/** Assignments: Anna active, Paul inactive. Hương is a candidate with no row. Zoe is an inactive non-candidate. */
 function mockTables() {
   from.mockImplementation((table: string) => {
     if (table === "cohort_coach_assignments") {
@@ -36,7 +36,7 @@ function mockTables() {
         select: () => ({
           eq: () =>
             Promise.resolve({
-              data: [{ user_id: "anna" }, { user_id: "paul" }, { user_id: "huong" }],
+              data: [{ user_id: "anna" }, { user_id: "paul" }, { user_id: "huong" }, { user_id: "zoe" }],
               error: null,
             }),
         }),
@@ -51,6 +51,7 @@ function mockTables() {
                 { id: "anna", full_name: "Anna", status: "active" },
                 { id: "paul", full_name: "Paul", status: "active" },
                 { id: "huong", full_name: "Huong", status: "active" },
+                { id: "zoe", full_name: "Zoe", status: "inactive" },
               ],
             }),
         }),
@@ -92,6 +93,13 @@ describe("CohortCoachingPanel", () => {
     await screen.findAllByTestId("cohort-coach-row");
     // Paul has a row but is_active = false, so he is not in the pool.
     expect(screen.getByTestId("cohort-coaching-assigned-count")).toHaveTextContent("1");
+  });
+
+  it("does not offer an inactive Coach who is not already assigned", async () => {
+    renderPanel();
+    const rows = await screen.findAllByTestId("cohort-coach-row");
+    expect(rows).toHaveLength(3);
+    expect(screen.queryByText("Zoe")).not.toBeInTheDocument();
   });
 
   it("assigns a candidate Coach through the cohort pool", async () => {
