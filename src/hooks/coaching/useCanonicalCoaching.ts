@@ -60,6 +60,57 @@ export function useInvalidateCoaching() {
   };
 }
 
+export interface CanonicalCoachingProgress {
+  requiredUnits: number;
+  completedUnits: number;
+  bookedUnits: number;
+  dueUnits: number;
+  overdueUnits: number;
+  paceStatus: string;
+  /** Held sessions whose programme unit is still waiting on learner evidence. */
+  postSessionPending: number;
+}
+
+/**
+ * Canonical Coaching programme progress for one enrollment.
+ *
+ * This is THE reader for required / completed / booked / due / overdue. Every
+ * role uses it -- Coachee, Coach, Sponsor, Admin and Journey -- so a number
+ * shown on one screen cannot disagree with the same number on another.
+ *
+ * It is not interchangeable with operational usage readers such as
+ * get_coachee_session_usage_for_enrollment: those count raw sessions, which
+ * treats a held-but-unevidenced session as complete. Programme progress must
+ * not be reconstructed from raw sessions.
+ */
+export function useCanonicalCoachingProgress(enrollmentId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["canonical-progress", "coaching", enrollmentId],
+    enabled: !!enrollmentId,
+    queryFn: async (): Promise<CanonicalCoachingProgress | null> => {
+      const [{ data, error }, { data: checklist }] = await Promise.all([
+        supabase.rpc("canonical_module_progress", {
+          p_enrollment_id: enrollmentId!,
+          p_as_of: new Date().toISOString().slice(0, 10),
+        }),
+        supabase.rpc("coaching_post_session_checklist", { p_enrollment_id: enrollmentId! }),
+      ]);
+      if (error) throw error;
+      const row = (data ?? []).find((r) => r.module === "coaching");
+      if (!row) return null;
+      return {
+        requiredUnits: row.required_units ?? 0,
+        completedUnits: row.completed_units ?? 0,
+        bookedUnits: row.booked_units ?? 0,
+        dueUnits: row.due_units ?? 0,
+        overdueUnits: row.overdue_units ?? 0,
+        paceStatus: row.pace_status ?? "",
+        postSessionPending: (checklist ?? []).filter((c) => !c.unit_complete).length,
+      };
+    },
+  });
+}
+
 export interface CoachingRequirement {
   requirementId: string;
   ordinal: number;

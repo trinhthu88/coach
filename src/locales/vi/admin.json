@@ -70,7 +70,17 @@
         "out_of_scope": "{{module}}: có hạn nhưng chương trình không còn yêu cầu mô-đun này."
       }
     },
-    "triads": "Triad"
+    "triads": "Triad",
+    "coaching": {
+      "title": "Coaching",
+      "intro": "Các Coach được phân công tại đây có thể thực hiện Coaching cho mọi học viên trong nhóm này.",
+      "assignedCount": "Đã phân công {{count}}",
+      "noCoaches": "Chưa có Coach nào.",
+      "noneAssignedWarning": "Chưa phân công Coach nào. Học viên trong nhóm này chưa thể đặt lịch Coaching.",
+      "assigned": "Đã phân công Coach cho nhóm này.",
+      "unassigned": "Đã gỡ Coach khỏi nhóm này.",
+      "toggleLabel": "Phân công {{name}} cho nhóm này"
+    }
   },
   "dashboard": {
     "eyebrow": "Tổ chức",
@@ -260,7 +270,8 @@
       "emailFailedToSend": "Gửi email không thành công",
       "resendLinkError": "Không thể gửi lại liên kết đăng nhập"
     },
-    "done": "Xong"
+    "done": "Xong",
+    "coachAssignmentMovedToCohort": "Coaching của chương trình nay được phân công theo nhóm. Quản lý danh sách Coach tại Quản trị → Nhóm → Coaching."
   },
   "organizations": {
     "sections": {

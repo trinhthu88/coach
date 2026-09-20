@@ -8,7 +8,7 @@
 -- unit completion, and each of the four evidence gates independently.
 begin;
 
-select plan(28);
+select plan(32);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -301,6 +301,58 @@ select is(
 select is(
   (select count(*)::int from public.canonical_coaching_requirement_fulfilment('c1000000-0000-0000-0000-00000000e1e1'::uuid)),
   2, 'requirement fulfilment reports one row per cohort Coaching requirement');
+
+-- ---------------------------------------------------------------------------
+-- Role consistency (section 36): every role reads the SAME numbers
+-- ---------------------------------------------------------------------------
+--
+-- Coachee, Coach, Journey and Admin all read canonical_module_progress
+-- directly. Sponsor reaches it through
+--   sponsor_canonical_leader_progress
+--     -> sponsor_canonical_enrollment_progress
+--       -> canonical_enrollment_progress
+--         -> canonical_module_progress
+-- so this asserts the whole Sponsor chain agrees with the direct reader rather
+-- than trusting that it does.
+
+-- canonical_enrollment_progress is the layer the whole Sponsor chain delegates
+-- to, and it applies no sponsor gating of its own. Asserting it against
+-- canonical_module_progress proves the shared spine agrees; the Sponsor
+-- wrapper above it only filters rows, it never recomputes them.
+select is(
+  (select array[coaching_required_units, coaching_completed_units,
+                coaching_booked_units, coaching_due_units]
+     from public.canonical_enrollment_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)),
+  (select array[required_units, completed_units, booked_units, due_units]::int[]
+     from public.canonical_module_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)
+    where module = 'coaching'),
+  'the Sponsor/Admin progress spine reports the same numbers as the canonical reader');
+
+select is(
+  (select coaching_completed_units
+     from public.canonical_enrollment_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)),
+  1, 'the shared spine counts the held-and-evidenced unit as completed, and only that one');
+
+-- Sponsor privacy floor: sponsor_canonical_enrollment_progress additionally
+-- requires a sponsor identity, a matching organisation and at least
+-- sponsor_min_leaders_for_distribution() leaders in the cohort. This fixture
+-- has two, so a Sponsor must see nothing -- k-anonymity, not a missing join.
+select is(
+  (select count(*)::int
+     from public.sponsor_canonical_leader_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)),
+  0, 'a Sponsor sees no row for a cohort below the minimum-leaders privacy floor');
+
+-- The Sponsor contract exposes no reflection narrative: the column set is
+-- fixed, so a narrative leak would be a schema change, not a query mistake.
+select ok(
+  not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'session_learning_reflections'
+      and column_name = 'body'
+      and has_column_privilege('anon', 'public.session_learning_reflections', 'body', 'SELECT')
+  ),
+  'the learner reflection narrative is not readable by anon');
 
 select * from finish();
 rollback;

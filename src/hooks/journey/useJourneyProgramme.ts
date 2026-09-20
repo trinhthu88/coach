@@ -5,11 +5,30 @@ import type { ProgrammeInfo, SessionUsage } from "./types";
 
 interface JourneyProgrammeData {
   programme: ProgrammeInfo | null;
+  /**
+   * Operational session usage only. This counts raw sessions, so it must never
+   * be used as programme progress -- a held session whose post-session
+   * evidence is outstanding is not a completed unit. Use `coaching` below.
+   */
   usage: SessionUsage | null;
+  /** Canonical Coaching programme progress, the same reader every role uses. */
+  coaching: {
+    requiredUnits: number;
+    completedUnits: number;
+    bookedUnits: number;
+    dueUnits: number;
+    overdueUnits: number;
+    postSessionPending: number;
+  } | null;
 }
 
 async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): Promise<JourneyProgrammeData> {
-  const [{ data: u, error: usageError }, { data: e, error: enrollmentError }] = await Promise.all([
+  const [
+    { data: u, error: usageError },
+    { data: e, error: enrollmentError },
+    { data: progressRows },
+    { data: checklistRows },
+  ] = await Promise.all([
     supabase.rpc("get_coachee_session_usage_for_enrollment", {
       p_enrollment_id: enrollmentId,
     }),
@@ -18,6 +37,11 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
       .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months), cohorts(name)")
       .eq("id", enrollmentId)
       .maybeSingle(),
+    supabase.rpc("canonical_module_progress", {
+      p_enrollment_id: enrollmentId,
+      p_as_of: new Date().toISOString().slice(0, 10),
+    }),
+    supabase.rpc("coaching_post_session_checklist", { p_enrollment_id: enrollmentId }),
   ]);
   if (usageError) throw usageError;
   if (enrollmentError) throw enrollmentError;
@@ -36,7 +60,19 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
         }
       : null;
 
-  return { programme, usage: usageRow ?? null };
+  const coachingRow = (progressRows ?? []).find((r) => r.module === "coaching");
+  const coaching = coachingRow
+    ? {
+        requiredUnits: coachingRow.required_units ?? 0,
+        completedUnits: coachingRow.completed_units ?? 0,
+        bookedUnits: coachingRow.booked_units ?? 0,
+        dueUnits: coachingRow.due_units ?? 0,
+        overdueUnits: coachingRow.overdue_units ?? 0,
+        postSessionPending: (checklistRows ?? []).filter((c) => !c.unit_complete).length,
+      }
+    : null;
+
+  return { programme, usage: usageRow ?? null, coaching };
 }
 
 /**

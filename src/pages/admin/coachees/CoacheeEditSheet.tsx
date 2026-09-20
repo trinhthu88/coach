@@ -28,7 +28,9 @@ interface CoacheeEditSheetProps {
   programmes: ProgrammeOpt[];
   cohorts: NamedOpt[];
   organizations: NamedOpt[];
-  coachOpts: NamedOpt[];
+  /** No longer used: programme Coaching is assigned per cohort, not per
+   *  learner. Kept so existing call sites stay valid. */
+  coachOpts?: NamedOpt[];
   defaultLimit: number;
 }
 
@@ -40,7 +42,6 @@ export function CoacheeEditSheet({
   programmes,
   cohorts,
   organizations,
-  coachOpts,
   defaultLimit,
 }: CoacheeEditSheetProps) {
   const { t } = useTranslation("admin");
@@ -175,24 +176,23 @@ export function CoacheeEditSheet({
                 <p className="mt-1 text-[10px] text-muted-foreground">{t("coacheeEditSheet.spokenLanguagesHint")}</p>
               </div>
 
-              <div className="rounded-lg border p-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coacheeEditSheet.selectedCoachesLabel")}</p>
-                <div className="max-h-48 space-y-1 overflow-y-auto">
-                  {coachOpts.map((c) => {
-                    const checked = editing.selected_coaches.some((a) => a.id === c.id);
-                    return (
-                      <label key={c.id} className="flex items-center gap-2 rounded px-1 py-1 hover:bg-muted/50 cursor-pointer">
-                        <Checkbox checked={checked} onCheckedChange={(v) => {
-                          const next = v
-                            ? [...editing.selected_coaches, { id: c.id, name: c.name }]
-                            : editing.selected_coaches.filter((a) => a.id !== c.id);
-                          setEditing({ ...editing, selected_coaches: next });
-                        }} />
-                        <span className="text-[12px]">{c.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+              {/* Programme Coaching eligibility is the COHORT Coach pool
+                  (Admin -> Cohorts -> Coaching), not a per-learner allowlist.
+                  The checkbox list that used to live here still wrote
+                  coachee_coach_allowlist, which no longer governs programme
+                  Coaching -- leaving it would have let an Admin make an
+                  assignment that changed nothing.
+
+                  The allowlist rows themselves are untouched: RULES.md section 3
+                  documents non-programme relationships that still depend on
+                  them, so nothing is deleted here. */}
+              <div className="rounded-lg border border-dashed p-3">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {t("coacheeEditSheet.selectedCoachesLabel")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("coacheeEditSheet.coachAssignmentMovedToCohort")}
+                </p>
               </div>
 
               <div className="rounded-lg bg-muted/40 p-3 text-[11px] text-muted-foreground">

@@ -65,12 +65,21 @@ export function CoachProgrammeCard({
   programmeWeeks,
   coachSummaries,
   sessionsCompletedCount,
+  coaching,
   avgGoalProgress,
 }: {
   programme: ProgrammeInfo | null;
   programmeWeeks: ProgrammeWeeks | null;
   coachSummaries: CoachSummary[];
   sessionsCompletedCount: number;
+  /** Canonical Coaching programme progress; null when Coaching is not required. */
+  coaching?: {
+    requiredUnits: number;
+    completedUnits: number;
+    bookedUnits: number;
+    overdueUnits: number;
+    postSessionPending: number;
+  } | null;
   avgGoalProgress: number | null;
 }) {
   const { t } = useTranslation("journey");
@@ -118,14 +127,34 @@ export function CoachProgrammeCard({
       <div className="grid gap-3 p-4 md:grid-cols-3">
         <div className="rounded-lg border bg-muted/20 p-3">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmeCard.sessionsReceived")}</p>
+          {/* Canonical Coaching units. A session that has been held but whose
+              post-session evidence is outstanding counts as booked, not
+              completed, so this can read lower than the number of sessions
+              that took place. Falls back to the raw count only when Coaching
+              is not a scheduled requirement for this enrollment. */}
           <p className="mt-1 text-xl font-semibold">
-            {sessionsCompletedCount}
-            <span className="text-sm font-normal text-muted-foreground"> / {programme.sessionsAllowed || "—"}</span>
+            {coaching ? coaching.completedUnits : sessionsCompletedCount}
+            <span className="text-sm font-normal text-muted-foreground">
+              {" "}/ {coaching ? coaching.requiredUnits : programme.sessionsAllowed || "—"}
+            </span>
           </p>
           <Progress
-            value={programme.sessionsAllowed ? Math.min(100, (sessionsCompletedCount / programme.sessionsAllowed) * 100) : 0}
+            value={
+              coaching
+                ? coaching.requiredUnits
+                  ? Math.min(100, (coaching.completedUnits / coaching.requiredUnits) * 100)
+                  : 0
+                : programme.sessionsAllowed
+                  ? Math.min(100, (sessionsCompletedCount / programme.sessionsAllowed) * 100)
+                  : 0
+            }
             className="mt-2 h-1.5"
           />
+          {coaching && coaching.postSessionPending > 0 && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {t("programmeCard.postSessionPending", { n: coaching.postSessionPending })}
+            </p>
+          )}
         </div>
         <div className="rounded-lg border bg-muted/20 p-3">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmeCard.programmeDuration")}</p>

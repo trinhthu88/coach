@@ -17,6 +17,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useCohortRequirementSchedule } from "@/hooks/admin/useCohortRequirementSchedule";
 import { CohortRequirementSchedule } from "./cohorts/CohortRequirementSchedule";
+import { CohortCoachingPanel } from "./cohorts/CohortCoachingPanel";
 
 interface Cohort {
   id: string;
@@ -211,6 +212,10 @@ export default function AdminCohorts() {
                 datesChanged={!!savedCohort && (savedCohort.start_date !== (editing.start_date || null) || savedCohort.end_date !== (editing.end_date || null))}
                 canRegenerate={!!editing.programme_id && !!editing.start_date && !!editing.end_date}
               />
+              {/* Programme owns how many Coaching units are required and the
+                  schedule above owns their dates; the cohort owns who may
+                  deliver them. */}
+              <CohortCoachingPanel cohortId={savedCohort?.id} />
             </div>
           )}
           <DialogFooter>
