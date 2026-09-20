@@ -161,10 +161,22 @@ reset role;
 insert into session_activity_attributions (enrollment_id, module, source_activity_type, source_activity_id, occurred_on)
 values ('14141414-1414-4141-8141-000000000001'::uuid, 'coaching', 'coaching', gen_random_uuid(), '2026-07-05'::date);
 
+-- Coaching activity is requirement-bound as of the 2026-09 cutover: a session
+-- counts as activity when it is a real completed session attributed to a
+-- cohort Coaching requirement. The row inserted above is a bare
+-- session_activity_attributions record whose source_activity_id points at no
+-- session at all, and audit finding G4 is precisely that such orphaned
+-- attributions must stop making things count. It therefore contributes
+-- nothing, and raw activity stays at the four real sessions.
+--
+-- Extra Coaching activity beyond the requirement count is now structurally
+-- impossible: at most one live-or-completed session per requirement, and
+-- booking is capped at the requirement count. Triads keep raw_completed_sessions
+-- because one Triad requirement may legitimately hold several sessions.
 select is(
   (select completed_activity_units from public.canonical_module_progress('14141414-1414-4141-8141-000000000001'::uuid, current_date)
      where module = 'coaching'),
-  5, 'a 5th real coaching activity remains visible as raw activity (completed_activity_units)');
+  4, 'an orphaned coaching attribution is not activity: raw activity stays at the real sessions');
 
 select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111116', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
