@@ -9,7 +9,7 @@
 -- Mentor X is in no pool at all.
 begin;
 
-select plan(44);
+select plan(50);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -434,6 +434,88 @@ select is(
   (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
     where module = 'mentoring'),
   2, 'rescheduling does not change the completed unit count');
+
+-- ---------------------------------------------------------------------------
+-- Requirement attribution: an early Mentoring 2 never hides an overdue Mentoring 1
+-- ---------------------------------------------------------------------------
+--
+-- Before Mentoring sessions carried a requirement, they reached the canonical
+-- activity spine with requirement_due_on = NULL, and canonical_module_progress
+-- lets a NULL pass the due-date filter unconditionally. A session completed
+-- early therefore counted against a deadline that had not arrived, cancelling
+-- out an earlier requirement that was genuinely overdue.
+--
+-- Cohort C is the shape that exposes it: Mentoring 1 is already due and
+-- unfulfilled, Mentoring 2 is not due yet and IS fulfilled.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
+values ('d1000000-0000-0000-0000-000000000005'::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
+  'authenticated', 'authenticated', 'mentoring-canon-5@example.test', 'test', now(),
+  jsonb_build_object('full_name', 'Mentoring Person 5'), now(), now(), '', '', '');
+insert into public.user_roles (user_id, role)
+  values ('d1000000-0000-0000-0000-000000000005', 'coachee') on conflict do nothing;
+
+insert into public.cohorts (id, name, programme_id) values
+  ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'Cohort C', 'd1000000-0000-0000-0000-00000000a1a1'::uuid);
+
+insert into public.cohort_requirement_dates
+  (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
+  ('d1000000-0000-0000-0000-0000000000d1'::uuid, 'd1000000-0000-0000-0000-00000000b3b3'::uuid,
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 10, 'manual', 'admin_save'),
+  ('d1000000-0000-0000-0000-0000000000d2'::uuid, 'd1000000-0000-0000-0000-00000000b3b3'::uuid,
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date + 30, 'manual', 'admin_save');
+
+insert into public.cohort_mentors (cohort_id, mentor_user_id) values
+  ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid);
+
+insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status) values
+  ('d1000000-0000-0000-0000-00000000e3e3'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid,
+   'd1000000-0000-0000-0000-000000000005'::uuid, 'd1000000-0000-0000-0000-00000000b3b3'::uuid, 'active');
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'd1000000-0000-0000-0000-000000000005')::text, true);
+
+-- Explicitly against Mentoring 2, the requirement that is NOT yet due.
+insert into public.mentoring_sessions
+  (id, enrollment_id, cohort_requirement_id, mentor_id, mentee_id, topic,
+   start_time, duration_minutes, status)
+values ('d1000000-0000-0000-0000-00000000c7c7'::uuid, 'd1000000-0000-0000-0000-00000000e3e3'::uuid,
+        'd1000000-0000-0000-0000-0000000000d2'::uuid,
+        'd1000000-0000-0000-0000-000000000001'::uuid, 'd1000000-0000-0000-0000-000000000005'::uuid,
+        'Early second', now() - interval '5 days', 60, 'confirmed');
+update public.mentoring_sessions set status = 'completed'
+  where id = 'd1000000-0000-0000-0000-00000000c7c7'::uuid;
+
+select is(
+  (select count(*)::int from public.canonical_mentoring_requirement_fulfilment('d1000000-0000-0000-0000-00000000e3e3'::uuid)),
+  2, 'fulfilment reports one row per cohort Mentoring requirement');
+
+select ok(
+  (select fulfilled_on is not null from public.canonical_mentoring_requirement_fulfilment('d1000000-0000-0000-0000-00000000e3e3'::uuid)
+    where ordinal = 2),
+  'the completed session fulfils the requirement it is attributed to');
+
+select ok(
+  (select fulfilled_on is null from public.canonical_mentoring_requirement_fulfilment('d1000000-0000-0000-0000-00000000e3e3'::uuid)
+    where ordinal = 1),
+  'it does not fulfil any other requirement');
+
+select is(
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+    where module = 'mentoring'),
+  1, 'one completed session is one completed unit');
+
+select is(
+  (select due_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+    where module = 'mentoring'),
+  1, 'only the requirement whose deadline has passed is due');
+
+-- THE regression: without requirement attribution this read 0, because the
+-- early unit satisfied a deadline that had not arrived.
+select is(
+  (select overdue_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+    where module = 'mentoring'),
+  1, 'an early Mentoring 2 does not hide an overdue Mentoring 1');
 
 select * from finish();
 rollback;
