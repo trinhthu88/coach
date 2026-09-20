@@ -22,8 +22,15 @@ quantity, booking and slot model are all still pre-canonical.
 | Module | Requirement-scoped | Single booking writer | Single completion rule | Guard block | Verdict |
 |---|---|---|---|---|---|
 | Triads | ✅ | ✅ | ✅ | ✅ 12 tests | Sound — one residual quantity duality (T1) |
-| Coaching | ✅ (but see C1) | ✅ | ✅ (but unreachable — C2) | ❌ none | Blocked |
+| Coaching | ✅ | ✅ | ✅ | ⚠️ 3 tests | C1–C2 fixed; C3–C13 open |
 | Mentoring | ❌ | ❌ | ❌ | ❌ none | Half cut over |
+
+> **Update (2026-09-20, same day).** **C1 and C2 are fixed** — see the notes on
+> each below. The Coaching migrations were unmerged and undeployed
+> (`origin/main` ends at the Triad PR), so C1 was corrected in
+> `20260920110000` in place rather than by a corrective migration. Everything
+> else in this document is still open. Fixing C2 surfaced one new finding,
+> C13.
 
 ---
 
@@ -60,7 +67,14 @@ ERROR:  duplicate key value violates unique constraint
 DETAIL:  Key (cohort_requirement_id)=(dddddddd-…-dddd) already exists.
 ```
 
-**Fix:** `ON public.sessions (enrollment_id, cohort_requirement_id)`, same predicate.
+**FIXED.** The index is now keyed on `(enrollment_id, cohort_requirement_id)`
+with the same predicate, and the reasoning is recorded in the migration. The
+regression case (two learners of one cohort, same requirement) is now asserted
+in `coaching_canonical_contract_test.sql`; the pre-existing "a second learner
+cannot book a slot that is already reserved" assertion now collides only on the
+slot, so it passes for the reason it states. Verified on PostgreSQL 16: L1 books
+Coaching 1 ✓, L2 books the same requirement ✓, L1 double-books it ✗ (23505),
+L1 rebooks after cancelling ✓.
 
 ### C2. The mandatory reflection gate has no writer — no Coaching unit can ever complete
 
@@ -79,6 +93,21 @@ DETAIL:  Key (cohort_requirement_id)=(dddddddd-…-dddd) already exists.
 to satisfy any of them. `session_learning_reflections` therefore has no INSERT path,
 `unit_complete` is permanently false, and `canonical_module_progress` reports
 `completed_units = 0` for Coaching for every learner regardless of what they do.
+
+**FIXED.** The reflection composer now lives on the card that shows the gate,
+so there is exactly one way to write the row. `CoachingPostSessionChecklist`
+takes `enrollmentId` and `canSubmitReflection` (passed as `isCoachee` from
+`SessionDetail`), reads the learner's stored answer through a new
+`useCoachingReflection` hook and rewrites it through the existing upsert — one
+row per `(enrollment, activity)`, edited rather than stacked. The composer is
+never rendered for a Coach or Admin, and their view does not read the
+narrative at all. Four component tests plus a `Coaching source of truth` guard
+block covering all four gate writers.
+
+This fix deliberately does **not** resolve C4/C5. `sessions.coachee_notes` is
+still the field the learner edits on the session page and still what Admin
+Alerts and the reflection feed read. Choosing which of the two stores is
+canonical is a product decision, and the audit should not make it silently.
 
 ### C3. A Coach or Admin can never reschedule
 
@@ -199,6 +228,31 @@ with 2 legacy sessions and 2 requirements is blocked from booking either require
 a service-role `update({status:'confirmed', …})` directly. The service role bypasses
 `guard_session_protected_fields` (`u IS NULL → RETURN NEW`), so this is the one
 remaining second writer of `sessions.status`.
+
+### C13. Eight canonical Coaching hooks have no caller; the screens call the RPCs directly
+
+Found while fixing C2. `useCanonicalCoaching.ts` describes itself as "the single
+frontend entry point to the canonical Coaching backend", but eight of its fourteen
+exports are imported by nothing:
+
+```
+useCanonicalCoachingProgress   useCoachingRequirements       useBookCoachingSession
+useCancelCoachingSession       useRescheduleCoachingSession  useCompleteCoachingSession
+useCoachingPostSessionChecklist                              useSubmitCoachingSatisfaction
+```
+
+Unlike C2 the *capability* is reachable — the screens call the same RPCs
+inline instead (`BookSession.tsx:382` calls `book_coaching_session` directly,
+`useSessionCore.ts:258,286` call `cancel_coaching_session` and
+`complete_coaching_session` directly). So this is not a missing feature; it is two
+call paths to one backend contract, with only one of them carrying the module's
+shared cache-invalidation list (`LIFECYCLE_KEYS`). `BookSession` works around that by
+importing `useInvalidateCoaching` separately; `useSessionCore` does not, so a
+cancellation or completion invalidates a different set of caches from a booking.
+
+Either route the screens through the hooks or delete the unused ones — but a
+file that claims to be the single entry point while eight of its exports are dead
+is a maintenance trap. Low severity, no user-visible defect found.
 
 ---
 
@@ -349,16 +403,17 @@ its date genuinely is edited in place.
 
 ## 6. Suggested order of work
 
-1. **C1** — one-line index fix; add the two-learners-one-requirement case to
-   `coaching_canonical_contract_test.sql` (G3).
-2. **C2** — wire `useSubmitCoachingReflection` into `CoachingPostSessionChecklist`
-   (or SessionDetail), then decide C4/C5: either `session_learning_reflections`
-   becomes the single reflection store and `coachee_notes` is retired for Coaching,
-   or the canonical gate reads `coachee_notes`. Not both.
+1. ~~**C1**~~ — done (index scoped to the enrollment; regression case added, G3
+   closed for this defect).
+2. ~~**C2**~~ — done (writer wired). **Still to decide: C4/C5** — either
+   `session_learning_reflections` becomes the single Coaching reflection store and
+   `coachee_notes` is retired for it, or the canonical gate reads `coachee_notes`.
+   Not both. Until that lands, a learner has two places to write a reflection and
+   only one of them counts.
 3. **C3** — scope the ownership check in `book_coaching_session` (or give reschedule
    its own insert path) so Coach and Admin can reschedule.
-4. **C6, C7, C8, C9, C12** — the projection/UI cleanups, landed together with a new
-   "Coaching source of truth" guard block (G2) so they cannot regress.
+4. **C6, C7, C8, C9, C12, C13** — the projection/UI cleanups, landed into the
+   "Coaching source of truth" guard block started for C2 (G2) so they cannot regress.
 5. **C10, C11** — decide and encode the two intent/implementation mismatches.
 6. **Mentoring (M1–M5)** — give Mentoring the Coaching treatment:
    `cohort_requirement_id` on `mentoring_sessions`, a
