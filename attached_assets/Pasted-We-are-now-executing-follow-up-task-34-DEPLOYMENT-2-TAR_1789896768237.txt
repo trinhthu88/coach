@@ -1,0 +1,257 @@
+We are now executing follow-up task #34:
+
+DEPLOYMENT 2 — TARGET RECONCILIATION
+
+This is investigation/read-only work first.
+
+DO NOT rerun Deployment 2 yet.
+DO NOT modify production.
+DO NOT move Deployment 2 into supabase/migrations.
+DO NOT deploy frontend or Edge Functions.
+DO NOT run the engagement ledger script.
+
+============================================================
+KNOWN FACTS
+============================================================
+
+Active Clariva production re-audit shows:
+
+- prerequisite Deployment 1 / requirement-group ledger rows: present
+- 20260919120000 requirement-specific Triad correction: present
+- Deployment 2 ledger entry: intentionally absent because D2 is standalone
+- triad_rounds: STILL EXISTS
+- programme_triad_rounds: STILL EXISTS
+- 31 retired Triad columns: STILL EXIST
+- Deployment 2 archive rows: 0
+- canonical structures: present
+- canonical progress mismatches: 0
+- archive privacy: intact
+- live app healthy
+
+Therefore:
+
+Deployment 2 cannot be considered applied to the active Clariva production database.
+
+Possible explanations:
+
+1. Earlier execution targeted another Supabase project/database.
+2. Earlier execution targeted a local/test database.
+3. Transaction rolled back.
+4. Script aborted before COMMIT.
+5. Connection wrapper/target resolution pointed somewhere other than active production.
+6. Reported success referred only to rehearsal/verification rather than the real destructive transaction.
+
+We must establish exactly what happened before any retry.
+
+============================================================
+PHASE 1 — IDENTIFY ACTIVE PRODUCTION TARGET
+============================================================
+
+Read-only.
+
+Determine the authoritative active Clariva production identity using
+non-secret identifiers only.
+
+Report:
+
+- Supabase project ref
+- database host identity / pooler project ref
+- VITE_SUPABASE_URL project ref
+- deployed application's Supabase project ref if derivable safely
+- PROD_DB_URL project ref/host WITHOUT printing credentials/password
+- current linked Supabase project if the CLI is linked
+- any Replit deployment/environment project reference
+
+All production identifiers must agree.
+
+Never print:
+- passwords
+- service-role JWT
+- access tokens
+- full PROD_DB_URL
+
+Create a compact target fingerprint such as:
+
+project_ref
+database_name
+host suffix
+current_database()
+server address if safe/non-secret
+
+============================================================
+PHASE 2 — RECONSTRUCT THE PREVIOUS DEPLOYMENT 2 EXECUTION
+============================================================
+
+Inspect available:
+
+- shell history where appropriate
+- Replit Agent logs/history
+- execution report
+- scratchpad/wrapper commands
+- Supabase CLI output
+- SQL output
+- CI/workflow evidence
+- deployment notes
+- git state at the time
+- local database state
+
+Determine:
+
+A. What exact command was run?
+B. What SQL file was used?
+C. What database connection/target was used?
+D. Was BEGIN/COMMIT reached?
+E. Was there a rollback?
+F. Did any assertion fail?
+G. Was the execution actually only local/rehearsal?
+H. Is there evidence of the resulting retired schema anywhere?
+
+Do not assume earlier narrative reports were correct.
+
+Evidence must be concrete.
+
+============================================================
+PHASE 3 — SEARCH FOR THE POSSIBLE OTHER TARGET
+============================================================
+
+Using only already-authorized/available environments, determine whether
+another database has the post-Deployment-2 shape.
+
+A post-D2 fingerprint includes:
+
+- triad_rounds absent
+- programme_triad_rounds absent
+- retired Triad columns absent
+- Deployment 2 archive rows present
+
+If such a database is found:
+
+report:
+
+- what environment/project it is
+- whether it appears local/test/staging/other production
+- whether it contains real data
+- whether accidental destructive changes occurred there
+
+DO NOT repair or modify it yet.
+
+If no such target can be found, say so.
+
+============================================================
+PHASE 4 — VERIFY ACTIVE PRODUCTION AGAIN
+============================================================
+
+READ ONLY.
+
+Against the authoritative Clariva production target confirm:
+
+- triad_rounds exists
+- programme_triad_rounds exists
+- count of retired columns
+- Deployment 2 archive count
+- 20260919120000 is present
+- canonical structures are intact
+- canonical progress still matches
+- Deployment 2 readiness conditions remain satisfied
+
+This gives us a fresh immutable pre-execution baseline.
+
+============================================================
+PHASE 5 — TARGET LOCK / SAFETY DESIGN
+============================================================
+
+Before any future D2 execution, define a hard target guard.
+
+The future deployment command must refuse to run unless the database
+matches the authoritative Clariva production fingerprint.
+
+The execution procedure should validate at minimum:
+
+- expected Supabase project/database identity
+- expected prerequisite migrations
+- 20260919120000 present
+- Deployment 2 legacy tables currently present
+- Deployment 2 archive state safe
+- canonical requirement-specific architecture present
+
+If target fingerprint differs:
+
+ABORT.
+
+Do not rely on environment variable name alone.
+
+============================================================
+PHASE 6 — DECISION
+============================================================
+
+Return ONE conclusion:
+
+A. PREVIOUS DEPLOYMENT 2 TARGET IDENTIFIED
+
+Include exact evidence and where it actually ran.
+
+or
+
+B. PREVIOUS DEPLOYMENT 2 EXECUTION ROLLED BACK / NEVER COMMITTED
+
+Include exact evidence.
+
+or
+
+C. PREVIOUS DEPLOYMENT 2 TARGET CANNOT BE PROVEN
+
+In this case treat Deployment 2 as NOT APPLIED and require a fresh,
+controlled execution later.
+
+============================================================
+FINAL REPORT
+============================================================
+
+Return:
+
+## 1. Active production fingerprint
+
+No secrets.
+
+## 2. Previous execution reconstruction
+
+Exact command / target / transaction outcome where provable.
+
+## 3. Where Deployment 2 actually landed
+
+Or state that no post-D2 target was found.
+
+## 4. Active production state
+
+Legacy tables
+Retired columns
+Archive rows
+Canonical state
+
+## 5. Any unintended environment impact
+
+If any.
+
+## 6. Future execution target guard
+
+Exact safety checks that should precede execution.
+
+## 7. Decision
+
+One of:
+
+TARGET RECONCILED — SAFE TO PREPARE FRESH D2 EXECUTION
+
+or
+
+TARGET RECONCILIATION BLOCKED
+
+============================================================
+HARD STOP
+============================================================
+
+STOP after target reconciliation.
+
+DO NOT execute Deployment 2.
+
+A fresh Deployment 2 execution requires separate explicit approval.
