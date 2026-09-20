@@ -9,7 +9,7 @@
 -- Mentor X is in no pool at all.
 begin;
 
-select plan(28);
+select plan(44);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -301,6 +301,139 @@ select ok(
       and has_column_privilege('anon', 'public.mentoring_sessions', column_name, 'SELECT')
   ),
   'mentor notes, mentee reflection and the prep document are not readable by anon');
+
+-- ---------------------------------------------------------------------------
+-- Legacy user-global paths cannot authorize anything (sections 2 and 4)
+-- ---------------------------------------------------------------------------
+--
+-- These must FAIL, not answer. A function that still returns a verdict without
+-- an enrollment is a working user-global booking path.
+
+select throws_ok($$
+  select public.can_book_mentoring_session_reason(
+    'd1000000-0000-0000-0000-000000000003'::uuid,
+    'd1000000-0000-0000-0000-000000000002'::uuid)
+$$, '42501', NULL, 'the 2-argument eligibility reason fails closed');
+
+select throws_ok($$
+  select public.can_book_mentoring_session(
+    'd1000000-0000-0000-0000-000000000003'::uuid,
+    'd1000000-0000-0000-0000-000000000002'::uuid)
+$$, '42501', NULL, 'the 2-argument eligibility boolean fails closed');
+
+select throws_ok($$
+  select public.check_can_book_mentoring_session('d1000000-0000-0000-0000-000000000002'::uuid)
+$$, '42501', NULL, 'the self-pinned user-global check fails closed');
+
+select throws_ok($$
+  select public.check_can_book_mentoring_session_reason('d1000000-0000-0000-0000-000000000002'::uuid)
+$$, '42501', NULL, 'the self-pinned user-global reason fails closed');
+
+select throws_ok($$
+  select * from public.get_my_mentors()
+$$, '42501', NULL, 'user-global mentor discovery fails closed');
+
+-- The user-global learner entitlement readers are gone entirely.
+select is(
+  (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'get_mentoring_received_limit'),
+  0, 'the user-global received-limit reader no longer exists');
+
+-- An allowlist row ALONE must not make a mentor bookable for a current
+-- enrollment. Mentor X is allowlisted to the learner but in no cohort pool.
+insert into public.mentoring_allowlist (mentee_user_id, mentor_user_id)
+  values ('d1000000-0000-0000-0000-000000000003'::uuid, 'd1000000-0000-0000-0000-000000000004'::uuid);
+
+select is(
+  public.can_book_mentoring_session_reason(
+    'd1000000-0000-0000-0000-000000000003'::uuid,
+    'd1000000-0000-0000-0000-000000000004'::uuid,
+    'd1000000-0000-0000-0000-00000000e2e2'::uuid),
+  'not_in_cohort_pool',
+  'an allowlist row alone does NOT make a mentor bookable for the current enrollment');
+
+select ok(
+  not exists (
+    select 1 from public.get_mentors_for_enrollment('d1000000-0000-0000-0000-00000000e2e2'::uuid)
+    where mentor_user_id = 'd1000000-0000-0000-0000-000000000004'::uuid),
+  'an allowlist-only mentor does not appear in the enrollment mentor list');
+
+-- ---------------------------------------------------------------------------
+-- Entitlement is per enrollment, never summed across history (section 3)
+-- ---------------------------------------------------------------------------
+select is(
+  (select used_count from public.get_mentoring_session_usage('d1000000-0000-0000-0000-00000000e1e1'::uuid)),
+  1, 'the historical enrollment counts only its own session');
+
+select is(
+  (select used_count from public.get_mentoring_session_usage('d1000000-0000-0000-0000-00000000e2e2'::uuid)),
+  2, 'the current enrollment counts only its own sessions, not the historical one');
+
+-- ---------------------------------------------------------------------------
+-- Two independent state layers (section 7)
+-- ---------------------------------------------------------------------------
+--
+-- Documentation completeness and session lifecycle move independently.
+
+-- A confirmed session with EVERY post-session artefact present still counts as
+-- booked, never completed: documentation does not complete a session.
+insert into public.mentoring_sessions
+  (id, enrollment_id, mentor_id, mentee_id, topic, start_time, duration_minutes, status,
+   mentee_notes, mentor_notes, prep_file_path, feedback_submitted_at)
+values ('d1000000-0000-0000-0000-00000000c5c5'::uuid, 'd1000000-0000-0000-0000-00000000e2e2'::uuid,
+        'd1000000-0000-0000-0000-000000000002'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid,
+        'Fully documented but only confirmed', now() + interval '5 days', 60, 'confirmed',
+        'reflection', 'mentor note', 'prep/x.pdf', now());
+
+select is(
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+    where module = 'mentoring'),
+  2, 'a confirmed session with all documentation present does not increment completed units');
+
+-- booked_units is capped at the units still OUTSTANDING. Both required units
+-- are already complete here, so a further confirmed session adds nothing --
+-- booked never inflates the total beyond what the programme requires.
+select is(
+  (select booked_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+    where module = 'mentoring'),
+  0, 'booked units are capped at the remaining required units, so a surplus confirmed session adds none');
+
+-- ---------------------------------------------------------------------------
+-- Reschedule re-attribution (section 6)
+-- ---------------------------------------------------------------------------
+--
+-- Moving a session's date must move its cadence attribution with it. Before
+-- this was fixed, occurred_on kept the ORIGINAL date because the attribution
+-- helper ends in ON CONFLICT DO NOTHING.
+
+select is(
+  (select occurred_on from public.session_activity_attributions
+    where source_activity_type = 'mentoring'
+      and source_activity_id = 'd1000000-0000-0000-0000-00000000c1c1'::uuid),
+  (current_date - 1),
+  'the attribution starts on the session date');
+
+update public.mentoring_sessions
+  set start_time = now() - interval '40 days'
+  where id = 'd1000000-0000-0000-0000-00000000c1c1'::uuid;
+
+select is(
+  (select occurred_on from public.session_activity_attributions
+    where source_activity_type = 'mentoring'
+      and source_activity_id = 'd1000000-0000-0000-0000-00000000c1c1'::uuid),
+  (current_date - 40),
+  'rescheduling moves occurred_on to the new date');
+
+select is(
+  (select count(*)::int from public.session_activity_attributions
+    where source_activity_type = 'mentoring'
+      and source_activity_id = 'd1000000-0000-0000-0000-00000000c1c1'::uuid),
+  1, 'rescheduling leaves exactly one attribution, not a stale duplicate');
+
+select is(
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+    where module = 'mentoring'),
+  2, 'rescheduling does not change the completed unit count');
 
 select * from finish();
 rollback;
