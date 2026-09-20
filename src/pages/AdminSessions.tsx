@@ -64,6 +64,14 @@ interface SessionRow {
   kind: "coaching" | "peer";
   coach?: { full_name: string; email: string };
   coachee?: { full_name: string; email: string };
+  /**
+   * Canonical Coaching unit state, read from coaching_session_evidence_bulk().
+   * A session with status "completed" whose learner evidence is outstanding is
+   * NOT a completed programme unit -- Admin must be able to see the difference
+   * rather than inferring completion from the status column.
+   */
+  unitComplete?: boolean;
+  postSessionPending?: boolean;
 }
 
 export default function AdminSessions() {
@@ -122,11 +130,30 @@ export default function AdminSessions() {
         .in("user_id", userIds);
       setCoachRoleIds(new Set((coachRoles ?? []).map((r) => r.user_id)));
     }
-    setRows(all.map((s) => ({
-      ...s,
-      coach: profilesById[s.coach_id],
-      coachee: profilesById[s.coachee_id],
-    })) as SessionRow[]);
+    // Coaching unit state for every held Coaching session, in one round trip.
+    const completedCoachingIds = all
+      .filter((s) => s.kind === "coaching" && s.status === "completed")
+      .map((s) => s.id);
+    const evidenceById = new Map<string, { unit_complete: boolean }>();
+    if (completedCoachingIds.length) {
+      const { data: evidence } = await supabase.rpc("coaching_session_evidence_bulk", {
+        p_session_ids: completedCoachingIds,
+      });
+      for (const e of evidence ?? []) {
+        if (e.session_id) evidenceById.set(e.session_id, { unit_complete: !!e.unit_complete });
+      }
+    }
+
+    setRows(all.map((s) => {
+      const ev = evidenceById.get(s.id);
+      return {
+        ...s,
+        coach: profilesById[s.coach_id],
+        coachee: profilesById[s.coachee_id],
+        unitComplete: ev?.unit_complete,
+        postSessionPending: ev ? !ev.unit_complete : undefined,
+      };
+    }) as SessionRow[]);
     setLoading(false);
   }, []);
 
@@ -350,6 +377,19 @@ export default function AdminSessions() {
                       <Badge variant="secondary" className="capitalize">
                         {t(`sessions.statusLabels.${s.status}`)}
                       </Badge>
+                      {/* Session held vs programme unit complete are different
+                          facts; showing only the status column would conflate
+                          them. Admin reads this, never edits it. */}
+                      {s.postSessionPending && (
+                        <Badge variant="outline" className="mt-1 block w-fit" data-testid="admin-unit-pending">
+                          {t("sessions.unitPostSessionPending")}
+                        </Badge>
+                      )}
+                      {s.unitComplete && (
+                        <Badge variant="default" className="mt-1 block w-fit" data-testid="admin-unit-complete">
+                          {t("sessions.unitComplete")}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {s.meeting_url ? (

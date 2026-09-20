@@ -39,6 +39,13 @@ export interface SessionRow {
   enrollment_id: string | null;
   programmeName: string | null;
   cohortName: string | null;
+  /**
+   * Which cohort Coaching requirement this session fulfils ("Coaching 2").
+   * Null for peer/mentoring/triad rows and for legacy Coaching sessions that
+   * predate the requirement link -- attribution is never invented for those.
+   */
+  coachingRequirementOrdinal: number | null;
+  coachingRequirementDueOn: string | null;
   enrollment_actions: import("@/lib/enrollmentActions").EnrollmentActionItem[];
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
@@ -51,6 +58,11 @@ export interface SessionRow {
 export interface SessionEnrollmentContext {
   programmeName: string | null;
   cohortName: string | null;
+}
+
+export interface CoachingRequirementContext {
+  ordinal: number;
+  dueOn: string;
 }
 
 export function attachEnrollmentContext<T extends { enrollment_id?: string | null }>(
@@ -201,7 +213,43 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       enrollmentContexts[row.id] = { programmeName: programme?.name ?? null, cohortName: cohort?.name ?? null };
     }
   }
-  const rowsWithContext = attachEnrollmentContext(allRows, enrollmentContexts);
+  // Which Coaching requirement each session fulfils, so the Coach can see
+  // WHICH programme unit an incoming request is for rather than just a date.
+  //
+  // Read through canonical_coaching_requirement_fulfilment rather than
+  // cohort_requirement_dates: the requirement schedule has exactly one table
+  // reader (the Admin schedule hook) so that no surface can reconstruct it,
+  // and this function already maps session -> requirement for us.
+  //
+  // The requirement label is decoration on top of the session list: if this
+  // lookup fails the rows must still render unlabelled, rather than the whole
+  // list disappearing over a missing ordinal.
+  const requirementBySession: Record<string, CoachingRequirementContext> = {};
+  await Promise.all(
+    enrollmentIds.map(async (enrollmentId) => {
+      try {
+        const { data } = await supabase.rpc("canonical_coaching_requirement_fulfilment", {
+          p_enrollment_id: enrollmentId,
+        });
+        for (const row of data ?? []) {
+          if (row.session_id && row.ordinal != null && row.due_on) {
+            requirementBySession[row.session_id] = { ordinal: row.ordinal, dueOn: row.due_on };
+          }
+        }
+      } catch (error) {
+        console.error("Coaching requirement context failed to load", error);
+      }
+    }),
+  );
+
+  const rowsWithContext = attachEnrollmentContext(allRows, enrollmentContexts).map((row) => {
+    const req = requirementBySession[row.id];
+    return {
+      ...row,
+      coachingRequirementOrdinal: req?.ordinal ?? null,
+      coachingRequirementDueOn: req?.dueOn ?? null,
+    };
+  });
 
   const ids = Array.from(new Set(rowsWithContext.flatMap((s) => [s.coach_id, s.coachee_id]))).filter(Boolean);
   let byId = new Map<string, Pick<Tables<"profiles">, "id" | "full_name" | "email" | "avatar_url">>();

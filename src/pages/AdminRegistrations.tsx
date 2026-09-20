@@ -497,13 +497,14 @@ export default function AdminRegistrations() {
 
 function EditCoacheeDialog({
   coachee,
-  coachOpts,
   defaultLimit,
   onClose,
   onSaved,
 }: {
   coachee: CoacheeRow | null;
-  coachOpts: CoachOpt[];
+  /** Unused since programme Coaching moved to the cohort Coach pool; the prop
+   *  stays so the existing call site does not need changing. */
+  coachOpts?: CoachOpt[];
   defaultLimit: number;
   onClose: () => void;
   onSaved: () => void;
@@ -511,33 +512,21 @@ function EditCoacheeDialog({
   const { t } = useTranslation("admin");
   const [limit, setLimit] = useState<number>(defaultLimit);
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [search, setSearch] = useState("");
   const { saving, save: saveAssignment } = useUpdateCoacheeAssignment();
 
   useEffect(() => {
     if (coachee) {
       setLimit(coachee.monthly_limit);
       setPicked(new Set(coachee.selected_coaches.map((c) => c.id)));
-      setSearch("");
     }
   }, [coachee]);
 
   if (!coachee) return null;
 
-  const filtered = coachOpts.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const toggle = (id: string) => {
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const save = async () => {
+    // `picked` is seeded from the coachee's current allowlist and can no
+    // longer be edited here, so this saves the session limit and leaves the
+    // allowlist exactly as it was.
     const ok = await saveAssignment(coachee.id, limit, picked);
     if (ok) onSaved();
   };
@@ -563,36 +552,20 @@ function EditCoacheeDialog({
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {t("registrations.coachesThisCoacheeCanBook", { count: picked.size })}
-            </label>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("registrations.searchCoachesPlaceholder")}
-              className="mb-2"
-            />
-            <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2">
-              {filtered.length === 0 ? (
-                <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                  {t("registrations.noCoaches")}
-                </p>
-              ) : (
-                filtered.map((c) => (
-                  <label
-                    key={c.id}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
-                  >
-                    <Checkbox
-                      checked={picked.has(c.id)}
-                      onCheckedChange={() => toggle(c.id)}
-                    />
-                    <span>{c.name}</span>
-                  </label>
-                ))
-              )}
-            </div>
+          {/* Programme Coaching eligibility is the COHORT Coach pool
+              (Admin -> Cohorts -> Coaching), not a per-learner allowlist. This
+              picker wrote coachee_coach_allowlist, which no longer governs
+              programme Coaching -- keeping it would let an Admin make an
+              assignment that changes nothing. The existing rows are left
+              untouched for the non-programme relationships in RULES.md section 3.
+           */}
+          <div className="rounded-lg border border-dashed p-3">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {t("registrations.coachAssignment")}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {t("registrations.coachAssignmentMovedToCohort")}
+            </p>
           </div>
         </div>
         <DialogFooter>

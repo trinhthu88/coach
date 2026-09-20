@@ -149,7 +149,9 @@
       "title": "Hành động cần làm",
       "more": "+{{count}} thêm"
     },
-    "triadSession": "Triad {{n}}"
+    "triadSession": "Triad {{n}}",
+    "coachingRequirement": "Coaching {{n}}",
+    "requirementDue": "Hạn {{date}}"
   },
   "detail": {
     "sessionNotFound": {

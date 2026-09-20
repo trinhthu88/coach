@@ -656,7 +656,9 @@
     "coachNotesLabel": "Coach notes",
     "coacheeNotesLabel": "Coachee notes",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "unitPostSessionPending": "Post-session pending",
+    "unitComplete": "Unit complete"
   },
   "coaches": {
     "eyebrow": "Organisation",
@@ -882,7 +884,9 @@
     "reject": "Reject",
     "approve": "Approve",
     "rejectConfirmTitle": "Reject {{name}}?",
-    "rejectConfirmDescription": "They won't be able to access the platform. You can reverse this later from this table."
+    "rejectConfirmDescription": "They won't be able to access the platform. You can reverse this later from this table.",
+    "coachAssignment": "Coach assignment",
+    "coachAssignmentMovedToCohort": "Programme Coaching is assigned per cohort. Manage the Coach pool in Admin → Cohorts → Coaching."
   },
   "pager": {
     "pageOf": "Page {{page}} of {{total}}",
