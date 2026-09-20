@@ -1,0 +1,115 @@
+The implementation report does not yet explain the original confirmed bug.
+
+Observed UI:
+
+Admin → Coaches:
+9 ACTIVE coaches exist.
+
+Admin → Cohorts → Edit:
+Coaching says:
+"No Coaches are available to assign."
+
+Mentoring says:
+"No Coaches are available to assign as Mentors."
+
+Changing the candidate filter from:
+
+role = coach
+
+to:
+
+role = coach AND profiles.status = active
+
+does not explain how 9 active coaches became zero candidates.
+
+Do not make speculative changes.
+
+Please reproduce and trace the exact cohort shown in the screenshot:
+
+Programme:
+TASC - Essential Course
+
+Cohort:
+TASC Essential — Cohort 1 (Sep 2026)
+
+Then audit the runtime data path end-to-end.
+
+For Coaching, report actual row counts at every stage:
+
+1. user_roles WHERE role = 'coach'
+2. joined profiles
+3. profiles.status = 'active'
+4. joined coach_profiles if applicable
+5. existing cohort_coach_assignments
+6. final candidates returned by useAdminCohortCoaches
+7. final candidates rendered by CohortCoachingPanel
+
+Use the demo/current database fixture used by the preview.
+
+Do the same for Mentoring:
+
+1. Coach-role population
+2. active profiles
+3. cohort_mentors
+4. final candidates returned by useAdminCohortMentors
+5. final rendered candidates
+
+I want the exact reason why:
+
+9 active Coaches
+→ 0 available Coaches
+
+Do not stop at code inspection.
+
+Verify the rendered UI after the fix.
+
+Expected result for this cohort:
+
+Coaching:
+- active Coach candidates are visibly selectable
+- 0 assigned is allowed
+- user can assign one or more Coaches
+
+Mentoring:
+- active Coach candidates are visibly selectable according to the current canonical "mentor is a coach" rule
+- user can independently assign them as Mentors
+
+Also verify whether the candidate component incorrectly hides the list when:
+- assignments array is empty
+- loading/error state occurs
+- coach_profiles join is empty
+- RPC/table query returns partial data
+- RLS filters the provider rows
+- profile IDs and user_role user IDs use mismatched keys
+
+The screenshot also shows:
+
+"The requirement schedule could not be loaded."
+
+Audit that separately.
+
+The cohort editor should be able to load:
+- completion deadlines from canonical cohort requirement dates
+- Coaching provider candidates
+- Mentoring provider candidates
+- Peer compatible cohorts
+
+A failure in one section must not suppress data in another section.
+
+For Peer:
+create or use a programme with at least two cohorts and prove the second cohort appears in the selector.
+
+Return:
+
+1. actual root cause of 9 active → 0 candidates
+2. row counts through each query/join/filter stage
+3. whether RLS contributes
+4. exact code fix
+5. screenshot/runtime confirmation that candidates now render
+6. completion-deadline loading diagnosis
+7. Peer selector runtime proof with 2 sibling cohorts
+8. focused test results
+9. files changed
+
+Do not modify Triad Deployment-2 files.
+Do not redesign the source-of-truth architecture.
