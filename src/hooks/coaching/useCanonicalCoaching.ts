@@ -22,9 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const COACHING_KEYS = {
   coachPool: "coaching-coach-pool",
   nextRequirement: "coaching-next-requirement",
-  checklist: "coaching-post-session-checklist",
   evidence: "coaching-session-evidence",
-  fulfilment: "coaching-requirement-fulfilment",
   reflection: "coaching-session-reflection",
 } as const;
 
@@ -36,9 +34,7 @@ export const COACHING_KEYS = {
 const LIFECYCLE_KEYS = [
   COACHING_KEYS.coachPool,
   COACHING_KEYS.nextRequirement,
-  COACHING_KEYS.checklist,
   COACHING_KEYS.evidence,
-  COACHING_KEYS.fulfilment,
   COACHING_KEYS.reflection,
   "sessions",
   "session-detail",
@@ -136,39 +132,6 @@ export function useNextCoachingRequirement(enrollmentId: string | null | undefin
   });
 }
 
-export interface CoachingRequirementState {
-  requirementId: string;
-  ordinal: number;
-  dueOn: string;
-  fulfilledOn: string | null;
-  bookedOn: string | null;
-  sessionId: string | null;
-  postSessionPending: boolean;
-}
-
-/** Every Coaching requirement of the enrollment, with its canonical state. */
-export function useCoachingRequirements(enrollmentId: string | null | undefined) {
-  return useQuery({
-    queryKey: [COACHING_KEYS.fulfilment, enrollmentId],
-    enabled: !!enrollmentId,
-    queryFn: async (): Promise<CoachingRequirementState[]> => {
-      const { data, error } = await supabase.rpc("canonical_coaching_requirement_fulfilment", {
-        p_enrollment_id: enrollmentId!,
-      });
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
-        requirementId: r.requirement_id!,
-        ordinal: r.ordinal!,
-        dueOn: r.due_on!,
-        fulfilledOn: r.fulfilled_on,
-        bookedOn: r.booked_on,
-        sessionId: r.session_id,
-        postSessionPending: !!r.post_session_pending,
-      }));
-    },
-  });
-}
-
 /**
  * Coaches the learner may book: the active cohort pool, resolved server-side
  * from the enrollment. The frontend must not filter this further — whatever it
@@ -234,21 +197,6 @@ export function useBookCoachingSession() {
   });
 }
 
-export function useCancelCoachingSession() {
-  const invalidate = useInvalidateCoaching();
-  return useMutation({
-    mutationFn: async ({ sessionId, reason }: { sessionId: string; reason?: string }) => {
-      const { data, error } = await supabase.rpc("cancel_coaching_session", {
-        p_session_id: sessionId,
-        p_reason: reason ?? null,
-      });
-      if (error) throw error;
-      return data?.[0] ?? null;
-    },
-    onSuccess: invalidate,
-  });
-}
-
 export function useRescheduleCoachingSession() {
   const invalidate = useInvalidateCoaching();
   return useMutation({
@@ -264,21 +212,6 @@ export function useRescheduleCoachingSession() {
       });
       if (error) throw error;
       return data as string;
-    },
-    onSuccess: invalidate,
-  });
-}
-
-/** Coach marks the conversation held. Does not complete the programme unit. */
-export function useCompleteCoachingSession() {
-  const invalidate = useInvalidateCoaching();
-  return useMutation({
-    mutationFn: async (sessionId: string) => {
-      const { error } = await supabase.rpc("complete_coaching_session", {
-        p_session_id: sessionId,
-      });
-      if (error) throw error;
-      return sessionId;
     },
     onSuccess: invalidate,
   });
@@ -317,45 +250,6 @@ export function useCoachingSessionEvidence(sessionId: string | null | undefined)
         goalCheckinRequired: !!r.goal_checkin_required,
         evidenceComplete: !!r.evidence_complete,
       };
-    },
-  });
-}
-
-export interface PostSessionChecklistRow {
-  requirementId: string;
-  ordinal: number;
-  dueOn: string;
-  sessionId: string;
-  sessionStatus: string;
-  needsReflection: boolean;
-  needsGoalCheckin: boolean;
-  needsAction: boolean;
-  needsSatisfaction: boolean;
-  evidenceComplete: boolean;
-}
-
-/** Held sessions whose write-up is still outstanding. */
-export function useCoachingPostSessionChecklist(enrollmentId: string | null | undefined) {
-  return useQuery({
-    queryKey: [COACHING_KEYS.checklist, enrollmentId],
-    enabled: !!enrollmentId,
-    queryFn: async (): Promise<PostSessionChecklistRow[]> => {
-      const { data, error } = await supabase.rpc("coaching_post_session_checklist", {
-        p_enrollment_id: enrollmentId!,
-      });
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
-        requirementId: r.requirement_id!,
-        ordinal: r.ordinal!,
-        dueOn: r.due_on!,
-        sessionId: r.session_id!,
-        sessionStatus: r.session_status!,
-        needsReflection: !!r.needs_reflection,
-        needsGoalCheckin: !!r.needs_goal_checkin,
-        needsAction: !!r.needs_action,
-        needsSatisfaction: !!r.needs_satisfaction,
-        evidenceComplete: !!r.evidence_complete,
-      }));
     },
   });
 }
@@ -408,29 +302,6 @@ export function useSubmitCoachingReflection() {
         },
         { onConflict: "enrollment_id,source_activity_type,source_activity_id" },
       );
-      if (error) throw error;
-    },
-    onSuccess: invalidate,
-  });
-}
-
-/** Submit the learner's satisfaction rating for a Coaching session. */
-export function useSubmitCoachingSatisfaction() {
-  const invalidate = useInvalidateCoaching();
-  return useMutation({
-    mutationFn: async ({
-      sessionId,
-      rating,
-      comment,
-    }: { sessionId: string; rating: number; comment?: string }) => {
-      const { error } = await supabase
-        .from("sessions")
-        .update({
-          coachee_rating: rating,
-          coachee_rating_comment: comment ?? null,
-          coachee_rated_at: new Date().toISOString(),
-        })
-        .eq("id", sessionId);
       if (error) throw error;
     },
     onSuccess: invalidate,

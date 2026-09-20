@@ -10,8 +10,6 @@ import {
   useCohortCoachPool,
   useNextCoachingRequirement,
   useBookCoachingSession,
-  useCancelCoachingSession,
-  useCompleteCoachingSession,
   useCanonicalCoachingProgress,
 } from "../useCanonicalCoaching";
 
@@ -148,35 +146,6 @@ describe("canonical Coaching hooks", () => {
           topic: "x",
         }),
       ).rejects.toMatchObject({ code: "42501" });
-    });
-  });
-
-  describe("cancellation and completion", () => {
-    it("cancels through the canonical RPC with the reason", async () => {
-      rpc.mockResolvedValue({ data: [{ session_id: "sess-1", was_late: false }], error: null });
-      const { result } = renderHook(() => useCancelCoachingSession(), { wrapper });
-      await act(async () => {
-        await result.current.mutateAsync({ sessionId: "sess-1", reason: "Clash" });
-      });
-      expect(rpc).toHaveBeenCalledWith("cancel_coaching_session", {
-        p_session_id: "sess-1",
-        p_reason: "Clash",
-      });
-    });
-
-    it("completes through the canonical RPC, which does not complete the unit", async () => {
-      rpc.mockResolvedValue({ data: null, error: null });
-      const { result } = renderHook(() => useCompleteCoachingSession(), { wrapper });
-      await act(async () => {
-        await result.current.mutateAsync("sess-1");
-      });
-      expect(rpc).toHaveBeenCalledWith("complete_coaching_session", { p_session_id: "sess-1" });
-    });
-
-    it("propagates the backend refusal when a learner tries to complete", async () => {
-      rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "Only the assigned Coach" } });
-      const { result } = renderHook(() => useCompleteCoachingSession(), { wrapper });
-      await expect(result.current.mutateAsync("sess-1")).rejects.toMatchObject({ code: "42501" });
     });
   });
 

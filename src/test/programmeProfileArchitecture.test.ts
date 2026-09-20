@@ -382,6 +382,10 @@ describe("programme profile architecture", () => {
   });
 
   describe("Coaching source of truth", () => {
+    /** Guards test code, not prose: comments legitimately name retired fields. */
+    const code = (text: string) =>
+      text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
     // Every mandatory evidence gate in coaching_session_evidence() must be
     // reachable from the product. The reflection gate shipped without a writer
     // of any kind, which left session_learning_reflections with no INSERT path
@@ -418,6 +422,26 @@ describe("programme profile architecture", () => {
     // hook that nothing imported, so the capability was unreachable from any
     // rendered screen while every unit test of the hook still passed. A gate
     // writer must be reached from a component, not merely exist.
+    // C4/C5: a Coaching reflection lived in two places, so a learner who wrote
+    // one was told the other was missing.
+    it("there is one Coaching reflection store", () => {
+      // The Admin "missing reflection" alert asks the canonical store.
+      const scan = read("pages/admin/alertScan.ts");
+      expect(scan).toMatch(/reflectedSessionIds/);
+      expect(code(scan)).not.toMatch(/coachee_notes/);
+      expect(read("pages/admin/AdminAlerts.tsx")).toMatch(/session_learning_reflections/);
+    });
+
+    // C7: programme Coaching quantity is the cohort requirement count.
+    it("the booking screen renders canonical Coaching quantity, never a per-person cap", () => {
+      const book = read("pages/BookSession.tsx");
+      expect(book).toMatch(/useCanonicalCoachingProgress\(/);
+      // receive_limit may only survive on the coach-as-coachee path, which
+      // can_book_session() deliberately keeps on the legacy model.
+      const programmeBranch = code(book.slice(0, book.indexOf('if (role === "coach")')));
+      expect(programmeBranch).not.toMatch(/receive_limit/);
+    });
+
     it("the reflection hooks are reached from a rendered surface, not only exported", () => {
       const RENDERED = files.filter((f) => /\/(pages|components)\//.test(f));
       for (const hook of ["useSubmitCoachingReflection", "useCoachingReflection"]) {

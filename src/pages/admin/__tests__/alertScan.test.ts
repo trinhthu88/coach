@@ -59,7 +59,6 @@ function regularSession(overrides: Partial<ScanSessionRow>): ScanSessionRow {
     coachee_id: "coachee-1",
     status: "confirmed",
     start_time: PAST,
-    coachee_notes: null,
     ...overrides,
   };
 }
@@ -79,8 +78,9 @@ const base = { peerFeedbackSessionIds: new Set<string>(), nameById, emailById, n
 describe("buildFeedbackAlerts — regular sessions", () => {
   it("flags a blocked confirmed session (started, no reflection) as a warning", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
-      sessions: [regularSession({ status: "confirmed", start_time: PAST, coachee_notes: null })],
+      sessions: [regularSession({ status: "confirmed", start_time: PAST })],
       peerSessions: [],
     });
     expect(alerts).toHaveLength(1);
@@ -94,8 +94,9 @@ describe("buildFeedbackAlerts — regular sessions", () => {
 
   it("does not flag a confirmed session that hasn't started yet, even with no reflection", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
-      sessions: [regularSession({ status: "confirmed", start_time: FUTURE, coachee_notes: null })],
+      sessions: [regularSession({ status: "confirmed", start_time: FUTURE })],
       peerSessions: [],
     });
     expect(alerts).toHaveLength(0);
@@ -103,9 +104,12 @@ describe("buildFeedbackAlerts — regular sessions", () => {
 
   it("does not flag a confirmed, started session once a reflection exists", () => {
     const alerts = buildFeedbackAlerts({
+      // A reflection is a row in session_learning_reflections, not a note on
+      // the session; sessions.coachee_notes is no longer consulted.
+      reflectedSessionIds: new Set(["s1"]),
       ...base,
       sessions: [
-        regularSession({ status: "confirmed", start_time: PAST, coachee_notes: "Great session." }),
+        regularSession({ status: "confirmed", start_time: PAST }),
       ],
       peerSessions: [],
     });
@@ -114,8 +118,9 @@ describe("buildFeedbackAlerts — regular sessions", () => {
 
   it("treats whitespace-only reflection as still missing", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
-      sessions: [regularSession({ status: "confirmed", start_time: PAST, coachee_notes: "   " })],
+      sessions: [regularSession({ status: "confirmed", start_time: PAST })],
       peerSessions: [],
     });
     expect(alerts).toHaveLength(1);
@@ -123,8 +128,9 @@ describe("buildFeedbackAlerts — regular sessions", () => {
 
   it("flags a completed session with no reflection as info (retroactive case)", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
-      sessions: [regularSession({ status: "completed", coachee_notes: null })],
+      sessions: [regularSession({ status: "completed" })],
       peerSessions: [],
     });
     expect(alerts).toHaveLength(1);
@@ -134,8 +140,9 @@ describe("buildFeedbackAlerts — regular sessions", () => {
 
   it("does not flag a completed session that has a reflection", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set(["s1"]),
       ...base,
-      sessions: [regularSession({ status: "completed", coachee_notes: "Reflected." })],
+      sessions: [regularSession({ status: "completed" })],
       peerSessions: [],
     });
     expect(alerts).toHaveLength(0);
@@ -143,10 +150,11 @@ describe("buildFeedbackAlerts — regular sessions", () => {
 
   it("ignores pending/cancelled sessions regardless of reflection state", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
       sessions: [
-        regularSession({ status: "pending_coach_approval", coachee_notes: null }),
-        regularSession({ id: "s2", status: "cancelled", coachee_notes: null }),
+        regularSession({ status: "pending_coach_approval" }),
+        regularSession({ id: "s2", status: "cancelled" }),
       ],
       peerSessions: [],
     });
@@ -155,9 +163,10 @@ describe("buildFeedbackAlerts — regular sessions", () => {
 
   it("omits the parenthesised contact when the coachee has no email on file", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
       sessions: [
-        regularSession({ status: "completed", coachee_id: "peer-coachee-1", coachee_notes: null }),
+        regularSession({ status: "completed", coachee_id: "peer-coachee-1" }),
       ],
       peerSessions: [],
     });
@@ -168,6 +177,7 @@ describe("buildFeedbackAlerts — regular sessions", () => {
 describe("buildFeedbackAlerts — peer sessions", () => {
   it("flags a blocked confirmed peer session (started, no feedback row) as a warning", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
       sessions: [],
       peerSessions: [peerSession({ status: "confirmed", start_time: PAST })],
@@ -180,6 +190,7 @@ describe("buildFeedbackAlerts — peer sessions", () => {
 
   it("does not flag a peer session once a feedback row exists", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
       peerFeedbackSessionIds: new Set(["ps1"]),
       sessions: [],
@@ -190,6 +201,7 @@ describe("buildFeedbackAlerts — peer sessions", () => {
 
   it("does not flag a confirmed peer session that hasn't started yet", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
       sessions: [],
       peerSessions: [peerSession({ status: "confirmed", start_time: FUTURE })],
@@ -199,6 +211,7 @@ describe("buildFeedbackAlerts — peer sessions", () => {
 
   it("flags a completed peer session with no feedback row as info", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
       sessions: [],
       peerSessions: [peerSession({ status: "completed" })],
@@ -210,6 +223,7 @@ describe("buildFeedbackAlerts — peer sessions", () => {
 
   it("does not flag a completed peer session once a feedback row exists", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
       peerFeedbackSessionIds: new Set(["ps1"]),
       sessions: [],
@@ -222,8 +236,9 @@ describe("buildFeedbackAlerts — peer sessions", () => {
 describe("buildFeedbackAlerts — mixed", () => {
   it("raises independent alerts for a blocked regular session and a blocked peer session together", () => {
     const alerts = buildFeedbackAlerts({
+      reflectedSessionIds: new Set<string>(),
       ...base,
-      sessions: [regularSession({ status: "confirmed", start_time: PAST, coachee_notes: null })],
+      sessions: [regularSession({ status: "confirmed", start_time: PAST })],
       peerSessions: [peerSession({ status: "confirmed", start_time: PAST })],
     });
     expect(alerts).toHaveLength(2);
