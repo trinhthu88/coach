@@ -24,7 +24,6 @@ interface AlertsScanSessionRow {
   status: string;
   enrollment_id: string | null;
   start_time: string;
-  coachee_notes: string | null;
 }
 
 interface AlertsScanProfileRow {
@@ -120,10 +119,11 @@ export default function AdminAlerts() {
         { data: inactivity },
         { data: flaggedFeedback },
         { data: actionRows },
+        { data: reflections },
       ] = await Promise.all([
         supabase
           .from("sessions")
-          .select("id, enrollment_id, coach_id, coachee_id, status, start_time, coachee_notes"),
+          .select("id, enrollment_id, coach_id, coachee_id, status, start_time"),
         supabase
           .from("peer_sessions")
            .select("id, enrollment_id, peer_coach_id, peer_coachee_id, status, start_time"),
@@ -139,6 +139,14 @@ export default function AdminAlerts() {
         supabase.rpc("admin_enrollment_inactivity", { p_programme_id: undefined }),
         supabase.from("coach_session_feedback").select("session_id, coach_id, flag_notes").eq("flag_for_admin", true),
         supabase.from("enrollment_actions").select("enrollment_id, status, due_date").neq("status", "completed"),
+        // Canonical learner reflections. sessions.coachee_notes is no longer a
+        // reflection store for Coaching (20260921190000), so asking it whether
+        // a learner has reflected would give the wrong answer in both
+        // directions.
+        supabase
+          .from("session_learning_reflections")
+          .select("source_activity_id")
+          .eq("source_activity_type", "coaching"),
       ]);
 
       const profById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.full_name]));
@@ -191,6 +199,9 @@ export default function AdminAlerts() {
           sessions: sessions || [],
           peerSessions: peerSessions || [],
           peerFeedbackSessionIds,
+          reflectedSessionIds: new Set(
+            ((reflections ?? []) as { source_activity_id: string }[]).map((r) => r.source_activity_id),
+          ),
           nameById: profById,
           emailById,
           now,

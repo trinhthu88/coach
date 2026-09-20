@@ -5,7 +5,12 @@ export interface ScanSessionRow {
   coachee_id: string;
   status: string;
   start_time: string;
-  coachee_notes: string | null;
+  /**
+   * Ids of sessions with a canonical learner reflection
+   * (session_learning_reflections). sessions.coachee_notes is NOT consulted:
+   * it was a second place a Coaching reflection could live, so an Admin was
+   * chased for reflections learners had already written -- and vice versa.
+   */
   enrollment_id?: string | null;
 }
 
@@ -41,11 +46,19 @@ export function buildFeedbackAlerts(opts: {
   sessions: ScanSessionRow[];
   peerSessions: ScanPeerSessionRow[];
   peerFeedbackSessionIds: Set<string>;
+  /**
+   * Coaching sessions with a canonical learner reflection
+   * (session_learning_reflections). sessions.coachee_notes is deliberately not
+   * consulted: it was a second place a reflection could live, so Admins were
+   * chased about reflections learners had already written, and missed ones
+   * they had not.
+   */
+  reflectedSessionIds: Set<string>;
   nameById: Map<string, string | null | undefined>;
   emailById: Map<string, string | null | undefined>;
   now: Date;
 }): FeedbackAlert[] {
-  const { sessions, peerSessions, peerFeedbackSessionIds, nameById, emailById, now } = opts;
+  const { sessions, peerSessions, peerFeedbackSessionIds, reflectedSessionIds, nameById, emailById, now } = opts;
   const alerts: FeedbackAlert[] = [];
 
   const contactFor = (id: string) => {
@@ -54,7 +67,7 @@ export function buildFeedbackAlerts(opts: {
   };
 
   sessions.forEach((s) => {
-    const hasReflection = !!(s.coachee_notes && s.coachee_notes.trim());
+    const hasReflection = reflectedSessionIds.has(s.id);
     if (hasReflection) return;
     const name = nameById.get(s.coachee_id) || "Coachee";
     const dateStr = format(new Date(s.start_time), "d MMM yyyy");

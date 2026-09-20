@@ -33,6 +33,9 @@ import {
   useNextCoachingRequirement,
   useCohortCoachPool,
   useInvalidateCoaching,
+  useCanonicalCoachingProgress,
+  useBookCoachingSession,
+  useRescheduleCoachingSession,
 } from "@/hooks/coaching/useCanonicalCoaching";
 
 interface CoachDetail {
@@ -101,7 +104,20 @@ export default function BookSession() {
   const { data: nextRequirement, isLoading: requirementLoading } =
     useNextCoachingRequirement(mode === "coaching" ? enrollmentId : null);
   const { data: coachPool } = useCohortCoachPool(mode === "coaching" ? enrollmentId : null);
+  // Programme Coaching quantity is the cohort requirement count, never a
+  // per-person allowance. This screen used to read
+  // programme_modules.config.receive_limit and count completed sessions
+  // itself -- a second answer to "how many Coaching sessions do I have",
+  // which 20260920150000 retired as an authority.
+  const { data: coachingProgress } = useCanonicalCoachingProgress(
+    mode === "coaching" && role !== "coach" ? enrollmentId : null,
+  );
   const invalidateCoaching = useInvalidateCoaching();
+  // Booking and rescheduling go through the canonical module hooks so they
+  // carry its shared cache-invalidation list; calling the RPCs inline here
+  // meant a booking refreshed a different set of screens than a cancellation.
+  const bookCoaching = useBookCoachingSession();
+  const rescheduleCoaching = useRescheduleCoachingSession();
 
   // On reschedule the replacement fulfils the SAME requirement as the session
   // being moved, so next_coaching_requirement (which reports the next unbooked
@@ -261,32 +277,8 @@ export default function BookSession() {
                 used_this_month: coachCount.count || 0,
               });
             } else {
-              const [{ data: enrollment }, { count }] = await Promise.all([
-                supabase
-                  .from("programme_enrollments")
-                  .select("id, programme_id")
-                  .eq("id", activeEnrollmentId)
-                  .eq("user_id", user.id)
-                  .maybeSingle(),
-                supabase
-                  .from("sessions")
-                  .select("id", { count: "exact", head: true })
-                  .eq("coachee_id", user.id)
-                  .eq("enrollment_id", activeEnrollmentId)
-                  .eq("status", "completed"),
-              ]);
-              const { data: module } = enrollment
-                ? await supabase
-                    .from("programme_modules")
-                    .select("config")
-                    .eq("programme_id", enrollment.programme_id)
-                    .eq("module", "coaching")
-                    .eq("enabled", true)
-                    .maybeSingle()
-                : { data: null };
-              const config = (module?.config || {}) as { receive_limit?: number | null };
-              const limit = enrollment ? config.receive_limit ?? null : DEFAULT_SESSION_LIMIT;
-              setUsage({ monthly_limit: limit, used_this_month: count || 0 });
+              // Programme Coaching usage is canonical and comes from
+              // useCanonicalCoachingProgress below; nothing is computed here.
             }
 
             // Authoritative eligibility gate (allowlist + limit + status), regardless of
@@ -365,12 +357,10 @@ export default function BookSession() {
       // Canonical reschedule: the replacement is booked and the old booking
       // released inside ONE transaction, so a failure cannot leave the learner
       // with neither slot (or with an orphaned duplicate).
-      const result = await supabase.rpc("reschedule_coaching_session", {
-        p_session_id: rescheduleId,
-        p_new_slot_id: opt.slotId,
-        p_reason: null,
-      });
-      error = result.error;
+      error = await rescheduleCoaching
+        .mutateAsync({ sessionId: rescheduleId, newSlotId: opt.slotId })
+        .then(() => null)
+        .catch((e) => e as { code?: string; message: string });
     } else {
       // Canonical atomic booking. The server owns enrollment validation, Coach
       // eligibility, requirement availability, entitlement, slot reservation
@@ -379,16 +369,18 @@ export default function BookSession() {
         setSubmitting(false);
         return toast.error(t("bookSession.toast.noRequirement"));
       }
-      const result = await supabase.rpc("book_coaching_session", {
-        p_enrollment_id: enrollmentId!,
-        p_coach_id: coach.id,
-        p_slot_id: opt.slotId,
-        p_requirement_id: coachingRequirementId,
-        p_topic: topic.trim(),
-        p_start_time: startISO,
-        p_duration_minutes: duration,
-      });
-      error = result.error;
+      error = await bookCoaching
+        .mutateAsync({
+          enrollmentId: enrollmentId!,
+          coachId: coach.id,
+          slotId: opt.slotId,
+          requirementId: coachingRequirementId,
+          topic: topic.trim(),
+          startTime: startISO,
+          durationMinutes: duration,
+        })
+        .then(() => null)
+        .catch((e) => e as { code?: string; message: string });
     }
     setSubmitting(false);
     if (error) {
@@ -559,12 +551,24 @@ export default function BookSession() {
           <Badge className="bg-success/10 text-success hover:bg-success/10">
             <ShieldCheck className="mr-1 h-3 w-3" /> {t("bookSession.coachSummary.verifiedExpert")}
           </Badge>
-          {usage && (
+          {(coachingProgress || usage) && (
             <div className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 text-xs">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
-                {t("bookSession.coachSummary.usagePrefix")} <strong>{usage.used_this_month}</strong> {t("bookSession.coachSummary.usageOfYour")}{" "}
-                <strong>{usage.monthly_limit === null ? t("bookSession.coachSummary.unlimited") : usage.monthly_limit}</strong>{" "}
+                {t("bookSession.coachSummary.usagePrefix")}{" "}
+                <strong>
+                  {coachingProgress
+                    ? coachingProgress.completedUnits + coachingProgress.bookedUnits
+                    : usage?.used_this_month}
+                </strong>{" "}
+                {t("bookSession.coachSummary.usageOfYour")}{" "}
+                <strong>
+                  {coachingProgress
+                    ? coachingProgress.requiredUnits
+                    : usage?.monthly_limit === null
+                      ? t("bookSession.coachSummary.unlimited")
+                      : usage?.monthly_limit}
+                </strong>{" "}
                 {mode === "peer" ? t("bookSession.modeWord.peer") : t("bookSession.modeWord.coaching")} {t("bookSession.coachSummary.usageSuffix")}
               </span>
             </div>

@@ -30,7 +30,7 @@ never a second answer to a business question.
 | **Programme Journey checkpoints** | computed once | `canonical_enrollment_journey` → `learner_canonical_journey`, `sponsor_canonical_leader_journey`, `admin_canonical_enrollment_journey`; cohort view `get_sponsor_programme_journey` (same schedule, cohort aggregate) | One checkpoint per due date. Modules only in `module_scope`, never as a title. The UI never regroups checkpoints. |
 | **Session history** | session tables (`sessions`, `coachee_peer_sessions`, `peer_sessions`, `mentoring_sessions`, `triad_sessions`) | `learner_session_history` | |
 | **Goals / actions** | `coachee_goals`, `coachee_goal_ratings`, `enrollment_actions` | per-goal progress `canonical_goal_progress`; aggregates `canonical_enrollment_engagement` | Archived goals are excluded; unrated goals have no progress. |
-| **Reflections** | original reflection records | `learner_reflection_feed` | |
+| **Reflections** | original reflection records; for Coaching and Mentoring `session_learning_reflections` | `learner_reflection_feed` | `sessions.coachee_notes` is historical for Coaching (`20260921190000`): it was a second place a reflection could live, so the feed and the Admin alert disagreed with the evidence record. |
 | **Feedback** | original feedback records | learner feedback source (`useLearnerFeedback`) | Author-private notes are never selected. |
 | **Triad membership** | `triad_group_members.enrollment_id` | `canonical_triad_group_members` → `learner_triad_members` | Never derived from session records or role columns. See the Triad ownership map below. |
 

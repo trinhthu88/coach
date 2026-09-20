@@ -93,6 +93,17 @@ values
   ('f7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000009', 'a7000000-0000-0000-0000-000000000001',
    'Coaching two', '2026-01-26T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', null, null, 4, null);
 
+-- The learner's Coaching reflection is a session_learning_reflections row
+-- (20260921190000). sessions.coachee_notes is historical for Coaching: the
+-- migration copies notes that existed when it ran, but a fixture creating a
+-- session afterwards has to write the canonical record itself.
+insert into public.session_learning_reflections
+  (enrollment_id, source_activity_type, source_activity_id, body)
+values ('e7000000-0000-0000-0000-000000000001', 'coaching',
+        'f7000000-0000-0000-0000-000000000001',
+        'Coaching reflection: I interrupt when anxious.')
+on conflict (enrollment_id, source_activity_type, source_activity_id) do nothing;
+
 -- Peer practice: learner 1 received 3 completed (requirement is 2) and gave 2
 -- (stored under learner 2's enrollment, same cohort).
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, provider_notes, provider_private_notes)
