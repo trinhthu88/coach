@@ -80,6 +80,18 @@
       "assigned": "Đã phân công Coach cho nhóm này.",
       "unassigned": "Đã gỡ Coach khỏi nhóm này.",
       "toggleLabel": "Phân công {{name}} cho nhóm này"
+    },
+    "mentoring": {
+      "title": "Mentoring",
+      "intro": "Các mentor được phân công tại đây có thể thực hiện Mentoring cho mọi học viên trong nhóm này.",
+      "assignedCount": "Đã phân công {{count}}",
+      "noMentors": "Chưa có mentor nào.",
+      "noneAssignedWarning": "Chưa phân công mentor nào. Học viên trong nhóm này chưa thể đặt lịch Mentoring.",
+      "inactiveAssignedWarning": "{{count}} mentor được phân công có hồ sơ không hoạt động và không thể đặt lịch.",
+      "profileInactive": "hồ sơ không hoạt động",
+      "assigned": "Đã phân công mentor cho nhóm này.",
+      "unassigned": "Đã gỡ mentor khỏi nhóm này.",
+      "toggleLabel": "Phân công {{name}} cho nhóm này"
     }
   },
   "dashboard": {
@@ -918,7 +930,8 @@
     "cancel": "Hủy",
     "save": "Lưu",
     "saved": "Đã lưu",
-    "saveFailed": "Không thể lưu. Vui lòng thử lại."
+    "saveFailed": "Không thể lưu. Vui lòng thử lại.",
+    "mentorAssignmentMovedToCohort": "Mentoring của chương trình được phân công theo nhóm. Quản lý danh sách mentor tại Quản trị → Nhóm → Mentoring."
   },
   "triads": {
     "eyebrow": "Chương trình",

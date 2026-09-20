@@ -4,6 +4,7 @@ import { Handshake, ArrowUpRight, FileCheck2, FileWarning } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 import { useMentoringReceiveCardData } from "@/hooks/dashboard/useMentoringCardData";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { DashboardCardShell, CardFooterLink, CardEmptyHint } from "./shared";
 
 /** "My mentor" card — visible when the programme enables mentoring:receive. */
@@ -14,7 +15,10 @@ export function MentoringReceiveCard() {
   const enabled = hasDirection("mentoring", "receive");
   // Fetch fires independently of the programme-modules RPC; `enabled` only
   // gates rendering below (see CoachingReceiveCard for the full rationale).
-  const { data, loading } = useMentoringReceiveCardData(user?.id, true);
+  // Scoped to the selected enrollment: a Mentoring session from a historical
+  // enrollment must not appear against the current programme.
+  const { selectedEnrollment } = useEnrollmentContext(user?.id);
+  const { data, loading } = useMentoringReceiveCardData(selectedEnrollment?.id, true);
 
   if (!modulesLoading && !enabled) return null;
 

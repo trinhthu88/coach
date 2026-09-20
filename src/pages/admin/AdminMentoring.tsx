@@ -11,7 +11,6 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from "@/components/ui/sheet";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Search, Users, Pencil, Save, Handshake } from "lucide-react";
 import { getFriendlyErrorMessage } from "@/lib/errors";
@@ -50,7 +49,6 @@ export default function AdminMentoring() {
   const [loading, setLoading] = useState(true);
   const [mentors, setMentors] = useState<MentorRow[]>([]);
   const [access, setAccess] = useState<AccessRow[]>([]);
-  const [activeMentorOpts, setActiveMentorOpts] = useState<{ id: string; name: string }[]>([]);
 
   const [mentorQ, setMentorQ] = useState("");
   const [accessQ, setAccessQ] = useState("");
@@ -133,11 +131,6 @@ export default function AdminMentoring() {
 
     setMentors(mentorRows.sort((a, b) => a.full_name.localeCompare(b.full_name)));
     setAccess(accessRows.sort((a, b) => a.full_name.localeCompare(b.full_name)));
-    setActiveMentorOpts(
-      mentorRows
-        .filter((m) => m.is_mentor && m.is_active)
-        .map((m) => ({ id: m.coach_user_id, name: m.full_name }))
-    );
     setLoading(false);
   }, []);
 
@@ -236,25 +229,10 @@ export default function AdminMentoring() {
           { onConflict: "user_id,module" }
         );
 
-      const original = access.find((a) => a.id === editingAccess.id);
-      const oldIds = new Set((original?.assigned_mentors || []).map((m) => m.id));
-      const newIds = new Set(editingAccess.assigned_mentors.map((m) => m.id));
-      const toAdd = [...newIds].filter((id) => !oldIds.has(id));
-      const toRemove = [...oldIds].filter((id) => !newIds.has(id));
-      if (toAdd.length) {
-        const { error } = await supabase.from("mentoring_allowlist").insert(
-          toAdd.map((mentorId) => ({ mentee_user_id: editingAccess.id, mentor_user_id: mentorId, created_by: user?.id }))
-        );
-        if (error) throw error;
-      }
-      for (const mentorId of toRemove) {
-        const { error } = await supabase
-          .from("mentoring_allowlist")
-          .delete()
-          .eq("mentee_user_id", editingAccess.id)
-          .eq("mentor_user_id", mentorId);
-        if (error) throw error;
-      }
+      // assigned_mentors is no longer editable here: programme Mentoring
+      // eligibility is the COHORT mentor pool (Admin -> Cohorts -> Mentoring),
+      // so this save covers module access only and leaves mentoring_allowlist
+      // exactly as it is.
 
       toast.success(t("mentoring.saved"));
       setEditingAccess(null);
@@ -491,30 +469,21 @@ export default function AdminMentoring() {
                   onCheckedChange={(v) => setEditingAccess({ ...editingAccess, mentoring_enabled: v })}
                 />
               </div>
-              <div className="rounded-lg border p-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("mentoring.assignedMentorsLabel")}</p>
-                <div className="max-h-48 space-y-1 overflow-y-auto">
-                  {activeMentorOpts.length === 0 && (
-                    <p className="text-[11px] italic text-muted-foreground">{t("mentoring.noActiveMentors")}</p>
-                  )}
-                  {activeMentorOpts.map((mentor) => {
-                    const checked = editingAccess.assigned_mentors.some((a) => a.id === mentor.id);
-                    return (
-                      <label key={mentor.id} className="flex items-center gap-2 rounded px-1 py-1 hover:bg-muted/50 cursor-pointer">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            const next = v
-                              ? [...editingAccess.assigned_mentors, mentor]
-                              : editingAccess.assigned_mentors.filter((a) => a.id !== mentor.id);
-                            setEditingAccess({ ...editingAccess, assigned_mentors: next });
-                          }}
-                        />
-                        <span className="text-[12px]">{mentor.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+              {/* Programme Mentoring eligibility is the COHORT mentor pool
+                  (Admin -> Cohorts -> Mentoring), not a per-learner pairing.
+                  The checkbox list that used to live here wrote
+                  mentoring_allowlist, which no longer governs programme
+                  Mentoring -- leaving it would let an Admin make an assignment
+                  that changes nothing. The allowlist rows are untouched: they
+                  remain historical attribution and still grant mentor-profile
+                  visibility for past pairings. */}
+              <div className="rounded-lg border border-dashed p-3">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {t("mentoring.assignedMentorsLabel")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("mentoring.mentorAssignmentMovedToCohort")}
+                </p>
               </div>
             </div>
           )}

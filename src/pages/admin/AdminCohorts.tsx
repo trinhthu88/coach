@@ -18,6 +18,7 @@ import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useCohortRequirementSchedule } from "@/hooks/admin/useCohortRequirementSchedule";
 import { CohortRequirementSchedule } from "./cohorts/CohortRequirementSchedule";
 import { CohortCoachingPanel } from "./cohorts/CohortCoachingPanel";
+import { CohortMentoringPanel } from "./cohorts/CohortMentoringPanel";
 
 interface Cohort {
   id: string;
@@ -216,6 +217,7 @@ export default function AdminCohorts() {
                   schedule above owns their dates; the cohort owns who may
                   deliver them. */}
               <CohortCoachingPanel cohortId={savedCohort?.id} />
+              <CohortMentoringPanel cohortId={savedCohort?.id} />
             </div>
           )}
           <DialogFooter>
