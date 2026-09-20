@@ -12,7 +12,7 @@
 --     rating-only / blank rows, and never exposes coach/mentor/provider notes.
 begin;
 
-select plan(25);
+select plan(26);
 
 -- Fixture: one programme/cohort reproducing the reported Emerging Leaders
 -- case. Learner 1 is "our" learner; 2 and 3 are peers/triad members; 9 is a
@@ -129,9 +129,9 @@ values ('f7000000-0000-0000-0000-000000000021', 'e7000000-0000-0000-0000-0000000
   'Mentoring reflection: map stakeholders earlier.', 'MENTOR NOTE');
 
 -- Peer progress is requirement-attributed (20260921210000), so the cohort must
--- schedule as many Peer requirements as the programme requires. The
--- 'flexible' distribution materialises a single row whatever required_units
--- says, which would cap completion at 1 of 2 -- so both are stated explicitly.
+-- schedule as many Peer requirements as the programme requires. Both rows are
+-- stated explicitly here because this fixture wants two SPECIFIC due dates,
+-- not the one cohort-module deadline the generator would give them.
 -- Detach the generated row first: ON DELETE RESTRICT deliberately stops a
 -- requirement disappearing from under a participant that holds it.
 update public.peer_session_participants set cohort_requirement_id = null
@@ -244,11 +244,26 @@ select is((select completed_units || '/' || required_units from modules where mo
   'peer module progress caps at 2/2');
 select is((select count(*)::integer from history where session_type = 'peer_coaching'), 5,
   'peer history keeps all five records (3 received + 2 given)');
-select is((select count(*)::integer from history where session_type = 'peer_coaching' and is_programme_evidence), 3,
-  'all three received completed sessions are evidence; the requirement cap is applied by module progress');
+-- Peer evidence is requirement fulfilment, exactly as it is for Coaching and
+-- Mentoring. The learner has five Peer records and two Peer units, so exactly
+-- the two participations that HOLD a unit are evidence; the rest are real
+-- history and real activity, but beyond what the programme requires. History
+-- used to report all three received sessions and leave module progress to
+-- apply the cap afterwards -- two surfaces, two answers.
+select is((select count(*)::integer from history where session_type = 'peer_coaching' and is_programme_evidence), 2,
+  'exactly the participations holding a cohort Peer unit are evidence');
+select is(
+  (select count(*)::integer from history where session_type = 'peer_coaching' and is_programme_evidence),
+  (select completed_units from modules where module = 'peer_coaching'),
+  'the learner''s own history and canonical module progress agree on the number');
+-- A session the learner GAVE is their own unit. That is the whole point of the
+-- phase 1 cutover: before it, the provider's half of a real meeting counted
+-- toward nobody. Here the chronologically second participation is a given one,
+-- so it holds unit 2.
 select ok(
-  (select bool_and(not is_programme_evidence) from history where session_type = 'peer_coaching' and participant_role = 'provider'),
-  'peer sessions the learner gave are history but not this enrollment''s evidence'
+  (select bool_or(is_programme_evidence) from history
+    where session_type = 'peer_coaching' and participant_role = 'provider'),
+  'a peer session the learner GAVE counts as their own evidence when it holds a unit'
 );
 select is((select count(*)::integer from history where source_table = 'coachee_peer_sessions'), 5,
   'a coachee''s peer history comes from coachee_peer_sessions, not the coach-to-coach table');

@@ -89,6 +89,18 @@
       "assigned": "Đã phân công mentor cho nhóm này.",
       "unassigned": "Đã gỡ mentor khỏi nhóm này.",
       "toggleLabel": "Phân công {{name}} cho nhóm này"
+    },
+    "peer": {
+      "title": "Thực hành đồng hành",
+      "intro": "Những ai học viên của cohort này có thể thực hành cùng. Độc lập với phân công Coaching và Mentoring.",
+      "sameCohort": "Học viên trong cohort này luôn có thể thực hành cùng nhau. Không cần cấp quyền.",
+      "grantedCount": "{{count}} cohort bổ sung",
+      "noSiblings": "Chương trình này chưa có cohort nào khác để kết nối. Bạn đồng hành chỉ đến từ cohort này.",
+      "bothWays": "Cho phép ghép cặp hai chiều",
+      "inbound": "cũng có thể chọn cohort này",
+      "toggleLabel": "Cho phép học viên cohort này thực hành cùng {{name}}",
+      "granted": "Đã thêm cohort vào nhóm thực hành đồng hành.",
+      "withdrawn": "Đã gỡ cohort. Các session đã đặt không bị ảnh hưởng."
     }
   },
   "dashboard": {
