@@ -1,23 +1,29 @@
 # Triads / Coaching / Mentoring — source-of-truth audit
 
 Audited against `docs/architecture/source-of-truth.md` ("one authoritative source per
-business fact; every surface is a projection") on branch `coaching-canonical-cutover`
-at `457e6af`.
+business fact; every surface is a projection") on branch `coaching-canonical-cutover`,
+originally at `457e6af`. Findings are written as they stood at audit time; where one
+has since been fixed the section carries a **FIXED** note and line references point at
+the current code. Last reconciled at `8f8fa8e`.
 
 **How this was verified.** Every migration in the three cutovers was read in full
 (`20260918185800`–`20260919120000` Triads, `20260920100000`–`20260920170000` +
 `20260920240000` Coaching, `20260920200000`–`20260920230000` Mentoring), plus
 `supabase/deployment-2/`, the Edge Functions, and every frontend read/write path that
-touches the three modules. The frontend suite was run: **86 files / 492 tests pass**.
-The pgTAP suite was **not** run — it needs Docker + the Supabase CLI, which this
-environment does not have — so database findings come from reading the definitions,
-except C1 which was reproduced against a scratch PostgreSQL 16 instance.
+touches the three modules. The frontend suite was run: **86 files, 492 tests passing at
+audit time, 499 after the C1/C2 fixes**. The pgTAP suite was **not** run — it needs
+Docker + the Supabase CLI, which this environment does not have — so database findings
+come from reading the definitions, except C1 which was reproduced against a scratch
+PostgreSQL 16 instance.
 
 **Headline.** Triads is the reference implementation and is internally consistent.
-Coaching has the right architecture but three defects that make it non-functional in
-production, plus four surfaces still answering Coaching questions from pre-cutover
-sources. Mentoring received the *eligibility* half of the cutover only; its completion,
-quantity, booking and slot model are all still pre-canonical.
+Coaching has the right architecture but shipped with three defects that made it
+non-functional in production: two are now fixed (C1, C2) and one remains (C3, Coach and
+Admin cannot reschedule). Ten further surfaces still answer Coaching questions from
+pre-cutover sources — most consequentially the two competing reflection stores (C4/C5),
+which the C2 fix deliberately did not adjudicate. Mentoring received the *eligibility*
+half of its cutover only; its completion, quantity, booking and slot model are all still
+pre-canonical.
 
 | Module | Requirement-scoped | Single booking writer | Single completion rule | Guard block | Verdict |
 |---|---|---|---|---|---|
@@ -38,11 +44,12 @@ quantity, booking and slot model are all still pre-canonical.
 
 ### C1. One Coaching requirement can be booked by only one learner **in the whole cohort**
 
-`supabase/migrations/20260920110000_coaching_session_requirement_link.sql:60`
+`supabase/migrations/20260920110000_coaching_session_requirement_link.sql` — **as
+shipped, before the fix** (the current definition is at `:69`):
 
 ```sql
 CREATE UNIQUE INDEX sessions_one_live_session_per_requirement
-  ON public.sessions (cohort_requirement_id)
+  ON public.sessions (cohort_requirement_id)          -- no enrollment_id
   WHERE cohort_requirement_id IS NOT NULL
     AND status IN ('pending_coach_approval', 'confirmed');
 ```
@@ -79,14 +86,15 @@ L1 rebooks after cancelling ✓.
 ### C2. The mandatory reflection gate has no writer — no Coaching unit can ever complete
 
 `coaching_session_evidence()` requires four pieces of evidence
-(`20260920130000:45-80`). Three have working writers:
+(`20260920130000:45-80`). At audit time three had working writers and the fourth had
+none:
 
-| Gate | Writer | Status |
+| Gate | Writer | Status at audit time |
 |---|---|---|
 | goal check-in | `record_goal_checkins` — `SessionGoalRatings.tsx:103` | ✅ |
 | follow-up action | `save_enrollment_activity_actions` — `lib/enrollmentActions.ts:108` | ✅ |
 | satisfaction | `sessions.coachee_rating` — `Sessions.tsx:392` | ✅ |
-| **reflection** | `session_learning_reflections` — `useCanonicalCoaching.ts:370` | ❌ **dead code** |
+| **reflection** | `session_learning_reflections` upsert — now `useCanonicalCoaching.ts:402` | ❌ **exported, imported by nothing** |
 
 `useSubmitCoachingReflection` is exported and has no importer anywhere in `src/`.
 `CoachingPostSessionChecklist.tsx` renders the four gates read-only — it has no action
@@ -366,20 +374,34 @@ ownership matrix still lists "Activity completion (evidence) → `session_activi
 which is no longer true for Coaching. Two cutovers shipped without updating the document
 they are governed by.
 
-### G2. No Coaching or Mentoring guard block
+### G2. No Coaching or Mentoring guard block — *partially closed*
 
 `src/test/programmeProfileArchitecture.test.ts` has a 12-test "Triad source of truth"
-block that also scans `supabase/functions`. There is no equivalent for Coaching or
-Mentoring. C4, C7, C8 and C9 are all exactly the shape that block catches for Triads.
+block that also scans `supabase/functions`. At audit time there was no equivalent for
+either Coaching or Mentoring, and C4, C7, C8 and C9 are all exactly the shape that
+block catches for Triads.
 
-### G3. The Coaching contract test cannot see C1
+A three-test **`Coaching source of truth`** block was added with the C2 fix. It covers
+only what C2 was about: every evidence gate has a writer somewhere in `src/`, the
+reflection writer is reachable from a rendered surface, and `SessionDetail` passes the
+learner scope. It does **not** yet cover C4, C6, C7, C8, C9 or C12, and it does not
+scan `supabase/functions` the way the Triad block does. **Mentoring still has no block
+at all.**
 
-`supabase/tests/coaching_canonical_contract_test.sql` sets up two learners in one
-cohort with two requirements, but L1 is only ever tested against requirement `d1d1` and
-L2 only against `d2d2`. The one case that matters for a cohort model — two learners,
-same requirement ordinal — is never exercised. The "a second learner cannot book a slot
-that is already reserved" assertion at line 131 collides on *both* the slot and the
-requirement, so it passes for the wrong reason.
+### G3. The Coaching contract test could not see C1 — *closed*
+
+`supabase/tests/coaching_canonical_contract_test.sql` set up two learners in one cohort
+with two requirements, but L1 was only ever tested against requirement `d1d1` and L2
+only against `d2d2`. The one case that matters for a cohort model — two learners, same
+requirement ordinal — was never exercised. The "a second learner cannot book a slot
+that is already reserved" assertion collided on *both* the slot and the requirement, so
+it passed for the wrong reason.
+
+**Closed with the C1 fix.** The positive case is asserted at line 169 ("two learners of
+one cohort can each hold a live session for the SAME Coaching requirement"), and with
+the index scoped to the enrollment the older slot assertion now collides only on the
+slot. The general lesson stands for the other fixtures: a cohort-model test with two
+learners in it has to actually cross them.
 
 ### G4. Coaching attributions are now orphaned derived storage
 
