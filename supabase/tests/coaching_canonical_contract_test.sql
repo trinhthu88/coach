@@ -8,7 +8,7 @@
 -- unit completion, and each of the four evidence gates independently.
 begin;
 
-select plan(27);
+select plan(28);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -104,6 +104,12 @@ select is(
   (select session_id from public.coach_availability where id = 'c1000000-0000-0000-0000-00000000f1f1'::uuid),
   'c1000000-0000-0000-0000-00000000c1c1'::uuid,
   'reserved slot back-references the owning session');
+
+-- Regression: booking used to DELETE the availability row outright, which made
+-- releasing it on cancellation impossible. The row must survive.
+select is(
+  (select count(*)::int from public.coach_availability where id = 'c1000000-0000-0000-0000-00000000f1f1'::uuid),
+  1, 'the availability row survives booking instead of being deleted');
 
 select is(
   (select cohort_id from public.sessions where id = 'c1000000-0000-0000-0000-00000000c1c1'::uuid),

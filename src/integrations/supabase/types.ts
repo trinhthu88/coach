@@ -1080,6 +1080,53 @@ export type Database = {
           },
         ]
       }
+      cohort_coach_assignments: {
+        Row: {
+          active_from: string | null
+          active_until: string | null
+          assigned_at: string
+          assigned_by: string | null
+          coach_id: string
+          cohort_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          active_from?: string | null
+          active_until?: string | null
+          assigned_at?: string
+          assigned_by?: string | null
+          coach_id: string
+          cohort_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          active_from?: string | null
+          active_until?: string | null
+          assigned_at?: string
+          assigned_by?: string | null
+          coach_id?: string
+          cohort_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_coach_assignments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cohort_requirement_dates: {
         Row: {
           cohort_id: string
@@ -1342,6 +1389,232 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "training_weeks"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      demo_accounts: {
+        Row: {
+          account_key: string
+          created_at: string
+          is_prospect_login: boolean
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          account_key: string
+          created_at?: string
+          is_prospect_login?: boolean
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          account_key?: string
+          created_at?: string
+          is_prospect_login?: boolean
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "demo_organization_registry"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "demo_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demo_executor_target: {
+        Row: {
+          anchor_date: string
+          configured_at: string
+          fixture_version: string
+          organization_id: string
+          singleton: boolean
+        }
+        Insert: {
+          anchor_date: string
+          configured_at?: string
+          fixture_version: string
+          organization_id: string
+          singleton?: boolean
+        }
+        Update: {
+          anchor_date?: string
+          configured_at?: string
+          fixture_version?: string
+          organization_id?: string
+          singleton?: boolean
+        }
+        Relationships: []
+      }
+      demo_operations: {
+        Row: {
+          affected_counts: Json
+          anchor_date: string | null
+          error_message: string | null
+          expected_generation: number | null
+          finished_at: string | null
+          fixture_version: string
+          generation_after: number | null
+          generation_before: number
+          id: string
+          idempotency_key: string
+          lock_key: number | null
+          operation: string
+          organization_id: string
+          request_fingerprint: string
+          requested_by: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          affected_counts?: Json
+          anchor_date?: string | null
+          error_message?: string | null
+          expected_generation?: number | null
+          finished_at?: string | null
+          fixture_version: string
+          generation_after?: number | null
+          generation_before: number
+          id?: string
+          idempotency_key: string
+          lock_key?: number | null
+          operation: string
+          organization_id: string
+          request_fingerprint?: string
+          requested_by: string
+          started_at?: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          affected_counts?: Json
+          anchor_date?: string | null
+          error_message?: string | null
+          expected_generation?: number | null
+          finished_at?: string | null
+          fixture_version?: string
+          generation_after?: number | null
+          generation_before?: number
+          id?: string
+          idempotency_key?: string
+          lock_key?: number | null
+          operation?: string
+          organization_id?: string
+          request_fingerprint?: string
+          requested_by?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_operations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "demo_organization_registry"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "demo_operations_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demo_organization_registry: {
+        Row: {
+          anchor_date: string | null
+          created_at: string
+          display_name: string
+          fixture_version: string
+          generation: number
+          last_successful_reset_at: string | null
+          organization_id: string
+          slug: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          anchor_date?: string | null
+          created_at?: string
+          display_name: string
+          fixture_version: string
+          generation?: number
+          last_successful_reset_at?: string | null
+          organization_id: string
+          slug: string
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          anchor_date?: string | null
+          created_at?: string
+          display_name?: string
+          fixture_version?: string
+          generation?: number
+          last_successful_reset_at?: string | null
+          organization_id?: string
+          slug?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_organization_registry_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demo_resource_registry: {
+        Row: {
+          created_at: string
+          generation: number
+          organization_id: string
+          protected_baseline: boolean
+          resource_id: string
+          resource_type: string
+        }
+        Insert: {
+          created_at?: string
+          generation: number
+          organization_id: string
+          protected_baseline?: boolean
+          resource_id: string
+          resource_type: string
+        }
+        Update: {
+          created_at?: string
+          generation?: number
+          organization_id?: string
+          protected_baseline?: boolean
+          resource_id?: string
+          resource_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_resource_registry_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "demo_organization_registry"
+            referencedColumns: ["organization_id"]
           },
         ]
       }
@@ -2485,6 +2758,35 @@ export type Database = {
           },
         ]
       }
+      programme_triad_rounds: {
+        Row: {
+          at_week: number
+          id: string
+          programme_id: string
+          round_number: number
+        }
+        Insert: {
+          at_week: number
+          id?: string
+          programme_id: string
+          round_number: number
+        }
+        Update: {
+          at_week?: number
+          id?: string
+          programme_id?: string
+          round_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programme_triad_rounds_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       programmes: {
         Row: {
           coach_session_limit: number
@@ -2841,6 +3143,47 @@ export type Database = {
         }
         Relationships: []
       }
+      session_learning_reflections: {
+        Row: {
+          body: string
+          created_at: string
+          enrollment_id: string
+          id: string
+          source_activity_id: string
+          source_activity_type: string
+          submitted_at: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          enrollment_id: string
+          id?: string
+          source_activity_id: string
+          source_activity_type: string
+          submitted_at?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          enrollment_id?: string
+          id?: string
+          source_activity_id?: string
+          source_activity_type?: string
+          submitted_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_learning_reflections_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_limits: {
         Row: {
           coachee_id: string | null
@@ -2916,6 +3259,8 @@ export type Database = {
           coachee_rated_at: string | null
           coachee_rating: number | null
           coachee_rating_comment: string | null
+          cohort_id: string | null
+          cohort_requirement_id: string | null
           confirmed_at: string | null
           created_at: string
           duration_minutes: number
@@ -2940,6 +3285,8 @@ export type Database = {
           coachee_rated_at?: string | null
           coachee_rating?: number | null
           coachee_rating_comment?: string | null
+          cohort_id?: string | null
+          cohort_requirement_id?: string | null
           confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
@@ -2964,6 +3311,8 @@ export type Database = {
           coachee_rated_at?: string | null
           coachee_rating?: number | null
           coachee_rating_comment?: string | null
+          cohort_id?: string | null
+          cohort_requirement_id?: string | null
           confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number
@@ -2989,6 +3338,20 @@ export type Database = {
             columns: ["coachee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_cohort_requirement_id_fkey"
+            columns: ["cohort_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_requirement_dates"
             referencedColumns: ["id"]
           },
           {
@@ -3375,6 +3738,10 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          member_1_response: string | null
+          member_2_response: string | null
+          member_3_response: string | null
+          proposed_by: string | null
           proposed_by_enrollment_id: string | null
           proposed_end_time: string
           proposed_start_time: string
@@ -3384,6 +3751,10 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          member_1_response?: string | null
+          member_2_response?: string | null
+          member_3_response?: string | null
+          proposed_by?: string | null
           proposed_by_enrollment_id?: string | null
           proposed_end_time: string
           proposed_start_time: string
@@ -3393,6 +3764,10 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          member_1_response?: string | null
+          member_2_response?: string | null
+          member_3_response?: string | null
+          proposed_by?: string | null
           proposed_by_enrollment_id?: string | null
           proposed_end_time?: string
           proposed_start_time?: string
@@ -3405,6 +3780,13 @@ export type Database = {
             columns: ["proposed_by_enrollment_id"]
             isOneToOne: false
             referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_alternative_proposals_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3513,9 +3895,19 @@ export type Database = {
           cohort_id: string
           cohort_requirement_date_id: string
           created_at: string
+          enrollment_1_id: string | null
+          enrollment_2_id: string | null
+          enrollment_3_id: string | null
           group_language: string
           id: string
           is_active: boolean
+          member_1_id: string | null
+          member_2_id: string | null
+          member_3_id: string | null
+          name: string | null
+          programme_id: string | null
+          round_number: number | null
+          triad_round_id: string | null
           updated_at: string
         }
         Insert: {
@@ -3524,9 +3916,19 @@ export type Database = {
           cohort_id: string
           cohort_requirement_date_id: string
           created_at?: string
+          enrollment_1_id?: string | null
+          enrollment_2_id?: string | null
+          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
+          member_1_id?: string | null
+          member_2_id?: string | null
+          member_3_id?: string | null
+          name?: string | null
+          programme_id?: string | null
+          round_number?: number | null
+          triad_round_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -3535,9 +3937,19 @@ export type Database = {
           cohort_id?: string
           cohort_requirement_date_id?: string
           created_at?: string
+          enrollment_1_id?: string | null
+          enrollment_2_id?: string | null
+          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
+          member_1_id?: string | null
+          member_2_id?: string | null
+          member_3_id?: string | null
+          name?: string | null
+          programme_id?: string | null
+          round_number?: number | null
+          triad_round_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3553,6 +3965,55 @@ export type Database = {
             columns: ["cohort_requirement_date_id"]
             isOneToOne: false
             referencedRelation: "cohort_requirement_dates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_enrollment_1_id_fkey"
+            columns: ["enrollment_1_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_enrollment_2_id_fkey"
+            columns: ["enrollment_2_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_enrollment_3_id_fkey"
+            columns: ["enrollment_3_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_member_1_id_fkey"
+            columns: ["member_1_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_member_2_id_fkey"
+            columns: ["member_2_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_member_3_id_fkey"
+            columns: ["member_3_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_groups_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
             referencedColumns: ["id"]
           },
         ]
@@ -3647,23 +4108,44 @@ export type Database = {
         Row: {
           enrollment_id: string | null
           id: string
+          learned_as_coach: string | null
+          learned_as_coachee: string | null
+          learned_as_observer: string | null
+          participant_id: string | null
           satisfaction_rating: number | null
           submitted_at: string
           triad_session_id: string
+          will_use_as_coach: string | null
+          will_use_as_coachee: string | null
+          will_use_as_observer: string | null
         }
         Insert: {
           enrollment_id?: string | null
           id?: string
+          learned_as_coach?: string | null
+          learned_as_coachee?: string | null
+          learned_as_observer?: string | null
+          participant_id?: string | null
           satisfaction_rating?: number | null
           submitted_at?: string
           triad_session_id: string
+          will_use_as_coach?: string | null
+          will_use_as_coachee?: string | null
+          will_use_as_observer?: string | null
         }
         Update: {
           enrollment_id?: string | null
           id?: string
+          learned_as_coach?: string | null
+          learned_as_coachee?: string | null
+          learned_as_observer?: string | null
+          participant_id?: string | null
           satisfaction_rating?: number | null
           submitted_at?: string
           triad_session_id?: string
+          will_use_as_coach?: string | null
+          will_use_as_coachee?: string | null
+          will_use_as_observer?: string | null
         }
         Relationships: [
           {
@@ -3674,10 +4156,77 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "triad_reflections_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "triad_reflections_triad_session_id_fkey"
             columns: ["triad_session_id"]
             isOneToOne: false
             referencedRelation: "triad_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      triad_rounds: {
+        Row: {
+          auto_assign_date: string
+          auto_assign_status: string
+          completion_deadline: string
+          created_at: string
+          id: string
+          is_visible: boolean
+          programme_id: string
+          round_number: number
+          title: string
+          title_vi: string | null
+          training_week_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_assign_date: string
+          auto_assign_status?: string
+          completion_deadline: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          programme_id: string
+          round_number: number
+          title: string
+          title_vi?: string | null
+          training_week_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_assign_date?: string
+          auto_assign_status?: string
+          completion_deadline?: string
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          programme_id?: string
+          round_number?: number
+          title?: string
+          title_vi?: string | null
+          training_week_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_rounds_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_rounds_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
             referencedColumns: ["id"]
           },
         ]
@@ -3720,39 +4269,90 @@ export type Database = {
       }
       triad_sessions: {
         Row: {
+          coach_enrollment_id: string | null
+          coachee_enrollment_id: string | null
           created_at: string
           id: string
           meeting_url: string | null
+          member_1_response: string | null
+          member_2_response: string | null
+          member_3_response: string | null
           notes: string | null
+          observer_enrollment_id: string | null
+          proposed_by: string
+          proposed_end_time: string | null
+          proposed_start_time: string | null
           scheduled_end_time: string | null
           scheduled_start_time: string | null
+          start_time: string | null
           status: string
           triad_group_id: string
           updated_at: string
         }
         Insert: {
+          coach_enrollment_id?: string | null
+          coachee_enrollment_id?: string | null
           created_at?: string
           id?: string
           meeting_url?: string | null
+          member_1_response?: string | null
+          member_2_response?: string | null
+          member_3_response?: string | null
           notes?: string | null
+          observer_enrollment_id?: string | null
+          proposed_by?: string
+          proposed_end_time?: string | null
+          proposed_start_time?: string | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
+          start_time?: string | null
           status?: string
           triad_group_id: string
           updated_at?: string
         }
         Update: {
+          coach_enrollment_id?: string | null
+          coachee_enrollment_id?: string | null
           created_at?: string
           id?: string
           meeting_url?: string | null
+          member_1_response?: string | null
+          member_2_response?: string | null
+          member_3_response?: string | null
           notes?: string | null
+          observer_enrollment_id?: string | null
+          proposed_by?: string
+          proposed_end_time?: string | null
+          proposed_start_time?: string | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
+          start_time?: string | null
           status?: string
           triad_group_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "triad_sessions_coach_enrollment_id_fkey"
+            columns: ["coach_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_coachee_enrollment_id_fkey"
+            columns: ["coachee_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_sessions_observer_enrollment_id_fkey"
+            columns: ["observer_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "triad_sessions_triad_group_id_fkey"
             columns: ["triad_group_id"]
@@ -3843,8 +4443,63 @@ export type Database = {
         }
         Relationships: []
       }
+      pg_all_foreign_keys: {
+        Row: {
+          fk_columns: unknown[] | null
+          fk_constraint_name: unknown
+          fk_schema_name: unknown
+          fk_table_name: unknown
+          fk_table_oid: unknown
+          is_deferrable: boolean | null
+          is_deferred: boolean | null
+          match_type: string | null
+          on_delete: string | null
+          on_update: string | null
+          pk_columns: unknown[] | null
+          pk_constraint_name: unknown
+          pk_index_name: unknown
+          pk_schema_name: unknown
+          pk_table_name: unknown
+          pk_table_oid: unknown
+        }
+        Relationships: []
+      }
+      tap_funky: {
+        Row: {
+          args: string | null
+          is_definer: boolean | null
+          is_strict: boolean | null
+          is_visible: boolean | null
+          kind: unknown
+          langoid: unknown
+          name: unknown
+          oid: unknown
+          owner: unknown
+          returns: string | null
+          returns_set: boolean | null
+          schema: unknown
+          volatility: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      _cleanup: { Args: never; Returns: boolean }
+      _contract_on: { Args: { "": string }; Returns: unknown }
+      _currtest: { Args: never; Returns: number }
+      _db_privs: { Args: never; Returns: unknown[] }
+      _extensions: { Args: never; Returns: unknown[] }
+      _get: { Args: { "": string }; Returns: number }
+      _get_latest: { Args: { "": string }; Returns: number[] }
+      _get_note: { Args: { "": string }; Returns: string }
+      _is_verbose: { Args: never; Returns: boolean }
+      _prokind: { Args: { p_oid: unknown }; Returns: unknown }
+      _query: { Args: { "": string }; Returns: string }
+      _refine_vol: { Args: { "": string }; Returns: string }
+      _retval: { Args: { "": string }; Returns: string }
+      _table_privs: { Args: never; Returns: unknown[] }
+      _temptypes: { Args: { "": string }; Returns: string }
+      _todo: { Args: never; Returns: string }
       admin_canonical_enrollment_journey: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
@@ -4156,6 +4811,18 @@ export type Database = {
         }
         Returns: string
       }
+      book_coaching_session: {
+        Args: {
+          p_coach_id: string
+          p_duration_minutes?: number
+          p_enrollment_id: string
+          p_requirement_id: string
+          p_slot_id: string
+          p_start_time?: string
+          p_topic: string
+        }
+        Returns: string
+      }
       book_peer_session: {
         Args: {
           p_duration_minutes: number
@@ -4238,6 +4905,25 @@ export type Database = {
       can_message_session: {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
+      }
+      cancel_coaching_session: {
+        Args: { p_reason?: string; p_session_id: string }
+        Returns: {
+          session_id: string
+          was_late: boolean
+        }[]
+      }
+      canonical_coaching_requirement_fulfilment: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_on: string
+          due_on: string
+          fulfilled_on: string
+          ordinal: number
+          post_session_pending: boolean
+          requirement_id: string
+          session_id: string
+        }[]
       }
       canonical_enrollment_engagement: {
         Args: { p_enrollment_id: string }
@@ -4476,6 +5162,52 @@ export type Database = {
         Returns: boolean
       }
       coachee_has_allowlist: { Args: { _coachee_id: string }; Returns: boolean }
+      coaching_post_session_checklist: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          due_on: string
+          needs_action: boolean
+          needs_goal_checkin: boolean
+          needs_reflection: boolean
+          needs_satisfaction: boolean
+          ordinal: number
+          requirement_id: string
+          session_id: string
+          session_status: string
+          unit_complete: boolean
+        }[]
+      }
+      coaching_session_evidence: {
+        Args: { p_session_id: string }
+        Returns: {
+          enrollment_id: string
+          goal_checkin_required: boolean
+          has_action: boolean
+          has_goal_checkin: boolean
+          has_reflection: boolean
+          has_satisfaction: boolean
+          session_completed: boolean
+          session_id: string
+          unit_complete: boolean
+        }[]
+      }
+      coaching_sessions_without_requirement: {
+        Args: never
+        Returns: {
+          cohort_id: string
+          enrollment_id: string
+          reason: string
+          session_id: string
+          start_time: string
+          status: string
+        }[]
+      }
+      cohort_coaching_coach_pool: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: {
+          coach_id: string
+        }[]
+      }
       cohort_programme_schedule_state: {
         Args: { p_cohort_id: string; p_programme_id: string }
         Returns: {
@@ -4534,6 +5266,46 @@ export type Database = {
           programme_id: string
         }[]
       }
+      col_is_null:
+        | {
+            Args: {
+              column_name: unknown
+              description?: string
+              schema_name: unknown
+              table_name: unknown
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: unknown
+              description?: string
+              table_name: unknown
+            }
+            Returns: string
+          }
+      col_not_null:
+        | {
+            Args: {
+              column_name: unknown
+              description?: string
+              schema_name: unknown
+              table_name: unknown
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: unknown
+              description?: string
+              table_name: unknown
+            }
+            Returns: string
+          }
+      complete_coaching_session: {
+        Args: { p_session_id: string }
+        Returns: string
+      }
       create_programme_enrollment: {
         Args: {
           p_cohort_id: string
@@ -4566,6 +5338,347 @@ export type Database = {
         }
       }
       dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
+      demo_apply_batch_2: { Args: { p_operation_id: string }; Returns: Json }
+      demo_apply_batch_3: { Args: { p_operation_id: string }; Returns: Json }
+      demo_apply_batch_4: { Args: { p_operation_id: string }; Returns: Json }
+      demo_assert_batch_2_collisions: { Args: never; Returns: undefined }
+      demo_assert_batch_3_collisions: { Args: never; Returns: undefined }
+      demo_assert_batch_4_cross_org_references: {
+        Args: never
+        Returns: undefined
+      }
+      demo_assert_batch_4_privacy: { Args: never; Returns: undefined }
+      demo_assert_no_account_collisions: { Args: never; Returns: undefined }
+      demo_assert_service_target: {
+        Args: {
+          p_anchor_date: string
+          p_fixture_version: string
+          p_organization_id: string
+        }
+        Returns: undefined
+      }
+      demo_batch_2_ensure_auth_identity: {
+        Args: {
+          p_email: string
+          p_full_name: string
+          p_role: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      demo_batch_2_leader: {
+        Args: { p_serial: number }
+        Returns: {
+          cohort_id: string
+          email: string
+          enrollment_id: string
+          full_name: string
+          programme_id: string
+          serial_number: number
+          user_id: string
+        }[]
+      }
+      demo_batch_3_activity_resource_owned: {
+        Args: {
+          p_exists: boolean
+          p_resource_id: string
+          p_resource_type: string
+        }
+        Returns: undefined
+      }
+      demo_batch_3_id: {
+        Args: { p_kind: string; p_serial: number }
+        Returns: string
+      }
+      demo_batch_3_position: { Args: { p_serial: number }; Returns: number }
+      demo_batch_3_programme_key: {
+        Args: { p_serial: number }
+        Returns: string
+      }
+      demo_batch_3_register_resource: {
+        Args: {
+          p_generation: number
+          p_resource_id: string
+          p_resource_type: string
+        }
+        Returns: undefined
+      }
+      demo_begin_batch_2_operation: {
+        Args: {
+          p_anchor_date: string
+          p_expected_generation?: number
+          p_fixture_version: string
+          p_idempotency_key: string
+          p_operation: string
+          p_organization_id: string
+          p_requested_by: string
+        }
+        Returns: {
+          affected_counts: Json
+          anchor_date: string | null
+          error_message: string | null
+          expected_generation: number | null
+          finished_at: string | null
+          fixture_version: string
+          generation_after: number | null
+          generation_before: number
+          id: string
+          idempotency_key: string
+          lock_key: number | null
+          operation: string
+          organization_id: string
+          request_fingerprint: string
+          requested_by: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "demo_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      demo_begin_batch_3_operation: {
+        Args: {
+          p_anchor_date: string
+          p_expected_generation?: number
+          p_fixture_version: string
+          p_idempotency_key: string
+          p_operation: string
+          p_organization_id: string
+          p_requested_by: string
+        }
+        Returns: {
+          affected_counts: Json
+          anchor_date: string | null
+          error_message: string | null
+          expected_generation: number | null
+          finished_at: string | null
+          fixture_version: string
+          generation_after: number | null
+          generation_before: number
+          id: string
+          idempotency_key: string
+          lock_key: number | null
+          operation: string
+          organization_id: string
+          request_fingerprint: string
+          requested_by: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "demo_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      demo_begin_batch_4_operation: {
+        Args: {
+          p_anchor_date: string
+          p_expected_generation?: number
+          p_fixture_version: string
+          p_idempotency_key: string
+          p_operation: string
+          p_organization_id: string
+          p_requested_by: string
+        }
+        Returns: {
+          affected_counts: Json
+          anchor_date: string | null
+          error_message: string | null
+          expected_generation: number | null
+          finished_at: string | null
+          fixture_version: string
+          generation_after: number | null
+          generation_before: number
+          id: string
+          idempotency_key: string
+          lock_key: number | null
+          operation: string
+          organization_id: string
+          request_fingerprint: string
+          requested_by: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "demo_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      demo_begin_operation: {
+        Args: {
+          p_anchor_date: string
+          p_expected_generation?: number
+          p_fixture_version: string
+          p_idempotency_key: string
+          p_operation: string
+          p_organization_id: string
+          p_requested_by: string
+        }
+        Returns: {
+          affected_counts: Json
+          anchor_date: string | null
+          error_message: string | null
+          expected_generation: number | null
+          finished_at: string | null
+          fixture_version: string
+          generation_after: number | null
+          generation_before: number
+          id: string
+          idempotency_key: string
+          lock_key: number | null
+          operation: string
+          organization_id: string
+          request_fingerprint: string
+          requested_by: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "demo_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      demo_configure_target: {
+        Args: {
+          p_anchor_date: string
+          p_fixture_version: string
+          p_organization_id: string
+        }
+        Returns: undefined
+      }
+      demo_delete_batch_4_owned_resources: {
+        Args: { p_operation_id: string }
+        Returns: Json
+      }
+      demo_fail_operation: {
+        Args: { p_error_message: string; p_operation_id: string }
+        Returns: {
+          affected_counts: Json
+          anchor_date: string | null
+          error_message: string | null
+          expected_generation: number | null
+          finished_at: string | null
+          fixture_version: string
+          generation_after: number | null
+          generation_before: number
+          id: string
+          idempotency_key: string
+          lock_key: number | null
+          operation: string
+          organization_id: string
+          request_fingerprint: string
+          requested_by: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "demo_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      demo_finish_operation: {
+        Args: { p_affected_counts?: Json; p_operation_id: string }
+        Returns: {
+          affected_counts: Json
+          anchor_date: string | null
+          error_message: string | null
+          expected_generation: number | null
+          finished_at: string | null
+          fixture_version: string
+          generation_after: number | null
+          generation_before: number
+          id: string
+          idempotency_key: string
+          lock_key: number | null
+          operation: string
+          organization_id: string
+          request_fingerprint: string
+          requested_by: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "demo_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      demo_reap_stale_operation: {
+        Args: { p_max_age?: string; p_operation_id: string }
+        Returns: {
+          affected_counts: Json
+          anchor_date: string | null
+          error_message: string | null
+          expected_generation: number | null
+          finished_at: string | null
+          fixture_version: string
+          generation_after: number | null
+          generation_before: number
+          id: string
+          idempotency_key: string
+          lock_key: number | null
+          operation: string
+          organization_id: string
+          request_fingerprint: string
+          requested_by: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "demo_operations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      demo_register_batch_2_resource: {
+        Args: {
+          p_generation: number
+          p_resource_id: string
+          p_resource_type: string
+        }
+        Returns: undefined
+      }
+      demo_seed_triads: { Args: { p_generation: number }; Returns: undefined }
+      demo_validate_batch_2_ownership: { Args: never; Returns: undefined }
+      demo_validate_batch_3_ownership: { Args: never; Returns: undefined }
+      demo_validate_batch_4_ownership: { Args: never; Returns: undefined }
+      diag:
+        | {
+            Args: { msg: unknown }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.diag(msg => text), public.diag(msg => anyelement). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+        | {
+            Args: { msg: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.diag(msg => text), public.diag(msg => anyelement). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+      diag_test_name: { Args: { "": string }; Returns: string }
+      do_tap:
+        | { Args: never; Returns: string[] }
+        | { Args: { "": string }; Returns: string[] }
       enrollment_activity_participants: {
         Args: {
           p_enrollment_id: string
@@ -4577,6 +5690,12 @@ export type Database = {
           provider_id: string
         }[]
       }
+      enrollment_coaching_coach_pool: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          coach_id: string
+        }[]
+      }
       enrollment_module_config: {
         Args: {
           p_enrollment_id: string
@@ -4584,6 +5703,12 @@ export type Database = {
         }
         Returns: Json
       }
+      fail:
+        | { Args: never; Returns: string }
+        | { Args: { "": string }; Returns: string }
+      findfuncs: { Args: { "": string }; Returns: string[] }
+      finish: { Args: { exception_on_failure?: boolean }; Returns: string[] }
+      format_type_string: { Args: { "": string }; Returns: string }
       generate_enrollment_schedule: {
         Args: { p_enrollment_id: string }
         Returns: undefined
@@ -4607,6 +5732,22 @@ export type Database = {
         Returns: {
           monthly_limit: number
           used_this_month: number
+        }[]
+      }
+      get_demo_organization_status: {
+        Args: { p_organization_id: string }
+        Returns: {
+          anchor_date: string
+          display_name: string
+          fixture_version: string
+          generation: number
+          is_demo: boolean
+          last_operation_error: string
+          last_operation_id: string
+          last_operation_status: string
+          last_successful_reset_at: string
+          organization_id: string
+          state: string
         }[]
       }
       get_enrollment_programme_modules: {
@@ -4793,17 +5934,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_unique: { Args: { "": string }; Returns: string }
+      in_todo: { Args: never; Returns: boolean }
       is_active_coach_profile: { Args: { _id: string }; Returns: boolean }
       is_allowlisted_pair: {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
       is_coach_eligible: { Args: { p_coach_id: string }; Returns: boolean }
+      is_empty: { Args: { "": string }; Returns: string }
       is_historical_ownership_retired: {
         Args: { p_domain: string; p_record_id: string }
         Returns: boolean
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
+      isnt_empty: { Args: { "": string }; Returns: string }
       learner_canonical_engagement: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5048,14 +6193,32 @@ export type Database = {
         }
         Returns: string
       }
+      lives_ok: { Args: { "": string }; Returns: string }
       materialize_missing_cohort_requirement_dates: {
         Args: { p_cohort_id: string }
         Returns: number
       }
+      next_coaching_requirement: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          due_on: string
+          ordinal: number
+          requirement_id: string
+        }[]
+      }
+      no_plan: { Args: never; Returns: boolean[] }
+      num_failed: { Args: never; Returns: number }
       only_enrollment_candidate: {
         Args: { p_on?: string; p_programme_id?: string; p_user_id: string }
         Returns: string
       }
+      os_name: { Args: never; Returns: string }
+      pass:
+        | { Args: never; Returns: string }
+        | { Args: { "": string }; Returns: string }
+      pg_version: { Args: never; Returns: string }
+      pg_version_num: { Args: never; Returns: number }
+      pgtap_version: { Args: never; Returns: number }
       programme_config_integer: {
         Args: { p_config: Json; p_key: string }
         Returns: number
@@ -5118,10 +6281,17 @@ export type Database = {
         }
       }
       remove_own_coachee: { Args: { _coachee_id: string }; Returns: boolean }
+      reschedule_coaching_session: {
+        Args: { p_new_slot_id: string; p_reason?: string; p_session_id: string }
+        Returns: string
+      }
       resolve_current_enrollment: {
         Args: { p_user_id: string }
         Returns: string
       }
+      runtests:
+        | { Args: never; Returns: string[] }
+        | { Args: { "": string }; Returns: string[] }
       save_enrollment_activity_actions: {
         Args: {
           p_actions: Json
@@ -5135,6 +6305,9 @@ export type Database = {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
+      skip:
+        | { Args: { "": string }; Returns: string }
+        | { Args: { how_many: number; why: string }; Returns: string }
       sponsor_canonical_activity: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5527,6 +6700,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      throws_ok: { Args: { "": string }; Returns: string }
+      todo:
+        | { Args: { how_many: number }; Returns: boolean[] }
+        | { Args: { how_many: number; why: string }; Returns: boolean[] }
+        | { Args: { why: string }; Returns: boolean[] }
+        | { Args: { how_many: number; why: string }; Returns: boolean[] }
+      todo_end: { Args: never; Returns: boolean[] }
+      todo_start:
+        | { Args: never; Returns: boolean[] }
+        | { Args: { "": string }; Returns: boolean[] }
       transition_session_status: {
         Args: {
           p_action: string
@@ -5591,6 +6774,7 @@ export type Database = {
         Args: { p_group_id: string; p_viewer_enrollment_id: string }
         Returns: Json
       }
+      triad_is_seed_identifier: { Args: { p_id: string }; Returns: boolean }
       triad_member_enrollment_for_user: {
         Args: { p_group_id: string; p_user_id: string }
         Returns: string
@@ -5740,7 +6924,9 @@ export type Database = {
         | "reach_limit"
     }
     CompositeTypes: {
-      [_ in never]: never
+      _time_trial_type: {
+        a_time: number | null
+      }
     }
   }
 }

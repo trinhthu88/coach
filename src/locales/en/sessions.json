@@ -68,8 +68,26 @@
       "slotTaken": "That time was just booked by someone else. Please pick another slot.",
       "notEligible": "You're not able to book this session right now — your access to this coach or your session limit may have changed. Please refresh and try again.",
       "successPeer": "Peer session requested. Awaiting peer coach confirmation.",
-      "successCoaching": "Session requested. Awaiting coach confirmation."
-    }
+      "successCoaching": "Session requested. Awaiting coach confirmation.",
+      "noRequirement": "No Coaching requirement is available to book."
+    },
+    "requirement": {
+      "label": "Coaching Session {{ordinal}}",
+      "due": "Due {{date}}"
+    },
+    "noCohortCoaches": {
+      "title": "No Coach assigned to your cohort yet",
+      "body": "Coaching for your cohort has not been set up. Please contact your programme administrator."
+    },
+    "allUnitsBooked": {
+      "title": "All Coaching sessions are booked",
+      "body": "Every required Coaching session for this programme already has a session. There is nothing left to book."
+    },
+    "coachNotInCohort": {
+      "title": "This Coach is not available for your cohort",
+      "body": "You can only book Coaches assigned to your cohort."
+    },
+    "backToSessions": "Back to sessions"
   },
   "list": {
     "eyebrow": "Schedule",
@@ -235,22 +253,13 @@
     "coachFeedback": {
       "title": "Session feedback",
       "intro": "Optional and private — never shown to the client.",
-      "qualityRating": "Session quality",
-      "rateStars": "{{count}} star",
       "rateStars_other": "{{count}} stars",
-      "engagementLevel": "Client engagement",
-      "engagementPlaceholder": "Select a level…",
-      "engagementLevels": {
-        "high": "High",
-        "moderate": "Moderate",
-        "low": "Low",
-        "disengaged": "Disengaged"
-      },
       "flagLabel": "Flag this session for admin attention",
       "flagNotesPlaceholder": "What should the programme team know?",
       "save": "Save feedback",
       "update": "Update feedback",
-      "saved": "Feedback saved"
+      "saved": "Feedback saved",
+      "flagNotesRequired": "Add a note explaining why you are flagging this session."
     },
     "help": {
       "title": "Need help with this session?",
@@ -317,5 +326,19 @@
     "conversationEmpty": "Say hello — this is the start of your conversation.",
     "loadEarlier": "Load earlier messages",
     "selectThreadPrompt": "Select a thread to start chatting."
+  },
+  "postSession": {
+    "title": "Post-session learning",
+    "subtitle": "Complete these to finish this Coaching session in your programme journey.",
+    "unitComplete": "Programme unit complete",
+    "unitPending": "Programme unit pending · {{done}}/{{total}}",
+    "notRequired": "not required",
+    "footer": "Your Coach has marked the session held. The programme unit completes once all required items are done.",
+    "items": {
+      "reflection": "Reflection",
+      "goalCheckin": "Goal check-in",
+      "action": "Follow-up action",
+      "satisfaction": "Session satisfaction"
+    }
   }
 }

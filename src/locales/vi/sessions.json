@@ -69,8 +69,26 @@
       "slotTaken": "Khung giờ đó vừa được người khác đặt. Vui lòng chọn khung giờ khác.",
       "notEligible": "Bạn hiện không thể đặt session này — quyền truy cập của bạn với coach này hoặc giới hạn session của bạn có thể đã thay đổi. Vui lòng làm mới và thử lại.",
       "successPeer": "Đã yêu cầu session đồng cấp. Đang chờ coach đồng cấp xác nhận.",
-      "successCoaching": "Đã yêu cầu session. Đang chờ coach xác nhận."
-    }
+      "successCoaching": "Đã yêu cầu session. Đang chờ coach xác nhận.",
+      "noRequirement": "Không có yêu cầu Coaching nào để đặt lịch."
+    },
+    "requirement": {
+      "label": "Buổi Coaching {{ordinal}}",
+      "due": "Hạn {{date}}"
+    },
+    "noCohortCoaches": {
+      "title": "Chưa có Coach nào được phân công cho nhóm của bạn",
+      "body": "Coaching cho nhóm của bạn chưa được thiết lập. Vui lòng liên hệ quản trị viên chương trình."
+    },
+    "allUnitsBooked": {
+      "title": "Tất cả buổi Coaching đã được đặt",
+      "body": "Mọi buổi Coaching bắt buộc của chương trình này đều đã có lịch. Không còn buổi nào để đặt."
+    },
+    "coachNotInCohort": {
+      "title": "Coach này không khả dụng cho nhóm của bạn",
+      "body": "Bạn chỉ có thể đặt lịch với các Coach được phân công cho nhóm của mình."
+    },
+    "backToSessions": "Quay lại các buổi"
   },
   "list": {
     "eyebrow": "Lịch trình",
@@ -235,21 +253,12 @@
     "coachFeedback": {
       "title": "Phản hồi về session",
       "intro": "Không bắt buộc và riêng tư — không bao giờ hiển thị cho khách hàng.",
-      "qualityRating": "Chất lượng session",
-      "rateStars": "{{count}} sao",
-      "engagementLevel": "Mức độ tham gia của khách hàng",
-      "engagementPlaceholder": "Chọn một mức độ…",
-      "engagementLevels": {
-        "high": "Cao",
-        "moderate": "Trung bình",
-        "low": "Thấp",
-        "disengaged": "Không tham gia"
-      },
       "flagLabel": "Gắn cờ session này để đội ngũ quản trị chú ý",
       "flagNotesPlaceholder": "Đội ngũ chương trình nên biết điều gì?",
       "save": "Lưu phản hồi",
       "update": "Cập nhật phản hồi",
-      "saved": "Đã lưu phản hồi"
+      "saved": "Đã lưu phản hồi",
+      "flagNotesRequired": "Vui lòng ghi chú lý do bạn gắn cờ buổi học này."
     },
     "help": {
       "title": "Cần trợ giúp với session này?",
@@ -314,5 +323,19 @@
     "conversationEmpty": "Nói xin chào — đây là khởi đầu cuộc trò chuyện của bạn.",
     "loadEarlier": "Tải tin nhắn trước đó",
     "selectThreadPrompt": "Chọn một chuỗi trò chuyện để bắt đầu."
+  },
+  "postSession": {
+    "title": "Học tập sau buổi",
+    "subtitle": "Hoàn thành các mục này để kết thúc buổi Coaching trong hành trình chương trình của bạn.",
+    "unitComplete": "Hoàn thành hạng mục chương trình",
+    "unitPending": "Hạng mục chương trình đang chờ · {{done}}/{{total}}",
+    "notRequired": "không bắt buộc",
+    "footer": "Coach đã xác nhận buổi học đã diễn ra. Hạng mục chương trình hoàn tất khi tất cả mục bắt buộc được hoàn thành.",
+    "items": {
+      "reflection": "Phản tư",
+      "goalCheckin": "Cập nhật mục tiêu",
+      "action": "Hành động tiếp theo",
+      "satisfaction": "Mức độ hài lòng"
+    }
   }
 }

@@ -29,6 +29,11 @@ import { trackEvent } from "@/lib/analytics";
 import { DEFAULT_SESSION_LIMIT } from "@/lib/constants";
 import { canSubmitBooking, isOverSessionLimit } from "./bookingEligibility";
 import { computeStartOptions } from "./bookingSlots";
+import {
+  useNextCoachingRequirement,
+  useCohortCoachPool,
+  useInvalidateCoaching,
+} from "@/hooks/coaching/useCanonicalCoaching";
 
 interface CoachDetail {
   id: string;
@@ -90,6 +95,46 @@ export default function BookSession() {
   // supabase/migrations/20260810150000_can_book_session_rpc.sql. null = not checked yet
   // (peer mode isn't gated by this function; loading state before the RPC resolves).
   const [eligible, setEligible] = useState<boolean | null>(null);
+
+  // Canonical Coaching readers. The requirement being booked, and the cohort
+  // Coach pool, both come from the backend -- this screen never decides either.
+  const { data: nextRequirement, isLoading: requirementLoading } =
+    useNextCoachingRequirement(mode === "coaching" ? enrollmentId : null);
+  const { data: coachPool } = useCohortCoachPool(mode === "coaching" ? enrollmentId : null);
+  const invalidateCoaching = useInvalidateCoaching();
+
+  // On reschedule the replacement fulfils the SAME requirement as the session
+  // being moved, so next_coaching_requirement (which reports the next unbooked
+  // one) is not the right answer there.
+  const [rescheduleRequirementId, setRescheduleRequirementId] = useState<string | null>(null);
+  const coachingRequirementId = rescheduleId
+    ? rescheduleRequirementId
+    : nextRequirement?.requirementId ?? null;
+
+  useEffect(() => {
+    if (!rescheduleId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("sessions")
+        .select("cohort_requirement_id")
+        .eq("id", rescheduleId)
+        .maybeSingle();
+      if (!cancelled) setRescheduleRequirementId(data?.cohort_requirement_id ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [rescheduleId]);
+
+  /** True when this Coach is not in the learner's cohort pool (Coaching only). */
+  const coachOutsidePool =
+    mode === "coaching" && !!coachPool && !!coachId && !coachPool.some((c) => c.id === coachId);
+  /** True when the cohort has no Coaches assigned at all -- a configuration gap. */
+  const cohortHasNoCoaches = mode === "coaching" && !!coachPool && coachPool.length === 0;
+  /** True when every required Coaching unit is already taken. */
+  const allCoachingUnitsTaken =
+    mode === "coaching" && !rescheduleId && !requirementLoading && !nextRequirement;
 
   useEffect(() => {
     if (!coachId) return;
@@ -316,17 +361,34 @@ export default function BookSession() {
         p_slot_id: opt.slotId,
       });
       error = result.error;
+    } else if (rescheduleId) {
+      // Canonical reschedule: the replacement is booked and the old booking
+      // released inside ONE transaction, so a failure cannot leave the learner
+      // with neither slot (or with an orphaned duplicate).
+      const result = await supabase.rpc("reschedule_coaching_session", {
+        p_session_id: rescheduleId,
+        p_new_slot_id: opt.slotId,
+        p_reason: null,
+      });
+      error = result.error;
     } else {
-      ({ error } = await supabase.from("sessions").insert({
-        coach_id: coach.id,
-        coachee_id: user.id,
-        enrollment_id: enrollmentId,
-        topic: topic.trim(),
-        start_time: startISO,
-        duration_minutes: duration,
-        status: "pending_coach_approval",
-        slot_id: opt.slotId,
-      }));
+      // Canonical atomic booking. The server owns enrollment validation, Coach
+      // eligibility, requirement availability, entitlement, slot reservation
+      // and collision protection -- none of it is reconstructed here.
+      if (!coachingRequirementId) {
+        setSubmitting(false);
+        return toast.error(t("bookSession.toast.noRequirement"));
+      }
+      const result = await supabase.rpc("book_coaching_session", {
+        p_enrollment_id: enrollmentId!,
+        p_coach_id: coach.id,
+        p_slot_id: opt.slotId,
+        p_requirement_id: coachingRequirementId,
+        p_topic: topic.trim(),
+        p_start_time: startISO,
+        p_duration_minutes: duration,
+      });
+      error = result.error;
     }
     setSubmitting(false);
     if (error) {
@@ -346,15 +408,13 @@ export default function BookSession() {
       }
       return toast.error(getFriendlyErrorMessage(error, t));
     }
-    // Reschedule: the new booking above is what actually needs coach
-    // re-confirmation (it's a new slot); this just closes out the old one so
-    // it stops showing as upcoming. Best-effort — if this update fails the
-    // new session still stands, just with an orphaned old one to clean up
-    // manually, which is far better than blocking/rolling back a booking
-    // that already succeeded.
-    if (rescheduleId) {
+    // Coaching reschedules are atomic inside reschedule_coaching_session, so
+    // there is no old booking left to close out here. Peer mode keeps the
+    // previous best-effort behaviour because it has no canonical equivalent.
+    if (rescheduleId && mode === "peer") {
       await supabase.from("sessions").update({ status: "rescheduled" }).eq("id", rescheduleId);
     }
+    invalidateCoaching();
     toast.success(
       mode === "peer"
         ? t("bookSession.toast.successPeer")
@@ -394,6 +454,48 @@ export default function BookSession() {
     return (
       <Card className="p-12 text-center">
         <h2 className="text-xl font-semibold">{t("bookSession.coachNotFound.title")}</h2>
+        <Button asChild variant="outline" className="mt-6">
+          <Link to="/coaches">{t("bookSession.coachNotFound.backToCoaches")}</Link>
+        </Button>
+      </Card>
+    );
+  }
+
+  // Canonical Coaching guards. Each is a backend fact, not a local inference,
+  // and each gets a specific page rather than an empty or half-broken one.
+  if (cohortHasNoCoaches) {
+    return (
+      <Card className="p-12 text-center">
+        <h2 className="text-xl font-semibold">{t("bookSession.noCohortCoaches.title")}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("bookSession.noCohortCoaches.body")}
+        </p>
+        <Button asChild variant="outline" className="mt-6">
+          <Link to="/sessions">{t("bookSession.backToSessions")}</Link>
+        </Button>
+      </Card>
+    );
+  }
+  if (allCoachingUnitsTaken) {
+    return (
+      <Card className="p-12 text-center">
+        <h2 className="text-xl font-semibold">{t("bookSession.allUnitsBooked.title")}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("bookSession.allUnitsBooked.body")}
+        </p>
+        <Button asChild variant="outline" className="mt-6">
+          <Link to="/sessions">{t("bookSession.backToSessions")}</Link>
+        </Button>
+      </Card>
+    );
+  }
+  if (coachOutsidePool) {
+    return (
+      <Card className="p-12 text-center">
+        <h2 className="text-xl font-semibold">{t("bookSession.coachNotInCohort.title")}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("bookSession.coachNotInCohort.body")}
+        </p>
         <Button asChild variant="outline" className="mt-6">
           <Link to="/coaches">{t("bookSession.coachNotFound.backToCoaches")}</Link>
         </Button>
@@ -481,6 +583,18 @@ export default function BookSession() {
                   ? t("bookSession.subtitle.peer")
                   : t("bookSession.subtitle.coaching")}
               </p>
+              {/* Which programme unit this booking fulfils, and when it is due.
+                  Both come from the cohort requirement schedule. */}
+              {mode === "coaching" && nextRequirement && !rescheduleId && (
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {t("bookSession.requirement.label", { ordinal: nextRequirement.ordinal })}
+                  <span className="ml-2 font-normal text-muted-foreground">
+                    {t("bookSession.requirement.due", {
+                      date: format(new Date(`${nextRequirement.dueOn}T00:00:00`), "d MMM yyyy"),
+                    })}
+                  </span>
+                </p>
+              )}
             </div>
             {mode === "peer" && (
               <Badge className="bg-success/15 text-success hover:bg-success/15">{t("bookSession.peerBadge")}</Badge>
