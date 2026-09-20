@@ -10,6 +10,12 @@ interface MentoringGiveData {
 
 const emptyGive: MentoringGiveData = { upcoming: [], upcomingCount: 0, menteeCount: 0, sessionsDelivered: 0 };
 
+/**
+ * The MENTOR's own delivery workspace: how many sessions they have run and for
+ * how many mentees. This is deliberately person-level and not enrollment
+ * scoped -- it is provider analytics about the mentor, not a learner's
+ * programme progress, and the two must not be conflated (section 15).
+ */
 async function fetchGive(userId: string): Promise<MentoringGiveData> {
   const { data } = await supabase
     .from("mentoring_sessions")
@@ -63,16 +69,46 @@ interface MentoringReceiveData {
     prepFileUploaded: boolean;
   } | null;
   upcomingCount: number;
+  /**
+   * Canonical Mentoring programme progress. Never counted from the session
+   * rows below: only a session with status 'completed', attributed to THIS
+   * enrollment, is a completed Mentoring unit.
+   */
+  requiredUnits: number;
+  completedUnits: number;
+  bookedUnits: number;
+  overdueUnits: number;
 }
 
-const emptyReceive: MentoringReceiveData = { nextSession: null, upcomingCount: 0 };
+const emptyReceive: MentoringReceiveData = {
+  nextSession: null,
+  upcomingCount: 0,
+  requiredUnits: 0,
+  completedUnits: 0,
+  bookedUnits: 0,
+  overdueUnits: 0,
+};
 
-async function fetchReceive(userId: string): Promise<MentoringReceiveData> {
-  const { data } = await supabase
-    .from("mentoring_sessions")
-    .select("id, topic, start_time, status, mentor_id, prep_file_path")
-    .eq("mentee_id", userId)
-    .order("start_time", { ascending: false });
+/**
+ * The learner's Mentoring card, scoped to the SELECTED enrollment.
+ *
+ * It previously filtered on mentee_id alone, so a session belonging to a
+ * historical enrollment appeared against the current programme -- the exact
+ * cross-enrollment leakage the canonical model forbids.
+ */
+async function fetchReceive(enrollmentId: string): Promise<MentoringReceiveData> {
+  const [{ data }, { data: progressRows }] = await Promise.all([
+    supabase
+      .from("mentoring_sessions")
+      .select("id, topic, start_time, status, mentor_id, prep_file_path")
+      .eq("enrollment_id", enrollmentId)
+      .order("start_time", { ascending: false }),
+    supabase.rpc("canonical_module_progress", {
+      p_enrollment_id: enrollmentId,
+      p_as_of: new Date().toISOString().slice(0, 10),
+    }),
+  ]);
+  const mentoring = (progressRows ?? []).find((r) => r.module === "mentoring");
   const list = data || [];
   const now = new Date();
   const upcomingRows = list
@@ -80,7 +116,14 @@ async function fetchReceive(userId: string): Promise<MentoringReceiveData> {
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   const next = upcomingRows[0];
 
-  if (!next) return { ...emptyReceive, upcomingCount: upcomingRows.length };
+  const progress = {
+    requiredUnits: mentoring?.required_units ?? 0,
+    completedUnits: mentoring?.completed_units ?? 0,
+    bookedUnits: mentoring?.booked_units ?? 0,
+    overdueUnits: mentoring?.overdue_units ?? 0,
+  };
+
+  if (!next) return { ...emptyReceive, ...progress, upcomingCount: upcomingRows.length };
 
   const { data: mentor } = await supabase
     .from("profiles")
@@ -97,14 +140,15 @@ async function fetchReceive(userId: string): Promise<MentoringReceiveData> {
       prepFileUploaded: !!next.prep_file_path,
     },
     upcomingCount: upcomingRows.length,
+    ...progress,
   };
 }
 
-export function useMentoringReceiveCardData(userId: string | undefined, enabled: boolean) {
+export function useMentoringReceiveCardData(enrollmentId: string | undefined, enabled: boolean) {
   const { data, isLoading } = useQuery({
-    queryKey: ["mentoring-receive-card", userId],
-    queryFn: () => fetchReceive(userId as string),
-    enabled: !!userId && enabled,
+    queryKey: ["mentoring-receive-card", enrollmentId],
+    queryFn: () => fetchReceive(enrollmentId as string),
+    enabled: !!enrollmentId && enabled,
     staleTime: 30_000,
   });
   return { data: data ?? emptyReceive, loading: isLoading };
