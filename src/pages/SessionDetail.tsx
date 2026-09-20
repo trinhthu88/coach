@@ -21,6 +21,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { SessionGoalRatings } from "./session/SessionGoalRatings";
+import { CoachingPostSessionChecklist } from "./session/CoachingPostSessionChecklist";
 import { SessionToolbox } from "@/components/tools/SessionToolbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CoachSessionFeedback } from "@/components/sessions/CoachSessionFeedback";
@@ -146,13 +147,17 @@ export default function SessionDetail() {
     isAfter(start, addHours(new Date(), 24));
 
   const sessionStarted = start < new Date();
-  // Coach can't mark a session complete until the coachee's side of the
-  // record exists: their written reflection (regular sessions) or their
-  // ICF competency feedback (peer sessions).
+  // Coaching: the Coach records that the conversation happened, once the
+  // session is confirmed and has started. The learner's post-session work is a
+  // separate fact, shown by CoachingPostSessionChecklist and enforced by
+  // coaching_session_evidence() -- it gates the programme UNIT, not this.
+  // Peer sessions keep their own precondition (own competency feedback).
   const canMarkComplete = canMarkSessionComplete({
     isPeer,
-    coacheeNotes,
     peerFeedbackExisted: feedback.existed,
+    isConfirmed: session.status === "confirmed",
+    hasStarted: sessionStarted,
+    isCoachOrAdmin: isCoach || isAdmin,
   });
   const missingRequirementHint = isPeer
     ? t("detail.missingRequirementHintPeer")
@@ -528,6 +533,13 @@ export default function SessionDetail() {
               )}
             </div>
           </Card>
+
+          {/* Mandatory post-session learning gate. Shown for programme
+              Coaching once the Coach has marked the session held; it reads
+              every tick from the canonical backend, never from this page. */}
+          {!isPeer && !isCoacheePeer && session.enrollment_id && (
+            <CoachingPostSessionChecklist sessionId={session.id} />
+          )}
 
           {/* Per-goal rating snapshot (non-peer sessions only) */}
           {session.enrollment_id && (

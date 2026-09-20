@@ -248,10 +248,21 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
     async (onDone: () => void, reason?: string) => {
       if (!session) return;
       setSaving(true);
-       const { error } = await supabase.rpc("transition_session_status", {
-        p_session_id: session.id, p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
-        p_action: "cancel", p_reason: reason || null,
-      });
+      // Coaching cancels through the canonical path: it records the actor,
+      // time and reason, releases the availability slot and frees the
+      // requirement for rebooking. transition_session_status() refuses any
+      // cancellation inside 24 hours, which cannot make a session happen --
+      // it only leaves the record disagreeing with reality.
+      const isCoaching = !isPeer && !isCoacheePeer;
+      const { error } = isCoaching
+        ? await supabase.rpc("cancel_coaching_session", {
+            p_session_id: session.id,
+            p_reason: reason || null,
+          })
+        : await supabase.rpc("transition_session_status", {
+            p_session_id: session.id, p_kind: isCoacheePeer ? "coachee_peer" : "peer",
+            p_action: "cancel", p_reason: reason || null,
+          });
       setSaving(false);
       if (error) {
         const friendly = await extractFunctionError(error);
@@ -267,11 +278,17 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
   const completeSession = useCallback(async () => {
     if (!session) return;
     setSaving(true);
-    const { error } = await supabase.rpc("transition_session_status", {
-      p_session_id: session.id,
-      p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
-      p_action: "complete", p_reason: null,
-    });
+    // Coaching completion records that the conversation happened. It does NOT
+    // complete the programme unit -- that waits on the learner's four evidence
+    // gates, which coaching_session_evidence() owns.
+    const isCoaching = !isPeer && !isCoacheePeer;
+    const { error } = isCoaching
+      ? await supabase.rpc("complete_coaching_session", { p_session_id: session.id })
+      : await supabase.rpc("transition_session_status", {
+          p_session_id: session.id,
+          p_kind: isCoacheePeer ? "coachee_peer" : "peer",
+          p_action: "complete", p_reason: null,
+        });
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(t("detail.toast.markedComplete"));

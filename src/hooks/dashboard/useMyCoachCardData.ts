@@ -1,48 +1,66 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-interface MyCoach {
+export interface CoachingTeamMember {
   id: string;
   full_name: string;
   avatar_url: string | null;
   title: string | null;
 }
 
-async function fetchMyCoach(userId: string): Promise<MyCoach | null> {
-  // coachee_coach_allowlist has no FK declared to profiles (plain uuid
-  // columns — see 20260430100320_*.sql), so this can't be a single embedded
-  // select; resolve the coach id, then the profile, as two queries.
-  const { data: entry } = await supabase
-    .from("coachee_coach_allowlist")
-    .select("coach_id")
-    .eq("coachee_id", userId)
-    .is("removed_at", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!entry) return null;
+/**
+ * The learner's Coaching team: every Coach assigned to their cohort.
+ *
+ * This used to return the single most recent coachee_coach_allowlist row and
+ * call it "my coach". That was misleading even before the redesign -- the
+ * allowlist could hold several Coaches and picking the newest implied a
+ * permanent pairing the data never expressed.
+ *
+ * A cohort now has a Coach POOL, and a learner may book a different Coach for
+ * each Coaching requirement, so there is no single programme Coach to show. If
+ * a primary-Coach relationship is wanted later it must be modelled explicitly,
+ * never inferred from session history or allowlist ordering.
+ */
+async function fetchCoachingTeam(enrollmentId: string): Promise<CoachingTeamMember[]> {
+  const { data: pool, error } = await supabase.rpc("enrollment_coaching_coach_pool", {
+    p_enrollment_id: enrollmentId,
+  });
+  if (error) throw error;
 
-  const [{ data: profile }, { data: coachProfile }] = await Promise.all([
-    supabase.from("profiles").select("full_name, avatar_url").eq("id", entry.coach_id).maybeSingle(),
-    supabase.from("coach_profiles").select("title").eq("id", entry.coach_id).maybeSingle(),
+  const ids = (pool ?? []).map((r) => r.coach_id!).filter(Boolean);
+  if (ids.length === 0) return [];
+
+  // Neither profiles nor coach_profiles is embeddable from an RPC result, so
+  // resolve the display fields in two follow-up reads.
+  const [{ data: profiles }, { data: coachProfiles }] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, avatar_url").in("id", ids),
+    supabase.from("coach_profiles").select("id, title").in("id", ids),
   ]);
-  if (!profile) return null;
 
-  return {
-    id: entry.coach_id,
-    full_name: profile.full_name,
-    avatar_url: profile.avatar_url,
-    title: coachProfile?.title ?? null,
-  };
+  return ids.map((id) => {
+    const p = profiles?.find((x) => x.id === id);
+    return {
+      id,
+      full_name: p?.full_name ?? "Coach",
+      avatar_url: p?.avatar_url ?? null,
+      title: coachProfiles?.find((x) => x.id === id)?.title ?? null,
+    };
+  });
 }
 
-/** Backs MyCoachCard — the coachee's single allowlisted coach, if any. */
-export function useMyCoachCardData(userId: string | undefined, enabled: boolean) {
+/**
+ * Backs MyCoachCard. Returns the whole cohort Coach pool.
+ *
+ * `data` stays the first team member so existing single-Coach callers keep
+ * working, but `team` is the honest shape and new UI should use it.
+ */
+export function useMyCoachCardData(enrollmentId: string | undefined, enabled: boolean) {
   const { data, isLoading } = useQuery({
-    queryKey: ["my-coach-card", userId],
-    queryFn: () => fetchMyCoach(userId as string),
-    enabled: !!userId && enabled,
+    queryKey: ["my-coach-card", enrollmentId],
+    queryFn: () => fetchCoachingTeam(enrollmentId as string),
+    enabled: !!enrollmentId && enabled,
     staleTime: 30_000,
   });
-  return { data: data ?? null, loading: isLoading };
+  const team = data ?? [];
+  return { data: team[0] ?? null, team, loading: isLoading };
 }

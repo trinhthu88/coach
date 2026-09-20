@@ -242,7 +242,8 @@ WITH repo(version, name) AS (VALUES
   ('20260920120000', 'session_learning_reflections'),
   ('20260920130000', 'canonical_coaching_completion'),
   ('20260920140000', 'coaching_booking_lifecycle'),
-  ('20260920150000', 'coaching_eligibility_cohort_authority')
+  ('20260920150000', 'coaching_eligibility_cohort_authority'),
+  ('20260920160000', 'coaching_booking_slot_window')
 -- END REPO MANIFEST
 ),
 

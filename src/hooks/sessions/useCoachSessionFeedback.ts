@@ -2,19 +2,13 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type EngagementLevel = "high" | "moderate" | "low" | "disengaged";
-
 export interface CoachSessionFeedbackState {
-  quality_rating: number | null;
-  engagement_level: EngagementLevel | null;
   flag_for_admin: boolean;
   flag_notes: string;
   existed: boolean;
 }
 
 const EMPTY: CoachSessionFeedbackState = {
-  quality_rating: null,
-  engagement_level: null,
   flag_for_admin: false,
   flag_notes: "",
   existed: false,
@@ -23,14 +17,12 @@ const EMPTY: CoachSessionFeedbackState = {
 async function fetchFeedback(sessionId: string, coachId: string): Promise<CoachSessionFeedbackState> {
   const { data } = await supabase
     .from("coach_session_feedback")
-    .select("quality_rating, engagement_level, flag_for_admin, flag_notes")
+    .select("flag_for_admin, flag_notes")
     .eq("session_id", sessionId)
     .eq("coach_id", coachId)
     .maybeSingle();
   if (!data) return EMPTY;
   return {
-    quality_rating: data.quality_rating,
-    engagement_level: data.engagement_level as EngagementLevel | null,
     flag_for_admin: data.flag_for_admin,
     flag_notes: data.flag_notes ?? "",
     existed: true,
@@ -38,9 +30,17 @@ async function fetchFeedback(sessionId: string, coachId: string): Promise<CoachS
 }
 
 /**
- * Optional coach-only feedback on a regular coaching session (quality
- * rating, engagement level, admin flag) — see coach_session_feedback and
- * CoachSessionFeedback.tsx (the form this backs).
+ * Optional Coach-only escalation on a Coaching session: flag for Admin, with a
+ * note. Nothing here affects programme progress.
+ *
+ * quality_rating and engagement_level were retired by the 2026 Coaching
+ * redesign -- the Coach no longer grades the learner, and neither value was
+ * ever a legitimate input to completion. The columns are dropped by
+ * supabase/deployment-2/20260920190000_coaching_retire_legacy.sql; this hook
+ * already stops reading and writing them, so the drop finds no live caller.
+ *
+ * The Coach's ordinary session note belongs in coach_session_private_notes,
+ * which stays the single Coach note system.
  */
 export function useCoachSessionFeedback(sessionId: string | undefined, coachId: string | undefined, enabled: boolean) {
   const queryClient = useQueryClient();
@@ -61,8 +61,6 @@ export function useCoachSessionFeedback(sessionId: string | undefined, coachId: 
       {
         session_id: sessionId,
         coach_id: coachId,
-        quality_rating: state.quality_rating,
-        engagement_level: state.engagement_level,
         flag_for_admin: state.flag_for_admin,
         flag_notes: state.flag_notes.trim() || null,
       },

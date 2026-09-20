@@ -520,8 +520,8 @@
       "openJourney": "Open my development"
     },
     "myCoach": {
-      "title": "My coach",
-      "none": "No coach assigned yet — check back soon.",
+      "title": "Your Coaching team",
+      "none": "No Coach has been assigned to your cohort yet.",
       "viewProfile": "View profile"
     },
     "mentoringGive": {
