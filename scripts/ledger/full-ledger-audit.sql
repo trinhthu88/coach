@@ -265,7 +265,8 @@ WITH repo(version, name) AS (VALUES
   ('20260922100000', 'cohort_module_deadlines'),
   ('20260922110000', 'peer_cohort_eligibility'),
   ('20260922120000', 'peer_booking_and_lifecycle'),
-  ('20260922130000', 'peer_surface_convergence')
+  ('20260922130000', 'peer_surface_convergence'),
+  ('20260923100000', 'programme_quantity_invariant')
 -- END REPO MANIFEST
 ),
 

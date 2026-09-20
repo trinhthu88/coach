@@ -174,4 +174,22 @@ describe("CohortMentoringPanel", () => {
       expect(screen.getByText(/No Coaches are available to assign as Mentors/i)).toBeInTheDocument(),
     );
   });
+
+  it("shows a load error instead of misreporting a failed query as zero Coaches", async () => {
+    from.mockImplementation((table: string) => {
+      if (table === "cohort_mentors") {
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ data: null, error: { message: "relation does not exist" } }),
+          }),
+          upsert,
+        };
+      }
+      return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) };
+    });
+    renderPanel();
+    expect(await screen.findByTestId("cohort-mentoring-error")).toBeInTheDocument();
+    expect(screen.queryByTestId("cohort-mentoring-warning")).not.toBeInTheDocument();
+    expect(screen.queryByText(/No Coaches are available to assign as Mentors/i)).not.toBeInTheDocument();
+  });
 });

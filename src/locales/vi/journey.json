@@ -35,7 +35,10 @@
     "goalProgress": "Tiến độ mục tiêu",
     "assignedCoaches": "Coach được phân công",
     "sponsorDisclaimer": "Nếu tổ chức của bạn tài trợ chương trình này, họ có thể xem sự tham gia, tiến độ và trạng thái hoàn thành của bạn — không bao giờ xem ghi chú buổi session, tin nhắn trò chuyện hoặc suy ngẫm cá nhân của bạn.",
-    "postSessionPending": "{{n}} đang chờ hoàn thành sau buổi"
+    "postSessionPending": "{{n}} đang chờ hoàn thành sau buổi",
+    "coachingNotRequired": "Không thuộc yêu cầu của chương trình này",
+    "progressUnavailable": "Chưa tải được tiến độ",
+    "progressUnavailableHint": "Không tải được tiến độ chuẩn. Hãy tải lại trang, hoặc liên hệ admin nếu vẫn lỗi."
   },
   "programmeTimeline": {
     "heading": "Dòng thời gian chương trình",

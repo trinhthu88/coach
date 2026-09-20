@@ -26,7 +26,7 @@ import {
  */
 export function CohortPeerPanel({ cohortId }: { cohortId: string | undefined }) {
   const { t } = useTranslation("admin");
-  const { data: candidates, isLoading } = useAdminPeerCohortPermissions(cohortId);
+  const { data: candidates, isLoading, isError } = useAdminPeerCohortPermissions(cohortId);
   const setPermission = useSetPeerCohortPermission(cohortId);
   const [bothWays, setBothWays] = useState(false);
 
@@ -62,7 +62,11 @@ export function CohortPeerPanel({ cohortId }: { cohortId: string | undefined }) 
         {t("cohorts.peer.sameCohort")}
       </p>
 
-      {isLoading ? (
+      {isError ? (
+        <p role="alert" data-testid="cohort-peer-error" className="text-sm text-destructive">
+          {t("cohorts.peer.loadError")}
+        </p>
+      ) : isLoading ? (
         <div className="flex justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
         </div>

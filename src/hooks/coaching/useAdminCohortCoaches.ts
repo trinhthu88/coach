@@ -51,10 +51,12 @@ export function useAdminCohortCoaches(cohortId: string | undefined) {
       const ids = Array.from(new Set([...roleIds, ...assignedById.keys()]));
       if (ids.length === 0) return [];
 
-      const [{ data: profiles }, { data: coachProfiles }] = await Promise.all([
+      const [{ data: profiles, error: pErr }, { data: coachProfiles, error: cpErr }] = await Promise.all([
         supabase.from("profiles").select("id, full_name, status").in("id", ids),
         supabase.from("coach_profiles").select("id, title").in("id", ids),
       ]);
+      if (pErr) throw pErr;
+      if (cpErr) throw cpErr;
 
       const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
       const activeCoachIds = new Set(
