@@ -21,8 +21,10 @@ values ('a3000000-0000-0000-0000-000000000003', 'coach');
 
 insert into public.coach_profiles (id, approval_status, peer_coaching_opt_in)
 values ('a3000000-0000-0000-0000-000000000003', 'active', true);
+-- Willing AND usable: Peer eligibility requires a usable account
+-- (RULES.md §1), and the signup trigger leaves profiles at pending_approval.
 update public.profiles
-set peer_coaching_opt_in = true
+set peer_coaching_opt_in = true, status = 'active'::public.user_status
 where id = 'a2000000-0000-0000-0000-000000000002';
 
 insert into public.programmes (id, name, duration_months)

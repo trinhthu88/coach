@@ -28,8 +28,10 @@ select ('f1000000-0000-0000-0000-00000000000' || n)::uuid, 'coachee'
 from generate_series(1, 4) n on conflict do nothing;
 
 -- Peer practice is an opt-in pool; every fixture learner opts in so the
--- existing booking gate admits them.
-update public.profiles set peer_coaching_opt_in = true
+-- existing booking gate admits them. They are also activated: phase 2 requires
+-- a USABLE account (RULES.md §1) to be an eligible partner, and the signup
+-- trigger leaves new profiles at pending_approval.
+update public.profiles set peer_coaching_opt_in = true, status = 'active'::public.user_status
  where id in ('f1000000-0000-0000-0000-000000000001'::uuid,
               'f1000000-0000-0000-0000-000000000002'::uuid,
               'f1000000-0000-0000-0000-000000000003'::uuid,
@@ -72,6 +74,13 @@ insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, 
   ('f1000000-0000-0000-0000-0000000000e3'::uuid, 'f1000000-0000-0000-0000-00000000a0a0'::uuid,
    'f1000000-0000-0000-0000-000000000003'::uuid, 'f1000000-0000-0000-0000-00000000b0b0'::uuid,
    'active', current_date - 200, current_date + 200);
+
+-- Phase 2 made WHO a cohort decision, and phase 3 enforces it on every write
+-- path. The cross-cohort session below is therefore only legal because cohort
+-- A is explicitly allowed to peer with cohort B. The grant is DIRECTIONAL:
+-- nothing here lets cohort B go looking in cohort A.
+insert into public.peer_cohort_permissions (source_cohort_id, allowed_peer_cohort_id)
+values ('f1000000-0000-0000-0000-00000000b0b0'::uuid, 'f1000000-0000-0000-0000-00000000b1b1'::uuid);
 
 select set_config('request.jwt.claims',
   json_build_object('sub', 'f1000000-0000-0000-0000-000000000001')::text, true);

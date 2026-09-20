@@ -46,7 +46,10 @@ select ('e7000000-0000-0000-0000-00000000000' || n)::uuid, ('a7000000-0000-0000-
   'b7000000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05', 'active'
 from generate_series(1, 3) n;
 
-update public.profiles set peer_coaching_opt_in = true
+-- Willing AND usable: Peer eligibility requires a usable account
+-- (RULES.md §1), and the signup trigger leaves profiles at pending_approval.
+-- All three share one cohort, so they need no cross-cohort grant.
+update public.profiles set peer_coaching_opt_in = true, status = 'active'::public.user_status
 where id in ('a7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000003');
 
 insert into public.mentor_profiles (coach_user_id, is_active, bio)
