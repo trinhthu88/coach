@@ -1,0 +1,788 @@
+We are starting a SEPARATE remediation workstream:
+
+DEPLOYMENT 2 — TRIAD LEGACY RETIREMENT HARDENING
+
+This phase may MODIFY THE DEPLOYMENT 2 CANDIDATE AND ITS AUDIT/VERIFICATION TOOLING.
+
+It still MUST NOT execute Deployment 2.
+
+============================================================
+NON-NEGOTIABLE SAFETY RULES
+============================================================
+
+DO NOT:
+
+- apply Deployment 2 to production
+- apply Deployment 2 to hosted Supabase
+- move Deployment 2 into supabase/migrations
+- deploy frontend
+- deploy Edge Functions
+- modify production data
+- modify production schema
+- modify production migration ledger
+- run scripts/ledger/20260918120000_canonical_enrollment_engagement.sql
+- drop any production table/column/function
+- change the canonical Triad architecture
+- preserve legacy architecture just for demo fixtures
+
+The candidate must remain at:
+
+supabase/deployment-2/20260919190000_triad_retire_legacy.sql
+
+It must NOT appear under:
+
+supabase/migrations/
+
+until a later explicit approval.
+
+============================================================
+CURRENT VERIFIED BASELINE
+============================================================
+
+Canonical repository:
+https://github.com/trinhthu88/coach
+
+main currently contains the Triad requirement-specific grouping architecture.
+
+Production correction already live:
+
+20260919120000_triad_requirement_groups
+
+Production runtime/data audit found:
+
+- Deployment 1 applied
+- 20260919120000 applied
+- Deployment 2 NOT applied
+- no active database function/view/policy/runtime code reads retired Triad fields
+- canonical progress equals module progress for all production enrollments checked
+- requirement-specific grouping is internally consistent
+- normalized session responses are complete
+- normalized reflections are complete
+- no unresolved REAL/UNKNOWN delete decision remains
+
+The problem is NOT the current production architecture.
+
+The problem is the EXECUTION QUALITY of Deployment 2.
+
+============================================================
+AUDIT FINDINGS THAT MUST BE REMEDIATED
+============================================================
+
+The previous audit concluded NO-GO because:
+
+1. Archive verification is incomplete.
+2. ON CONFLICT DO NOTHING can silently preserve stale/incomplete archive data.
+3. No explicit transaction boundary exists.
+4. Final dependency guards are incomplete.
+5. Retired-column guard patterns contain incorrect legacy names.
+6. Post-drop verification is insufficient.
+7. Post-Deployment-2 verification tooling still assumes legacy objects exist.
+8. Migration inventory/static readiness currently has unrelated drift due to:
+   - 20260920230000_mentoring_retire_user_global_paths
+   - 20260920240000_session_reschedule_reattribution
+
+These two unrelated files must NOT be altered or reverted as part of this Triad hardening work.
+
+============================================================
+PHASE 0 — WORKTREE / BRANCH SAFETY
+============================================================
+
+Before editing anything:
+
+1. Report:
+   - current branch
+   - current HEAD SHA
+   - git status
+   - staged files
+   - unstaged files
+   - untracked files
+
+2. Preserve all unrelated existing work.
+
+In particular, DO NOT modify, reset, delete, stash, overwrite, or stage unrelated existing changes such as:
+
+- src/pages/coachee/MyMentorSection.tsx
+- src/pages/coachee/__tests__/MyMentorSection.test.tsx
+- supabase/tests/mentoring_canonical_contract_test.sql
+- supabase/migrations/20260920230000_mentoring_retire_user_global_paths.sql
+- supabase/migrations/20260920240000_session_reschedule_reattribution.sql
+
+If safe isolation is impossible without disturbing unrelated work:
+
+STOP and report the blocker.
+
+Prefer a dedicated branch/worktree for:
+
+hardening/triad-deployment-2
+
+but do not destroy or hide unrelated work to create it.
+
+============================================================
+PHASE 1 — HARDEN ARCHIVE INSERTS
+============================================================
+
+Modify:
+
+supabase/deployment-2/20260919190000_triad_retire_legacy.sql
+
+The archive step must become strong enough that destructive retirement can never proceed with incomplete or stale archive evidence.
+
+For every retired object type:
+
+- triad_groups
+- triad_sessions
+- triad_alternative_proposals
+- triad_reflections
+- triad_rounds
+- programme_triad_rounds
+
+the migration must verify BEFORE DROP:
+
+A. SOURCE COVERAGE
+
+- every source row that contains retirement data has an archive row
+- archive row count matches expected source row count
+- archive object_name is correct
+- archive record_id is correct
+- archive migration_id is correct
+
+B. FIELD COVERAGE
+
+For triad_groups verify all retired fields:
+
+- member_1_id
+- member_2_id
+- member_3_id
+- enrollment_1_id
+- enrollment_2_id
+- enrollment_3_id
+- programme_id
+- round_number
+- triad_round_id
+- name
+
+For triad_sessions verify all retired fields being removed, including:
+
+- coach_enrollment_id
+- coachee_enrollment_id
+- observer_enrollment_id
+- member_1_response
+- member_2_response
+- member_3_response
+- proposed_start_time
+- proposed_end_time
+- start_time
+- proposed_by
+
+plus any other legacy field actually dropped by the candidate.
+
+For triad_alternative_proposals verify all retired fields being removed:
+
+- proposed_by
+- member_1_response
+- member_2_response
+- member_3_response
+
+and any other legacy candidate field.
+
+For triad_reflections verify:
+
+- participant_id
+- learned_as_coach
+- will_use_as_coach
+- learned_as_coachee
+- will_use_as_coachee
+- learned_as_observer
+- will_use_as_observer
+
+For triad_rounds and programme_triad_rounds:
+
+- archive FULL ROW snapshots
+- verify full row count equality
+- verify IDs
+- verify full payload equivalence
+
+C. SEMANTIC EQUALITY
+
+Do not rely only on raw JSON text formatting.
+
+Compare values semantically / typed where necessary.
+
+Timestamp serialization differences must not create false mismatches.
+
+D. CONFLICT SAFETY
+
+Remove the unsafe behavior whereby:
+
+ON CONFLICT DO NOTHING
+
+could leave a stale/incomplete archive row.
+
+Use a safe strategy.
+
+Acceptable models include:
+
+- fail if an existing archive row differs
+- update only if exact deterministic replacement is explicitly safe
+- insert then compare and hard-fail on mismatch
+
+The essential contract is:
+
+A pre-existing stale archive row must NEVER allow destructive DROP to continue.
+
+============================================================
+PHASE 2 — MAKE EXECUTION ATOMIC
+============================================================
+
+Make the Deployment 2 candidate explicitly atomic.
+
+Preferred:
+
+BEGIN;
+
+... all guards
+... archive
+... archive verification
+... destructive changes
+... post-drop verification
+
+COMMIT;
+
+If repository conventions require another exact migration wrapper, explain why.
+
+The migration must be safe if executed as a standalone SQL file.
+
+If ANY assertion fails:
+
+the whole transaction must roll back.
+
+No partially archived / partially dropped schema is acceptable.
+
+Do not depend on undocumented runner behavior for atomicity.
+
+============================================================
+PHASE 3 — STRENGTHEN PRE-DROP DEPENDENCY GUARDS
+============================================================
+
+Before destructive DROP operations, verify NO active dependency remains in:
+
+- pg_proc / functions
+- SECURITY DEFINER functions
+- views
+- materialized views
+- RLS policies
+- triggers
+- trigger functions
+- generated expressions
+- default expressions
+- constraints
+- indexes
+- non-internal dependencies
+- RPC-visible functions
+- other schema objects that can reference the retired Triad fields
+
+Do not depend on frontend grep alone.
+
+Use PostgreSQL catalog inspection.
+
+The migration should hard-fail if any unexpected dependency exists.
+
+Do not use CASCADE to hide dependency problems.
+
+============================================================
+PHASE 4 — FIX THE RETIRED-COLUMN GUARDS
+============================================================
+
+Audit every retired column name in Deployment 2.
+
+The previous audit found incorrect guard names such as:
+
+proposed_start_time_legacy
+proposed_end_time_legacy
+
+where the actual retired columns differ.
+
+Correct the guard so it checks the ACTUAL columns being dropped.
+
+Build the guard set directly from the destructive ALTER/DROP statements so the two cannot silently diverge.
+
+After this phase, every dropped legacy field must be represented in:
+
+1. archive logic
+2. pre-drop verification
+3. DROP/ALTER
+4. post-drop verification
+
+============================================================
+PHASE 5 — POST-DROP VERIFICATION
+============================================================
+
+Inside the transaction, after the destructive changes but before COMMIT, assert:
+
+A. Legacy tables absent:
+
+- triad_rounds
+- programme_triad_rounds
+
+B. Legacy columns absent from remaining tables.
+
+C. Legacy helper(s) absent if intended to be retired:
+
+- triad_is_seed_identifier(uuid)
+- any other Deployment 2-only helper
+
+D. Legacy indexes absent.
+
+E. No active function/view/policy/trigger refers to retired names.
+
+F. Canonical structures still exist:
+
+- cohort_requirement_dates
+- triad_groups.cohort_requirement_date_id
+- triad_group_members
+- triad_sessions
+- normalized session response structures
+- normalized alternative proposal response structures
+- triad_reflections.enrollment_id
+- triad_reflection_questions
+- triad_reflection_answers
+- canonical progress functions/RPCs
+
+G. Canonical privilege/RLS state remains intact.
+
+Do not broaden permissions.
+
+============================================================
+PHASE 6 — CREATE/UPDATE POST-DEPLOYMENT VERIFICATION
+============================================================
+
+The current:
+
+scripts/triad-requirement-groups-verification.sql
+
+intentionally asserts Deployment 2 has NOT run.
+
+Do not destroy its current purpose if it is still useful for Deployment 1 validation.
+
+Instead, create a separate post-retirement verifier if clearer, for example:
+
+scripts/triad-deployment-2-verification.sql
+
+Requirements:
+
+- READ ONLY
+- safe after legacy tables/columns have been dropped
+- must NOT directly query missing legacy columns
+- must verify canonical architecture
+- must verify legacy absence via pg_catalog / information_schema / to_regclass
+- must verify canonical progress invariants
+- must verify privacy/RLS and expected privileges
+- must verify no runtime dependency references retired shapes
+
+It must test:
+
+CASE 1
+Triad requirement 1 completed + requirement 2 completed
+=> 2/2
+
+CASE 2
+Two sessions completed under requirement 1 only
+=> 1/2, NOT 2/2
+
+CASE 3
+No learner has >1 active group per requirement
+
+CASE 4
+A learner may have different groups across distinct requirements
+
+CASE 5
+Admin/Learner/Sponsor canonical projections remain equal
+
+CASE 6
+Session ownership remains:
+
+session
+→ group
+→ group_members
+→ enrollment
+
+CASE 7
+Normalized reflection ownership remains canonical.
+
+============================================================
+PHASE 7 — CREATE A DEPLOYMENT 2 READINESS SCRIPT
+============================================================
+
+If not already sufficient, create:
+
+scripts/triad-deployment-2-readiness.sql
+
+It MUST be READ ONLY.
+
+Prefer:
+
+BEGIN TRANSACTION READ ONLY;
+
+...
+
+ROLLBACK;
+
+It should determine whether it is safe to execute Deployment 2 BEFORE any destructive action.
+
+Checks should include:
+
+- Deployment 1 applied
+- 20260919120000 applied
+- Deployment 2 NOT applied
+- legacy tables/columns physically still exist
+- canonical replacements exist
+- all triad_groups have cohort_requirement_date_id
+- all active groups have valid normalized membership
+- no duplicate active assignment per enrollment/requirement
+- no group/requirement cohort/programme mismatch
+- normalized session responses complete
+- normalized proposal responses complete
+- normalized reflection ownership complete
+- normalized reflection answers complete
+- zero active runtime dependency on retired fields
+- archive target state safe
+- no stale/conflicting Deployment 2 archive rows
+- no unresolved REAL/UNKNOWN removal decision
+- canonical progress/projections match
+
+Use catalog-safe techniques.
+
+Do not write production data.
+
+============================================================
+PHASE 8 — ARCHIVE RECONSTRUCTION TEST
+============================================================
+
+Build a non-production test proving the archive can reconstruct retired information.
+
+For group/session/proposal/reflection rows:
+
+reconstruction may combine:
+
+canonical surviving row
++
+archived retired-field payload
+
+For round tables:
+
+archive must contain full standalone row snapshots.
+
+Test:
+
+- record IDs
+- field equality
+- null values
+- timestamps
+- UUIDs
+- text
+- response states
+- role fields
+- reflection answers
+
+The test must fail if a single expected legacy value is missing or stale.
+
+============================================================
+PHASE 9 — FAILURE / CONFLICT REHEARSAL
+============================================================
+
+Run Deployment 2 ONLY against an isolated/local/test database.
+
+Never against production.
+
+Rehearse:
+
+1. Happy path.
+
+2. Pre-existing correct archive row.
+
+3. Pre-existing stale archive row.
+   Expected:
+   HARD FAILURE before DROP.
+
+4. Missing archive row.
+   Expected:
+   HARD FAILURE before DROP.
+
+5. Injected failure after archive but before DROP.
+   Expected:
+   transaction rollback.
+
+6. Injected failure during destructive phase.
+   Expected:
+   full transaction rollback.
+
+7. Re-run after rollback.
+   Expected:
+   deterministic success.
+
+8. Run on already-retired schema if applicable.
+   Decide whether behavior should:
+   - cleanly report already applied
+   or
+   - hard-fail with explicit message.
+
+Document the intended contract.
+
+============================================================
+PHASE 10 — MIGRATION INVENTORY TEST DRIFT
+============================================================
+
+The previous audit found:
+
+src/test/migrationChain.test.ts
+
+had one failing inventory assertion because two unrelated migrations now exist:
+
+20260920230000_mentoring_retire_user_global_paths
+20260920240000_session_reschedule_reattribution
+
+Fix the migration inventory/readiness mechanism so it derives or validates the repository migration list correctly.
+
+Do NOT:
+
+- remove those migrations
+- rename them
+- modify their SQL
+- change mentoring/session behavior
+
+This is a tooling inventory fix only.
+
+After the fix:
+
+migrationChain.test.ts
+must pass cleanly.
+
+============================================================
+PHASE 11 — GENERATED TYPES
+============================================================
+
+Do NOT regenerate:
+
+src/integrations/supabase/types.ts
+
+against a post-Deployment-2 schema yet because Deployment 2 is not live.
+
+Instead:
+
+- document that types must be regenerated AFTER the real database retirement
+- make sure no current runtime code relies on the legacy type fields
+- if needed, add a static test proving retired fields are not referenced by runtime TypeScript
+
+Do not fake post-retirement generated types ahead of the database.
+
+============================================================
+PHASE 12 — PRIVACY / RLS
+============================================================
+
+Verify the hardened migration:
+
+- does not widen profiles RLS
+- does not widen Triad membership visibility
+- does not expose triad_cutover_archive
+- does not change Sponsor privacy boundaries
+- does not expose reflections
+- does not expose goals
+- does not change underlying facts based on role
+
+Archive should remain inaccessible to anon/authenticated unless explicitly intended.
+
+============================================================
+PHASE 13 — TESTS
+============================================================
+
+Run at minimum:
+
+- Deployment 2 archive safety tests
+- Deployment 2 readiness tests
+- Deployment 2 verification tests
+- Triad canonical contract tests
+- migrationChain.test.ts
+- programmeProfileArchitecture.test.ts
+- relevant Admin Triad tests
+- relevant Learner Triad tests
+- relevant Sponsor progress tests
+- My Journey / Your Sessions relevant tests
+- npm test
+- npx tsc --noEmit
+- npm run build
+- npm run lint
+- git diff --check
+
+Run DB replay / pgTAP if local environment permits.
+
+If local Supabase is blocked by environment health, report that honestly and use available CI/test evidence.
+
+Do not claim DB replay passed if it did not run.
+
+============================================================
+PHASE 14 — SOURCE-OF-TRUTH CONTRACT
+============================================================
+
+Do not change this architecture:
+
+Programme/Admin
+→ WHAT is required
+
+Cohort
+→ WHEN each requirement is due
+
+Enrollment
+→ WHO/context/applicability
+
+Requirement-specific Triad group
+→ WHO practices together for that requirement
+
+Session
+→ activity evidence
+
+Reflection
+→ learner-authored reflection evidence
+
+Goal check-in
+→ goal rating/reflection
+
+canonical_module_progress
+→ progress source
+
+Admin/Learner/Sponsor/My Journey/Your Sessions
+→ projections only
+
+No second progress engine.
+
+No permanent Coach/Coachee/Observer Triad ownership.
+
+No cohort-wide Triad group replacing requirement-specific groups.
+
+============================================================
+ACCEPTANCE CRITERIA
+============================================================
+
+The hardening work is complete only when:
+
+1. Deployment 2 remains outside supabase/migrations.
+
+2. The candidate is explicitly transactional.
+
+3. Every retired field/table is fully archived.
+
+4. Archive/source equality is verified before DROP.
+
+5. A conflicting archive row hard-fails.
+
+6. There is no ON CONFLICT DO NOTHING path that can hide stale archive data.
+
+7. Every destructive operation has matching pre- and post-verification.
+
+8. Functions/views/policies/triggers/indexes/non-internal dependencies are checked.
+
+9. The incorrect retired-column guard patterns are fixed.
+
+10. Post-Deployment-2 verification does not query dropped legacy objects.
+
+11. Local isolated rollback/conflict rehearsals pass.
+
+12. migrationChain.test.ts is clean.
+
+13. Triad canonical progress invariants remain green.
+
+14. Full frontend/TS/build checks pass.
+
+15. No unrelated mentoring/session work is altered.
+
+16. Production remains untouched.
+
+============================================================
+FINAL REPORT
+============================================================
+
+Return:
+
+## 1. Executive result
+
+One of:
+
+DEPLOYMENT 2 HARDENING COMPLETE — READY FOR RE-AUDIT
+
+or
+
+DEPLOYMENT 2 HARDENING INCOMPLETE
+
+Do NOT say ready for production deployment yet.
+
+## 2. Files changed
+
+Exact files.
+
+## 3. Deployment 2 changes
+
+For each safety issue:
+- previous weakness
+- remediation
+- validation evidence
+
+## 4. Archive contract
+
+Show coverage for:
+- groups
+- sessions
+- proposals
+- reflections
+- triad_rounds
+- programme_triad_rounds
+
+## 5. Transaction / rollback proof
+
+State exactly how rollback was tested.
+
+## 6. Dependency guard proof
+
+Functions
+Views
+Policies
+Triggers
+Indexes
+Dependencies
+
+## 7. Progress/source-of-truth proof
+
+Include 2/2 and repeated-session 1/2 cases.
+
+## 8. Test results
+
+Exact pass/fail counts.
+
+## 9. Remaining blockers
+
+If any.
+
+## 10. Git status
+
+Branch
+HEAD
+working tree
+unrelated changes preserved
+
+============================================================
+HARD STOP
+============================================================
+
+After hardening and tests:
+
+STOP.
+
+Do NOT:
+
+- move Deployment 2 into supabase/migrations
+- apply Deployment 2
+- modify production
+- deploy frontend
+- deploy Edge Functions
+- regenerate production schema types
+- run the engagement ledger script
+
+Wait for a separate re-audit and explicit approval.
