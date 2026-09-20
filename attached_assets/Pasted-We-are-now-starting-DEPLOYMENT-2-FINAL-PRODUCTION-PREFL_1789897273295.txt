@@ -1,0 +1,384 @@
+We are now starting:
+
+DEPLOYMENT 2 — FINAL PRODUCTION PREFLIGHT
+
+This is READ-ONLY ONLY.
+
+Do NOT execute Deployment 2.
+Do NOT modify production.
+Do NOT move Deployment 2 into supabase/migrations.
+Do NOT deploy frontend or Edge Functions.
+Do NOT run scripts/ledger/20260918120000_canonical_enrollment_engagement.sql.
+
+============================================================
+AUTHORITATIVE TARGET
+============================================================
+
+The ONLY valid Clariva production target is:
+
+Project:
+Clariva
+
+Project ref:
+ygufjhhpguauwwmfvczy
+
+Database host:
+db.ygufjhhpguauwwmfvczy.supabase.co
+
+Database:
+postgres
+
+Region:
+ap-southeast-2
+
+The published frontend:
+https://clariva.club
+
+also points to:
+ygufjhhpguauwwmfvczy
+
+Any different target = HARD ABORT.
+
+============================================================
+KNOWN CURRENT PRODUCTION BASELINE
+============================================================
+
+Treat Deployment 2 as NOT applied.
+
+Fresh production evidence:
+
+- triad_rounds exists
+- programme_triad_rounds exists
+- 31 retired Triad columns exist
+- Deployment 2 archive rows = 0
+- earlier round archive rows = 4
+- prerequisite migration rows = 7/7
+- 20260919120000 is applied
+- canonical structures = 9/9 present
+- unresolved REAL/UNKNOWN decisions = 0
+- canonical progress mismatches = 0
+- triad_cutover_archive RLS enabled
+- anon SELECT = false
+- authenticated SELECT = false
+
+============================================================
+OBJECTIVE
+============================================================
+
+Determine whether the hardened Deployment 2 candidate is READY for one
+fresh controlled production execution against the authoritative Clariva
+production target.
+
+The candidate is:
+
+supabase/deployment-2/20260919190000_triad_retire_legacy.sql
+
+Do NOT execute it.
+
+============================================================
+PHASE 1 — CONFIRM HARDENED CANDIDATE
+============================================================
+
+Inspect the current Deployment 2 candidate and verify that all previously
+identified blockers have actually been fixed.
+
+Verify:
+
+1. Explicit transaction boundary exists.
+
+2. ON_ERROR_STOP or equivalent fail-fast execution will be used by the
+future execution procedure.
+
+3. No unsafe:
+   ON CONFLICT DO NOTHING
+   path can silently preserve stale/incomplete archive content.
+
+4. Archive validation covers EVERY retired object:
+
+- triad_groups
+- triad_sessions
+- triad_alternative_proposals
+- triad_reflections
+- triad_rounds
+- programme_triad_rounds
+
+5. Archive validation covers EVERY retired field actually dropped.
+
+6. Full source/archive row-count equality is checked.
+
+7. object_name is checked.
+
+8. record_id is checked.
+
+9. migration_id is checked.
+
+10. Semantic/typed payload equality is checked where timestamps/UUIDs may
+serialize differently.
+
+11. Conflicting pre-existing archive rows cause HARD FAILURE.
+
+12. Missing archive rows cause HARD FAILURE.
+
+13. Every destructive DROP/ALTER has corresponding:
+- pre-drop guard
+- archive protection
+- post-drop verification
+
+14. No CASCADE is used to hide unexpected dependencies.
+
+============================================================
+PHASE 2 — TARGET FINGERPRINT GUARD
+============================================================
+
+Design and test the exact target gate that MUST run immediately before
+future execution.
+
+Verify non-secret evidence that execution target is:
+
+project ref:
+ygufjhhpguauwwmfvczy
+
+database:
+postgres
+
+and corresponds to the active Clariva production database.
+
+Do not print credentials or full connection strings.
+
+The future execution must refuse to continue if target identity differs.
+
+============================================================
+PHASE 3 — PRODUCTION READINESS SCRIPT
+============================================================
+
+Run the hardened read-only readiness script against active production.
+
+Expected script:
+
+scripts/triad-deployment-2-readiness.sql
+
+It must verify at minimum:
+
+A. MIGRATION PREREQUISITES
+
+- all required Deployment 1 migrations present
+- 20260919120000 present
+- Deployment 2 not previously completed
+
+B. LEGACY SOURCE EXISTS
+
+- triad_rounds exists
+- programme_triad_rounds exists
+- all 31 retired columns expected by Deployment 2 still exist
+
+C. CANONICAL REPLACEMENTS
+
+- cohort_requirement_dates exists
+- triad_groups.cohort_requirement_date_id exists and is valid
+- triad_group_members exists
+- triad_sessions canonical fields exist
+- normalized session response structures exist
+- normalized proposal response structures exist
+- triad_reflections.enrollment_id exists
+- triad_reflection_questions exists
+- triad_reflection_answers exists
+- canonical progress functions exist
+
+D. GROUP INTEGRITY
+
+- no group missing requirement
+- no cohort/programme mismatch
+- no enrollment in >1 active group for same requirement
+- active groups contain valid normalized membership
+
+E. SESSION / RESPONSE INTEGRITY
+
+- all session ownership resolves:
+  session
+  → group
+  → group_members
+  → enrollment
+
+- normalized session responses complete
+
+F. ALTERNATIVE PROPOSALS
+
+- normalized proposal responses complete
+
+G. REFLECTIONS
+
+- canonical enrollment ownership complete
+- normalized reflection answers complete
+
+H. PROGRESS
+
+Prove:
+- requirement-specific completion
+- repeated sessions under one requirement count maximum 1 unit
+- canonical progress has zero mismatch
+
+I. HISTORICAL CLEANUP
+
+- unresolved REAL/UNKNOWN decisions = 0
+
+J. ARCHIVE SAFETY
+
+- no conflicting Deployment 2 archive rows
+- archive table security intact
+- archive target ready
+
+K. RUNTIME DEPENDENCIES
+
+ZERO active references in:
+
+- functions
+- SECURITY DEFINER functions
+- views
+- materialized views
+- policies
+- triggers
+- trigger functions
+- generated/default expressions
+- constraints
+- unexpected indexes
+- runtime RPCs
+
+============================================================
+PHASE 4 — REHEARSAL EVIDENCE
+============================================================
+
+Confirm the hardened Deployment 2 candidate has passed isolated rehearsal.
+
+Report exact evidence for:
+
+1. happy path
+2. correct pre-existing archive row
+3. stale archive conflict
+4. missing archive row
+5. failure after archive
+6. failure during destructive phase
+7. full transaction rollback
+8. deterministic retry after rollback
+
+If any of these have NOT been tested:
+
+status = BLOCKED.
+
+Do not infer.
+
+============================================================
+PHASE 5 — POST-DEPLOYMENT VERIFIER
+============================================================
+
+Confirm:
+
+scripts/triad-deployment-2-verification.sql
+
+is ready and safe to run after the legacy schema is gone.
+
+It must NOT query dropped legacy tables/columns directly.
+
+It should verify legacy absence through catalogs.
+
+It must verify:
+
+- legacy round tables absent
+- 31 retired columns absent
+- retired helper absent
+- retired indexes absent
+- canonical structures present
+- archive rows complete
+- archive payload reconstructable
+- canonical progress intact
+- no duplicate active grouping
+- requirement-specific completion intact
+- role projections remain canonical
+- privacy/RLS intact
+- no runtime dependency references retired names
+
+============================================================
+PHASE 6 — TYPES / APPLICATION FOLLOW-UP PLAN
+============================================================
+
+Confirm the post-execution sequence will be:
+
+1. run Deployment 2
+2. run Deployment 2 verification
+3. regenerate Supabase generated types
+4. verify no runtime TypeScript depends on removed fields
+5. run:
+   npm test
+   npx tsc --noEmit
+   npm run build
+   npm run lint
+   git diff --check
+6. run DB validation
+7. smoke test:
+   Admin
+   Learner
+   Sponsor
+   My Journey
+   Your Sessions
+8. only then close Deployment 2
+
+Do NOT perform these now.
+
+============================================================
+PHASE 7 — EXECUTION COMMAND PLAN
+============================================================
+
+Prepare, but DO NOT RUN, the exact future production execution command.
+
+It must:
+
+- use the verified production target
+- not expose credentials
+- enable ON_ERROR_STOP
+- execute the hardened Deployment 2 SQL
+- rely on the script's explicit transaction
+- stop immediately on error
+
+Also prepare the exact immediate post-execution verification commands.
+
+Do not execute them.
+
+============================================================
+FINAL DECISION
+============================================================
+
+Return exactly one:
+
+DEPLOYMENT 2 PREFLIGHT PASS — READY FOR EXPLICIT EXECUTION APPROVAL
+
+or
+
+DEPLOYMENT 2 PREFLIGHT BLOCKED
+
+If blocked, list only the true blockers.
+
+============================================================
+FINAL REPORT
+============================================================
+
+Include:
+
+1. Target fingerprint result
+2. Candidate hardening verification
+3. Production readiness results
+4. Archive readiness
+5. Runtime dependency results
+6. Rehearsal results
+7. Post-deployment verifier readiness
+8. Exact proposed execution command
+9. Exact proposed verification sequence
+10. GO/NO-GO result
+
+============================================================
+HARD STOP
+============================================================
+
+STOP after the report.
+
+DO NOT EXECUTE DEPLOYMENT 2.
+
+Wait for explicit approval.
