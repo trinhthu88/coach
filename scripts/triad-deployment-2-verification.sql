@@ -90,6 +90,70 @@ BEGIN
   END IF;
 END $$;
 
+-- No index owned by a retired table or retired column may survive. This is
+-- checked independently of the candidate's in-transaction snapshot.
+DO $$
+DECLARE offenders text;
+BEGIN
+  WITH retired(table_name, column_name) AS (VALUES
+    ('triad_groups','member_1_id'), ('triad_groups','member_2_id'),
+    ('triad_groups','member_3_id'), ('triad_groups','enrollment_1_id'),
+    ('triad_groups','enrollment_2_id'), ('triad_groups','enrollment_3_id'),
+    ('triad_groups','programme_id'), ('triad_groups','round_number'),
+    ('triad_groups','triad_round_id'), ('triad_groups','name'),
+    ('triad_sessions','coach_enrollment_id'),
+    ('triad_sessions','coachee_enrollment_id'),
+    ('triad_sessions','observer_enrollment_id'),
+    ('triad_sessions','member_1_response'),
+    ('triad_sessions','member_2_response'),
+    ('triad_sessions','member_3_response'),
+    ('triad_sessions','proposed_start_time'),
+    ('triad_sessions','proposed_end_time'),
+    ('triad_sessions','start_time'), ('triad_sessions','proposed_by'),
+    ('triad_alternative_proposals','proposed_by'),
+    ('triad_alternative_proposals','member_1_response'),
+    ('triad_alternative_proposals','member_2_response'),
+    ('triad_alternative_proposals','member_3_response'),
+    ('triad_reflections','participant_id'),
+    ('triad_reflections','learned_as_coach'),
+    ('triad_reflections','will_use_as_coach'),
+    ('triad_reflections','learned_as_coachee'),
+    ('triad_reflections','will_use_as_coachee'),
+    ('triad_reflections','learned_as_observer'),
+    ('triad_reflections','will_use_as_observer')
+  )
+  SELECT string_agg(format('%I.%I', ns.nspname, c.relname), ', ')
+  INTO offenders
+  FROM pg_class c
+  JOIN pg_namespace ns ON ns.oid = c.relnamespace
+  JOIN pg_index ix ON ix.indexrelid = c.oid
+  WHERE c.relkind IN ('i', 'I')
+    AND EXISTS (
+      SELECT 1
+      FROM pg_depend d
+      JOIN pg_class ref ON ref.oid = d.refobjid
+      JOIN pg_namespace refns ON refns.oid = ref.relnamespace
+      LEFT JOIN pg_attribute a
+        ON a.attrelid = ref.oid AND a.attnum = d.refobjsubid
+      WHERE d.classid = 'pg_class'::regclass
+        AND d.objid = c.oid
+        AND d.deptype <> 'i'
+        AND refns.nspname = 'public'
+        AND (
+          ref.relname IN ('triad_rounds', 'programme_triad_rounds')
+          OR EXISTS (
+            SELECT 1
+            FROM retired r
+            WHERE r.table_name = ref.relname
+              AND r.column_name = a.attname
+          )
+        )
+    );
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'Deployment 2 verification: retired indexes remain: %', offenders;
+  END IF;
+END $$;
+
 DO $$
 DECLARE n bigint;
 BEGIN
@@ -197,6 +261,151 @@ BEGIN
   );
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'Deployment 2 verification: projections no longer use canonical progress: %', missing;
+  END IF;
+END $$;
+
+-- The full post-retirement dependency surface must be clean. Static catalog
+-- dependencies cover functions, trigger functions, views, materialized views,
+-- policies, triggers, defaults, generated expressions, constraints, indexes,
+-- and any other non-internal object. Dynamic SQL receives a separate scan.
+DO $$
+DECLARE offenders text;
+BEGIN
+  WITH retired(table_name, column_name) AS (VALUES
+    ('triad_groups','member_1_id'), ('triad_groups','member_2_id'),
+    ('triad_groups','member_3_id'), ('triad_groups','enrollment_1_id'),
+    ('triad_groups','enrollment_2_id'), ('triad_groups','enrollment_3_id'),
+    ('triad_groups','programme_id'), ('triad_groups','round_number'),
+    ('triad_groups','triad_round_id'), ('triad_groups','name'),
+    ('triad_sessions','coach_enrollment_id'),
+    ('triad_sessions','coachee_enrollment_id'),
+    ('triad_sessions','observer_enrollment_id'),
+    ('triad_sessions','member_1_response'),
+    ('triad_sessions','member_2_response'),
+    ('triad_sessions','member_3_response'),
+    ('triad_sessions','proposed_start_time'),
+    ('triad_sessions','proposed_end_time'),
+    ('triad_sessions','start_time'), ('triad_sessions','proposed_by'),
+    ('triad_alternative_proposals','proposed_by'),
+    ('triad_alternative_proposals','member_1_response'),
+    ('triad_alternative_proposals','member_2_response'),
+    ('triad_alternative_proposals','member_3_response'),
+    ('triad_reflections','participant_id'),
+    ('triad_reflections','learned_as_coach'),
+    ('triad_reflections','will_use_as_coach'),
+    ('triad_reflections','learned_as_coachee'),
+    ('triad_reflections','will_use_as_coachee'),
+    ('triad_reflections','learned_as_observer'),
+    ('triad_reflections','will_use_as_observer')
+  )
+  SELECT string_agg(pg_describe_object(d.classid, d.objid, d.objsubid), ', ')
+  INTO offenders
+  FROM pg_depend d
+  JOIN pg_class ref ON ref.oid = d.refobjid
+  JOIN pg_namespace refns ON refns.oid = ref.relnamespace
+  LEFT JOIN pg_attribute a
+    ON a.attrelid = ref.oid AND a.attnum = d.refobjsubid
+  WHERE refns.nspname = 'public'
+    AND d.deptype <> 'i'
+    AND (
+      ref.relname IN ('triad_rounds', 'programme_triad_rounds')
+      OR EXISTS (
+        SELECT 1
+        FROM retired r
+        WHERE r.table_name = ref.relname
+          AND r.column_name = a.attname
+      )
+    );
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'Deployment 2 verification: runtime dependencies refer to retired objects: %', offenders;
+  END IF;
+
+  SELECT string_agg(n.nspname || '.' || p.proname, ', ')
+  INTO offenders
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.prokind = 'f'
+    AND pg_get_functiondef(p.oid) ~ '\mEXECUTE\M'
+    AND (
+      pg_get_functiondef(p.oid) ~ '\m(public\.)?(triad_rounds|programme_triad_rounds)\M'
+      OR (
+        pg_get_functiondef(p.oid) ~ '\m(public\.)?triad_groups\M'
+        AND pg_get_functiondef(p.oid) ~ 'member_[123]_id|enrollment_[123]_id|programme_id|round_number|triad_round_id|name'
+      )
+      OR (
+        pg_get_functiondef(p.oid) ~ '\m(public\.)?triad_sessions\M'
+        AND pg_get_functiondef(p.oid) ~ '(coach|coachee|observer)_enrollment_id|member_[123]_response|proposed_start_time|proposed_end_time|start_time|proposed_by'
+      )
+      OR (
+        pg_get_functiondef(p.oid) ~ '\m(public\.)?triad_alternative_proposals\M'
+        AND pg_get_functiondef(p.oid) ~ 'proposed_by|member_[123]_response'
+      )
+      OR (
+        pg_get_functiondef(p.oid) ~ '\m(public\.)?triad_reflections\M'
+        AND pg_get_functiondef(p.oid) ~ 'participant_id|learned_as_|will_use_as_'
+      )
+    );
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'Deployment 2 verification: dynamic runtime functions refer to retired objects: %', offenders;
+  END IF;
+
+  SELECT string_agg(n.nspname || '.' || c.relname, ', ')
+  INTO offenders
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relkind IN ('v', 'm')
+    AND pg_get_viewdef(c.oid, true) ~
+      'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'Deployment 2 verification: views or materialized views refer to retired objects: %', offenders;
+  END IF;
+
+  SELECT string_agg(n.nspname || '.' || c.relname || '.' || p.polname, ', ')
+  INTO offenders
+  FROM pg_policy p
+  JOIN pg_class c ON c.oid = p.polrelid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE coalesce(pg_get_expr(p.polqual, p.polrelid), '') ||
+        coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '') ~
+    'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'Deployment 2 verification: policies refer to retired objects: %', offenders;
+  END IF;
+
+  SELECT string_agg(n.nspname || '.' || c.relname || '.' || t.tgname, ', ')
+  INTO offenders
+  FROM pg_trigger t
+  JOIN pg_class c ON c.oid = t.tgrelid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE NOT t.tgisinternal
+    AND pg_get_triggerdef(t.oid, true) ~
+      'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'Deployment 2 verification: triggers refer to retired objects: %', offenders;
+  END IF;
+
+  SELECT string_agg(n.nspname || '.' || c.relname || '.' || a.attname, ', ')
+  INTO offenders
+  FROM pg_attrdef d
+  JOIN pg_class c ON c.oid = d.adrelid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_attribute a ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+  WHERE pg_get_expr(d.adbin, d.adrelid) ~
+    'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'Deployment 2 verification: defaults or generated expressions refer to retired objects: %', offenders;
+  END IF;
+
+  SELECT string_agg(n.nspname || '.' || c.relname || '.' || con.conname, ', ')
+  INTO offenders
+  FROM pg_constraint con
+  JOIN pg_class c ON c.oid = con.conrelid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE pg_get_constraintdef(con.oid, true) ~
+    'member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|proposed_by';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'Deployment 2 verification: constraints refer to retired objects: %', offenders;
   END IF;
 END $$;
 

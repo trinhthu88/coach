@@ -245,9 +245,10 @@ BEGIN
   IF n > 0 THEN RAISE EXCEPTION 'Triad retirement: % reflection archive payloads miss retired keys', n; END IF;
 END $$;
 
--- Preserve the names of dependent indexes and constraints so their removal is
--- verified rather than assumed. They are the only expected auto-dropped
--- dependencies.
+-- Preserve every dependency intrinsic to the objects being retired. Indexes
+-- owned by a retired column/table, defaults owned by a retired column/table,
+-- and the known legacy-table trigger are expected to disappear with their
+-- owner. Anything else remains an execution blocker.
 CREATE TEMP TABLE _triad_retirement_indexes AS
 SELECT DISTINCT ns.nspname AS schema_name, c.relname AS index_name
 FROM pg_depend d
@@ -257,7 +258,7 @@ JOIN pg_class c ON d.classid = 'pg_class'::regclass AND c.oid = d.objid
 JOIN pg_namespace ns ON ns.oid = c.relnamespace
 LEFT JOIN pg_attribute a ON a.attrelid = ref.oid AND a.attnum = d.refobjsubid
 WHERE refns.nspname = 'public'
-  AND c.relkind = 'i'
+  AND c.relkind IN ('i', 'I')
   AND d.deptype <> 'i'
   AND (
     ref.relname IN ('triad_rounds', 'programme_triad_rounds')
@@ -293,8 +294,39 @@ WHERE ns.nspname = 'public'
     )
   );
 
--- Reject any dependency other than an automatic index/retirement constraint
--- dependency before DROP.
+CREATE TEMP TABLE _triad_retirement_defaults AS
+SELECT d.oid AS default_oid, ns.nspname AS schema_name,
+  c.relname AS table_name, a.attname AS column_name
+FROM pg_attrdef d
+JOIN pg_class c ON c.oid = d.adrelid
+JOIN pg_namespace ns ON ns.oid = c.relnamespace
+JOIN pg_attribute a ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+WHERE ns.nspname = 'public'
+  AND (
+    c.relname IN ('triad_rounds', 'programme_triad_rounds')
+    OR EXISTS (
+      SELECT 1
+      FROM _triad_retired_columns retired
+      WHERE retired.table_name = c.relname
+        AND retired.column_name = a.attname
+    )
+  );
+
+CREATE TEMP TABLE _triad_retirement_triggers AS
+SELECT t.oid AS trigger_oid, ns.nspname AS schema_name,
+  c.relname AS table_name, t.tgname
+FROM pg_trigger t
+JOIN pg_class c ON c.oid = t.tgrelid
+JOIN pg_namespace ns ON ns.oid = c.relnamespace
+WHERE NOT t.tgisinternal
+  AND ns.nspname = 'public'
+  AND c.relname = 'triad_rounds'
+  AND t.tgname = 'trg_triad_rounds_updated';
+
+-- Reject any dependency other than an intrinsic retirement dependency before
+-- DROP. The allow-list is deliberately catalog-backed and exact: a trigger on
+-- a live canonical table, a default owned by a surviving column, or any
+-- dependency from another object still fails closed.
 DO $$
 DECLARE offenders text;
 BEGIN
@@ -321,6 +353,14 @@ BEGIN
     AND NOT (
       d.classid = 'pg_constraint'::regclass
       AND d.objid IN (SELECT constraint_oid FROM _triad_retirement_constraints)
+    )
+    AND NOT (
+      d.classid = 'pg_attrdef'::regclass
+      AND d.objid IN (SELECT default_oid FROM _triad_retirement_defaults)
+    )
+    AND NOT (
+      d.classid = 'pg_trigger'::regclass
+      AND d.objid IN (SELECT trigger_oid FROM _triad_retirement_triggers)
     );
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: unexpected dependencies remain: %', offenders;
@@ -441,6 +481,8 @@ SET payload = archive.payload,
     migration_id = archive.migration_id
 WHERE archive.payload IS NOT DISTINCT FROM EXCLUDED.payload;
 
+-- REHEARSAL_AFTER_ARCHIVE_BOUNDARY
+
 DO $$
 DECLARE n bigint;
 BEGIN
@@ -495,12 +537,15 @@ BEGIN
     ORDER BY table_name
   LOOP
     EXECUTE format('ALTER TABLE public.%I %s', r.table_name, r.drop_clause);
+    -- REHEARSAL_DESTRUCTIVE_BOUNDARY
   END LOOP;
 END $$;
 
 DROP TABLE public.triad_rounds;
 DROP TABLE public.programme_triad_rounds;
 DROP FUNCTION IF EXISTS public.triad_is_seed_identifier(uuid);
+
+-- REHEARSAL_ARCHIVE_ASSERTION_BOUNDARY
 
 -- Post-drop proof stays inside the transaction, before COMMIT.
 DO $$

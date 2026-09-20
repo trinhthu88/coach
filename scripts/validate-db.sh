@@ -341,6 +341,17 @@ if ! supabase_cli test db --local supabase/tests >"$deployment2_test_output" 2>&
   exit 1
 fi
 cat "$deployment2_test_output"
+printf '%s\n' '==> Running Deployment 2 post-retirement verification sequence'
+if ! psql --no-psqlrc --set=ON_ERROR_STOP=1 \
+  --file scripts/triad-deployment-2-post-retirement-verification.sql \
+  "${DB_URL:?local database URL unavailable}" >"$deployment2_test_output" 2>&1; then
+  cat "$deployment2_test_output"
+  if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+    printf '::error title=Deployment 2 post-retirement verification::failed\n'
+  fi
+  exit 1
+fi
+cat "$deployment2_test_output"
 printf '%s\n' '==> Linting local database'
 if ! supabase_cli db lint --local >"$lint_output" 2>&1; then
   cat "$lint_output"
