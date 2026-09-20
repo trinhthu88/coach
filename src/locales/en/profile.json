@@ -110,7 +110,9 @@
     "historySummary_one": "{{count}} session in your history · {{evidence}} count as programme evidence · Peer coaching {{completed}}/{{required}}",
     "historySummary_other": "{{count}} sessions in your history · {{evidence}} count as programme evidence · Peer coaching {{completed}}/{{required}}",
     "historyError": "Your peer practice sessions could not be loaded.",
-    "noHistory": "No peer practice sessions yet."
+    "noHistory": "No peer practice sessions yet.",
+    "pending": "Waiting on your partner",
+    "noPending": "No peer practice request is waiting for a reply."
   },
   "coacheePeerPractice": {
     "header": {
@@ -158,6 +160,8 @@
       }
     },
     "partnersTitle": "Partners available to book now",
-    "partnersSubtitle": "Coachees currently opted in to peer practice."
+    "partnersSubtitle": "Learners in your cohort, and in any cohort your programme team has connected to it.",
+    "ownCohort": "Your cohort",
+    "otherCohort": "{{cohort}}"
   }
 }

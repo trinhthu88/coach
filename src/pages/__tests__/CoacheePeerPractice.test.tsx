@@ -3,14 +3,13 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: { id: "learner-1" } }) }));
-vi.mock("@/integrations/supabase/client", () => {
-  const q: Record<string, unknown> = {};
-  q.select = () => q;
-  q.eq = () => q;
-  // No partner is currently opted in / available.
-  q.neq = () => Promise.resolve({ data: [], error: null });
-  return { supabase: { from: () => q } };
-});
+// Partner eligibility is ONE server-side call now -- the page no longer
+// queries `profiles` on the global opt-in flag -- so the only thing to stub is
+// eligible_peer_partners().
+const eligiblePartners = vi.fn(() => Promise.resolve({ data: [] as unknown[], error: null as unknown }));
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: { rpc: (...args: unknown[]) => eligiblePartners(...(args as [])) },
+}));
 vi.mock("@/hooks/useEnrollmentContext", () => ({
   useEnrollmentContext: () => ({ selectedEnrollment: { id: "enrollment-1" }, loading: false }),
 }));
@@ -32,15 +31,23 @@ vi.mock("@/hooks/journey/useEnrollmentSessions", () => ({
 }));
 
 import "@/i18n/config";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import CoacheePeerPractice from "../CoacheePeerPractice";
 
-describe("CoacheePeerPractice", () => {
-  it("'no partners available' is about availability only and never hides peer session history", async () => {
-    render(
+function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
       <MemoryRouter>
         <CoacheePeerPractice />
       </MemoryRouter>
-    );
+    </QueryClientProvider>
+  );
+}
+
+describe("CoacheePeerPractice", () => {
+  it("'no partners available' is about availability only and never hides peer session history", async () => {
+    renderPage();
     await waitFor(() =>
       expect(screen.getByText("No peer practice partners are available to book right now. This doesn't affect your peer practice history below.")).toBeInTheDocument()
     );
@@ -48,6 +55,10 @@ describe("CoacheePeerPractice", () => {
     expect(within(history).getByText(/3 sessions in your history · 2 count as programme evidence · Peer coaching 2\/2/)).toBeInTheDocument();
     expect(within(history).getAllByTestId("session-row")).toHaveLength(3);
     expect(screen.getByTestId("peer-partners")).toHaveTextContent("Partners available to book now");
+    // The pool is resolved for the SELECTED ENROLLMENT, not for the account.
+    expect(eligiblePartners).toHaveBeenCalledWith("eligible_peer_partners", {
+      p_enrollment_id: "enrollment-1",
+    });
     // Module progress is the canonical peer ratio (2/2), not the 3 history rows.
     expect(screen.getByTestId("module-progress-value")).toHaveTextContent("2 / 2");
   });
@@ -61,12 +72,32 @@ describe("CoacheePeerPractice", () => {
       loading: false,
       error: null,
     });
-    render(
-      <MemoryRouter>
-        <CoacheePeerPractice />
-      </MemoryRouter>
-    );
+    renderPage();
     expect(await screen.findByText(/Strong listening\./)).toBeInTheDocument();
     expect(screen.queryByText(/Mentoring-only note/)).not.toBeInTheDocument();
+  });
+});
+
+describe("CoacheePeerPractice partner pool", () => {
+  it("lists eligible partners and says which cohort a cross-cohort partner is from", async () => {
+    eligiblePartners.mockResolvedValueOnce({
+      data: [
+        { user_id: "u-own", enrollment_id: "e-own", display_name: "Mai Own", cohort_id: "c1", cohort_name: "Cohort A", programme_id: "p1", programme_name: "P", is_own_cohort: true },
+        { user_id: "u-far", enrollment_id: "e-far", display_name: "Linh Far", cohort_id: "c2", cohort_name: "Cohort B", programme_id: "p1", programme_name: "P", is_own_cohort: false },
+      ],
+      error: null,
+    });
+    renderPage();
+    const rows = await screen.findAllByTestId("peer-partner-row");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveAttribute("data-own-cohort", "true");
+    expect(rows[0]).toHaveTextContent("Your cohort");
+    expect(rows[1]).toHaveAttribute("data-own-cohort", "false");
+    // A partner reached through a cross-cohort grant is labelled with their
+    // cohort, so a pool spanning several cohorts stays legible.
+    expect(rows[1]).toHaveTextContent("Cohort B");
+    // Booking links address the PERSON; their eligible enrollment is resolved
+    // server-side when the session is created.
+    expect(rows[1].querySelector("a")).toHaveAttribute("href", "/coachee/peer-practice/u-far/book");
   });
 });

@@ -78,7 +78,49 @@ describe("MyPeerPracticeSection", () => {
   it("shows a load error instead of an empty history when the history source fails", () => {
     enrollmentSessions.mockReturnValue({ sessions: [], loading: false, error: "boom" });
     render(<MemoryRouter><MyPeerPracticeSection /></MemoryRouter>);
-    expect(screen.getByRole("alert")).toHaveTextContent("Your peer practice sessions could not be loaded.");
+    // Every stage list reports the failure rather than rendering as empty:
+    // "no sessions" and "we could not load your sessions" are different facts.
+    const alerts = screen.getAllByRole("alert");
+    expect(alerts).toHaveLength(3);
+    for (const alert of alerts) {
+      expect(alert).toHaveTextContent("Your peer practice sessions could not be loaded.");
+    }
     expect(screen.queryByText("No peer practice sessions yet.")).not.toBeInTheDocument();
+  });
+
+  it("splits one canonical list into the stage each session is actually in", () => {
+    learnerCanonicalProgress.mockReturnValue({ progress: { peer_completed_units: 1, peer_required_units: 2, programme_label: "P", cohort_label: "C" } });
+    const row = (id: string, status: string, start: string) => ({
+      id: `peer_coaching:coachee_peer_sessions:${id}`,
+      enrollmentId: "enrollment-1",
+      type: "peer_coaching",
+      title: `Practice ${id}`,
+      startTime: start,
+      status,
+      sourceId: id,
+      sourceType: "coachee_peer_sessions",
+      participantRole: "receiver",
+      isProgrammeEvidence: status === "completed",
+    });
+    enrollmentSessions.mockReturnValue({
+      sessions: [
+        row("p1", "pending_coach_approval", "2099-05-01T08:00:00Z"),
+        row("u1", "confirmed", "2099-04-05T08:00:00Z"),
+        row("d1", "completed", "2026-02-02T08:00:00Z"),
+        // Confirmed but already past: waiting to be marked complete, which is
+        // not "upcoming".
+        row("x1", "confirmed", "2026-01-02T08:00:00Z"),
+        row("c1", "cancelled", "2026-01-03T08:00:00Z"),
+      ],
+      loading: false,
+      error: null,
+    });
+    render(<MemoryRouter><MyPeerPracticeSection /></MemoryRouter>);
+    const within_ = (id: string) => screen.getByTestId(id).querySelectorAll('[data-testid="session-row"]');
+    expect(within_("peer-pending")).toHaveLength(1);
+    expect(within_("peer-upcoming")).toHaveLength(1);
+    expect(within_("peer-past")).toHaveLength(3);
+    // Every session appears exactly once across the three lists.
+    expect(screen.getAllByTestId("session-row")).toHaveLength(5);
   });
 });

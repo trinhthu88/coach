@@ -88,6 +88,18 @@
       "assigned": "Mentor assigned to this cohort.",
       "unassigned": "Mentor removed from this cohort.",
       "toggleLabel": "Assign {{name}} to this cohort"
+    },
+    "peer": {
+      "title": "Peer practice",
+      "intro": "Who this cohort's learners may practise with. Independent of Coaching and Mentoring assignments.",
+      "sameCohort": "Participants in this cohort can always peer together. No permission is needed.",
+      "grantedCount": "{{count}} additional cohort(s)",
+      "noSiblings": "This programme has no other cohort to connect to. Peer partners come from this cohort only.",
+      "bothWays": "Allow matching both ways",
+      "inbound": "can also select this cohort",
+      "toggleLabel": "Allow this cohort's learners to peer with {{name}}",
+      "granted": "Cohort added to the peer practice pool.",
+      "withdrawn": "Cohort removed. Sessions already booked are unaffected."
     }
   },
   "dashboard": {

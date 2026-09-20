@@ -15,13 +15,7 @@ import { addDays, format, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { computeStartOptions } from "./bookingSlots";
-
-interface PartnerDetail {
-  id: string;
-  full_name: string;
-  avatar_url: string | null;
-  bio: string | null;
-}
+import { useEligiblePeerPartners } from "@/hooks/peer/useEligiblePeerPartners";
 
 interface Slot {
   id: string;
@@ -32,10 +26,21 @@ interface Slot {
 
 
 /**
- * Coachee equivalent of MentoringBookSession.tsx's self-contained booking
- * flow — an open opt-in pool (like the coach peer pool), not a curated
- * pair, so there's no can_book_*() eligibility RPC; the friendly 23505/42501
- * handling still follows RULES.md §5.
+ * Booking one learner-to-learner Peer session.
+ *
+ * The partner is resolved from eligible_peer_partners() -- the same list the
+ * Peer workspace offers -- rather than read straight out of `profiles`. Two
+ * consequences, both deliberate:
+ *
+ *   * a partner who is not eligible for THIS enrollment cannot be reached by
+ *     typing their id into the URL: the page says "partner not found", and
+ *     book_coachee_peer_session() would refuse it anyway. The page check is
+ *     the courtesy; the server check is the rule.
+ *   * the page shows a name and a cohort and nothing else. It used to read the
+ *     partner's avatar and bio, which is profile content the partner published
+ *     for a different purpose and which selection does not need.
+ *
+ * Friendly 23505/42501 handling still follows RULES.md §5.
  */
 export default function CoacheePeerBookSession() {
   const { t } = useTranslation("profile");
@@ -44,8 +49,9 @@ export default function CoacheePeerBookSession() {
   const { selectedEnrollment } = useEnrollmentContext(user?.id);
   const enrollmentId = selectedEnrollment?.id;
   const navigate = useNavigate();
+  const partners = useEligiblePeerPartners(enrollmentId);
+  const partner = (partners.data ?? []).find((p) => p.userId === partnerId) ?? null;
 
-  const [partner, setPartner] = useState<PartnerDetail | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -75,11 +81,7 @@ export default function CoacheePeerBookSession() {
           .order("slot_date")
           .order("start_time");
 
-        const [{ data: partnerData }, { data: slotData }] = await Promise.all([
-          supabase.from("profiles").select("id, full_name, avatar_url, bio").eq("id", partnerId).maybeSingle(),
-          slotQuery,
-        ]);
-        setPartner(partnerData as PartnerDetail | null);
+        const { data: slotData } = await slotQuery;
         setSlots(((slotData as Slot[]) || []).map((s) => ({ ...s })));
 
         if (user) {
@@ -148,7 +150,7 @@ export default function CoacheePeerBookSession() {
     const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
 
     const { error } = await supabase.rpc("book_coachee_peer_session", {
-      p_provider_id: partner.id,
+      p_provider_id: partner.userId,
       p_enrollment_id: enrollmentId,
       p_topic: topic.trim(),
       p_start_time: startISO,
@@ -176,7 +178,7 @@ export default function CoacheePeerBookSession() {
     navigate("/sessions");
   };
 
-  if (loading) {
+  if (loading || partners.isLoading) {
     return (
       <div className="flex items-center justify-center py-24 text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -205,7 +207,7 @@ export default function CoacheePeerBookSession() {
     );
   }
 
-  const fullName = partner.full_name || "?";
+  const fullName = partner.displayName || "?";
   const initials = fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
   return (
@@ -220,13 +222,17 @@ export default function CoacheePeerBookSession() {
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <Card className="h-fit space-y-5 p-4 sm:p-6">
           <div className="flex h-44 items-center justify-center overflow-hidden rounded-2xl bg-success/10 text-6xl font-bold text-success">
-            {partner.avatar_url ? <img src={partner.avatar_url} alt={fullName} className="h-full w-full object-cover" /> : initials}
+            {initials}
           </div>
           <div>
             <h2 className="text-xl font-semibold tracking-tight">{fullName}</h2>
             <p className="text-sm font-medium text-success">{t("coacheePeerPractice.defaultTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground" data-testid="peer-partner-cohort">
+              {partner.isOwnCohort
+                ? t("coacheePeerPractice.ownCohort")
+                : t("coacheePeerPractice.otherCohort", { cohort: partner.cohortName })}
+            </p>
           </div>
-          {partner.bio && <p className="text-sm text-muted-foreground">{partner.bio}</p>}
         </Card>
 
         <Card className="space-y-6 p-4 sm:p-6">

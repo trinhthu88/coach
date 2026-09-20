@@ -19,6 +19,7 @@ import { useCohortRequirementSchedule } from "@/hooks/admin/useCohortRequirement
 import { CohortRequirementSchedule } from "./cohorts/CohortRequirementSchedule";
 import { CohortCoachingPanel } from "./cohorts/CohortCoachingPanel";
 import { CohortMentoringPanel } from "./cohorts/CohortMentoringPanel";
+import { CohortPeerPanel } from "./cohorts/CohortPeerPanel";
 
 interface Cohort {
   id: string;
@@ -217,6 +218,7 @@ export default function AdminCohorts() {
                   deliver them. */}
               <CohortCoachingPanel cohortId={savedCohort?.id} />
               <CohortMentoringPanel cohortId={savedCohort?.id} />
+              <CohortPeerPanel cohortId={savedCohort?.id} />
             </div>
           )}
           <DialogFooter>

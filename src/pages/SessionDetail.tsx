@@ -151,17 +151,19 @@ export default function SessionDetail() {
     session.status !== "cancelled" && session.status !== "completed";
 
   const sessionStarted = start < new Date();
-  // Coaching: the Coach records that the conversation happened, once the
-  // session is confirmed and has started. The learner's post-session work is a
-  // separate fact, shown by CoachingPostSessionChecklist and enforced by
-  // coaching_session_evidence() -- it gates the programme UNIT, not this.
-  // Peer sessions keep their own precondition (own competency feedback).
+  // The Coach (Coaching) or either participant (Peer) records that the
+  // conversation happened, once the session is confirmed and has started. The
+  // learner's post-session work is a separate fact, shown by
+  // CoachingPostSessionChecklist and enforced by coaching_session_evidence()
+  // -- it gates the programme UNIT, not this.
+  // Peer practice has no Coach: either participant may record that the meeting
+  // happened, which is what transition_peer_session_status() allows. Coaching
+  // stays the Coach's (or an Admin's) observation.
+  const isPeerPractice = isPeer || isCoacheePeer;
   const canMarkComplete = canMarkSessionComplete({
-    isPeer,
-    peerFeedbackExisted: feedback.existed,
     isConfirmed: session.status === "confirmed",
     hasStarted: sessionStarted,
-    isCoachOrAdmin: isCoach || isAdmin,
+    isPermittedActor: isPeerPractice ? isCoach || isCoachee || isAdmin : isCoach || isAdmin,
   });
   const missingRequirementHint = isPeer
     ? t("detail.missingRequirementHintPeer")
@@ -706,18 +708,21 @@ export default function SessionDetail() {
 
           {(isCoach || canCancel) && (
             <Card className="flex flex-wrap gap-2 p-5 sm:p-7">
-              {isCoach && !isCoacheePeer && session.status === "pending_coach_approval" && (
+              {/* The person asked to deliver accepts: a Coach, or -- for
+                  learner-to-learner practice -- the providing peer. This used
+                  to be hidden for coachee_peer, which left every such session
+                  stuck at pending and unconfirmable, so completion had to be
+                  allowed straight from pending as a workaround. Both halves of
+                  that workaround are gone: the lifecycle is confirm, then
+                  complete, for every kind. */}
+              {isCoach && session.status === "pending_coach_approval" && (
                 <Button className="rounded-full" onClick={confirmSession} disabled={saving}>
                   <CheckCircle2 className="mr-1 h-4 w-4" /> {t("detail.confirmSession")}
                 </Button>
               )}
-              {isCoach &&
+              {(isPeerPractice ? isCoach || isCoachee : isCoach) &&
                 sessionStarted &&
-                (session.status === "confirmed" ||
-                  // coachee_peer_sessions has no Zoom-confirm step wired yet (RULES.md
-                  // §3 Relationship 5) — let the provider complete straight from
-                  // pending_coach_approval instead of getting stuck unconfirmable.
-                  (isCoacheePeer && session.status === "pending_coach_approval")) && (
+                session.status === "confirmed" && (
                 <div className="w-full space-y-2">
                   <Button
                     variant="secondary"
@@ -745,7 +750,7 @@ export default function SessionDetail() {
                   {t("detail.rescheduleSession")}
                 </Button>
               )}
-              {canCancel && !isCoacheePeer && (
+              {canCancel && (
                 <Button
                   variant="destructive"
                   className="rounded-full"

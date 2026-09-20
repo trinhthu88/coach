@@ -110,7 +110,9 @@
     "historyTitle": "Các session thực hành đồng hành của tôi",
     "historySummary_other": "{{count}} session trong lịch sử · {{evidence}} được tính vào chương trình · Peer coaching {{completed}}/{{required}}",
     "historyError": "Không thể tải các session thực hành đồng hành.",
-    "noHistory": "Chưa có session thực hành đồng hành nào."
+    "noHistory": "Chưa có session thực hành đồng hành nào.",
+    "pending": "Đang chờ bạn đồng hành phản hồi",
+    "noPending": "Không có yêu cầu thực hành đồng hành nào đang chờ phản hồi."
   },
   "coacheePeerPractice": {
     "header": {
@@ -158,6 +160,8 @@
       }
     },
     "partnersTitle": "Bạn đồng hành có thể đặt lịch ngay",
-    "partnersSubtitle": "Các coachee đang tham gia thực hành đồng hành."
+    "partnersSubtitle": "Học viên trong cohort của bạn, và trong các cohort được đội ngũ chương trình kết nối với cohort này.",
+    "ownCohort": "Cohort của bạn",
+    "otherCohort": "{{cohort}}"
   }
 }
