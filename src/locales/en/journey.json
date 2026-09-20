@@ -33,7 +33,8 @@
     "weeksValue": "{{n}}w",
     "goalProgress": "Goal progress",
     "assignedCoaches": "Assigned coaches",
-    "sponsorDisclaimer": "If your organization sponsors this programme, they can see your participation, progress, and completion status — never your session notes, chat messages, or personal reflections."
+    "sponsorDisclaimer": "If your organization sponsors this programme, they can see your participation, progress, and completion status — never your session notes, chat messages, or personal reflections.",
+    "postSessionPending": "{{n}} awaiting post-session learning"
   },
   "programmeTimeline": {
     "heading": "Programme timeline",

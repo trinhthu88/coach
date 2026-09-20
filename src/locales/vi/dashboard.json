@@ -504,8 +504,10 @@
       "noUpcoming": "Chưa có session nào được đặt lịch.",
       "goalsLabel": "mục tiêu",
       "actionItemsDue": "Việc cần làm còn mở",
-      "sessionsUsed": "Session đã dùng",
-      "openJourney": "Mở hành trình phát triển"
+      "openJourney": "Mở hành trình phát triển",
+      "programmeUnits": "Hạng mục Coaching",
+      "postSessionPending": "Chờ hoàn thành sau buổi",
+      "overdue": "Quá hạn"
     },
     "myCoach": {
       "title": "Đội ngũ Coach của bạn",

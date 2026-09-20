@@ -34,7 +34,8 @@
     "weeksValue": "{{n}} tuần",
     "goalProgress": "Tiến độ mục tiêu",
     "assignedCoaches": "Coach được phân công",
-    "sponsorDisclaimer": "Nếu tổ chức của bạn tài trợ chương trình này, họ có thể xem sự tham gia, tiến độ và trạng thái hoàn thành của bạn — không bao giờ xem ghi chú buổi session, tin nhắn trò chuyện hoặc suy ngẫm cá nhân của bạn."
+    "sponsorDisclaimer": "Nếu tổ chức của bạn tài trợ chương trình này, họ có thể xem sự tham gia, tiến độ và trạng thái hoàn thành của bạn — không bao giờ xem ghi chú buổi session, tin nhắn trò chuyện hoặc suy ngẫm cá nhân của bạn.",
+    "postSessionPending": "{{n}} đang chờ hoàn thành sau buổi"
   },
   "programmeTimeline": {
     "heading": "Dòng thời gian chương trình",

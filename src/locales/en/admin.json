@@ -69,7 +69,17 @@
         "out_of_scope": "{{module}}: dates exist but the module is no longer required by the programme."
       }
     },
-    "triads": "Triads"
+    "triads": "Triads",
+    "coaching": {
+      "title": "Coaching",
+      "intro": "Coaches assigned here may deliver Coaching for every learner in this cohort.",
+      "assignedCount": "{{count}} assigned",
+      "noCoaches": "No Coaches exist yet.",
+      "noneAssignedWarning": "No Coach is assigned. Learners in this cohort cannot book Coaching until at least one is.",
+      "assigned": "Coach assigned to this cohort.",
+      "unassigned": "Coach removed from this cohort.",
+      "toggleLabel": "Assign {{name}} to this cohort"
+    }
   },
   "dashboard": {
     "eyebrow": "Organisation",
@@ -264,7 +274,8 @@
       "emailFailedToSend": "Email failed to send",
       "resendLinkError": "Could not resend login link"
     },
-    "done": "Done"
+    "done": "Done",
+    "coachAssignmentMovedToCohort": "Programme Coaching is now assigned per cohort. Manage the Coach pool in Admin → Cohorts → Coaching."
   },
   "organizations": {
     "sections": {

@@ -516,8 +516,10 @@
       "noUpcoming": "No upcoming session booked yet.",
       "goalsLabel": "goals",
       "actionItemsDue": "Action items due",
-      "sessionsUsed": "Sessions used",
-      "openJourney": "Open my development"
+      "openJourney": "Open my development",
+      "programmeUnits": "Coaching units",
+      "postSessionPending": "Post-session pending",
+      "overdue": "Overdue"
     },
     "myCoach": {
       "title": "Your Coaching team",

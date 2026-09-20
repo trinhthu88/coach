@@ -13,18 +13,29 @@ interface CoachingReceiveData {
   } | null;
   goalProgressPct: number;
   actionItemsOpen: number;
-  sessionsUsed: number;
-  sessionLimit: number | null; // null = no cap tracked (e.g. coach-as-coachee)
   upcomingCount: number;
+  /**
+   * Canonical programme progress. Never derived from the raw session rows
+   * above: a held session whose post-session evidence is outstanding is NOT a
+   * completed programme unit, and counting sessions would say otherwise.
+   */
+  requiredUnits: number;
+  completedUnits: number;
+  bookedUnits: number;
+  overdueUnits: number;
+  postSessionPending: number;
 }
 
 const empty: CoachingReceiveData = {
   nextSession: null,
   goalProgressPct: 0,
   actionItemsOpen: 0,
-  sessionsUsed: 0,
-  sessionLimit: null,
   upcomingCount: 0,
+  requiredUnits: 0,
+  completedUnits: 0,
+  bookedUnits: 0,
+  overdueUnits: 0,
+  postSessionPending: 0,
 };
 
 async function fetchData(userId: string, role: AppRole, enrollmentId: string): Promise<CoachingReceiveData> {
@@ -42,12 +53,17 @@ async function fetchData(userId: string, role: AppRole, enrollmentId: string): P
       .order("start_time", { ascending: false }),
     supabase.from("coachee_milestones").select("is_done").eq("coachee_id", userId).eq("enrollment_id", enrollmentId),
   ]);
-  const usageResult =
-    role === "coachee"
-      ? await supabase.rpc("get_coachee_session_usage_for_enrollment", {
-          p_enrollment_id: enrollmentId,
-        })
-      : { data: null };
+  // Programme progress comes from the canonical reader every role shares.
+  // get_coachee_session_usage_for_enrollment() counts raw sessions and is an
+  // operational usage figure, not programme completion -- it is deliberately
+  // no longer consulted here.
+  const [progressResult, checklistResult] = await Promise.all([
+    supabase.rpc("canonical_module_progress", {
+      p_enrollment_id: enrollmentId,
+      p_as_of: new Date().toISOString().slice(0, 10),
+    }),
+    supabase.rpc("coaching_post_session_checklist", { p_enrollment_id: enrollmentId }),
+  ]);
   const list = await withEnrollmentActions(sessions || [], "coaching");
 
   const now = new Date();
@@ -75,21 +91,19 @@ async function fetchData(userId: string, role: AppRole, enrollmentId: string): P
   const doneMs = milestones?.filter((m) => m.is_done).length ?? 0;
   const goalProgressPct = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
 
-  let sessionsUsed = list.filter((s) => ["pending_coach_approval", "confirmed", "completed"].includes(s.status)).length;
-  let sessionLimit: number | null = null;
-  const usage = usageResult.data;
-  if (role === "coachee" && usage && usage.length > 0) {
-    sessionLimit = usage[0].monthly_limit ?? null;
-    sessionsUsed = usage[0].used_this_month ?? sessionsUsed;
-  }
+  const coachingProgress = (progressResult.data ?? []).find((r) => r.module === "coaching");
+  const postSessionPending = (checklistResult.data ?? []).filter((c) => !c.unit_complete).length;
 
   return {
     nextSession: next ? { id: next.id, topic: next.topic, start_time: next.start_time, coach } : null,
     goalProgressPct,
     actionItemsOpen,
-    sessionsUsed,
-    sessionLimit,
     upcomingCount: upcoming.length,
+    requiredUnits: coachingProgress?.required_units ?? 0,
+    completedUnits: coachingProgress?.completed_units ?? 0,
+    bookedUnits: coachingProgress?.booked_units ?? 0,
+    overdueUnits: coachingProgress?.overdue_units ?? 0,
+    postSessionPending,
   };
 }
 

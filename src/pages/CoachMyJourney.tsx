@@ -79,7 +79,7 @@ export default function CoachMyJourney() {
   const { ratings, sessionRatings, saveRating } = ratingsApi;
   const { coachingSessions, peerSessions, coachNames, toggleAction: toggleActionRaw } = sessionsApi;
   const { reflections, deleteReflection } = reflectionsApi;
-  const { programme, usage } = programmeApi;
+  const { programme, usage, coaching } = programmeApi;
 
   const loading =
     goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading || programmeApi.loading;
@@ -183,6 +183,7 @@ export default function CoachMyJourney() {
         programmeWeeks={programmeWeeks}
         coachSummaries={coachSummaries}
         sessionsCompletedCount={sessionsCompletedCount}
+        coaching={coaching}
         avgGoalProgress={avgGoalProgress}
       />
       {programme?.enrollmentId && <LearnerProgrammeJourney enrollmentId={programme.enrollmentId} variant="full" />}

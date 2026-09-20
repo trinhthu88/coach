@@ -51,10 +51,26 @@ export function CoachingReceiveCard() {
               </span>
             }
           />
+          {/* Canonical programme progress. A held session whose post-session
+              evidence is outstanding counts as booked, not completed, so this
+              can read lower than the number of sessions that have happened --
+              which is the point. */}
           <HeroMetricRow
-            label={t("cards.coachingReceive.sessionsUsed")}
-            value={data.sessionLimit != null ? `${data.sessionsUsed} / ${data.sessionLimit}` : data.sessionsUsed}
+            label={t("cards.coachingReceive.programmeUnits")}
+            value={`${data.completedUnits} / ${data.requiredUnits}`}
           />
+          {data.postSessionPending > 0 && (
+            <HeroMetricRow
+              label={t("cards.coachingReceive.postSessionPending")}
+              value={data.postSessionPending}
+            />
+          )}
+          {data.overdueUnits > 0 && (
+            <HeroMetricRow
+              label={t("cards.coachingReceive.overdue")}
+              value={data.overdueUnits}
+            />
+          )}
           <HeroMetricRow label={t("cards.coachingReceive.goalsLabel")} value={`${data.goalProgressPct}%`} />
           <HeroFooterLink to={journeyPath} className="mt-2">
             {t("cards.coachingReceive.openJourney")}
