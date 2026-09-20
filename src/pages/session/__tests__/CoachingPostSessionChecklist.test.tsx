@@ -1,9 +1,14 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
-vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc } }));
+const { rpc, from, upsert } = vi.hoisted(() => ({
+  rpc: vi.fn(),
+  from: vi.fn(),
+  upsert: vi.fn(),
+}));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, from } }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import "@/i18n/config";
 import { CoachingPostSessionChecklist } from "../CoachingPostSessionChecklist";
@@ -37,11 +42,32 @@ function mockEvidence(overrides: Partial<Evidence>) {
   );
 }
 
-function renderChecklist() {
+/** `session_learning_reflections` holds at most one row per (enrollment, activity). */
+function mockStoredReflection(body: string | null) {
+  from.mockImplementation((table: string) => {
+    if (table === "session_learning_reflections") {
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: () => Promise.resolve({ data: body ? { body } : null, error: null }),
+              }),
+            }),
+          }),
+        }),
+        upsert,
+      };
+    }
+    throw new Error(`unexpected table ${table}`);
+  });
+}
+
+function renderChecklist(props: Partial<{ enrollmentId: string; canSubmitReflection: boolean }> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <CoachingPostSessionChecklist sessionId="s1" />
+      <CoachingPostSessionChecklist sessionId="s1" {...props} />
     </QueryClientProvider>,
   );
 }
@@ -51,7 +77,12 @@ async function item(key: string) {
 }
 
 describe("CoachingPostSessionChecklist", () => {
-  beforeEach(() => rpc.mockReset());
+  beforeEach(() => {
+    rpc.mockReset();
+    from.mockReset();
+    upsert.mockReset();
+    upsert.mockResolvedValue({ error: null });
+  });
 
   it("renders nothing until the Coach has marked the session held", async () => {
     mockEvidence({ session_completed: false, unit_complete: false });
@@ -106,6 +137,69 @@ describe("CoachingPostSessionChecklist", () => {
     await screen.findByTestId("coaching-post-session");
     expect(screen.queryByText(/private note/i)).toBeNull();
     expect(screen.queryByText(/flag/i)).toBeNull();
+  });
+
+  // The reflection gate is the only one of the four whose writer lives on this
+  // card. Without it `session_learning_reflections` has no INSERT path anywhere
+  // in the app and unit_complete is unreachable for every learner.
+  describe("reflection writer", () => {
+    it("lets the learner write the reflection that satisfies the gate", async () => {
+      mockEvidence({ has_reflection: false, unit_complete: false });
+      mockStoredReflection(null);
+      renderChecklist({ enrollmentId: "e1", canSubmitReflection: true });
+
+      const box = await screen.findByLabelText(/your reflection/i);
+      fireEvent.change(box, { target: { value: "  I delegate too late.  " } });
+      fireEvent.click(screen.getByTestId("coaching-reflection-save"));
+
+      await waitFor(() => expect(upsert).toHaveBeenCalledTimes(1));
+      expect(upsert).toHaveBeenCalledWith(
+        {
+          enrollment_id: "e1",
+          source_activity_type: "coaching",
+          source_activity_id: "s1",
+          body: "I delegate too late.",
+        },
+        { onConflict: "enrollment_id,source_activity_type,source_activity_id" },
+      );
+    });
+
+    it("edits the one stored reflection instead of stacking a second", async () => {
+      mockEvidence({ unit_complete: true });
+      mockStoredReflection("First answer");
+      renderChecklist({ enrollmentId: "e1", canSubmitReflection: true });
+
+      const box = await screen.findByLabelText<HTMLTextAreaElement>(/your reflection/i);
+      await waitFor(() => expect(box.value).toBe("First answer"));
+      // Unchanged text is not a save.
+      expect(screen.getByTestId("coaching-reflection-save")).toBeDisabled();
+
+      fireEvent.change(box, { target: { value: "Second answer" } });
+      fireEvent.click(screen.getByTestId("coaching-reflection-save"));
+      await waitFor(() => expect(upsert).toHaveBeenCalledTimes(1));
+      expect(upsert.mock.calls[0][0]).toMatchObject({ body: "Second answer" });
+    });
+
+    it("refuses to save an empty reflection", async () => {
+      mockEvidence({ has_reflection: false, unit_complete: false });
+      mockStoredReflection(null);
+      renderChecklist({ enrollmentId: "e1", canSubmitReflection: true });
+
+      await screen.findByLabelText(/your reflection/i);
+      expect(screen.getByTestId("coaching-reflection-save")).toBeDisabled();
+      fireEvent.change(screen.getByLabelText(/your reflection/i), { target: { value: "   " } });
+      expect(screen.getByTestId("coaching-reflection-save")).toBeDisabled();
+      expect(upsert).not.toHaveBeenCalled();
+    });
+
+    it("never offers the composer to anyone but the learner", async () => {
+      mockEvidence({ has_reflection: false, unit_complete: false });
+      renderChecklist({ enrollmentId: "e1", canSubmitReflection: false });
+      await screen.findByTestId("coaching-post-session");
+      expect(screen.queryByTestId("coaching-reflection-composer")).toBeNull();
+      // The Coach's view must not even read the learner's narrative.
+      expect(from).not.toHaveBeenCalled();
+    });
   });
 
   it("reads completion from the backend rather than deriving it on screen", async () => {

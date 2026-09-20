@@ -336,6 +336,15 @@
     "unitPending": "Programme unit pending · {{done}}/{{total}}",
     "notRequired": "not required",
     "footer": "Your Coach has marked the session held. The programme unit completes once all required items are done.",
+    "reflection": {
+      "label": "Your reflection",
+      "help": "What did you take from this session? Only you and your Coach can read it.",
+      "placeholder": "What I learned, and what I will do differently…",
+      "save": "Save reflection",
+      "update": "Update reflection",
+      "saved": "Reflection saved",
+      "saveFailed": "Could not save your reflection."
+    },
     "items": {
       "reflection": "Reflection",
       "goalCheckin": "Goal check-in",

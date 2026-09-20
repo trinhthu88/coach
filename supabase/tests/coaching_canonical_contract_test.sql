@@ -8,7 +8,7 @@
 -- unit completion, and each of the four evidence gates independently.
 begin;
 
-select plan(32);
+select plan(33);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -55,7 +55,9 @@ insert into public.coach_availability (id, coach_id, slot_date, start_time, end_
   ('c1000000-0000-0000-0000-00000000f1f1'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
    current_date + 7, '09:00', '10:00', 'coaching'),
   ('c1000000-0000-0000-0000-00000000f2f2'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
-   current_date + 8, '09:00', '10:00', 'coaching');
+   current_date + 8, '09:00', '10:00', 'coaching'),
+  ('c1000000-0000-0000-0000-00000000f3f3'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
+   current_date + 9, '09:00', '10:00', 'coaching');
 
 -- ---------------------------------------------------------------------------
 -- Cohort Coach pool
@@ -142,6 +144,29 @@ select throws_ok($$
           'c1000000-0000-0000-0000-00000000f2f2'::uuid, 'Second live',
           (current_date + 8 + time '09:00') at time zone 'UTC', 60, 'pending_coach_approval')
 $$, '23505', NULL, 'one Coaching requirement cannot hold two live sessions');
+
+-- ...but that uniqueness is per LEARNER, not per cohort. A
+-- cohort_requirement_dates row is "Coaching 1 OF THE COHORT" and is shared by
+-- every enrolled learner, so L2 must be able to book the very same requirement
+-- while L1's session for it is still live. Keying
+-- sessions_one_live_session_per_requirement on cohort_requirement_id alone
+-- (the state before 2026-09-20) turned one cohort requirement into a
+-- cohort-wide lock: only one learner at a time could hold a live Coaching 1.
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'c1000000-0000-0000-0000-000000000004')::text, true);
+insert into public.sessions
+  (id, enrollment_id, cohort_requirement_id, coach_id, coachee_id, slot_id, topic,
+   start_time, duration_minutes, status)
+values ('c1000000-0000-0000-0000-00000000c3c3'::uuid,
+        'c1000000-0000-0000-0000-00000000e2e2'::uuid, 'c1000000-0000-0000-0000-00000000d1d1'::uuid,
+        'c1000000-0000-0000-0000-000000000001'::uuid, 'c1000000-0000-0000-0000-000000000004'::uuid,
+        'c1000000-0000-0000-0000-00000000f3f3'::uuid, 'Same requirement, other learner',
+        (current_date + 9 + time '09:00') at time zone 'UTC', 60, 'pending_coach_approval');
+select is(
+  (select count(*)::int from public.sessions
+    where cohort_requirement_id = 'c1000000-0000-0000-0000-00000000d1d1'::uuid
+      and status in ('pending_coach_approval', 'confirmed')),
+  2, 'two learners of one cohort can each hold a live session for the SAME Coaching requirement');
 
 -- A Coach outside the pool is rejected.
 select set_config('request.jwt.claims',

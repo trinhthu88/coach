@@ -49,11 +49,25 @@ CREATE INDEX sessions_cohort_idx
 -- 2. Live-session uniqueness (section 35 / section 34)
 -- ---------------------------------------------------------------------------
 
--- One Coaching requirement may hold at most one live session. A cancelled or
--- rescheduled session does not reserve the requirement, so the learner can
--- immediately book again.
+-- One learner may hold at most one live session PER Coaching requirement. A
+-- cancelled or rescheduled session does not reserve the requirement, so the
+-- learner can immediately book again.
+--
+-- The scope is (enrollment, requirement), not the requirement alone. A
+-- cohort_requirement_dates row is UNIQUE (cohort_id, programme_id, module,
+-- ordinal) -- it is "Coaching 1 OF THE COHORT", shared by every learner
+-- enrolled in it, exactly as a Triad requirement is. Keying this index on
+-- cohort_requirement_id by itself would therefore admit one live Coaching 1
+-- session per COHORT rather than per learner, so the second learner to book
+-- Coaching 1 would be rejected with 23505 until the first one's session left
+-- the live statuses. Every other check in this feature is already
+-- enrollment-scoped (book_coaching_session guards
+-- `cohort_requirement_id = ... AND enrollment_id = ...`); this matches them.
+--
+-- A NULL enrollment_id cannot reach a state this index needs to constrain:
+-- validate_session_enrollment_booking rejects a session without an enrollment.
 CREATE UNIQUE INDEX sessions_one_live_session_per_requirement
-  ON public.sessions (cohort_requirement_id)
+  ON public.sessions (enrollment_id, cohort_requirement_id)
   WHERE cohort_requirement_id IS NOT NULL
     AND status IN ('pending_coach_approval', 'confirmed');
 

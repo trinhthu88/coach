@@ -25,6 +25,7 @@ export const COACHING_KEYS = {
   checklist: "coaching-post-session-checklist",
   evidence: "coaching-session-evidence",
   fulfilment: "coaching-requirement-fulfilment",
+  reflection: "coaching-session-reflection",
 } as const;
 
 /**
@@ -38,6 +39,7 @@ const LIFECYCLE_KEYS = [
   COACHING_KEYS.checklist,
   COACHING_KEYS.evidence,
   COACHING_KEYS.fulfilment,
+  COACHING_KEYS.reflection,
   "sessions",
   "session-detail",
   "coach-availability",
@@ -354,6 +356,36 @@ export function useCoachingPostSessionChecklist(enrollmentId: string | null | un
         needsSatisfaction: !!r.needs_satisfaction,
         unitComplete: !!r.unit_complete,
       }));
+    },
+  });
+}
+
+/**
+ * The learner's own reflection for one Coaching session, if they have written
+ * one. `session_learning_reflections` holds at most one row per
+ * (enrollment, activity), so this is the row the submit mutation below
+ * rewrites -- the composer edits it rather than stacking drafts.
+ *
+ * Returns `null` for "no reflection yet"; `undefined` while loading, so the
+ * composer can avoid rendering an empty box over an unread existing answer.
+ */
+export function useCoachingReflection(
+  enrollmentId: string | null | undefined,
+  sessionId: string | null | undefined,
+) {
+  return useQuery({
+    queryKey: [COACHING_KEYS.reflection, enrollmentId, sessionId],
+    enabled: !!enrollmentId && !!sessionId,
+    queryFn: async (): Promise<{ body: string } | null> => {
+      const { data, error } = await supabase
+        .from("session_learning_reflections")
+        .select("body")
+        .eq("enrollment_id", enrollmentId!)
+        .eq("source_activity_type", "coaching")
+        .eq("source_activity_id", sessionId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? { body: data.body } : null;
     },
   });
 }
