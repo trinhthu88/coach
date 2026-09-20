@@ -18,8 +18,13 @@ import {
 /**
  * Mentoring workspace (Coachee prototype → Mentoring): My mentor,
  * Preparation, Mentoring sessions, and the latest mentor feedback.
- *  - My mentor: counterpart of the next/latest canonical mentoring session,
- *    else the learner's allowlisted mentor (get_my_mentors, passed in).
+ *  - My mentor: counterpart of the next/latest canonical mentoring session
+ *    for the SELECTED enrollment, else the sole mentor of that enrollment's
+ *    cohort pool (passed in by MentoringFindMentor from
+ *    get_mentors_for_enrollment). It is never the user-global allowlist: a
+ *    learner with two enrollments must not see the other cohort's mentor.
+ *    When the pool holds several mentors there is no single "my mentor", and
+ *    the fallback is deliberately null.
  *  - Progress chip: canonical mentoring_completed_units / _required_units.
  *  - Preparation: the existing per-session preparation flow on the session
  *    detail (prep file + notes). No second write path is created here.
