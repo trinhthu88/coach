@@ -544,7 +544,8 @@ WITH repo(version) AS (VALUES
   ('20260920210000'),
   ('20260920220000'),
   ('20260920230000'),
-  ('20260920240000')
+  ('20260920240000'),
+  ('20260921100000')
 )
 SELECT 'ledger version not in the repository' AS mismatch, s.version, s.name
 FROM supabase_migrations.schema_migrations s

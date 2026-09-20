@@ -8,7 +8,7 @@
 -- unit completion, and each of the four evidence gates independently.
 begin;
 
-select plan(33);
+select plan(37);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -57,7 +57,9 @@ insert into public.coach_availability (id, coach_id, slot_date, start_time, end_
   ('c1000000-0000-0000-0000-00000000f2f2'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
    current_date + 8, '09:00', '10:00', 'coaching'),
   ('c1000000-0000-0000-0000-00000000f3f3'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
-   current_date + 9, '09:00', '10:00', 'coaching');
+   current_date + 9, '09:00', '10:00', 'coaching'),
+  ('c1000000-0000-0000-0000-00000000f4f4'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
+   current_date + 10, '09:00', '10:00', 'coaching');
 
 -- ---------------------------------------------------------------------------
 -- Cohort Coach pool
@@ -167,6 +169,48 @@ select is(
     where cohort_requirement_id = 'c1000000-0000-0000-0000-00000000d1d1'::uuid
       and status in ('pending_coach_approval', 'confirmed')),
   2, 'two learners of one cohort can each hold a live session for the SAME Coaching requirement');
+
+-- ---------------------------------------------------------------------------
+-- Rescheduling: authorised by the entry point, validated by the shared insert
+-- ---------------------------------------------------------------------------
+--
+-- reschedule_coaching_session admits the Coach and an Admin as well as the
+-- learner, but delegated to book_coaching_session, which required the CALLER to
+-- own the enrollment. Every Coach or Admin reschedule therefore failed 42501
+-- after the original session had already been released in the same statement.
+
+-- A third party with no relationship to the session is still refused.
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'c1000000-0000-0000-0000-000000000003')::text, true);
+select throws_ok($$
+  select public.reschedule_coaching_session(
+    'c1000000-0000-0000-0000-00000000c3c3'::uuid,
+    'c1000000-0000-0000-0000-00000000f4f4'::uuid, NULL)
+$$, '42501', NULL, 'a learner cannot reschedule another learner''s session');
+
+-- The assigned Coach can.
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'c1000000-0000-0000-0000-000000000001')::text, true);
+select lives_ok($$
+  select public.reschedule_coaching_session(
+    'c1000000-0000-0000-0000-00000000c3c3'::uuid,
+    'c1000000-0000-0000-0000-00000000f4f4'::uuid, 'Coach moved it')
+$$, 'the assigned Coach can reschedule the learner''s session');
+
+select is(
+  (select status::text from public.sessions
+    where id = 'c1000000-0000-0000-0000-00000000c3c3'::uuid),
+  'rescheduled', 'the original session is released as rescheduled');
+
+-- The replacement belongs to the LEARNER, not to whoever moved it. Taking
+-- coachee_id from auth.uid() would have written the Coach in here.
+select is(
+  (select coachee_id from public.sessions
+    where enrollment_id = 'c1000000-0000-0000-0000-00000000e2e2'::uuid
+      and cohort_requirement_id = 'c1000000-0000-0000-0000-00000000d1d1'::uuid
+      and status in ('pending_coach_approval', 'confirmed')),
+  'c1000000-0000-0000-0000-000000000004'::uuid,
+  'the rescheduled session still belongs to the learner, not the Coach who moved it');
 
 -- A Coach outside the pool is rejected.
 select set_config('request.jwt.claims',

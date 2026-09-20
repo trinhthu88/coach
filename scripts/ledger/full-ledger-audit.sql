@@ -249,7 +249,8 @@ WITH repo(version, name) AS (VALUES
   ('20260920210000', 'mentoring_cohort_eligibility'),
   ('20260920220000', 'mentoring_cohort_profile_visibility'),
   ('20260920230000', 'mentoring_retire_user_global_paths'),
-  ('20260920240000', 'session_reschedule_reattribution')
+  ('20260920240000', 'session_reschedule_reattribution'),
+  ('20260921100000', 'coaching_requirement_scope_and_reschedule')
 -- END REPO MANIFEST
 ),
 
