@@ -62,6 +62,29 @@ values ('a7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-0000000
 select set_config('request.jwt.claim.sub', 'a7000000-0000-0000-0000-000000000001', true);
 
 -- Coaching: 2 completed (attributed on insert by the canonical trigger).
+
+-- Programme Mentoring eligibility is the COHORT mentor pool
+-- (20260920200000_cohort_mentors); mentoring_allowlist is only the historical
+-- pairing and no longer grants programme Mentoring.
+insert into public.cohort_mentors (cohort_id, mentor_user_id)
+select distinct e.cohort_id, a.mentor_user_id
+from public.mentoring_allowlist a
+join public.programme_enrollments e on e.user_id = a.mentee_user_id
+where e.cohort_id is not null
+on conflict (cohort_id, mentor_user_id) do nothing;
+
+-- Programme Coaching eligibility is the COHORT Coach pool
+-- (20260920100000_cohort_coach_assignments); coachee_coach_allowlist above is
+-- only the historical pairing and no longer grants programme Coaching. This
+-- mirrors that migration's own backfill: every (cohort, coach) pair the
+-- fixture already declares becomes an assignment.
+insert into public.cohort_coach_assignments (cohort_id, coach_id)
+select distinct e.cohort_id, a.coach_id
+from public.coachee_coach_allowlist a
+join public.programme_enrollments e on e.user_id = a.coachee_id
+where e.cohort_id is not null
+on conflict (cohort_id, coach_id) do nothing;
+
 insert into public.sessions (id, coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id, coachee_notes, coach_notes, coachee_rating, coachee_rating_comment)
 values
   ('f7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000009', 'a7000000-0000-0000-0000-000000000001',

@@ -77,13 +77,39 @@ values ('a9000000-0000-0000-0000-000000000001', 'a9000000-0000-0000-0000-0000000
 -- from zero and the two engines have something non-trivial to agree on.
 select set_config('request.jwt.claim.sub', 'a9000000-0000-0000-0000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+-- Programme Coaching eligibility is the COHORT Coach pool
+-- (20260920100000_cohort_coach_assignments); coachee_coach_allowlist above is
+-- only the historical pairing and no longer grants programme Coaching. This
+-- mirrors that migration's own backfill: every (cohort, coach) pair the
+-- fixture already declares becomes an assignment.
+insert into public.cohort_coach_assignments (cohort_id, coach_id)
+select distinct e.cohort_id, a.coach_id
+from public.coachee_coach_allowlist a
+join public.programme_enrollments e on e.user_id = a.coachee_id
+where e.cohort_id is not null
+on conflict (cohort_id, coach_id) do nothing;
+
+-- A Coaching session fulfils a programme unit only when it is attributed to a
+-- cohort Coaching requirement (20260920110000); a session with no requirement
+-- is raw activity. Inserted BEFORE the role switch below, because
+-- cohort_requirement_dates is admin-only under RLS and a learner-scoped
+-- lookup would silently match nothing.
+insert into public.sessions (
+  coach_id, coachee_id, topic, start_time, duration_minutes, status,
+  enrollment_id, cohort_requirement_id)
+select 'a9000000-0000-0000-0000-000000000002'::uuid,
+  'a9000000-0000-0000-0000-000000000001'::uuid,
+  'Recon coaching session', '2026-02-01T10:00:00Z'::timestamptz, 60,
+  'completed'::public.session_status,
+  'e9000000-0000-0000-0000-000000000001'::uuid, d.id
+from public.cohort_requirement_dates d
+where d.cohort_id = 'd9000000-0000-0000-0000-000000000001'::uuid
+  and d.module = 'coaching'::public.programme_module_type
+  and d.ordinal = 1;
+
 set local role authenticated;
-insert into public.sessions (coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id)
-values (
-  'a9000000-0000-0000-0000-000000000002', 'a9000000-0000-0000-0000-000000000001',
-  'Recon coaching session', '2026-02-01T10:00:00Z', 60, 'completed',
-  'e9000000-0000-0000-0000-000000000001'
-);
+
+
 
 -- Sponsor reads the enrollment first (cohort has 5 enrollments, meeting the
 -- k-anonymity threshold for sponsor visibility) and its output is captured

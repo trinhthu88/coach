@@ -22,6 +22,19 @@ values
  ('a5000000-0000-4000-8000-000000000003','a5000000-0000-4000-8000-000000000002');
 select set_config('request.jwt.claim.sub','a5000000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claim.role','authenticated',true);
+
+-- Programme Coaching eligibility is the COHORT Coach pool
+-- (20260920100000_cohort_coach_assignments); coachee_coach_allowlist above is
+-- only the historical pairing and no longer grants programme Coaching. This
+-- mirrors that migration's own backfill: every (cohort, coach) pair the
+-- fixture already declares becomes an assignment.
+insert into public.cohort_coach_assignments (cohort_id, coach_id)
+select distinct e.cohort_id, a.coach_id
+from public.coachee_coach_allowlist a
+join public.programme_enrollments e on e.user_id = a.coachee_id
+where e.cohort_id is not null
+on conflict (cohort_id, coach_id) do nothing;
+
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status,action_items) values
   ('a5000000-0000-4000-8000-000000000041','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Action session','2026-02-01',60,'confirmed','[{"text":"Legacy linked action","done":true,"milestone_id":"a5000000-0000-4000-8000-000000000060"},{"text":"Broken date action","due_date":"not-a-date"}]');
 select set_config('request.jwt.claim.sub','a5000000-0000-4000-8000-000000000003',true);
