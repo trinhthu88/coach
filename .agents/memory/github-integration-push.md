@@ -26,3 +26,9 @@ The CodeExecution shell wrapper can normalize or remove tabs, NUL separators, an
 **Why:** Direct parsing of `git cat-file` and NUL-delimited tree output failed even though the underlying Git objects were valid.
 
 **How to apply:** Base64-encode commit and blob contents before passing them to an impure connector call, and use a visible separator such as `|` for changed-path metadata.
+
+When local history advances or contains an unrelated descendant, target the requested commit's actual remote ancestor rather than pushing the current branch tip; reconstruct a minimal remote-base commit if needed.
+
+**Why:** A local commit can inherit unpushed work from another change stream, so publishing the branch tip would silently include unrelated files or require a force update.
+
+**How to apply:** Compare the requested change's parent and tree with the remote ref first. Upload only the intended path delta from that remote tree, update the ref without force, and verify the remote commit's changed-file list.
