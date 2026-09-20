@@ -153,7 +153,33 @@ INSERT INTO public.cohort_requirement_dates (
   cohort_id, programme_id, module, ordinal, due_on, units, training_week_id,
   generation_method, materialized_via, generated_due_on, is_overridden, legacy_due_on
 )
-SELECT d.cohort_id, d.programme_id, d.module, d.ordinal + extra.i, d.due_on, 1, d.training_week_id,
+-- The new rows are numbered by row_number() over the whole expansion of the
+-- cohort-module, in a band of their own, NOT by `d.ordinal + extra.i`.
+--
+-- The +1000000 shift above moves every existing row out of the way as a block,
+-- which preserves the RELATIVE spacing between siblings -- so `ordinal + i`
+-- walks straight onto the next sibling's ordinal and violates the
+-- (cohort, programme, module, ordinal) unique key:
+--
+--   weighted row 1000001 units 4  ->  inserts   {1000002, 1000003, 1000004}
+--   siblings already present      ->            {1000002, 1000003, 1000004}
+--
+-- Numbering the copies from 2000000 instead keeps them clear of the shifted
+-- originals (same assumption the +1000000 shift already makes: no cohort-module
+-- holds anywhere near a million requirements) and clear of each other.
+--
+-- The ORDER BY is what makes the renumber below land correctly. Copies inherit
+-- their parent's legacy_due_on, so they sort into the parent's date group, and
+-- because every original sits at 1000001+ while every copy sits at 2000001+,
+-- the parent always comes first within that group -- it keeps its unit number,
+-- which is the one learners have already seen and the one sessions, mentoring
+-- sessions, peer participants and Triad groups already reference.
+SELECT d.cohort_id, d.programme_id, d.module,
+  2000000 + (row_number() OVER (
+    PARTITION BY d.cohort_id, d.programme_id, d.module
+    ORDER BY d.legacy_due_on, d.ordinal, d.id, extra.i
+  ))::integer,
+  d.due_on, 1, d.training_week_id,
   d.generation_method, d.materialized_via, d.generated_due_on, d.is_overridden, d.legacy_due_on
 FROM public.cohort_requirement_dates d
 CROSS JOIN LATERAL generate_series(1, d.units - 1) AS extra(i)
