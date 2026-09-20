@@ -697,7 +697,14 @@ insert into public.cohorts (id, name, programme_id) values
 insert into public.cohort_requirement_dates
   (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
   ('d1000000-0000-0000-0000-0000000000d5'::uuid, 'd1000000-0000-0000-0000-00000000b4b4'::uuid,
-   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 3, 'manual', 'admin_save');
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 3, 'manual', 'admin_save'),
+  -- Programme A requires 2 Mentoring units, so the cohort carries 2. A cohort
+  -- holding fewer requirements than its programme requires is an integrity
+  -- violation, not a fixture shortcut: since 20260923100000 the booking guard
+  -- refuses to operate against one. Unit 2 is not yet due, so due/overdue
+  -- below are unchanged.
+  ('d1000000-0000-0000-0000-0000000000d6'::uuid, 'd1000000-0000-0000-0000-00000000b4b4'::uuid,
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date + 30, 'manual', 'admin_save');
 insert into public.cohort_mentors (cohort_id, mentor_user_id) values
   ('d1000000-0000-0000-0000-00000000b4b4'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid);
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status) values

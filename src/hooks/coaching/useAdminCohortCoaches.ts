@@ -47,9 +47,8 @@ export function useAdminCohortCoaches(cohortId: string | undefined) {
       const assignedById = new Map(
         (assignments ?? []).map((a) => [a.coach_id, a]),
       );
-      const ids = Array.from(
-        new Set([...(coachRoles ?? []).map((r) => r.user_id), ...assignedById.keys()]),
-      );
+      const roleIds = Array.from(new Set((coachRoles ?? []).map((r) => r.user_id)));
+      const ids = Array.from(new Set([...roleIds, ...assignedById.keys()]));
       if (ids.length === 0) return [];
 
       const [{ data: profiles }, { data: coachProfiles }] = await Promise.all([
@@ -57,10 +56,18 @@ export function useAdminCohortCoaches(cohortId: string | undefined) {
         supabase.from("coach_profiles").select("id, title").in("id", ids),
       ]);
 
-      return ids
+      const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+      const activeCoachIds = new Set(
+        roleIds.filter((id) => profileById.get(id)?.status === "active"),
+      );
+      // Keep existing assignments visible even when the account later becomes
+      // inactive, so an Admin can see and remove the stale cohort membership.
+      const visibleIds = ids.filter((id) => assignedById.has(id) || activeCoachIds.has(id));
+
+      return visibleIds
         .map((id) => {
           const a = assignedById.get(id);
-          const profile = profiles?.find((p) => p.id === id);
+          const profile = profileById.get(id);
           return {
             coachId: id,
             fullName: profile?.full_name ?? "Coach",

@@ -25,7 +25,7 @@ const upsert = vi.fn().mockResolvedValue({ error: null });
 function mockTables(assignments = [
   { mentor_user_id: "a", is_active: true, assigned_at: "2026-01-01" },
   { mentor_user_id: "b", is_active: true, assigned_at: "2026-01-01" },
-], coachIds = ["a", "b", "c"]) {
+], coachIds = ["a", "b", "c", "d"]) {
   from.mockImplementation((table: string) => {
     if (table === "cohort_mentors") {
       return {
@@ -53,6 +53,7 @@ function mockTables(assignments = [
                 { id: "a", full_name: "Coach A", status: "active" },
                 { id: "b", full_name: "Coach B", status: "inactive" },
                 { id: "c", full_name: "Coach C", status: "active" },
+                { id: "d", full_name: "Coach D", status: "inactive" },
               ],
             }),
         }),
@@ -107,6 +108,13 @@ describe("CohortMentoringPanel", () => {
     expect(b).toHaveAttribute("data-assigned", "true");
     expect(b).toHaveAttribute("data-account-active", "false");
     expect(screen.getByTestId("cohort-mentoring-inactive-warning")).toBeInTheDocument();
+  });
+
+  it("does not offer an inactive Coach who is not already assigned", async () => {
+    renderPanel();
+    const rows = await screen.findAllByTestId("cohort-mentor-row");
+    expect(rows).toHaveLength(3);
+    expect(screen.queryByText("Coach D")).not.toBeInTheDocument();
   });
 
   it("assigns a candidate mentor to the cohort", async () => {
