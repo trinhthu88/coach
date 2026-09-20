@@ -169,7 +169,11 @@ describe("migration chain — canonical final state", () => {
         const sql = readFileSync(join(DIR, file), "utf8");
         expect(sql, file).not.toMatch(/DROP TABLE public\.(programme_)?triad_rounds|DROP COLUMN (member_[123]_id|enrollment_[123]_id|(coach|coachee|observer)_enrollment_id|participant_id|learned_as_|will_use_as_)/);
       }
-      expect(readdirSync(DEPLOYMENT_2)).toEqual([RETIRE_TRIAD]);
+      // The Triad retirement is held here, and nothing Triad-shaped escaped
+      // into supabase/migrations. Other modules stage their own retirements in
+      // this directory (Coaching added one), so this asserts the Triad file is
+      // present rather than that it is the only file.
+      expect(readdirSync(DEPLOYMENT_2)).toContain(RETIRE_TRIAD);
     });
 
     it("deployment 2 drops the legacy round tables and slot / role / response / answer columns, and keeps the group's requirement and cohort", () => {

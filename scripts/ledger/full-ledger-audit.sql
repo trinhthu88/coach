@@ -236,7 +236,13 @@ WITH repo(version, name) AS (VALUES
   ('20260918189000', 'demo_generator_triad_model'),
   ('20260918190000', 'triad_canonical_cutover'),
   ('20260918195000', 'canonical_engagement_signals'),
-  ('20260919120000', 'triad_requirement_groups')
+  ('20260919120000', 'triad_requirement_groups'),
+  ('20260920100000', 'cohort_coach_assignments'),
+  ('20260920110000', 'coaching_session_requirement_link'),
+  ('20260920120000', 'session_learning_reflections'),
+  ('20260920130000', 'canonical_coaching_completion'),
+  ('20260920140000', 'coaching_booking_lifecycle'),
+  ('20260920150000', 'coaching_eligibility_cohort_authority')
 -- END REPO MANIFEST
 ),
 
