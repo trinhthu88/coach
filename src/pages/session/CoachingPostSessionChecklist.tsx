@@ -30,7 +30,7 @@ import {
  * check-in by SessionGoalRatings, follow-up action by the session action list,
  * satisfaction by the rating control on Sessions). The reflection gate had
  * none, which left session_learning_reflections with no INSERT path anywhere
- * in the app and made unit_complete unreachable for every learner. It is
+ * in the app and left the reflection permanently outstanding. It is
  * placed on the gate it satisfies so there is exactly one way to write it.
  */
 export function CoachingPostSessionChecklist({
@@ -104,12 +104,12 @@ export function CoachingPostSessionChecklist({
           <p className="text-sm text-muted-foreground">{t("postSession.subtitle")}</p>
         </div>
         <Badge
-          variant={evidence.unitComplete ? "default" : "secondary"}
-          data-testid="coaching-unit-status"
+          variant={evidence.evidenceComplete ? "default" : "secondary"}
+          data-testid="coaching-evidence-status"
         >
-          {evidence.unitComplete
-            ? t("postSession.unitComplete")
-            : t("postSession.unitPending", { done: doneCount, total: applicable.length })}
+          {evidence.evidenceComplete
+            ? t("postSession.evidenceComplete")
+            : t("postSession.evidencePending", { done: doneCount, total: applicable.length })}
         </Badge>
       </div>
 
@@ -167,7 +167,7 @@ export function CoachingPostSessionChecklist({
         </div>
       )}
 
-      {!evidence.unitComplete && (
+      {!evidence.evidenceComplete && (
         <p className="text-xs text-muted-foreground">{t("postSession.footer")}</p>
       )}
     </Card>

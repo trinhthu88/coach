@@ -69,7 +69,7 @@ export interface CanonicalCoachingProgress {
   dueUnits: number;
   overdueUnits: number;
   paceStatus: string;
-  /** Held sessions whose programme unit is still waiting on learner evidence. */
+  /** Held sessions whose write-up is still outstanding. Not a progress figure. */
   postSessionPending: number;
 }
 
@@ -107,7 +107,7 @@ export function useCanonicalCoachingProgress(enrollmentId: string | null | undef
         dueUnits: row.due_units ?? 0,
         overdueUnits: row.overdue_units ?? 0,
         paceStatus: row.pace_status ?? "",
-        postSessionPending: (checklist ?? []).filter((c) => !c.unit_complete).length,
+        postSessionPending: (checklist ?? []).filter((c) => !c.evidence_complete).length,
       };
     },
   });
@@ -292,10 +292,10 @@ export interface CoachingEvidence {
   hasAction: boolean;
   hasSatisfaction: boolean;
   goalCheckinRequired: boolean;
-  unitComplete: boolean;
+  evidenceComplete: boolean;
 }
 
-/** The four evidence gates for one session, straight from the backend. */
+/** After-session evidence for one session, straight from the backend. */
 export function useCoachingSessionEvidence(sessionId: string | null | undefined) {
   return useQuery({
     queryKey: [COACHING_KEYS.evidence, sessionId],
@@ -315,7 +315,7 @@ export function useCoachingSessionEvidence(sessionId: string | null | undefined)
         hasAction: !!r.has_action,
         hasSatisfaction: !!r.has_satisfaction,
         goalCheckinRequired: !!r.goal_checkin_required,
-        unitComplete: !!r.unit_complete,
+        evidenceComplete: !!r.evidence_complete,
       };
     },
   });
@@ -331,10 +331,10 @@ export interface PostSessionChecklistRow {
   needsGoalCheckin: boolean;
   needsAction: boolean;
   needsSatisfaction: boolean;
-  unitComplete: boolean;
+  evidenceComplete: boolean;
 }
 
-/** Held sessions whose programme unit is still waiting on learner evidence. */
+/** Held sessions whose write-up is still outstanding. */
 export function useCoachingPostSessionChecklist(enrollmentId: string | null | undefined) {
   return useQuery({
     queryKey: [COACHING_KEYS.checklist, enrollmentId],
@@ -354,7 +354,7 @@ export function useCoachingPostSessionChecklist(enrollmentId: string | null | un
         needsGoalCheckin: !!r.needs_goal_checkin,
         needsAction: !!r.needs_action,
         needsSatisfaction: !!r.needs_satisfaction,
-        unitComplete: !!r.unit_complete,
+        evidenceComplete: !!r.evidence_complete,
       }));
     },
   });

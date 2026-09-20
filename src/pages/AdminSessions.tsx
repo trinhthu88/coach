@@ -70,7 +70,7 @@ interface SessionRow {
    * NOT a completed programme unit -- Admin must be able to see the difference
    * rather than inferring completion from the status column.
    */
-  unitComplete?: boolean;
+  evidenceComplete?: boolean;
   postSessionPending?: boolean;
 }
 
@@ -134,13 +134,13 @@ export default function AdminSessions() {
     const completedCoachingIds = all
       .filter((s) => s.kind === "coaching" && s.status === "completed")
       .map((s) => s.id);
-    const evidenceById = new Map<string, { unit_complete: boolean }>();
+    const evidenceById = new Map<string, { evidence_complete: boolean }>();
     if (completedCoachingIds.length) {
       const { data: evidence } = await supabase.rpc("coaching_session_evidence_bulk", {
         p_session_ids: completedCoachingIds,
       });
       for (const e of evidence ?? []) {
-        if (e.session_id) evidenceById.set(e.session_id, { unit_complete: !!e.unit_complete });
+        if (e.session_id) evidenceById.set(e.session_id, { evidence_complete: !!e.evidence_complete });
       }
     }
 
@@ -150,8 +150,8 @@ export default function AdminSessions() {
         ...s,
         coach: profilesById[s.coach_id],
         coachee: profilesById[s.coachee_id],
-        unitComplete: ev?.unit_complete,
-        postSessionPending: ev ? !ev.unit_complete : undefined,
+        evidenceComplete: ev?.evidence_complete,
+        postSessionPending: ev ? !ev.evidence_complete : undefined,
       };
     }) as SessionRow[]);
     setLoading(false);
@@ -385,9 +385,9 @@ export default function AdminSessions() {
                           {t("sessions.unitPostSessionPending")}
                         </Badge>
                       )}
-                      {s.unitComplete && (
+                      {s.evidenceComplete && (
                         <Badge variant="default" className="mt-1 block w-fit" data-testid="admin-unit-complete">
-                          {t("sessions.unitComplete")}
+                          {t("sessions.evidenceComplete")}
                         </Badge>
                       )}
                     </TableCell>

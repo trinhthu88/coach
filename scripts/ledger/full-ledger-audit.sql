@@ -252,7 +252,8 @@ WITH repo(version, name) AS (VALUES
   ('20260920240000', 'session_reschedule_reattribution'),
   ('20260921100000', 'coaching_requirement_scope_and_reschedule'),
   ('20260921110000', 'mentoring_requirement_link'),
-  ('20260921120000', 'mentoring_canonical_lifecycle')
+  ('20260921120000', 'mentoring_canonical_lifecycle'),
+  ('20260921130000', 'coaching_operational_completion')
 -- END REPO MANIFEST
 ),
 

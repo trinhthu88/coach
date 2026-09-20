@@ -669,8 +669,8 @@
     "coacheeNotesLabel": "Coachee notes",
     "cancel": "Cancel",
     "save": "Save",
-    "unitPostSessionPending": "Post-session pending",
-    "unitComplete": "Unit complete"
+    "unitPostSessionPending": "Follow-up pending",
+    "evidenceComplete": "Follow-up complete"
   },
   "coaches": {
     "eyebrow": "Organisation",
