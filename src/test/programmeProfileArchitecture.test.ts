@@ -381,6 +381,52 @@ describe("programme profile architecture", () => {
     });
   });
 
+  describe("Coaching source of truth", () => {
+    // Every mandatory evidence gate in coaching_session_evidence() must be
+    // reachable from the product. The reflection gate shipped without a writer
+    // of any kind, which left session_learning_reflections with no INSERT path
+    // and made unit_complete unreachable for every learner, while the checklist
+    // still displayed it as an outstanding item the learner could act on.
+    it("every Coaching evidence gate has a writer wired into a surface", () => {
+      const GATE_WRITERS: [string, RegExp][] = [
+        // reflection -> session_learning_reflections
+        ["reflection", /from\("session_learning_reflections"\)[\s\S]{0,200}\.upsert\(/],
+        // goal check-in -> goal_checkins, via the canonical RPC
+        ["goalCheckin", /rpc\("record_goal_checkins"/],
+        // follow-up action -> enrollment_actions, via the canonical RPC
+        ["action", /rpc\("save_enrollment_activity_actions"/],
+        // satisfaction -> sessions.coachee_rating
+        ["satisfaction", /coachee_rating:\s/],
+      ];
+      for (const [gate, writer] of GATE_WRITERS) {
+        const writers = files.filter((f) => writer.test(readFileSync(f, "utf8")));
+        expect(writers, `no writer for the Coaching ${gate} gate`).not.toEqual([]);
+      }
+    });
+
+    it("the reflection writer is reachable from the checklist that shows the gate", () => {
+      const checklist = read("pages/session/CoachingPostSessionChecklist.tsx");
+      expect(checklist).toMatch(/useSubmitCoachingReflection/);
+      // The learner writes their own reflection; nobody else may.
+      expect(checklist).toMatch(/canSubmitReflection/);
+      const detail = read("pages/SessionDetail.tsx");
+      expect(detail).toMatch(/canSubmitReflection=\{isCoachee\}/);
+      expect(detail).toMatch(/enrollmentId=\{session\.enrollment_id\}/);
+    });
+
+    // The C2 regression shape precisely: the writer existed as an exported
+    // hook that nothing imported, so the capability was unreachable from any
+    // rendered screen while every unit test of the hook still passed. A gate
+    // writer must be reached from a component, not merely exist.
+    it("the reflection hooks are reached from a rendered surface, not only exported", () => {
+      const RENDERED = files.filter((f) => /\/(pages|components)\//.test(f));
+      for (const hook of ["useSubmitCoachingReflection", "useCoachingReflection"]) {
+        const callers = RENDERED.filter((f) => new RegExp(`\\b${hook}\\b`).test(readFileSync(f, "utf8")));
+        expect(callers, `${hook} is exported but no screen calls it`).not.toEqual([]);
+      }
+    });
+  });
+
   it("schedule mismatch state comes from one canonical source for every role", () => {
     const hook = read("hooks/useCanonicalScheduleState.ts");
     expect(hook).toMatch(/learner_canonical_schedule_state/);

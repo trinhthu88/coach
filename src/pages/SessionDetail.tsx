@@ -538,7 +538,11 @@ export default function SessionDetail() {
               Coaching once the Coach has marked the session held; it reads
               every tick from the canonical backend, never from this page. */}
           {!isPeer && !isCoacheePeer && session.enrollment_id && (
-            <CoachingPostSessionChecklist sessionId={session.id} />
+            <CoachingPostSessionChecklist
+              sessionId={session.id}
+              enrollmentId={session.enrollment_id}
+              canSubmitReflection={isCoachee}
+            />
           )}
 
           {/* Per-goal rating snapshot (non-peer sessions only) */}

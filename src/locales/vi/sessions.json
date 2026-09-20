@@ -333,6 +333,15 @@
     "unitPending": "Hạng mục chương trình đang chờ · {{done}}/{{total}}",
     "notRequired": "không bắt buộc",
     "footer": "Coach đã xác nhận buổi học đã diễn ra. Hạng mục chương trình hoàn tất khi tất cả mục bắt buộc được hoàn thành.",
+    "reflection": {
+      "label": "Phản tư của bạn",
+      "help": "Bạn rút ra được điều gì từ buổi này? Chỉ bạn và Coach của bạn đọc được.",
+      "placeholder": "Điều tôi học được, và điều tôi sẽ làm khác đi…",
+      "save": "Lưu phản tư",
+      "update": "Cập nhật phản tư",
+      "saved": "Đã lưu phản tư",
+      "saveFailed": "Không thể lưu phản tư của bạn."
+    },
     "items": {
       "reflection": "Phản tư",
       "goalCheckin": "Cập nhật mục tiêu",
