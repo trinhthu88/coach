@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { callPendingRpc } from "@/lib/pendingRpc";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
@@ -189,7 +188,7 @@ export default function MentoringBookSession() {
     // eligibility, requirement resolution, the slot window, slot reservation
     // and collision protection -- none of it is reconstructed here, and
     // mentee_id comes from the enrollment rather than from this screen.
-    const { data, error } = await callPendingRpc<string>("book_mentoring_session", {
+    const { data, error } = await supabase.rpc("book_mentoring_session", {
       p_enrollment_id: enrollmentId,
       p_mentor_id: mentor.coach_user_id,
       p_slot_id: opt.slotId,

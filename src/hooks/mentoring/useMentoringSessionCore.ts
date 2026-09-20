@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { callPendingRpc } from "@/lib/pendingRpc";
 import { toast } from "sonner";
 import { MentoringSessionRow, ProfileLite } from "./types";
 
@@ -75,7 +74,7 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
       // Notes go through the canonical writer, which enforces that each party
       // writes only their own side. A direct UPDATE is refused by
       // guard_session_protected_fields() for anything else on this row.
-      const { error } = await callPendingRpc("update_mentoring_session_notes", {
+      const { error } = await supabase.rpc("update_mentoring_session_notes", {
         p_session_id: session.id,
         p_mentor_notes: opts.includeMentorNotes ? mentorNotes : null,
         p_mentee_notes: opts.includeMenteeNotes ? menteeNotes : null,
@@ -106,7 +105,7 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
     // Operational completion only: the mentor records that the meeting took
     // place. The preparation document, the mentee's reflection and the
     // mentor's feedback are after-session evidence and gate nothing.
-    const { error } = await callPendingRpc("transition_mentoring_session_status", {
+    const { error } = await supabase.rpc("transition_mentoring_session_status", {
       p_session_id: session.id,
       p_status: "completed",
     });

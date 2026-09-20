@@ -579,33 +579,27 @@ export type Database = {
         Row: {
           coach_id: string
           created_at: string
-          engagement_level: string | null
           flag_for_admin: boolean
           flag_notes: string | null
           id: string
-          quality_rating: number | null
           session_id: string
           updated_at: string
         }
         Insert: {
           coach_id: string
           created_at?: string
-          engagement_level?: string | null
           flag_for_admin?: boolean
           flag_notes?: string | null
           id?: string
-          quality_rating?: number | null
           session_id: string
           updated_at?: string
         }
         Update: {
           coach_id?: string
           created_at?: string
-          engagement_level?: string | null
           flag_for_admin?: boolean
           flag_notes?: string | null
           id?: string
-          quality_rating?: number | null
           session_id?: string
           updated_at?: string
         }
@@ -625,6 +619,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      coach_session_feedback_retired_ratings: {
+        Row: {
+          archived_at: string
+          coach_id: string | null
+          engagement_level: string | null
+          quality_rating: number | null
+          session_id: string
+        }
+        Insert: {
+          archived_at?: string
+          coach_id?: string | null
+          engagement_level?: string | null
+          quality_rating?: number | null
+          session_id: string
+        }
+        Update: {
+          archived_at?: string
+          coach_id?: string | null
+          engagement_level?: string | null
+          quality_rating?: number | null
+          session_id?: string
+        }
+        Relationships: []
       }
       coach_session_limits: {
         Row: {
@@ -1439,232 +1457,6 @@ export type Database = {
           },
         ]
       }
-      demo_accounts: {
-        Row: {
-          account_key: string
-          created_at: string
-          is_prospect_login: boolean
-          organization_id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          account_key: string
-          created_at?: string
-          is_prospect_login?: boolean
-          organization_id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          account_key?: string
-          created_at?: string
-          is_prospect_login?: boolean
-          organization_id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "demo_accounts_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "demo_organization_registry"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "demo_accounts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      demo_executor_target: {
-        Row: {
-          anchor_date: string
-          configured_at: string
-          fixture_version: string
-          organization_id: string
-          singleton: boolean
-        }
-        Insert: {
-          anchor_date: string
-          configured_at?: string
-          fixture_version: string
-          organization_id: string
-          singleton?: boolean
-        }
-        Update: {
-          anchor_date?: string
-          configured_at?: string
-          fixture_version?: string
-          organization_id?: string
-          singleton?: boolean
-        }
-        Relationships: []
-      }
-      demo_operations: {
-        Row: {
-          affected_counts: Json
-          anchor_date: string | null
-          error_message: string | null
-          expected_generation: number | null
-          finished_at: string | null
-          fixture_version: string
-          generation_after: number | null
-          generation_before: number
-          id: string
-          idempotency_key: string
-          lock_key: number | null
-          operation: string
-          organization_id: string
-          request_fingerprint: string
-          requested_by: string
-          started_at: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          affected_counts?: Json
-          anchor_date?: string | null
-          error_message?: string | null
-          expected_generation?: number | null
-          finished_at?: string | null
-          fixture_version: string
-          generation_after?: number | null
-          generation_before: number
-          id?: string
-          idempotency_key: string
-          lock_key?: number | null
-          operation: string
-          organization_id: string
-          request_fingerprint?: string
-          requested_by: string
-          started_at?: string
-          status: string
-          updated_at?: string
-        }
-        Update: {
-          affected_counts?: Json
-          anchor_date?: string | null
-          error_message?: string | null
-          expected_generation?: number | null
-          finished_at?: string | null
-          fixture_version?: string
-          generation_after?: number | null
-          generation_before?: number
-          id?: string
-          idempotency_key?: string
-          lock_key?: number | null
-          operation?: string
-          organization_id?: string
-          request_fingerprint?: string
-          requested_by?: string
-          started_at?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "demo_operations_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "demo_organization_registry"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "demo_operations_requested_by_fkey"
-            columns: ["requested_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      demo_organization_registry: {
-        Row: {
-          anchor_date: string | null
-          created_at: string
-          display_name: string
-          fixture_version: string
-          generation: number
-          last_successful_reset_at: string | null
-          organization_id: string
-          slug: string
-          state: string
-          updated_at: string
-        }
-        Insert: {
-          anchor_date?: string | null
-          created_at?: string
-          display_name: string
-          fixture_version: string
-          generation?: number
-          last_successful_reset_at?: string | null
-          organization_id: string
-          slug: string
-          state?: string
-          updated_at?: string
-        }
-        Update: {
-          anchor_date?: string | null
-          created_at?: string
-          display_name?: string
-          fixture_version?: string
-          generation?: number
-          last_successful_reset_at?: string | null
-          organization_id?: string
-          slug?: string
-          state?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "demo_organization_registry_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: true
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      demo_resource_registry: {
-        Row: {
-          created_at: string
-          generation: number
-          organization_id: string
-          protected_baseline: boolean
-          resource_id: string
-          resource_type: string
-        }
-        Insert: {
-          created_at?: string
-          generation: number
-          organization_id: string
-          protected_baseline?: boolean
-          resource_id: string
-          resource_type: string
-        }
-        Update: {
-          created_at?: string
-          generation?: number
-          organization_id?: string
-          protected_baseline?: boolean
-          resource_id?: string
-          resource_type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "demo_resource_registry_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "demo_organization_registry"
-            referencedColumns: ["organization_id"]
-          },
-        ]
-      }
       enrollment_action_backfill_audit: {
         Row: {
           item_ordinal: number
@@ -2201,6 +1993,8 @@ export type Database = {
           cancel_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          cohort_id: string | null
+          cohort_requirement_id: string | null
           confirmed_at: string | null
           created_at: string
           duration_minutes: number
@@ -2226,6 +2020,8 @@ export type Database = {
           cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          cohort_id?: string | null
+          cohort_requirement_id?: string | null
           confirmed_at?: string | null
           created_at?: string
           duration_minutes: number
@@ -2251,6 +2047,8 @@ export type Database = {
           cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          cohort_id?: string | null
+          cohort_requirement_id?: string | null
           confirmed_at?: string | null
           created_at?: string
           duration_minutes?: number
@@ -2272,6 +2070,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "mentoring_sessions_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentoring_sessions_cohort_requirement_id_fkey"
+            columns: ["cohort_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_requirement_dates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mentoring_sessions_enrollment_id_fkey"
             columns: ["enrollment_id"]
@@ -4604,6 +4416,42 @@ export type Database = {
         }
         Returns: string
       }
+      book_coaching_session_internal: {
+        Args: {
+          p_coach_id: string
+          p_duration_minutes?: number
+          p_enrollment_id: string
+          p_requirement_id: string
+          p_slot_id: string
+          p_start_time?: string
+          p_topic: string
+        }
+        Returns: string
+      }
+      book_mentoring_session: {
+        Args: {
+          p_duration_minutes?: number
+          p_enrollment_id: string
+          p_mentor_id: string
+          p_requirement_id?: string
+          p_slot_id: string
+          p_start_time?: string
+          p_topic: string
+        }
+        Returns: string
+      }
+      book_mentoring_session_internal: {
+        Args: {
+          p_duration_minutes?: number
+          p_enrollment_id: string
+          p_mentor_id: string
+          p_requirement_id?: string
+          p_slot_id: string
+          p_start_time?: string
+          p_topic: string
+        }
+        Returns: string
+      }
       book_peer_session: {
         Args: {
           p_duration_minutes: number
@@ -4815,6 +4663,17 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
+      canonical_mentoring_requirement_fulfilment: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_on: string
+          due_on: string
+          fulfilled_on: string
+          ordinal: number
+          requirement_id: string
+          session_id: string
+        }[]
+      }
       canonical_module_progress: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: {
@@ -4939,6 +4798,7 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: {
           due_on: string
+          evidence_complete: boolean
           needs_action: boolean
           needs_goal_checkin: boolean
           needs_reflection: boolean
@@ -4947,13 +4807,13 @@ export type Database = {
           requirement_id: string
           session_id: string
           session_status: string
-          unit_complete: boolean
         }[]
       }
       coaching_session_evidence: {
         Args: { p_session_id: string }
         Returns: {
           enrollment_id: string
+          evidence_complete: boolean
           goal_checkin_required: boolean
           has_action: boolean
           has_goal_checkin: boolean
@@ -4961,13 +4821,13 @@ export type Database = {
           has_satisfaction: boolean
           session_completed: boolean
           session_id: string
-          unit_complete: boolean
         }[]
       }
       coaching_session_evidence_bulk: {
         Args: { p_session_ids: string[] }
         Returns: {
           enrollment_id: string
+          evidence_complete: boolean
           goal_checkin_required: boolean
           has_action: boolean
           has_goal_checkin: boolean
@@ -4975,7 +4835,6 @@ export type Database = {
           has_satisfaction: boolean
           session_completed: boolean
           session_id: string
-          unit_complete: boolean
         }[]
       }
       coaching_sessions_without_requirement: {
@@ -5099,6 +4958,10 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: string
       }
+      confirm_coaching_session: {
+        Args: { p_meeting_url?: string; p_session_id: string }
+        Returns: string
+      }
       create_programme_enrollment: {
         Args: {
           p_cohort_id: string
@@ -5131,330 +4994,6 @@ export type Database = {
         }
       }
       dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
-      demo_apply_batch_2: { Args: { p_operation_id: string }; Returns: Json }
-      demo_apply_batch_3: { Args: { p_operation_id: string }; Returns: Json }
-      demo_apply_batch_4: { Args: { p_operation_id: string }; Returns: Json }
-      demo_assert_batch_2_collisions: { Args: never; Returns: undefined }
-      demo_assert_batch_3_collisions: { Args: never; Returns: undefined }
-      demo_assert_batch_4_cross_org_references: {
-        Args: never
-        Returns: undefined
-      }
-      demo_assert_batch_4_privacy: { Args: never; Returns: undefined }
-      demo_assert_no_account_collisions: { Args: never; Returns: undefined }
-      demo_assert_service_target: {
-        Args: {
-          p_anchor_date: string
-          p_fixture_version: string
-          p_organization_id: string
-        }
-        Returns: undefined
-      }
-      demo_batch_2_ensure_auth_identity: {
-        Args: {
-          p_email: string
-          p_full_name: string
-          p_role: string
-          p_user_id: string
-        }
-        Returns: boolean
-      }
-      demo_batch_2_leader: {
-        Args: { p_serial: number }
-        Returns: {
-          cohort_id: string
-          email: string
-          enrollment_id: string
-          full_name: string
-          programme_id: string
-          serial_number: number
-          user_id: string
-        }[]
-      }
-      demo_batch_3_activity_resource_owned: {
-        Args: {
-          p_exists: boolean
-          p_resource_id: string
-          p_resource_type: string
-        }
-        Returns: undefined
-      }
-      demo_batch_3_id: {
-        Args: { p_kind: string; p_serial: number }
-        Returns: string
-      }
-      demo_batch_3_position: { Args: { p_serial: number }; Returns: number }
-      demo_batch_3_programme_key: {
-        Args: { p_serial: number }
-        Returns: string
-      }
-      demo_batch_3_register_resource: {
-        Args: {
-          p_generation: number
-          p_resource_id: string
-          p_resource_type: string
-        }
-        Returns: undefined
-      }
-      demo_begin_batch_2_operation: {
-        Args: {
-          p_anchor_date: string
-          p_expected_generation?: number
-          p_fixture_version: string
-          p_idempotency_key: string
-          p_operation: string
-          p_organization_id: string
-          p_requested_by: string
-        }
-        Returns: {
-          affected_counts: Json
-          anchor_date: string | null
-          error_message: string | null
-          expected_generation: number | null
-          finished_at: string | null
-          fixture_version: string
-          generation_after: number | null
-          generation_before: number
-          id: string
-          idempotency_key: string
-          lock_key: number | null
-          operation: string
-          organization_id: string
-          request_fingerprint: string
-          requested_by: string
-          started_at: string
-          status: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "demo_operations"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      demo_begin_batch_3_operation: {
-        Args: {
-          p_anchor_date: string
-          p_expected_generation?: number
-          p_fixture_version: string
-          p_idempotency_key: string
-          p_operation: string
-          p_organization_id: string
-          p_requested_by: string
-        }
-        Returns: {
-          affected_counts: Json
-          anchor_date: string | null
-          error_message: string | null
-          expected_generation: number | null
-          finished_at: string | null
-          fixture_version: string
-          generation_after: number | null
-          generation_before: number
-          id: string
-          idempotency_key: string
-          lock_key: number | null
-          operation: string
-          organization_id: string
-          request_fingerprint: string
-          requested_by: string
-          started_at: string
-          status: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "demo_operations"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      demo_begin_batch_4_operation: {
-        Args: {
-          p_anchor_date: string
-          p_expected_generation?: number
-          p_fixture_version: string
-          p_idempotency_key: string
-          p_operation: string
-          p_organization_id: string
-          p_requested_by: string
-        }
-        Returns: {
-          affected_counts: Json
-          anchor_date: string | null
-          error_message: string | null
-          expected_generation: number | null
-          finished_at: string | null
-          fixture_version: string
-          generation_after: number | null
-          generation_before: number
-          id: string
-          idempotency_key: string
-          lock_key: number | null
-          operation: string
-          organization_id: string
-          request_fingerprint: string
-          requested_by: string
-          started_at: string
-          status: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "demo_operations"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      demo_begin_operation: {
-        Args: {
-          p_anchor_date: string
-          p_expected_generation?: number
-          p_fixture_version: string
-          p_idempotency_key: string
-          p_operation: string
-          p_organization_id: string
-          p_requested_by: string
-        }
-        Returns: {
-          affected_counts: Json
-          anchor_date: string | null
-          error_message: string | null
-          expected_generation: number | null
-          finished_at: string | null
-          fixture_version: string
-          generation_after: number | null
-          generation_before: number
-          id: string
-          idempotency_key: string
-          lock_key: number | null
-          operation: string
-          organization_id: string
-          request_fingerprint: string
-          requested_by: string
-          started_at: string
-          status: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "demo_operations"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      demo_configure_target: {
-        Args: {
-          p_anchor_date: string
-          p_fixture_version: string
-          p_organization_id: string
-        }
-        Returns: undefined
-      }
-      demo_delete_batch_4_owned_resources: {
-        Args: { p_operation_id: string }
-        Returns: Json
-      }
-      demo_fail_operation: {
-        Args: { p_error_message: string; p_operation_id: string }
-        Returns: {
-          affected_counts: Json
-          anchor_date: string | null
-          error_message: string | null
-          expected_generation: number | null
-          finished_at: string | null
-          fixture_version: string
-          generation_after: number | null
-          generation_before: number
-          id: string
-          idempotency_key: string
-          lock_key: number | null
-          operation: string
-          organization_id: string
-          request_fingerprint: string
-          requested_by: string
-          started_at: string
-          status: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "demo_operations"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      demo_finish_operation: {
-        Args: { p_affected_counts?: Json; p_operation_id: string }
-        Returns: {
-          affected_counts: Json
-          anchor_date: string | null
-          error_message: string | null
-          expected_generation: number | null
-          finished_at: string | null
-          fixture_version: string
-          generation_after: number | null
-          generation_before: number
-          id: string
-          idempotency_key: string
-          lock_key: number | null
-          operation: string
-          organization_id: string
-          request_fingerprint: string
-          requested_by: string
-          started_at: string
-          status: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "demo_operations"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      demo_reap_stale_operation: {
-        Args: { p_max_age?: string; p_operation_id: string }
-        Returns: {
-          affected_counts: Json
-          anchor_date: string | null
-          error_message: string | null
-          expected_generation: number | null
-          finished_at: string | null
-          fixture_version: string
-          generation_after: number | null
-          generation_before: number
-          id: string
-          idempotency_key: string
-          lock_key: number | null
-          operation: string
-          organization_id: string
-          request_fingerprint: string
-          requested_by: string
-          started_at: string
-          status: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "demo_operations"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      demo_register_batch_2_resource: {
-        Args: {
-          p_generation: number
-          p_resource_id: string
-          p_resource_type: string
-        }
-        Returns: undefined
-      }
-      demo_seed_triads: { Args: { p_generation: number }; Returns: undefined }
-      demo_validate_batch_2_ownership: { Args: never; Returns: undefined }
-      demo_validate_batch_3_ownership: { Args: never; Returns: undefined }
-      demo_validate_batch_4_ownership: { Args: never; Returns: undefined }
       diag:
         | {
             Args: { msg: unknown }
@@ -5525,22 +5064,6 @@ export type Database = {
         Returns: {
           monthly_limit: number
           used_this_month: number
-        }[]
-      }
-      get_demo_organization_status: {
-        Args: { p_organization_id: string }
-        Returns: {
-          anchor_date: string
-          display_name: string
-          fixture_version: string
-          generation: number
-          is_demo: boolean
-          last_operation_error: string
-          last_operation_id: string
-          last_operation_status: string
-          last_successful_reset_at: string
-          organization_id: string
-          state: string
         }[]
       }
       get_enrollment_programme_modules: {
@@ -6006,7 +5529,42 @@ export type Database = {
           reason: string
         }[]
       }
+      mentoring_session_evidence: {
+        Args: { p_session_id: string }
+        Returns: {
+          action_count: number
+          enrollment_id: string
+          evidence_complete: boolean
+          goal_checkin_available: boolean
+          has_goal_checkin: boolean
+          has_mentee_reflection: boolean
+          has_mentor_feedback: boolean
+          has_mentor_notes: boolean
+          has_prep_file: boolean
+          session_id: string
+          session_status: string
+        }[]
+      }
+      mentoring_sessions_without_requirement: {
+        Args: never
+        Returns: {
+          cohort_id: string
+          enrollment_id: string
+          reason: string
+          session_id: string
+          start_time: string
+          status: string
+        }[]
+      }
       next_coaching_requirement: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          due_on: string
+          ordinal: number
+          requirement_id: string
+        }[]
+      }
+      next_mentoring_requirement: {
         Args: { p_enrollment_id: string }
         Returns: {
           due_on: string
@@ -6518,6 +6076,10 @@ export type Database = {
       todo_start:
         | { Args: never; Returns: boolean[] }
         | { Args: { "": string }; Returns: boolean[] }
+      transition_mentoring_session_status: {
+        Args: { p_reason?: string; p_session_id: string; p_status: string }
+        Returns: string
+      }
       transition_session_status: {
         Args: {
           p_action: string
@@ -6681,6 +6243,15 @@ export type Database = {
       triad_sync_session_attributions: {
         Args: { p_session_id: string }
         Returns: undefined
+      }
+      update_mentoring_session_notes: {
+        Args: {
+          p_meeting_url?: string
+          p_mentee_notes?: string
+          p_mentor_notes?: string
+          p_session_id: string
+        }
+        Returns: string
       }
       update_session_notes: {
         Args: {

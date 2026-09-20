@@ -242,6 +242,11 @@ BEGIN
   INSERT INTO mentoring_allowlist(mentee_user_id,mentor_user_id,created_by)
     VALUES(u2,mentor_provider,auth.uid()),(u4,mentor_provider,auth.uid())
     ON CONFLICT(mentee_user_id,mentor_user_id) DO NOTHING;
+  -- Programme Mentoring eligibility is the COHORT mentor pool; the allowlist
+  -- above is retained only as the historical pairing record. Without this the
+  -- mentor is in no pool and every Mentoring booking below is refused.
+  INSERT INTO cohort_mentors(cohort_id,mentor_user_id)
+    VALUES(cb,mentor_provider) ON CONFLICT(cohort_id,mentor_user_id) DO NOTHING;
   FOR i IN 1..4 LOOP
     w:=('66666666-6666-4666-8666-'||lpad(i::text,12,'0'))::uuid;
     INSERT INTO training_weeks(id,programme_id,week_number,title,skill_card_html,is_visible,unlock_date,sort_order)
@@ -493,6 +498,8 @@ BEGIN
       VALUES(uid,coach,auth.uid()) ON CONFLICT(coachee_id,coach_id) DO NOTHING;
     INSERT INTO mentoring_allowlist(mentee_user_id,mentor_user_id,created_by)
       VALUES(uid,mentor,auth.uid()) ON CONFLICT(mentee_user_id,mentor_user_id) DO NOTHING;
+    INSERT INTO cohort_mentors(cohort_id,mentor_user_id)
+      VALUES(cc,mentor) ON CONFLICT(cohort_id,mentor_user_id) DO NOTHING;
   END LOOP;
 
   -- Small, varied, hand-reconcilable completion data for the 12 Cohort C
