@@ -18,7 +18,14 @@ never a second answer to a business question.
 | **Training / Learning cohort timing** | `training_weeks.unlock_date` + `cohort_week_overrides` | `canonical_training_learning_items` → `sponsor_canonical_module_schedule` | Training-linked *other* modules copy these dates at materialization and don't follow later changes (Admin regenerates explicitly). |
 | **Required vs scheduled (mismatch)** | derived from the two rows above | `cohort_programme_schedule_state` → `learner_/sponsor_canonical_leader_/admin_canonical_schedule_state`, `cohort_requirement_schedule_issues` | For example "Coaching 5 required / 4 scheduled". Nothing is invented; every role sees the same state. |
 | **Enrollment applicability** | `programme_enrollments` (programme, cohort, status) | canonical progress / journey wrappers | *Effective* status (after the programme end date) is computed once in `canonical_enrollment_progress`. |
-| **Activity completion (evidence)** | `session_activity_attributions` + Training completion | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. |
+| **Activity completion** | the session lifecycle, per requirement (Coaching / Mentoring / Triads); `session_activity_attributions` for Peer, quiz, daily prompt and Training | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. See the operational-vs-evidence rule below. |
+| **Coaching provider** | `cohort_coach_assignments` | `cohort_coaching_coach_pool` → `enrollment_coaching_coach_pool` | The learner-level allowlists are not programme Coaching authority. |
+| **Coaching requirement link** | `sessions.cohort_requirement_id` (server-assigned) | `canonical_coaching_requirement_fulfilment` | One live session per LEARNER per requirement. |
+| **Coaching completion** | a COMPLETED session attributed to a requirement | `canonical_coaching_requirement_fulfilment` → `sponsor_canonical_activity` | Evidence never gates it (`20260921130000`). |
+| **Mentoring provider** | `cohort_mentors` | `cohort_mentoring_mentor_pool` → `get_mentors_for_enrollment` | The user-global `mentoring_allowlist` is not programme Mentoring authority. |
+| **Mentoring requirement link** | `mentoring_sessions.cohort_requirement_id` (server-assigned) | `canonical_mentoring_requirement_fulfilment` | One live session per LEARNER per requirement. |
+| **Mentoring completion** | a COMPLETED session attributed to a requirement | `canonical_mentoring_requirement_fulfilment` → `sponsor_canonical_activity` | The preparation document is optional and gates nothing. |
+| **After-session evidence** | the evidence records themselves | `coaching_session_evidence`, `mentoring_session_evidence` | REPORTING ONLY. Neither returns a unit or progress field. |
 | **Module completion, overall completion %, due-to-date adherence %, overdue units, pace** | computed once | `canonical_enrollment_progress` (per module: `canonical_module_progress`) → `learner_canonical_progress`, `sponsor_canonical_enrollment_progress` / `_leader_progress` / `_enrollment_metadata`, `admin_canonical_enrollment_progress` | Cohort and organisation rollups aggregate these per-enrollment rows. |
 | **Programme Journey checkpoints** | computed once | `canonical_enrollment_journey` → `learner_canonical_journey`, `sponsor_canonical_leader_journey`, `admin_canonical_enrollment_journey`; cohort view `get_sponsor_programme_journey` (same schedule, cohort aggregate) | One checkpoint per due date. Modules only in `module_scope`, never as a title. The UI never regroups checkpoints. |
 | **Session history** | session tables (`sessions`, `coachee_peer_sessions`, `peer_sessions`, `mentoring_sessions`, `triad_sessions`) | `learner_session_history` | |
@@ -91,6 +98,41 @@ For deployment 1 (already applied), `scripts/triad-cutover-readiness.sql` (read-
 - **Section 3** must be empty.
 - **Section 5** shows each enrollment's Triad progress before and after.
 - **Section 6** lists past `confirmed` sessions. The legacy `trg_auto_confirm_triad` reset a learner's "Mark complete". A session updated after both its insert and its start is a candidate for a reviewed restore. A session never updated since insert isn't one.
+
+
+## Operational completion is not evidence completion
+
+Added by the 2026-09-21 Coaching and Mentoring remediation. Two different
+facts, deliberately never fused:
+
+**Operational completion** — the legitimate scheduled session took place and
+reached `completed`. This, and only this, drives programme progress:
+
+```
+Coaching    completed session attributed to a requirement  -> one unit
+Mentoring   completed session attributed to a requirement  -> one unit
+Triads      fulfilled cohort requirement                   -> one unit
+```
+
+Triads differ on purpose: a Triad requirement may legitimately contain several
+completed sessions, and only the requirement counts. Do not "simplify" Triads
+into counting sessions.
+
+**After-session evidence** — reflection, goal check-in, follow-up action,
+satisfaction, provider notes, provider feedback, preparation document. Reported
+by `coaching_session_evidence()` and `mentoring_session_evidence()`, which
+return no unit or progress field of any kind. A surface may legitimately show:
+
+```
+Session completed · Reflection pending · Satisfaction pending
+```
+
+`20260920130000` originally made a Coaching unit complete only once all four
+evidence items existed. That made a held session count as neither completed nor
+booked once its date had passed, and — because the reflection had no writer
+anywhere in the product — made Coaching completion unreachable for every
+learner. `20260921130000` reverses it and renames `unit_complete` to
+`evidence_complete`, so the two facts cannot be confused again by name.
 
 ## Canonical chains
 
