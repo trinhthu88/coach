@@ -15,13 +15,14 @@ BEGIN
   FROM public.triad_cutover_archive a
   WHERE a.migration_id = '20260919190000_triad_retire_legacy'
     AND (
-      a.object_name = 'triad_groups.legacy'
-      AND NOT (a.payload ?& ARRAY[
-      'member_1_id', 'member_2_id', 'member_3_id',
-      'enrollment_1_id', 'enrollment_2_id', 'enrollment_3_id',
-      'programme_id', 'round_number', 'triad_round_id', 'name'
-      ])
-    )
+      (
+        a.object_name = 'triad_groups.legacy'
+        AND NOT (a.payload ?& ARRAY[
+        'member_1_id', 'member_2_id', 'member_3_id',
+        'enrollment_1_id', 'enrollment_2_id', 'enrollment_3_id',
+        'programme_id', 'round_number', 'triad_round_id', 'name'
+        ])
+      )
     OR (
       a.migration_id = '20260919190000_triad_retire_legacy'
       AND a.object_name = 'triad_sessions.legacy'

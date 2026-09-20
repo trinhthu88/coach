@@ -204,10 +204,40 @@ describe("migration chain — canonical final state", () => {
       expect(sql).toMatch(/unexpected dependencies remain/);
     });
 
+    it("deployment 2 explicitly allow-lists only intrinsic defaults, the known legacy trigger, indexes, and constraints", () => {
+      const sql = readFileSync(join(DEPLOYMENT_2, RETIRE_TRIAD), "utf8");
+      expect(sql).toMatch(/_triad_retirement_defaults/);
+      expect(sql).toMatch(/_triad_retirement_triggers/);
+      expect(sql).toMatch(/trg_triad_rounds_updated/);
+      expect(sql).toMatch(/c\.relkind IN \('i', 'I'\)/);
+      expect(sql).toMatch(/d\.classid = 'pg_attrdef'::regclass/);
+      expect(sql).toMatch(/d\.classid = 'pg_trigger'::regclass/);
+      expect(sql).toMatch(/REHEARSAL_AFTER_ARCHIVE_BOUNDARY/);
+      expect(sql).toMatch(/REHEARSAL_DESTRUCTIVE_BOUNDARY/);
+    });
+
     it("deployment 2 post-verification treats the standalone artifact as intentionally unledgered", () => {
       const sql = readFileSync(join(process.cwd(), "scripts/triad-deployment-2-verification.sql"), "utf8");
       expect(sql).toMatch(/standalone artifact outside/);
       expect(sql).not.toMatch(/version\s*=\s*'20260919190000'/);
+    });
+
+    it("deployment 2 post-verification covers the complete runtime surface and archive reconstruction", () => {
+      const verifier = readFileSync(join(process.cwd(), "scripts/triad-deployment-2-verification.sql"), "utf8");
+      const sequence = readFileSync(join(process.cwd(), "scripts/triad-deployment-2-post-retirement-verification.sql"), "utf8");
+      const rehearsal = readFileSync(join(process.cwd(), "scripts/triad-deployment-2-rehearsal.sh"), "utf8");
+      expect(verifier).toMatch(/retired indexes remain/);
+      expect(verifier).toMatch(/runtime dependencies refer to retired objects/);
+      for (const surface of ["pg_proc", "pg_class", "pg_policy", "pg_trigger", "pg_attrdef", "pg_constraint", "pg_depend"]) {
+        expect(verifier, surface).toMatch(new RegExp(surface.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+      }
+      expect(sequence).toMatch(/triad-deployment-2-verification\.sql/);
+      expect(sequence).toMatch(/triad-deployment-2-archive-reconstruction\.sql/);
+      expect(rehearsal).toMatch(/Scenario 1\/8/);
+      expect(rehearsal).toMatch(/Scenario 8\/8/);
+      expect(rehearsal).toMatch(/Deployment 2 isolated rehearsal passed: 8\/8 scenarios/);
+      expect(readFileSync(join(process.cwd(), "scripts/validate-db.sh"), "utf8"))
+        .toMatch(/triad-deployment-2-post-retirement-verification\.sql/);
     });
 
     it("no final function reads a retired Triad field or keeps the cohort-scoped assignment", () => {
