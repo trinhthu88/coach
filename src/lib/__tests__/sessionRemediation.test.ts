@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  canCompleteSession,
+  canCompletePeerSession,
   canTransitionSession,
   getAllowedSessionPatch,
 } from "../sessionLifecycle";
@@ -13,29 +13,29 @@ describe("session lifecycle remediation", () => {
     expect(canTransitionSession("cancelled", "confirm")).toBe(false);
   });
 
-  it("allows cancellation only from live states and never after the cutoff", () => {
-    expect(
-      canTransitionSession("pending_coach_approval", "cancel", {
-        now: "2026-09-13T09:00:00.000Z",
-        startTime: "2026-09-15T12:00:00.000Z",
-      }),
-    ).toBe(true);
+  // How late is too late is the server's question: cancel_coaching_session()
+  // lets a Coach or Admin cancel at any time and a learner cancel inside 24
+  // hours with a reason. This function only decides whether the STATE allows
+  // cancellation at all.
+  it("allows cancellation from live states only, and defers lateness to the server", () => {
+    expect(canTransitionSession("pending_coach_approval", "cancel")).toBe(true);
     expect(
       canTransitionSession("confirmed", "cancel", {
         now: "2026-09-13T11:01:00.000Z",
         startTime: "2026-09-13T12:00:00.000Z",
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(canTransitionSession("completed", "cancel")).toBe(false);
     expect(canTransitionSession("cancelled", "cancel")).toBe(false);
   });
 
-  it("requires the correct completion evidence for every peer relationship", () => {
-    expect(canCompleteSession({ kind: "coaching", coacheeNotes: "reflection" })).toBe(true);
-    expect(canCompleteSession({ kind: "coaching", coacheeNotes: "  " })).toBe(false);
-    expect(canCompleteSession({ kind: "peer", peerFeedbackExists: true })).toBe(true);
-    expect(canCompleteSession({ kind: "coachee_peer", peerFeedbackExists: true })).toBe(true);
-    expect(canCompleteSession({ kind: "coachee_peer", peerFeedbackExists: false })).toBe(false);
+  // Peer sessions only. The Coaching branch was removed: it gated completion
+  // on the learner's notes, conflating "the meeting happened" with "the
+  // learner wrote it up".
+  it("requires the participant's own competency feedback for peer completion", () => {
+    expect(canCompletePeerSession({ peerFeedbackExists: true })).toBe(true);
+    expect(canCompletePeerSession({ peerFeedbackExists: false })).toBe(false);
+    expect(canCompletePeerSession({})).toBe(false);
   });
 
   it("keeps participant patches away from protected session fields", () => {

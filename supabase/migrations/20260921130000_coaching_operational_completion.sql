@@ -208,7 +208,11 @@ COMMENT ON FUNCTION public.canonical_coaching_requirement_fulfilment(uuid) IS
 -- 3. The learner's outstanding-work list
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION public.coaching_post_session_checklist(p_enrollment_id uuid)
+-- Dropped first: the output column unit_complete is renamed to
+-- evidence_complete, and CREATE OR REPLACE cannot change a return type.
+DROP FUNCTION IF EXISTS public.coaching_post_session_checklist(uuid);
+
+CREATE FUNCTION public.coaching_post_session_checklist(p_enrollment_id uuid)
 RETURNS TABLE (
   requirement_id uuid,
   ordinal integer,

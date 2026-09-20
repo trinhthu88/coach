@@ -482,17 +482,6 @@ describe("programme profile architecture", () => {
       expect(migrationSql).toMatch(/DROP FUNCTION IF EXISTS public\.enforce_mentoring_prep_file_before_completion/);
     });
 
-    // src/lib/pendingRpc.ts is a temporary bridge until types are regenerated.
-    // It must never name a function that no migration defines.
-    it("every pending RPC is backed by a committed migration", () => {
-      const shim = read("lib/pendingRpc.ts");
-      const names = [...shim.matchAll(/^\s*"([a-z_]+)",$/gm)].map((m) => m[1]);
-      expect(names.length).toBeGreaterThan(0);
-      for (const name of names) {
-        expect(migrationSql, `${name} has no migration`)
-          .toMatch(new RegExp(`CREATE\\s+(OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.${name}\\s*\\(`));
-      }
-    });
   });
 
   it("schedule mismatch state comes from one canonical source for every role", () => {

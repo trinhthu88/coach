@@ -28,7 +28,7 @@ import { CoachSessionFeedback } from "@/components/sessions/CoachSessionFeedback
 import { SessionDetailHero } from "@/components/sessions/SessionDetailHero";
 
 import { cn } from "@/lib/utils";
-import { format, isAfter, addHours } from "date-fns";
+import { format } from "date-fns";
 import {
   useSessionCore,
   useSessionPrivateNotes,
@@ -141,10 +141,14 @@ export default function SessionDetail() {
 
   const start = new Date(session.start_time);
   const meta = getStatusMeta(t)[session.status];
+  // Cancellation eligibility is the server's: cancel_coaching_session() lets a
+  // Coach or an Admin cancel at any time, and lets a learner cancel inside 24
+  // hours WITH a reason. Re-applying a blanket 24-hour cut-off here hid the
+  // button from all three and made a late cancellation impossible to record -
+  // which does not stop the session being missed, it only makes the record
+  // disagree with reality.
   const canCancel =
-    session.status !== "cancelled" &&
-    session.status !== "completed" &&
-    isAfter(start, addHours(new Date(), 24));
+    session.status !== "cancelled" && session.status !== "completed";
 
   const sessionStarted = start < new Date();
   // Coaching: the Coach records that the conversation happened, once the

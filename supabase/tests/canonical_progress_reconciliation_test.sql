@@ -116,8 +116,14 @@ insert into public.mentoring_sessions
 values ('e1000000-0000-0000-0000-0000000000b1'::uuid, 'e1000000-0000-0000-0000-0000000000e1'::uuid,
         'e1000000-0000-0000-0000-0000000000d1'::uuid, 'e1000000-0000-0000-0000-000000000002'::uuid,
         'e1000000-0000-0000-0000-000000000003'::uuid, 'Held', now() - interval '8 days', 60, 'confirmed');
-update public.mentoring_sessions set status = 'completed'
-  where id = 'e1000000-0000-0000-0000-0000000000b1'::uuid;
+-- Lifecycle transitions go through the canonical writer; a direct UPDATE is
+-- refused by guard_session_protected_fields(). The mentor is the actor.
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'e1000000-0000-0000-0000-000000000002')::text, true);
+select public.transition_mentoring_session_status(
+  'e1000000-0000-0000-0000-0000000000b1'::uuid, 'completed');
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'e1000000-0000-0000-0000-000000000003')::text, true);
 
 -- ---------------------------------------------------------------------------
 -- The numbers themselves, so a silent "everything is 0" cannot pass

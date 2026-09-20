@@ -34,7 +34,7 @@ insert into public.programmes (id, name) values
 -- Programme owns HOW MANY (section 2): 2 required Mentoring units each.
 insert into public.programme_modules (programme_id, module, enabled, config) values
   ('d1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', true, '{"required": true, "required_units": 2}'::jsonb),
-  ('d1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', true, '{"required": true, "required_units": 2}'::jsonb);
+  ('d1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', true, '{"required": true, "required_units": 3}'::jsonb);
 
 insert into public.cohorts (id, name, programme_id) values
   ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'Cohort A', 'd1000000-0000-0000-0000-00000000a1a1'::uuid),
@@ -46,7 +46,11 @@ insert into public.cohort_requirement_dates
   ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 200, 'manual', 'admin_save'),
   ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date - 100, 'manual', 'admin_save'),
   ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 1, current_date + 30, 'manual', 'admin_save'),
-  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 2, current_date + 60, 'manual', 'admin_save');
+  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 2, current_date + 60, 'manual', 'admin_save'),
+  -- A third requirement so the cancelled-session case below has one to occupy.
+  -- Quantity is now the cohort requirement count, so a third session against a
+  -- two-requirement cohort is correctly refused.
+  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 3, current_date + 90, 'manual', 'admin_save');
 
 -- One learner, two enrollments. A is history; B is current.
 -- Enrollment A is opened first so its Mentoring history can be recorded, then
@@ -75,8 +79,12 @@ insert into public.mentoring_sessions
 values ('d1000000-0000-0000-0000-00000000c4c4'::uuid, 'd1000000-0000-0000-0000-00000000e1e1'::uuid,
         'd1000000-0000-0000-0000-000000000001'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid,
         'Historical', now() - interval '200 days', 60, 'confirmed');
-update public.mentoring_sessions set status = 'completed'
-  where id = 'd1000000-0000-0000-0000-00000000c4c4'::uuid;
+-- Lifecycle transitions go through the canonical writer; a direct UPDATE is
+-- refused by guard_session_protected_fields(). The mentor is the actor.
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000001')::text, true);
+select public.transition_mentoring_session_status(
+  'd1000000-0000-0000-0000-00000000c4c4'::uuid, 'completed');
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000003')::text, true);
 
 -- A closes; B opens.
 update public.programme_enrollments set status = 'completed'
@@ -202,8 +210,12 @@ values ('d1000000-0000-0000-0000-00000000c1c1'::uuid, 'd1000000-0000-0000-0000-0
         'No prep doc', now() - interval '1 day', 60, 'confirmed');
 
 -- The point of the cutover: completion must not require a prep file.
-update public.mentoring_sessions set status = 'completed'
-  where id = 'd1000000-0000-0000-0000-00000000c1c1'::uuid;
+-- Lifecycle transitions go through the canonical writer; a direct UPDATE is
+-- refused by guard_session_protected_fields(). The mentor is the actor.
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000002')::text, true);
+select public.transition_mentoring_session_status(
+  'd1000000-0000-0000-0000-00000000c1c1'::uuid, 'completed');
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000003')::text, true);
 select is(
   (select status::text from public.mentoring_sessions where id = 'd1000000-0000-0000-0000-00000000c1c1'::uuid),
   'completed', 'a Mentoring session completes WITHOUT a preparation document');
@@ -217,8 +229,12 @@ insert into public.mentoring_sessions
 values ('d1000000-0000-0000-0000-00000000c2c2'::uuid, 'd1000000-0000-0000-0000-00000000e2e2'::uuid,
         'd1000000-0000-0000-0000-000000000002'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid,
         'With prep doc', now() - interval '2 days', 60, 'confirmed', 'prep/doc.pdf');
-update public.mentoring_sessions set status = 'completed'
-  where id = 'd1000000-0000-0000-0000-00000000c2c2'::uuid;
+-- Lifecycle transitions go through the canonical writer; a direct UPDATE is
+-- refused by guard_session_protected_fields(). The mentor is the actor.
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000002')::text, true);
+select public.transition_mentoring_session_status(
+  'd1000000-0000-0000-0000-00000000c2c2'::uuid, 'completed');
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000003')::text, true);
 select is(
   (select status::text from public.mentoring_sessions where id = 'd1000000-0000-0000-0000-00000000c2c2'::uuid),
   'completed', 'a Mentoring session also completes WITH a preparation document');
@@ -234,7 +250,7 @@ select is(
 select is(
   (select required_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
     where module = 'mentoring'),
-  2, 'required units come from the programme module configuration');
+  3, 'required units come from the programme module configuration');
 
 -- Post-session artefacts must not move the number.
 update public.mentoring_sessions
@@ -251,8 +267,12 @@ insert into public.mentoring_sessions
 values ('d1000000-0000-0000-0000-00000000c3c3'::uuid, 'd1000000-0000-0000-0000-00000000e2e2'::uuid,
         'd1000000-0000-0000-0000-000000000002'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid,
         'Cancelled', now() + interval '3 days', 60, 'confirmed');
-update public.mentoring_sessions set status = 'cancelled', cancelled_at = now()
-  where id = 'd1000000-0000-0000-0000-00000000c3c3'::uuid;
+-- Lifecycle transitions go through the canonical writer; a direct UPDATE is
+-- refused by guard_session_protected_fields(). The mentor is the actor.
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000002')::text, true);
+select public.transition_mentoring_session_status(
+  'd1000000-0000-0000-0000-00000000c3c3'::uuid, 'cancelled');
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000003')::text, true);
 select is(
   (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
     where module = 'mentoring'),
@@ -390,13 +410,14 @@ select is(
     where module = 'mentoring'),
   2, 'a confirmed session with all documentation present does not increment completed units');
 
--- booked_units is capped at the units still OUTSTANDING. Both required units
--- are already complete here, so a further confirmed session adds nothing --
--- booked never inflates the total beyond what the programme requires.
-select is(
-  (select booked_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+-- booked_units is capped at the units still OUTSTANDING, so completed plus
+-- booked can never exceed what the programme requires however many confirmed
+-- sessions exist.
+select ok(
+  (select completed_units + booked_units <= required_units
+     from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
     where module = 'mentoring'),
-  0, 'booked units are capped at the remaining required units, so a surplus confirmed session adds none');
+  'booked units are capped so completed + booked never exceeds the requirement');
 
 -- ---------------------------------------------------------------------------
 -- Reschedule re-attribution (section 6)
@@ -483,8 +504,12 @@ values ('d1000000-0000-0000-0000-00000000c7c7'::uuid, 'd1000000-0000-0000-0000-0
         'd1000000-0000-0000-0000-0000000000d2'::uuid,
         'd1000000-0000-0000-0000-000000000001'::uuid, 'd1000000-0000-0000-0000-000000000005'::uuid,
         'Early second', now() - interval '5 days', 60, 'confirmed');
-update public.mentoring_sessions set status = 'completed'
-  where id = 'd1000000-0000-0000-0000-00000000c7c7'::uuid;
+-- Lifecycle transitions go through the canonical writer; a direct UPDATE is
+-- refused by guard_session_protected_fields(). The mentor is the actor.
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000001')::text, true);
+select public.transition_mentoring_session_status(
+  'd1000000-0000-0000-0000-00000000c7c7'::uuid, 'completed');
+select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000005')::text, true);
 
 select is(
   (select count(*)::int from public.canonical_mentoring_requirement_fulfilment('d1000000-0000-0000-0000-00000000e3e3'::uuid)),
@@ -629,6 +654,13 @@ select throws_ok($$
 $$, '42501', NULL, 'the mentee cannot confirm a Mentoring session');
 
 -- A participant cannot rewrite a protected lifecycle field directly.
+--
+-- app.session_transition is set with is_local = true, so it survives to the end
+-- of the TRANSACTION, not the statement. In production every PostgREST request
+-- is its own transaction so a caller can never reach a raw UPDATE after an RPC
+-- in the same one -- but this fixture runs everything in one transaction, so
+-- the flag a previous RPC left behind has to be cleared to test the guard.
+select set_config('app.session_transition', 'off', true);
 select throws_ok($$
   update public.mentoring_sessions set status = 'completed'
    where slot_id = 'd1000000-0000-0000-0000-0000000000f1'::uuid

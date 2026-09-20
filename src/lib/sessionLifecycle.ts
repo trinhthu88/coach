@@ -13,23 +13,30 @@ const LIVE_STATUSES = new Set<SessionStatus>(["pending_coach_approval", "confirm
 export function canTransitionSession(
   status: SessionStatus,
   action: SessionAction,
-  opts?: { now?: string; startTime?: string },
+  // Accepted and ignored: callers still pass the session clock, but lateness
+  // is the server's decision (see the cancel branch below).
+  _opts?: { now?: string; startTime?: string },
 ): boolean {
   if (action === "confirm") return status === "pending_coach_approval";
   if (action === "complete") return status === "confirmed";
-  if (action !== "cancel" || !LIVE_STATUSES.has(status)) return false;
-
-  if (!opts?.now || !opts.startTime) return true;
-  const cutoff = new Date(opts.startTime).getTime() - 24 * 60 * 60 * 1000;
-  return new Date(opts.now).getTime() <= cutoff;
+  // A live session can be cancelled. How late is too late is the server's
+  // question, not this function's: cancel_coaching_session() permits a Coach
+  // or Admin at any time, and a learner inside 24 hours with a reason.
+  return action === "cancel" && LIVE_STATUSES.has(status);
 }
 
-export function canCompleteSession(opts: {
-  kind: SessionKind;
-  coacheeNotes?: string | null;
+/**
+ * Peer sessions only.
+ *
+ * The Coaching branch was removed in the 2026-09 canonical remediation: it
+ * gated completion on the learner's notes, which conflated "the meeting
+ * happened" with "the learner wrote it up". Coaching completion is
+ * complete_coaching_session() plus canMarkSessionComplete(); the write-up is
+ * after-session evidence and gates nothing.
+ */
+export function canCompletePeerSession(opts: {
   peerFeedbackExists?: boolean;
 }): boolean {
-  if (opts.kind === "coaching") return Boolean(opts.coacheeNotes?.trim());
   return opts.peerFeedbackExists === true;
 }
 
