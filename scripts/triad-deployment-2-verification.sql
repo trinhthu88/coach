@@ -9,12 +9,9 @@ BEGIN TRANSACTION READ ONLY;
 DO $$
 DECLARE bad text; n bigint;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM supabase_migrations.schema_migrations
-    WHERE version = '20260919190000'
-  ) THEN
-    RAISE EXCEPTION 'Deployment 2 verification: migration is not in the ledger';
-  END IF;
+  -- Deployment 2 is intentionally a standalone artifact outside
+  -- supabase/migrations, so its absence from the ledger is expected. The
+  -- structural checks below are the proof that the candidate actually ran.
   IF to_regclass('public.triad_rounds') IS NOT NULL
      OR to_regclass('public.programme_triad_rounds') IS NOT NULL THEN
     RAISE EXCEPTION 'Deployment 2 verification: legacy round table remains';
