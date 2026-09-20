@@ -149,7 +149,9 @@
       "title": "Action items",
       "more": "+{{count}} more"
     },
-    "triadSession": "Triad {{n}}"
+    "triadSession": "Triad {{n}}",
+    "coachingRequirement": "Coaching {{n}}",
+    "requirementDue": "Due {{date}}"
   },
   "detail": {
     "sessionNotFound": {

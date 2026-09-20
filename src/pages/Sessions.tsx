@@ -299,10 +299,25 @@ function SessionCard({
     ? [
         session.triad ? t("list.triadSession", { n: session.triad.unitNumber }) : null,
       ].filter(Boolean).join(" · ")
-    : "";
+    // Which programme unit a Coaching session fulfils. The Coach needs this to
+    // judge an incoming request: "Coaching 2, due 5 Jul" is actionable in a way
+    // that a bare date is not.
+    : session.coachingRequirementOrdinal != null
+      ? t("list.coachingRequirement", { n: session.coachingRequirementOrdinal })
+      : "";
   const displayTitle = session.topic || t("list.triadSessionTitle");
   const displayDate = start ? format(start, "MMM d · HH:mm") : t("list.noTimeYet");
-  const programmeContext = [contextLabels, session.cohortName ? t("list.cohortLabel", { name: session.cohortName }) : ""]
+  const programmeContext = [
+    contextLabels,
+    session.cohortName ? t("list.cohortLabel", { name: session.cohortName }) : "",
+    // A pending request is the moment the deadline matters most, so surface it
+    // there rather than on every row.
+    session.status === "pending_coach_approval" && session.coachingRequirementDueOn
+      ? t("list.requirementDue", {
+          date: format(new Date(`${session.coachingRequirementDueOn}T00:00:00`), "d MMM yyyy"),
+        })
+      : "",
+  ]
     .filter(Boolean)
     .join(" · ");
   return (

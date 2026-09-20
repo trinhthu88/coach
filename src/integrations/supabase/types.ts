@@ -5191,6 +5191,20 @@ export type Database = {
           unit_complete: boolean
         }[]
       }
+      coaching_session_evidence_bulk: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          enrollment_id: string
+          goal_checkin_required: boolean
+          has_action: boolean
+          has_goal_checkin: boolean
+          has_reflection: boolean
+          has_satisfaction: boolean
+          session_completed: boolean
+          session_id: string
+          unit_complete: boolean
+        }[]
+      }
       coaching_sessions_without_requirement: {
         Args: never
         Returns: {
