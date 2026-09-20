@@ -98,6 +98,16 @@ BEGIN
   IF coalesce(array_length(coaches,1),0)<2 THEN RAISE EXCEPTION 'Need two existing coach/mentor providers; seed creates none'; END IF;
   coach:=coaches[1]; mentor:=coaches[2];
 
+  -- Programme Coaching eligibility is cohort-owned. The learner-level
+  -- allowlist below remains for non-programme relationship fixtures.
+  INSERT INTO public.cohort_coach_assignments
+    (cohort_id,coach_id,is_active,assigned_by)
+  VALUES
+    (ca,coach,true,admin_id),
+    (cb,coach,true,admin_id)
+  ON CONFLICT (cohort_id,coach_id) DO UPDATE
+    SET is_active=true,assigned_by=excluded.assigned_by;
+
   FOR i IN 1..10 LOOP
     fixture_email:=format('leader.%s@demo.clariva.club',CASE WHEN i<=5 THEN 'a'||i ELSE 'b'||(i-5) END);
     nm:=format('Leader %s%s',CASE WHEN i<=5 THEN 'A' ELSE 'B' END,CASE WHEN i<=5 THEN i ELSE i-5 END);
@@ -422,6 +432,12 @@ BEGIN
       (pc,'triads',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":20}')
     ON CONFLICT(programme_id,module) DO UPDATE SET enabled=excluded.enabled,config=excluded.config;
 
+  INSERT INTO public.cohort_coach_assignments
+    (cohort_id,coach_id,is_active,assigned_by)
+  VALUES (cc,coach,true,auth.uid())
+  ON CONFLICT (cohort_id,coach_id) DO UPDATE
+    SET is_active=true,assigned_by=excluded.assigned_by;
+
   -- Reset the named demo cohort's historical activity before rebuilding its
   -- deterministic participation fixture; never remove other users' data.
   DELETE FROM public.session_activity_attributions a
@@ -690,4 +706,95 @@ BEGIN
         completed_at=excluded.completed_at;
   END;
 END $cohort_c$;
+-- The Coaching redesign makes requirement and slot attribution explicit. Keep
+-- the historical demo IDs, dates and statuses because the pace matrix depends
+-- on them, then attach every session to the canonical data that owns it:
+-- enrollment -> cohort requirement, cohort Coach pool, and Coach slot.
+DO $canonical_coaching_fixture$
+DECLARE
+  demo_cohorts uuid[] := ARRAY[
+    '11111111-1111-4111-8111-111111111114'::uuid,
+    '11111111-1111-4111-8111-111111111115'::uuid,
+    '11111111-1111-4111-8111-111111111119'::uuid
+  ];
+BEGIN
+  -- A session ID is reused as the deterministic local slot ID. IDs are scoped
+  -- per table, and this makes guarded seed replays stable without inventing
+  -- random fixture rows.
+  INSERT INTO public.coach_availability
+    (id,coach_id,slot_date,start_time,end_time,slot_type)
+  SELECT
+    s.id,
+    s.coach_id,
+    (s.start_time AT TIME ZONE 'UTC')::date,
+    (s.start_time AT TIME ZONE 'UTC')::time,
+    ((s.start_time AT TIME ZONE 'UTC') + make_interval(mins => s.duration_minutes))::time,
+    'coaching'::public.availability_slot_type
+  FROM public.sessions s
+  JOIN public.programme_enrollments e ON e.id=s.enrollment_id
+  WHERE e.cohort_id = ANY(demo_cohorts)
+  ON CONFLICT (id) DO UPDATE SET
+    coach_id=excluded.coach_id,
+    slot_date=excluded.slot_date,
+    start_time=excluded.start_time,
+    end_time=excluded.end_time,
+    slot_type=excluded.slot_type;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.sessions s
+    JOIN public.programme_enrollments e ON e.id=s.enrollment_id
+    WHERE e.cohort_id = ANY(demo_cohorts)
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.cohort_requirement_dates d
+        WHERE d.cohort_id=e.cohort_id
+          AND d.programme_id=e.programme_id
+          AND d.module='coaching'::public.programme_module_type
+          AND d.ordinal=(
+            SELECT count(*)::integer
+            FROM public.sessions prior
+            WHERE prior.enrollment_id=s.enrollment_id
+              AND (prior.start_time,prior.id) <= (s.start_time,s.id)
+          )
+      )
+  ) THEN
+    RAISE EXCEPTION 'seed: a demo Coaching session has no matching cohort requirement';
+  END IF;
+
+  UPDATE public.sessions s
+  SET
+    cohort_requirement_id=req.id,
+    slot_id=s.id
+  FROM (
+    SELECT
+      s2.id AS session_id,
+      row_number() OVER (
+        PARTITION BY s2.enrollment_id
+        ORDER BY s2.start_time,s2.id
+      )::integer AS ordinal,
+      e2.cohort_id,
+      e2.programme_id
+    FROM public.sessions s2
+    JOIN public.programme_enrollments e2 ON e2.id=s2.enrollment_id
+    WHERE e2.cohort_id = ANY(demo_cohorts)
+  ) ranked
+  JOIN public.cohort_requirement_dates req
+    ON req.cohort_id=ranked.cohort_id
+   AND req.programme_id=ranked.programme_id
+   AND req.module='coaching'::public.programme_module_type
+   AND req.ordinal=ranked.ordinal
+  WHERE s.id=ranked.session_id;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.sessions s
+    JOIN public.programme_enrollments e ON e.id=s.enrollment_id
+    WHERE e.cohort_id = ANY(demo_cohorts)
+      AND (s.cohort_requirement_id IS NULL OR s.slot_id IS NULL)
+  ) THEN
+    RAISE EXCEPTION 'seed: canonical Coaching attribution left a demo session unresolved';
+  END IF;
+END $canonical_coaching_fixture$;
+
 COMMIT;
