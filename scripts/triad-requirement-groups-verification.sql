@@ -1,9 +1,15 @@
--- Triad deployment 1 verification (READ-ONLY). Gate for deployment 2.
+-- Triad REQUIREMENT-GROUP CORRECTION verification (READ-ONLY).
+-- Gate for deployment 2.
 --
--- Run against production AFTER deployment 1 (20260918185800 ..
--- 20260918195000) AND the requirement-groups correction (20260919120000),
--- and BEFORE moving supabase/deployment-2/ into supabase/migrations:
---   psql "$PROD_DB_URL" -v ON_ERROR_STOP=1 -f scripts/triad-deployment-1-verification.sql
+-- Renamed from triad-deployment-1-verification.sql: the original deployment 1
+-- (20260918185800 .. 20260918195000) has been live in production since
+-- 2026-09-19, so this script's real subject is the requirement-group
+-- correction 20260919120000 applied on top of it. It asserts BOTH are in the
+-- ledger and that deployment 2 has not run.
+--
+-- Run against production AFTER the correction (20260919120000) and BEFORE
+-- moving supabase/deployment-2/ into supabase/migrations:
+--   psql "$PROD_DB_URL" -v ON_ERROR_STOP=1 -f scripts/triad-requirement-groups-verification.sql
 -- Needs a role that can execute the canonical functions (postgres); nothing
 -- is written. Every check raises on failure; the last line says PASSED.
 
@@ -81,7 +87,7 @@ BEGIN
     AND NOT EXISTS (SELECT 1 FROM public.triad_cutover_review_decisions d WHERE d.triad_group_id = a.record_id);
   IF n > 0 THEN RAISE EXCEPTION '% REAL/UNKNOWN groups removed without a reviewed decision', n; END IF;
 
-  RAISE NOTICE 'Triad deployment 1 verification PASSED';
+  RAISE NOTICE 'Triad requirement-group correction verification PASSED';
 END $$;
 
 \echo '== Canonical Triad completion per enrollment, with each requirement''s group and fulfilment'
@@ -91,6 +97,38 @@ SELECT c.enrollment_id, c.required_units, c.raw_completed_sessions, c.completed_
    FROM jsonb_array_elements(c.schedule) x) AS requirements
 FROM public.programme_enrollments e CROSS JOIN LATERAL public.canonical_triad_completion(e.id, current_date) c
 WHERE c.required_units > 0 AND EXISTS (SELECT 1 FROM public.triad_group_members m WHERE m.enrollment_id = e.id)
+ORDER BY 1;
+
+\echo ''
+\echo '== Evidence: group composition per Triad requirement (Triad 1 vs Triad 2 ... may differ)'
+SELECT d.cohort_id, d.ordinal AS triad, right(g.id::text, 12) AS group_id,
+       count(m.enrollment_id) AS members,
+       string_agg(right(m.enrollment_id::text, 12), '+' ORDER BY m.enrollment_id) AS composition
+FROM public.triad_groups g
+JOIN public.cohort_requirement_dates d ON d.id = g.cohort_requirement_date_id
+LEFT JOIN public.triad_group_members m ON m.triad_group_id = g.id
+WHERE g.is_active
+GROUP BY d.cohort_id, d.ordinal, g.id
+ORDER BY d.cohort_id, d.ordinal, group_id;
+
+\echo ''
+\echo '== Evidence: learners grouped for more than one Triad requirement, and whether their partners changed'
+WITH per_req AS (
+  SELECT m.enrollment_id, d.cohort_id, d.ordinal,
+         (SELECT string_agg(right(o.enrollment_id::text, 12), '+' ORDER BY o.enrollment_id)
+          FROM public.triad_group_members o
+          WHERE o.triad_group_id = g.id AND o.enrollment_id <> m.enrollment_id) AS partners
+  FROM public.triad_group_members m
+  JOIN public.triad_groups g ON g.id = m.triad_group_id AND g.is_active
+  JOIN public.cohort_requirement_dates d ON d.id = g.cohort_requirement_date_id
+)
+SELECT enrollment_id, cohort_id,
+       count(*) AS requirements_grouped,
+       string_agg('Triad ' || ordinal || ': ' || coalesce(partners, '(alone)'), '; ' ORDER BY ordinal) AS partners_by_requirement,
+       count(DISTINCT coalesce(partners, '')) > 1 AS partners_differ
+FROM per_req
+GROUP BY enrollment_id, cohort_id
+HAVING count(*) > 1
 ORDER BY 1;
 
 ROLLBACK;
