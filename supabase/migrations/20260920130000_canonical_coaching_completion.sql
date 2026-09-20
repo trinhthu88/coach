@@ -120,12 +120,9 @@ AS $$
     WHERE d.module = 'coaching'::public.programme_module_type
   ), per_requirement AS (
     SELECT r.id AS requirement_id, r.ordinal, r.due_on,
-      -- The single live-or-completed session by which THIS enrollment owns
-      -- this requirement. The partial unique index in 20260920110000 is keyed
-      -- on (enrollment_id, cohort_requirement_id) and so guarantees at most
-      -- one live session per learner per requirement; a completed one is
-      -- terminal. Other learners of the cohort hold their own sessions against
-      -- the same requirement row and are excluded by the enrollment filter.
+      -- The single live-or-completed session that owns this requirement. The
+      -- partial unique index in 20260920110000 guarantees at most one live
+      -- session, and a completed one is terminal, so this is unambiguous.
       (SELECT s.id FROM public.sessions s
         WHERE s.cohort_requirement_id = r.id
           AND s.enrollment_id = p_enrollment_id
