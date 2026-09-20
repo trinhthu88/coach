@@ -125,6 +125,48 @@ values ('f7000000-0000-0000-0000-000000000021', 'e7000000-0000-0000-0000-0000000
   'a7000000-0000-0000-0000-000000000001', 'Mentoring one', '2026-01-19T10:00:00Z', 60, 'completed', 'prep/file.pdf',
   'Mentoring reflection: map stakeholders earlier.', 'MENTOR NOTE');
 
+-- Peer progress is requirement-attributed (20260921210000), so the cohort must
+-- schedule as many Peer requirements as the programme requires. The
+-- 'flexible' distribution materialises a single row whatever required_units
+-- says, which would cap completion at 1 of 2 -- so both are stated explicitly.
+-- Detach the generated row first: ON DELETE RESTRICT deliberately stops a
+-- requirement disappearing from under a participant that holds it.
+update public.peer_session_participants set cohort_requirement_id = null
+ where cohort_requirement_id in (
+   select id from public.cohort_requirement_dates
+   where cohort_id = 'd7000000-0000-0000-0000-000000000001'::uuid
+     and module = 'peer_coaching'::public.programme_module_type);
+delete from public.cohort_requirement_dates
+ where cohort_id = 'd7000000-0000-0000-0000-000000000001'::uuid
+   and module = 'peer_coaching'::public.programme_module_type;
+insert into public.cohort_requirement_dates
+  (cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
+  ('d7000000-0000-0000-0000-000000000001', 'c7000000-0000-0000-0000-000000000001',
+   'peer_coaching', 1, date '2026-03-05', 'manual', 'admin_save'),
+  ('d7000000-0000-0000-0000-000000000001', 'c7000000-0000-0000-0000-000000000001',
+   'peer_coaching', 2, date '2026-05-05', 'manual', 'admin_save');
+
+-- Re-attribute the Peer participations now that both requirements exist.
+with ordered as (
+  select p.id, p.enrollment_id,
+    row_number() over (partition by p.enrollment_id
+      order by coalesce(ps.start_time, cps.start_time), p.peer_session_id) as rn
+  from public.peer_session_participants p
+  left join public.peer_sessions ps on p.session_kind = 'peer' and ps.id = p.peer_session_id
+  left join public.coachee_peer_sessions cps on p.session_kind = 'coachee_peer' and cps.id = p.peer_session_id
+  where p.enrollment_id is not null and p.cohort_requirement_id is null
+), reqs as (
+  select e.id as enrollment_id, d.id as requirement_id,
+    row_number() over (partition by e.id order by d.ordinal) as rn
+  from public.programme_enrollments e
+  join public.cohort_requirement_dates d
+    on d.cohort_id = e.cohort_id and d.programme_id = e.programme_id
+   and d.module = 'peer_coaching'::public.programme_module_type
+)
+update public.peer_session_participants t set cohort_requirement_id = r.requirement_id
+  from ordered o join reqs r on r.enrollment_id = o.enrollment_id and r.rn = o.rn
+ where t.id = o.id;
+
 -- Triads: a Triad 1 group with a completed session and a Triad 2 group with
 -- a confirmed one (every required Triad has its own group assignment).
 -- Membership is by enrollment.

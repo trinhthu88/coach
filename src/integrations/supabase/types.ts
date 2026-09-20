@@ -2315,6 +2315,57 @@ export type Database = {
         }
         Relationships: []
       }
+      peer_session_participants: {
+        Row: {
+          cohort_requirement_id: string | null
+          created_at: string
+          enrollment_id: string | null
+          id: string
+          participant_role: string
+          peer_session_id: string
+          session_kind: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cohort_requirement_id?: string | null
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          participant_role: string
+          peer_session_id: string
+          session_kind: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cohort_requirement_id?: string | null
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          participant_role?: string
+          peer_session_id?: string
+          session_kind?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_session_participants_cohort_requirement_id_fkey"
+            columns: ["cohort_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_requirement_dates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "peer_session_participants_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       peer_sessions: {
         Row: {
           action_items: Json
@@ -4687,6 +4738,18 @@ export type Database = {
           required_units: number
         }[]
       }
+      canonical_peer_requirement_fulfilment: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_on: string
+          due_on: string
+          fulfilled_on: string
+          ordinal: number
+          peer_session_id: string
+          requirement_id: string
+          session_kind: string
+        }[]
+      }
       canonical_training_learning_items: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: {
@@ -5572,6 +5635,14 @@ export type Database = {
           requirement_id: string
         }[]
       }
+      next_peer_requirement: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          due_on: string
+          ordinal: number
+          requirement_id: string
+        }[]
+      }
       no_plan: { Args: never; Returns: boolean[] }
       num_failed: { Args: never; Returns: number }
       only_enrollment_candidate: {
@@ -5582,11 +5653,31 @@ export type Database = {
       pass:
         | { Args: never; Returns: string }
         | { Args: { "": string }; Returns: string }
+      peer_participants_without_requirement: {
+        Args: never
+        Returns: {
+          enrollment_id: string
+          participant_id: string
+          participant_role: string
+          peer_session_id: string
+          reason: string
+          session_kind: string
+          status: string
+          user_id: string
+        }[]
+      }
       pg_version: { Args: never; Returns: string }
       pg_version_num: { Args: never; Returns: number }
       pgtap_version: { Args: never; Returns: number }
       programme_config_integer: {
         Args: { p_config: Json; p_key: string }
+        Returns: number
+      }
+      programme_required_units: {
+        Args: {
+          p_enrollment_id: string
+          p_module: Database["public"]["Enums"]["programme_module_type"]
+        }
         Returns: number
       }
       record_goal_checkin: {
