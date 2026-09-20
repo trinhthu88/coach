@@ -480,9 +480,15 @@ BEGIN
         format('leader.c%s@demo.clariva.club',i),now(),
         jsonb_build_object('full_name',format('Leader C%s',i)),now(),now())
       ON CONFLICT(id) DO NOTHING;
-    INSERT INTO profiles(id,email,full_name,status)
-      VALUES(uid,format('leader.c%s@demo.clariva.club',i),format('Leader C%s',i),'active')
-      ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name,status='active';
+    -- peer_coaching_opt_in makes a learner AVAILABLE for peer practice. Since
+    -- the phase 2 cutover it is necessary but no longer sufficient: the cohort
+    -- rule decides who each learner actually reaches. Opting the cohort in is
+    -- what gives the demo a non-empty partner pool -- without it every learner
+    -- opens the Peer page to "no partners available", which is exactly the
+    -- symptom the convergence work exists to remove.
+    INSERT INTO profiles(id,email,full_name,status,peer_coaching_opt_in)
+      VALUES(uid,format('leader.c%s@demo.clariva.club',i),format('Leader C%s',i),'active',true)
+      ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name,status='active',peer_coaching_opt_in=true;
     INSERT INTO user_roles(user_id,role) VALUES(uid,'coachee') ON CONFLICT(user_id,role) DO NOTHING;
     INSERT INTO coachee_profiles(id,job_title,industry,location,timezone,goals,approval_status)
       VALUES(uid,'Emerging Leader','Professional services','Ho Chi Minh City, Vietnam','Asia/Ho_Chi_Minh',
