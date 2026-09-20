@@ -6,12 +6,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import AppLayout from "@/components/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageSkeleton } from "@/components/PageSkeleton";
 
 // Page-level lazy imports — each becomes a separate chunk
 const Index = lazy(() => import("./pages/Index"));
+const AppLayout = lazy(() => import("./components/AppLayout"));
 const Auth = lazy(() => import("./pages/Auth"));
 const RequestAccess = lazy(() => import("./pages/RequestAccess"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -23,8 +23,7 @@ const Coaches = lazy(() => import("./pages/Coaches"));
 const CoachDetail = lazy(() => import("./pages/CoachDetail"));
 const CoachProfileEditor = lazy(() => import("./pages/CoachProfileEditor"));
 const CoachAvailability = lazy(() => import("./pages/CoachAvailability"));
-const CoacheeAvailability = lazy(() => import("./pages/CoacheeAvailability"));
-const CoacheeProfileEditor = lazy(() => import("./pages/CoacheeProfileEditor"));
+const CoacheeAccount = lazy(() => import("./pages/coachee/CoacheeAccount"));
 const Sessions = lazy(() => import("./pages/Sessions"));
 const SessionDetail = lazy(() => import("./pages/SessionDetail"));
 const BookSession = lazy(() => import("./pages/BookSession"));
@@ -54,7 +53,9 @@ const AdminSponsorReports = lazy(() => import("./pages/admin/AdminSponsorReports
 const AdminMentoring = lazy(() => import("./pages/admin/AdminMentoring"));
 const AdminTrainingContent = lazy(() => import("./pages/admin/AdminTrainingContent"));
 const AdminTriads = lazy(() => import("./pages/admin/AdminTriads"));
+const AdminCohortTriads = lazy(() => import("./pages/admin/AdminCohortTriads"));
 const TriadsPage = lazy(() => import("./pages/triads/TriadsPage"));
+const TriadSessionDetail = lazy(() => import("./pages/triads/TriadSessionDetail"));
 const TriadReflectionPage = lazy(() => import("./pages/triads/TriadReflectionPage"));
 const TrainingWeeks = lazy(() => import("./pages/TrainingWeeks"));
 const SkillCardView = lazy(() => import("./pages/SkillCardView"));
@@ -66,6 +67,7 @@ const MentoringSessionDetail = lazy(() => import("./pages/MentoringSessionDetail
 const SponsorDashboard = lazy(() => import("./pages/sponsor/SponsorDashboard"));
 const SponsorCohorts = lazy(() => import("./pages/sponsor/SponsorCohorts"));
 const SponsorCohortDetail = lazy(() => import("./pages/sponsor/SponsorCohortDetail"));
+const SponsorLeaderDetail = lazy(() => import("./pages/sponsor/SponsorLeaderDetail"));
 const SponsorReport = lazy(() => import("./pages/sponsor/SponsorReport"));
 const SponsorSettings = lazy(() => import("./pages/sponsor/SponsorSettings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -140,7 +142,7 @@ const App = () => (
                     path="/coachee/profile"
                     element={
                       <ProtectedRoute role="coachee">
-                        <CoacheeProfileEditor />
+                        <CoacheeAccount />
                       </ProtectedRoute>
                     }
                   />
@@ -211,14 +213,10 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
-                  <Route
-                    path="/coachee/availability"
-                    element={
-                      <ProtectedRoute role="coachee">
-                        <CoacheeAvailability />
-                      </ProtectedRoute>
-                    }
-                  />
+                  {/* Kept as an alias to the combined account workspace's Availability
+                      tab — nav now links there directly, but old bookmarks/links
+                      should still land somewhere that works. */}
+                  <Route path="/coachee/availability" element={<Navigate to="/coachee/profile?tab=availability" replace />} />
                   <Route
                     path="/coachee/peer-practice"
                     element={
@@ -340,6 +338,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/triads/:sessionId"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="triads">
+                        <TriadSessionDetail />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/triads/:sessionId/reflect"
                     element={
                       <ProtectedRoute roles={["coach", "coachee"]} module="triads">
@@ -364,11 +370,13 @@ const App = () => (
                   <Route path="/admin/programmes/new" element={<ProtectedRoute role="admin"><ProgrammeBuilder /></ProtectedRoute>} />
                   <Route path="/admin/programmes/:programmeId/edit" element={<ProtectedRoute role="admin"><ProgrammeBuilder /></ProtectedRoute>} />
                   <Route path="/admin/cohorts" element={<ProtectedRoute role="admin"><AdminCohorts /></ProtectedRoute>} />
+                  <Route path="/admin/cohorts/:cohortId/triads" element={<ProtectedRoute role="admin"><AdminCohortTriads /></ProtectedRoute>} />
                   <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
                   <Route path="/admin/organizations" element={<ProtectedRoute role="admin"><AdminOrganizations /></ProtectedRoute>} />
                   <Route path="/admin/sponsor-reports" element={<ProtectedRoute role="admin"><AdminSponsorReports /></ProtectedRoute>} />
                   <Route path="/sponsor" element={<ProtectedRoute role="sponsor"><SponsorDashboard /></ProtectedRoute>} />
                   <Route path="/sponsor/cohorts/:cohortId" element={<ProtectedRoute role="sponsor"><SponsorCohortDetail /></ProtectedRoute>} />
+                  <Route path="/sponsor/cohorts/:cohortId/leaders/:enrollmentId" element={<ProtectedRoute role="sponsor"><SponsorLeaderDetail /></ProtectedRoute>} />
                   <Route path="/sponsor/cohorts" element={<ProtectedRoute role="sponsor"><SponsorCohorts /></ProtectedRoute>} />
                   <Route path="/sponsor/report" element={<ProtectedRoute role="sponsor"><SponsorReport /></ProtectedRoute>} />
                   <Route path="/sponsor/settings" element={<ProtectedRoute role="sponsor"><SponsorSettings /></ProtectedRoute>} />

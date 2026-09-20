@@ -1,327 +1,359 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 
-export interface TriadRoundRow {
-  id: string;
-  programme_id: string;
-  round_number: number;
-  title: string;
-  title_vi: string | null;
-  training_week_id: string | null;
-  completion_deadline: string;
-  auto_assign_date: string;
-  auto_assign_status: "pending" | "running" | "completed" | "failed";
-  is_visible: boolean;
+/**
+ * Admin -> Cohort -> Triads read model. EVERY REQUIRED TRIAD HAS ITS OWN
+ * GROUP ASSIGNMENT: the cohort's Triad requirements ("Triad 1", "Triad 2",
+ * … = cohort_requirement_dates) each get their own groups. Independent
+ * reads, so a failure of the operational data never turns the programme
+ * requirement into "0 required":
+ *   1. requirement  — programme required Triad count + the cohort's Triad
+ *                     deadlines (admin_cohort_triad_requirement)
+ *   2. requirements — per Triad requirement: eligible / assigned / fulfilled
+ *                     / overdue / reflections (admin_cohort_triad_requirements)
+ *   3. groups       — every group with ITS requirement, members and sessions
+ *                     (admin_cohort_triad_groups)
+ *   4. learners     — each learner's canonical Triad completion, per
+ *                     requirement, the same projection Learner and Sponsor
+ *                     read (admin_cohort_triad_learners)
+ *   5. candidates   — per requirement: eligible learners without an active
+ *                     group for it, with their prior partners
+ *                     (admin_triad_requirement_candidates)
+ * Nothing here computes a completion, a due date or an overdue state.
+ */
+
+export interface AdminTriadMilestone {
+  milestone: number;
+  /** The deadline of Triad `milestone` (its own requirement). */
+  dueOn: string;
 }
 
-export interface TriadGroupAdminRow {
+export interface AdminTriadRequirementStats {
+  requirementId: string;
+  programmeId: string;
+  unitNumber: number;
+  dueOn: string;
+  requiredUnits: number;
+  eligible: number;
+  assigned: number;
+  fulfilled: number;
+  overdue: number;
+  activeGroups: number;
+  reflectionsSubmitted: number;
+  reflectionsExpected: number;
+}
+
+export interface AdminTriadCandidate {
+  enrollmentId: string;
+  userId: string;
+  fullName: string;
+  spokenLanguages: string[];
+  priorPartnerEnrollmentIds: string[];
+  priorPartnerNames: string[];
+}
+
+/** One Triad requirement of a learner (canonical_triad_completion.schedule). */
+export interface AdminTriadLearnerRequirement {
+  milestone: number;
+  requirementId: string;
+  dueOn: string;
+  isDue: boolean;
+  fulfilled: boolean;
+  fulfilledOn: string | null;
+  overdue: boolean;
+  triadGroupId: string | null;
+}
+
+export interface AdminTriadRequirement {
+  programmeId: string;
+  programmeName: string;
+  requiredUnits: number;
+  schedule: AdminTriadMilestone[];
+  scheduleState: string;
+}
+
+export interface AdminTriadMember {
+  enrollmentId: string;
+  userId: string;
+  fullName: string;
+  memberOrder: number;
+}
+
+export interface AdminTriadSession {
   id: string;
-  triad_round_id: string;
-  member_1_id: string;
-  member_2_id: string;
-  member_3_id: string | null;
-  assigned_by: "auto" | "admin";
-  group_language: string;
-  is_active: boolean;
-  session: { id: string; status: string; proposed_start_time: string | null } | null;
+  sessionNumber: number;
+  status: "proposed" | "confirmed" | "completed" | "cancelled";
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
   reflectionCount: number;
 }
 
-export interface TriadParticipant {
+export interface AdminTriadGroup {
   id: string;
-  full_name: string;
-  spoken_languages: string[];
+  requirementId: string;
+  unitNumber: number;
+  assignedBy: "auto" | "admin";
+  groupLanguage: string;
+  isActive: boolean;
+  createdAt: string;
+  closedAt: string | null;
+  members: AdminTriadMember[];
+  sessions: AdminTriadSession[];
 }
 
-interface ParticipantEnrollment {
-  id: string;
-  user_id: string;
-  cohort_id: string | null;
+export interface AdminTriadLearner {
+  enrollmentId: string;
+  userId: string;
+  fullName: string;
+  spokenLanguages: string[];
+  programmeId: string;
+  enrollmentStatus: string;
+  isEligible: boolean;
+  requiredUnits: number;
+  rawCompletedSessions: number;
+  completedUnits: number;
+  dueUnits: number;
+  overdueUnits: number;
+  nextDueOn: string | null;
+  requirements: AdminTriadLearnerRequirement[];
 }
 
-async function getParticipantEnrollments(programmeId: string, memberIds: string[]): Promise<Map<string, ParticipantEnrollment>> {
-  const { data, error } = await supabase
-    .from("programme_enrollments")
-    .select("id, user_id, cohort_id")
-    .eq("programme_id", programmeId)
-    .in("status", ["active", "at_risk", "paused"])
-    .in("user_id", memberIds);
-  if (error) throw error;
+export const ADMIN_COHORT_TRIADS_KEY = "admin-cohort-triads";
 
-  const byUser = new Map((data ?? []).map((enrollment) => [enrollment.user_id as string, enrollment as ParticipantEnrollment]));
-  const missing = memberIds.filter((id) => !byUser.has(id));
-  if (missing.length > 0) throw new Error("Every triad participant needs an ongoing enrollment in this programme");
-
-  const cohortIds = new Set(Array.from(byUser.values()).map((enrollment) => enrollment.cohort_id));
-  if (cohortIds.size !== 1 || cohortIds.has(null)) throw new Error("Triad participants must belong to the same cohort");
-  return byUser;
-}
-
-/** All triad rounds for a programme, newest round_number first — admin sees hidden rounds too. */
-export function useAdminTriadRounds(programmeId: string | undefined) {
+export function useAdminCohortTriadRequirement(cohortId: string | undefined) {
   const query = useQuery({
-    queryKey: ["admin-triad-rounds", programmeId],
-    queryFn: async (): Promise<TriadRoundRow[]> => {
-      const { data, error } = await supabase
-        .from("triad_rounds")
-        .select("*")
-        .eq("programme_id", programmeId as string)
-        .order("round_number", { ascending: false });
+    queryKey: [ADMIN_COHORT_TRIADS_KEY, "requirement", cohortId],
+    queryFn: async (): Promise<AdminTriadRequirement[]> => {
+      const { data, error } = await supabase.rpc("admin_cohort_triad_requirement", { p_cohort_id: cohortId as string });
       if (error) throw error;
-      return data as TriadRoundRow[];
+      return (data ?? []).map((row) => ({
+        programmeId: row.programme_id,
+        programmeName: row.programme_name,
+        requiredUnits: row.required_units,
+        schedule: ((row.schedule ?? []) as unknown as { milestone: number; due_on: string }[]).map((m) => ({ milestone: m.milestone, dueOn: m.due_on })),
+        scheduleState: row.schedule_state,
+      }));
     },
-    enabled: !!programmeId,
+    enabled: !!cohortId,
   });
-  return { rounds: query.data ?? [], loading: query.isLoading, refetch: query.refetch };
+  return { requirements: query.data ?? null, loading: query.isLoading, error: query.isError, refetch: query.refetch };
 }
 
-/** Every group in a round, with its most recent session and reflection completion count. */
-export function useAdminTriadGroups(roundId: string | undefined) {
+interface RawSession {
+  id: string;
+  session_number: number;
+  status: AdminTriadSession["status"];
+  scheduled_start_time: string | null;
+  scheduled_end_time: string | null;
+  reflection_count: number;
+}
+
+export function useAdminCohortTriadGroups(cohortId: string | undefined) {
   const query = useQuery({
-    queryKey: ["admin-triad-groups", roundId],
-    queryFn: async (): Promise<TriadGroupAdminRow[]> => {
-      const { data: groups, error } = await supabase
-        .from("triad_groups")
-        .select(
-          "id, triad_round_id, member_1_id, member_2_id, member_3_id, assigned_by, group_language, is_active, " +
-            "triad_sessions(id, status, proposed_start_time, created_at)",
-        )
-        .eq("triad_round_id", roundId as string)
-        .order("created_at", { ascending: true });
+    queryKey: [ADMIN_COHORT_TRIADS_KEY, "groups", cohortId],
+    queryFn: async (): Promise<AdminTriadGroup[]> => {
+      const { data, error } = await supabase.rpc("admin_cohort_triad_groups", { p_cohort_id: cohortId as string });
       if (error) throw error;
+      return (data ?? []).map((row) => ({
+        id: row.triad_group_id,
+        requirementId: row.cohort_requirement_date_id,
+        unitNumber: row.unit_number,
+        assignedBy: row.assigned_by as AdminTriadGroup["assignedBy"],
+        groupLanguage: row.group_language,
+        isActive: row.is_active,
+        createdAt: row.created_at,
+        closedAt: row.closed_at,
+        members: ((row.members ?? []) as unknown as { enrollment_id: string; user_id: string; full_name: string; member_order: number }[]).map((m) => ({
+          enrollmentId: m.enrollment_id,
+          userId: m.user_id,
+          fullName: m.full_name,
+          memberOrder: m.member_order,
+        })),
+        sessions: ((row.sessions ?? []) as unknown as RawSession[]).map((s) => ({
+          id: s.id,
+          sessionNumber: s.session_number,
+          status: s.status,
+          scheduledStartTime: s.scheduled_start_time,
+          scheduledEndTime: s.scheduled_end_time,
+          reflectionCount: s.reflection_count,
+        })),
+      }));
+    },
+    enabled: !!cohortId,
+  });
+  return { groups: query.data ?? [], loading: query.isLoading, error: query.isError, refetch: query.refetch };
+}
 
-      interface RawGroupRow {
-        id: string;
-        triad_round_id: string;
-        member_1_id: string;
-        member_2_id: string;
-        member_3_id: string | null;
-        assigned_by: "auto" | "admin";
-        group_language: string;
-        is_active: boolean;
-        triad_sessions: { id: string; status: string; proposed_start_time: string | null; created_at: string }[];
-      }
-      const rows = (groups ?? []) as unknown as RawGroupRow[];
-      const sessionByGroup = new Map<string, { id: string; status: string; proposed_start_time: string | null }>();
-      const allSessionIds: string[] = [];
-      for (const g of rows) {
-        const sessions = (g.triad_sessions ?? []) as { id: string; status: string; proposed_start_time: string | null; created_at: string }[];
-        const latest = [...sessions].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null;
-        if (latest) {
-          sessionByGroup.set(g.id, latest);
-          allSessionIds.push(latest.id);
-        }
-      }
+interface RawLearnerRequirement {
+  milestone: number;
+  cohort_requirement_date_id: string;
+  due_on: string;
+  is_due: boolean;
+  fulfilled: boolean;
+  fulfilled_on: string | null;
+  overdue: boolean;
+  triad_group_id: string | null;
+}
 
-      const reflectionCountBySession = new Map<string, number>();
-      if (allSessionIds.length > 0) {
-        const { data: reflections } = await supabase
-          .from("triad_reflections")
-          .select("triad_session_id")
-          .in("triad_session_id", allSessionIds);
-        for (const r of reflections ?? []) {
-          const id = r.triad_session_id as string;
-          reflectionCountBySession.set(id, (reflectionCountBySession.get(id) ?? 0) + 1);
-        }
-      }
+export function useAdminCohortTriadRequirementStats(cohortId: string | undefined) {
+  const query = useQuery({
+    queryKey: [ADMIN_COHORT_TRIADS_KEY, "requirement-stats", cohortId],
+    queryFn: async (): Promise<AdminTriadRequirementStats[]> => {
+      const { data, error } = await supabase.rpc("admin_cohort_triad_requirements", { p_cohort_id: cohortId as string });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        requirementId: row.cohort_requirement_date_id,
+        programmeId: row.programme_id,
+        unitNumber: row.unit_number,
+        dueOn: row.due_on,
+        requiredUnits: row.required_units,
+        eligible: row.eligible_enrollments,
+        assigned: row.assigned_enrollments,
+        fulfilled: row.fulfilled_enrollments,
+        overdue: row.overdue_enrollments,
+        activeGroups: row.active_groups,
+        reflectionsSubmitted: row.reflections_submitted,
+        reflectionsExpected: row.reflections_expected,
+      }));
+    },
+    enabled: !!cohortId,
+  });
+  return { requirements: query.data ?? [], loading: query.isLoading, error: query.isError, refetch: query.refetch };
+}
 
-      return rows.map((g) => {
-        const session = sessionByGroup.get(g.id) ?? null;
-        return {
-          id: g.id,
-          triad_round_id: g.triad_round_id,
-          member_1_id: g.member_1_id,
-          member_2_id: g.member_2_id,
-          member_3_id: g.member_3_id,
-          assigned_by: g.assigned_by,
-          group_language: g.group_language,
-          is_active: g.is_active,
-          session,
-          reflectionCount: session ? reflectionCountBySession.get(session.id) ?? 0 : 0,
-        };
+/** Eligible learners without an active group for this Triad requirement. */
+export function useAdminTriadRequirementCandidates(requirementId: string | undefined) {
+  const query = useQuery({
+    queryKey: [ADMIN_COHORT_TRIADS_KEY, "candidates", requirementId],
+    queryFn: async (): Promise<AdminTriadCandidate[]> => {
+      const { data, error } = await supabase.rpc("admin_triad_requirement_candidates", {
+        p_cohort_requirement_date_id: requirementId as string,
       });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        enrollmentId: row.enrollment_id,
+        userId: row.user_id,
+        fullName: row.full_name,
+        spokenLanguages: row.spoken_languages ?? [],
+        priorPartnerEnrollmentIds: row.prior_partner_enrollment_ids ?? [],
+        priorPartnerNames: row.prior_partner_names ?? [],
+      }));
     },
-    enabled: !!roundId,
+    enabled: !!requirementId,
   });
-  return { groups: query.data ?? [], loading: query.isLoading, refetch: query.refetch };
+  return { candidates: query.data ?? [], loading: query.isLoading, error: query.isError, refetch: query.refetch };
 }
 
-/** Active enrollees for a programme — the pool admin picks manual group members from. */
-export function useAdminTriadParticipants(programmeId: string | undefined) {
+export function useAdminCohortTriadLearners(cohortId: string | undefined) {
   const query = useQuery({
-    queryKey: ["admin-triad-participants", programmeId],
-    queryFn: async (): Promise<TriadParticipant[]> => {
-      const { data: enrollments, error } = await supabase
-        .from("programme_enrollments")
-        .select("user_id")
-        .eq("programme_id", programmeId as string)
-        .in("status", ["active", "at_risk", "paused"]);
+    queryKey: [ADMIN_COHORT_TRIADS_KEY, "learners", cohortId],
+    queryFn: async (): Promise<AdminTriadLearner[]> => {
+      const { data, error } = await supabase.rpc("admin_cohort_triad_learners", { p_cohort_id: cohortId as string });
       if (error) throw error;
-      const userIds = [...new Set((enrollments ?? []).map((e) => e.user_id as string))];
-      if (userIds.length === 0) return [];
-      const { data: profiles, error: profileErr } = await supabase
-        .from("profiles")
-        .select("id, full_name, spoken_languages")
-        .in("id", userIds);
-      if (profileErr) throw profileErr;
-      return ((profiles ?? []) as TriadParticipant[]).sort((a, b) => a.full_name.localeCompare(b.full_name));
+      return (data ?? []).map((row) => ({
+        enrollmentId: row.enrollment_id,
+        userId: row.user_id,
+        fullName: row.full_name,
+        spokenLanguages: row.spoken_languages ?? [],
+        programmeId: row.programme_id,
+        enrollmentStatus: row.enrollment_status,
+        isEligible: row.is_eligible,
+        requiredUnits: row.required_units,
+        rawCompletedSessions: row.raw_completed_sessions,
+        completedUnits: row.completed_units,
+        dueUnits: row.due_units,
+        overdueUnits: row.overdue_units,
+        nextDueOn: row.next_due_on,
+        requirements: ((row.requirements ?? []) as unknown as RawLearnerRequirement[]).map((r) => ({
+          milestone: r.milestone,
+          requirementId: r.cohort_requirement_date_id,
+          dueOn: r.due_on,
+          isDue: r.is_due,
+          fulfilled: r.fulfilled,
+          fulfilledOn: r.fulfilled_on,
+          overdue: r.overdue,
+          triadGroupId: r.triad_group_id,
+        })),
+      }));
     },
-    enabled: !!programmeId,
+    enabled: !!cohortId,
   });
-  return { participants: query.data ?? [], loading: query.isLoading };
+  return { learners: query.data ?? [], loading: query.isLoading, error: query.isError, refetch: query.refetch };
 }
 
-export interface CreateTriadRoundInput {
-  programme_id: string;
-  round_number: number;
-  title: string;
-  title_vi: string | null;
-  training_week_id: string | null;
-  completion_deadline: string;
-  auto_assign_date: string;
-  is_visible: boolean;
+export interface AutoAssignResult {
+  unit: number;
+  groups: number;
+  dyads: number;
+  flagged: number;
+  repeated_pairs: number;
 }
 
-/** Mutations for the admin triads page. */
-export function useAdminTriadMutations() {
+/** Admin Triad actions. Assignment is always for ONE Triad requirement. */
+export function useAdminTriadMutations(cohortId: string | undefined) {
   const queryClient = useQueryClient();
-
-  const invalidateRounds = (programmeId?: string) =>
-    queryClient.invalidateQueries({ queryKey: ["admin-triad-rounds", programmeId] });
-  const invalidateGroups = (roundId?: string) =>
-    queryClient.invalidateQueries({ queryKey: ["admin-triad-groups", roundId] });
-
-  const createRound = useMutation({
-    mutationFn: async (input: CreateTriadRoundInput) => {
-      const { error } = await supabase.from("triad_rounds").insert(input);
-      if (error) throw error;
-    },
-    onSuccess: (_r, vars) => invalidateRounds(vars.programme_id),
-  });
-
-  const setRoundVisible = useMutation({
-    mutationFn: async ({ roundId, isVisible, programmeId }: { roundId: string; isVisible: boolean; programmeId: string }) => {
-      const { error } = await supabase.from("triad_rounds").update({ is_visible: isVisible }).eq("id", roundId);
-      if (error) throw error;
-      return programmeId;
-    },
-    onSuccess: (programmeId) => invalidateRounds(programmeId),
-  });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: [ADMIN_COHORT_TRIADS_KEY] });
 
   const runAutoAssign = useMutation({
-    mutationFn: async (roundId: string) => {
-      const { data, error } = await supabase.functions.invoke("triad-auto-assign", { body: { round_id: roundId } });
+    mutationFn: async (requirementId: string) => {
+      const { data, error } = await supabase.functions.invoke("triad-auto-assign", {
+        body: { cohort_requirement_date_id: requirementId },
+      });
       if (error) throw error;
-      return data as { groups: number; dyads: number; flagged: number };
+      return data as AutoAssignResult;
     },
-    onSuccess: (_r, roundId) => invalidateGroups(roundId),
+    onSettled: invalidate,
   });
 
   const sendReminders = useMutation({
-    mutationFn: async (roundId: string) => {
-      const { error } = await supabase.functions.invoke("triad-reminders", { body: { round_id: roundId } });
+    mutationFn: async (requirementId: string) => {
+      const { error } = await supabase.functions.invoke("triad-reminders", {
+        body: { cohort_id: cohortId, cohort_requirement_date_id: requirementId },
+      });
       if (error) throw error;
     },
   });
 
   const createGroup = useMutation({
-    mutationFn: async ({
-      roundId,
-      programmeId,
-      memberIds,
-      language,
-    }: {
-      roundId: string;
-      programmeId: string;
-      memberIds: [string, string, string | null];
-      language: string;
-    }) => {
-      const presentMemberIds = memberIds.filter((id): id is string => Boolean(id));
-      const enrollmentByUser = await getParticipantEnrollments(programmeId, presentMemberIds);
-      const enrollment1 = enrollmentByUser.get(memberIds[0])!;
-      const enrollment2 = enrollmentByUser.get(memberIds[1])!;
-      const enrollment3 = memberIds[2] ? enrollmentByUser.get(memberIds[2])! : null;
-
-      const { data: group, error } = await supabase
-        .from("triad_groups")
-        .insert({
-          triad_round_id: roundId,
-          programme_id: programmeId,
-          cohort_id: enrollment1.cohort_id,
-          member_1_id: memberIds[0],
-          member_2_id: memberIds[1],
-          member_3_id: memberIds[2],
-          enrollment_1_id: enrollment1.id,
-          enrollment_2_id: enrollment2.id,
-          enrollment_3_id: enrollment3?.id ?? null,
-          assigned_by: "admin",
-          group_language: language,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      const { error: sessionErr } = await supabase.from("triad_sessions").insert({
-        triad_group_id: group.id,
-        coach_enrollment_id: enrollment1.id,
-        coachee_enrollment_id: enrollment2.id,
-        observer_enrollment_id: enrollment3?.id ?? null,
-        proposed_by: "system",
-        status: "proposed",
-        member_3_response: memberIds[2] ? "pending" : null,
+    mutationFn: async ({ requirementId, enrollmentIds, language }: { requirementId: string; enrollmentIds: string[]; language: string }) => {
+      const { error } = await supabase.rpc("admin_triad_create_group", {
+        p_cohort_requirement_date_id: requirementId,
+        p_enrollment_ids: enrollmentIds,
+        p_group_language: language,
       });
-      if (sessionErr) throw sessionErr;
+      if (error) throw error;
     },
-    onSuccess: (_r, vars) => invalidateGroups(vars.roundId),
+    onSuccess: invalidate,
   });
 
-  const reassignMember = useMutation({
-    mutationFn: async ({
-      groupId,
-      slot,
-      newMemberId,
-    }: {
-      groupId: string;
-      roundId: string;
-      slot: 1 | 2 | 3;
-      newMemberId: string;
-    }) => {
-      const column = `member_${slot}_id`;
-      // A computed property name widens to an index-signature object, which
-      // Supabase's generated Update type rejects even though the key is a
-      // valid literal — cast past it (see useTriadSession.ts for the same).
-      const { error } = await supabase
-        .from("triad_groups")
-        .update({ [column]: newMemberId } as Database["public"]["Tables"]["triad_groups"]["Update"])
-        .eq("id", groupId);
+  const changeMember = useMutation({
+    mutationFn: async ({ groupId, removeEnrollmentId, addEnrollmentId }: { groupId: string; removeEnrollmentId: string | null; addEnrollmentId: string | null }) => {
+      const { error } = await supabase.rpc("admin_triad_change_member", {
+        p_group_id: groupId,
+        p_remove_enrollment_id: removeEnrollmentId ?? undefined,
+        p_add_enrollment_id: addEnrollmentId ?? undefined,
+      });
       if (error) throw error;
     },
-    onSuccess: (_r, vars) => invalidateGroups(vars.roundId),
+    onSuccess: invalidate,
   });
 
   const setGroupActive = useMutation({
-    mutationFn: async ({ groupId, isActive }: { groupId: string; roundId: string; isActive: boolean }) => {
-      const { error } = await supabase.from("triad_groups").update({ is_active: isActive }).eq("id", groupId);
+    mutationFn: async ({ groupId, isActive }: { groupId: string; isActive: boolean }) => {
+      const { error } = await supabase.rpc("admin_triad_set_group_active", { p_group_id: groupId, p_is_active: isActive });
       if (error) throw error;
     },
-    onSuccess: (_r, vars) => invalidateGroups(vars.roundId),
+    onSuccess: invalidate,
   });
 
   return {
-    createRound: createRound.mutateAsync,
-    setRoundVisible: setRoundVisible.mutateAsync,
     runAutoAssign: runAutoAssign.mutateAsync,
     sendReminders: sendReminders.mutateAsync,
     createGroup: createGroup.mutateAsync,
-    reassignMember: reassignMember.mutateAsync,
+    changeMember: changeMember.mutateAsync,
     setGroupActive: setGroupActive.mutateAsync,
-    isRunningAutoAssign: runAutoAssign.isPending,
-    isSendingReminders: sendReminders.isPending,
-    isPending:
-      createRound.isPending ||
-      setRoundVisible.isPending ||
-      createGroup.isPending ||
-      reassignMember.isPending ||
-      setGroupActive.isPending,
+    autoAssignRunning: runAutoAssign.isPending,
+    remindersSending: sendReminders.isPending,
+    isPending: createGroup.isPending || changeMember.isPending || setGroupActive.isPending,
   };
 }

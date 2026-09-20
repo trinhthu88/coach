@@ -1,133 +1,75 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/context/AuthContext";
-import type { Database } from "@/integrations/supabase/types";
-import type { TriadGroupMembers } from "./useMyTriads";
+import { MY_TRIADS_KEY, MY_TRIAD_STATUS_KEY } from "./useMyTriads";
 
-function slotFor(group: TriadGroupMembers, userId: string): 1 | 2 | 3 | null {
-  if (group.member_1_id === userId) return 1;
-  if (group.member_2_id === userId) return 2;
-  if (group.member_3_id === userId) return 3;
-  return null;
-}
-
-const RESPONSE_COLUMNS = { 1: "member_1_response", 2: "member_2_response", 3: "member_3_response" } as const;
-
-export interface TriadAlternativeProposalRow {
-  id: string;
-  triad_session_id: string;
-  proposed_by: string;
-  proposed_start_time: string;
-  proposed_end_time: string;
-  status: "pending" | "accepted" | "superseded";
-  member_1_response: "pending" | "accepted" | "declined";
-  member_2_response: "pending" | "accepted" | "declined";
-  member_3_response: "pending" | "accepted" | "declined" | null;
-}
-
-export function useTriadAlternativeProposals(sessionId: string | undefined) {
-  const query = useQuery({
-    queryKey: ["triad-alt-proposals", sessionId],
-    queryFn: async (): Promise<TriadAlternativeProposalRow[]> => {
-      const { data, error } = await supabase
-        .from("triad_alternative_proposals")
-        .select("*")
-        .eq("triad_session_id", sessionId as string)
-        .eq("status", "pending")
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      // status/member_*_response are TEXT + CHECK constraints in Postgres
-      // (see 20260906120000_triad_redesign.sql), not real enum types, so
-      // codegen widens them to plain `string` — narrow back to the
-      // literals the CHECK constraint actually enforces.
-      return (data ?? []) as TriadAlternativeProposalRow[];
-    },
-    enabled: !!sessionId,
-  });
-  return { proposals: query.data ?? [], loading: query.isLoading };
-}
-
-/** Mutations for the propose/accept booking flow on a triad session. */
+/**
+ * Triad session actions. Every write goes through a validated server
+ * function (membership, lifecycle and time are enforced there) — completion
+ * is programme evidence, so it is never protected only by button visibility.
+ */
 export function useTriadSession() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const invalidate = (sessionId?: string) => {
-    queryClient.invalidateQueries({ queryKey: ["my-triads"] });
-    if (sessionId) queryClient.invalidateQueries({ queryKey: ["triad-alt-proposals", sessionId] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: [MY_TRIADS_KEY] });
+    queryClient.invalidateQueries({ queryKey: [MY_TRIAD_STATUS_KEY] });
+    // A Triad status/time change moves session history, canonical progress
+    // and the journey.
+    queryClient.invalidateQueries({ queryKey: ["enrollment-sessions-view"] });
+    queryClient.invalidateQueries({ queryKey: ["learner-canonical-progress"] });
+    queryClient.invalidateQueries({ queryKey: ["triads-card"] });
   };
 
-  const acceptSession = useMutation({
-    mutationFn: async ({ sessionId, group }: { sessionId: string; group: TriadGroupMembers }) => {
-      const slot = slotFor(group, user!.id);
-      if (!slot) throw new Error("Not a member of this triad");
-      // A computed property name widens to an index-signature object
-      // ({[x: string]: string}), which Supabase's generated Update type
-      // rejects even though the key itself is a valid literal — cast past it.
-      const { error } = await supabase
-        .from("triad_sessions")
-        .update({ [RESPONSE_COLUMNS[slot]]: "accepted" } as Database["public"]["Tables"]["triad_sessions"]["Update"])
-        .eq("id", sessionId);
+  // The group's next session (the first, or the next after the previous one
+  // was completed / cancelled): the proposer has accepted it.
+  const scheduleSession = useMutation({
+    mutationFn: async ({ groupId, startTime, endTime }: { groupId: string; startTime: string; endTime: string }) => {
+      const { error } = await supabase.rpc("learner_triad_schedule_session", { p_group_id: groupId, p_start: startTime, p_end: endTime });
       if (error) throw error;
     },
-    onSuccess: (_r, vars) => invalidate(vars.sessionId),
+    onSuccess: invalidate,
+  });
+
+  const acceptSession = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase.rpc("learner_triad_respond_session", { p_session_id: sessionId, p_response: "accepted" });
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
   });
 
   const proposeAlternative = useMutation({
-    mutationFn: async ({
-      sessionId,
-      group,
-      startTime,
-      endTime,
-    }: {
-      sessionId: string;
-      group: TriadGroupMembers;
-      startTime: string;
-      endTime: string;
-    }) => {
-      const slot = slotFor(group, user!.id);
-      if (!slot) throw new Error("Not a member of this triad");
-      const { error } = await supabase.from("triad_alternative_proposals").insert({
-        triad_session_id: sessionId,
-        proposed_by: user!.id,
-        proposed_start_time: startTime,
-        proposed_end_time: endTime,
-        member_1_response: slot === 1 ? "accepted" : "pending",
-        member_2_response: slot === 2 ? "accepted" : "pending",
-        member_3_response: group.member_3_id ? (slot === 3 ? "accepted" : "pending") : null,
-      });
+    mutationFn: async ({ sessionId, startTime, endTime }: { sessionId: string; startTime: string; endTime: string }) => {
+      const { error } = await supabase.rpc("learner_triad_propose_alternative", { p_session_id: sessionId, p_start: startTime, p_end: endTime });
       if (error) throw error;
     },
-    onSuccess: (_r, vars) => invalidate(vars.sessionId),
+    onSuccess: invalidate,
   });
 
   const acceptAlternative = useMutation({
-    mutationFn: async ({ proposalId, group }: { proposalId: string; sessionId: string; group: TriadGroupMembers }) => {
-      const slot = slotFor(group, user!.id);
-      if (!slot) throw new Error("Not a member of this triad");
-      const { error } = await supabase
-        .from("triad_alternative_proposals")
-        .update({ [RESPONSE_COLUMNS[slot]]: "accepted" } as Database["public"]["Tables"]["triad_alternative_proposals"]["Update"])
-        .eq("id", proposalId);
+    mutationFn: async (proposalId: string) => {
+      const { error } = await supabase.rpc("learner_triad_respond_alternative", { p_proposal_id: proposalId, p_response: "accepted" });
       if (error) throw error;
     },
-    onSuccess: (_r, vars) => invalidate(vars.sessionId),
+    onSuccess: invalidate,
   });
 
   const markCompleted = useMutation({
     mutationFn: async (sessionId: string) => {
-      const { error } = await supabase.from("triad_sessions").update({ status: "completed" }).eq("id", sessionId);
+      const { error } = await supabase.rpc("learner_triad_complete_session", { p_session_id: sessionId });
       if (error) throw error;
     },
-    onSuccess: (_r, sessionId) => invalidate(sessionId),
+    onSuccess: invalidate,
   });
 
   return {
+    scheduleSession: scheduleSession.mutateAsync,
     acceptSession: acceptSession.mutateAsync,
     proposeAlternative: proposeAlternative.mutateAsync,
     acceptAlternative: acceptAlternative.mutateAsync,
     markCompleted: markCompleted.mutateAsync,
     isPending:
+      scheduleSession.isPending ||
       acceptSession.isPending || proposeAlternative.isPending || acceptAlternative.isPending || markCompleted.isPending,
   };
 }

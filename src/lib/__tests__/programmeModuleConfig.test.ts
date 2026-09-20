@@ -82,6 +82,15 @@ describe("validateModuleScheduleConfig", () => {
     })).toBe("programmes.modules.validation.trainingWeeksInsufficient");
   });
 
+  it("accepts six training weeks when Admin defines six required training units", () => {
+    expect(validateModuleScheduleConfig({
+      ...validBase,
+      required_units: 6,
+      distribution_mode: "training_linked",
+      distribution_settings: { training_week_ids: ["week-1", "week-2", "week-3", "week-4", "week-5", "week-6"] },
+    }, ["week-1", "week-2", "week-3", "week-4", "week-5", "week-6"])).toBeNull();
+  });
+
   it("rejects malformed explicit training-week selections", () => {
     expect(validateModuleScheduleConfig({
       ...validBase,
@@ -105,5 +114,15 @@ describe("normalizeModuleScheduleConfig", () => {
       distribution_mode: "flexible",
       distribution_settings: { keep_me: true },
     });
+  });
+
+  it("removes the legacy training weeks field so Admin has one requirement definition", () => {
+    expect(normalizeModuleScheduleConfig({
+      weeks: 4,
+      required: true,
+      required_units: 6,
+      distribution_mode: "training_linked",
+      distribution_settings: { training_week_ids: ["week-1"] },
+    })).not.toHaveProperty("weeks");
   });
 });

@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -26,46 +25,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { useSearchParams } from "react-router-dom";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
-
-const COMPETENCY_KEYS = [
-  "ethical_practice",
-  "coaching_mindset",
-  "maintains_agreements",
-  "trust_safety",
-  "maintains_presence",
-  "listens_actively",
-  "evokes_awareness",
-  "facilitates_growth",
-] as const;
-
-type CompKey = (typeof COMPETENCY_KEYS)[number];
-
-interface Entry {
-  id: string;
-  topic: string;
-  start_time: string;
-  duration_minutes: number;
-  status: string;
-  kind: "coached" | "peer-given" | "peer-received";
-  counterpart_id: string;
-  enrollment_id: string;
-}
-
-interface Feedback {
-  id: string;
-  peer_session_id: string;
-  created_at: string;
-  feedback_note: string | null;
-  peer_coachee_id: string;
-  ethical_practice: number | null;
-  coaching_mindset: number | null;
-  maintains_agreements: number | null;
-  trust_safety: number | null;
-  maintains_presence: number | null;
-  listens_actively: number | null;
-  evokes_awareness: number | null;
-  facilitates_growth: number | null;
-}
+import { usePracticeAnalytics, PRACTICE_COMPETENCY_KEYS, type PracticeCompetencyKey } from "@/hooks/journey/usePracticeAnalytics";
 
 export default function CoachPracticeJourney() {
   const { t } = useTranslation("dashboard");
@@ -76,106 +36,16 @@ export default function CoachPracticeJourney() {
     searchParams.get("enrollmentId")
   );
   const COMPETENCIES = useMemo(
-    () => COMPETENCY_KEYS.map((key) => ({ key, label: t(`practiceJourney.competencies.${key}`) })),
+    () => PRACTICE_COMPETENCY_KEYS.map((key) => ({ key, label: t(`practiceJourney.competencies.${key}`) })),
     [t]
   );
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [feedback, setFeedback] = useState<Feedback[]>([]);
-  const [profilesById, setProfilesById] = useState<Record<string, { full_name: string }>>({});
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user || !selectedEnrollment) return;
-    const enrollmentId = selectedEnrollment.id;
-    (async () => {
-      const [{ data: coached }, { data: peer }] = await Promise.all([
-        supabase
-          .from("sessions")
-          .select("id, topic, start_time, duration_minutes, status, coach_id, enrollment_id")
-          .eq("coachee_id", user.id)
-          .eq("enrollment_id", enrollmentId),
-        supabase
-          .from("peer_sessions")
-            .select("id, topic, start_time, duration_minutes, status, peer_coach_id, peer_coachee_id, enrollment_id")
-            .or(`peer_coach_id.eq.${user.id},peer_coachee_id.eq.${user.id}`)
-            .eq("enrollment_id", enrollmentId),
-      ]);
-      const scopedPeer = peer || [];
-      const peerIds = scopedPeer.map((s) => s.id);
-      const { data: fb } = peerIds.length
-        ? await supabase.from("peer_session_competency_feedback").select("*").in("peer_session_id", peerIds).eq("peer_coach_id", user.id).order("created_at", { ascending: true })
-        : { data: [] };
-
-      const list: Entry[] = [];
-      (coached || []).forEach((s) =>
-        list.push({
-          id: s.id,
-          topic: s.topic,
-          start_time: s.start_time,
-          duration_minutes: s.duration_minutes,
-          status: s.status,
-          kind: "coached",
-          counterpart_id: s.coach_id,
-           enrollment_id: enrollmentId,
-        })
-      );
-       scopedPeer.forEach((s) =>
-        list.push({
-          id: s.id,
-          topic: s.topic,
-          start_time: s.start_time,
-          duration_minutes: s.duration_minutes,
-          status: s.status,
-          kind: s.peer_coach_id === user.id ? "peer-given" : "peer-received",
-          counterpart_id: s.peer_coach_id === user.id ? s.peer_coachee_id : s.peer_coach_id,
-           enrollment_id: enrollmentId,
-        })
-      );
-      list.sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
-      setEntries(list);
-      setFeedback((fb || []) as Feedback[]);
-
-      const ids = Array.from(
-        new Set([
-          ...list.map((e) => e.counterpart_id),
-          ...(fb || []).map((f) => f.peer_coachee_id),
-        ])
-      );
-      if (ids.length) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", ids);
-        const map: Record<string, { full_name: string }> = {};
-        (profs || []).forEach((p) => (map[p.id] = p));
-        setProfilesById(map);
-      }
-      setLoading(false);
-    })();
-  }, [user, selectedEnrollment]);
-
-  const stats = useMemo(() => {
-    const booked = entries.filter((e) =>
-      ["pending_coach_approval", "confirmed", "completed"].includes(e.status)
-    );
-    const completed = entries.filter((e) => e.status === "completed");
-    const tally = (kind: Entry["kind"], src: Entry[]) =>
-      src.filter((e) => e.kind === kind).length;
-    return {
-      coached: { booked: tally("coached", booked), completed: tally("coached", completed) },
-      peerGiven: { booked: tally("peer-given", booked), completed: tally("peer-given", completed) },
-      peerReceived: {
-        booked: tally("peer-received", booked),
-        completed: tally("peer-received", completed),
-      },
-    };
-  }, [entries]);
+  const { loading, entries, feedback, profilesById, stats } = usePracticeAnalytics(selectedEnrollment?.id, user?.id);
 
   // Radar averages across all feedback
   const radarData = useMemo(() => {
     if (!feedback.length) return COMPETENCIES.map((c) => ({ competency: c.label, score: 0 }));
     return COMPETENCIES.map((c) => {
-      const vals = feedback.map((f) => f[c.key as CompKey]).filter((v): v is number => v != null);
+      const vals = feedback.map((f) => f[c.key as PracticeCompetencyKey]).filter((v): v is number => v != null);
       const avg = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
       return { competency: c.label, score: Math.round(avg) };
     });
@@ -189,7 +59,7 @@ export default function CoachPracticeJourney() {
         date: format(new Date(f.created_at), "MMM d"),
       };
       COMPETENCIES.forEach((c) => {
-        row[c.label] = f[c.key as CompKey];
+        row[c.label] = f[c.key as PracticeCompetencyKey];
       });
       return row;
     });
@@ -415,7 +285,7 @@ export default function CoachPracticeJourney() {
                     )}
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {COMPETENCIES.map((c) => {
-                        const v = f[c.key as CompKey];
+                        const v = f[c.key as PracticeCompetencyKey];
                         if (v == null) return null;
                         return (
                           <span

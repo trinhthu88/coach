@@ -5,6 +5,31 @@
     "inOneDay": "In 1 day",
     "inDays": "In {{count}} days"
   },
+  "coacheeDashboard": {
+    "hero": {
+      "enrollmentRequired": "Your programme details will appear here once you have an active enrollment.",
+      "checkpointPosition": "Checkpoint {{current}} of {{total}}"
+    },
+    "nextUp": {
+      "empty": "Nothing due right now.",
+      "itemsCount_one": "{{count}} item",
+      "itemsCount_other": "{{count}} items",
+      "kinds": {
+        "overdue_requirement": "Overdue",
+        "overdue_action": "Overdue action",
+        "current_requirement": "Current",
+        "upcoming_session": "Upcoming session",
+        "upcoming_requirement": "Upcoming"
+      }
+    },
+    "journeyPreview": {
+      "viewFull": "View full journey →"
+    },
+    "upcomingSessions": {
+      "empty": "No upcoming session booked.",
+      "viewAll": "View all sessions →"
+    }
+  },
   "greetingByRole": {
     "coachee": "Find your next coach and keep momentum going.",
     "coach": "Review session requests and inspire your coachees today.",
@@ -445,6 +470,33 @@
     "upcomingHint": "Across all session types"
   },
   "cards": {
+    "myGoal": {
+      "title": "My goal",
+      "enrollmentRequired": "Select an enrollment to see your goal.",
+      "loadError": "Your goal could not be loaded.",
+      "empty": "No goals have been created for this programme yet.",
+      "targetDate": "Target {{date}}",
+      "progressLabel": "progress",
+      "additionalGoals_one": "+{{count}} more active goal",
+      "additionalGoals_other": "+{{count}} more active goals",
+      "actionsLoadError": "Actions could not be loaded.",
+      "noActions": "No open actions.",
+      "actionsSummary": "{{completed}} completed · {{open}} open",
+      "overdueSuffix": " · {{count}} overdue",
+      "nextUpLabel": "Next up:",
+      "openJourney": "Open my journey"
+    },
+    "recentDevelopment": {
+      "title": "Recent development",
+      "empty": "Nothing in your development history yet.",
+      "openJourney": "Open my journey"
+    },
+    "myFeedback": {
+      "title": "Feedback & development",
+      "loadError": "Feedback could not be loaded.",
+      "empty": "No learner-visible feedback yet.",
+      "someone": "Someone"
+    },
     "coachingGive": {
       "title": "My clients",
       "pendingBadge": "{{count}} pending",
@@ -508,6 +560,236 @@
       "awaitingYourResponse": "Awaiting your response",
       "reflectionsPending": "{{count}} reflection(s) pending",
       "openTriads": "Open triads"
+    }
+  },
+  "learnerProfile": {
+    "header": {
+      "eyebrow": "My programme",
+      "programmeStatus": "Programme status",
+      "coaching": "Coaching",
+      "coachingValue": "{{completed}} of {{allocated}} sessions",
+      "position": "Position"
+    },
+    "reference": {
+      "journeySubtitle": "Your programme structure and deadlines, set by your programme and cohort.",
+      "journeySourceValue": "Programme configuration, cohort dates and your completed activity",
+      "journeyWithheld": "No programme checkpoints are configured for this enrollment yet.",
+      "journeyWindow": "Showing checkpoints {{first}}–{{last}} of {{total}}",
+      "trendWithheld": "No checkpoint participation yet.",
+      "aggregateOnly": "Same figures your sponsor sees",
+      "privacySafe": "Required items only",
+      "learningUnavailable": "No required learning items are configured for this enrollment.",
+      "attendanceOnly": "Only required, visible items you were assigned count towards these totals. Your sponsor sees the same numbers — never your session content.",
+      "progressOnly": "Your goals",
+      "ratingTrendWithheld": "Rate your completed coaching sessions to add to this score.",
+      "ratingPrivacy": "Average of your submitted session ratings. Your sponsor sees this average, not your comments.",
+      "ratingNone": "You haven't rated a completed session yet."
+    },
+    "modules": {
+      "open": "Open →",
+      "openTraining": "Open training →"
+    },
+    "journey": {
+      "dueOn": "Due {{date}}",
+      "inScope": "Modules in scope",
+      "detailNote": "Cumulative units count every required activity due up to this date. Your sponsor sees the same checkpoint status.",
+      "stateNote": {
+        "completed": "Every cumulative unit due by this date was completed on time.",
+        "overdue": "Not every cumulative unit due by this date was completed by then.",
+        "current": "This checkpoint is due today.",
+        "upcoming": "Not yet due — activity completed before this date counts towards it."
+      }
+    },
+    "goals": {
+      "aside_one": "{{count}} active goal",
+      "aside_other": "{{count}} active goals",
+      "emptyGoals": "No active goals yet. Set one in My Journey.",
+      "successMeasure": "Success looks like: {{text}}",
+      "open": "Open goal →",
+      "start": "Start",
+      "current": "Current",
+      "target": "Target",
+      "targetDate": "Target {{date}}",
+      "noTargetDate": "No target date",
+      "notRated": "Not rated yet",
+      "progress": "{{pct}}% towards target",
+      "latestCheckin": "Last check-in {{date}} · {{from}} → {{to}}",
+      "noCheckin": "No check-ins yet",
+      "milestones": "Milestones {{done}}/{{total}}",
+      "noMilestones": "No milestones yet.",
+      "linkedActions": "Actions {{done}}/{{total}}",
+      "noOpenActions": "No open actions.",
+      "otherActions": "Other open actions",
+      "noActiveActions": "No active actions.",
+      "allLinked": "All open actions are linked to a goal.",
+      "actionOverdue": "Overdue",
+      "actionStatus": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "completed": "Done"
+      },
+      "noDueDate": "No due date",
+      "viewAll_one": "View all goals & actions ({{count}} goal) →",
+      "viewAll_other": "View all goals & actions ({{count}} goals) →"
+    },
+    "feedback": {
+      "title": "Feedback & development",
+      "aside": "Visible only to you",
+      "feedbackCount": "Feedback received",
+      "reflectionCount": "Reflections",
+      "latestActivity": "Latest activity",
+      "recentTitle": "Recent feedback & reflections",
+      "activityTitle": "Recent development activity",
+      "empty": "No feedback available yet, and no reflections submitted yet.",
+      "noActivity": "No development activity recorded yet.",
+      "module": "Module: {{module}}",
+      "privacy": "Feedback from your mentor and peers, shared session notes from your coach, mentor and practice partners, and your own reflections. Coach-private notes are never shown here, and none of this is shared with your sponsor.",
+      "viewAll": "View all feedback & development →",
+      "from": {
+        "mentoring": "Mentor feedback · {{name}}",
+        "peer_competency": "Peer coaching feedback · {{name}}",
+        "coaching_note": "Coach session note · {{name}}",
+        "mentoring_note": "Mentor session note · {{name}}",
+        "peer_practice_note": "Peer practice note · {{name}}"
+      },
+      "types": {
+        "mentoring": "Mentor feedback",
+        "peer_competency": "Peer feedback",
+        "coaching_note": "Coach note",
+        "mentoring_note": "Mentor note",
+        "peer_practice_note": "Peer practice note"
+      },
+      "openSource": "Open session →"
+    },
+    "attention": {
+      "title": "Needs your attention"
+    },
+    "sessions": {
+      "book": "Book a session"
+    },
+    "privacy": {
+      "title": "What your sponsor sees",
+      "body": "Your sponsor sees the same programme progress, module, checkpoint and coaching figures shown above, plus goal and action counts and your average session rating. They never see your goal wording, actions, reflections, feedback, session notes or messages."
+    },
+    "errors": {
+      "progress": "Your programme progress could not be loaded. Nothing has changed with your programme — please try again.",
+      "journey": "Your programme journey could not be loaded.",
+      "engagement": "Goal and action totals could not be loaded.",
+      "goals": "Your goals and actions could not be loaded.",
+      "feedback": "Feedback could not be loaded because of a connection or server error. Please try again.",
+      "development": "Your development activity could not be loaded.",
+      "developmentPartial": "Some development activity could not be loaded, so this list may be incomplete.",
+      "sessions": "Upcoming sessions could not be loaded.",
+      "attention": "Items needing attention could not be loaded.",
+      "retry": "Try again",
+      "reflections": "Your reflections could not be loaded. Please try again."
+    },
+    "journeyPage": {
+      "backToDashboard": "← Dashboard"
+    },
+    "reflections": {
+      "sources": {
+        "coaching_session_reflection": "Coaching · Session reflection",
+        "coaching_session_rating": "Coaching · Session rating",
+        "peer_session_reflection": "Peer coaching · Session reflection",
+        "peer_session_rating": "Peer coaching · Session rating",
+        "mentoring_session_reflection": "Mentoring · Session reflection",
+        "triad_reflection": "Triad · Session reflection",
+        "goal_checkin": "Goal · Check-in",
+        "training_reflection": "Training / Learning · Reflection prompt",
+        "quiz_reflection": "Training / Learning · Quiz reflection",
+        "daily_prompt_response": "Training / Learning · Daily prompt",
+        "journey_reflection": "Journey · Personal reflection"
+      },
+      "onlyYou": "Only you",
+      "ratingChange": "Rating {{from}} → {{to}}",
+      "ratingNow": "Rating {{to}}",
+      "outOfFive": "{{value}} / 5",
+      "mood": "Mood: {{mood}}",
+      "open": {
+        "goal": "Open goal →",
+        "session": "Open session →",
+        "training": "Open training →"
+      },
+      "delete": "Delete reflection",
+      "privateNote": "only you can see this",
+      "sourcePrefix": "Source",
+      "pill": {
+        "private": "Private",
+        "linked": "Linked"
+      },
+      "triadSections": {
+        "coach": "As coach",
+        "coachee": "As coachee",
+        "observer": "As observer"
+      }
+    }
+  },
+  "learnerModules": {
+    "eyebrow": "My development",
+    "next": "Next",
+    "noneBooked": "none booked",
+    "sessionsComplete": "sessions complete",
+    "sessionsCompleted": "Sessions completed",
+    "sessionsError": "Your sessions could not be loaded.",
+    "coaching": {
+      "title": "Coaching",
+      "subtitle": "Your coach, your coaching progress and every coaching session in this programme.",
+      "book": "Book session",
+      "myCoach": "My coach",
+      "noCoach": "No coach is assigned to you yet. Choose a coach from the directory below.",
+      "progressTitle": "Coaching progress",
+      "privacy": "Your coach's private notes stay private. Only what they share with you appears here.",
+      "sessionsLabel": "Coaching sessions",
+      "noSessions": "No coaching sessions in this programme yet.",
+      "directoryTitle": "Coach directory"
+    },
+    "peer": {
+      "title": "Peer coaching",
+      "subtitle": "Practise with peers in your cohort. Booking availability and your session history are shown separately.",
+      "book": "Book peer session",
+      "progressLabel": "Peer sessions completed",
+      "feedbackTitle": "Feedback received",
+      "noFeedback": "No peer feedback shared with you yet.",
+      "sessionsLabel": "Peer coaching sessions"
+    },
+    "mentoring": {
+      "title": "Mentoring",
+      "subtitle": "Your mentor, how to prepare, and every mentoring session in this programme.",
+      "book": "Book mentoring",
+      "myMentor": "My mentor",
+      "noMentor": "No mentoring session booked yet. Choose a mentor below.",
+      "preparation": "Preparation",
+      "prepTitle": "Prepare for your next session",
+      "prepBody": "Add your questions and context on the session page so your mentor can see them before you meet.",
+      "addPreparation": "Add preparation notes",
+      "prepNoSession": "Book a mentoring session to start preparing.",
+      "feedbackTitle": "Mentor feedback",
+      "noFeedback": "No mentor feedback shared with you yet.",
+      "sessionsLabel": "Mentoring sessions",
+      "noSessions": "No mentoring sessions in this programme yet.",
+      "mentorsTitle": "Available mentors"
+    },
+    "triads": {
+      "title": "Triads",
+      "subtitle": "Practise in threes: coach, coachee and observer. Each required Triad has its own group and deadline.",
+      "myGroup": "My Triad group",
+      "noGroup": "You haven't been placed in a Triad group yet.",
+      "member": "Member",
+      "nextTitle": "Next Triad session",
+      "openSession": "Open Triad session",
+      "roundsTitle": "My Triad sessions",
+      "roundsSubtitle": "Every Triad session in this programme, with your self-reflection status",
+      "session": "Session",
+      "selfRating": "Self-rating",
+      "selfReflection": "Self-reflection",
+      "submitted": "Submitted",
+      "due": "Due now",
+      "afterSession": "After session",
+      "rotateRoles": "Everyone rotates through coach, coachee and observer.",
+      "progressPill": "{{completed}}/{{required}} completed",
+      "noRequirementPill": "Not required",
+      "sessionPractice": "Triad practice"
     }
   }
 }

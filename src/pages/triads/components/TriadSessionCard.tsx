@@ -1,24 +1,19 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useAuth } from "@/context/AuthContext";
 import { Clock, Video } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useTriadSession } from "@/hooks/triads/useTriadSession";
-import type { TriadRoundEntry } from "@/hooks/triads/useMyTriads";
+import { pendingMembers, type TriadGroupEntry } from "@/hooks/triads/useMyTriads";
 import { TriadAlternativeProposal } from "./TriadAlternativeProposal";
 
-const RESPONSE_BY_SLOT = ["member_1_response", "member_2_response", "member_3_response"] as const;
-const ID_BY_SLOT = ["member_1_id", "member_2_id", "member_3_id"] as const;
-
-/** "Upcoming session" card — white, sky left-border, per the design's right-column session panel. */
-export function TriadSessionCard({ entry }: { entry: TriadRoundEntry }) {
+/** "Next Triad session" card — navy, per the approved prototype's Triads workspace ("Next Triad session" is navy, "My Triad group" is white — the reverse of TriadGroupHero). The no-session empty state stays a plain light card, matching every other empty state in the app. */
+export function TriadSessionCard({ entry, untilDate = null }: { entry: TriadGroupEntry; untilDate?: string | null }) {
   const { t } = useTranslation("triads");
-  const { user } = useAuth();
   const { acceptSession, markCompleted, isPending } = useTriadSession();
-  const { session, group, members } = entry;
+  const { session, members } = entry;
   const [showAlternative, setShowAlternative] = useState(false);
 
   if (!session) {
@@ -29,16 +24,11 @@ export function TriadSessionCard({ entry }: { entry: TriadRoundEntry }) {
     );
   }
 
-  const responseFor = (memberId: string): "pending" | "accepted" | "declined" => {
-    for (let i = 0; i < 3; i++) {
-      if (group[ID_BY_SLOT[i]] === memberId) return session[RESPONSE_BY_SLOT[i]] ?? "pending";
-    }
-    return "pending";
-  };
+  const responseBySlot = new Map(session.responses.map((r) => [r.slot, r.response]));
 
   const handleAccept = async () => {
     try {
-      await acceptSession({ sessionId: session.id, group });
+      await acceptSession(session.id);
       toast.success(t("session.acceptSuccess"));
     } catch (err) {
       toast.error(getFriendlyErrorMessage(err, t, { fallback: t("session.acceptError") }));
@@ -54,48 +44,45 @@ export function TriadSessionCard({ entry }: { entry: TriadRoundEntry }) {
     }
   };
 
-  const myResponse = user ? responseFor(user.id) : "pending";
-  const pendingOthers = members.filter((m) => m.id !== user?.id && responseFor(m.id) === "pending").map((m) => m.full_name);
-  const canMarkCompleted = session.proposed_start_time ? new Date(session.proposed_start_time).getTime() < Date.now() : true;
+  const pendingOthers = pendingMembers(entry, session.responses).map((m) => m.full_name);
 
   return (
-    <div className="rounded-[22px] border border-[#e8e2d8] border-l-4 border-l-primary bg-card p-6 sm:p-7">
-      <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-primary">
+    <div className="rounded-[18px] bg-secondary p-6 text-secondary-foreground shadow-[0_18px_55px_-30px_rgba(6,47,62,0.6)] sm:p-7">
+      <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-primary-glow">
         {session.status === "confirmed" ? t("session.upcomingLabel") : t("session.needsSchedulingLabel")}
+        {" · "}
+        {t("sessionLabel", { n: entry.unitNumber })}
       </p>
 
-      {session.proposed_start_time ? (
+      {session.scheduledStartTime ? (
         <h3 className="font-display mt-2 text-[22px] font-normal leading-[1.15] tracking-[-0.02em] sm:text-[26px]">
-          {format(new Date(session.proposed_start_time), "EEEE, MMM d 'at' p")}
+          {format(new Date(session.scheduledStartTime), "EEEE, MMM d 'at' p")}
         </h3>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">{t("session.noTimeYet")}</p>
+        <p className="mt-2 text-sm text-white/65">{t("session.noTimeYet")}</p>
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {members.map((m) => {
-          const r = responseFor(m.id);
-          return (
-            <span
-              key={m.id}
-              className={cn(
-                "inline-flex items-center rounded-full px-3 py-1.5 text-[10.5px] font-semibold",
-                r === "accepted" ? "bg-primary text-secondary" : "bg-[#f2eee6] text-[#4a463f]"
-              )}
-            >
-              {m.id === user?.id ? t("you") : m.full_name}
-            </span>
-          );
-        })}
+        {members.map((m) => (
+          <span
+            key={m.id}
+            className={cn(
+              "inline-flex items-center rounded-full px-3 py-1.5 text-[10.5px] font-semibold",
+              responseBySlot.get(m.slot) === "accepted" ? "bg-primary text-secondary" : "bg-white/10 text-white"
+            )}
+          >
+            {m.isSelf ? t("you") : m.full_name}
+          </span>
+        ))}
       </div>
 
-      {session.status === "proposed" && (
+      {(session.status === "proposed" || session.status === "confirmed") && (
         <>
-          {pendingOthers.length > 0 && (
-            <p className="mt-3 text-xs text-muted-foreground">{t("session.waitingOnOthers", { names: pendingOthers.join(", ") })}</p>
+          {session.status === "proposed" && pendingOthers.length > 0 && (
+            <p className="mt-3 text-xs text-white/65">{t("session.waitingOnOthers", { names: pendingOthers.join(", ") })}</p>
           )}
           <div className="mt-4 flex flex-wrap gap-2.5">
-            {myResponse !== "accepted" && session.proposed_start_time && (
+            {session.status === "proposed" && session.myResponse !== "accepted" && session.scheduledStartTime && (
               <button
                 type="button"
                 onClick={handleAccept}
@@ -108,41 +95,43 @@ export function TriadSessionCard({ entry }: { entry: TriadRoundEntry }) {
             <button
               type="button"
               onClick={() => setShowAlternative((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-[18px] py-[11px] text-xs font-semibold transition-colors hover:border-primary hover:text-[#2c8fa8]"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/5 px-[18px] py-[11px] text-xs font-semibold text-white transition-colors hover:bg-white/10"
             >
               <Clock className="h-3.5 w-3.5" /> {t("session.proposeAlternative")}
             </button>
           </div>
           {showAlternative && (
-            <TriadAlternativeProposal
-              sessionId={session.id}
-              group={group}
-              members={members}
-              deadline={entry.round.completion_deadline}
-              onDone={() => setShowAlternative(false)}
-            />
+            <div className="mt-4 rounded-xl bg-white p-4 text-foreground">
+              <TriadAlternativeProposal entry={entry} untilDate={untilDate} onDone={() => setShowAlternative(false)} />
+            </div>
+          )}
+          {!showAlternative && session.pendingAlternatives.length > 0 && (
+            <div className="mt-4 rounded-xl bg-white p-4 text-foreground">
+              <TriadAlternativeProposal entry={entry} onDone={() => setShowAlternative(false)} listOnly />
+            </div>
           )}
         </>
       )}
 
       {session.status === "confirmed" && (
-        <div className="mt-4 flex flex-wrap items-center gap-2.5 border-t border-[#efeae1] pt-4">
-          {session.meeting_url && (
+        <div className="mt-4 flex flex-wrap items-center gap-2.5 border-t border-white/10 pt-4">
+          {session.meetingUrl && (
             <a
-              href={session.meeting_url}
+              href={session.meetingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-secondary px-[22px] py-3 text-[12.5px] font-semibold text-white transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-[22px] py-3 text-[12.5px] font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
             >
               <Video className="h-3.5 w-3.5" /> {t("session.joinMeeting")}
             </a>
           )}
-          {canMarkCompleted && (
+          {/* The server decides whether completion is allowed (confirmed, time started, member). */}
+          {session.canComplete && (
             <button
               type="button"
               onClick={handleMarkCompleted}
               disabled={isPending}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-[18px] py-[11px] text-xs font-semibold transition-colors hover:border-primary hover:text-[#2c8fa8] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/5 px-[18px] py-[11px] text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-50"
             >
               {t("session.markCompleted")}
             </button>

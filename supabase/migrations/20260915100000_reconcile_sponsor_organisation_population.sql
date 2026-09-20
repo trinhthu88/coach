@@ -1,0 +1,18 @@
+-- Dead code removal.
+--
+-- This migration originally created public.sponsor_organisation_summary_legacy(),
+-- a superseded aggregate that depended on public.sponsor_metric_rows(uuid, date).
+-- That function was never defined anywhere in this migration history: the
+-- CREATE FUNCTION below always failed at apply time (a LANGUAGE SQL function
+-- body is validated against real catalog objects when it is created), so
+-- sponsor_organisation_summary_legacy() could never exist in any database —
+-- local, CI, or hosted. It has no callers in this codebase; the RPC actually
+-- used by the Sponsor Dashboard is public.sponsor_organisation_summary()
+-- (see 20260915160000_sponsor_module_reconciliation.sql), which does not use
+-- sponsor_metric_rows at all.
+--
+-- Leaving this migration as-is permanently blocks a fresh `supabase db reset`
+-- (and therefore CI and onboarding). This is a no-op replacement: there is
+-- nothing to drop, because the function it tried to create never
+-- successfully existed.
+SELECT 1;

@@ -3,13 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 export interface ProgrammeProgressSummary {
-  weeksCompleted: number;
   weeksTotal: number;
   quizScores: { weekNumber: number; scorePct: number }[];
   quizAvg: number | null;
   reflectionStreak: number;
-  triadCompletedCount: number;
-  nextTriadDate: string | null;
   /** Full week list (in order), for the timeline/segment display — same rows
    * get_my_training_weeks() already returned, just not previously exposed. */
   weeks: RawWeek[];
@@ -19,6 +16,9 @@ export interface ProgrammeProgressSummary {
   /** The current week's quiz assignment id, if it has one — for the
    * "Take quiz" action button. Null once no quiz module or no quiz that week. */
   currentQuizAssignmentId: string | null;
+  /** Each week's visible quiz assignment id (week id → assignment id), so
+   * every unlocked week — not just the current one — can link to its quiz. */
+  quizAssignmentIdByWeek: Record<string, string>;
 }
 
 export interface RawWeek {
@@ -41,23 +41,18 @@ export interface RawWeek {
 }
 
 const EMPTY: ProgrammeProgressSummary = {
-  weeksCompleted: 0,
   weeksTotal: 0,
   quizScores: [],
   quizAvg: null,
   reflectionStreak: 0,
-  triadCompletedCount: 0,
-  nextTriadDate: null,
   weeks: [],
   currentWeek: null,
   currentQuizAssignmentId: null,
+  quizAssignmentIdByWeek: {},
 };
 
 async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSummary> {
-  const [{ data: weeksData, error }, { data: triadSessions }] = await Promise.all([
-    supabase.rpc("get_enrollment_training_weeks", { p_enrollment_id: enrollmentId }),
-    supabase.from("triad_sessions").select("id, proposed_start_time, status").or(`coach_enrollment_id.eq.${enrollmentId},coachee_enrollment_id.eq.${enrollmentId},observer_enrollment_id.eq.${enrollmentId}`),
-  ]);
+  const { data: weeksData, error } = await supabase.rpc("get_enrollment_training_weeks", { p_enrollment_id: enrollmentId });
   if (error) throw error;
   const weeks = (weeksData || []) as RawWeek[];
   if (weeks.length === 0) return EMPTY;
@@ -65,7 +60,6 @@ async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSum
   const weekIds = weeks.map((w) => w.id);
   const weekNumberById = new Map(weeks.map((w) => [w.id, w.week_number]));
   const weekUnlockById = new Map(weeks.map((w) => [w.id, w.effective_unlock_date]));
-  const weeksCompleted = weeks.filter((w) => w.completed_at).length;
 
   const [{ data: assignments }, { data: prompts }] = await Promise.all([
     supabase.from("assignments").select("id, training_week_id").eq("assignment_type", "quiz").eq("is_visible", true).in("training_week_id", weekIds),
@@ -123,37 +117,35 @@ async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSum
     else break;
   }
 
-  // Triads
-  const now = Date.now();
-  const sessions = (triadSessions || []) as { id: string; proposed_start_time: string | null; status: string }[];
-  const triadCompletedCount = sessions.filter((s) => s.status === "completed").length;
-  const nextTriadDate =
-    sessions
-      .filter((s) => s.status === "confirmed" && s.proposed_start_time && new Date(s.proposed_start_time).getTime() >= now)
-      .sort((a, b) => new Date(a.proposed_start_time!).getTime() - new Date(b.proposed_start_time!).getTime())[0]?.proposed_start_time ?? null;
-
   const currentWeek =
     weeks.find((w) => !w.locked && !w.completed_at) ?? [...weeks].reverse().find((w) => !w.locked) ?? null;
-  const currentQuizAssignmentId =
-    (currentWeek && (assignments || []).find((a) => a.training_week_id === currentWeek.id)?.id) || null;
+  const quizAssignmentIdByWeek: Record<string, string> = {};
+  for (const a of assignments || []) {
+    if (a.training_week_id && !quizAssignmentIdByWeek[a.training_week_id]) quizAssignmentIdByWeek[a.training_week_id] = a.id;
+  }
+  const currentQuizAssignmentId = (currentWeek && quizAssignmentIdByWeek[currentWeek.id]) || null;
 
   return {
-    weeksCompleted,
     weeksTotal: weeks.length,
     quizScores,
     quizAvg,
     reflectionStreak,
-    triadCompletedCount,
-    nextTriadDate,
     weeks,
     currentWeek,
     currentQuizAssignmentId,
+    quizAssignmentIdByWeek,
   };
 }
 
 /**
- * Provides learner-only training shortcuts for the selected enrollment.
- * Authoritative module completion and pace come from useEnrollmentProgress.
+ * Provides learner-only training shortcuts for the selected enrollment:
+ * which week/quiz to link to next, and quiz-score/reflection-streak detail
+ * that Sponsor doesn't track at this granularity. Required/completed counts,
+ * pace, and overall progress are NOT computed here — those are shared facts
+ * and come from useLearnerCanonicalProgress (same engine as Sponsor Leader
+ * Detail). Triad completion used to be duplicated here too (an unscoped,
+ * uncapped count of triad_sessions rows); it was removed because it could
+ * disagree with the canonical triad module count and nothing rendered it.
  */
 export function useProgrammeProgress(userId: string | undefined, initialEnrollmentId?: string | null) {
   const context = useEnrollmentContext(userId, initialEnrollmentId);

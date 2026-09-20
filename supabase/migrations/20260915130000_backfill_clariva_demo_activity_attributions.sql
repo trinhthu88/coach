@@ -1,0 +1,17 @@
+-- Dead code removal.
+--
+-- This migration guarded on an organization id/name
+-- ('c7f8e4b2-2f34-4a1d-8f6f-1f8e8d2e7a01', 'Clariva Demo Organization') that
+-- does not exist anywhere in this repository's seed data or migrations. The
+-- real local demo organization is 'Clariva Erickson Demo Organisation'
+-- (id 11111111-1111-4111-8111-111111111111, see supabase/seed.sql), so the
+-- guard's RAISE EXCEPTION fired on every apply, against every database.
+--
+-- It is also structurally unreachable even with a corrected id: migrations
+-- run before supabase/seed.sql on a `supabase db reset`, so the demo
+-- organization does not exist yet when this file would execute. Demo
+-- activity is inserted by seed.sql via ordinary INSERTs, which already fire
+-- the AFTER INSERT triggers from 20260914071405_activity_cadence_attribution.sql
+-- and attribute activity automatically — there is no pre-trigger historical
+-- demo data left to backfill.
+SELECT 1;

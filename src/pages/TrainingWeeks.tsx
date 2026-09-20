@@ -7,11 +7,13 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useProgrammeProgress, RawWeek } from "@/hooks/dashboard/useProgrammeProgress";
+import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 
 export default function TrainingWeeks() {
   const { t, i18n } = useTranslation("training");
   const { user } = useAuth();
   const { summary, loading } = useProgrammeProgress(user?.id);
+  const { hasModule } = useProgrammeModules();
   const isVi = i18n.language?.startsWith("vi");
 
   if (loading) {
@@ -44,7 +46,8 @@ export default function TrainingWeeks() {
               isCurrent={week.id === summary.currentWeek?.id}
               isVi={isVi}
               t={t}
-              quizAssignmentId={week.id === summary.currentWeek?.id ? summary.currentQuizAssignmentId : null}
+              // Every unlocked week (current and earlier) opens its own content.
+              quizAssignmentId={hasModule("quiz") ? summary.quizAssignmentIdByWeek[week.id] ?? null : null}
               quizScore={summary.quizScores.find((q) => q.weekNumber === week.week_number)}
               reflectionStreak={summary.reflectionStreak}
             />
@@ -131,19 +134,17 @@ function WeekTimelineCard({
               )}
             </div>
 
-            {isCurrent && (
-              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-[#efeae1] pt-4 text-[12.5px]">
-                <Link to={`/training/${week.id}`} className="font-semibold text-[#2c8fa8] hover:underline">
-                  {t("progressCard.viewSkillCard")} &rarr;
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-[#efeae1] pt-4 text-[12.5px]">
+              <Link to={`/training/${week.id}`} data-testid="week-skill-card-link" className="font-semibold text-[#2c8fa8] hover:underline">
+                {t("progressCard.viewSkillCard")} &rarr;
+              </Link>
+              {quizAssignmentId && (
+                <Link to={`/training/${week.id}/quiz/${quizAssignmentId}`} className="text-muted-foreground hover:text-[#2c8fa8]">
+                  {quizScore ? t("assignments.quizScored", { score: Math.round(quizScore.scorePct) }) : t("assignments.quizPending")}
                 </Link>
-                {quizAssignmentId && (
-                  <Link to={`/training/${week.id}/quiz/${quizAssignmentId}`} className="text-muted-foreground hover:text-[#2c8fa8]">
-                    {quizScore ? t("assignments.quizScored", { score: Math.round(quizScore.scorePct) }) : t("assignments.quizPending")}
-                  </Link>
-                )}
-                {reflectionStreak > 0 && <span className="text-muted-foreground">{t("list.promptStreak", { count: reflectionStreak })}</span>}
-              </div>
-            )}
+              )}
+              {isCurrent && reflectionStreak > 0 && <span className="text-muted-foreground">{t("list.promptStreak", { count: reflectionStreak })}</span>}
+            </div>
           </>
         )}
       </Card>

@@ -1,4 +1,14 @@
 {
+  "account": {
+    "eyebrow": "Account",
+    "titleLead": "Profile &",
+    "titleEmphasis": "availability",
+    "subtitle": "Personal information and your availability, in one place.",
+    "tabs": {
+      "profile": "Profile",
+      "availability": "Availability"
+    }
+  },
   "coachEditor": {
     "toast": {
       "savedTitle": "Profile saved",
@@ -90,6 +100,18 @@
     "bookPeer": "Book peer",
     "retry": "Try again"
   },
+  "myPeerPractice": {
+    "upcoming": "Upcoming sessions",
+    "noUpcoming": "No upcoming session booked.",
+    "completed": "Completed sessions",
+    "feedback": "Feedback I've received",
+    "noFeedback": "No feedback yet.",
+    "historyTitle": "My peer practice sessions",
+    "historySummary_one": "{{count}} session in your history · {{evidence}} count as programme evidence · Peer coaching {{completed}}/{{required}}",
+    "historySummary_other": "{{count}} sessions in your history · {{evidence}} count as programme evidence · Peer coaching {{completed}}/{{required}}",
+    "historyError": "Your peer practice sessions could not be loaded.",
+    "noHistory": "No peer practice sessions yet."
+  },
   "coacheePeerPractice": {
     "header": {
       "eyebrow": "Community",
@@ -97,7 +119,7 @@
       "titleEmphasis": "practice",
       "subtitle": "Coachees who have opted in to peer practice. Book a session to practice together."
     },
-    "empty": "No peer practice partners available right now. Check back soon.",
+    "empty": "No peer practice partners are available to book right now. This doesn't affect your peer practice history below.",
     "defaultTitle": "Peer practice partner",
     "book": "Book a session",
     "retry": "Try again",
@@ -134,6 +156,8 @@
         "title": "Partner not found",
         "back": "Back to peer practice"
       }
-    }
+    },
+    "partnersTitle": "Partners available to book now",
+    "partnersSubtitle": "Coachees currently opted in to peer practice."
   }
 }

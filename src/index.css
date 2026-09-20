@@ -76,6 +76,23 @@
     --sidebar-border: 35 18% 80%;
     --sidebar-ring: 192 60% 53%;
 
+    --clariva-navy: 6 83% 14%;
+    --clariva-navy-2: 197 76% 16%;
+    --clariva-sky: 192 60% 53%;
+    --clariva-teal: 192 58% 42%;
+    --clariva-green: 151 64% 25%;
+    --clariva-amber: 21 58% 38%;
+    --clariva-red: 11 58% 38%;
+    --clariva-coral: 11 57% 50%;
+    --clariva-ivory: 38 30% 95%;
+    --clariva-paper: 48 100% 99%;
+    --clariva-paper-2: 40 45% 97%;
+    --clariva-line: 36 24% 88%;
+    --clariva-line-2: 37 33% 93%;
+    --clariva-ink: 194 39% 15%;
+    --clariva-muted: 30 5% 39%;
+    --clariva-soft: 30 8% 57%;
+
     --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 

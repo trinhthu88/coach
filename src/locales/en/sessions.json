@@ -83,7 +83,8 @@
       "all": "All",
       "coaching": "Coaching",
       "peer": "Peer",
-      "mentoring": "Mentoring"
+      "mentoring": "Mentoring",
+      "triad": "Triads"
     },
     "tabs": {
       "upcoming": "Upcoming ({{count}})",
@@ -97,14 +98,22 @@
       "noPastSubtitle": "Past sessions will show up here."
     },
     "kindLabelWith": "with",
+    "programmeLabel": "Programme: {{name}}",
+    "cohortLabel": "Cohort: {{name}}",
     "kindLabelCoach": "Coach",
     "kindLabelPeerPractice": "Peer practice with",
     "kindLabelMentoring": "Mentoring with",
+    "kindLabelTriad": "Triad session",
+    "triadSessionTitle": "Triad session",
+    "triadParticipantsUnavailable": "your triad",
+    "noTimeYet": "Time not set",
     "roleBadge": {
       "coach": "Coach",
       "coachee": "Coachee",
       "mentor": "Mentor",
-      "mentee": "Mentee"
+      "mentee": "Mentee",
+      "observer": "Observer",
+      "triadMember": "Triad member"
     },
     "markComplete": "Mark complete",
     "toast": {
@@ -121,7 +130,8 @@
     "actionItems": {
       "title": "Action items",
       "more": "+{{count}} more"
-    }
+    },
+    "triadSession": "Triad {{n}}"
   },
   "detail": {
     "sessionNotFound": {
@@ -129,6 +139,11 @@
       "backToSessions": "Back to sessions"
     },
     "allSessions": "All sessions",
+    "typeLabels": {
+      "coaching": "Coaching",
+      "peer": "Peer Coaching",
+      "coachee_peer": "Peer Coaching"
+    },
     "missingRequirementHintPeer": "Waiting on the peer-coachee's competency feedback before this session can be marked complete.",
     "missingRequirementHintCoaching": "Waiting on the coachee's reflection before this session can be marked complete.",
     "toast": {
@@ -264,7 +279,7 @@
   },
   "goalRatings": {
     "enrollmentRequired": "Goal ratings are unavailable until an enrollment is selected.",
-    "title": "Goal reflection",
+    "title": "Goal check-in",
     "emptyPrefix": "No active goals yet. Add goals in",
     "emptyLinkText": "My journey",
     "emptySuffix": "to score them after each session.",
@@ -272,8 +287,8 @@
     "lockedNotCompletedSuffix": "completed",
     "lockedReadOnly": "Read-only — only the coachee can rate their own goals.",
     "unlockedHint": "Score 0–100 for each goal. Your wheel will plot this session as a new layer.",
-    "saveReflection": "Save reflection",
-    "notePlaceholder": "Optional reflection note for this goal…",
+    "saveReflection": "Save check-in",
+    "notePlaceholder": "Optional note for this check-in…",
     "toast": {
       "saved": "Goal ratings saved — your wheel will update."
     },
@@ -294,6 +309,7 @@
       "body": "Once a session is confirmed, the conversation thread will appear here."
     },
     "threadsLabel": "Threads",
+    "contextLabel": "Coaching",
     "sessionCount_one": "{{count}} session",
     "sessionCount_other": "{{count}} sessions",
     "newBadge": "{{count}} new",

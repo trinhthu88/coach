@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const enrollmentProgress = vi.fn();
+const learnerCanonicalProgress = vi.fn();
 const moduleAccess = vi.fn();
 const programmeProgress = vi.fn();
 
@@ -12,8 +12,8 @@ vi.mock("@/context/AuthContext", () => ({
 vi.mock("@/hooks/useProgrammeModules", () => ({
   useProgrammeModules: () => moduleAccess(),
 }));
-vi.mock("@/hooks/useEnrollmentProgress", () => ({
-  useEnrollmentProgress: (...args: unknown[]) => enrollmentProgress(...args),
+vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
+  useLearnerCanonicalProgress: (...args: unknown[]) => learnerCanonicalProgress(...args),
 }));
 vi.mock("@/hooks/dashboard/useProgrammeProgress", () => ({
   useProgrammeProgress: () => programmeProgress(),
@@ -22,25 +22,17 @@ vi.mock("@/hooks/dashboard/useProgrammeProgress", () => ({
 const defaultProgrammeProgress = () => ({
     enrollmentId: "enrollment-1",
     summary: {
-      weeksCompleted: 0,
       weeksTotal: 0,
       quizScores: [],
       quizAvg: null,
       reflectionStreak: 0,
-      triadCompletedCount: 0,
-      nextTriadDate: null,
       weeks: [],
       currentWeek: null,
       currentQuizAssignmentId: null,
+      quizAssignmentIdByWeek: {},
     },
     loading: false,
   });
-vi.mock("@/hooks/journey/useJourneyProgramme", () => ({
-  useJourneyProgramme: () => ({
-    programme: { programmeName: "Leadership Programme", endDate: "2026-12-01" },
-    loading: false,
-  }),
-}));
 vi.mock("@/hooks/journey/useJourneyGoals", () => ({
   useJourneyGoals: () => ({ goals: [], loading: false }),
 }));
@@ -60,6 +52,23 @@ const coaching = {
   booked_units: 1,
 };
 
+const emptyExperience = { weeklyParticipation: [], learningBreakdown: [], coachingUtilisation: null };
+
+const defaultCanonicalProgress = () => ({
+  progress: {
+    programme_label: "Leadership Programme",
+    programme_end_date: "2026-12-01",
+    required_units: 4,
+    completed_units: 1,
+    full_completion_pct: 25,
+  },
+  modules: [coaching],
+  journey: [],
+  experience: emptyExperience,
+  loading: false,
+  error: null,
+});
+
 describe("ProgrammeProgressCard", () => {
   beforeEach(() => {
     programmeProgress.mockReturnValue(defaultProgrammeProgress());
@@ -68,7 +77,7 @@ describe("ProgrammeProgressCard", () => {
       hasDirection: () => false,
       loading: false,
     });
-    enrollmentProgress.mockReturnValue({ modules: [coaching], loading: false, error: null });
+    learnerCanonicalProgress.mockReturnValue(defaultCanonicalProgress());
   });
 
   it("renders an explicit blocked state without an enrollment", () => {
@@ -86,14 +95,19 @@ describe("ProgrammeProgressCard", () => {
     expect(screen.queryByText("Skills completed")).not.toBeInTheDocument();
   });
 
+  it("renders the canonical overall progress figure, not a client-computed one", () => {
+    render(<MemoryRouter><ProgrammeProgressCard /></MemoryRouter>);
+
+    expect(screen.getByText("1 of 4 activities complete (25%)")).toBeInTheDocument();
+  });
+
   it("renders every enabled RPC module in a blended programme without training", () => {
-    enrollmentProgress.mockReturnValue({
+    learnerCanonicalProgress.mockReturnValue({
+      ...defaultCanonicalProgress(),
       modules: [
         coaching,
         { ...coaching, module: "mentoring", full_completion_pct: 75, completed_units: 3 },
       ],
-      loading: false,
-      error: null,
     });
 
     render(<MemoryRouter><ProgrammeProgressCard /></MemoryRouter>);

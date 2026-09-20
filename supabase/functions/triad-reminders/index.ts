@@ -2,20 +2,42 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 
 // Daily cron sweep (CRON_SECRET-gated, same shape as send-daily-prompt /
-// send-programme-reminders) driven off triad_rounds.completion_deadline:
-//   - 3 days out, session not confirmed  -> remind the group's members
-//   - 1 day out, session not confirmed   -> escalate to admin
-//   - past deadline, session not completed -> overdue notice to admin + members
-// This is distinct from send-programme-reminders' existing triad_reminder
-// checks (which watch individual session times/reflections) — this one is
-// purely about the round's completion_deadline.
+// send-programme-reminders) driven by each cohort's Triad REQUIREMENTS
+// (cohort_requirement_dates: "Triad N", each with its own deadline) and each
+// learner's fulfilment of THAT requirement (triad_reminder_targets_internal
+// -> canonical_triad_requirement_fulfilment). Every required Triad has its
+// own group assignment, so each reminder names one Triad:
+//   - Triad N due in 3 days, not fulfilled, no confirmed session -> member
+//   - Triad N due tomorrow, learners unfulfilled / ungrouped     -> admin
+//   - Triad N overdue (its deadline passed, not fulfilled)        -> member + admin
+// This is distinct from send-programme-reminders' triad_reminder checks
+// (which watch individual session times / reflections).
+//
+// Overdue requirements are swept for OVERDUE_WINDOW_DAYS after their date (the
+// 30-day notification dedupe keeps that to one notice per requirement).
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const OVERDUE_WINDOW_DAYS = 60;
 
 function todayISO(offsetDays = 0): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + offsetDays);
   return d.toISOString().slice(0, 10);
+}
+
+interface Target {
+  cohort_id: string;
+  programme_id: string;
+  cohort_requirement_date_id: string;
+  milestone_number: number;
+  due_on: string;
+  days_until_due: number;
+  enrollment_id: string;
+  user_id: string;
+  triad_group_id: string | null;
+  open_session_status: string | null;
+  milestone_met: boolean;
+  milestone_overdue: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -24,47 +46,34 @@ Deno.serve(async (req) => {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   });
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const json = (payload: unknown, status = 200) =>
+    new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Two ways in: the daily cron sweep (x-cron-secret, processes every
-    // round) or an admin manually re-sending reminders for one round from
-    // the admin triads page (bearer token, requires a round_id so a manual
-    // trigger can't fan out to every round in the system).
+    // Two ways in: the daily cron sweep (x-cron-secret, every cohort with a
+    // Triad deadline in a reminder window) or an admin re-sending reminders
+    // for one cohort (bearer token + cohort_id, so a manual trigger can't
+    // fan out to every cohort).
     const CRON_SECRET = Deno.env.get("CRON_SECRET");
-    const providedSecret = req.headers.get("x-cron-secret");
-    const isCron = !!CRON_SECRET && providedSecret === CRON_SECRET;
+    const isCron = !!CRON_SECRET && req.headers.get("x-cron-secret") === CRON_SECRET;
 
-    let scopedRoundId: string | null = null;
+    let scopedCohortId: string | null = null;
+    let scopedRequirementId: string | null = null;
     if (!isCron) {
-      const authHeader = req.headers.get("Authorization");
-      const token = authHeader?.replace(/^Bearer\s+/i, "");
+      const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
       const { data: userData } = token ? await admin.auth.getUser(token) : { data: null };
-      if (!userData?.user) {
-        return new Response(JSON.stringify({ error: "Forbidden" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!userData?.user) return json({ error: "Forbidden" }, 403);
       const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", userData.user.id);
-      const isAdmin = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: "Forbidden" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!(roleRows ?? []).some((r: { role: string }) => r.role === "admin")) return json({ error: "Forbidden" }, 403);
       const body = await req.json().catch(() => ({}));
-      scopedRoundId = body.round_id ?? null;
-      if (!scopedRoundId) {
-        return new Response(JSON.stringify({ error: "round_id is required" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      scopedCohortId = body.cohort_id ?? null;
+      // Optional: one Triad requirement of that cohort (Admin "Send reminder" on a Triad N card).
+      scopedRequirementId = body.cohort_requirement_date_id ?? null;
+      if (!scopedCohortId) return json({ error: "cohort_id is required" }, 400);
     }
 
     const dedupeWindowStart = new Date(Date.now() - 30 * DAY_MS).toISOString();
@@ -75,15 +84,7 @@ Deno.serve(async (req) => {
       .gte("created_at", dedupeWindowStart);
     const alreadyNotified = new Set((existingNotifs ?? []).map((n) => `${n.user_id}|${n.link}`));
 
-    async function notifyOnce(
-      userId: string,
-      link: string,
-      type: string,
-      title: string,
-      body: string,
-      titleVi?: string,
-      bodyVi?: string,
-    ) {
+    async function notifyOnce(userId: string, link: string, type: string, title: string, body: string, titleVi?: string, bodyVi?: string) {
       const key = `${userId}|${link}`;
       if (alreadyNotified.has(key)) return false;
       alreadyNotified.add(key);
@@ -97,37 +98,26 @@ Deno.serve(async (req) => {
         link,
       });
       if (error) {
-        console.error("Failed to insert triad round reminder", { userId, error });
+        console.error("Failed to insert triad reminder", { userId, error });
         return false;
       }
       return true;
     }
 
-    const today = todayISO();
-    const in3Days = todayISO(3);
-    const in1Day = todayISO(1);
-
-    let allRounds: { id: string; title: string; title_vi: string | null; completion_deadline: string }[];
-    if (scopedRoundId) {
-      const { data: round } = await admin
-        .from("triad_rounds")
-        .select("id, title, title_vi, completion_deadline")
-        .eq("id", scopedRoundId)
-        .maybeSingle();
-      allRounds = round ? [round] : [];
+    // Which cohorts to look at: the scoped one, or every cohort with a Triad
+    // deadline in a reminder window (canonical dates only).
+    let cohortIds: string[];
+    if (scopedCohortId) {
+      cohortIds = [scopedCohortId];
     } else {
-      const { data: exactRounds } = await admin
-        .from("triad_rounds")
-        .select("id, title, title_vi, completion_deadline")
-        .in("completion_deadline", [in3Days, in1Day]);
-
-      const { data: overdueRounds } = await admin
-        .from("triad_rounds")
-        .select("id, title, title_vi, completion_deadline")
-        .lt("completion_deadline", today);
-
-      allRounds = [...(exactRounds ?? []), ...(overdueRounds ?? [])];
+      const { data: due } = await admin
+        .from("cohort_requirement_dates")
+        .select("cohort_id, due_on")
+        .eq("module", "triads")
+        .or(`due_on.in.(${todayISO(3)},${todayISO(1)}),and(due_on.lt.${todayISO()},due_on.gte.${todayISO(-OVERDUE_WINDOW_DAYS)})`);
+      cohortIds = [...new Set((due ?? []).map((r) => r.cohort_id as string))];
     }
+
     const { data: admins } = await admin.from("user_roles").select("user_id").eq("role", "admin");
     const adminIds = (admins ?? []).map((a) => a.user_id as string);
 
@@ -135,87 +125,68 @@ Deno.serve(async (req) => {
     let escalationsSent = 0;
     let overdueSent = 0;
 
-    for (const round of allRounds) {
-      const { data: groups } = await admin
-        .from("triad_groups")
-        .select("id, member_1_id, member_2_id, member_3_id, triad_sessions(status)")
-        .eq("triad_round_id", round.id)
-        .eq("is_active", true);
-
-      interface GroupWithSessions {
-        id: string;
-        member_1_id: string;
-        member_2_id: string;
-        member_3_id: string | null;
-        triad_sessions: { status: string }[];
+    for (const cohortId of cohortIds) {
+      const { data, error } = await admin.rpc("triad_reminder_targets_internal", { p_cohort_id: cohortId });
+      if (error) {
+        console.error("Triad reminder targets failed", { cohortId, error });
+        continue;
       }
-      for (const g of (groups ?? []) as unknown as GroupWithSessions[]) {
-        const sessions = g.triad_sessions ?? [];
-        const isDone = sessions.some((s) => s.status === "completed");
-        if (isDone) continue;
-        const isConfirmed = sessions.some((s) => s.status === "confirmed");
-        const members = [g.member_1_id, g.member_2_id, g.member_3_id].filter(Boolean) as string[];
-        const deadline = round.completion_deadline as string;
+      const targets = (data ?? []) as Target[];
+      // One pass per requirement ("Triad N") of the cohort.
+      const requirements = [...new Set(targets.map((t) => t.cohort_requirement_date_id))];
+      for (const requirementId of requirements) {
+        if (scopedRequirementId && requirementId !== scopedRequirementId) continue;
+        const rows = targets.filter((t) => t.cohort_requirement_date_id === requirementId);
+        const { milestone_number: unit, due_on: dueOn, days_until_due: daysUntilDue } = rows[0];
+        // Scheduled sweep: only requirements in a reminder window.
+        if (!scopedCohortId && !(daysUntilDue === 3 || daysUntilDue === 1 || (daysUntilDue < 0 && daysUntilDue >= -OVERDUE_WINDOW_DAYS))) continue;
+        const title = `Triad ${unit} due ${dueOn}`;
+        const titleVi = `Triad ${unit} hạn ${dueOn}`;
+        // The 30-day dedupe is per (user, link), so each notice kind gets its
+        // own link: a pre-due reminder must never suppress the overdue notice.
+        const memberLink = (notice: "reminder" | "overdue") => `/triads?triad=${unit}&due=${dueOn}&notice=${notice}`;
+        const adminLink = (notice: "due_tomorrow" | "overdue") =>
+          `/admin/cohorts/${cohortId}/triads?triad=${unit}&due=${dueOn}&notice=${notice}`;
+        const open = rows.filter((t) => !t.milestone_met);
+        const ungrouped = open.filter((t) => !t.triad_group_id);
 
-        if (deadline < today) {
-          for (const userId of members) {
-            const sent = await notifyOnce(
-              userId,
-              "/triads",
-              "triad_round_reminder",
-              `Your triad practice for "${round.title}" is overdue`,
-              "The completion deadline has passed. Schedule or complete your session as soon as possible.",
-              `Buổi luyện tập triad cho "${round.title_vi || round.title}" đã quá hạn`,
-              "Hạn hoàn thành đã qua. Hãy đặt lịch hoặc hoàn thành session của bạn càng sớm càng tốt.",
-            );
-            if (sent) overdueSent++;
+        for (const t of open) {
+          if (t.milestone_overdue) {
+            if (await notifyOnce(t.user_id, memberLink("overdue"), "triad_round_reminder",
+              `Triad deadline passed: ${title}`,
+              t.triad_group_id
+                ? `Your Triad ${unit} session was due by ${dueOn}. Schedule and complete it with your Triad ${unit} group as soon as possible.`
+                : `Triad ${unit} was due by ${dueOn} and your group assignment is still pending. An admin will follow up.`,
+              `Đã quá hạn Triad: ${titleVi}`,
+              t.triad_group_id
+                ? `Session Triad ${unit} của bạn cần hoàn thành trước ${dueOn}. Hãy lên lịch và hoàn thành cùng nhóm Triad ${unit} càng sớm càng tốt.`
+                : `Triad ${unit} cần hoàn thành trước ${dueOn} và bạn chưa được xếp nhóm. Quản trị viên sẽ liên hệ.`)) overdueSent++;
+          } else if (daysUntilDue === 3 && t.triad_group_id && t.open_session_status !== "confirmed") {
+            if (await notifyOnce(t.user_id, memberLink("reminder"), "triad_round_reminder",
+              `Triad deadline in 3 days: ${title}`,
+              `You don't have a confirmed Triad ${unit} session yet. Accept a proposed time or propose one to your Triad ${unit} group.`,
+              `Còn 3 ngày đến hạn Triad: ${titleVi}`,
+              `Bạn chưa có session Triad ${unit} nào được xác nhận. Hãy chấp nhận thời gian đã đề xuất hoặc đề xuất thời gian cho nhóm Triad ${unit}.`)) remindersSent++;
           }
-          for (const userId of adminIds) {
-            const sent = await notifyOnce(
-              userId,
-              "/admin/triads",
-              "triad_admin_alert",
-              `Overdue triad group for "${round.title}"`,
-              `A triad group is past its ${deadline} deadline and hasn't completed its session.`,
-            );
-            if (sent) overdueSent++;
-          }
-        } else if (deadline === in1Day && !isConfirmed) {
-          for (const userId of adminIds) {
-            const sent = await notifyOnce(
-              userId,
-              "/admin/triads",
-              "triad_admin_alert",
-              `Triad group for "${round.title}" still not confirmed`,
-              `Deadline is tomorrow (${deadline}) and this group hasn't confirmed a session time.`,
-            );
-            if (sent) escalationsSent++;
-          }
-        } else if (deadline === in3Days && !isConfirmed) {
-          for (const userId of members) {
-            const sent = await notifyOnce(
-              userId,
-              "/triads",
-              "triad_round_reminder",
-              `Confirm your triad session for "${round.title}"`,
-              "Your triad session isn't confirmed yet and the deadline is in 3 days. Accept a time or propose an alternative.",
-              `Xác nhận session triad của bạn cho "${round.title_vi || round.title}"`,
-              "Session triad của bạn chưa được xác nhận và hạn chót còn 3 ngày. Hãy chấp nhận thời gian đề xuất hoặc đề xuất thời gian khác.",
-            );
-            if (sent) remindersSent++;
+        }
+
+        const overdueCount = open.filter((t) => t.milestone_overdue).length;
+        const unconfirmed = open.filter((t) => t.triad_group_id && t.open_session_status !== "confirmed").length;
+        for (const userId of adminIds) {
+          if (overdueCount > 0) {
+            if (await notifyOnce(userId, adminLink("overdue"), "triad_admin_alert", `Triad overdue: ${title}`,
+              `${overdueCount} learner(s) have not completed Triad ${unit} (due ${dueOn}); ${ungrouped.length} of them have no Triad ${unit} group.`)) overdueSent++;
+          } else if (daysUntilDue === 1 && (unconfirmed > 0 || ungrouped.length > 0)) {
+            if (await notifyOnce(userId, adminLink("due_tomorrow"), "triad_admin_alert", `Triad deadline tomorrow: ${title}`,
+              `${unconfirmed} learner(s) without a confirmed Triad ${unit} session and ${ungrouped.length} learner(s) without a Triad ${unit} group (due ${dueOn}).`)) escalationsSent++;
           }
         }
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, remindersSent, escalationsSent, overdueSent }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ ok: true, remindersSent, escalationsSent, overdueSent });
   } catch (err) {
     console.error("triad-reminders failed", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
   }
 });

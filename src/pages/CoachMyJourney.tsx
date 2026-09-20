@@ -38,6 +38,14 @@ import { SessionsBlock } from "./journey/SessionsBlock";
 import { GoalDialog } from "./journey/GoalDialog";
 import { CoachProgrammeCard } from "./journey/CoachProgrammeCard";
 import { ProgrammeTimeline } from "./journey/ProgrammeTimeline";
+import { LearnerProgrammeJourney } from "@/components/programme/LearnerProgrammeJourney";
+import { FeedbackItemCard } from "@/components/programme/FeedbackItemCard";
+import { ProfileLoadError } from "@/components/programme/primitives";
+import { DevelopmentJourneyTimeline } from "./journey/DevelopmentJourneyTimeline";
+import { useEnrollmentDevelopmentJourney } from "@/hooks/journey/useEnrollmentDevelopmentJourney";
+import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
+import { useEnrollmentSessions } from "@/hooks/journey/useEnrollmentSessions";
+import { DevelopmentSessionsList } from "./journey/DevelopmentSessionsList";
 
 function Metric({
   label,
@@ -56,12 +64,16 @@ function Metric({
 
 export default function CoachMyJourney() {
   const { t } = useTranslation("journey");
+  const { t: tDash } = useTranslation("dashboard");
   const { user } = useAuth();
-  const goalsApi = useJourneyGoals(user?.id);
-  const ratingsApi = useJourneyRatings(user?.id);
-  const sessionsApi = useJourneySessions(user?.id, { includePeer: true });
-  const reflectionsApi = useJourneyReflections(user?.id);
   const programmeApi = useJourneyProgramme(user?.id);
+  const goalsApi = useJourneyGoals(user?.id, { enrollmentId: programmeApi.programme?.enrollmentId });
+  const ratingsApi = useJourneyRatings(user?.id, programmeApi.programme?.enrollmentId);
+  const sessionsApi = useJourneySessions(user?.id, { includePeer: true, enrollmentId: programmeApi.programme?.enrollmentId });
+  const reflectionsApi = useJourneyReflections(user?.id, programmeApi.programme?.enrollmentId);
+  const developmentJourney = useEnrollmentDevelopmentJourney(programmeApi.programme?.enrollmentId, user?.id);
+  const learnerFeedback = useLearnerFeedback(user?.id, programmeApi.programme?.enrollmentId);
+  const allSessions = useEnrollmentSessions(programmeApi.programme?.enrollmentId, user?.id);
 
   const { goals, milestones, toggleMilestone } = goalsApi;
   const { ratings, sessionRatings, saveRating } = ratingsApi;
@@ -85,11 +97,10 @@ export default function CoachMyJourney() {
   const { allActionItems, grouped, aiTotal, aiDone, aiOverdue } = useFlatActionItems(sessions);
 
   const { overallPct } = useMilestoneProgress(milestones);
-  const goalProgress = (goalId: string) => {
-    const ms = milestones.filter((m) => m.goal_id === goalId);
-    if (!ms.length) return 0;
-    return Math.round((ms.filter((m) => m.is_done).length / ms.length) * 100);
-  };
+  const { ratingRows, avgGoalProgress } = useGoalRatingRows(goals, ratings);
+  // Canonical Start→Target rating progress — same formula and per-goal
+  // values Sponsor's goal_progress_pct aggregates, not milestone ratio.
+  const goalProgress = (goalId: string) => ratingRows.find((r) => r.goalId === goalId)?.progress ?? null;
 
   const now = new Date();
   const upcoming = sessions
@@ -103,7 +114,6 @@ export default function CoachMyJourney() {
 
   const coachSummaries = useCoachSummaries(sessions, coachNames, now);
 
-  const { ratingRows, avgGoalProgress } = useGoalRatingRows(goals, ratings);
   const programmeWeeks = useProgrammeWeeks(programme, now);
   const sessionsCompletedCount = sessions.filter((s) => s.status === "completed").length;
   const { isGoalLocked } = useGoalLock(sessions);
@@ -175,6 +185,12 @@ export default function CoachMyJourney() {
         sessionsCompletedCount={sessionsCompletedCount}
         avgGoalProgress={avgGoalProgress}
       />
+      {programme?.enrollmentId && <LearnerProgrammeJourney enrollmentId={programme.enrollmentId} variant="full" />}
+
+      <div>
+        <SectionHeader title={t("developmentJourney.title")} />
+        <DevelopmentJourneyTimeline events={developmentJourney.events} loading={developmentJourney.loading} />
+      </div>
 
       <Tabs defaultValue="home">
         <TabsList>
@@ -183,6 +199,7 @@ export default function CoachMyJourney() {
           <TabsTrigger value="actions">{t("journeyPage.tabs.actions", { count: aiTotal })}</TabsTrigger>
           <TabsTrigger value="sessions">{t("journeyPage.tabs.sessions", { count: sessions.length })}</TabsTrigger>
           <TabsTrigger value="reflections">{t("journeyPage.tabs.reflections", { count: reflections.length })}</TabsTrigger>
+          <TabsTrigger value="feedback">{t("journeyPage.tabs.feedback", { count: learnerFeedback.feedback.length })}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="home" className="mt-4 space-y-6">
@@ -223,7 +240,6 @@ export default function CoachMyJourney() {
                   goal={g}
                   milestones={milestones.filter((m) => m.goal_id === g.id)}
                   actions={allActionItems}
-                  pct={goalProgress(g.id)}
                   accent={ACCENTS[i % ACCENTS.length]}
                   onToggle={toggleMilestone}
                   onToggleAction={toggleAction}
@@ -262,19 +278,19 @@ export default function CoachMyJourney() {
                 {goals.map((g, i) => {
                   const ac = ACCENTS[i % ACCENTS.length];
                   const pct = goalProgress(g.id);
-                  const goalDone = pct === 100 && milestones.filter((m) => m.goal_id === g.id).length > 0;
+                  const goalDone = pct === 100;
                   return (
                     <Card key={g.id} className="p-4">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1">
                         {goalDone && <Check className="h-3 w-3 text-success" strokeWidth={3} />}
                         {g.title}
                       </p>
-                      <p className="mt-1 text-2xl font-semibold">{pct}%</p>
+                      <p className="mt-1 text-2xl font-semibold">{pct == null ? "—" : `${pct}%`}</p>
                       {g.target_date && (
                         <p className="text-[10px] text-muted-foreground">{t("goalAccordion.targetOn", { date: format(new Date(g.target_date), "MMM d, yyyy") })}</p>
                       )}
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className={cn("h-full", ac.fill)} style={{ width: `${pct}%` }} />
+                        <div className={cn("h-full", ac.fill)} style={{ width: `${pct ?? 0}%` }} />
                       </div>
                     </Card>
                   );
@@ -287,7 +303,6 @@ export default function CoachMyJourney() {
                     goal={g}
                     milestones={milestones.filter((m) => m.goal_id === g.id)}
                     actions={allActionItems}
-                    pct={goalProgress(g.id)}
                     accent={ACCENTS[i % ACCENTS.length]}
                     onToggle={toggleMilestone}
                     onToggleAction={toggleAction}
@@ -321,15 +336,46 @@ export default function CoachMyJourney() {
           />
         </TabsContent>
 
-        <TabsContent value="sessions" className="mt-4 space-y-4">
+        <TabsContent value="sessions" className="mt-4 space-y-6">
           <SessionsBlock title={t("coachMyJourney.sessionsBlockUpcoming")} items={upcoming} coachNames={coachNames} showSourceBadge />
           <SessionsBlock title={t("coachMyJourney.sessionsBlockPast")} items={past} milestones={milestones} goals={goals} expandable onToggleAction={toggleAction} coachNames={coachNames} showSourceBadge />
+
+          <div>
+            <SectionHeader title={t("developmentSessions.allSessionsHeader")} />
+            <DevelopmentSessionsList
+              sessions={allSessions.sessions}
+              loading={allSessions.loading}
+              programmeName={programmeApi.programme?.programmeName}
+              cohortName={programmeApi.programme?.cohortName}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="reflections" className="mt-4 space-y-4">
+          {developmentJourney.events.filter((e) => e.type === "reflection" && e.subtype !== "journey_reflection").length > 0 && (
+            <div className="space-y-2">
+              {developmentJourney.events
+                .filter((e) => e.type === "reflection" && e.subtype !== "journey_reflection")
+                .map((e) => (
+                  <Card key={e.id} className="p-4">
+                    <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                      {t(`developmentJourney.reflectionTypes.${e.subtype}`)}
+                    </span>
+                    {e.summary && <p className="mt-2 whitespace-pre-wrap text-sm">{e.summary}</p>}
+                    <p className="mt-2 text-[10px] text-muted-foreground">
+                      {format(new Date(e.occurredAt), "EEE, MMM d, yyyy")}
+                    </p>
+                  </Card>
+                ))}
+            </div>
+          )}
+
           <Card className="p-4">
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <BookOpen className="h-4 w-4 text-primary" /> {t("journeyPage.newReflection")}
+              <span className="ml-auto inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                {t("developmentJourney.reflectionTypes.private_reflection")}
+              </span>
             </div>
             <Input
               placeholder={t("journeyPage.moodPlaceholder")}
@@ -373,6 +419,17 @@ export default function CoachMyJourney() {
                 </div>
               </Card>
             ))
+          )}
+        </TabsContent>
+
+        {/* FEEDBACK */}
+        <TabsContent value="feedback" className="mt-4 space-y-3">
+          {learnerFeedback.error ? (
+            <ProfileLoadError text={tDash("learnerProfile.errors.feedback")} />
+          ) : learnerFeedback.feedback.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground">{t("journeyPage.noFeedbackYet")}</p>
+          ) : (
+            learnerFeedback.feedback.map((item) => <FeedbackItemCard key={`${item.kind}-${item.id}`} item={item} />)
           )}
         </TabsContent>
       </Tabs>

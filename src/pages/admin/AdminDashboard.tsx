@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { averageCanonicalCompletion, fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { AdminPageHeader } from "./_shared";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -115,13 +116,9 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
       ["confirmed", "pending_coach_approval"].includes(s.status ?? "") && !s.meeting_url
   ).length;
 
-  const { data: progressRows } = await supabase.rpc("get_admin_enrollment_progress", {
-    p_enrollment_ids: (enrollments || []).map((e: DashboardEnrollmentRow) => e.id),
-  });
-  const avgProgressValues = (progressRows || []).map((e) => e.full_completion_pct).filter((value): value is number => value != null);
-  const avgProgress = avgProgressValues.length
-    ? avgProgressValues.reduce((acc, value) => acc + value, 0) / avgProgressValues.length
-    : 0;
+  // Completion comes from the canonical engine Learner and Sponsor use.
+  const progressRows = await fetchAdminCanonicalProgress((enrollments || []).map((e: DashboardEnrollmentRow) => e.id));
+  const avgProgress = averageCanonicalCompletion(progressRows);
 
   const stats: DashboardStats = {
     coachees: Array.from(coacheeIds).filter((id) => profById.get(id)?.status === "active").length,

@@ -4,23 +4,31 @@ import { toast } from "sonner";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import type { Database } from "@/integrations/supabase/types";
 import type { GoalRating, SessionGoalRating } from "./types";
+import { LEARNER_ENGAGEMENT_QUERY_KEYS } from "@/hooks/useLearnerCanonicalProgress";
 
 type GoalRatingUpsert = Database["public"]["Tables"]["coachee_goal_ratings"]["Insert"];
+
+export type GoalCheckin = Database["public"]["Tables"]["goal_checkins"]["Row"];
 
 interface JourneyRatingsData {
   ratings: Record<string, GoalRating>;
   sessionRatings: SessionGoalRating[];
+  /** Every goal_checkins row for the enrollment, newest first. */
+  checkins: GoalCheckin[];
 }
 
 async function fetchJourneyRatings(coacheeId: string, enrollmentId: string): Promise<JourneyRatingsData> {
-  const [{ data: gr }, { data: sgr }] = await Promise.all([
+  const [{ data: gr, error: ratingsError }, { data: sgr, error: checkinsError }] = await Promise.all([
     supabase.from("coachee_goal_ratings").select("*").eq("coachee_id", coacheeId).eq("enrollment_id", enrollmentId),
     supabase.from("goal_checkins").select("*").eq("enrollment_id", enrollmentId),
   ]);
+  if (ratingsError) throw ratingsError;
+  if (checkinsError) throw checkinsError;
   const ratings: Record<string, GoalRating> = {};
   for (const row of gr || []) ratings[row.goal_id] = row;
   return {
     ratings,
+    checkins: [...(sgr || [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     sessionRatings: (sgr || [])
       .filter((row): row is typeof row & { source_activity_id: string } => row.source_activity_id !== null)
       .map((row) => ({
@@ -37,13 +45,13 @@ async function fetchJourneyRatings(coacheeId: string, enrollmentId: string): Pro
  * rating snapshots (`session_goal_ratings`) that feed the goal wheel.
  * Shared between the coachee and coach "my journey" views.
  */
-export function useJourneyRatings(coacheeId: string | undefined) {
+export function useJourneyRatings(coacheeId: string | undefined, initialEnrollmentId?: string | null) {
   const queryClient = useQueryClient();
-  const { selectedEnrollment } = useEnrollmentContext(coacheeId);
+  const { selectedEnrollment } = useEnrollmentContext(coacheeId, initialEnrollmentId);
   const enrollmentId = selectedEnrollment?.id;
   const queryKey = ["journey-ratings", coacheeId, enrollmentId];
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey,
     queryFn: () => fetchJourneyRatings(coacheeId as string, enrollmentId as string),
     enabled: !!coacheeId && !!enrollmentId,
@@ -51,6 +59,7 @@ export function useJourneyRatings(coacheeId: string | undefined) {
   });
   const ratings = data?.ratings ?? {};
   const sessionRatings = data?.sessionRatings ?? [];
+  const checkins = data?.checkins ?? [];
 
   const saveMutation = useMutation({
     mutationFn: async (merged: GoalRatingUpsert) => {
@@ -67,6 +76,8 @@ export function useJourneyRatings(coacheeId: string | undefined) {
       queryClient.setQueryData(queryKey, (prev: JourneyRatingsData | undefined) =>
         prev ? { ...prev, ratings: { ...prev.ratings, [saved.goal_id]: saved } } : prev
       );
+      // Goal progress is canonical (server-calculated); refetch it rather than derive it here.
+      for (const key of LEARNER_ENGAGEMENT_QUERY_KEYS) void queryClient.invalidateQueries({ queryKey: [...key] });
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
   });
@@ -96,7 +107,9 @@ export function useJourneyRatings(coacheeId: string | undefined) {
   return {
     ratings,
     sessionRatings,
+    checkins,
     loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : String((error as { message?: unknown }).message ?? error)) : null,
     refresh: () => queryClient.invalidateQueries({ queryKey }),
     saveRating,
   };

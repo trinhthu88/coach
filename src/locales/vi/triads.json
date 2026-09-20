@@ -6,15 +6,13 @@
   "subtitle": "Luyện tập coaching theo nhóm nhỏ — chấp nhận thời gian được đề xuất hoặc đề xuất thời gian khác, sau đó viết phản hồi.",
   "you": "Bạn",
   "myGroup": {
-    "label": "Nhóm của tôi"
+    "label": "Nhóm của tôi",
+    "heading": "Cùng luyện tập qua các session Triad của bạn"
   },
   "loadError": "Không thể tải triad của bạn. Vui lòng thử lại.",
   "retry": "Thử lại",
-  "noRoundsTitle": "Chưa có vòng triad nào",
-  "noRoundsBody": "Quản trị viên chưa mở vòng triad nào cho chương trình của bạn.",
-  "roundLabel": "Vòng {{n}}",
   "deadlineLabel": "Hạn chót",
-  "dyadNote": "Đây là nhóm đôi (dyad) — không có thành viên thứ ba khả dụng cho vòng này.",
+  "dyadNote": "Đây là nhóm đôi (dyad) — không có thành viên thứ ba khả dụng.",
   "status": {
     "proposed": "Đã đề xuất",
     "confirmed": "Đã xác nhận",
@@ -45,6 +43,12 @@
     "reflectionSubmitted": "Đã gửi phản hồi",
     "waitingOnOthers": "Đang chờ {{names}} chấp nhận"
   },
+  "sessionDetail": {
+    "backToSessions": "Quay lại danh sách session",
+    "subtitle": "Xem lịch triad, người tham gia và quy trình phản tư theo dữ liệu chính thức.",
+    "reflectionPrompt": "Phản tư về session này",
+    "reflectionSubtitle": "Ghi lại điều bạn học được trong từng vai trò và xem trạng thái phản tư chung."
+  },
   "alternative": {
     "title": "Đề xuất thời gian khác",
     "cancel": "Hủy",
@@ -62,12 +66,6 @@
     "acceptError": "Không thể chấp nhận thời gian đề xuất",
     "dateRequired": "Hãy chọn ngày giờ trước"
   },
-  "pastSessions": {
-    "heading": "Session đã qua",
-    "submitted": "Đã gửi",
-    "pending": "Đang chờ",
-    "satisfaction": "Mức độ hài lòng"
-  },
   "reflection": {
     "back": "Quay lại Triads",
     "title": "Phản hồi sau session",
@@ -76,14 +74,9 @@
     "sections": {
       "coach": "Với vai trò Coach",
       "coachee": "Với vai trò Coachee",
-      "observer": "Với vai trò Observer"
+      "observer": "Với vai trò Observer",
+      "general": "Tổng thể"
     },
-    "learnedAsCoach": "Bạn học được gì?",
-    "willUseAsCoach": "Bạn sẽ áp dụng điều này như thế nào?",
-    "learnedAsCoachee": "Bạn học được gì?",
-    "willUseAsCoachee": "Bạn sẽ áp dụng điều này như thế nào?",
-    "learnedAsObserver": "Bạn học được gì?",
-    "willUseAsObserver": "Bạn sẽ áp dụng điều này như thế nào?",
     "satisfaction": "Bạn hài lòng với session này ở mức nào?",
     "submit": "Gửi phản hồi",
     "alreadySubmitted": "Bạn đã gửi phản hồi cho session này rồi.",
@@ -92,6 +85,44 @@
     "othersLocked": "Phản hồi của mọi người sẽ mở khi tất cả thành viên đã gửi.",
     "successToast": "Đã gửi phản hồi",
     "errorToast": "Không thể gửi phản hồi",
-    "notFound": "Session này hiện không khả dụng."
+    "notFound": "Session này hiện không khả dụng.",
+    "afterCompletion": "Bạn có thể phản hồi về session này sau khi session được đánh dấu hoàn thành."
+  },
+  "history": {
+    "title": "Các session triad của tôi",
+    "progress": "Tiến độ Triads: đã hoàn thành {{completed}}/{{required}}",
+    "loadError": "Không thể tải các session triad của bạn.",
+    "empty": "Chưa có session triad nào."
+  },
+  "sessionLabel": "Triad {{n}}",
+  "closedGroup": "Nhóm trước đây (đã đóng)",
+  "progress": {
+    "label": "Triads đã hoàn thành {{completed}}/{{required}}",
+    "extra_one": "{{count}} session vượt yêu cầu",
+    "extra_other": "{{count}} session vượt yêu cầu",
+    "nextDeadline": "Hạn tiếp theo: {{date}}",
+    "overdue_one": "{{count}} session Triad quá hạn",
+    "overdue_other": "{{count}} session Triad quá hạn",
+    "allDone": "Đã hoàn thành tất cả session Triad yêu cầu",
+    "notRequired": "Chương trình này không yêu cầu Triad"
+  },
+  "schedule": {
+    "title": "Đề xuất thời gian cho session tiếp theo",
+    "submit": "Đề xuất thời gian này",
+    "successToast": "Đã đề xuất thời gian cho nhóm",
+    "cta": "Lên lịch session tiếp theo",
+    "noOpenTitle": "Chưa có session nào được lên lịch",
+    "noOpenBody": "Nhóm của bạn chưa có session đang mở. Hãy đề xuất một thời gian — session được xác nhận khi mọi người chấp nhận."
+  },
+  "requirement": {
+    "title": "Triad {{n}}",
+    "due": "Hạn {{date}}",
+    "completed": "Hoàn thành {{date}}",
+    "overdue": "Quá hạn",
+    "assigned": "Đã có nhóm",
+    "pending": "Đang chờ xếp nhóm",
+    "pendingBody": "Ban tổ chức sẽ xếp bạn vào một nhóm Triad {{n}}. Bạn sẽ nhận được thông báo khi nhóm sẵn sàng.",
+    "completedBody": "Triad {{n}} đã hoàn thành. Các session thêm với nhóm này chỉ để luyện tập.",
+    "group": "Nhóm Triad {{n}} của tôi"
   }
 }

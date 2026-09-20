@@ -2,43 +2,55 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { LEARNER_REFLECTION_FEED_KEY } from "./useLearnerReflectionFeed";
+import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 export type Reflection = Tables<"coachee_reflections">;
 
-async function fetchReflections(coacheeId: string): Promise<Reflection[]> {
+async function fetchReflections(coacheeId: string, enrollmentId: string): Promise<Reflection[]> {
   const { data } = await supabase
     .from("coachee_reflections")
     .select("*")
     .eq("coachee_id", coacheeId)
+    .eq("enrollment_id", enrollmentId)
     .order("created_at", { ascending: false });
   return data || [];
 }
 
 /**
- * Owns private coachee reflections. Shared between the coachee and coach
- * "my journey" views.
+ * Owns private coachee reflections, scoped to coachee_id + enrollment_id —
+ * a learner's private journal from one programme must never surface under
+ * a different enrollment. Shared between the coachee and coach "my
+ * journey" views.
  */
-export function useJourneyReflections(coacheeId: string | undefined) {
+export function useJourneyReflections(coacheeId: string | undefined, initialEnrollmentId?: string | null) {
   const queryClient = useQueryClient();
-  const queryKey = ["journey-reflections", coacheeId];
+  const { selectedEnrollment } = useEnrollmentContext(coacheeId, initialEnrollmentId);
+  const enrollmentId = selectedEnrollment?.id;
+  const queryKey = ["journey-reflections", coacheeId, enrollmentId];
 
   const { data, isLoading } = useQuery({
     queryKey,
-    queryFn: () => fetchReflections(coacheeId as string),
-    enabled: !!coacheeId,
+    queryFn: () => fetchReflections(coacheeId as string, enrollmentId as string),
+    enabled: !!coacheeId && !!enrollmentId,
     staleTime: 30_000,
   });
 
   const addMutation = useMutation({
     mutationFn: async ({ body, mood }: { body: string; mood: string }) => {
+      if (!enrollmentId) throw new Error("An enrollment is required to save a reflection");
       const { error } = await supabase.from("coachee_reflections").insert({
         coachee_id: coacheeId as string,
+        enrollment_id: enrollmentId,
         body: body.trim(),
         mood: mood.trim() || null,
       });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [LEARNER_REFLECTION_FEED_KEY] });
+      return queryClient.invalidateQueries({ queryKey });
+    },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
   });
 
@@ -47,7 +59,10 @@ export function useJourneyReflections(coacheeId: string | undefined) {
       const { error } = await supabase.from("coachee_reflections").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [LEARNER_REFLECTION_FEED_KEY] });
+      return queryClient.invalidateQueries({ queryKey });
+    },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
   });
 
@@ -67,7 +82,7 @@ export function useJourneyReflections(coacheeId: string | undefined) {
 
   return {
     reflections: data ?? [],
-    loading: isLoading,
+    loading: !!coacheeId && (!enrollmentId || isLoading),
     refresh: () => queryClient.invalidateQueries({ queryKey }),
     addReflection,
     deleteReflection,

@@ -38,13 +38,13 @@ describe("SessionGoalRatings i18n", () => {
       </>
     );
 
-    await waitFor(() => expect(screen.getByText("Goal reflection")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Goal check-in")).toBeInTheDocument());
     expect(screen.getByText(/No active goals yet/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "VI" }));
 
-    await waitFor(() => expect(screen.getByText("Suy ngẫm về mục tiêu")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Điểm danh mục tiêu")).toBeInTheDocument());
     expect(screen.getByText(/Chưa có mục tiêu nào đang hoạt động/)).toBeInTheDocument();
-    expect(screen.queryByText("Goal reflection")).not.toBeInTheDocument();
+    expect(screen.queryByText("Goal check-in")).not.toBeInTheDocument();
   });
 });

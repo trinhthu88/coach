@@ -4,7 +4,10 @@
     "overdue": "Quá hạn",
     "dueThisWeek": "Đến hạn tuần này",
     "upcoming": "Sắp tới",
-    "completed": "Đã hoàn thành"
+    "completed": "Đã hoàn thành",
+    "dueOn": "Hạn {{date}}",
+    "noDueDate": "Không có hạn",
+    "toggleAction": "Chuyển trạng thái hành động"
   },
   "actionRow": {
     "markAsDone": "Đánh dấu đã hoàn thành",
@@ -109,6 +112,93 @@
     "peerCoachPrefix": "Coach đồng cấp",
     "coachPrefix": "Coach"
   },
+  "developmentSessions": {
+    "allSessionsHeader": "Tất cả session chương trình",
+    "empty": "Chưa có session khai vấn, khai vấn đồng cấp, cố vấn hoặc triad nào cho chương trình này.",
+    "timeTbd": "Chưa có giờ",
+    "withCounterpart": "Cùng với {{name}}",
+    "filters": {
+      "all": "Tất cả",
+      "coaching": "Khai vấn",
+      "peer_coaching": "Khai vấn đồng cấp",
+      "mentoring": "Cố vấn",
+      "triad": "Triad"
+    },
+    "types": {
+      "coaching": "Khai vấn",
+      "peer_coaching": "Khai vấn đồng cấp",
+      "mentoring": "Cố vấn",
+      "triad": "Triad"
+    },
+    "status": {
+      "completed": "Đã hoàn thành",
+      "confirmed": "Đã xác nhận",
+      "pending_coach_approval": "Chờ duyệt",
+      "cancelled": "Đã hủy",
+      "proposed": "Đã đề xuất"
+    },
+    "roles": {
+      "coachee": "Coachee",
+      "receiver": "Nhận",
+      "provider": "Thực hiện",
+      "mentee": "Mentee",
+      "coach": "Coach",
+      "observer": "Quan sát"
+    },
+    "countsTowardProgramme": "Được tính vào chương trình"
+  },
+  "developmentJourney": {
+    "title": "Hành trình phát triển",
+    "subtitle": "Đã diễn ra — những gì thực sự đã xảy ra trong quá trình phát triển của bạn.",
+    "empty": "Chưa có gì diễn ra trong chương trình này — mục tiêu, session và suy ngẫm sẽ xuất hiện ở đây khi chúng diễn ra.",
+    "reflectionTypes": {
+      "programme_reflection": "Suy ngẫm chương trình",
+      "coaching_reflection": "Suy ngẫm khai vấn",
+      "mentoring_reflection": "Suy ngẫm cố vấn",
+      "triad_self_reflection": "Tự suy ngẫm bộ ba",
+      "private_reflection": "Suy ngẫm riêng tư",
+      "coaching_session_reflection": "Coaching · Suy ngẫm sau session",
+      "coaching_session_rating": "Coaching · Đánh giá session",
+      "peer_session_reflection": "Peer coaching · Suy ngẫm sau session",
+      "peer_session_rating": "Peer coaching · Đánh giá session",
+      "mentoring_session_reflection": "Mentoring · Suy ngẫm sau session",
+      "triad_reflection": "Triad · Suy ngẫm sau session",
+      "goal_checkin": "Mục tiêu · Cập nhật",
+      "training_reflection": "Đào tạo / Học tập · Câu hỏi suy ngẫm",
+      "quiz_reflection": "Đào tạo / Học tập · Suy ngẫm sau quiz",
+      "daily_prompt_response": "Đào tạo / Học tập · Câu hỏi hằng ngày",
+      "journey_reflection": "Hành trình · Suy ngẫm cá nhân"
+    },
+    "summary_one": "{{count}} sự kiện phát triển · mới nhất trước",
+    "summary_other": "{{count}} sự kiện phát triển · mới nhất trước",
+    "filterLabel": "Lọc sự kiện phát triển",
+    "filters": {
+      "all": "Tất cả",
+      "goals": "Mục tiêu",
+      "sessions": "Session",
+      "training": "Đào tạo",
+      "reflections": "Phản tư"
+    },
+    "filterEmpty": "Chưa có sự kiện nào thuộc loại này.",
+    "monthCount_one": "{{count}} sự kiện",
+    "monthCount_other": "{{count}} sự kiện",
+    "typeLabels": {
+      "goal": "Mục tiêu",
+      "action": "Hành động",
+      "coaching": "Coaching",
+      "peer_coaching": "Peer coaching",
+      "mentoring": "Mentoring",
+      "triad": "Triad",
+      "training": "Đào tạo",
+      "reflection": "Phản tư",
+      "feedback": "Phản hồi"
+    },
+    "groupTitle": "{{count}} cập nhật {{type}}",
+    "items": "{{count}} mục",
+    "hide": "ẩn",
+    "showEarlier_one": "Xem cũ hơn · thêm {{count}} tháng",
+    "showEarlier_other": "Xem cũ hơn · thêm {{count}} tháng"
+  },
   "journeyPage": {
     "eyebrow": "Tiến độ",
     "titleLead": "Hành trình",
@@ -118,9 +208,45 @@
       "goals": "Mục tiêu & cột mốc",
       "actions": "Hành động cần làm ({{count}})",
       "sessions": "Session ({{count}})",
-      "reflections": "Suy ngẫm ({{count}})"
+      "reflections": "Suy ngẫm ({{count}})",
+      "feedback": "Phản hồi ({{count}})",
+      "practiceAnalytics": "Phân tích Thực hành & Năng lực"
     },
+    "goalsAndActions": {
+      "title": "Mục tiêu & hành động",
+      "subtitle_one": "{{count}} mục tiêu đang hoạt động với các hành động gắn kèm.",
+      "subtitle_other": "{{count}} mục tiêu đang hoạt động với các hành động gắn kèm.",
+      "goalEyebrow": "Mục tiêu phát triển",
+      "status": {
+        "active": "Đang hoạt động",
+        "archived": "Đã lưu trữ"
+      },
+      "start": "Bắt đầu",
+      "current": "Hiện tại",
+      "target": "Mục tiêu",
+      "nextAction": "Tiếp theo: {{text}} · Hạn {{date}}",
+      "noDueDate": "chưa có hạn",
+      "noOpenActions": "Chưa có hành động nào đang mở cho mục tiêu này.",
+      "actionsHeader": "Tất cả hành động",
+      "milestonesChip": "{{done}} / {{total}} cột mốc",
+      "openActionsChip_one": "{{count}} hành động đang mở",
+      "openActionsChip_other": "{{count}} hành động đang mở",
+      "showDetail": "Cột mốc & hành động ↓",
+      "hideDetail": "Ẩn chi tiết ↑"
+    },
+    "reflectionsCard": {
+      "title": "Suy ngẫm",
+      "subtitle": "Suy ngẫm chương trình, coaching, mentoring, Triad và riêng tư được giữ tách biệt — mỗi loại giữ nguyên bối cảnh xuất phát của nó."
+    },
+    "feedbackCard": {
+      "title": "Phản hồi",
+      "subtitle": "Chỉ hiển thị phản hồi dành cho học viên trong đợt tham gia này."
+    },
+    "goalsHeader": "Mục tiêu & cột mốc",
+    "goalsEmptyDescription": "Xác định điều bạn muốn đạt được để coach có thể gắn hành động vào các cột mốc.",
     "actionItemsHeader": "Hành động cần làm",
+    "actionsEmpty": "Chưa có hành động nào. Hành động sẽ xuất hiện khi coach giao cho bạn.",
+    "noFeedbackYet": "Chưa có phản hồi nào dành cho học viên.",
     "reflectionBanner": {
       "title": "Giờ suy ngẫm — đánh giá mục tiêu của bạn sau session này",
       "openPrefix": "Mở",
@@ -128,11 +254,17 @@
       "afterLinkSuffix": ") để ghi lại đánh giá bản thân từ 0–100 cho mỗi mục tiêu. Mỗi suy ngẫm trở thành một lớp mới trên bánh xe."
     },
     "actionsSummary": "{{total}} tổng cộng · {{done}} đã hoàn thành · {{overdue}} quá hạn",
-    "newReflection": "Suy ngẫm mới",
+    "newReflection": "Thêm suy ngẫm riêng tư",
     "moodPlaceholder": "Tâm trạng (không bắt buộc, ví dụ: tập trung, bế tắc, tự hào)…",
     "reflectionPlaceholder": "Bạn đang nghĩ gì? Thành công, trở ngại, những điều nhận ra…",
-    "saveReflection": "Lưu suy ngẫm",
-    "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây."
+    "saveReflection": "Lưu suy ngẫm riêng tư",
+    "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây.",
+    "deleteReflection": "Xóa suy ngẫm"
+  },
+  "practiceCompetencyCard": {
+    "title": "Thực hành & năng lực",
+    "subtitle": "Bằng chứng từ phản hồi peer coaching cho đợt tham gia này.",
+    "source": "Phản hồi peer coaching"
   },
   "coachMyJourney": {
     "subtitle": "Sự phát triển của bạn với vai trò học viên — qua các session coaching và session đồng cấp bạn nhận được.",
@@ -154,19 +286,9 @@
     "modeBadge": "Bạn, với vai trò học viên"
   },
   "coacheeJourney": {
-    "subtitle": "Theo dõi mục tiêu, hành động cần làm, session và suy ngẫm cá nhân của bạn.",
-    "progressRings": {
-      "programme": "Chương trình",
-      "programmeSub": "{{completed}} trong số {{limit}} session",
-      "goalsOnTrack": "Mục tiêu đang đúng hướng",
-      "goalsOnTrackSub": "{{count}} trong số {{total}} đang tiến triển",
-      "actionsClosed": "Hành động đã đóng",
-      "actionsClosedSub": "{{done}} trong số {{total}} đã hoàn thành"
-    },
-    "milestonesEyebrow": "Cột mốc",
-    "emptyGoalsDescription": "Xác định điều bạn muốn đạt được và coach của bạn có thể gắn hành động vào các cột mốc.",
-    "actionsEmptyMessage": "Chưa có hành động nào. Chúng sẽ xuất hiện ở đây khi coach của bạn giao cho bạn.",
-    "sessionsBlockUpcoming": "Sắp tới",
-    "sessionsBlockCompleted": "Đã hoàn thành"
+    "title": "Hành trình của tôi",
+    "subtitle": "Mọi thứ cho đợt tham gia này ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự xảy ra, và mục tiêu của bạn đang ở đâu.",
+    "eyebrow": "Không gian học viên",
+    "subtitleFor": "Mọi thứ về {{programme}} · {{cohort}} ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự diễn ra và mục tiêu của bạn đang ở đâu."
   }
 }

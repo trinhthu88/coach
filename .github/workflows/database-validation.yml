@@ -3,10 +3,10 @@ name: Database validation
 on:
   push:
     branches:
-      - remediation/p0-p1
+      - remediation-p0-p1-retimestamp
   pull_request:
     branches:
-      - remediation/p0-p1
+      - remediation-p0-p1-retimestamp
     paths:
       - 'supabase/**'
       - 'src/integrations/supabase/types.ts'
@@ -20,6 +20,9 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    concurrency:
+      group: sponsor-p0-database-validation-${{ github.ref }}
+      cancel-in-progress: false
     env:
       SUPABASE_CLI_VERSION: '2.117.0'
 
@@ -57,16 +60,59 @@ jobs:
       - name: Replay migrations and run database validation
         env:
           SUPABASE_CLI_BIN: supabase
-        run: npm run validate:db
+        run: |
+          set -o pipefail
+          mkdir -p "${RUNNER_TEMP}/db-validation-diagnostics"
+          npm run validate:db 2>&1 | tee "${RUNNER_TEMP}/db-validation-diagnostics/validate-db.log"
+
+      - name: Verify required Sponsor P0 suites were collected
+        run: |
+          test -f supabase/tests/sponsor_canonical_admin_activity_spine_test.sql
+          test -f supabase/tests/sponsor_cohort_c_reconciliation_test.sql
+          test "$(grep -Ec '^select (is|ok|lives_ok|isnt|matches)\(' supabase/tests/sponsor_canonical_admin_activity_spine_test.sql)" = "51"
+          grep -q '^select plan(51);' supabase/tests/sponsor_canonical_admin_activity_spine_test.sql
 
       - name: Capture Supabase diagnostics on failure
         if: failure()
         run: |
-          supabase status || true
-          docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
+          set +e
+          DIAG_DIR="${RUNNER_TEMP}/db-validation-diagnostics"
+          LOG_FILE="${DIAG_DIR}/validate-db.log"
+          mkdir -p "$DIAG_DIR"
+
+          {
+            echo "== Failure classification =="
+            if grep -Eqi 'LegacyHealthCheckTimeoutError|container is not ready|unhealthy|supabase start' "$LOG_FILE" 2>/dev/null; then
+              echo "classification=supabase-startup-or-container-health"
+            elif grep -Eqi 'supabase db reset|Resetting local database|Applying migration|migration.*failed|ERROR:.*migration' "$LOG_FILE" 2>/dev/null; then
+              echo "classification=migration-replay-or-database-reset"
+            else
+              echo "classification=post-reset-or-unclassified-environment-failure"
+            fi
+
+            echo
+            echo "== Supabase status =="
+            supabase status || true
+
+            echo
+            echo "== Docker container state =="
+            docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' || true
+          } | tee "${DIAG_DIR}/summary.log"
+
           for container in $(docker ps -aq --filter name=supabase_); do
-            docker logs --tail 200 "$container" || true
+            name=$(docker inspect --format '{{.Name}}' "$container" 2>/dev/null | sed 's#^/##')
+            [ -n "$name" ] || name="$container"
+            docker inspect --format '{{json .State.Health}}' "$container" > "${DIAG_DIR}/${name}-health.json" 2>&1 || true
+            docker logs --tail 300 "$container" > "${DIAG_DIR}/${name}.log" 2>&1 || true
           done
+
+      - name: Preserve failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-validation-diagnostics
+          path: ${{ runner.temp }}/db-validation-diagnostics
+          if-no-files-found: ignore
 
       - name: Preserve generated schema types for review
         if: always()

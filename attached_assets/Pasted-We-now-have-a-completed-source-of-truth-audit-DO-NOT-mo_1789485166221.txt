@@ -1,0 +1,100 @@
+We now have a completed source-of-truth audit.
+
+DO NOT modify:
+- raw activity tables
+- demo leader histories
+- Admin requirements
+- get_enrollment_progress
+- completed_units / required_units totals
+- frontend components
+- migration history
+
+Canonical verified Cohort C truth:
+
+Admin requirements:
+- Coaching 4/leader
+- Peer 2/leader
+- Mentoring 2/leader
+- Triads 2/leader
+- Training 6/leader
+- Total 16/leader
+- Cohort entitlement 192
+
+Raw completed history:
+- Coaching 28
+- Peer 18
+- Mentoring 16
+- Triads 12
+- Training 40
+- Total 114
+
+get_enrollment_progress already reconciles exactly to these values.
+
+FIRST DEFECT:
+sponsor_metric_rows_legacy / sponsor_metric_rows return:
+
+- Coaching 12 instead of 28
+- Peer 12 instead of 18
+- Mentoring 12 instead of 16
+- Triads 12, which happens to be correct
+
+Overall completed_units remains correctly 114.
+
+TASK:
+
+1. Inspect the exact live definitions of:
+   - sponsor_metric_rows_legacy
+   - sponsor_metric_rows
+
+2. Identify exactly how the category fields are currently calculated:
+   - coaching_completed_sessions
+   - peer_completed_sessions
+   - mentoring_completed_sessions
+   - triad_completed_sessions
+   - any training/module category fields
+
+3. Explain why they collapse to one completed-count-per-leader
+   (12) instead of counting completed activity units.
+
+4. Compare the category-field logic to the canonical module values
+   returned by get_enrollment_progress.
+
+5. Propose the smallest change so the Sponsor reporting category fields
+   derive from the SAME module progress source as completed_units.
+
+Required result for Cohort C:
+- Coaching 28
+- Peer 18
+- Mentoring 16
+- Triads 12
+- Training 40
+- Total 114
+
+6. Do not independently recount activity from raw tables inside the
+   sponsor reporting layer if get_enrollment_progress already exposes
+   the correct module progress.
+
+Preferred architecture:
+raw leader history
+→ get_enrollment_progress
+→ sponsor_metric_rows_legacy
+→ sponsor_metric_rows
+→ sponsor_enrollment_summaries
+→ sponsor_cohort_summaries
+→ UI
+
+There must be only one completion calculation.
+
+7. Before changing anything, show:
+   - current SQL expressions causing the undercount
+   - proposed SQL diff
+   - confirmation that overall completed_units remains 114
+   - confirmation that Adam remains:
+     coaching 1/4
+     peer 1/2
+     mentoring 1/2
+     triads 1/2
+     training 2/6
+     total 6/16
+
+STOP before applying.

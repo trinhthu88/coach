@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { format, differenceInCalendarDays, addDays } from "date-fns";
 import {
   Users, CheckCircle2, AlertTriangle, CalendarCheck,
@@ -16,17 +16,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { SectionCard, MiniBar } from "@/pages/admin/_shared";
 import { useSponsorDashboardData } from "@/hooks/sponsor/useSponsorDashboardData";
-import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import {
   RosterTable,
   HealthSignalPill,
 } from "@/pages/sponsor/_shared";
 import { healthSignal } from "@/pages/sponsor/sponsorUtils";
-import { SponsorLeaderDrawer } from "./SponsorLeaderDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { SponsorDataErrorState } from "./SponsorDataErrorState";
 
 interface OrgBannerData {
   name: string;
@@ -41,11 +40,11 @@ interface OrgBannerData {
 export default function SponsorDashboard() {
   const { t } = useTranslation("sponsor");
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
-    kpis, roster, cohortSummaries, loading,
+    kpis, roster, cohortSummaries, loading, error, retry,
   } = useSponsorDashboardData();
   const [org, setOrg] = useState<OrgBannerData | null>(null);
-  const [selectedLeader, setSelectedLeader] = useState<SponsorRosterRow | null>(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [contactMessage, setContactMessage] = useState("");
   const [contactSending, setContactSending] = useState(false);
@@ -95,7 +94,9 @@ export default function SponsorDashboard() {
         cohortId: summary.cohort_id,
         leaders,
         onTrackPct: summary.on_track_pct ?? 0,
-        pace: null,
+        completedUnits: summary.completed_units ?? 0,
+        requiredUnits: summary.required_units ?? 0,
+        completionPct: summary.full_completion_pct ?? 0,
         signal: healthSignal(atRisk, leaders),
       };
     });
@@ -191,6 +192,17 @@ export default function SponsorDashboard() {
       <div className="flex items-center justify-center py-24">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <SponsorDataErrorState
+        title={t("dashboard.dataError.title")}
+        description={t("dashboard.dataError.description")}
+        retryLabel={t("dashboard.dataError.retry")}
+        onRetry={retry}
+      />
     );
   }
 
@@ -337,20 +349,6 @@ export default function SponsorDashboard() {
               </div>
             )}
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-4 text-[11px] sm:grid-cols-4">
-            <span>Completion <b>{kpis?.full_completion_pct == null ? "—" : `${Math.round(kpis.full_completion_pct)}%`}</b></span>
-            <span>Adherence <b>{kpis?.due_adherence_pct == null ? "—" : `${Math.round(kpis.due_adherence_pct)}%`}</b></span>
-            <span>Booked / overdue <b>{kpis?.booked_units ?? 0} / {kpis?.overdue_units ?? 0}</b></span>
-            <span>Coverage <b>{kpis?.schedule_coverage_pct == null ? "—" : `${Math.round(kpis.schedule_coverage_pct)}%`}</b></span>
-            <span>Paused / completed <b>{kpis?.paused_count ?? 0} / {kpis?.completed_count ?? 0}</b></span>
-            <span>Pace NYD / ahead <b>{kpis?.not_yet_due_count ?? 0} / {kpis?.ahead_count ?? 0}</b></span>
-            <span>Pace on-track / scheduled <b>{kpis?.on_track_count ?? 0} / {kpis?.scheduled_count ?? 0}</b></span>
-            <span>Pace behind / complete <b>{kpis?.behind_count ?? 0} / {kpis?.completed_pace_count ?? 0}</b></span>
-            <span>Goals setup / total <b>{kpis?.goal_setup_count ?? 0} / {kpis?.goal_count ?? 0}</b></span>
-            <span>Goal progress <b>{kpis?.goal_progress_pct == null ? "—" : `${Math.round(kpis.goal_progress_pct)}%`}</b></span>
-            <span>Actions complete <b>{kpis?.completed_action_count ?? 0} / {kpis?.total_action_count ?? 0}</b></span>
-            <span>Satisfaction <b>{kpis?.satisfaction_avg == null ? "—" : kpis.satisfaction_avg.toFixed(2)}</b></span>
-          </div>
           {(kpis?.at_risk_count ?? 0) > 0 && (
             <p className="mt-5 flex items-center gap-1.5 border-t border-border pt-4 text-[12px] font-medium text-warning">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
@@ -374,7 +372,7 @@ export default function SponsorDashboard() {
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.cohort")}</th>
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.leaders")}</th>
                     <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.healthMatrix.columns.onTrack")}</th>
-                    <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.healthMatrix.columns.sessionsPace")}</th>
+                    <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.healthMatrix.columns.unitsUsed")}</th>
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.signal")}</th>
                   </tr>
                 </thead>
@@ -389,11 +387,10 @@ export default function SponsorDashboard() {
                       <td className="px-2 py-2.5">{row.leaders}</td>
                       <td className="px-2 py-2.5 hidden sm:table-cell">{Math.round(row.onTrackPct)}%</td>
                       <td className="px-2 py-2.5 hidden md:table-cell">
-                        {row.pace != null ? (
-                          <div className="w-24"><MiniBar pct={row.pace} tone={row.pace > 100 ? "warning" : "primary"} /></div>
-                        ) : (
-                          <span className="italic text-muted-foreground">—</span>
-                        )}
+                        <div className="flex min-w-[96px] items-center gap-2">
+                          <div className="w-16"><MiniBar pct={row.completionPct} tone="primary" /></div>
+                          <span className="whitespace-nowrap text-[10px] text-muted-foreground">{row.completedUnits}/{row.requiredUnits}</span>
+                        </div>
                       </td>
                       <td className="px-2 py-2.5"><HealthSignalPill signal={row.signal} /></td>
                     </tr>
@@ -458,7 +455,12 @@ export default function SponsorDashboard() {
           <p className="mb-3 text-[10px] text-muted-foreground">
             {t("dashboard.roster.note")}
           </p>
-          <RosterTable rows={roster} onSelect={setSelectedLeader} showCohortColumn sortable={false} />
+          <RosterTable
+            rows={roster}
+            onSelect={(leader) => navigate(`/sponsor/cohorts/${leader.cohort_id}/leaders/${leader.enrollment_id}`)}
+            showCohortColumn
+            sortable={false}
+          />
           <p className="mt-3 text-[10px] italic text-muted-foreground">
             {t("dashboard.roster.footnote")}
           </p>
@@ -496,9 +498,6 @@ export default function SponsorDashboard() {
           <Link to="/sponsor/cohorts"><Layers className="h-3.5 w-3.5" /> {t("dashboard.quickActions.compareCohorts")}</Link>
         </Button>
       </div>
-
-      {/* Leader detail drawer */}
-      <SponsorLeaderDrawer leader={selectedLeader} onClose={() => setSelectedLeader(null)} />
 
       <Dialog open={contactOpen} onOpenChange={setContactOpen}>
         <DialogContent>

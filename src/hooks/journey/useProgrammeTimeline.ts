@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { fetchMyTriadStatus, fetchMyTriads, type TriadGroupEntry, type TriadStatusView } from "@/hooks/triads/useMyTriads";
 
 export interface TimelineWeek {
   id: string;
@@ -29,20 +30,6 @@ interface RawWeek {
   completed_at: string | null;
 }
 
-interface RawTriadRound {
-  id: string;
-  training_week_id: string | null;
-  triad_groups: {
-    member_1_id: string;
-    member_2_id: string;
-    member_3_id: string | null;
-    enrollment_1_id: string;
-    enrollment_2_id: string;
-    enrollment_3_id: string | null;
-    triad_sessions: { status: string; proposed_start_time: string | null; created_at: string }[];
-  }[];
-}
-
 async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: boolean): Promise<TimelineWeek[]> {
   const { data: weeksData, error } = await supabase.rpc("get_enrollment_training_weeks", {
     p_enrollment_id: enrollmentId,
@@ -55,7 +42,7 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
   const weekNumbers = weeks.map((w) => w.week_number);
   const programmeId = await getProgrammeIdForEnrollment(enrollmentId);
 
-  const [{ data: assignments }, { data: prompts }, { data: reflections }, { data: triadRounds }] = await Promise.all([
+  const [{ data: assignments }, { data: prompts }, { data: reflections }, triadGroups, triadCanonical] = await Promise.all([
     supabase
       .from("assignments")
       .select("id, training_week_id, assignment_type")
@@ -71,17 +58,10 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
       .select("id, appears_at_week")
       .eq("programme_id", programmeId)
       .in("appears_at_week", weekNumbers),
-    // Triad rounds link to a training week directly; each round holds at
-    // most one group (and one current session) for this user, found via
-    // "Triad groups: member read" RLS.
-    hasTriads
-      ? supabase
-          .from("triad_rounds")
-          .select(
-            "id, training_week_id, triad_groups(member_1_id, member_2_id, member_3_id, enrollment_1_id, enrollment_2_id, enrollment_3_id, triad_sessions(status, proposed_start_time, created_at))",
-          )
-          .in("training_week_id", weekIds)
-      : Promise.resolve({ data: [] as RawTriadRound[] }),
+    // The learner's cohort Triad groups and canonical Triad status. A week
+    // shows a Triad state only when a cohort Triad deadline is linked to it.
+    hasTriads ? fetchMyTriads(enrollmentId) : Promise.resolve([] as TriadGroupEntry[]),
+    hasTriads ? fetchMyTriadStatus(enrollmentId) : Promise.resolve(null as TriadStatusView | null),
   ]);
 
   const assignmentIds = (assignments || []).map((a) => a.id as string);
@@ -119,7 +99,6 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
   const respondedPromptIds = new Set((responses || []).filter((r) => r.responded_at).map((r) => r.daily_prompt_id));
   const submittedReflectionIds = new Set((reflectionSubs || []).map((r) => r.reflection_id));
 
-  const today = new Date().toISOString().slice(0, 10);
   let currentAssigned = false;
 
   return weeks
@@ -135,20 +114,18 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
       const weekPrompts = (prompts || []).filter((p) => p.training_week_id === w.id);
       const promptsDone = weekPrompts.filter((p) => respondedPromptIds.has(p.id)).length;
 
+      // A week's Triad deadline is met when the canonical completed sessions
+      // reach that cumulative milestone (the same rule Admin and the Triads
+      // page show) — never a local reading of session statuses, never a
+      // session assigned to the week.
       let triadStatus: TimelineWeek["triadStatus"] = null;
-      if (hasTriads) {
-        const rounds = ((triadRounds || []) as RawTriadRound[]).filter((r) => r.training_week_id === w.id);
-        const mySessions = rounds
-          .flatMap((r) => r.triad_groups)
-          .filter((g) =>
-            [g.enrollment_1_id, g.enrollment_2_id, g.enrollment_3_id].includes(enrollmentId)
-            && [g.member_1_id, g.member_2_id, g.member_3_id].includes(userId)
-          )
-          .flatMap((g) => g.triad_sessions);
-        if (mySessions.length === 0) triadStatus = "not_scheduled";
-        else if (mySessions.some((s) => s.status === "completed" || (s.proposed_start_time && s.proposed_start_time < today)))
-          triadStatus = "completed";
-        else triadStatus = "scheduled";
+      const weekMilestones = triadCanonical?.schedule.filter((m) => m.trainingWeekId === w.id) ?? [];
+      if (hasTriads && weekMilestones.length > 0) {
+        const activeGroup = triadGroups.find((g) => g.isActive);
+        const hasOpenSession = !!activeGroup?.sessions.some((s) => s.status === "proposed" || s.status === "confirmed");
+        if (weekMilestones.every((m) => m.satisfied)) triadStatus = "completed";
+        else if (hasOpenSession) triadStatus = "scheduled";
+        else triadStatus = "not_scheduled";
       }
 
       let status: TimelineWeek["status"];

@@ -448,8 +448,11 @@ export default function Messages() {
                           {t.last_preview}
                         </p>
                         <div className="mt-1 flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                            {tr("messages.contextLabel")}
+                          </span>
                           <span className="text-[10px] text-muted-foreground">
-                            {tr("messages.sessionCount", { count: t.session_ids.length })}
+                            · {tr("messages.sessionCount", { count: t.session_ids.length })}
                           </span>
                           {t.unread > 0 && (
                             <Badge
@@ -482,7 +485,7 @@ export default function Messages() {
                   </button>
                   <p className="text-sm font-semibold">{active.counterpart_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {tr("messages.sessionCount", { count: active.session_ids.length })} · {active.latest_topic}
+                    {tr("messages.contextLabel")} · {tr("messages.sessionCount", { count: active.session_ids.length })} · {active.latest_topic}
                   </p>
                 </div>
                 <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-5">

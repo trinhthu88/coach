@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { endOfWeek, isAfter, isBefore } from "date-fns";
+import { bucketByDueDate } from "@/lib/actionScheduling";
 import type { RawActionItem, SessionSource } from "./types";
 import type { EnrollmentActionItem } from "@/lib/enrollmentActions";
 
@@ -53,20 +53,15 @@ export function useFlatActionItems<S extends ActionSession>(sessions: S[]) {
 
   const aiTotal = allActionItems.length;
   const aiDone = allActionItems.filter((a) => a.done).length;
-  const aiOverdue = allActionItems.filter(
-    (a) => !a.done && a.due_date && isBefore(new Date(a.due_date), new Date())
-  ).length;
 
-  const now = new Date();
-  const wkEnd = endOfWeek(now, { weekStartsOn: 1 });
+  const openItems = allActionItems.filter((a) => !a.done);
+  const { overdue, thisWeek, upcoming } = bucketByDueDate(openItems, (a) => a.due_date);
   const grouped: GroupedActions = {
-    overdue: allActionItems.filter((a) => !a.done && a.due_date && isBefore(new Date(a.due_date), now)),
-    thisWeek: allActionItems.filter(
-      (a) => !a.done && a.due_date && !isBefore(new Date(a.due_date), now) && !isAfter(new Date(a.due_date), wkEnd)
-    ),
-    upcoming: allActionItems.filter((a) => !a.done && (!a.due_date || isAfter(new Date(a.due_date), wkEnd))),
+    overdue,
+    thisWeek,
+    upcoming,
     completed: allActionItems.filter((a) => a.done),
   };
 
-  return { allActionItems, grouped, aiTotal, aiDone, aiOverdue };
+  return { allActionItems, grouped, aiTotal, aiDone, aiOverdue: overdue.length };
 }

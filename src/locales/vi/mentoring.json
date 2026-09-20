@@ -1,4 +1,13 @@
 {
+  "myMentor": {
+    "eyebrow": "Mentor của tôi",
+    "next": "Session tiếp theo",
+    "upcoming": "Session sắp tới",
+    "noUpcoming": "Chưa có session sắp tới nào được đặt.",
+    "past": "Session đã qua",
+    "feedback": "Phản hồi mentoring",
+    "noFeedback": "Chưa có phản hồi nào."
+  },
   "findMentor": {
     "eyebrow": "Mentoring",
     "titleLead": "Mentor",
@@ -65,6 +74,11 @@
   "sessionDetail": {
     "notFound": "Không tìm thấy buổi mentoring",
     "backToMentors": "Về danh sách mentor",
+    "typeLabel": "Mentoring",
+    "counterpartRole": {
+      "mentor": "Mentor",
+      "mentee": "Mentee"
+    },
     "withCounterpart": "Với {{name}}",
     "minutes": "phút",
     "joinMeeting": "Tham gia buổi họp",

@@ -10,7 +10,6 @@ import { useAuth } from "@/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
-import { SessionRow } from "@/components/ui/proto";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calendar, Loader2, Star, Check, Search } from "lucide-react";
@@ -19,9 +18,10 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { getSessionStatusPillMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
 import { useSessionsData } from "@/hooks/sessions/useSessionsData";
+import { sessionRowDetailPath as sessionDetailPath } from "@/lib/sessionPaths";
 import type { SessionRow as SessionRowData, SessionKind } from "@/hooks/sessions/useSessionsData";
 
-type KindFilter = "all" | "coaching" | "peer" | "mentoring";
+type KindFilter = "all" | "coaching" | "peer" | "mentoring" | "triad";
 
 // Collapses the 7 underlying kinds (which distinguish table + give/receive
 // direction) down to the 3 categories a user actually filters by — direction
@@ -29,18 +29,8 @@ type KindFilter = "all" | "coaching" | "peer" | "mentoring";
 function kindCategory(kind: SessionKind): KindFilter {
   if (kind === "coaching") return "coaching";
   if (kind === "mentoring-mentor" || kind === "mentoring-mentee") return "mentoring";
+  if (kind === "triad") return "triad";
   return "peer";
-}
-
-function sessionDetailPath(s: { id: string; kind: SessionKind }): string {
-  if (s.kind === "coaching") return `/sessions/${s.id}`;
-  if (s.kind === "coachee-peer-give" || s.kind === "coachee-peer-receive") {
-    return `/sessions/${s.id}?type=coachee_peer`;
-  }
-  if (s.kind === "mentoring-mentor" || s.kind === "mentoring-mentee") {
-    return `/mentoring/sessions/${s.id}`;
-  }
-  return `/sessions/${s.id}?type=peer`;
 }
 
 export default function Sessions() {
@@ -72,19 +62,26 @@ export default function Sessions() {
   const matchesFilters = (s: SessionRowData) =>
     (kindFilter === "all" || kindCategory(s.kind) === kindFilter) &&
     (!q ||
-      s.topic.toLowerCase().includes(q) ||
+      (s.topic || t("list.kindLabelTriad")).toLowerCase().includes(q) ||
+      (s.triad?.participantNames ?? []).some((name) => name.toLowerCase().includes(q)) ||
       (s.coach?.full_name ?? "").toLowerCase().includes(q) ||
       (s.coach?.email ?? "").toLowerCase().includes(q) ||
       (s.coachee?.full_name ?? "").toLowerCase().includes(q) ||
       (s.coachee?.email ?? "").toLowerCase().includes(q));
 
   const now = new Date();
-  const upcoming = sessions.filter(
-    (s) => s.status !== "cancelled" && s.status !== "completed" && new Date(s.start_time) >= now && matchesFilters(s)
-  );
-  const past = sessions.filter(
-    (s) => (s.status === "completed" || s.status === "cancelled" || new Date(s.start_time) < now) && matchesFilters(s)
-  );
+  const sessionDate = (s: SessionRowData) => {
+    const value = s.start_time ?? s.triad?.scheduledStartTime;
+    return value ? new Date(value) : null;
+  };
+  const upcoming = sessions.filter((s) => {
+    const date = sessionDate(s);
+    return s.status !== "cancelled" && s.status !== "completed" && (!date || date >= now) && matchesFilters(s);
+  });
+  const past = sessions.filter((s) => {
+    const date = sessionDate(s);
+    return (s.status === "completed" || s.status === "cancelled" || (date != null && date < now)) && matchesFilters(s);
+  });
 
   return (
     <div className="space-y-6">
@@ -129,7 +126,7 @@ export default function Sessions() {
               />
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {(["all", "coaching", "peer", "mentoring"] as const).map((k) => (
+              {(["all", "coaching", "peer", "mentoring", "triad"] as const).map((k) => (
                 <Badge
                   key={k}
                   variant={kindFilter === k ? "default" : "outline"}
@@ -221,11 +218,13 @@ function SessionCard({
   onChanged: () => void;
 }) {
   const { t } = useTranslation("sessions");
-  const meta = getStatusMeta(t)[session.status];
+  const statusKey = session.status === "proposed" ? "pending_coach_approval" : session.status;
+  const meta = getStatusMeta(t)[statusKey];
   const Icon = meta.icon;
   const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
   const isCoacheePeer = session.kind === "coachee-peer-give" || session.kind === "coachee-peer-receive";
   const isMentoring = session.kind === "mentoring-mentor" || session.kind === "mentoring-mentee";
+  const isTriad = session.kind === "triad";
   // For peer/mentoring sessions: the giver (peer-giver / mentor) acts as
   // "coach", the receiver (peer-receiver / mentee) acts as "coachee".
   const userIsGiver = session.kind === "peer-give" || session.kind === "coachee-peer-give" || session.kind === "mentoring-mentor";
@@ -236,11 +235,13 @@ function SessionCard({
     : role === "coach"
     ? session.coachee
     : session.coach;
-  const start = new Date(session.start_time);
+  const startTime = session.start_time ?? session.triad?.scheduledStartTime;
+  const start = startTime ? new Date(startTime) : null;
   // mentoring_sessions has no rating column at all (mentors give written ICF
   // feedback instead, via mentoring_feedback on the dedicated detail page).
   const showRating =
     !isMentoring &&
+    !isTriad &&
     ((!isPeer && !isCoacheePeer && role === "coachee" && session.status === "completed") ||
       ((isPeer || isCoacheePeer) && !userIsGiver && session.status === "completed"));
   // Mentoring completion is hard-gated at the DB level on a submitted prep
@@ -251,6 +252,7 @@ function SessionCard({
   const canMarkComplete =
     !isMentoring &&
     ((isPeer || isCoacheePeer) ? userIsGiver : role === "coach") &&
+    start != null &&
     start < new Date() &&
     (session.status === "confirmed" ||
       // coachee_peer_sessions has no confirm step wired yet — let the provider
@@ -273,17 +275,6 @@ function SessionCard({
     onChanged();
   };
 
-  const kindLabel = isMentoring
-    ? t("list.kindLabelMentoring")
-    : isCoacheePeer
-    ? t("list.kindLabelPeerPractice")
-    : isPeer
-    ? userIsGiver
-      ? t("dashboard:coach.kindPill.peerGive")
-      : t("dashboard:coach.kindPill.peerReceive")
-    : role === "coach"
-    ? t("list.kindLabelWith")
-    : t("list.kindLabelCoach");
   const roleBadge = isMentoring
     ? userIsGiver
       ? { label: t("list.roleBadge.mentor"), className: "bg-success/10 text-success border-success/20" }
@@ -297,31 +288,59 @@ function SessionCard({
     : role === "coach"
     ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
     : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" };
+  // Triad members rotate through coach / coachee / observer: no fixed role.
+  const triadRoleBadge = isTriad
+    ? { label: t("list.roleBadge.triadMember"), className: "bg-primary/10 text-primary border-primary/20" }
+    : roleBadge;
+  const counterpartLabel = isTriad
+    ? session.triad?.participantNames.join(", ") || t("list.triadParticipantsUnavailable")
+    : counterpart?.full_name || counterpart?.email || "—";
+  const contextLabels = isTriad
+    ? [
+        session.triad ? t("list.triadSession", { n: session.triad.unitNumber }) : null,
+      ].filter(Boolean).join(" · ")
+    : "";
+  const displayTitle = session.topic || t("list.triadSessionTitle");
+  const displayDate = start ? format(start, "MMM d · HH:mm") : t("list.noTimeYet");
+  const programmeContext = [contextLabels, session.cohortName ? t("list.cohortLabel", { name: session.cohortName }) : ""]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <Card className="surface-card overflow-hidden p-0">
-      <SessionRow
-        month={format(start, "MMM").toUpperCase()}
-        day={format(start, "d")}
-        title={session.topic}
-        meta={`${kindLabel === "with" || kindLabel === "Coach" ? kindLabel : kindLabel} ${counterpart?.full_name || counterpart?.email || "—"} · ${format(start, "HH:mm")} · ${session.duration_minutes} min`}
-        status={
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <span
-              className={cn(
-                "inline-flex max-w-[92px] items-center gap-1 whitespace-normal rounded-full border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase leading-tight tracking-wide sm:max-w-none sm:shrink-0 sm:whitespace-nowrap sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-widest",
-                meta.className
-              )}
-            >
-              <Icon className="h-3 w-3 shrink-0" /> {meta.label}
-            </span>
-            <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-widest", roleBadge.className)}>
-              {roleBadge.label}
-            </Badge>
-          </div>
-        }
+      <button
+        type="button"
         onClick={onOpen}
-        className="rounded-none border-0 shadow-none hover:border-0"
-      />
+        className="grid w-full grid-cols-1 items-center gap-3 p-4 text-left transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_minmax(0,1fr)_auto] sm:gap-4 sm:p-5"
+      >
+        <div className="min-w-0">
+          <p className="text-[8.5px] font-bold uppercase tracking-[.14em] text-primary">{t(`list.kindFilter.${kindCategory(session.kind)}`)}</p>
+          <p className="font-display mt-1 truncate text-[13px]">{displayTitle}</p>
+        </div>
+        <div className="min-w-0">
+          {session.programmeName && <p className="truncate text-[12px] font-semibold">{session.programmeName}</p>}
+          {programmeContext && <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">{programmeContext}</p>}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-[11.5px] font-semibold">{counterpartLabel}</p>
+          <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
+            {displayDate}
+            {session.duration_minutes != null && ` · ${session.duration_minutes} min`}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-row items-center gap-1.5 sm:flex-col sm:items-end">
+          <span
+            className={cn(
+              "inline-flex max-w-[92px] items-center gap-1 whitespace-normal rounded-full border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase leading-tight tracking-wide sm:max-w-none sm:shrink-0 sm:whitespace-nowrap sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-widest",
+              meta.className
+            )}
+          >
+            <Icon className="h-3 w-3 shrink-0" /> {meta.label}
+          </span>
+          <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-widest", triadRoleBadge.className)}>
+             {triadRoleBadge.label}
+          </Badge>
+        </div>
+      </button>
       <div className="px-5 pb-5" onClick={(e) => e.stopPropagation()}>
         {canMarkComplete && (
           <Button size="sm" variant="secondary" onClick={markComplete} disabled={completing} className="mb-2">
@@ -413,7 +432,7 @@ interface ActionItem {
   done?: boolean;
 }
 
-function ActionItemsList({ items, date }: { items: EnrollmentActionItem[]; date: string }) {
+function ActionItemsList({ items, date }: { items: EnrollmentActionItem[]; date: string | null }) {
   const { t } = useTranslation("sessions");
   const list: ActionItem[] = items.filter((it) => !!it.text);
   if (list.length === 0) return null;
@@ -431,9 +450,11 @@ function ActionItemsList({ items, date }: { items: EnrollmentActionItem[]; date:
               </span>
               <span>{it.text}</span>
             </span>
-            <span className="shrink-0 text-muted-foreground">
-              {format(new Date(date), "MMM d, yyyy")}
-            </span>
+            {date && (
+              <span className="shrink-0 text-muted-foreground">
+                {format(new Date(date), "MMM d, yyyy")}
+              </span>
+            )}
           </li>
         ))}
         {list.length > 4 && (

@@ -221,55 +221,41 @@ export interface ProgrammeAlert {
   resolved: false;
 }
 
-export interface ScanActivityRow {
-  userId: string;
+export interface InactiveEnrollmentRow {
   enrollmentId: string;
-  timestamp: string | null;
+  userId: string;
+  lastActivityAt: string | null;
 }
 
 /**
- * Active enrollees with no recorded activity (training completion, quiz/
- * reflection submission, triad reflection, or daily prompt response) in the
- * last 7 days, or ever. Each activity kind is passed pre-flattened to
- * (userId, timestamp) pairs so this stays agnostic of which table each
- * signal came from.
+ * Formats the canonical "inactive 7+ days" enrollments
+ * (admin_enrollment_inactivity -> canonical_enrollment_inactivity_internal:
+ * population, activity signals and window live there) as admin alerts. No
+ * activity is interpreted here.
  */
 export function buildStaleProgrammeParticipantAlerts(opts: {
-  activeEnrollments: { enrollmentId: string; userId: string }[];
-  activity: ScanActivityRow[];
+  inactive: InactiveEnrollmentRow[];
   nameById: Map<string, string | null | undefined>;
   emailById: Map<string, string | null | undefined>;
-  now: Date;
 }): ProgrammeAlert[] {
-  const { activeEnrollments, activity, nameById, emailById, now } = opts;
-  const lastActiveByEnrollment = new Map<string, number>();
-  activity.forEach(({ enrollmentId, timestamp }) => {
-    if (!timestamp) return;
-    const t = new Date(timestamp).getTime();
-    if (!lastActiveByEnrollment.has(enrollmentId) || t > (lastActiveByEnrollment.get(enrollmentId) ?? 0)) lastActiveByEnrollment.set(enrollmentId, t);
+  const { inactive, nameById, emailById } = opts;
+  return inactive.map(({ enrollmentId, userId, lastActivityAt }) => {
+    const name = nameById.get(userId) || "Participant";
+    const email = emailById.get(userId);
+    const contact = email ? ` (${email})` : "";
+    const sinceText = lastActivityAt
+      ? `last activity ${format(new Date(lastActivityAt), "d MMM yyyy")}`
+      : "no activity recorded since enrolling";
+    return {
+      severity: "warning" as const,
+      alert_type: "stale_programme_participant" as const,
+      title: `${name} — no programme activity in 7+ days`,
+      message: `${name}${contact} hasn't completed a training week, quiz, reflection, triad reflection, or daily prompt in over a week (${sinceText}).`,
+      related_coachee_id: userId,
+      related_enrollment_id: enrollmentId,
+      resolved: false,
+    };
   });
-
-  const cutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-  return activeEnrollments
-    .filter(({ enrollmentId }) => !lastActiveByEnrollment.has(enrollmentId) || (lastActiveByEnrollment.get(enrollmentId) ?? 0) < cutoff)
-    .map(({ enrollmentId, userId }) => {
-      const name = nameById.get(userId) || "Participant";
-      const email = emailById.get(userId);
-      const contact = email ? ` (${email})` : "";
-      const lastActive = lastActiveByEnrollment.get(enrollmentId);
-      const sinceText = lastActive
-        ? `last activity ${format(new Date(lastActive), "d MMM yyyy")}`
-        : "no activity recorded since enrolling";
-      return {
-        severity: "warning" as const,
-        alert_type: "stale_programme_participant" as const,
-        title: `${name} — no programme activity in 7+ days`,
-        message: `${name}${contact} hasn't completed a training week, quiz, triad reflection, or daily prompt in over a week (${sinceText}).`,
-        related_coachee_id: userId,
-        related_enrollment_id: enrollmentId,
-        resolved: false,
-      };
-    });
 }
 
 export interface ScanQuizSubmissionRow {
@@ -362,10 +348,30 @@ export function buildFlaggedSessionAlerts(opts: {
 }
 
 // buildTriadNotScheduledAlerts (and its "triad_not_scheduled" alert type)
-// was removed with the Phase 3 triad redesign: triad_sessions no longer has
-// a repeating session_date to measure "hasn't met in 7 days" against
-// (triads are now one deadline-bound session per round, not an open-ended
-// series). Deadline-driven escalation for unconfirmed/overdue triads is now
-// handled by the triad-reminders Edge Function's own 'triad_admin_alert'
-// notifications instead. "triad_not_scheduled" is kept in AdminAlerts.tsx's
+// was removed: Triad timing is the cohort's cumulative Triad deadlines
+// compared with each learner's canonical completed sessions, and escalation
+// for learners behind a deadline is handled by the triad-reminders Edge
+// Function's own 'triad_admin_alert' notifications instead. "triad_not_scheduled" is kept in AdminAlerts.tsx's
 // cleanup delete-list so any pre-existing rows still get cleared.
+
+export interface ScanActionRow {
+  enrollment_id: string;
+  status: string;
+  due_date: string | null;
+}
+
+/**
+ * Overdue action items per enrollment, from the original enrollment_actions
+ * records (every action, whatever activity it came from) — the same records
+ * Learner and Sponsor action counts use.
+ */
+export function countOverdueActions(actions: ScanActionRow[], now: Date): Map<string, number> {
+  const today = format(now, "yyyy-MM-dd");
+  const byEnrollment = new Map<string, number>();
+  actions.forEach((a) => {
+    if (a.status === "completed" || !a.due_date || a.due_date >= today) return;
+    byEnrollment.set(a.enrollment_id, (byEnrollment.get(a.enrollment_id) ?? 0) + 1);
+  });
+  return byEnrollment;
+}
+

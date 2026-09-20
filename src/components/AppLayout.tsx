@@ -30,17 +30,22 @@ import {
   Handshake,
   ChevronDown,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import clarivaLogoDark from "@/assets/clariva-logo-dark.png";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useProgrammeModules, ProgrammeModuleType } from "@/hooks/useProgrammeModules";
+
+const OnboardingTour = lazy(() =>
+  import("@/components/onboarding/OnboardingTour").then(({ OnboardingTour: Component }) => ({
+    default: Component,
+  }))
+);
 
 interface NavItem {
   to: string;
@@ -66,21 +71,35 @@ const NAV: NavItem[] = [
   { to: "/sponsor/report", labelKey: "nav.exportReport", icon: FileDown, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
   { to: "/sponsor/settings", labelKey: "nav.myProfile", icon: IdCard, roles: ["sponsor"], groupKey: "navGroups.sponsor" },
 
-  // Coachee
-  { to: "/coaches", labelKey: "nav.findCoaches", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", module: "coaching", moduleDirection: "receive" },
-  { to: "/coachee/profile", labelKey: "nav.myProfile", icon: IdCard, roles: ["coachee"] },
-  { to: "/coachee/journey", labelKey: "nav.myDevelopment", icon: Compass, roles: ["coachee"], module: "coaching", moduleDirection: "receive" },
-  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "mentoring" },
+  // Coachee — Main (My Journey is permanent for any enrolled learner — see
+  // RULES.md / the Coachee UX brief: it must never be gated on the Coaching
+  // module, since it also surfaces Training, Peer Coaching, Mentoring, Triads,
+  // goals, actions, reflections and feedback for the selected enrollment).
+  { to: "/coachee/journey", labelKey: "nav.myJourney", icon: Compass, roles: ["coachee"] },
+  { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coachee"] },
+
+  // Coachee — My development (each item is itself gated on its module being
+  // configured for the selected enrollment, so only relevant modules appear)
+  { to: "/coaches", labelKey: "nav.coaching", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", groupKey: "navGroups.developMyself", module: "coaching", moduleDirection: "receive" },
   { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "peer_coaching" },
-  { to: "/coachee/availability", labelKey: "nav.myAvailability", icon: CalendarClock, roles: ["coachee"], groupKey: "navGroups.developMyself" },
-  {
-    to: "/practice-journey",
-    labelKey: "nav.practiceJourney",
-    icon: Layers,
-    roles: ["coachee"],
-    groupKey: "navGroups.developMyself",
-    anyModule: [{ module: "peer_coaching" }, { module: "triads" }],
-  },
+  { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "mentoring" },
+  { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "triads" },
+  // Practice Journey is deliberately NOT in the coachee nav: its real
+  // competency analytics now live inside My Journey's "Practice &
+  // Competency Analytics" tab (see PracticeAnalyticsTab / CoacheeJourney),
+  // per the approved Coachee UX brief's "not a competing top-level
+  // destination" requirement. The route itself still exists and still
+  // serves the coach (below).
+
+  // Coachee — Learning
+  { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coachee"], module: "training", groupKey: "navGroups.learning" },
+
+  // Coachee — Communication
+  { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coachee"], groupKey: "navGroups.communication" },
+
+  // Coachee — Account (single combined workspace — Profile tab + Availability
+  // tab on the same page; /coachee/availability redirects there)
+  { to: "/coachee/profile", labelKey: "nav.profileAndAvailability", icon: IdCard, roles: ["coachee"], groupKey: "navGroups.account" },
 
   // Coach — My Coaching Profile
   { to: "/coach/profile", labelKey: "nav.myCoachProfile", icon: IdCard, roles: ["coach"], groupKey: "navGroups.deliverCoaching" },
@@ -106,13 +125,14 @@ const NAV: NavItem[] = [
     ],
   },
 
-  // Communication (shared)
-  { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coach", "coachee"], groupKey: "navGroups.communication" },
-  { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coach", "coachee"], groupKey: "navGroups.communication" },
+  // Communication (coach — coachee has its own entry above, ordered after
+  // My development/Learning per the approved Coachee navigation hierarchy)
+  { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coach"], groupKey: "navGroups.communication" },
+  { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coach"], groupKey: "navGroups.communication" },
 
-  // Learning (shared)
-  { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coach", "coachee"], module: "training", groupKey: "navGroups.learning" },
-  { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coach", "coachee"], module: "triads", groupKey: "navGroups.learning" },
+  // Learning (coach — coachee has its own entry above)
+  { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coach"], module: "training", groupKey: "navGroups.learning" },
+  { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coach"], module: "triads", groupKey: "navGroups.learning" },
 
   // Admin — Overview
   { to: "/admin", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["admin"], groupKey: "navGroups.overview" },
@@ -138,9 +158,10 @@ const NAV: NavItem[] = [
 ];
 
 // Groups collapsed by default (until manually toggled, or until the current
-// route lands inside one — see isGroupOpen below) — everything else stays
-// open by default, unchanged from before groups were collapsible at all.
-const DEFAULT_COLLAPSED_GROUPS = new Set(["navGroups.developMyself"]);
+// route lands inside one — see isGroupOpen below). Empty: every group opens
+// by default. "Develop Myself" used to start collapsed, which hid the four
+// learner module pages on first load.
+const DEFAULT_COLLAPSED_GROUPS = new Set<string>();
 
 function NavItemLink({
   item,
@@ -210,12 +231,15 @@ function SidebarNav({
   unreadCount,
   onNavigate,
   onHowItWorks,
+  staticGroups = false,
 }: {
   items: NavItem[];
   collapsed: boolean;
   unreadCount: number;
   onNavigate?: () => void;
   onHowItWorks?: () => void;
+  /** Learner rail (Coachee prototype): group labels are static section headings, always expanded. */
+  staticGroups?: boolean;
 }) {
   const { t } = useTranslation("common");
   const location = useLocation();
@@ -269,6 +293,17 @@ function SidebarNav({
         // no collapsible wrapper — render the links directly, unchanged.
         if (collapsed || !group.key) {
           return <div key={group.key ?? group.items[0].to} className="space-y-[3px]">{links}</div>;
+        }
+
+        if (staticGroups) {
+          return (
+            <div key={group.key} role="group" aria-label={t(group.key)} className="space-y-[3px]">
+              <div className="truncate px-3 pb-1.5 pt-4 text-micro font-bold uppercase tracking-[0.15em] text-secondary-foreground/40">
+                {t(group.key)}
+              </div>
+              {links}
+            </div>
+          );
         }
 
         const open = isGroupOpen(group);
@@ -509,6 +544,7 @@ export default function AppLayout() {
           collapsed={collapsed}
           unreadCount={unreadCount}
           onHowItWorks={showsOnboarding ? openManualTour : undefined}
+          staticGroups={role === "coachee"}
         />
         <SidebarFooter role={role} collapsed={collapsed} onSignOut={handleSignOut} />
       </aside>
@@ -529,6 +565,7 @@ export default function AppLayout() {
             unreadCount={unreadCount}
             onNavigate={() => setMobileNavOpen(false)}
             onHowItWorks={showsOnboarding ? openManualTour : undefined}
+            staticGroups={role === "coachee"}
           />
           <SidebarFooter
             role={role}
@@ -543,7 +580,7 @@ export default function AppLayout() {
 
       {/* ══ MAIN ══ */}
       <main className="flex min-h-[100dvh] flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-20 flex h-[68px] shrink-0 items-center gap-4 border-b border-[#e2dbd0] bg-background/[.86] px-4 backdrop-blur-xl sm:px-8">
+        <header className="sticky top-0 z-20 flex h-[68px] shrink-0 items-center gap-4 border-b border-border bg-background/[.86] px-4 backdrop-blur-xl sm:px-8">
           <button
             onClick={() => setMobileNavOpen(true)}
             className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] border border-border bg-card text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary lg:hidden"
@@ -614,18 +651,40 @@ export default function AppLayout() {
             <Outlet />
           </div>
         </div>
+        {role === "coachee" && (
+          <nav aria-label={t("layout.mainNavigation")} className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-card/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_30px_-24px_hsl(var(--secondary)/0.8)] backdrop-blur-lg lg:hidden">
+            {[
+              { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+              { to: "/coachee/journey", label: t("nav.myJourney"), icon: Compass },
+              { to: "/sessions", label: t("nav.sessions"), icon: Calendar },
+              { to: "/messages", label: t("nav.messages"), icon: MessageSquare },
+            ].map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={to} className={({ isActive }) => cn("flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold", isActive ? "text-primary" : "text-muted-foreground")}>
+                {({ isActive }) => <><Icon className="h-4 w-4" aria-hidden="true" /><span>{label}</span><span className="sr-only">{isActive ? " current" : ""}</span></>}
+              </NavLink>
+            ))}
+            <button type="button" onClick={() => setMobileNavOpen(true)} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold text-muted-foreground">
+              <Menu className="h-4 w-4" aria-hidden="true" />
+              <span>{t("layout.mobileMore")}</span>
+            </button>
+          </nav>
+        )}
       </main>
 
       {showsOnboarding && autoTourEligible && (
-        <OnboardingTour role={role as "coach" | "coachee" | "sponsor"} onSetMobileNavOpen={setMobileNavOpen} />
+        <Suspense fallback={null}>
+          <OnboardingTour role={role as "coach" | "coachee" | "sponsor"} onSetMobileNavOpen={setMobileNavOpen} />
+        </Suspense>
       )}
       {showsOnboarding && manualTourOpen && (
-        <OnboardingTour
-          key={manualTourKey}
-          role={role as "coach" | "coachee" | "sponsor"}
-          onClose={() => setManualTourOpen(false)}
-          onSetMobileNavOpen={setMobileNavOpen}
-        />
+        <Suspense fallback={null}>
+          <OnboardingTour
+            key={manualTourKey}
+            role={role as "coach" | "coachee" | "sponsor"}
+            onClose={() => setManualTourOpen(false)}
+            onSetMobileNavOpen={setMobileNavOpen}
+          />
+        </Suspense>
       )}
     </div>
   );

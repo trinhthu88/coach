@@ -8,6 +8,7 @@ import type { Goal, Milestone, RawActionItem, SessionSource } from "@/hooks/jour
 import type { EnrollmentActionItem } from "@/lib/enrollmentActions";
 import type { FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { ActionRow } from "./ActionRow";
+import { sessionDetailPathFor } from "@/lib/sessionPaths";
 
 interface DisplaySession {
   id: string;
@@ -111,7 +112,10 @@ function SessionRow<S extends DisplaySession>({
           <p className="text-[10px] uppercase text-muted-foreground">{format(d, "MMM")}</p>
         </div>
         <div className="min-w-0 flex-1">
-          <Link to={`/sessions/${s.id}`} className="text-sm font-medium hover:text-primary">
+          <Link
+            to={sessionDetailPathFor(source === "peer" ? "peer_sessions" : "sessions", s.id) ?? "/sessions"}
+            className="text-sm font-medium hover:text-primary"
+          >
             {s.topic}
           </Link>
           <p className="text-[11px] text-muted-foreground">

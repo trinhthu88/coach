@@ -30,7 +30,13 @@ vi.mock("@/integrations/supabase/client", () => ({
 const mockAuth = vi.fn();
 vi.mock("@/context/AuthContext", async () => {
   return {
-    useAuth: () => mockAuth(),
+    useAuth: () => {
+      const value = mockAuth();
+      if (value?.user && value.session === undefined) {
+        return { ...value, session: { user: value.user } };
+      }
+      return value;
+    },
   };
 });
 
@@ -88,6 +94,18 @@ describe("ProtectedRoute", () => {
 
   it("redirects unauthenticated users to /auth", () => {
     mockAuth.mockReturnValue({ user: null, role: null, profile: null, isLoading: false });
+    renderAt("/private");
+    expect(screen.getByText("auth page")).toBeInTheDocument();
+  });
+
+  it("redirects when the user snapshot exists but the Supabase session is gone", () => {
+    mockAuth.mockReturnValue({
+      user: { id: "u1" },
+      session: null,
+      role: "coachee",
+      profile: baseProfile,
+      isLoading: false,
+    });
     renderAt("/private");
     expect(screen.getByText("auth page")).toBeInTheDocument();
   });

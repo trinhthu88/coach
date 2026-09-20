@@ -24,6 +24,7 @@ import { SessionGoalRatings } from "./session/SessionGoalRatings";
 import { SessionToolbox } from "@/components/tools/SessionToolbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CoachSessionFeedback } from "@/components/sessions/CoachSessionFeedback";
+import { SessionDetailHero } from "@/components/sessions/SessionDetailHero";
 
 import { cn } from "@/lib/utils";
 import { format, isAfter, addHours } from "date-fns";
@@ -139,7 +140,6 @@ export default function SessionDetail() {
 
   const start = new Date(session.start_time);
   const meta = getStatusMeta(t)[session.status];
-  const StatusIcon = meta.icon;
   const canCancel =
     session.status !== "cancelled" &&
     session.status !== "completed" &&
@@ -185,9 +185,6 @@ export default function SessionDetail() {
     setNewItem("");
   };
 
-  const initials = (n?: string | null) =>
-    (n || "?").split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase();
-
   const counterpart = isCoach ? coachee : coach;
   // SessionToolbox writes against `sessions`/`peer_sessions` foreign keys only —
   // not wired for coachee_peer_sessions yet (RULES.md §3 Relationship 5).
@@ -216,40 +213,16 @@ export default function SessionDetail() {
         {/* ---------- Main column ---------- */}
         <div className="space-y-6">
           {/* Hero */}
-          <Card className="animate-rise p-5 sm:p-8">
-            <div className="flex flex-wrap items-center gap-4">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em]",
-                  meta.className
-                )}
-              >
-                <StatusIcon className="h-3 w-3" /> {meta.label}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {format(start, "EEE d MMM · HH:mm")}
-              </span>
-            </div>
-
-            <h1 className="font-display mt-6 text-[clamp(2rem,4vw,3rem)] leading-[1.05] tracking-tight">
-              {session.topic}
-            </h1>
-
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
-              <div className="flex items-center gap-4">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary-soft text-sm font-bold text-primary">
-                  {initials(counterpart?.full_name)}
-                </div>
-                <div className="leading-tight">
-                  <p className="text-base font-semibold text-foreground">
-                    {counterpart?.full_name || "—"}
-                  </p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    {isCoach ? t("detail.counterpartRole.coachee") : t("detail.counterpartRole.coach")}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
+          <SessionDetailHero
+            type={t(`detail.typeLabels.${isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching"}`)}
+            title={session.topic}
+            enrollmentId={session.enrollment_id}
+            dateLabel={format(start, "EEE d MMM · HH:mm")}
+            roleLabel={isCoach ? t("detail.counterpartRole.coachee") : t("detail.counterpartRole.coach")}
+            counterpartName={counterpart?.full_name ?? null}
+            status={{ label: meta.label, className: meta.className }}
+            actions={
+              <>
                 {session.meeting_url && session.status === "confirmed" && (
                   <Button
                     asChild
@@ -265,7 +238,7 @@ export default function SessionDetail() {
                   <Button
                     variant="outline"
                     size="lg"
-                    className="rounded-full"
+                    className="rounded-full border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"
                     onClick={handleSaveProgress}
                     disabled={saving}
                   >
@@ -277,9 +250,9 @@ export default function SessionDetail() {
                     {t("detail.saveProgress")}
                   </Button>
                 )}
-              </div>
-            </div>
-          </Card>
+              </>
+            }
+          />
 
           {/* Tabbed workspace */}
           <Card className="animate-rise p-5 sm:p-8">

@@ -1047,6 +1047,7 @@ export type Database = {
           body: string
           coachee_id: string
           created_at: string
+          enrollment_id: string | null
           id: string
           mood: string | null
           updated_at: string
@@ -1055,6 +1056,7 @@ export type Database = {
           body: string
           coachee_id: string
           created_at?: string
+          enrollment_id?: string | null
           id?: string
           mood?: string | null
           updated_at?: string
@@ -1063,11 +1065,96 @@ export type Database = {
           body?: string
           coachee_id?: string
           created_at?: string
+          enrollment_id?: string | null
           id?: string
           mood?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coachee_reflections_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_requirement_dates: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          due_on: string
+          generated_due_on: string | null
+          generation_method: string
+          id: string
+          is_overridden: boolean
+          materialized_via: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          ordinal: number
+          programme_id: string
+          training_week_id: string | null
+          units: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          due_on: string
+          generated_due_on?: string | null
+          generation_method: string
+          id?: string
+          is_overridden?: boolean
+          materialized_via: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          ordinal: number
+          programme_id: string
+          training_week_id?: string | null
+          units?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          due_on?: string
+          generated_due_on?: string | null
+          generation_method?: string
+          id?: string
+          is_overridden?: boolean
+          materialized_via?: string
+          module?: Database["public"]["Enums"]["programme_module_type"]
+          ordinal?: number
+          programme_id?: string
+          training_week_id?: string | null
+          units?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_requirement_dates_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_requirement_dates_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programmes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_requirement_dates_training_week_id_fkey"
+            columns: ["training_week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cohort_week_overrides: {
         Row: {
@@ -2243,7 +2330,7 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           programme_id: string
-          progress_pct: number
+          progress_pct: number | null
           start_date: string
           status: Database["public"]["Enums"]["enrollment_status"]
           updated_at: string
@@ -2258,7 +2345,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           programme_id: string
-          progress_pct?: number
+          progress_pct?: number | null
           start_date?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
           updated_at?: string
@@ -2273,7 +2360,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           programme_id?: string
-          progress_pct?: number
+          progress_pct?: number | null
           start_date?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
           updated_at?: string
@@ -2391,35 +2478,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "programme_reflections_programme_id_fkey"
-            columns: ["programme_id"]
-            isOneToOne: false
-            referencedRelation: "programmes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      programme_triad_rounds: {
-        Row: {
-          at_week: number
-          id: string
-          programme_id: string
-          round_number: number
-        }
-        Insert: {
-          at_week: number
-          id?: string
-          programme_id: string
-          round_number: number
-        }
-        Update: {
-          at_week?: number
-          id?: string
-          programme_id?: string
-          round_number?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "programme_triad_rounds_programme_id_fkey"
             columns: ["programme_id"]
             isOneToOne: false
             referencedRelation: "programmes"
@@ -3277,14 +3335,47 @@ export type Database = {
           },
         ]
       }
+      triad_alternative_proposal_responses: {
+        Row: {
+          enrollment_id: string
+          proposal_id: string
+          responded_at: string | null
+          response: string
+        }
+        Insert: {
+          enrollment_id: string
+          proposal_id: string
+          responded_at?: string | null
+          response?: string
+        }
+        Update: {
+          enrollment_id?: string
+          proposal_id?: string
+          responded_at?: string | null
+          response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_alternative_proposal_responses_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_alternative_proposal_responses_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "triad_alternative_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       triad_alternative_proposals: {
         Row: {
           created_at: string
           id: string
-          member_1_response: string
-          member_2_response: string
-          member_3_response: string | null
-          proposed_by: string
+          proposed_by_enrollment_id: string | null
           proposed_end_time: string
           proposed_start_time: string
           status: string
@@ -3293,10 +3384,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
-          proposed_by: string
+          proposed_by_enrollment_id?: string | null
           proposed_end_time: string
           proposed_start_time: string
           status?: string
@@ -3305,10 +3393,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
-          proposed_by?: string
+          proposed_by_enrollment_id?: string | null
           proposed_end_time?: string
           proposed_start_time?: string
           status?: string
@@ -3316,10 +3401,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "triad_alternative_proposals_proposed_by_fkey"
-            columns: ["proposed_by"]
+            foreignKeyName: "triad_alternative_proposals_proposed_by_enrollment_id_fkey"
+            columns: ["proposed_by_enrollment_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "programme_enrollments"
             referencedColumns: ["id"]
           },
           {
@@ -3331,62 +3416,128 @@ export type Database = {
           },
         ]
       }
+      triad_cutover_archive: {
+        Row: {
+          archived_at: string
+          migration_id: string
+          object_name: string
+          payload: Json
+          record_id: string
+        }
+        Insert: {
+          archived_at?: string
+          migration_id: string
+          object_name: string
+          payload: Json
+          record_id: string
+        }
+        Update: {
+          archived_at?: string
+          migration_id?: string
+          object_name?: string
+          payload?: Json
+          record_id?: string
+        }
+        Relationships: []
+      }
+      triad_cutover_review_decisions: {
+        Row: {
+          decided_at: string
+          decision: string
+          migration_id: string
+          reason: string
+          reviewed_by: string
+          triad_group_id: string
+        }
+        Insert: {
+          decided_at?: string
+          decision: string
+          migration_id: string
+          reason: string
+          reviewed_by: string
+          triad_group_id: string
+        }
+        Update: {
+          decided_at?: string
+          decision?: string
+          migration_id?: string
+          reason?: string
+          reviewed_by?: string
+          triad_group_id?: string
+        }
+        Relationships: []
+      }
+      triad_group_members: {
+        Row: {
+          created_at: string
+          enrollment_id: string
+          id: string
+          member_order: number
+          triad_group_id: string
+        }
+        Insert: {
+          created_at?: string
+          enrollment_id: string
+          id?: string
+          member_order: number
+          triad_group_id: string
+        }
+        Update: {
+          created_at?: string
+          enrollment_id?: string
+          id?: string
+          member_order?: number
+          triad_group_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_group_members_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "triad_group_members_triad_group_id_fkey"
+            columns: ["triad_group_id"]
+            isOneToOne: false
+            referencedRelation: "triad_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       triad_groups: {
         Row: {
           assigned_by: string
-          cohort_id: string | null
+          closed_at: string | null
+          cohort_id: string
+          cohort_requirement_date_id: string
           created_at: string
-          enrollment_1_id: string
-          enrollment_2_id: string
-          enrollment_3_id: string | null
           group_language: string
           id: string
           is_active: boolean
-          member_1_id: string
-          member_2_id: string
-          member_3_id: string | null
-          name: string | null
-          programme_id: string
-          round_number: number | null
-          triad_round_id: string | null
           updated_at: string
         }
         Insert: {
           assigned_by?: string
-          cohort_id?: string | null
+          closed_at?: string | null
+          cohort_id: string
+          cohort_requirement_date_id: string
           created_at?: string
-          enrollment_1_id: string
-          enrollment_2_id: string
-          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
-          member_1_id: string
-          member_2_id: string
-          member_3_id?: string | null
-          name?: string | null
-          programme_id: string
-          round_number?: number | null
-          triad_round_id?: string | null
           updated_at?: string
         }
         Update: {
           assigned_by?: string
-          cohort_id?: string | null
+          closed_at?: string | null
+          cohort_id?: string
+          cohort_requirement_date_id?: string
           created_at?: string
-          enrollment_1_id?: string
-          enrollment_2_id?: string
-          enrollment_3_id?: string | null
           group_language?: string
           id?: string
           is_active?: boolean
-          member_1_id?: string
-          member_2_id?: string
-          member_3_id?: string | null
-          name?: string | null
-          programme_id?: string
-          round_number?: number | null
-          triad_round_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3398,59 +3549,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "triad_groups_enrollment_1_id_fkey"
-            columns: ["enrollment_1_id"]
+            foreignKeyName: "triad_groups_cohort_requirement_date_id_fkey"
+            columns: ["cohort_requirement_date_id"]
             isOneToOne: false
-            referencedRelation: "programme_enrollments"
+            referencedRelation: "cohort_requirement_dates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      triad_reflection_answers: {
+        Row: {
+          answer_text: string
+          created_at: string
+          id: string
+          question_id: string
+          triad_reflection_id: string
+        }
+        Insert: {
+          answer_text: string
+          created_at?: string
+          id?: string
+          question_id: string
+          triad_reflection_id: string
+        }
+        Update: {
+          answer_text?: string
+          created_at?: string
+          id?: string
+          question_id?: string
+          triad_reflection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triad_reflection_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "triad_reflection_questions"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "triad_groups_enrollment_2_id_fkey"
-            columns: ["enrollment_2_id"]
+            foreignKeyName: "triad_reflection_answers_triad_reflection_id_fkey"
+            columns: ["triad_reflection_id"]
             isOneToOne: false
-            referencedRelation: "programme_enrollments"
+            referencedRelation: "triad_reflections"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      triad_reflection_questions: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          label: string
+          label_vi: string | null
+          programme_id: string | null
+          question_key: string
+          section: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order: number
+          id?: string
+          is_active?: boolean
+          label: string
+          label_vi?: string | null
+          programme_id?: string | null
+          question_key: string
+          section: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          label_vi?: string | null
+          programme_id?: string | null
+          question_key?: string
+          section?: string
+          updated_at?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "triad_groups_enrollment_3_id_fkey"
-            columns: ["enrollment_3_id"]
-            isOneToOne: false
-            referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_member_1_id_fkey"
-            columns: ["member_1_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_member_2_id_fkey"
-            columns: ["member_2_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_member_3_id_fkey"
-            columns: ["member_3_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_programme_id_fkey"
+            foreignKeyName: "triad_reflection_questions_programme_id_fkey"
             columns: ["programme_id"]
             isOneToOne: false
             referencedRelation: "programmes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_groups_triad_round_id_fkey"
-            columns: ["triad_round_id"]
-            isOneToOne: false
-            referencedRelation: "triad_rounds"
             referencedColumns: ["id"]
           },
         ]
@@ -3459,44 +3647,23 @@ export type Database = {
         Row: {
           enrollment_id: string | null
           id: string
-          learned_as_coach: string | null
-          learned_as_coachee: string | null
-          learned_as_observer: string | null
-          participant_id: string
           satisfaction_rating: number | null
           submitted_at: string
           triad_session_id: string
-          will_use_as_coach: string | null
-          will_use_as_coachee: string | null
-          will_use_as_observer: string | null
         }
         Insert: {
           enrollment_id?: string | null
           id?: string
-          learned_as_coach?: string | null
-          learned_as_coachee?: string | null
-          learned_as_observer?: string | null
-          participant_id: string
           satisfaction_rating?: number | null
           submitted_at?: string
           triad_session_id: string
-          will_use_as_coach?: string | null
-          will_use_as_coachee?: string | null
-          will_use_as_observer?: string | null
         }
         Update: {
           enrollment_id?: string | null
           id?: string
-          learned_as_coach?: string | null
-          learned_as_coachee?: string | null
-          learned_as_observer?: string | null
-          participant_id?: string
           satisfaction_rating?: number | null
           submitted_at?: string
           triad_session_id?: string
-          will_use_as_coach?: string | null
-          will_use_as_coachee?: string | null
-          will_use_as_observer?: string | null
         }
         Relationships: [
           {
@@ -3504,13 +3671,6 @@ export type Database = {
             columns: ["enrollment_id"]
             isOneToOne: false
             referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_reflections_participant_id_fkey"
-            columns: ["participant_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3522,146 +3682,77 @@ export type Database = {
           },
         ]
       }
-      triad_rounds: {
+      triad_session_responses: {
         Row: {
-          auto_assign_date: string
-          auto_assign_status: string
-          completion_deadline: string
-          created_at: string
-          id: string
-          is_visible: boolean
-          programme_id: string
-          round_number: number
-          title: string
-          title_vi: string | null
-          training_week_id: string | null
-          updated_at: string
+          enrollment_id: string
+          responded_at: string | null
+          response: string
+          triad_session_id: string
         }
         Insert: {
-          auto_assign_date: string
-          auto_assign_status?: string
-          completion_deadline: string
-          created_at?: string
-          id?: string
-          is_visible?: boolean
-          programme_id: string
-          round_number: number
-          title: string
-          title_vi?: string | null
-          training_week_id?: string | null
-          updated_at?: string
+          enrollment_id: string
+          responded_at?: string | null
+          response?: string
+          triad_session_id: string
         }
         Update: {
-          auto_assign_date?: string
-          auto_assign_status?: string
-          completion_deadline?: string
-          created_at?: string
-          id?: string
-          is_visible?: boolean
-          programme_id?: string
-          round_number?: number
-          title?: string
-          title_vi?: string | null
-          training_week_id?: string | null
-          updated_at?: string
+          enrollment_id?: string
+          responded_at?: string | null
+          response?: string
+          triad_session_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "triad_rounds_programme_id_fkey"
-            columns: ["programme_id"]
+            foreignKeyName: "triad_session_responses_enrollment_id_fkey"
+            columns: ["enrollment_id"]
             isOneToOne: false
-            referencedRelation: "programmes"
+            referencedRelation: "programme_enrollments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "triad_rounds_training_week_id_fkey"
-            columns: ["training_week_id"]
+            foreignKeyName: "triad_session_responses_triad_session_id_fkey"
+            columns: ["triad_session_id"]
             isOneToOne: false
-            referencedRelation: "training_weeks"
+            referencedRelation: "triad_sessions"
             referencedColumns: ["id"]
           },
         ]
       }
       triad_sessions: {
         Row: {
-          coach_enrollment_id: string
-          coachee_enrollment_id: string
           created_at: string
           id: string
           meeting_url: string | null
-          member_1_response: string
-          member_2_response: string
-          member_3_response: string | null
           notes: string | null
-          observer_enrollment_id: string | null
-          proposed_by: string
-          proposed_end_time: string | null
-          proposed_start_time: string | null
-          start_time: string | null
+          scheduled_end_time: string | null
+          scheduled_start_time: string | null
           status: string
           triad_group_id: string
           updated_at: string
         }
         Insert: {
-          coach_enrollment_id: string
-          coachee_enrollment_id: string
           created_at?: string
           id?: string
           meeting_url?: string | null
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
           notes?: string | null
-          observer_enrollment_id?: string | null
-          proposed_by?: string
-          proposed_end_time?: string | null
-          proposed_start_time?: string | null
-          start_time?: string | null
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string | null
           status?: string
           triad_group_id: string
           updated_at?: string
         }
         Update: {
-          coach_enrollment_id?: string
-          coachee_enrollment_id?: string
           created_at?: string
           id?: string
           meeting_url?: string | null
-          member_1_response?: string
-          member_2_response?: string
-          member_3_response?: string | null
           notes?: string | null
-          observer_enrollment_id?: string | null
-          proposed_by?: string
-          proposed_end_time?: string | null
-          proposed_start_time?: string | null
-          start_time?: string | null
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string | null
           status?: string
           triad_group_id?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "triad_sessions_coach_enrollment_id_fkey"
-            columns: ["coach_enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_sessions_coachee_enrollment_id_fkey"
-            columns: ["coachee_enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "triad_sessions_observer_enrollment_id_fkey"
-            columns: ["observer_enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "programme_enrollments"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "triad_sessions_triad_group_id_fkey"
             columns: ["triad_group_id"]
@@ -3754,6 +3845,127 @@ export type Database = {
       }
     }
     Functions: {
+      admin_canonical_enrollment_journey: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      admin_canonical_enrollment_progress: {
+        Args: { p_as_of?: string; p_enrollment_ids: string[] }
+        Returns: {
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          enrollment_end_date: string
+          enrollment_id: string
+          enrollment_start_date: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_completion_pct: number
+          learner_display_name: string
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          pace_status: string
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_id: string
+          programme_label: string
+          programme_start_date: string
+          progress_available: boolean
+          required_units: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
+      admin_canonical_schedule_state: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          scheduled_units: number
+          state: string
+        }[]
+      }
+      admin_cohort_triad_groups: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          assigned_by: string
+          closed_at: string
+          cohort_requirement_date_id: string
+          created_at: string
+          group_language: string
+          is_active: boolean
+          members: Json
+          sessions: Json
+          triad_group_id: string
+          unit_number: number
+        }[]
+      }
+      admin_cohort_triad_learners: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: {
+          completed_units: number
+          due_units: number
+          enrollment_id: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_name: string
+          is_eligible: boolean
+          next_due_on: string
+          overdue_units: number
+          programme_id: string
+          raw_completed_sessions: number
+          required_units: number
+          requirements: Json
+          spoken_languages: string[]
+          user_id: string
+        }[]
+      }
+      admin_cohort_triad_requirement: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          programme_id: string
+          programme_name: string
+          required_units: number
+          schedule: Json
+          schedule_state: string
+        }[]
+      }
+      admin_cohort_triad_requirements: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: {
+          active_groups: number
+          assigned_enrollments: number
+          cohort_requirement_date_id: string
+          due_on: string
+          eligible_enrollments: number
+          fulfilled_enrollments: number
+          overdue_enrollments: number
+          programme_id: string
+          reflections_expected: number
+          reflections_submitted: number
+          required_units: number
+          unit_number: number
+        }[]
+      }
       admin_create_programme_enrollment: {
         Args: {
           p_cohort_id: string
@@ -3772,7 +3984,7 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           programme_id: string
-          progress_pct: number
+          progress_pct: number | null
           start_date: string
           status: Database["public"]["Enums"]["enrollment_status"]
           updated_at: string
@@ -3784,6 +3996,19 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      admin_enrollment_inactivity: {
+        Args: { p_programme_id?: string }
+        Returns: {
+          cohort_id: string
+          days_since_last_activity: number
+          enrollment_id: string
+          full_name: string
+          is_inactive: boolean
+          last_activity_at: string
+          programme_id: string
+          user_id: string
+        }[]
       }
       admin_list_report_requests: {
         Args: never
@@ -3802,6 +4027,51 @@ export type Database = {
           updated_at: string
           updated_by: string
         }[]
+      }
+      admin_programme_triad_reflection_rate: {
+        Args: { p_from?: string; p_programme_id: string; p_to?: string }
+        Returns: {
+          expected_reflections: number
+          is_total: boolean
+          rate_pct: number
+          submitted_reflections: number
+          training_week_id: string
+        }[]
+      }
+      admin_save_cohort_requirement_dates: {
+        Args: { p_cohort_id: string; p_items: Json; p_regenerate?: boolean }
+        Returns: number
+      }
+      admin_triad_change_member: {
+        Args: {
+          p_add_enrollment_id?: string
+          p_group_id: string
+          p_remove_enrollment_id?: string
+        }
+        Returns: undefined
+      }
+      admin_triad_create_group: {
+        Args: {
+          p_cohort_requirement_date_id: string
+          p_enrollment_ids: string[]
+          p_group_language: string
+        }
+        Returns: string
+      }
+      admin_triad_requirement_candidates: {
+        Args: { p_cohort_requirement_date_id: string }
+        Returns: {
+          enrollment_id: string
+          full_name: string
+          prior_partner_enrollment_ids: string[]
+          prior_partner_names: string[]
+          spoken_languages: string[]
+          user_id: string
+        }[]
+      }
+      admin_triad_set_group_active: {
+        Args: { p_group_id: string; p_is_active: boolean }
+        Returns: undefined
       }
       admin_update_coach_configuration: {
         Args: {
@@ -3857,6 +4127,13 @@ export type Database = {
           p_occurred_on: string
         }
         Returns: string
+      }
+      backfill_coachee_reflection_enrollment_scope: {
+        Args: never
+        Returns: {
+          ambiguous_count: number
+          resolved_count: number
+        }[]
       }
       backfill_enrollment_actions: { Args: never; Returns: number }
       backfill_enrollment_schedule_snapshots: {
@@ -3962,6 +4239,191 @@ export type Database = {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
       }
+      canonical_enrollment_engagement: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          action_completion_pct: number
+          completed_action_count: number
+          goal_count: number
+          goal_progress_pct: number
+          goal_setup: boolean
+          open_action_count: number
+          satisfaction_avg: number
+          satisfaction_rated_count: number
+          total_action_count: number
+        }[]
+      }
+      canonical_enrollment_experience: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      canonical_enrollment_experience_base: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      canonical_enrollment_inactivity_internal: {
+        Args: { p_as_of?: string }
+        Returns: {
+          cohort_id: string
+          days_since_last_activity: number
+          enrollment_id: string
+          is_inactive: boolean
+          last_activity_at: string
+          programme_id: string
+          user_id: string
+        }[]
+      }
+      canonical_enrollment_journey: {
+        Args: { p_as_of: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      canonical_enrollment_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          enrollment_end_date: string
+          enrollment_id: string
+          enrollment_start_date: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_completion_pct: number
+          learner_display_name: string
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          pace_status: string
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_id: string
+          programme_label: string
+          programme_start_date: string
+          progress_available: boolean
+          required_units: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
+      canonical_enrollment_schedule_state: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          scheduled_units: number
+          state: string
+        }[]
+      }
+      canonical_goal_progress: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          current_rating: number
+          goal_id: string
+          has_rating: boolean
+          progress_pct: number
+          start_rating: number
+          target_rating: number
+        }[]
+      }
+      canonical_learning_breakdown: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      canonical_module_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_activity_units: number
+          completed_units: number
+          due_units: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          overdue_units: number
+          pace_status: string
+          required_units: number
+        }[]
+      }
+      canonical_training_learning_items: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          completed_on: string
+          completed_units: number
+          due_on: string
+          item_id: string
+          item_type: string
+          required_units: number
+          training_week_id: string
+        }[]
+      }
+      canonical_training_learning_summary: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          completed_due_units: number
+          completed_units: number
+          configured_required_units: number
+          due_units: number
+          overdue_units: number
+          required_units: number
+          requirement_mismatch: boolean
+        }[]
+      }
+      canonical_triad_completion: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          cohort_id: string
+          completed_by_as_of: number
+          completed_units: number
+          due_units: number
+          enrollment_id: string
+          next_due_on: string
+          overdue_units: number
+          pace_status: string
+          programme_id: string
+          raw_completed_sessions: number
+          required_units: number
+          schedule: Json
+        }[]
+      }
+      canonical_triad_group_members: {
+        Args: { p_group_ids: string[] }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          member_id: string
+          member_slot: number
+          triad_group_id: string
+        }[]
+      }
+      canonical_triad_requirement_fulfilment: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_on: string
+          cohort_requirement_date_id: string
+          due_on: string
+          fulfilled_on: string
+          proposed_on: string
+          unit_number: number
+        }[]
+      }
       check_can_book_mentoring_session: {
         Args: { p_mentor_id: string }
         Returns: boolean
@@ -4014,9 +4476,63 @@ export type Database = {
         Returns: boolean
       }
       coachee_has_allowlist: { Args: { _coachee_id: string }; Returns: boolean }
-      compute_leader_progress: {
-        Args: { p_enrollment_id: string; p_user_id: string }
-        Returns: number
+      cohort_programme_schedule_state: {
+        Args: { p_cohort_id: string; p_programme_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          scheduled_units: number
+          state: string
+        }[]
+      }
+      cohort_requirement_proposal_internal: {
+        Args: {
+          p_cohort_id: string
+          p_end: string
+          p_programme_id: string
+          p_start: string
+        }
+        Returns: {
+          due_on: string
+          generation_method: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          ordinal: number
+          training_week_id: string
+          units: number
+        }[]
+      }
+      cohort_requirement_schedule_issues: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          issue: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          required_units: number
+          scheduled_units: number
+        }[]
+      }
+      cohort_requirement_schedule_proposal: {
+        Args: {
+          p_cohort_id?: string
+          p_end: string
+          p_programme_id: string
+          p_start: string
+        }
+        Returns: {
+          due_on: string
+          generation_method: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          ordinal: number
+          programme_id: string
+          training_week_id: string
+          units: number
+        }[]
+      }
+      cohort_scheduled_programmes: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          programme_id: string
+        }[]
       }
       create_programme_enrollment: {
         Args: {
@@ -4036,7 +4552,7 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           programme_id: string
-          progress_pct: number
+          progress_pct: number | null
           start_date: string
           status: Database["public"]["Enums"]["enrollment_status"]
           updated_at: string
@@ -4071,13 +4587,6 @@ export type Database = {
       generate_enrollment_schedule: {
         Args: { p_enrollment_id: string }
         Returns: undefined
-      }
-      get_admin_enrollment_progress: {
-        Args: { p_as_of?: string; p_enrollment_ids: string[] }
-        Returns: {
-          enrollment_id: string
-          full_completion_pct: number
-        }[]
       }
       get_coach_peer_session_usage: {
         Args: { _coach_id: string }
@@ -4233,6 +4742,22 @@ export type Database = {
         }[]
       }
       get_sponsor_org: { Args: { _user_id: string }; Returns: string }
+      get_sponsor_programme_journey: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: Json
+      }
+      get_sponsor_programme_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_activity_units: number
+          completed_units: number
+          due_units: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          pace_status: string
+          required_units: number
+        }[]
+      }
       get_todays_prompt: {
         Args: never
         Returns: {
@@ -4279,6 +4804,254 @@ export type Database = {
         Returns: boolean
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
+      learner_canonical_engagement: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          action_completion_pct: number
+          completed_action_count: number
+          goal_count: number
+          goal_progress_pct: number
+          goal_setup: boolean
+          open_action_count: number
+          satisfaction_avg: number
+          satisfaction_rated_count: number
+          total_action_count: number
+        }[]
+      }
+      learner_canonical_experience: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      learner_canonical_goal_progress: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          current_rating: number
+          goal_id: string
+          has_rating: boolean
+          progress_pct: number
+          start_rating: number
+          target_rating: number
+        }[]
+      }
+      learner_canonical_journey: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      learner_canonical_module_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          full_completion_pct: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          pace_status: string
+          required_units: number
+        }[]
+      }
+      learner_canonical_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          enrollment_end_date: string
+          enrollment_id: string
+          enrollment_start_date: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_completion_pct: number
+          learner_display_name: string
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          pace_status: string
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_id: string
+          programme_label: string
+          programme_start_date: string
+          progress_available: boolean
+          required_units: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
+      learner_canonical_schedule_state: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          scheduled_units: number
+          state: string
+        }[]
+      }
+      learner_reflection_feed: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          body: string
+          details: Json
+          is_private: boolean
+          linked_activity_id: string
+          linked_goal_id: string
+          linked_session_id: string
+          linked_session_table: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          occurred_at: string
+          previous_rating: number
+          rating: number
+          reflection_key: string
+          source_id: string
+          source_table: string
+          source_type: string
+          title: string
+        }[]
+      }
+      learner_session_history: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          attributed_to_enrollment: boolean
+          counterpart_names: string[]
+          is_programme_evidence: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          participant_role: string
+          requirement_unit_number: number
+          session_key: string
+          session_type: string
+          source_id: string
+          source_table: string
+          start_time: string
+          status: string
+          title: string
+        }[]
+      }
+      learner_triad_complete_session: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
+      learner_triad_members: {
+        Args: { p_group_ids: string[] }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          is_self: boolean
+          member_id: string
+          member_slot: number
+          triad_group_id: string
+        }[]
+      }
+      learner_triad_overview: {
+        Args: { p_enrollment_id?: string }
+        Returns: {
+          closed_at: string
+          cohort_id: string
+          cohort_requirement_date_id: string
+          created_at: string
+          due_on: string
+          enrollment_id: string
+          group_language: string
+          is_active: boolean
+          member_count: number
+          my_member_slot: number
+          sessions: Json
+          triad_group_id: string
+          unit_number: number
+        }[]
+      }
+      learner_triad_propose_alternative: {
+        Args: { p_end: string; p_session_id: string; p_start: string }
+        Returns: string
+      }
+      learner_triad_reflection_questions: {
+        Args: { p_session_id: string }
+        Returns: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          label: string
+          label_vi: string | null
+          programme_id: string | null
+          question_key: string
+          section: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "triad_reflection_questions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      learner_triad_respond_alternative: {
+        Args: { p_proposal_id: string; p_response: string }
+        Returns: undefined
+      }
+      learner_triad_respond_session: {
+        Args: { p_response: string; p_session_id: string }
+        Returns: undefined
+      }
+      learner_triad_schedule_session: {
+        Args: { p_end: string; p_group_id: string; p_start: string }
+        Returns: string
+      }
+      learner_triad_session_reflections: {
+        Args: { p_session_id: string }
+        Returns: {
+          answers: Json
+          is_self: boolean
+          member_slot: number
+          satisfaction_rating: number
+          submitted_at: string
+        }[]
+      }
+      learner_triad_status: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_units: number
+          due_units: number
+          enrollment_id: string
+          next_due_on: string
+          overdue_units: number
+          pace_status: string
+          raw_completed_sessions: number
+          required_units: number
+          schedule: Json
+        }[]
+      }
+      learner_triad_submit_reflection: {
+        Args: {
+          p_answers?: Json
+          p_satisfaction_rating?: number
+          p_session_id: string
+        }
+        Returns: string
+      }
+      materialize_missing_cohort_requirement_dates: {
+        Args: { p_cohort_id: string }
+        Returns: number
+      }
       only_enrollment_candidate: {
         Args: { p_on?: string; p_programme_id?: string; p_user_id: string }
         Returns: string
@@ -4344,7 +5117,6 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      refresh_all_progress_pct: { Args: never; Returns: number }
       remove_own_coachee: { Args: { _coachee_id: string }; Returns: boolean }
       resolve_current_enrollment: {
         Args: { p_user_id: string }
@@ -4363,19 +5135,30 @@ export type Database = {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
-      sponsor_cohort_summaries: {
-        Args: { p_cohort_id?: string }
+      sponsor_canonical_activity: {
+        Args: { p_enrollment_id: string }
         Returns: {
-          action_completion_pct: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          occurred_on: string
+          requirement_due_on: string
+          status: string
+        }[]
+      }
+      sponsor_canonical_cohort_progress: {
+        Args: { p_as_of?: string; p_cohort_id?: string }
+        Returns: {
           active_count: number
           ahead_count: number
           at_risk_count: number
           behind_count: number
           booked_units: number
-          coaching_completed_count: number
+          coaching_booked_units: number
+          coaching_completed_leaders: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
           cohort_id: string
           cohort_label: string
-          completed_action_count: number
           completed_count: number
           completed_pace_count: number
           completed_units: number
@@ -4383,41 +5166,122 @@ export type Database = {
           due_units: number
           enrollment_count: number
           full_completion_pct: number
-          goal_count: number
-          goal_progress_pct: number
-          goal_setup_count: number
-          mentoring_completed_count: number
+          mentoring_booked_units: number
+          mentoring_completed_leaders: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
           not_yet_due_count: number
           on_track_count: number
           on_track_pct: number
-          open_action_count: number
           overdue_units: number
           pace_status: string
           paused_count: number
-          peer_completed_count: number
+          peer_booked_units: number
+          peer_completed_leaders: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_journey: Json
           programme_label: string
+          programme_start_date: string
+          progress_source_complete: boolean
           required_units: number
-          satisfaction_avg: number
-          satisfaction_rated_count: number
           schedule_coverage_pct: number
           scheduled_count: number
           suppressed: boolean
-          total_action_count: number
-          triad_completed_count: number
+          training_booked_units: number
+          training_completed_leaders: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_leaders: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
         }[]
       }
-      sponsor_enrollment_summaries: {
-        Args: { p_cohort_id: string }
+      sponsor_canonical_cohort_progress_one: {
+        Args: { p_as_of?: string; p_cohort_id?: string }
+        Returns: {
+          active_count: number
+          ahead_count: number
+          at_risk_count: number
+          behind_count: number
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_leaders: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_count: number
+          completed_pace_count: number
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          enrollment_count: number
+          full_completion_pct: number
+          mentoring_booked_units: number
+          mentoring_completed_leaders: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          not_yet_due_count: number
+          on_track_count: number
+          on_track_pct: number
+          overdue_units: number
+          pace_status: string
+          paused_count: number
+          peer_booked_units: number
+          peer_completed_leaders: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_journey: Json
+          programme_label: string
+          programme_start_date: string
+          progress_source_complete: boolean
+          required_units: number
+          schedule_coverage_pct: number
+          scheduled_count: number
+          suppressed: boolean
+          training_booked_units: number
+          training_completed_leaders: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_leaders: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
+      sponsor_canonical_enrollment_metadata: {
+        Args: {
+          p_as_of?: string
+          p_cohort_id?: string
+          p_enrollment_id?: string
+        }
         Returns: {
           action_completion_pct: number
           booked_units: number
-          coaching_completed_count: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
           cohort_id: string
           cohort_label: string
           completed_action_count: number
           completed_units: number
           due_adherence_pct: number
           due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
           enrollment_end_date: string
           enrollment_id: string
           enrollment_start_date: string
@@ -4427,22 +5291,198 @@ export type Database = {
           goal_progress_pct: number
           goal_setup: boolean
           learner_display_name: string
-          mentoring_completed_count: number
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
           open_action_count: number
           overdue_units: number
           pace_status: string
-          peer_completed_count: number
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
           programme_end_date: string
           programme_id: string
           programme_label: string
           programme_start_date: string
+          progress_available: boolean
           required_units: number
           satisfaction_avg: number
           satisfaction_rated_count: number
-          schedule_coverage_pct: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
           total_action_count: number
-          triad_completed_count: number
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
         }[]
+      }
+      sponsor_canonical_enrollment_progress: {
+        Args: { p_as_of?: string; p_cohort_id?: string }
+        Returns: {
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          enrollment_end_date: string
+          enrollment_id: string
+          enrollment_start_date: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_completion_pct: number
+          learner_display_name: string
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          pace_status: string
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_id: string
+          programme_label: string
+          programme_start_date: string
+          progress_available: boolean
+          required_units: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
+      sponsor_canonical_leader_experience: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      sponsor_canonical_leader_journey: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: Json
+      }
+      sponsor_canonical_leader_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_id: string
+          cohort_label: string
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          enrollment_end_date: string
+          enrollment_id: string
+          enrollment_start_date: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_completion_pct: number
+          learner_display_name: string
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          pace_status: string
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          programme_end_date: string
+          programme_id: string
+          programme_label: string
+          programme_start_date: string
+          progress_available: boolean
+          required_units: number
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
+      sponsor_canonical_leader_schedule_state: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          scheduled_units: number
+          state: string
+        }[]
+      }
+      sponsor_canonical_module_schedule: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          due_on: string
+          milestone_units: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          required_units: number
+          training_week_id: string
+        }[]
+      }
+      sponsor_canonical_organisation_progress: {
+        Args: { p_as_of?: string }
+        Returns: {
+          booked_units: number
+          coaching_booked_units: number
+          coaching_completed_units: number
+          coaching_due_units: number
+          coaching_required_units: number
+          cohort_count: number
+          completed_units: number
+          due_adherence_pct: number
+          due_units: number
+          enrollment_count: number
+          full_completion_pct: number
+          mentoring_booked_units: number
+          mentoring_completed_units: number
+          mentoring_due_units: number
+          mentoring_required_units: number
+          overdue_units: number
+          peer_booked_units: number
+          peer_completed_units: number
+          peer_due_units: number
+          peer_required_units: number
+          progress_source_complete: boolean
+          required_units: number
+          schedule_coverage_pct: number
+          suppressed_cohort_count: number
+          training_booked_units: number
+          training_completed_units: number
+          training_due_units: number
+          training_required_units: number
+          triad_booked_units: number
+          triad_completed_units: number
+          triad_due_units: number
+          triad_required_units: number
+        }[]
+      }
+      sponsor_canonical_programme_journey: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: Json
       }
       sponsor_list_report_requests: {
         Args: never
@@ -4466,48 +5506,6 @@ export type Database = {
         }
       }
       sponsor_min_leaders_for_distribution: { Args: never; Returns: number }
-      sponsor_organisation_summary: {
-        Args: never
-        Returns: {
-          action_completion_pct: number
-          active_count: number
-          ahead_count: number
-          at_risk_count: number
-          behind_count: number
-          booked_units: number
-          cohort_count: number
-          completed_action_count: number
-          completed_count: number
-          completed_pace_count: number
-          completed_units: number
-          due_adherence_pct: number
-          due_units: number
-          enrollment_count: number
-          full_completion_pct: number
-          goal_count: number
-          goal_progress_pct: number
-          goal_setup_count: number
-          not_yet_due_count: number
-          on_track_count: number
-          overdue_units: number
-          paused_count: number
-          required_units: number
-          satisfaction_avg: number
-          satisfaction_rated_count: number
-          schedule_coverage_pct: number
-          scheduled_count: number
-          suppressed: boolean
-          total_action_count: number
-        }[]
-      }
-      sponsor_satisfaction_summary: {
-        Args: { p_cohort_id: string }
-        Returns: {
-          avg_rating: number
-          cohort_id: string
-          rated_session_count: number
-        }[]
-      }
       sponsor_submit_report_request: {
         Args: { p_cohort_id: string; p_request_notes?: string }
         Returns: {
@@ -4538,6 +5536,161 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["session_status"]
       }
+      triad_accept_proposal_if_unanimous: {
+        Args: { p_proposal_id: string }
+        Returns: undefined
+      }
+      triad_assert_admin: { Args: never; Returns: undefined }
+      triad_caller_member_enrollment: {
+        Args: { p_session_id: string }
+        Returns: string
+      }
+      triad_clear_unconfirmed_auto_groups_internal: {
+        Args: { p_cohort_requirement_date_id: string }
+        Returns: number
+      }
+      triad_cohort_learners_internal: {
+        Args: { p_as_of?: string; p_cohort_id: string }
+        Returns: {
+          completed_units: number
+          due_units: number
+          enrollment_id: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          full_name: string
+          is_eligible: boolean
+          next_due_on: string
+          overdue_units: number
+          programme_id: string
+          raw_completed_sessions: number
+          required_units: number
+          requirements: Json
+          spoken_languages: string[]
+          user_id: string
+        }[]
+      }
+      triad_confirm_session_if_accepted: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
+      triad_create_group_internal: {
+        Args: {
+          p_assigned_by: string
+          p_cohort_requirement_date_id: string
+          p_end?: string
+          p_enrollment_ids: string[]
+          p_group_language: string
+          p_start?: string
+        }
+        Returns: string
+      }
+      triad_demo_reset_allows: {
+        Args: { p_id: string; p_resource_type: string }
+        Returns: boolean
+      }
+      triad_group_sessions_internal: {
+        Args: { p_group_id: string; p_viewer_enrollment_id: string }
+        Returns: Json
+      }
+      triad_member_enrollment_for_user: {
+        Args: { p_group_id: string; p_user_id: string }
+        Returns: string
+      }
+      triad_reflection_questions_for_session: {
+        Args: { p_session_id: string }
+        Returns: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          label: string
+          label_vi: string | null
+          programme_id: string | null
+          question_key: string
+          section: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "triad_reflection_questions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      triad_reflection_rate_internal: {
+        Args: { p_from?: string; p_programme_id: string; p_to?: string }
+        Returns: {
+          expected_reflections: number
+          is_total: boolean
+          rate_pct: number
+          submitted_reflections: number
+          training_week_id: string
+        }[]
+      }
+      triad_reflections_visible_to_group: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
+      triad_reminder_targets_internal: {
+        Args: { p_as_of?: string; p_cohort_id?: string }
+        Returns: {
+          cohort_id: string
+          cohort_requirement_date_id: string
+          days_until_due: number
+          due_on: string
+          enrollment_id: string
+          milestone_met: boolean
+          milestone_number: number
+          milestone_overdue: boolean
+          open_session_status: string
+          programme_id: string
+          triad_group_id: string
+          user_id: string
+        }[]
+      }
+      triad_required_units_for_programme: {
+        Args: { p_programme_id: string }
+        Returns: number
+      }
+      triad_requirement_candidates_internal: {
+        Args: { p_cohort_requirement_date_id: string }
+        Returns: {
+          enrollment_id: string
+          full_name: string
+          prior_partner_enrollment_ids: string[]
+          prior_partner_names: string[]
+          spoken_languages: string[]
+          user_id: string
+        }[]
+      }
+      triad_requirement_learners_internal: {
+        Args: { p_as_of?: string; p_cohort_requirement_date_id: string }
+        Returns: {
+          cohort_requirement_date_id: string
+          due_on: string
+          enrollment_id: string
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          fulfilled: boolean
+          fulfilled_on: string
+          full_name: string
+          is_eligible: boolean
+          open_session_status: string
+          overdue: boolean
+          prior_partner_enrollment_ids: string[]
+          prior_partner_names: string[]
+          spoken_languages: string[]
+          triad_group_id: string
+          unit_number: number
+          user_id: string
+        }[]
+      }
+      triad_session_can_complete: {
+        Args: { p_scheduled_start: string; p_status: string }
+        Returns: boolean
+      }
+      triad_sync_session_attributions: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       update_session_notes: {
         Args: {
           p_field: string
@@ -4546,6 +5699,15 @@ export type Database = {
           p_value: string
         }
         Returns: undefined
+      }
+      validate_training_learning_requirements: {
+        Args: { p_programme_id?: string }
+        Returns: {
+          active_required_child_units: number
+          programme_id: string
+          requirement_mismatch: boolean
+          stored_required_units: number
+        }[]
       }
     }
     Enums: {

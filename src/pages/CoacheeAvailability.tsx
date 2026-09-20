@@ -39,7 +39,7 @@ interface Slot {
  * mechanics, simplified since this pool only ever has one slot "type"
  * (peer practice), so there's no slot_type selector or legend.
  */
-export default function CoacheeAvailability() {
+export default function CoacheeAvailability({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation("dashboard");
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -153,12 +153,14 @@ export default function CoacheeAvailability() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow={t("coacheeAvailability.eyebrow")}
-        title={t("coacheeAvailability.titleLead")}
-        emphasis={t("coacheeAvailability.titleEmphasis")}
-        subtitle={t("coacheeAvailability.subtitle")}
-      />
+      {!embedded && (
+        <PageHeader
+          eyebrow={t("coacheeAvailability.eyebrow")}
+          title={t("coacheeAvailability.titleLead")}
+          emphasis={t("coacheeAvailability.titleEmphasis")}
+          subtitle={t("coacheeAvailability.subtitle")}
+        />
+      )}
 
       <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="flex items-start gap-3">

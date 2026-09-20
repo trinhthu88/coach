@@ -1,5 +1,5 @@
 begin;
-select plan(36);
+select plan(40);
 
 select ok(
   not exists (
@@ -43,6 +43,10 @@ select has_function(
 select has_function(
   'public', 'generate_enrollment_schedule', array['uuid'],
   'enrollment schedule RPC exists'
+);
+select has_function(
+  'public', 'get_sponsor_programme_journey', array['uuid', 'date'],
+  'sponsor programme journey RPC exists'
 );
 
 select has_trigger('public', 'sessions', 'sessions_enrollment_activity_scope', 'coaching activity is enrollment-scoped');
@@ -107,17 +111,19 @@ select ok(
   ) ~ 'has_role',
   'report status RPC remains callable but enforces admin authorization'
 );
+-- Canonical Sponsor rollup chain (the legacy sponsor_*_summaries engines
+-- were retired in 20260918180000_retire_legacy_sponsor_sources).
 select has_function(
-  'public', 'sponsor_cohort_summaries', array['uuid'],
-  'visible sponsor cohort summaries exist'
+  'public', 'sponsor_canonical_cohort_progress', array['uuid', 'date'],
+  'canonical sponsor cohort rollup exists'
 );
 select has_function(
-  'public', 'sponsor_organisation_summary', array[]::text[],
-  'sponsor organization summary exists'
+  'public', 'sponsor_canonical_organisation_progress', array['date'],
+  'canonical sponsor organisation rollup exists'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.sponsor_organisation_summary()', 'EXECUTE'),
-  'authenticated sponsors can read the organization summary'
+  has_function_privilege('authenticated', 'public.sponsor_canonical_organisation_progress(date)', 'EXECUTE'),
+  'authenticated sponsors can read the organisation rollup'
 );
 
 select lives_ok(
@@ -125,55 +131,85 @@ select lives_ok(
     (select e.id from public.programme_enrollments e order by e.id limit 1),
     current_date
   )$$,
-  'progress RPC compiles and executes for a seeded enrollment'
+  'historical progress engine compiles and executes for a seeded enrollment (owner only)'
 );
+
+-- Expected action totals come straight from the original records.
+create temporary table expected_actions as
+select count(a.id)::integer as total_action_count
+from public.enrollment_actions a
+join public.programme_enrollments e on e.id = a.enrollment_id
+where e.cohort_id = '11111111-1111-4111-8111-111111111119'::uuid;
+grant select on expected_actions to authenticated;
 
 select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111116', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 set local role authenticated;
 
 select lives_ok(
-  $$select * from public.sponsor_cohort_summaries(null::uuid)$$,
-  'sponsor cohort summary executes for the seeded sponsor'
+  $$select * from public.sponsor_canonical_cohort_progress(null::uuid, current_date)$$,
+  'sponsor cohort rollup executes for the seeded sponsor'
 );
 select lives_ok(
-  $$select * from public.sponsor_organisation_summary()$$,
-  'sponsor organization summary executes for the seeded sponsor'
+  $$select * from public.sponsor_canonical_organisation_progress(current_date)$$,
+  'sponsor organisation rollup executes for the seeded sponsor'
+);
+select lives_ok(
+  $$select public.sponsor_canonical_programme_journey('11111111-1111-4111-8111-111111111119'::uuid, current_date)$$,
+  'sponsor programme journey executes for Cohort C'
 );
 select is(
-  (select cohort_count from public.sponsor_organisation_summary()),
-  (select count(*)::integer from public.sponsor_cohort_summaries(null::uuid)),
-  'organization cohort count matches visible cohort summaries'
+  (select cohort_count from public.sponsor_canonical_organisation_progress(current_date)),
+  (select count(*)::integer from public.sponsor_canonical_cohort_progress(null::uuid, current_date)),
+  'organisation cohort count matches the visible cohort rollup'
 );
 select is(
-  (select enrollment_count from public.sponsor_organisation_summary()),
-  (select coalesce(sum(enrollment_count), 0)::integer from public.sponsor_cohort_summaries(null::uuid)),
-  'organization enrollment count matches visible cohort summaries'
+  (select enrollment_count from public.sponsor_canonical_organisation_progress(current_date)),
+  (select coalesce(sum(enrollment_count), 0)::integer from public.sponsor_canonical_cohort_progress(null::uuid, current_date)),
+  'organisation enrollment count matches the visible cohort rollup'
 );
 select is(
-  (select required_units from public.sponsor_organisation_summary()),
-  (select coalesce(sum(required_units), 0)::integer from public.sponsor_cohort_summaries(null::uuid)),
-  'organization required units match visible cohort summaries'
+  (select required_units from public.sponsor_canonical_organisation_progress(current_date)),
+  (select coalesce(sum(required_units), 0)::integer from public.sponsor_canonical_cohort_progress(null::uuid, current_date) where not suppressed),
+  'organisation required units are the sum of visible cohort rows'
 );
 select is(
-  (select completed_units from public.sponsor_organisation_summary()),
-  (select coalesce(sum(completed_units), 0)::integer from public.sponsor_cohort_summaries(null::uuid)),
-  'organization completed units match visible cohort summaries'
+  (select required_units from public.sponsor_canonical_cohort_progress('11111111-1111-4111-8111-111111111119'::uuid, current_date)),
+  192,
+  'Cohort C required units use the Admin-configured entitlement'
 );
 select is(
-  (select due_units from public.sponsor_organisation_summary()),
-  (select coalesce(sum(due_units), 0)::integer from public.sponsor_cohort_summaries(null::uuid)),
-  'organization due units match visible cohort summaries'
+  (select completed_units from public.sponsor_canonical_organisation_progress(current_date)),
+  (select coalesce(sum(completed_units), 0)::integer from public.sponsor_canonical_cohort_progress(null::uuid, current_date) where not suppressed),
+  'organisation completed units are the sum of visible cohort rows'
 );
 select is(
-  (select booked_units from public.sponsor_organisation_summary()),
-  (select coalesce(sum(booked_units), 0)::integer from public.sponsor_cohort_summaries(null::uuid)),
-  'organization booked units match visible cohort summaries'
+  (select due_units from public.sponsor_canonical_organisation_progress(current_date)),
+  (select coalesce(sum(due_units), 0)::integer from public.sponsor_canonical_cohort_progress(null::uuid, current_date) where not suppressed),
+  'organisation due units are the sum of visible cohort rows'
 );
 select is(
-  (select total_action_count from public.sponsor_organisation_summary()),
-  (select coalesce(sum(total_action_count), 0)::integer from public.sponsor_cohort_summaries(null::uuid)),
-  'organization action totals match visible cohort summaries'
+  (select booked_units from public.sponsor_canonical_organisation_progress(current_date)),
+  (select coalesce(sum(booked_units), 0)::integer from public.sponsor_canonical_cohort_progress(null::uuid, current_date) where not suppressed),
+  'organisation booked units are the sum of visible cohort rows'
+);
+select is(
+  (select sum(total_action_count)::integer from public.sponsor_canonical_enrollment_metadata('11111111-1111-4111-8111-111111111119'::uuid, null::uuid, current_date)),
+  (select total_action_count from expected_actions),
+  'Cohort C action totals are the canonical engagement counts of the original action records'
+);
+select ok(
+  (
+    select c.enrollment_count = 12
+      and c.required_units = 192
+      and c.coaching_required_units = 48
+      and c.mentoring_required_units = 24
+      and c.peer_required_units = 24
+      and c.triad_required_units = 24
+      and c.training_required_units = 72
+    from public.sponsor_canonical_cohort_progress('11111111-1111-4111-8111-111111111119'::uuid, current_date) c
+  ),
+  'Cohort C has the Admin-configured requirements (per leader x 12)'
 );
 
 select * from finish();

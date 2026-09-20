@@ -4,7 +4,23 @@
 - [Demo pace fixtures](demo-pace-fixtures.md) — validate seeded pace through fixed-date progress RPC results, not inferred activity row counts.
 - [Local Supabase health failure](local-supabase-health-failure.md) — DB validation may stop before migrations because Docker cannot execute the container health check.
 - [Supabase CLI package firewall](supabase-cli-package-firewall.md) — local DB validation can be blocked before startup when the required CLI archive is denied by the package firewall.
+- [Supabase validation environment](supabase-validation-environment.md) — if the linked schema lags the repository, do not mutate its ledger; isolated branch validation may be unavailable.
 - [Historical ownership retirement](historical-ownership-retirement.md) — preserve ambiguous legacy rows, record explicit retirement evidence, and exclude retired sources from repeatable readiness/backfill scans.
 - [GitHub integration push](github-integration-push.md) — preserve local commit SHAs through the Git Database API when shell credentials cannot push.
 - [Supabase Auth schema failure](supabase-auth-schema-failure.md) — SQL can see users while Auth admin and password-token endpoints return HTTP 500 schema errors.
+- [Supabase migration versioning](supabase-mcp-migration-versioning.md) — supported MCP apply assigns current timestamp versions instead of preserving migration filenames; verify the ledger before rollout.
 - [Training timeline enrollment scope](training-timeline-scope.md) — timeline readers must use the selected enrollment; active-programme joins can mix training across programmes.
+- [Sponsor aggregation population](sponsor-aggregation-population.md) — organization counts include sponsor-visible suppressed cohorts; detailed metrics stay threshold-aware.
+- [Sponsor lifecycle semantics](sponsor-lifecycle-semantics.md) — derive cohort labels from dates; keep mixed pace as a separate progress signal.
+- [Demo activity attribution](demo-activity-attribution.md) — pre-trigger demo activity needs ownership-safe cadence attribution before progress metrics can consume it.
+- [Sponsor detail design contract](sponsor-detail-design-contract.md) — when weekly sponsor activity is unavailable, keep the reference layout and show an explicit withheld state instead of fabricating detail.
+- [Sponsor reporting source of truth](sponsor-reporting-source-of-truth.md) — current Admin module requirements define sponsor denominators; historical enrollment activity defines completion numerators.
+- [Sponsor status contract](sponsor-status-contract.md) — keep stored enrollment state distinct from the effective Sponsor lifecycle shown to sponsors.
+- [Sponsor live RPC contract](sponsor-live-rpc-contract.md) — hosted summaries omit module rollups and journey checkpoints; canonical enrollment progress is the safe detail source.
+- [Sponsor leader detail runtime](sponsor-leader-detail-runtime.md) — preflight the Supabase session and distinguish anonymous/auth transport failures from privacy-safe empty detail results.
+- [Sponsor journey reconciliation](sponsor-journey-reconciliation.md) — journey checkpoints need typed activity joins, per-module caps, checkpoint-date as-of history, and real Admin scope labels.
+- [Supabase generated type parity](supabase-generated-type-parity.md) — generated RPC types are exact-schema output, including alphabetical ordering and inferred nullability.
+- [Sponsor RPC smoke tests](sponsor-rpc-authenticated-smoke-tests.md) — raw SQL without a sponsor JWT can return zero; validate Sponsor reporting through an authenticated session.
+- [Hosted demo fixture alignment](hosted-demo-fixture-alignment.md) — resolve live Sponsor identity from the target cohort organization; hosted demo identities may differ from repository seed aliases.
+- [Sponsor RPC retirement tests](sponsor-rpc-retirement-tests.md) — update live isolation checks with canonical RPCs when legacy Sponsor reporting functions are intentionally dropped.
+- [Startup bundle loading](startup-bundle-loading.md) — keep authenticated layout features and translation namespaces out of the public entry bundle; preload them only in tests.

@@ -1,0 +1,1550 @@
+You are working on the Clariva repository:
+
+https://github.com/trinhthu88/coach.git
+
+Branch:
+
+`remediation-p0-p1-retimestamp`
+
+Latest completed Coachee UI implementation:
+
+```text
+958f442d140b0ec7ace169fa12461e717ca61c83
+```
+
+The Coachee UX/UI implementation is considered feature-complete.
+
+I am separately performing the **visual comparison** against:
+
+`Clariva Coachee Prototype standalone-src.dc.html`
+
+Therefore your task is NOT another redesign.
+
+Your task is to perform a fully automated:
+
+# COACHEE LIVE QA + DATA INTEGRITY + SOURCE-OF-TRUTH AUDIT
+
+and automatically fix concrete functional/data defects that you can prove.
+
+---
+
+# 1. EXECUTION MODE
+
+Proceed autonomously through:
+
+```text
+preflight
+→ technical audit
+→ live/demo data audit
+→ learner workflow smoke tests
+→ multi-enrollment isolation
+→ source-of-truth checks
+→ regression tests
+→ targeted fixes if needed
+→ validation
+→ commit
+→ push
+→ final QA report
+```
+
+Do not stop for approval between stages.
+
+Do not perform broad UX redesign.
+
+Do not change working visual design merely because you personally prefer another design.
+
+I am handling visual review separately.
+
+Only change UI when necessary to fix a confirmed:
+
+- functional bug
+- wrong data
+- missing canonical context
+- privacy issue
+- broken interaction
+- incorrect empty state
+- source-of-truth violation
+
+---
+
+# 2. ABSOLUTE RULE
+
+Never invent data.
+
+The hierarchy remains:
+
+```text
+Programme/Admin = WHAT is required
+Cohort            = WHEN it happens
+Enrollment        = WHO participates
+Activity          = WHAT actually happened
+```
+
+Additional canonical development records:
+
+```text
+Goal
+Goal Check-in
+Milestone
+Enrollment Action
+Reflection
+Feedback
+```
+
+Invariant:
+
+> ONE LEARNER + ONE ENROLLMENT = ONE TRUTH.
+
+The redesigned UI must expose this truth.
+
+It must not manufacture content simply because the prototype contains an example.
+
+---
+
+# 3. STARTING PREFLIGHT
+
+First run:
+
+```bash
+git fetch origin --prune
+git status -sb
+git branch --show-current
+git rev-parse HEAD
+git rev-parse origin/remediation-p0-p1-retimestamp
+git log --oneline -15
+```
+
+Confirm the expected implementation commit:
+
+```text
+958f442
+```
+
+is present.
+
+If remote has moved forward:
+
+inspect the new commits before continuing.
+
+Do not reset or discard valid work.
+
+---
+
+# 4. READ THE IMPLEMENTATION AUDIT
+
+Inspect:
+
+```text
+docs/superpowers/audits/2026-09-18-coachee-ui-visual-audit.md
+```
+
+and:
+
+```text
+docs/superpowers/plans/2026-09-18-coachee-ui-completion.md
+```
+
+Use them as context.
+
+Do not assume every statement in them is correct.
+
+Verify against actual code/data.
+
+---
+
+# 5. DO NOT REDO MY VISUAL REVIEW
+
+I am comparing the live interface against the HTML separately.
+
+Therefore concentrate on:
+
+```text
+Does it work?
+Is the value correct?
+Does it come from the right source?
+Does it belong to this enrollment?
+Does it update after an action?
+Does privacy remain correct?
+```
+
+Not:
+
+```text
+Would I personally change the spacing/color/layout?
+```
+
+---
+
+# 6. QA THE REAL COACHEE NAVIGATION
+
+For a valid learner enrollment verify:
+
+```text
+Dashboard
+My Journey
+Sessions
+configured development modules
+Training & Learning
+Messages
+Profile & Availability
+How it works
+```
+
+Specifically verify:
+
+### My Journey
+
+Must appear for a valid learner enrollment even when:
+
+```text
+Coaching receive
+```
+
+is NOT enabled.
+
+Journey is enrollment-level, not Coaching-level.
+
+---
+
+# 7. MODULE NAVIGATION RULES
+
+Verify module-driven menu visibility.
+
+If programme does NOT contain:
+
+```text
+Mentoring
+```
+
+do not show Mentoring.
+
+If programme does NOT contain:
+
+```text
+Triads
+```
+
+do not show Triads.
+
+Same for:
+
+- Training
+- Coaching
+- Peer Coaching
+
+No absent module should appear merely because another enrollment has it.
+
+Test switching enrollments if supported.
+
+---
+
+# 8. DASHBOARD SOURCE-OF-TRUTH AUDIT
+
+Audit every Dashboard section.
+
+For each value determine:
+
+```text
+UI value
+→ hook/read model
+→ canonical source
+```
+
+Audit:
+
+### Programme Hero
+
+Verify:
+
+- learner name
+- programme
+- cohort
+- programme dates
+- enrollment status
+- overall completion
+
+all correspond to selected enrollment.
+
+---
+
+# 9. NEXT UP
+
+Verify deterministic priority:
+
+```text
+1 overdue required programme activity
+2 open action due soon
+3 incomplete current checkpoint requirement
+4 next booked session
+5 next upcoming programme activity
+```
+
+Check that:
+
+- every displayed item exists canonically
+- no fake task exists
+- no completed item appears as outstanding
+- another enrollment's item cannot appear
+- empty state is correct when none exists
+
+Do not create a new persisted Next Up model.
+
+---
+
+# 10. PROGRAMME JOURNEY
+
+This is one of the highest-priority checks.
+
+Verify every visible checkpoint against canonical configuration.
+
+For each checkpoint verify:
+
+```text
+checkpoint number/order
+checkpoint title
+due date
+module scope
+required units
+completed units
+state
+```
+
+No frontend-created programme phases.
+
+No guessed dates.
+
+No guessed week ranges.
+
+No fixed assumption of six checkpoints.
+
+If programme has N configured checkpoints:
+
+render N.
+
+---
+
+# 11. PROGRAMME JOURNEY STATUS
+
+Verify:
+
+```text
+completed
+current
+upcoming
+overdue
+```
+
+are derived correctly.
+
+Verify:
+
+```text
+You are here
+```
+
+points to the actual canonical current checkpoint.
+
+---
+
+# 12. TRAINING & LEARNING PROGRESS
+
+Re-test the previously problematic area.
+
+Trace:
+
+```text
+Training & Learning
+→ canonical child requirements
+→ completion evidence
+```
+
+Verify parent display agrees with child-derived canonical progress.
+
+If the tested enrollment canonically has:
+
+```text
+required = 6
+completed = 5
+```
+
+then UI must show:
+
+```text
+5 / 6
+```
+
+This is a verification scenario, NOT a hard-coded expected value for every learner.
+
+Ensure:
+
+- hidden children excluded
+- optional children excluded where canonical rules require
+- unavailable children excluded
+- unselected children excluded
+- completed capped at required
+- parent stored `required_units` does not override authoritative configured children
+
+---
+
+# 13. ABSENT MODULES
+
+Verify that absent programme modules are hidden.
+
+Never display:
+
+```text
+0 / 0
+```
+
+for a module that does not exist in the programme.
+
+Test:
+
+- Training absent
+- Coaching absent
+- Peer Coaching absent
+- Mentoring absent
+- Triads absent
+
+where fixtures/data permit.
+
+---
+
+# 14. DEVELOPMENT JOURNEY
+
+Confirm there remains exactly ONE canonical projection:
+
+```text
+useEnrollmentDevelopmentJourney(enrollmentId, learnerId)
+```
+
+Verify full Journey consumes:
+
+```text
+events
+```
+
+and Dashboard Recent Development consumes:
+
+```text
+events.slice(0,N)
+```
+
+No second query.
+
+No second sorting/calculation.
+
+---
+
+# 15. DEVELOPMENT JOURNEY EVENT SOURCES
+
+Check actual event generation for:
+
+```text
+goal created
+goal check-in
+milestone
+action created
+action completed
+
+coaching session
+coaching reflection
+
+peer coaching
+peer feedback
+
+mentoring
+mentoring reflection
+mentoring feedback
+
+triad session
+triad self-reflection
+
+training
+quiz
+programme reflection
+
+private reflection
+```
+
+Verify no duplicate event appears for one canonical record unless there are legitimately distinct events such as:
+
+```text
+action created
++
+action completed
+```
+
+---
+
+# 16. REFLECTION QA
+
+Exactly five learner Reflection sources:
+
+```text
+Programme / Learning
+Coaching
+Mentoring
+Triad Self-Reflection
+Private
+```
+
+Canonical mapping:
+
+```text
+Programme
+→ programme_reflections + reflection_submissions
+
+Coaching
+→ sessions.coachee_notes
+
+Mentoring
+→ mentoring_sessions.mentee_notes
+
+Triad
+→ triad_reflections
+
+Private
+→ coachee_reflections
+```
+
+Test each source.
+
+---
+
+# 17. PROGRAMME REFLECTION
+
+Verify:
+
+- correct selected enrollment
+- submission saves
+- reload persists
+- appears in Reflections
+- appears in Development Journey
+- source label correct
+
+Do not copy it into `coachee_reflections`.
+
+---
+
+# 18. COACHING REFLECTION
+
+Verify:
+
+```text
+sessions.coachee_notes
+```
+
+- saves correctly
+- persists
+- correct enrollment
+- correct session
+- appears in Reflections
+- appears in Development Journey
+
+---
+
+# 19. MENTORING REFLECTION
+
+Verify:
+
+```text
+mentoring_sessions.mentee_notes
+```
+
+same behavior.
+
+---
+
+# 20. TRIAD SELF-REFLECTION
+
+Verify:
+
+```text
+triad_reflections
+```
+
+is:
+
+```text
+Reflection
+```
+
+NOT Feedback.
+
+Test:
+
+- correct learner
+- correct enrollment
+- correct Triad session
+- self-rating persists
+- reflection text persists
+- reload works
+- Journey event exists
+- Reflection tab item exists
+
+Round/Week:
+
+show only if canonical relationship resolves them.
+
+No guessing.
+
+---
+
+# 21. PRIVATE REFLECTION
+
+Verify generic form says:
+
+```text
+Add Private Reflection
+```
+
+and writes only:
+
+```text
+coachee_reflections
+```
+
+with selected:
+
+```text
+enrollment_id
+```
+
+Test multiple enrollments.
+
+Private Reflection A must not appear in Journey B.
+
+---
+
+# 22. GOAL CHECK-IN IS NOT REFLECTION
+
+Verify goal rating/check-in:
+
+```text
+goal_checkins
+```
+
+does NOT appear as a formal Reflection unless there is a separate canonical Reflection record.
+
+It may appear as a Development Journey goal event.
+
+Terminology should remain:
+
+```text
+Goal check-in
+```
+
+not:
+
+```text
+Goal reflection
+```
+
+for that functionality.
+
+---
+
+# 23. FEEDBACK QA
+
+Learner-visible feedback sources only:
+
+```text
+mentoring_feedback
+peer_session_competency_feedback
+```
+
+Never expose:
+
+```text
+coach_session_feedback
+```
+
+Search learner-facing code to reconfirm.
+
+---
+
+# 24. FEEDBACK ENROLLMENT ISOLATION
+
+This was recently changed and is important.
+
+Test:
+
+```text
+Learner
+├─ Enrollment A
+└─ Enrollment B
+```
+
+For Journey A:
+
+only feedback associated with A may appear.
+
+For Journey B:
+
+only feedback associated with B may appear.
+
+Trace through:
+
+```text
+feedback
+→ session/activity
+→ enrollment_id
+```
+
+Never use date inference.
+
+---
+
+# 25. GOALS
+
+Verify selected enrollment isolation for:
+
+```text
+coachee_goals
+goal_checkins
+coachee_milestones
+```
+
+Check:
+
+- goal count
+- progress
+- start/current/target
+- milestones
+- status
+
+Dashboard and Journey must not calculate different progress.
+
+---
+
+# 26. ACTIONS
+
+Canonical source:
+
+```text
+enrollment_actions
+```
+
+Verify:
+
+- selected enrollment isolation
+- completion status
+- due dates
+- overdue grouping
+- linked goal
+- linked milestone/activity where applicable
+
+No legacy JSON action source should feed redesigned screens.
+
+---
+
+# 27. UNIFIED SESSIONS
+
+Verify these canonical source types:
+
+```text
+Coaching
+→ sessions
+
+Peer Coaching
+→ peer_sessions / approved peer session source
+
+Mentoring
+→ mentoring_sessions
+
+Triad
+→ triad_sessions
+```
+
+Also account for `coachee_peer_sessions` only where the current canonical app legitimately uses it.
+
+Do not merge incompatible peer models blindly.
+
+---
+
+# 28. SESSION PROGRAMME CONTEXT
+
+Every learner-facing programme session should visibly resolve:
+
+```text
+Programme Name
+Cohort/Class
+```
+
+through enrollment.
+
+Verify actual cards and detail views.
+
+Never infer from:
+
+- date
+- session title
+- participant membership
+
+---
+
+# 29. SESSION DETAIL ROUTING
+
+Verify at least:
+
+### Coaching
+
+opens correct `sessions` record.
+
+### Peer Coaching
+
+uses correct type/query context and correct table.
+
+Confirm no regression of:
+
+```text
+?type=peer
+```
+
+where required.
+
+### Mentoring
+
+opens canonical mentoring session.
+
+### Triad
+
+opens correct canonical Triad context.
+
+---
+
+# 30. SESSION COMPLETION
+
+Test allowable completion workflows.
+
+Specifically verify the previous failure class does NOT return:
+
+```text
+column does not exist
+course_id
+provider_notes
+receiver_notes
+```
+
+or similar stale-schema errors.
+
+Do not add fake fields to hide errors.
+
+Fix actual source-specific queries if a regression is found.
+
+---
+
+# 31. PRACTICE & COMPETENCY ANALYTICS
+
+Verify Coachee Practice Analytics is integrated into:
+
+```text
+My Journey
+```
+
+rather than competing as another primary Journey destination.
+
+Verify analytics are selected-enrollment scoped.
+
+No score from another programme may leak in.
+
+Do not invent competency scores for empty periods.
+
+---
+
+# 32. TRIADS WORKSPACE
+
+Verify:
+
+- group
+- participants
+- role
+- current round
+- training week where canonical
+- session
+- reflection status
+
+All from canonical relationships.
+
+If Week is NULL:
+
+hide Week.
+
+If Round is NULL:
+
+hide Round.
+
+---
+
+# 33. TRAINING & LEARNING WORKSPACE
+
+Verify only configured learning elements appear:
+
+```text
+Skill Cards
+Assignments
+Quizzes
+Programme Reflections
+Daily Prompts
+```
+
+Do not show an element simply because the UI supports that type.
+
+---
+
+# 34. COACHING WORKSPACE
+
+Check:
+
+- assigned coach
+- coach discovery
+- next session
+- session history
+- booking
+
+No default/sample coach.
+
+---
+
+# 35. PEER COACHING WORKSPACE
+
+Check:
+
+- peer partner
+- participant role
+- sessions
+- feedback
+- booking
+
+All real records.
+
+---
+
+# 36. MENTORING WORKSPACE
+
+Check:
+
+- actual mentor
+- sessions
+- prep
+- reflection
+- feedback
+
+No mentor:
+
+show legitimate Find Mentor state.
+
+---
+
+# 37. MESSAGES
+
+Verify messages still function after shell redesign.
+
+Check:
+
+- unread badge
+- conversation loading
+- send behavior
+- session context where available
+- responsive behavior
+
+Do not require fake programme context where none exists.
+
+---
+
+# 38. PROFILE & AVAILABILITY
+
+Verify existing persisted fields still:
+
+- load
+- edit
+- save
+- reload
+
+If prototype-only preferences have no persistence:
+
+they must not silently pretend to save.
+
+---
+
+# 39. MOBILE NAVIGATION TECHNICAL QA
+
+I will visually review mobile separately.
+
+You verify functionality:
+
+```text
+Dashboard
+My Journey
+Sessions
+Messages
+More
+```
+
+Check:
+
+- route changes
+- active state
+- access to all development modules through More
+- no inaccessible route
+- no desktop-only critical functionality
+
+---
+
+# 40. MULTI-ENROLLMENT MASTER TEST
+
+Create or maintain a dedicated regression scenario:
+
+```text
+Learner
+├── Enrollment A
+│   ├── Goals A
+│   ├── Actions A
+│   ├── Sessions A
+│   ├── Reflections A
+│   └── Feedback A
+│
+└── Enrollment B
+    ├── Goals B
+    ├── Actions B
+    ├── Sessions B
+    ├── Reflections B
+    └── Feedback B
+```
+
+When selected enrollment = A:
+
+ZERO B development content may appear.
+
+And vice versa.
+
+Test:
+
+- Dashboard
+- Journey
+- Sessions where selected-enrollment filtering is expected
+- Goals
+- Actions
+- Reflections
+- Feedback
+- Practice Analytics
+
+---
+
+# 41. PRIVACY QA
+
+Learner must not access:
+
+```text
+coach_session_feedback
+admin-only flags
+coach-private operational notes
+another learner's private reflections
+another learner's programme records
+another enrollment's private programme records
+```
+
+Do not relax RLS.
+
+---
+
+# 42. PROTOTYPE-DATA LEAK CHECK
+
+Search production source for distinctive prototype sample values.
+
+At minimum:
+
+```bash
+rg -n \
+  "Mai Nguyen|Clariva Demo Organisation|Emerging Leaders Programme|September 2026" \
+  src
+```
+
+Review every match.
+
+Also inspect for copied static arrays representing:
+
+- six checkpoints
+- fake sessions
+- fake goals
+- fake feedback
+- fake reflection text
+
+Tests/fixtures may legitimately contain illustrative values.
+
+Production runtime code may not.
+
+---
+
+# 43. EMPTY STATE QA
+
+Test legitimate empty behavior for:
+
+```text
+no goals
+no actions
+no feedback
+no reflections
+no sessions
+no upcoming sessions
+no Next Up
+no configured module
+no Triad Round
+no Triad Week
+```
+
+No prototype data should appear as fallback.
+
+---
+
+# 44. CROSS-ROLE TRUTH CHECK
+
+For the SAME enrollment, compare learner-visible programme facts with Sponsor aggregate facts where semantically equivalent.
+
+Check:
+
+```text
+overall completion
+required/completed activities
+Training
+Coaching
+Peer Coaching
+Mentoring
+Triads
+goal count/progress where Sponsor is permitted
+action counts
+```
+
+The values should match where measuring the same thing.
+
+Privacy can differ.
+
+Truth cannot.
+
+Do not expose private content to Sponsor to make this test pass.
+
+---
+
+# 45. USE TARGETED FIXES ONLY
+
+If a defect is found:
+
+1. document reproduction;
+2. identify canonical expected result;
+3. trace exact root cause;
+4. write regression test;
+5. make smallest correct fix;
+6. rerun targeted tests;
+7. continue QA.
+
+Do not reopen the architecture.
+
+Do not perform unrelated refactors.
+
+---
+
+# 46. DO NOT CHANGE VISUAL DESIGN UNLESS FUNCTIONALLY REQUIRED
+
+I am reviewing appearance separately.
+
+Examples of things you should NOT independently change during this task:
+
+```text
+spacing
+font size
+card radius
+colour preference
+section ordering
+stylistic icon selection
+```
+
+unless they directly cause:
+
+- unreadability
+- inaccessible controls
+- broken responsive interaction
+- missing data/context
+- incorrect functionality
+
+---
+
+# 47. AUTOMATED VALIDATION
+
+After any fixes, run targeted tests.
+
+At the end run:
+
+```bash
+npx vitest run
+npx tsc --noEmit
+npm run lint
+npm run build
+git diff --check
+```
+
+If DB/schema/RPC code was not changed:
+
+DB replay is not necessary.
+
+If DB code is changed:
+
+run authoritative DB validation.
+
+---
+
+# 48. BASELINE EXPECTATION
+
+Previous successful baseline:
+
+```text
+65 test files
+287 tests
+0 TypeScript errors
+0 lint errors
+16 known warnings
+build PASS
+```
+
+Do not force exact test counts if additional tests are added.
+
+The new final test count should normally be >= baseline if you add coverage.
+
+---
+
+# 49. COMMIT POLICY
+
+If QA finds no defects:
+
+do NOT create a meaningless commit.
+
+Return:
+
+```text
+NO CODE CHANGES REQUIRED
+```
+
+If defects are found and fixed:
+
+create focused commit(s).
+
+Example:
+
+```text
+fix(coachee): resolve live QA data integrity defects
+```
+
+Do not mix visual redesign changes into this QA commit.
+
+---
+
+# 50. PUSH POLICY
+
+If commits are created:
+
+push to:
+
+```text
+origin/remediation-p0-p1-retimestamp
+```
+
+Do not force push.
+
+Do not merge to main.
+
+After push:
+
+```bash
+git fetch origin
+git status -sb
+git rev-parse HEAD
+git rev-parse origin/remediation-p0-p1-retimestamp
+```
+
+Require local = remote.
+
+---
+
+# 51. FINAL REPORT
+
+Return this exact structure.
+
+## A. QA Baseline
+
+```text
+Branch:
+Starting HEAD:
+Ending HEAD:
+Remote HEAD:
+Working tree:
+```
+
+---
+
+## B. Overall Result
+
+Choose one:
+
+```text
+PASS — NO FUNCTIONAL DEFECTS FOUND
+```
+
+or:
+
+```text
+PASS — DEFECTS FOUND AND FIXED
+```
+
+or:
+
+```text
+BLOCKED
+```
+
+---
+
+## C. Page QA Matrix
+
+| Area | Result | Data/source notes |
+|---|---|---|
+| Dashboard | PASS/FAIL | |
+| Programme Journey | PASS/FAIL | |
+| Development Journey | PASS/FAIL | |
+| Goals | PASS/FAIL | |
+| Actions | PASS/FAIL | |
+| Sessions | PASS/FAIL | |
+| Session Detail | PASS/FAIL | |
+| Reflections | PASS/FAIL | |
+| Feedback | PASS/FAIL | |
+| Practice Analytics | PASS/FAIL | |
+| Training & Learning | PASS/FAIL | |
+| Coaching | PASS/FAIL | |
+| Peer Coaching | PASS/FAIL | |
+| Mentoring | PASS/FAIL | |
+| Triads | PASS/FAIL | |
+| Messages | PASS/FAIL | |
+| Profile/Availability | PASS/FAIL | |
+| Mobile navigation | PASS/FAIL | |
+
+---
+
+## D. Source-of-Truth Matrix
+
+For each important value:
+
+```text
+UI
+→ hook
+→ canonical source
+→ enrollment filter
+```
+
+Report especially:
+
+- completion
+- Training progress
+- Programme Journey
+- goals
+- actions
+- sessions
+- reflections
+- feedback
+- Practice Analytics
+
+---
+
+## E. Programme Journey Verification
+
+Report actual tested:
+
+```text
+Programme:
+Cohort:
+Enrollment:
+Configured checkpoints:
+Rendered checkpoints:
+```
+
+Confirm:
+
+```text
+NO INVENTED CHECKPOINTS
+```
+
+---
+
+## F. Training Verification
+
+Report actual tested canonical:
+
+```text
+required:
+completed:
+displayed:
+```
+
+Do not assume 5/6 unless that is the real selected enrollment result.
+
+---
+
+## G. Reflection Verification
+
+| Type | Save/load | Journey | Enrollment isolated |
+|---|---|---|---|
+| Programme | | | |
+| Coaching | | | |
+| Mentoring | | | |
+| Triad Self-Reflection | | | |
+| Private | | | |
+
+---
+
+## H. Feedback Verification
+
+| Type | Visible | Enrollment isolated |
+|---|---|---|
+| Mentoring | | |
+| Peer Coaching | | |
+| Coach operational | MUST BE NO | N/A |
+
+---
+
+## I. Multi-Enrollment Isolation
+
+Explicitly report result for:
+
+```text
+Goals
+Actions
+Sessions
+Reflections
+Feedback
+Practice Analytics
+```
+
+---
+
+## J. Session Verification
+
+| Type | Correct source | Enrollment | Programme | Cohort | Detail route |
+|---|---|---|---|---|---|
+| Coaching | | | | | |
+| Peer | | | | | |
+| Mentoring | | | | | |
+| Triad | | | | | |
+
+---
+
+## K. Privacy
+
+Confirm:
+
+```text
+coach_session_feedback not learner-visible
+private reflection isolation
+cross-learner isolation
+RLS unchanged
+```
+
+---
+
+## L. Prototype Leak Scan
+
+Report all sample-data scan results.
+
+Confirm either:
+
+```text
+NO PROTOTYPE SAMPLE DATA IN PRODUCTION RUNTIME
+```
+
+or list and fix every violation.
+
+---
+
+## M. Empty States
+
+Report tested empty-state behavior.
+
+---
+
+## N. Defects Found
+
+For each defect:
+
+```text
+Problem:
+Root cause:
+Canonical expected behavior:
+Fix:
+Regression test:
+```
+
+If none:
+
+```text
+None.
+```
+
+---
+
+## O. Validation
+
+Exact final results:
+
+```text
+Vitest:
+TypeScript:
+Lint:
+Build:
+git diff --check:
+DB validation:
+```
+
+---
+
+## P. Git / Push
+
+If fixes:
+
+```text
+Commits:
+Push:
+Local/remote match:
+```
+
+If none:
+
+```text
+NO CODE CHANGES REQUIRED
+```
+
+---
+
+## Q. Items for Human Visual Review
+
+Do NOT decide these.
+
+List any areas I should visually inspect, such as:
+
+```text
+spacing
+overflow
+responsive wrapping
+checkpoint readability
+card hierarchy
+mobile menu appearance
+prototype visual parity
+```
+
+This allows me to compare the appearance while you focus on correctness.
+
+---
+
+# COMPLETION RULE
+
+This QA is successful only when we can say:
+
+> The Coachee interface may still need human visual judgment, but the information shown is canonical, enrollment-correct, privacy-correct, functionally operational, and contains no invented prototype data.
+
+That is your objective.

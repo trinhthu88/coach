@@ -1,0 +1,125 @@
+Proceed with the final Sponsor source-of-truth integration.
+
+IMPORTANT ARCHITECTURE RULE:
+
+Sponsor reporting is derived output only.
+
+Source of truth:
+1. Admin/programme/enrollment configuration = what is required.
+2. Actual leader historical activity = what happened.
+3. Sponsor reporting = formulas/aggregation over those two sources.
+
+Do not hardcode Sponsor metrics.
+Do not seed aggregate Sponsor values.
+Do not introduce a second progress calculation.
+
+PRESERVE:
+- get_enrollment_progress
+- existing validated live Sponsor RPC pipeline
+- authorization
+- RLS
+- privacy thresholds
+- historical attribution behavior
+- existing live fixes
+
+Do NOT deploy the older parallel local Sponsor migrations wholesale.
+
+NEXT:
+
+1. Build ONE new forward-only additive migration against the CURRENT hosted pipeline.
+
+Expose Sponsor-safe canonical data for:
+- Coaching required/completed/due/booked
+- Training required/completed/due/booked
+- Peer Coaching required/completed/due/booked
+- Mentoring required/completed/due/booked
+- Triads required/completed/due/booked
+
+The completed numerator must come from actual leader historical activity through the canonical progress path.
+
+The required denominator must come from canonical programme/enrollment requirements.
+
+Also expose:
+- stored enrollment status
+- effective Sponsor status
+
+Keep stored status unchanged.
+Effective status is reporting-only.
+
+2. Add an Admin-derived Sponsor journey contract.
+
+Derive it from real configuration/history only:
+- programme modules
+- programme/cohort dates
+- training weeks
+- cohort week overrides
+- enrollment snapshots/milestones
+- attributed historical activity
+
+Do not invent:
+- fixed week counts
+- generic phases
+- synthetic checkpoints
+
+3. Preserve privacy.
+
+Cohorts below the privacy threshold must not expose individual/module-level private detail.
+
+4. Before applying the migration, show:
+- exact existing live functions being extended
+- exact fields being added
+- affected callers
+- confirmation that existing fields retain their current semantics
+- confirmation that no current progress calculation is replaced
+
+Then apply the additive migration only.
+
+5. Regenerate Supabase types.
+
+6. Update Sponsor Dashboard, Cohort Detail, roster, and Leader Detail so all use the same canonical hosted contract.
+
+Remove temporary client-side enrichment only when equivalent canonical bulk fields are available.
+
+7. Add reconciliation tests based on formulas:
+
+Per leader:
+sum(module completed) = total completed
+sum(module required) = total required
+
+Per cohort:
+sum(leader module completed) = cohort module completed
+sum(leader total completed) = cohort total completed
+sum(leader required) = cohort required
+
+Organisation:
+sum(cohort totals) = organisation totals
+
+Training must participate in the same formulas as every other module.
+
+No test should make the application depend on a fixed demo number.
+Demo values may be used only as regression expectations for the current dataset.
+
+8. Run:
+- database contract tests
+- frontend tests
+- full test suite
+- production build
+- lint
+- authenticated Sponsor visual verification
+
+9. Verify multiple real demo leaders with different histories across:
+- Dashboard
+- Cohort Detail
+- Leader Detail
+
+All views must derive from the same historical leader records and requirements.
+
+10. Report:
+- migration created
+- live functions extended
+- frontend files changed
+- test results
+- screenshots / reconciliation evidence
+- any remaining gap
+
+Do not declare completion until the hosted contract and all Sponsor views reconcile end-to-end.

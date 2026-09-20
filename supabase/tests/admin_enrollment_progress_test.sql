@@ -1,39 +1,25 @@
 begin;
 select plan(5);
 
-select has_function(
-  'public',
-  'get_admin_enrollment_progress',
-  array['uuid[]', 'date']
-);
-
--- The admin aggregate must expose the canonical field, never the legacy cache.
+-- Admin reads THE canonical completion engine. The former weighted snapshot
+-- aggregate (get_admin_enrollment_progress) was a second engine and was
+-- retired in 20260918180000_retire_legacy_sponsor_sources.
+select hasnt_function('public', 'get_admin_enrollment_progress', array['uuid[]', 'date'],
+  'the Admin weighted-snapshot progress engine is retired');
+select has_function('public', 'admin_canonical_enrollment_progress', array['uuid[]', 'date']);
 select ok(
-  pg_get_functiondef(
-    'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-  ) ~ 'full_completion_pct',
-  'admin progress returns canonical full_completion_pct'
+  pg_get_functiondef('public.admin_canonical_enrollment_progress(uuid[],date)'::regprocedure) ~ 'canonical_enrollment_progress'
+    and pg_get_functiondef('public.admin_canonical_enrollment_progress(uuid[],date)'::regprocedure) ~ 'has_role',
+  'admin canonical progress is the shared construction behind an admin check'
 );
 select ok(
-  pg_get_functiondef(
-    'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-  ) ~ 'required_module_count <> module_count',
-  'modules with no required units produce no overall value'
+  pg_get_functiondef('public.canonical_enrollment_progress(uuid,date)'::regprocedure) !~ 'enrollment_module_snapshots|get_enrollment_progress|weight',
+  'the shared construction reads no snapshot progress or module weights'
 );
 select ok(
-  pg_get_functiondef(
-    'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-  ) ~ 'valid_weight_count <> module_count',
-  'missing or invalid weights produce no overall value'
-);
-select ok(
-  pg_get_functiondef(
-    'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-  ) ~ 'weight_sum <> 100'
-    and pg_get_functiondef(
-      'public.get_admin_enrollment_progress(uuid[],date)'::regprocedure
-    ) ~ 'weighted_value',
-  'exactly 100 valid weight points are required and weighted values are isolated per enrollment'
+  pg_get_functiondef('public.learner_canonical_progress(uuid,date)'::regprocedure) ~ 'canonical_enrollment_progress'
+    and pg_get_functiondef('public.sponsor_canonical_enrollment_progress(uuid,date)'::regprocedure) ~ 'canonical_enrollment_progress',
+  'Learner and Sponsor progress use the same construction'
 );
 
 select * from finish();

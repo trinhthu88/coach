@@ -294,13 +294,37 @@ BEGIN
         ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id;
     END IF;
   END LOOP;
-  INSERT INTO triad_groups(id,cohort_id,programme_id,name,member_1_id,member_2_id,member_3_id,enrollment_1_id,enrollment_2_id,enrollment_3_id)
-    VALUES('eeeeeeee-eeee-4eee-8eee-000000000001',cb,pb,'B Demo Triad',u1,u2,u3,e1,e2,e3)
-    ON CONFLICT(id) DO UPDATE SET member_1_id=excluded.member_1_id,member_2_id=excluded.member_2_id,member_3_id=excluded.member_3_id,enrollment_1_id=excluded.enrollment_1_id,enrollment_2_id=excluded.enrollment_2_id,enrollment_3_id=excluded.enrollment_3_id;
+  -- Triad: every required Triad has its own group assignment. This is the
+  -- cohort's Triad 1 group (membership by enrollment); the session time is
+  -- its scheduled time.
+  INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language)
+    SELECT 'eeeeeeee-eeee-4eee-8eee-000000000001', d.id, 'vi'
+    FROM cohort_requirement_dates d
+    WHERE d.cohort_id = cb AND d.programme_id = pb AND d.module = 'triads' AND d.ordinal = 1
+    ON CONFLICT(id) DO NOTHING;
+  IF NOT EXISTS (SELECT 1 FROM triad_groups WHERE id = 'eeeeeeee-eeee-4eee-8eee-000000000001') THEN
+    RAISE EXCEPTION 'seed: cohort B has no Triad 1 requirement date';
+  END IF;
+  INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
+    SELECT v.triad_group_id, v.enrollment_id, v.member_order
+    FROM (VALUES
+      ('eeeeeeee-eeee-4eee-8eee-000000000001'::uuid,e1,1),
+      ('eeeeeeee-eeee-4eee-8eee-000000000001'::uuid,e2,2),
+      ('eeeeeeee-eeee-4eee-8eee-000000000001'::uuid,e3,3)
+    ) AS v(triad_group_id,enrollment_id,member_order)
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM triad_group_members existing
+      WHERE existing.triad_group_id = v.triad_group_id
+        AND existing.enrollment_id = v.enrollment_id
+    );
   SELECT id INTO w FROM training_weeks WHERE programme_id=pb AND week_number=1;
-  INSERT INTO triad_sessions(id,triad_group_id,proposed_start_time,proposed_end_time,proposed_by,member_1_response,member_2_response,member_3_response,coach_enrollment_id,coachee_enrollment_id,observer_enrollment_id,status,notes)
-    VALUES('eeeeeeee-eeee-4eee-8eee-000000000002','eeeeeeee-eeee-4eee-8eee-000000000001','2026-10-10T10:00:00Z','2026-10-10T11:00:00Z','system','accepted','accepted','accepted',e1,e2,e3,'confirmed','Private triad notes')
+  INSERT INTO triad_sessions(id,triad_group_id,scheduled_start_time,scheduled_end_time,status,notes)
+    VALUES('eeeeeeee-eeee-4eee-8eee-000000000002','eeeeeeee-eeee-4eee-8eee-000000000001','2026-10-10T10:00:00Z','2026-10-10T11:00:00Z','confirmed','Private triad notes')
     ON CONFLICT(id) DO UPDATE SET status=excluded.status,notes=excluded.notes;
+  INSERT INTO triad_session_responses(triad_session_id,enrollment_id,response,responded_at)
+    SELECT 'eeeeeeee-eeee-4eee-8eee-000000000002', x, 'accepted', '2026-09-01' FROM unnest(ARRAY[e1,e2,e3]) x
+    ON CONFLICT(triad_session_id,enrollment_id) DO NOTHING;
   INSERT INTO peer_sessions(id,enrollment_id,peer_coach_id,peer_coachee_id,topic,start_time,duration_minutes,status,coachee_rating)
     VALUES('eeeeeeee-eeee-4eee-8eee-000000000003',e2,mentor_provider,u2,'B peer practice','2026-10-15',60,'completed',5),
           ('eeeeeeee-eeee-4eee-8eee-000000000004',e3,mentor_provider,u3,'B peer practice','2026-11-15',60,'confirmed',NULL)
@@ -357,4 +381,313 @@ BEGIN
     VALUES('77777777-7777-4777-8777-000000000301',u,e,w,'2026-10-01','2026-10-02')
     ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,completed_at=excluded.completed_at;
 END $matrix$;
+
+-- Cohort C is a completed blended programme with twelve leaders and a small,
+-- varied set of real leader-level completions (see below): 2 leaders finish
+-- every requirement, several are partially complete, several have little or
+-- no activity. Sponsor progress must reconcile exactly to those leader
+-- records against the Admin-defined entitlement — never a hand-set aggregate.
+DO $cohort_c$
+DECLARE
+  org uuid := '11111111-1111-4111-8111-111111111111';
+  pc uuid := '11111111-1111-4111-8111-111111111118';
+  cc uuid := '11111111-1111-4111-8111-111111111119';
+  uid uuid; eid uuid; coach uuid; mentor uuid; w uuid;
+  i int;
+BEGIN
+  SELECT p.id INTO coach FROM profiles p JOIN user_roles r ON r.user_id=p.id
+    WHERE r.role='coach' ORDER BY p.id LIMIT 1;
+  SELECT p.id INTO mentor FROM profiles p JOIN user_roles r ON r.user_id=p.id
+    WHERE r.role='coach' ORDER BY p.id OFFSET 1 LIMIT 1;
+
+  INSERT INTO public.programmes(id,name,description,duration_months,is_active,coachee_session_limit,coach_session_limit,peer_session_limit,peer_given_limit)
+    VALUES(pc,'Emerging Leaders','Blended coaching, learning, mentoring, peer and triad demonstration',5,true,4,4,2,2)
+    ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,duration_months=excluded.duration_months;
+  INSERT INTO public.cohorts(id,name,programme_id,organization_id,start_date,end_date)
+    VALUES(cc,'Emerging Leaders – Cohort C',pc,org,'2026-03-01','2026-07-05')
+    ON CONFLICT(id) DO UPDATE SET name=excluded.name,programme_id=excluded.programme_id,organization_id=excluded.organization_id,start_date=excluded.start_date,end_date=excluded.end_date;
+
+  FOR i IN 1..6 LOOP
+    w:=('67676767-6767-4676-8676-'||lpad(i::text,12,'0'))::uuid;
+    INSERT INTO training_weeks(id,programme_id,week_number,title,skill_card_html,is_visible,unlock_date,sort_order)
+      VALUES(w,pc,i,format('Emerging Leaders module %s',i),'<p>Demo learning content.</p>',true,'2026-03-01'::date+((i-1)*21),i)
+      ON CONFLICT(id) DO UPDATE SET title=excluded.title,unlock_date=excluded.unlock_date,is_visible=true;
+  END LOOP;
+  INSERT INTO programme_modules(programme_id,module,enabled,config)
+    VALUES
+      (pc,'training',true,'{"required":true,"required_units":6,"distribution_mode":"training_linked","distribution_settings":{"training_week_ids":["67676767-6767-4676-8676-000000000001","67676767-6767-4676-8676-000000000002","67676767-6767-4676-8676-000000000003","67676767-6767-4676-8676-000000000004","67676767-6767-4676-8676-000000000005","67676767-6767-4676-8676-000000000006"]},"weight":25}'),
+      (pc,'coaching',true,'{"required":true,"required_units":4,"distribution_mode":"evenly_distributed","weight":25}'),
+      (pc,'mentoring',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":15}'),
+      (pc,'peer_coaching',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":15}'),
+      (pc,'triads',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":20}')
+    ON CONFLICT(programme_id,module) DO UPDATE SET enabled=excluded.enabled,config=excluded.config;
+
+  -- Reset the named demo cohort's historical activity before rebuilding its
+  -- deterministic participation fixture; never remove other users' data.
+  DELETE FROM public.session_activity_attributions a
+    USING public.programme_enrollments e
+    WHERE a.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.enrollment_actions a
+    USING public.programme_enrollments e
+    WHERE a.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.coachee_goals g
+    USING public.programme_enrollments e
+    WHERE g.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.sessions s
+    USING public.programme_enrollments e
+    WHERE s.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.peer_sessions s
+    USING public.programme_enrollments e
+    WHERE s.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.coachee_peer_sessions s
+    USING public.programme_enrollments e
+    WHERE s.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.mentoring_sessions s
+    USING public.programme_enrollments e
+    WHERE s.enrollment_id=e.id AND e.cohort_id=cc;
+  DELETE FROM public.training_progress p
+    USING public.programme_enrollments e
+    WHERE p.enrollment_id=e.id AND e.cohort_id=cc;
+  -- Triad groups / sessions are not deleted: a completed Triad session is
+  -- history (triad_sessions_guard_delete). They are upserted below by id.
+
+  FOR i IN 1..12 LOOP
+    uid:=('13131313-1313-4131-8131-'||lpad(i::text,12,'0'))::uuid;
+    eid:=('14141414-1414-4141-8141-'||lpad(i::text,12,'0'))::uuid;
+    INSERT INTO auth.users(id,instance_id,aud,role,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
+      VALUES(uid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',
+        format('leader.c%s@demo.clariva.club',i),now(),
+        jsonb_build_object('full_name',format('Leader C%s',i)),now(),now())
+      ON CONFLICT(id) DO NOTHING;
+    INSERT INTO profiles(id,email,full_name,status)
+      VALUES(uid,format('leader.c%s@demo.clariva.club',i),format('Leader C%s',i),'active')
+      ON CONFLICT(id) DO UPDATE SET full_name=excluded.full_name,status='active';
+    INSERT INTO user_roles(user_id,role) VALUES(uid,'coachee') ON CONFLICT(user_id,role) DO NOTHING;
+    INSERT INTO coachee_profiles(id,job_title,industry,location,timezone,goals,approval_status)
+      VALUES(uid,'Emerging Leader','Professional services','Ho Chi Minh City, Vietnam','Asia/Ho_Chi_Minh',
+        'Build practical leadership habits in a blended programme.','active')
+      ON CONFLICT(id) DO UPDATE SET approval_status='active';
+    INSERT INTO programme_enrollments(id,user_id,coachee_id,programme_id,cohort_id,organization_id,start_date,end_date,status)
+      VALUES(eid,uid,uid,pc,cc,org,'2026-03-01','2026-07-05',
+        'at_risk'::enrollment_status)
+      ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id,cohort_id=excluded.cohort_id,
+        start_date=excluded.start_date,end_date=excluded.end_date,status=excluded.status;
+    PERFORM generate_enrollment_schedule(eid);
+    INSERT INTO coachee_coach_allowlist(coachee_id,coach_id,created_by)
+      VALUES(uid,coach,auth.uid()) ON CONFLICT(coachee_id,coach_id) DO NOTHING;
+    INSERT INTO mentoring_allowlist(mentee_user_id,mentor_user_id,created_by)
+      VALUES(uid,mentor,auth.uid()) ON CONFLICT(mentee_user_id,mentor_user_id) DO NOTHING;
+  END LOOP;
+
+  -- Small, varied, hand-reconcilable completion data for the 12 Cohort C
+  -- leaders: 2 relatively complete, several partially complete, several
+  -- with little/no activity. Inserted as ordinary rows through the real
+  -- coaching/peer/mentoring/training tables so the existing AFTER INSERT
+  -- triggers (20260914071405_activity_cadence_attribution.sql) attribute
+  -- each one to the leader's own milestone snapshot automatically. Dates
+  -- match each module's evenly_distributed/training_linked due dates
+  -- exactly, so every unit lands on-or-after its milestone and is counted.
+  -- Leader   coaching/4  peer/2  mentoring/2  training/6
+  --   1            4        2         2           6   (fully complete)
+  --   2            3        2         1           5
+  --   3            2        1         1           4
+  --   4            1        1         0           3
+  --   5            2        0         1           2
+  --   6            1        0         0           1
+  --   7            0        0         0           0
+  --   8            0        0         0           0
+  --   9            4        2         2           6   (fully complete)
+  --  10            1        0         0           2
+  --  11            0        1         0           1
+  --  12            0        0         0           0
+  -- Triads (2 required) are seeded separately below, since a single triad
+  -- session credits every attending leader at once: 1:2 2:2 3:1 4:1 5:0 6:0
+  -- 7:0 8:0 9:2 10:1 11:0 12:0.
+  DECLARE
+    coaching_units integer[] := ARRAY[4,3,2,1,2,1,0,0,4,1,0,0];
+    peer_units integer[] := ARRAY[2,2,1,1,0,0,0,0,2,0,1,0];
+    mentoring_units integer[] := ARRAY[2,1,1,0,1,0,0,0,2,0,0,0];
+    training_units integer[] := ARRAY[6,5,4,3,2,1,0,0,6,2,1,0];
+    coaching_due date[] := ARRAY['2026-04-01','2026-05-03','2026-06-03','2026-07-05']::date[];
+    pair_due date[] := ARRAY['2026-05-03','2026-07-05']::date[];
+    week_due date[] := ARRAY['2026-03-01','2026-03-08','2026-03-15','2026-03-22','2026-03-29','2026-04-05']::date[];
+    peer_coach_id uuid;
+    j int;
+  BEGIN
+    -- Peer coaching sessions are given by an opted-in coach, not by another
+    -- leader (validate_peer_session_enrollment() requires a coach_profiles
+    -- row with peer_coaching_opt_in = true on the giving side).
+    SELECT cp.id INTO peer_coach_id
+    FROM public.coach_profiles cp
+    WHERE cp.peer_coaching_opt_in
+    ORDER BY cp.id
+    LIMIT 1;
+
+    FOR i IN 1..12 LOOP
+      uid := ('13131313-1313-4131-8131-'||lpad(i::text,12,'0'))::uuid;
+      eid := ('14141414-1414-4141-8141-'||lpad(i::text,12,'0'))::uuid;
+
+      FOR j IN 1..coaching_units[i] LOOP
+        INSERT INTO sessions(
+          id,coach_id,coachee_id,topic,start_time,duration_minutes,status,enrollment_id
+        )
+          VALUES(
+            ('19191919-1919-4191-8191-'||lpad((i * 10 + j)::text,12,'0'))::uuid,
+            coach,uid,'Emerging Leaders coaching session',coaching_due[j]::timestamptz,60,'completed',eid
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            coach_id=excluded.coach_id,
+            coachee_id=excluded.coachee_id,
+            topic=excluded.topic,
+            start_time=excluded.start_time,
+            duration_minutes=excluded.duration_minutes,
+            status=excluded.status,
+            enrollment_id=excluded.enrollment_id;
+      END LOOP;
+
+      FOR j IN 1..peer_units[i] LOOP
+        INSERT INTO peer_sessions(
+          id,peer_coach_id,peer_coachee_id,topic,start_time,duration_minutes,status,enrollment_id
+        )
+          VALUES(
+            ('1a1a1a1a-1a1a-41a1-81a1-'||lpad((i * 10 + j)::text,12,'0'))::uuid,
+            peer_coach_id,uid,'Emerging Leaders peer coaching',pair_due[j]::timestamptz,45,'completed',eid
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            peer_coach_id=excluded.peer_coach_id,
+            peer_coachee_id=excluded.peer_coachee_id,
+            topic=excluded.topic,
+            start_time=excluded.start_time,
+            duration_minutes=excluded.duration_minutes,
+            status=excluded.status,
+            enrollment_id=excluded.enrollment_id;
+      END LOOP;
+
+      FOR j IN 1..mentoring_units[i] LOOP
+        INSERT INTO mentoring_sessions(
+          id,mentor_id,mentee_id,topic,start_time,duration_minutes,status,enrollment_id
+        )
+          VALUES(
+            ('18181818-1818-4181-8181-'||lpad((i * 10 + j)::text,12,'0'))::uuid,
+            mentor,uid,'Emerging Leaders mentoring',pair_due[j]::timestamptz,45,'completed',eid
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            mentor_id=excluded.mentor_id,
+            mentee_id=excluded.mentee_id,
+            topic=excluded.topic,
+            start_time=excluded.start_time,
+            duration_minutes=excluded.duration_minutes,
+            status=excluded.status,
+            enrollment_id=excluded.enrollment_id;
+      END LOOP;
+
+      FOR j IN 1..training_units[i] LOOP
+        INSERT INTO training_progress(
+          id,user_id,enrollment_id,training_week_id,viewed_at,completed_at
+        )
+          VALUES(
+            ('1b1b1b1b-1b1b-41b1-81b1-'||lpad((i * 10 + j)::text,12,'0'))::uuid,
+            uid,eid,('67676767-6767-4676-8676-'||lpad(j::text,12,'0'))::uuid,
+            week_due[j]::timestamptz,(week_due[j]+1)::timestamptz
+          )
+          ON CONFLICT(id) DO UPDATE SET
+            user_id=excluded.user_id,
+            enrollment_id=excluded.enrollment_id,
+            training_week_id=excluded.training_week_id,
+            viewed_at=excluded.viewed_at,
+            completed_at=excluded.completed_at;
+      END LOOP;
+    END LOOP;
+  END;
+
+  -- Triads: every required Triad has its own group assignment. A completed
+  -- session of a Triad N group fulfils Triad N for every member; progress
+  -- counts fulfilled requirements (capped at the 2 required), each against its
+  -- own cohort C deadline. Triad 2 groups mix learners differently.
+  DECLARE
+    e1 uuid := '14141414-1414-4141-8141-000000000001';
+    e2 uuid := '14141414-1414-4141-8141-000000000002';
+    e3 uuid := '14141414-1414-4141-8141-000000000003';
+    e4 uuid := '14141414-1414-4141-8141-000000000004';
+    e9 uuid := '14141414-1414-4141-8141-000000000009';
+    e10 uuid := '14141414-1414-4141-8141-000000000010';
+    grp record;
+  BEGIN
+    FOR grp IN
+      SELECT * FROM (VALUES
+        -- Triad 1: leaders 1, 2 and 3 complete it together.
+        (1, 1, '15151515-1515-4151-8151-000000000001'::uuid, ARRAY[e1,e2,e3], '1c1c1c1c-1c1c-41c1-81c1-000000000001'::uuid, '2026-05-03'::timestamptz, true),
+        -- Triad 1: leaders 4 and 9 (a dyad) complete it.
+        (2, 1, '15151515-1515-4151-8151-000000000003'::uuid, ARRAY[e4,e9], '1c1c1c1c-1c1c-41c1-81c1-000000000003'::uuid, '2026-05-03'::timestamptz, true),
+        -- Triad 2: leaders 1 and 9 (new partners) complete it.
+        (3, 2, '15151515-1515-4151-8151-000000000002'::uuid, ARRAY[e1,e9], '1c1c1c1c-1c1c-41c1-81c1-000000000002'::uuid, '2026-07-05'::timestamptz, true),
+        -- Triad 2: leaders 2 and 10 complete it (leader 10 has no Triad 1 group yet).
+        (4, 2, '15151515-1515-4151-8151-000000000004'::uuid, ARRAY[e2,e10], '1c1c1c1c-1c1c-41c1-81c1-000000000004'::uuid, '2026-07-05'::timestamptz, true)
+      ) AS g(ord, unit, group_id, members, session_id, starts_at, stays_active)
+      ORDER BY ord
+    LOOP
+      INSERT INTO triad_groups(id,cohort_requirement_date_id,group_language)
+        SELECT grp.group_id, d.id, 'vi' FROM cohort_requirement_dates d
+        WHERE d.cohort_id = cc AND d.programme_id = pc AND d.module = 'triads' AND d.ordinal = grp.unit
+        ON CONFLICT(id) DO NOTHING;
+      IF NOT EXISTS (SELECT 1 FROM triad_groups WHERE id = grp.group_id) THEN
+        RAISE EXCEPTION 'seed: cohort C has no Triad % requirement date', grp.unit;
+      END IF;
+      INSERT INTO triad_group_members(triad_group_id,enrollment_id,member_order)
+        SELECT grp.group_id, m.enrollment_id, m.ord
+        FROM unnest(grp.members) WITH ORDINALITY AS m(enrollment_id, ord)
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM triad_group_members existing
+          WHERE existing.triad_group_id = grp.group_id
+            AND existing.enrollment_id = m.enrollment_id
+        );
+      -- Completed sessions are history (never re-inserted or updated).
+      INSERT INTO triad_sessions(id,triad_group_id,scheduled_start_time,scheduled_end_time,status)
+        SELECT grp.session_id,grp.group_id,grp.starts_at,grp.starts_at + interval '1 hour','completed'
+        WHERE NOT EXISTS (SELECT 1 FROM triad_sessions WHERE id = grp.session_id);
+      INSERT INTO triad_session_responses(triad_session_id,enrollment_id,response,responded_at)
+        SELECT grp.session_id, m, 'accepted', grp.starts_at - interval '7 days' FROM unnest(grp.members) m
+        ON CONFLICT(triad_session_id,enrollment_id) DO NOTHING;
+      IF NOT grp.stays_active THEN
+        UPDATE triad_groups SET is_active = false WHERE id = grp.group_id AND is_active;
+      END IF;
+      -- The reset above cleared the cohort's evidence; rebuild it through the
+      -- one Triad attribution writer (historical membership x session time).
+      PERFORM public.triad_sync_session_attributions(grp.session_id);
+    END LOOP;
+  END;
+
+  -- Goals/actions only where a leader has real coaching engagement above —
+  -- never a bare aggregate number with no underlying leader record.
+  DECLARE
+    goal_leaders integer[] := ARRAY[1,2,3,4,9,10];
+    k int;
+  BEGIN
+    FOREACH k IN ARRAY goal_leaders LOOP
+      uid := ('13131313-1313-4131-8131-'||lpad(k::text,12,'0'))::uuid;
+      eid := ('14141414-1414-4141-8141-'||lpad(k::text,12,'0'))::uuid;
+      INSERT INTO coachee_goals(id,coachee_id,title,status,enrollment_id,shared_with_sponsor)
+        VALUES(('16161616-1616-4161-8161-'||lpad(k::text,12,'0'))::uuid,uid,
+          format('Leader C%s leadership goal',k),'active',eid,true);
+    END LOOP;
+
+    INSERT INTO enrollment_actions(id,enrollment_id,title,owner_user_id,status,completed_at) VALUES
+      ('17171717-1717-4171-8171-000000000001','14141414-1414-4141-8141-000000000001','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000001','completed',now()),
+      ('17171717-1717-4171-8171-000000000002','14141414-1414-4141-8141-000000000001','Share triad reflection with peer group','13131313-1313-4131-8131-000000000001','completed',now()),
+      ('17171717-1717-4171-8171-000000000003','14141414-1414-4141-8141-000000000002','Draft delegation plan','13131313-1313-4131-8131-000000000002','completed',now()),
+      ('17171717-1717-4171-8171-000000000004','14141414-1414-4141-8141-000000000002','Schedule follow-up peer session','13131313-1313-4131-8131-000000000002','open',NULL),
+      ('17171717-1717-4171-8171-000000000005','14141414-1414-4141-8141-000000000003','Review mentoring notes','13131313-1313-4131-8131-000000000003','open',NULL),
+      ('17171717-1717-4171-8171-000000000006','14141414-1414-4141-8141-000000000004','Book next coaching session','13131313-1313-4131-8131-000000000004','open',NULL),
+      ('17171717-1717-4171-8171-000000000007','14141414-1414-4141-8141-000000000009','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000009','completed',now()),
+      ('17171717-1717-4171-8171-000000000008','14141414-1414-4141-8141-000000000009','Share triad reflection with peer group','13131313-1313-4131-8131-000000000009','completed',now()),
+      ('17171717-1717-4171-8171-000000000009','14141414-1414-4141-8141-000000000010','Book next peer session','13131313-1313-4131-8131-000000000010','open',NULL)
+      ON CONFLICT(id) DO UPDATE SET
+        enrollment_id=excluded.enrollment_id,
+        title=excluded.title,
+        owner_user_id=excluded.owner_user_id,
+        status=excluded.status,
+        completed_at=excluded.completed_at;
+  END;
+END $cohort_c$;
 COMMIT;

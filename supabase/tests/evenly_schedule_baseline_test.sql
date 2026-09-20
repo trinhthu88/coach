@@ -1,0 +1,218 @@
+begin;
+
+select plan(8);
+
+-- A short programme exercises the rounding case where the old n / units
+-- expression placed the first Evenly milestone on the programme start date.
+insert into public.programmes (id, name)
+values
+  ('aa000000-0000-0000-0000-000000000011', 'Evenly baseline test'),
+  ('aa000000-0000-0000-0000-000000000012', 'Explicit start milestone test'),
+  ('aa000000-0000-0000-0000-000000000013', 'Training dates test');
+
+insert into public.cohorts (
+  id, name, programme_id, organization_id, start_date, end_date
+)
+values
+  ('ac000000-0000-0000-0000-000000000011', 'Evenly baseline cohort',
+   'aa000000-0000-0000-0000-000000000011',
+   '11111111-1111-4111-8111-111111111111', '2026-01-01', '2026-01-02'),
+  ('ac000000-0000-0000-0000-000000000012', 'Explicit start cohort',
+   'aa000000-0000-0000-0000-000000000012',
+   '11111111-1111-4111-8111-111111111111', '2026-01-01', '2026-01-11'),
+  ('ac000000-0000-0000-0000-000000000013', 'Training dates cohort',
+   'aa000000-0000-0000-0000-000000000013',
+   '11111111-1111-4111-8111-111111111111', '2026-04-01', '2026-04-30');
+
+insert into public.programme_modules (id, programme_id, module, enabled, config)
+values
+  ('ad000000-0000-0000-0000-000000000011',
+   'aa000000-0000-0000-0000-000000000011', 'coaching', true,
+   '{"required":true,"required_units":4,"distribution_mode":"evenly_distributed"}'),
+  ('ad000000-0000-0000-0000-000000000012',
+   'aa000000-0000-0000-0000-000000000012', 'coaching', true,
+   '{"required":true,"required_units":1,"distribution_mode":"custom","distribution_settings":{"milestones":[{"due_on":"2026-01-01","required_units":1}]}}'),
+  ('ad000000-0000-0000-0000-000000000013',
+   'aa000000-0000-0000-0000-000000000013', 'training', true,
+   '{"required":true,"required_units":2,"distribution_mode":"training_linked","distribution_settings":{"training_week_ids":["ae000000-0000-0000-0000-000000000011","ae000000-0000-0000-0000-000000000012"]}}');
+
+insert into public.training_weeks (
+  id, programme_id, week_number, title, is_visible, unlock_date, sort_order
+)
+values
+  ('ae000000-0000-0000-0000-000000000011',
+   'aa000000-0000-0000-0000-000000000013', 1, 'Configured week one', true,
+   '2026-04-04', 1),
+  ('ae000000-0000-0000-0000-000000000012',
+   'aa000000-0000-0000-0000-000000000013', 2, 'Configured week two', true,
+   '2026-04-18', 2);
+
+insert into public.cohort_week_overrides (cohort_id, training_week_id, unlock_date)
+values
+  ('ac000000-0000-0000-0000-000000000013',
+   'ae000000-0000-0000-0000-000000000011', '2026-04-05'),
+  ('ac000000-0000-0000-0000-000000000013',
+   'ae000000-0000-0000-0000-000000000012', '2026-04-20');
+
+insert into public.programme_enrollments (
+  id, user_id, programme_id, cohort_id, organization_id,
+  start_date, end_date, status
+)
+values
+  ('af000000-0000-0000-0000-000000000011',
+   '11111111-1111-4111-8111-111111111116',
+   'aa000000-0000-0000-0000-000000000011',
+   'ac000000-0000-0000-0000-000000000011',
+   '11111111-1111-4111-8111-111111111111',
+   '2026-01-01', '2026-01-02', 'completed'),
+  ('af000000-0000-0000-0000-000000000012',
+   '11111111-1111-4111-8111-111111111116',
+   'aa000000-0000-0000-0000-000000000012',
+   'ac000000-0000-0000-0000-000000000012',
+   '11111111-1111-4111-8111-111111111111',
+   '2026-01-01', '2026-01-11', 'completed'),
+  ('af000000-0000-0000-0000-000000000013',
+   '11111111-1111-4111-8111-111111111116',
+   'aa000000-0000-0000-0000-000000000013',
+   'ac000000-0000-0000-0000-000000000013',
+   '11111111-1111-4111-8111-111111111111',
+   '2026-04-01', '2026-04-30', 'completed'),
+  ('af000000-0000-0000-0000-000000000014',
+   '11111111-1111-4111-8111-111111111116',
+   'aa000000-0000-0000-0000-000000000011',
+   'ac000000-0000-0000-0000-000000000011',
+   '11111111-1111-4111-8111-111111111111',
+   '2026-01-01', '2026-01-02', 'completed'),
+  ('af000000-0000-0000-0000-000000000015',
+   '11111111-1111-4111-8111-111111111116',
+   'aa000000-0000-0000-0000-000000000011',
+   'ac000000-0000-0000-0000-000000000011',
+   '11111111-1111-4111-8111-111111111111',
+   '2026-01-01', '2026-01-02', 'completed'),
+  ('af000000-0000-0000-0000-000000000016',
+   '11111111-1111-4111-8111-111111111116',
+   'aa000000-0000-0000-0000-000000000011',
+   'ac000000-0000-0000-0000-000000000011',
+   '11111111-1111-4111-8111-111111111111',
+   '2026-01-01', '2026-01-02', 'completed'),
+  ('af000000-0000-0000-0000-000000000017',
+   '11111111-1111-4111-8111-111111111116',
+   'aa000000-0000-0000-0000-000000000011',
+   'ac000000-0000-0000-0000-000000000011',
+   '11111111-1111-4111-8111-111111111111',
+   '2026-01-01', '2026-01-02', 'completed');
+
+select public.generate_enrollment_schedule(
+  'af000000-0000-0000-0000-000000000011'
+);
+select public.generate_enrollment_schedule(
+  'af000000-0000-0000-0000-000000000012'
+);
+select public.generate_enrollment_schedule(
+  'af000000-0000-0000-0000-000000000013'
+);
+select public.generate_enrollment_schedule(
+  'af000000-0000-0000-0000-000000000014'
+);
+select public.generate_enrollment_schedule(
+  'af000000-0000-0000-0000-000000000015'
+);
+select public.generate_enrollment_schedule(
+  'af000000-0000-0000-0000-000000000016'
+);
+select public.generate_enrollment_schedule(
+  'af000000-0000-0000-0000-000000000017'
+);
+
+select is(
+  (select min(m.due_on)
+   from public.enrollment_module_milestones m
+   join public.enrollment_module_snapshots s
+     on s.id = m.enrollment_module_snapshot_id
+   where s.enrollment_id = 'af000000-0000-0000-0000-000000000011'),
+  '2026-01-02'::date,
+  'Evenly schedules never make the programme start due through rounding'
+);
+select is(
+  (select max(m.due_on)
+   from public.enrollment_module_milestones m
+   join public.enrollment_module_snapshots s
+     on s.id = m.enrollment_module_snapshot_id
+   where s.enrollment_id = 'af000000-0000-0000-0000-000000000011'),
+  '2026-01-02'::date,
+  'Evenly schedules retain the configured programme end as the final checkpoint'
+);
+select is(
+  (select count(*)::integer
+   from public.enrollment_module_milestones m
+   join public.enrollment_module_snapshots s
+     on s.id = m.enrollment_module_snapshot_id
+   where s.enrollment_id = 'af000000-0000-0000-0000-000000000011'
+     and m.due_on = '2026-01-01'),
+  0,
+  'the Evenly programme-start baseline has no due units'
+);
+select is(
+  (select min(m.due_on)
+   from public.enrollment_module_milestones m
+   join public.enrollment_module_snapshots s
+     on s.id = m.enrollment_module_snapshot_id
+   where s.enrollment_id = 'af000000-0000-0000-0000-000000000012'),
+  '2026-01-01'::date,
+  'an Admin-configured custom requirement may still be due on programme start'
+);
+select is(
+  (select array_agg(m.due_on order by m.sequence)
+   from public.enrollment_module_milestones m
+   join public.enrollment_module_snapshots s
+     on s.id = m.enrollment_module_snapshot_id
+   where s.enrollment_id = 'af000000-0000-0000-0000-000000000013'),
+  array['2026-04-05'::date, '2026-04-20'::date],
+  'Training-linked checkpoints retain configured cohort training dates'
+);
+
+-- A normal multi-day Evenly schedule keeps its fractional cadence and ends
+-- exactly on the configured end date.
+update public.programme_enrollments
+set start_date = '2026-01-01', end_date = '2026-01-11'
+where id = 'af000000-0000-0000-0000-000000000011';
+delete from public.enrollment_module_snapshots
+where enrollment_id = 'af000000-0000-0000-0000-000000000011';
+select public.generate_enrollment_schedule(
+  'af000000-0000-0000-0000-000000000011'
+);
+select is(
+  (select array_agg(m.due_on order by m.sequence)
+   from public.enrollment_module_milestones m
+   join public.enrollment_module_snapshots s
+     on s.id = m.enrollment_module_snapshot_id
+   where s.enrollment_id = 'af000000-0000-0000-0000-000000000011'),
+  array['2026-01-03'::date, '2026-01-06'::date, '2026-01-08'::date, '2026-01-11'::date],
+  'Evenly checkpoints use the configured fractional cadence after the baseline'
+);
+select set_config(
+  'request.jwt.claim.sub',
+  '11111111-1111-4111-8111-111111111116',
+  true
+);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+select is(
+  (select (public.sponsor_canonical_programme_journey(
+    'ac000000-0000-0000-0000-000000000011'::uuid,
+    '2026-01-01'::date
+  )->0->>'due_on')::date),
+  '2026-01-02'::date,
+  'the first Sponsor journey checkpoint is after the programme-start baseline'
+);
+select is(
+  (select (public.sponsor_canonical_programme_journey(
+    'ac000000-0000-0000-0000-000000000011'::uuid,
+    '2026-01-01'::date
+  )->0->>'state')),
+  'upcoming',
+  'the Sponsor journey does not mark the programme-start baseline overdue'
+);
+
+select * from finish();
+rollback;

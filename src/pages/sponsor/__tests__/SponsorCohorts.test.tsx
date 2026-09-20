@@ -17,9 +17,16 @@ beforeEach(async () => {
   await i18n.changeLanguage("en"); calls.length = 0;
   responses.sponsor_enrollment_summaries = [...rows(id1, "Small cohort"), ...rows(id2, "Another cohort")];
   responses.sponsor_cohort_summaries = [
-    { cohort_id: id1, cohort_label: "Small cohort", programme_label: "Executive", enrollment_count: null, suppressed: true },
-    { cohort_id: id2, cohort_label: "Another cohort", programme_label: "Executive", enrollment_count: null, suppressed: true },
+    { cohort_id: id1, cohort_label: "Small cohort", programme_label: "Executive", programme_start_date: "2026-01-15", programme_end_date: "2026-12-15", enrollment_count: null, suppressed: true },
+    { cohort_id: id2, cohort_label: "Another cohort", programme_label: "Executive", programme_start_date: "2026-02-01", programme_end_date: null, enrollment_count: null, suppressed: true },
   ];
+  responses.sponsor_canonical_cohort_progress = responses.sponsor_cohort_summaries;
+  responses.sponsor_canonical_enrollment_metadata = [];
+  responses.sponsor_canonical_organisation_progress = [{
+    cohort_count: 2, enrollment_count: null, required_units: null, completed_units: null, due_units: null,
+    booked_units: null, overdue_units: null, full_completion_pct: null, due_adherence_pct: null,
+    schedule_coverage_pct: null, suppressed_cohort_count: 2, progress_source_complete: false,
+  }];
 });
 
 describe("SponsorCohorts privacy contract", () => {
@@ -29,6 +36,33 @@ describe("SponsorCohorts privacy contract", () => {
     expect(screen.getAllByText("Suppressed")).toHaveLength(2);
     expect(screen.queryByText(/enrollments/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /View cohort/i })[0]).toHaveAttribute("href", `/sponsor/cohorts/${id1}`);
-    expect(calls.every((name) => name === "sponsor_enrollment_summaries" || name === "sponsor_cohort_summaries" || name === "sponsor_min_leaders_for_distribution" || name === "sponsor_organisation_summary")).toBe(true);
+    expect(screen.getByText("Jan 15, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Dec 15, 2026")).toBeInTheDocument();
+    expect(screen.queryByText("Status mix")).not.toBeInTheDocument();
+    expect(screen.queryByText("Booked")).not.toBeInTheDocument();
+    expect(calls.every((name) => name === "sponsor_canonical_enrollment_metadata" || name === "sponsor_canonical_cohort_progress" || name === "sponsor_min_leaders_for_distribution" || name === "sponsor_canonical_organisation_progress")).toBe(true);
+  });
+
+  it("keeps an in-progress cohort marked active even when its pace is mixed", async () => {
+    responses.sponsor_cohort_summaries = [{
+      cohort_id: id2,
+      cohort_label: "Cohort B",
+      programme_label: "Executive",
+      programme_start_date: "2026-01-15",
+      programme_end_date: "2026-12-15",
+      enrollment_count: 12,
+      suppressed: false,
+      pace_status: "behind",
+      full_completion_pct: 42,
+      on_track_pct: 50,
+      at_risk_count: 2,
+      completed_count: 0,
+    }];
+    responses.sponsor_canonical_cohort_progress = responses.sponsor_cohort_summaries;
+
+    render(<MemoryRouter><SponsorCohorts /></MemoryRouter>);
+
+    await waitFor(() => expect(screen.getByText("Cohort B")).toBeInTheDocument());
+    expect(screen.getByText("Active")).toBeInTheDocument();
   });
 });

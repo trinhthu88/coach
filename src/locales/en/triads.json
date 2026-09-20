@@ -6,15 +6,13 @@
   "subtitle": "Practice coaching in small groups — accept a proposed time or suggest another, then reflect afterwards.",
   "you": "You",
   "myGroup": {
-    "label": "My group"
+    "label": "My group",
+    "heading": "Practising together across your Triad sessions"
   },
   "loadError": "Couldn't load your triads. Please try again.",
   "retry": "Retry",
-  "noRoundsTitle": "No triad rounds yet",
-  "noRoundsBody": "Your admin hasn't opened a triad round for your programme yet.",
-  "roundLabel": "Round {{n}}",
   "deadlineLabel": "Deadline",
-  "dyadNote": "This is a pair (dyad) — no third member was available for this round.",
+  "dyadNote": "This is a pair (dyad) — no third member was available.",
   "status": {
     "proposed": "Proposed",
     "confirmed": "Confirmed",
@@ -45,6 +43,12 @@
     "reflectionSubmitted": "Reflection submitted",
     "waitingOnOthers": "Waiting on {{names}} to accept"
   },
+  "sessionDetail": {
+    "backToSessions": "Back to sessions",
+    "subtitle": "Review the canonical triad booking, participants and reflection workflow.",
+    "reflectionPrompt": "Reflect on this session",
+    "reflectionSubtitle": "Capture what you learned in each role and review the shared reflection state."
+  },
   "alternative": {
     "title": "Propose an alternative time",
     "cancel": "Cancel",
@@ -62,12 +66,6 @@
     "acceptError": "Couldn't accept the alternative time",
     "dateRequired": "Pick a date and time first"
   },
-  "pastSessions": {
-    "heading": "Past sessions",
-    "submitted": "Submitted",
-    "pending": "Pending",
-    "satisfaction": "Satisfaction"
-  },
   "reflection": {
     "back": "Back to triads",
     "title": "Session reflection",
@@ -76,14 +74,9 @@
     "sections": {
       "coach": "As Coach",
       "coachee": "As Coachee",
-      "observer": "As Observer"
+      "observer": "As Observer",
+      "general": "Overall"
     },
-    "learnedAsCoach": "What did I learn?",
-    "willUseAsCoach": "How will I use this?",
-    "learnedAsCoachee": "What did I learn?",
-    "willUseAsCoachee": "How will I use this?",
-    "learnedAsObserver": "What did I learn?",
-    "willUseAsObserver": "How will I use this?",
     "satisfaction": "How satisfied were you with this session?",
     "submit": "Submit reflection",
     "alreadySubmitted": "You've already submitted your reflection for this session.",
@@ -92,6 +85,44 @@
     "othersLocked": "Everyone's reflections unlock once all members have submitted.",
     "successToast": "Reflection submitted",
     "errorToast": "Couldn't submit your reflection",
-    "notFound": "This session isn't available."
+    "notFound": "This session isn't available.",
+    "afterCompletion": "You can reflect on this session once it has been marked as completed."
+  },
+  "history": {
+    "title": "My triad sessions",
+    "progress": "Triads programme progress: {{completed}}/{{required}} completed",
+    "loadError": "Your triad sessions could not be loaded.",
+    "empty": "No triad sessions yet."
+  },
+  "sessionLabel": "Triad {{n}}",
+  "closedGroup": "Earlier group (closed)",
+  "progress": {
+    "label": "Triads {{completed}}/{{required}} completed",
+    "extra_one": "{{count}} extra session beyond the requirement",
+    "extra_other": "{{count}} extra sessions beyond the requirement",
+    "nextDeadline": "Next deadline: {{date}}",
+    "overdue_one": "{{count}} Triad session overdue",
+    "overdue_other": "{{count}} Triad sessions overdue",
+    "allDone": "All required Triad sessions completed",
+    "notRequired": "No Triads are required in this programme"
+  },
+  "schedule": {
+    "title": "Propose the next session time",
+    "submit": "Propose this time",
+    "successToast": "Session time proposed to your group",
+    "cta": "Schedule the next session",
+    "noOpenTitle": "No session scheduled",
+    "noOpenBody": "Your group has no open session. Propose a time — it is confirmed once everyone accepts."
+  },
+  "requirement": {
+    "title": "Triad {{n}}",
+    "due": "Due {{date}}",
+    "completed": "Completed {{date}}",
+    "overdue": "Overdue",
+    "assigned": "Group assigned",
+    "pending": "Group assignment pending",
+    "pendingBody": "The programme team will place you in a Triad {{n}} group. You'll be notified when it's ready.",
+    "completedBody": "Triad {{n}} is complete. Extra sessions with this group are practice only.",
+    "group": "My Triad {{n}} group"
   }
 }

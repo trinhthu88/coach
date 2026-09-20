@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Goal, Milestone } from "@/hooks/journey/types";
 import type { FlatAction } from "@/hooks/journey/useFlatActionItems";
 import type { GoalRatingRow } from "./GoalWheel";
+import { goalProgressPct } from "@/hooks/journey/useJourneyDerived";
 import { ACCENTS, initials } from "./journeyDisplay";
 import { RatingSlider } from "./RatingSlider";
 import { ActionRow } from "./ActionRow";
@@ -17,7 +18,6 @@ export function GoalAccordion({
   goal,
   milestones,
   actions,
-  pct,
   accent,
   onToggle,
   onToggleAction,
@@ -30,11 +30,12 @@ export function GoalAccordion({
   onRatingChange,
   startTargetLocked,
   showCompletionMarks,
+  renderHeader,
+  progressPct,
 }: {
   goal: Goal;
   milestones: Milestone[];
   actions: FlatAction[];
-  pct: number;
   accent: (typeof ACCENTS)[number];
   onToggle: (m: Milestone) => void;
   onToggleAction: (a: FlatAction) => void;
@@ -48,6 +49,10 @@ export function GoalAccordion({
   startTargetLocked?: boolean;
   /** Shows the goal-done checkmark, target date in the header, and a check inside done milestone circles — used by the coach's own journey view. */
   showCompletionMarks?: boolean;
+  /** Replaces the default compact header row with a custom one (e.g. the Journey page's richer goal card), while the toggle button and all of the expanded content below stay the same. `pct` is the same start→target progress this component already computes, handed back so the caller never has to recompute it. */
+  renderHeader?: (ctx: { pct: number | null; open: boolean }) => React.ReactNode;
+  /** Server-calculated progress (canonical_goal_progress). When provided it is rendered as-is instead of the local fallback calculation. */
+  progressPct?: number | null;
 }) {
   const { t } = useTranslation("journey");
   const [open, setOpen] = useState(!!defaultOpen);
@@ -55,7 +60,13 @@ export function GoalAccordion({
   const [newMs, setNewMs] = useState("");
   const [newDate, setNewDate] = useState("");
 
-  const goalDone = pct === 100 && milestones.length > 0;
+  const pct =
+    progressPct !== undefined
+      ? progressPct == null
+        ? null
+        : Math.round(progressPct)
+      : goalProgressPct(rating?.start ?? null, rating?.current ?? null, rating?.target ?? null);
+  const goalDone = pct === 100;
 
   const addMs = async () => {
     if (!newMs.trim()) return;
@@ -77,32 +88,34 @@ export function GoalAccordion({
 
   return (
     <Card className="overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-3 bg-muted/30 px-3 py-2.5 text-left hover:bg-muted/50"
-      >
-        <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold", accent.bg, accent.text)}>
-          {initials(goal.title)}
-        </div>
-        {showCompletionMarks ? (
-          <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold">
-            {goalDone && <Check className="h-3.5 w-3.5 shrink-0 text-success" strokeWidth={3} />}
-            <span className="truncate">{goal.title}</span>
-            {goal.target_date && (
-              <span className="ml-2 hidden shrink-0 text-[10px] font-normal text-muted-foreground sm:inline">
-                · {t("goalAccordion.goalHeaderTargetDate", { date: format(new Date(goal.target_date), "MMM d") })}
-              </span>
-            )}
-          </span>
+      <button type="button" onClick={() => setOpen((o) => !o)} className="block w-full text-left">
+        {renderHeader ? (
+          renderHeader({ pct, open })
         ) : (
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{goal.title}</span>
+          <span className="flex items-center gap-3 bg-muted/30 px-3 py-2.5 hover:bg-muted/50">
+            <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold", accent.bg, accent.text)}>
+              {initials(goal.title)}
+            </span>
+            {showCompletionMarks ? (
+              <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold">
+                {goalDone && <Check className="h-3.5 w-3.5 shrink-0 text-success" strokeWidth={3} />}
+                <span className="truncate">{goal.title}</span>
+                {goal.target_date && (
+                  <span className="ml-2 hidden shrink-0 text-[10px] font-normal text-muted-foreground sm:inline">
+                    · {t("goalAccordion.goalHeaderTargetDate", { date: format(new Date(goal.target_date), "MMM d") })}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold">{goal.title}</span>
+            )}
+            <span className="shrink-0 text-xs text-muted-foreground">{pct == null ? "—" : `${pct}%`}</span>
+            <span className="hidden h-1 w-14 overflow-hidden rounded-full bg-background sm:block">
+              <span className={cn("block h-full", accent.fill)} style={{ width: `${pct ?? 0}%` }} />
+            </span>
+            {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+          </span>
         )}
-        <span className="shrink-0 text-xs text-muted-foreground">{pct}%</span>
-        <div className="hidden h-1 w-14 overflow-hidden rounded-full bg-background sm:block">
-          <div className={cn("h-full", accent.fill)} style={{ width: `${pct}%` }} />
-        </div>
-        {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
       </button>
 
       {open && (

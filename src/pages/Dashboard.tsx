@@ -10,6 +10,10 @@ import { MentoringGiveCard } from "./dashboard/cards/MentoringGiveCard";
 import { MentoringReceiveCard } from "./dashboard/cards/MentoringReceiveCard";
 import { PeerCoachingCard } from "./dashboard/cards/PeerCoachingCard";
 import { TriadsCard } from "./dashboard/cards/TriadsCard";
+import { MyGoalCard } from "./dashboard/cards/MyGoalCard";
+import { MyFeedbackCard } from "./dashboard/cards/MyFeedbackCard";
+import { RecentDevelopmentCard } from "./dashboard/cards/RecentDevelopmentCard";
+import { CoacheeDashboard } from "./dashboard/coachee/CoacheeDashboard";
 
 export default function Dashboard() {
   const { t } = useTranslation("dashboard");
@@ -32,6 +36,17 @@ export default function Dashboard() {
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // The Coachee Dashboard follows the approved Coachee UX/UI prototype
+  // (Programme Hero, Next up, Programme progress, Programme Journey preview,
+  // Module progress, Goals & actions, Feedback & development, Upcoming
+  // sessions, Recent development) — a structurally different layout from the
+  // coach's own dashboard below, so it's a dedicated component rather than a
+  // role-conditional sprinkled through this one. The coach dashboard is
+  // unchanged.
+  if (role === "coachee") {
+    return <CoacheeDashboard />;
   }
 
   const now = new Date();
@@ -61,11 +76,14 @@ export default function Dashboard() {
       <ProgrammeProgressCard />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <MyGoalCard />
         <MyCoachCard />
         <MentoringGiveCard />
         <MentoringReceiveCard />
         <PeerCoachingCard />
         <TriadsCard />
+        <MyFeedbackCard />
+        <RecentDevelopmentCard />
       </section>
     </div>
   );

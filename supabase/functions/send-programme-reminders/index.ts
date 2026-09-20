@@ -217,48 +217,59 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Triad participants are the group's member enrollments (canonical
+    // membership); the learner is the enrollment's user.
+    async function triadMembersByGroup(groupIds: string[]) {
+      const byGroup = new Map<string, { enrollmentId: string; userId: string }[]>();
+      if (groupIds.length === 0) return byGroup;
+      const { data } = await admin
+        .from("triad_group_members")
+        .select("triad_group_id, enrollment_id, programme_enrollments(user_id)")
+        .in("triad_group_id", groupIds);
+      for (const row of data || []) {
+        const userId = (row.programme_enrollments as { user_id: string } | null)?.user_id;
+        if (!userId) continue;
+        const list = byGroup.get(row.triad_group_id as string) || [];
+        list.push({ enrollmentId: row.enrollment_id as string, userId });
+        byGroup.set(row.triad_group_id as string, list);
+      }
+      return byGroup;
+    }
+
     // ------------------------------------------------------------------
-    // 2. Missed triad reflections (sessions that happened in the past 7 days)
+    // 2. Missed triad reflections (sessions completed in the past 7 days;
+    //    a reflection follows completion)
     // ------------------------------------------------------------------
     const weekAgo = todayISO(-7);
     const today = todayISO();
     const { data: pastSessions } = await admin
       .from("triad_sessions")
-      .select("id, triad_group_id, proposed_start_time")
-      .in("status", ["confirmed", "completed"])
-      .gte("proposed_start_time", `${weekAgo}T00:00:00Z`)
-      .lt("proposed_start_time", `${today}T00:00:00Z`);
+      .select("id, triad_group_id, scheduled_start_time")
+      .eq("status", "completed")
+      .gte("scheduled_start_time", `${weekAgo}T00:00:00Z`)
+      .lt("scheduled_start_time", `${today}T00:00:00Z`);
 
     if (pastSessions && pastSessions.length > 0) {
-      const groupIds = [...new Set(pastSessions.map((s) => s.triad_group_id as string))];
-      const { data: groups } = await admin
-        .from("triad_groups")
-        .select("id, member_1_id, member_2_id, member_3_id")
-        .in("id", groupIds);
-      const membersByGroup = new Map(
-        (groups || []).map((g) => [g.id as string, [g.member_1_id, g.member_2_id, g.member_3_id].filter(Boolean) as string[]]),
-      );
-
+      const membersByGroup = await triadMembersByGroup([...new Set(pastSessions.map((s) => s.triad_group_id as string))]);
       const sessionIds = pastSessions.map((s) => s.id as string);
       const { data: reflections } = await admin
         .from("triad_reflections")
-        .select("triad_session_id, participant_id")
+        .select("triad_session_id, enrollment_id")
         .in("triad_session_id", sessionIds);
       const submittedBySession = new Map<string, Set<string>>();
       for (const r of reflections || []) {
         const set = submittedBySession.get(r.triad_session_id as string) || new Set<string>();
-        set.add(r.participant_id as string);
+        if (r.enrollment_id) set.add(r.enrollment_id as string);
         submittedBySession.set(r.triad_session_id as string, set);
       }
 
       for (const s of pastSessions) {
         const members = membersByGroup.get(s.triad_group_id as string) || [];
         const submitted = submittedBySession.get(s.id as string) || new Set<string>();
-        const missing = members.filter((id) => !submitted.has(id));
         const link = `/triads/${s.id}/reflect`;
-        for (const userId of missing) {
+        for (const member of members.filter((m) => !submitted.has(m.enrollmentId))) {
           const sent = await notifyOnce({
-            userId,
+            userId: member.userId,
             link,
             type: "triad_reminder",
             title: "Your triad reflection is still open",
@@ -281,28 +292,19 @@ Deno.serve(async (req) => {
     const { data: upcomingSessions } = await admin
       .from("triad_sessions")
       .select("id, triad_group_id")
-      .gte("proposed_start_time", `${tomorrow}T00:00:00Z`)
-      .lt("proposed_start_time", `${dayAfterTomorrow}T00:00:00Z`)
-      .neq("status", "cancelled");
+      .gte("scheduled_start_time", `${tomorrow}T00:00:00Z`)
+      .lt("scheduled_start_time", `${dayAfterTomorrow}T00:00:00Z`)
+      .in("status", ["proposed", "confirmed"]);
 
     if (upcomingSessions && upcomingSessions.length > 0) {
-      const groupIds = [...new Set(upcomingSessions.map((s) => s.triad_group_id as string))];
-      const { data: groups } = await admin
-        .from("triad_groups")
-        .select("id, member_1_id, member_2_id, member_3_id")
-        .in("id", groupIds);
-      const membersByGroup = new Map(
-        (groups || []).map((g) => [g.id as string, [g.member_1_id, g.member_2_id, g.member_3_id].filter(Boolean) as string[]]),
-      );
-
+      const membersByGroup = await triadMembersByGroup([...new Set(upcomingSessions.map((s) => s.triad_group_id as string))]);
       for (const s of upcomingSessions) {
-        const members = membersByGroup.get(s.triad_group_id as string) || [];
         // Query-string suffix keeps this dedupe key per-session while still
         // landing the user on the real /triads route (query is ignored there).
         const link = `/triads?upcoming=${s.id}`;
-        for (const userId of members) {
+        for (const member of membersByGroup.get(s.triad_group_id as string) || []) {
           const sent = await notifyOnce({
-            userId,
+            userId: member.userId,
             link,
             type: "triad_reminder",
             title: "Triad session tomorrow",
@@ -318,49 +320,36 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 4. Stale participants (no activity in the past 7 days)
+    // 4. Stale participants — THE canonical "inactive 7+ days" rule
+    //    (canonical_enrollment_inactivity_internal: population, signals and
+    //    window live there; Admin Alerts / Analytics read the same rule).
+    //    One alert per enrollment, never re-raised while one is unresolved.
     // ------------------------------------------------------------------
-    const { data: activeEnrollments } = await admin
-      .from("programme_enrollments")
-      .select("user_id, start_date")
-      .eq("status", "active")
-      .lte("start_date", weekAgo); // skip anyone enrolled less than 7 days ago
-    const activeUserIds = [...new Set((activeEnrollments || []).map((e) => e.user_id as string))];
-
-    if (activeUserIds.length > 0) {
-      const cutoffISO = new Date(Date.now() - 7 * DAY_MS).toISOString();
-      const [{ data: subs }, { data: prompts }, { data: reflections }, { data: recentAlerts }] = await Promise.all([
-        admin.from("assignment_submissions").select("user_id").in("user_id", activeUserIds).gte("submitted_at", cutoffISO),
-        admin.from("daily_prompt_responses").select("user_id").in("user_id", activeUserIds).gte("responded_at", cutoffISO).not("responded_at", "is", null),
-        admin.from("triad_reflections").select("participant_id").in("participant_id", activeUserIds).gte("submitted_at", cutoffISO),
-        admin
-          .from("admin_alerts")
-          .select("related_coachee_id")
-          .eq("alert_type", "stale_participant")
-          .eq("resolved", false)
-          .gte("created_at", cutoffISO),
-      ]);
-
-      const activeIds = new Set<string>([
-        ...(subs || []).map((r) => r.user_id as string),
-        ...(prompts || []).map((r) => r.user_id as string),
-        ...(reflections || []).map((r) => r.participant_id as string),
-      ]);
-      const alreadyAlerted = new Set((recentAlerts || []).map((r) => r.related_coachee_id as string));
-
-      const staleIds = activeUserIds.filter((id) => !activeIds.has(id) && !alreadyAlerted.has(id));
-      if (staleIds.length > 0) {
-        const profiles = await getProfiles(staleIds);
-        const rows = staleIds.map((id) => {
-          const p = profiles.get(id);
+    const { data: inactivity, error: inactivityErr } = await admin.rpc("canonical_enrollment_inactivity_internal", {});
+    if (inactivityErr) console.error("Inactivity rule failed", inactivityErr);
+    const inactive = ((inactivity || []) as { enrollment_id: string; user_id: string; is_inactive: boolean }[]).filter((r) => r.is_inactive);
+    if (inactive.length > 0) {
+      const { data: openAlerts } = await admin
+        .from("admin_alerts")
+        .select("related_enrollment_id")
+        .eq("alert_type", "stale_programme_participant")
+        .eq("resolved", false)
+        .in("related_enrollment_id", inactive.map((r) => r.enrollment_id));
+      const alreadyAlerted = new Set((openAlerts || []).map((r) => r.related_enrollment_id as string));
+      const toAlert = inactive.filter((r) => !alreadyAlerted.has(r.enrollment_id));
+      if (toAlert.length > 0) {
+        const profiles = await getProfiles([...new Set(toAlert.map((r) => r.user_id))]);
+        const rows = toAlert.map((r) => {
+          const p = profiles.get(r.user_id);
           const name = p?.full_name || "A participant";
           const email = p?.email ? ` (${p.email})` : "";
           return {
             severity: "warning" as const,
-            alert_type: "stale_participant",
-            title: `${name} — no activity in 7 days`,
-            message: `${name}${email} hasn't submitted an assignment, responded to a daily prompt, or completed a triad reflection in the past 7 days.`,
-            related_coachee_id: id,
+            alert_type: "stale_programme_participant",
+            title: `${name} — no programme activity in 7+ days`,
+            message: `${name}${email} hasn't completed a training week, quiz, reflection, triad reflection, or daily prompt in over a week.`,
+            related_coachee_id: r.user_id,
+            related_enrollment_id: r.enrollment_id,
             resolved: false,
           };
         });
@@ -374,40 +363,39 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 5. Triads with no confirmed session time yet (still 'proposed' with
-    //    no proposed_start_time, or no session row at all — e.g. an
-    //    admin-created group auto-assign never ran a slot-pick for)
+    // 5. Active triad groups with neither an open nor a completed session.
+    //    Every group is for ONE required Triad (its cohort requirement): a
+    //    completed session fulfils it, so only groups whose Triad is still
+    //    unfulfilled and unscheduled are reminded — no local counting.
     // ------------------------------------------------------------------
     const { data: activeGroups } = await admin
       .from("triad_groups")
-      .select("id, member_1_id, member_2_id, member_3_id")
+      .select("id, cohort_requirement_dates(ordinal), triad_sessions(status, scheduled_start_time)")
       .eq("is_active", true);
 
     let triadUnscheduledSent = 0;
-    if (activeGroups && activeGroups.length > 0) {
-      const groupIds = activeGroups.map((g) => g.id as string);
-      const { data: sessions } = await admin
-        .from("triad_sessions")
-        .select("triad_group_id, status, proposed_start_time")
-        .in("triad_group_id", groupIds);
-      const unscheduledGroupIds = new Set(groupIds);
-      for (const s of sessions || []) {
-        const hasTime = s.status !== "proposed" || s.proposed_start_time !== null;
-        if (hasTime) unscheduledGroupIds.delete(s.triad_group_id as string);
-      }
-
-      for (const g of activeGroups) {
-        if (!unscheduledGroupIds.has(g.id as string)) continue;
-        const members = [g.member_1_id, g.member_2_id, g.member_3_id].filter(Boolean) as string[];
-        for (const userId of members) {
+    const unscheduledGroups = ((activeGroups || []) as unknown as {
+      id: string;
+      cohort_requirement_dates: { ordinal: number } | null;
+      triad_sessions: { status: string; scheduled_start_time: string | null }[];
+    }[]).filter((g) => {
+      const sessions = g.triad_sessions || [];
+      return !sessions.some((s) => s.status === "completed")
+        && !sessions.some((s) => (s.status === "proposed" || s.status === "confirmed") && s.scheduled_start_time !== null);
+    });
+    if (unscheduledGroups.length > 0) {
+      const membersByGroup = await triadMembersByGroup(unscheduledGroups.map((g) => g.id));
+      for (const group of unscheduledGroups) {
+        const unit = group.cohort_requirement_dates?.ordinal ?? 1;
+        for (const member of membersByGroup.get(group.id) || []) {
           const sent = await notifyOnce({
-            userId,
-            link: "/triads",
+            userId: member.userId,
+            link: `/triads?triad=${unit}`,
             type: "triad_reminder",
-            title: "Schedule your triad session",
-            titleVi: "Đặt lịch session triad của bạn",
-            body: "Your triad group hasn't scheduled a practice session yet. Agree on a time with your group.",
-            bodyVi: "Nhóm triad của bạn chưa đặt lịch session luyện tập nào. Hãy thống nhất thời gian với nhóm.",
+            title: `Schedule your Triad ${unit} session`,
+            titleVi: `Đặt lịch session Triad ${unit} của bạn`,
+            body: `Your Triad ${unit} group has no session scheduled yet. Propose a time to your group.`,
+            bodyVi: `Nhóm Triad ${unit} của bạn chưa có session nào được lên lịch. Hãy đề xuất thời gian cho nhóm.`,
             ctaLabel: "Schedule session",
             ctaLabelVi: "Đặt lịch session",
           });

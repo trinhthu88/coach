@@ -1,0 +1,307 @@
+We have a remaining Sponsor Leader Detail runtime blocker.
+
+CURRENT OBSERVED BEHAVIOR
+
+Sponsor → Cohort → select visible leader → Leader Detail
+
+UI displays:
+
+"Leader detail unavailable"
+
+The current hook:
+
+useSponsorLeaderData()
+
+calls:
+
+- sponsor_canonical_enrollment_metadata
+- sponsor_canonical_leader_journey
+- sponsor_canonical_leader_experience
+
+The page currently treats:
+
+leader === null
+
+as the generic unavailable state.
+
+IMPORTANT:
+SponsorLeaderDetail currently ignores the hook's actual `error` value, so:
+
+- RPC failure
+and
+- legitimate empty/not-visible result
+
+are rendered identically.
+
+This must be diagnosed before GREEN can be declared.
+
+==================================================
+OBJECTIVE
+==================================================
+
+Find the exact reason the selected visible leader returns an unavailable detail page.
+
+Do NOT redesign the page yet.
+Do NOT change Sponsor business logic until root cause is proven.
+Do NOT weaken privacy rules.
+Do NOT add fallback/fake data.
+
+==================================================
+STEP 1 — REPRODUCE THE EXACT FAILURE
+==================================================
+
+Use the running app with the Demo Sponsor account.
+
+Navigate:
+
+Sponsor
+→ Cohorts
+→ Emerging Leaders Cohort C
+→ select the leader that produces "Leader detail unavailable"
+
+Capture:
+
+- selected enrollment_id
+- selected learner/user id if available
+- cohort_id
+- programme_id
+- all RPC calls fired by useSponsorLeaderData()
+- HTTP status for each
+- response body for each
+- PostgREST error code/message for each
+
+We need the exact failing request.
+
+==================================================
+STEP 2 — TRACE useSponsorLeaderData()
+==================================================
+
+Inspect the hook end to end.
+
+Document:
+
+SponsorLeaderDetail
+→ useSponsorLeaderData
+→ RPC calls
+→ result parsing
+→ leader object construction
+→ error handling
+
+Answer:
+
+1. Which RPC result is required for `leader` to be non-null?
+2. What happens if metadata succeeds but journey fails?
+3. What happens if experience fails?
+4. What happens if metadata returns zero rows?
+5. What happens if one RPC throws?
+6. Where is the actual error discarded?
+
+Produce a small state table:
+
+| Metadata | Journey | Experience | Hook result |
+|---|---|---|---|
+| success | success | success | ... |
+| empty | success | success | ... |
+| error | success | success | ... |
+| success | error | success | ... |
+| success | success | error | ... |
+
+==================================================
+STEP 3 — VERIFY THE SELECTED LEADER AGAINST LIVE DB
+==================================================
+
+Using the exact enrollment_id selected from the cohort roster, call live:
+
+- sponsor_canonical_enrollment_metadata
+- sponsor_canonical_leader_progress
+- sponsor_canonical_leader_journey
+- sponsor_canonical_leader_experience
+
+under the same authenticated Sponsor context.
+
+For each report:
+
+- HTTP status
+- row count
+- exact result/error
+- whether the enrollment is sponsor-visible
+- whether cohort/org scope matches
+
+Because the leader came from the visible roster, metadata should normally resolve.
+
+If it does not, trace the inconsistency between:
+
+roster source
+and
+leader-detail metadata source.
+
+==================================================
+STEP 4 — CHECK FOR LIVE DEMO IDENTITY / FIXTURE MISMATCH
+==================================================
+
+Verify whether the selected roster row references:
+
+- correct enrollment_id
+- correct user_id
+- correct cohort_id
+- correct organization_id
+- correct programme_id
+
+Check whether the hosted Demo Sponsor / learner identities differ from repository seed fixtures.
+
+Do not assume seed identities equal hosted identities.
+
+If the roster contains stale or mismatched enrollment references, identify exactly where they came from.
+
+==================================================
+STEP 5 — CHECK THE THREE LEADER-DETAIL RPC CONTRACTS
+==================================================
+
+For:
+
+sponsor_canonical_enrollment_metadata
+sponsor_canonical_leader_journey
+sponsor_canonical_leader_experience
+
+verify live:
+
+- function exists
+- correct current definition
+- correct grants
+- correct parameter signature
+- same enrollment scoping rule
+- same Sponsor organization authorization rule
+
+Also compare with:
+
+sponsor_canonical_leader_progress
+
+because progress is already known to work for C1/C4.
+
+We need to know if one RPC applies different visibility/scoping logic than the others.
+
+==================================================
+STEP 6 — FIX THE ROOT CAUSE ONLY
+==================================================
+
+Classify the failure as one of:
+
+A. live data / identity mismatch
+B. enrollment-id mismatch between roster and detail
+C. RPC visibility mismatch
+D. RPC SQL bug
+E. frontend parsing bug
+F. error-state bug only
+
+Then implement the smallest correct fix.
+
+Do NOT change privacy thresholds.
+Do NOT make Sponsor see data they should not see.
+Do NOT patch around bad IDs with fuzzy matching.
+
+==================================================
+STEP 7 — IMPROVE ERROR STATE SEPARATION
+==================================================
+
+Independently of the root cause, fix the UI so it no longer hides RPC errors as "Leader detail unavailable."
+
+We need distinct states:
+
+1. LOADING
+2. REAL RPC / DATA ERROR
+3. LEGITIMATE NOT FOUND / NOT VISIBLE
+4. SUCCESS
+
+Use the hook's actual `error` value.
+
+For example:
+
+RPC/data failure:
+"Leader detail could not be loaded"
+
+Legitimate empty/not-visible:
+"Leader detail unavailable"
+
+Do not expose internal SQL/PostgREST details to end users.
+
+But preserve detailed errors in development logging.
+
+==================================================
+STEP 8 — VERIFY ALL LEADER DETAIL CASES
+==================================================
+
+After the fix test:
+
+- C1 full learner
+- C4 partial learner
+- at least one additional visible learner
+- invalid/non-visible enrollment id
+- Sponsor from wrong organization if test fixture exists
+
+Verify:
+
+- visible learners load
+- non-visible learners remain protected
+- RPC failures show the error state, not the empty state
+
+==================================================
+STEP 9 — WORKSPACE CLEANLINESS
+==================================================
+
+The attached screenshot is currently reported as an untracked workspace file.
+
+Check `git status`.
+
+If it is only an incidental diagnostic screenshot and not intended for the repo:
+
+- remove it from the working tree location
+or
+- ensure the existing ignore rules correctly exclude diagnostic attachments
+
+Do NOT add a broad ignore rule that could hide legitimate project assets.
+
+Return the working tree to clean state.
+
+==================================================
+STEP 10 — VALIDATION
+==================================================
+
+Run:
+
+- relevant Sponsor Leader Detail tests
+- full Sponsor frontend tests
+- full frontend test suite
+- TypeScript validation
+- production build
+
+If DB tests are runnable, run the relevant Sponsor contract tests.
+
+Do not declare GREEN unless the actual Leader Detail runtime path is also verified.
+
+==================================================
+FINAL REPORT
+==================================================
+
+Return:
+
+1. exact failing RPC / condition
+2. exact root cause
+3. whether this was data, RPC, auth, or frontend
+4. files changed
+5. DB changes if any
+6. error-state handling change
+7. C1 live verification
+8. C4 live verification
+9. additional leader verification
+10. invalid/non-visible leader behavior
+11. privacy verification
+12. frontend tests
+13. TypeScript result
+14. production build result
+15. working-tree status
+16. final verdict:
+   GREEN
+   or
+   NOT GREEN
+
+Do not start Learner UX work in this task.

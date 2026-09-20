@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PeerSessionRow, SessionRow, SessionSource } from "./types";
 import { withEnrollmentActions, saveEnrollmentActions } from "@/lib/enrollmentActions";
+import { LEARNER_ENGAGEMENT_QUERY_KEYS } from "@/hooks/useLearnerCanonicalProgress";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 
 export type { SessionSource };
@@ -99,6 +100,12 @@ export function useJourneySessions(coacheeId: string | undefined, options: Optio
         items as { text: string; done?: boolean; due_date?: string | null; milestone_id?: string | null }[],
       );
       if (error) throw error;
+    },
+    onSuccess: () => {
+      // enrollment_actions is the canonical action record: refetch the
+      // action lists and the server-calculated action totals.
+      void queryClient.invalidateQueries({ queryKey: ["enrollment-actions-summary"] });
+      for (const key of LEARNER_ENGAGEMENT_QUERY_KEYS) void queryClient.invalidateQueries({ queryKey: [...key] });
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Failed");

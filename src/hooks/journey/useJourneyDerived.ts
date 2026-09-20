@@ -11,45 +11,64 @@ export function useMilestoneProgress(milestones: Milestone[]) {
   return { totalMs, doneMs, overallPct };
 }
 
-/** Goal-wheel rating rows (start/current/target) plus the average progress across goals. */
+/**
+ * The one goal-progress formula: how far a rating moved from Start toward
+ * Target. This is byte-for-byte the same calculation the Sponsor canonical
+ * engine uses for `goal_progress_pct`
+ * (`least(100, greatest(0, (current-start)*100/(target-start)))`) — a goal
+ * with no rating, or a non-increasing Start→Target span, has no defined
+ * progress (null), never a fabricated 0%.
+ */
+export function goalProgressPct(start: number | null, current: number | null, target: number | null): number | null {
+  if (start == null || current == null || target == null || target <= start) return null;
+  const span = target - start;
+  const got = Math.max(0, current - start);
+  return Math.min(100, Math.round((got / span) * 100));
+}
+
+/** Goal-wheel rating rows (start/current/target/progress) plus the average progress across goals. */
 export function useGoalRatingRows(goals: Goal[], ratings: Record<string, GoalRating>) {
   const ratingRows: GoalRatingRow[] = useMemo(
     () =>
       goals.map((g) => {
         const r = ratings[g.id];
+        const start = r?.start_rating ?? null;
+        const current = r?.current_rating ?? null;
+        const target = r?.target_rating ?? null;
         return {
           goalId: g.id,
           title: g.title,
-          start: r?.start_rating ?? null,
-          current: r?.current_rating ?? null,
-          target: r?.target_rating ?? null,
+          start,
+          current,
+          target,
+          progress: goalProgressPct(start, current, target),
         };
       }),
     [goals, ratings]
   );
 
   const avgGoalProgress = useMemo(() => {
-    const ratedRows = ratingRows.filter((r) => r.start != null && r.current != null && r.target != null && r.target > r.start);
-    if (!ratedRows.length) return null;
-    const vals = ratedRows.map((r) => {
-      const span = Math.max(1, r.target! - r.start!);
-      const got = Math.max(0, r.current! - r.start!);
-      return Math.min(100, Math.round((got / span) * 100));
-    });
+    const vals = ratingRows.map((r) => r.progress).filter((v): v is number => v != null);
+    if (!vals.length) return null;
     return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
   }, [ratingRows]);
 
   return { ratingRows, avgGoalProgress };
 }
 
-/** Elapsed/total weeks for a programme enrollment, derived from its start/end dates. */
+/**
+ * Elapsed/total weeks for a programme enrollment, derived from its actual
+ * start/end dates only. Returns null (render an explicit "unavailable"
+ * state) rather than guessing a duration when end_date is missing — this
+ * used to fabricate `start + (durationMonths || 3) * 30 days`, inventing a
+ * default 3-month programme out of nothing. Every caller already handles a
+ * null result with a "—" fallback, so no caller needed that guess.
+ */
 export function useProgrammeWeeks(programme: ProgrammeInfo | null | undefined, now: Date) {
   return useMemo(() => {
-    if (!programme?.startDate) return null;
+    if (!programme?.startDate || !programme.endDate) return null;
     const start = new Date(programme.startDate);
-    const end = programme.endDate
-      ? new Date(programme.endDate)
-      : new Date(start.getTime() + (programme.durationMonths || 3) * 30 * 86400000);
+    const end = new Date(programme.endDate);
     const totalWeeks = Math.max(1, differenceInCalendarWeeks(end, start, { weekStartsOn: 1 }));
     const elapsedWeeks = Math.max(0, Math.min(totalWeeks, differenceInCalendarWeeks(now, start, { weekStartsOn: 1 })));
     return { start, end, totalWeeks, elapsedWeeks };

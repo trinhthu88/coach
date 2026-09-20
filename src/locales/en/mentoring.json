@@ -1,4 +1,13 @@
 {
+  "myMentor": {
+    "eyebrow": "My Mentor",
+    "next": "Next session",
+    "upcoming": "Upcoming sessions",
+    "noUpcoming": "No upcoming session booked.",
+    "past": "Past sessions",
+    "feedback": "Mentoring feedback",
+    "noFeedback": "No feedback yet."
+  },
   "findMentor": {
     "eyebrow": "Mentoring",
     "titleLead": "Your",
@@ -65,6 +74,11 @@
   "sessionDetail": {
     "notFound": "Session not found",
     "backToMentors": "Back to mentors",
+    "typeLabel": "Mentoring",
+    "counterpartRole": {
+      "mentor": "Mentor",
+      "mentee": "Mentee"
+    },
     "withCounterpart": "With {{name}}",
     "minutes": "min",
     "joinMeeting": "Join meeting",

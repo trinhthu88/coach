@@ -4,6 +4,7 @@ import type { AppRole } from "@/context/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 import type { SessionStatus } from "@/lib/sessionStatusMeta";
 import { withEnrollmentActions, type EnrollmentActionItem } from "@/lib/enrollmentActions";
+import { fetchMyTriads, type TriadGroupEntry, type TriadSessionView } from "@/hooks/triads/useMyTriads";
 
 export type SessionKind =
   | "coaching"
@@ -12,23 +13,82 @@ export type SessionKind =
   | "coachee-peer-give"
   | "coachee-peer-receive"
   | "mentoring-mentor"
-  | "mentoring-mentee";
+  | "mentoring-mentee"
+  | "triad";
+
+/** A Triad session in the unified list. Every member practises every role, so there is no per-session role. */
+export interface TriadSessionContext {
+  groupId: string;
+  /** The Triad requirement of the session's group ("Triad N"). */
+  unitNumber: number;
+  participantIds: string[];
+  participantNames: string[];
+  meetingUrl: string | null;
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
+}
 
 export interface SessionRow {
   id: string;
   coach_id: string;
   coachee_id: string;
   topic: string;
-  start_time: string;
-  duration_minutes: number;
-  status: SessionStatus;
+  start_time: string | null;
+  duration_minutes: number | null;
+  status: SessionStatus | "proposed";
   enrollment_id: string | null;
+  programmeName: string | null;
+  cohortName: string | null;
   enrollment_actions: import("@/lib/enrollmentActions").EnrollmentActionItem[];
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
   kind: SessionKind;
   coach: { full_name: string; email: string; avatar_url: string | null } | null;
   coachee: { full_name: string; email: string; avatar_url: string | null } | null;
+  triad: TriadSessionContext | null;
+}
+
+export interface SessionEnrollmentContext {
+  programmeName: string | null;
+  cohortName: string | null;
+}
+
+export function attachEnrollmentContext<T extends { enrollment_id?: string | null }>(
+  rows: T[],
+  contexts: Record<string, SessionEnrollmentContext>
+): (T & SessionEnrollmentContext)[] {
+  return rows.map((row) => ({
+    ...row,
+    programmeName: row.enrollment_id ? contexts[row.enrollment_id]?.programmeName ?? null : null,
+    cohortName: row.enrollment_id ? contexts[row.enrollment_id]?.cohortName ?? null : null,
+  }));
+}
+
+/** One Triad session of one of the learner's groups, as a unified session row. */
+export function normalizeTriadSession(group: TriadGroupEntry, session: TriadSessionView) {
+  return {
+    id: session.id,
+    enrollment_actions: [] as EnrollmentActionItem[],
+    coach_id: "",
+    coachee_id: "",
+    topic: "",
+    start_time: session.scheduledStartTime,
+    duration_minutes: null,
+    enrollment_id: group.enrollmentId,
+    coachee_rating: null,
+    coachee_rating_comment: null,
+    status: session.status as SessionRow["status"],
+    kind: "triad" as const,
+    triad: {
+      groupId: group.groupId,
+      unitNumber: group.unitNumber,
+      participantIds: group.members.map((m) => m.id),
+      participantNames: group.members.map((m) => m.full_name),
+      meetingUrl: session.meetingUrl,
+      scheduledStartTime: session.scheduledStartTime,
+      scheduledEndTime: session.scheduledEndTime,
+    } satisfies TriadSessionContext,
+  };
 }
 
 async function fetchSessionsData(userId: string, role: AppRole): Promise<SessionRow[]> {
@@ -39,6 +99,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   let peer: Enriched<Tables<"peer_sessions">>[] = [];
   let coacheePeer: Enriched<Tables<"coachee_peer_sessions">>[] = [];
   let mentoring: Enriched<Tables<"mentoring_sessions">>[] = [];
+  let triads: ReturnType<typeof normalizeTriadSession>[] = [];
 
   if (role === "coach" || role === "coachee") {
     const col = role === "coach" ? "coach_id" : "coachee_id";
@@ -81,6 +142,18 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     mentoring = await withEnrollmentActions(data || [], "mentoring");
   }
 
+  if (role === "coach" || role === "coachee") {
+    // Triads: every session of every group the learner's enrollments belong
+    // to (canonical membership), from the one learner Triad read model.
+    // Like every other source here, a failed Triad read must not hide the
+    // learner's other sessions.
+    const groups = await fetchMyTriads(null).catch((error) => {
+      console.error("Triad sessions failed to load", error);
+      return [];
+    });
+    triads = groups.flatMap((group) => group.sessions.map((session) => normalizeTriadSession(group, session)));
+  }
+
   const allRows = [
     ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
     ...peer.map((s) => ({
@@ -111,9 +184,26 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       coachee_rating_comment: null,
       kind: (s.mentor_id === userId ? "mentoring-mentor" : "mentoring-mentee") as SessionKind,
     })),
-  ].sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+    ...triads,
+  ].sort((a, b) => {
+    const at = a.start_time ? new Date(a.start_time).getTime() : 0;
+    const bt = b.start_time ? new Date(b.start_time).getTime() : 0;
+    return bt - at;
+  });
 
-  const ids = Array.from(new Set(allRows.flatMap((s) => [s.coach_id, s.coachee_id])));
+  const enrollmentIds = Array.from(new Set(allRows.map((row) => row.enrollment_id).filter((id): id is string => Boolean(id))));
+  const enrollmentContexts: Record<string, SessionEnrollmentContext> = {};
+  if (enrollmentIds.length > 0) {
+    const { data: enrollmentRows } = await supabase.from("programme_enrollments").select("id, programmes(name), cohorts(name)").in("id", enrollmentIds);
+    for (const row of enrollmentRows ?? []) {
+      const programme = row.programmes as { name?: string | null } | null;
+      const cohort = row.cohorts as { name?: string | null } | null;
+      enrollmentContexts[row.id] = { programmeName: programme?.name ?? null, cohortName: cohort?.name ?? null };
+    }
+  }
+  const rowsWithContext = attachEnrollmentContext(allRows, enrollmentContexts);
+
+  const ids = Array.from(new Set(rowsWithContext.flatMap((s) => [s.coach_id, s.coachee_id]))).filter(Boolean);
   let byId = new Map<string, Pick<Tables<"profiles">, "id" | "full_name" | "email" | "avatar_url">>();
   if (ids.length) {
     const { data: profs } = await supabase
@@ -123,10 +213,12 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     byId = new Map((profs || []).map((p) => [p.id, p]));
   }
 
-  return allRows.map((s) => ({
+  return rowsWithContext.map((s) => ({
     ...s,
     coach: byId.get(s.coach_id) || null,
     coachee: byId.get(s.coachee_id) || null,
+    // Triad participant names come from the one canonical Triad member source.
+    triad: s.kind === "triad" && "triad" in s ? (s.triad as TriadSessionContext) : null,
   }));
 }
 

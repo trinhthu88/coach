@@ -1,5 +1,5 @@
 // Live integration test: proves a sponsor account cannot see another
-// organization's data through the sponsor_* SECURITY DEFINER functions,
+// organization's data through the canonical sponsor_* SECURITY DEFINER functions,
 // even calling them the same way a real client would (signed-in session,
 // no ability to pass an org id — the functions derive it server-side).
 //
@@ -170,32 +170,59 @@ async function callAllAsUser(email, ownCohortId, foreignCohortId) {
   const { error: signInErr } = await client.auth.signInWithPassword({ email, password: PASSWORD });
   if (signInErr) throw signInErr;
 
-  const [enrollments, cohorts, organisation, satisfaction, foreignEnrollments, foreignCohorts, foreignSatisfaction] = await Promise.all([
-    client.rpc("sponsor_enrollment_summaries", { p_cohort_id: ownCohortId }),
-    client.rpc("sponsor_cohort_summaries", { p_cohort_id: ownCohortId }),
-    client.rpc("sponsor_organisation_summary"),
-    client.rpc("sponsor_satisfaction_summary", { p_cohort_id: ownCohortId }),
-    client.rpc("sponsor_enrollment_summaries", { p_cohort_id: foreignCohortId }),
-    client.rpc("sponsor_cohort_summaries", { p_cohort_id: foreignCohortId }),
-    client.rpc("sponsor_satisfaction_summary", { p_cohort_id: foreignCohortId }),
+  const asOf = new Date().toISOString().slice(0, 10);
+  const [
+    enrollments,
+    cohorts,
+    organisation,
+    metadata,
+    foreignEnrollments,
+    foreignCohorts,
+    foreignMetadata,
+  ] = await Promise.all([
+    client.rpc("sponsor_canonical_enrollment_progress", {
+      p_cohort_id: ownCohortId,
+      p_as_of: asOf,
+    }),
+    client.rpc("sponsor_canonical_cohort_progress", {
+      p_cohort_id: ownCohortId,
+      p_as_of: asOf,
+    }),
+    client.rpc("sponsor_canonical_organisation_progress", { p_as_of: asOf }),
+    client.rpc("sponsor_canonical_enrollment_metadata", {
+      p_cohort_id: ownCohortId,
+      p_as_of: asOf,
+    }),
+    client.rpc("sponsor_canonical_enrollment_progress", {
+      p_cohort_id: foreignCohortId,
+      p_as_of: asOf,
+    }),
+    client.rpc("sponsor_canonical_cohort_progress", {
+      p_cohort_id: foreignCohortId,
+      p_as_of: asOf,
+    }),
+    client.rpc("sponsor_canonical_enrollment_metadata", {
+      p_cohort_id: foreignCohortId,
+      p_as_of: asOf,
+    }),
   ]);
 
   for (const [name, res] of [
-    ["sponsor_enrollment_summaries", enrollments],
-    ["sponsor_cohort_summaries", cohorts],
-    ["sponsor_organisation_summary", organisation],
-    ["sponsor_satisfaction_summary", satisfaction],
-    ["foreign sponsor_enrollment_summaries", foreignEnrollments],
-    ["foreign sponsor_cohort_summaries", foreignCohorts],
-    ["foreign sponsor_satisfaction_summary", foreignSatisfaction],
+    ["sponsor_canonical_enrollment_progress", enrollments],
+    ["sponsor_canonical_cohort_progress", cohorts],
+    ["sponsor_canonical_organisation_progress", organisation],
+    ["sponsor_canonical_enrollment_metadata", metadata],
+    ["foreign sponsor_canonical_enrollment_progress", foreignEnrollments],
+    ["foreign sponsor_canonical_cohort_progress", foreignCohorts],
+    ["foreign sponsor_canonical_enrollment_metadata", foreignMetadata],
   ]) {
     if (res.error) throw new Error(`${name} errored: ${res.error.message}`);
   }
 
   await client.auth.signOut();
   return { enrollments: enrollments.data, cohorts: cohorts.data, organisation: organisation.data,
-    satisfaction: satisfaction.data, foreignEnrollments: foreignEnrollments.data,
-    foreignCohorts: foreignCohorts.data, foreignSatisfaction: foreignSatisfaction.data };
+    metadata: metadata.data, foreignEnrollments: foreignEnrollments.data,
+    foreignCohorts: foreignCohorts.data, foreignMetadata: foreignMetadata.data };
 }
 
 async function checkDirectAccess(email, leaderId, enrollmentId, programmeId) {
@@ -266,9 +293,9 @@ async function main() {
   const sponsorB = await makeSponsor("b", programme.id);
   const leaderB = await makeLeader("b", sponsorB.orgId, sponsorB.cohortId, programme.id, coachId);
 
-  console.log("\nCalling enrollment/cohort/organisation sponsor functions as sponsor A...");
+  console.log("\nCalling canonical enrollment/cohort/organisation sponsor functions as sponsor A...");
   const asA = await callAllAsUser(sponsorA.email, sponsorA.cohortId, sponsorB.cohortId);
-  console.log("\nCalling enrollment/cohort/organisation sponsor functions as sponsor B...");
+  console.log("\nCalling canonical enrollment/cohort/organisation sponsor functions as sponsor B...");
   const asB = await callAllAsUser(sponsorB.email, sponsorB.cohortId, sponsorA.cohortId);
 
   console.log("\nAssertions:");
@@ -282,15 +309,13 @@ async function main() {
       asB.enrollments.every((row) => row.enrollment_id !== leaderA.enrollmentId),
     "sponsor reports cannot cross org or enrollment boundaries"
   );
-  assert(asA.satisfaction[0]?.rated_session_count == null && asA.satisfaction[0]?.avg_rating == null,
-    "sponsor A satisfaction fields are suppressed below privacy threshold");
-  assert(asB.satisfaction[0]?.rated_session_count == null && asB.satisfaction[0]?.avg_rating == null,
-    "sponsor B satisfaction fields are suppressed below privacy threshold");
+  assert(asA.metadata.length === 0 && asB.metadata.length === 0,
+    "sponsor metadata is suppressed below privacy threshold");
   assert(asA.foreignEnrollments.length === 0 && asA.foreignCohorts.length === 0 &&
-    asA.foreignSatisfaction.length === 0 &&
+    asA.foreignMetadata.length === 0 &&
     asB.foreignEnrollments.length === 0 && asB.foreignCohorts.length === 0 &&
-    asB.foreignSatisfaction.length === 0,
-    "own sponsor cannot query foreign cohort through any current reporting RPC");
+    asB.foreignMetadata.length === 0,
+    "own sponsor cannot query foreign cohort through any canonical reporting RPC");
   assert(
     !JSON.stringify(asA).includes(sponsorB.orgId) && !JSON.stringify(asB).includes(sponsorA.orgId),
     "neither sponsor's response mentions the other org's id anywhere"
@@ -310,7 +335,9 @@ async function main() {
 
   console.log("\nCalling functions directly with an unauthenticated (anon) client...");
   const anonClient = createClient(URL, ANON_KEY, { auth: { persistSession: false } });
-  const anonRoster = await anonClient.rpc("sponsor_organisation_summary");
+  const anonRoster = await anonClient.rpc("sponsor_canonical_organisation_progress", {
+    p_as_of: new Date().toISOString().slice(0, 10),
+  });
   assert(
     anonRoster.error?.code === "42501",
     "unauthenticated caller is denied at the grant level (42501), not merely handed empty data"
@@ -322,12 +349,13 @@ async function main() {
   const nonSponsorRoster = await callAllAsUser(nonSponsorEmail, sponsorA.cohortId, sponsorB.cohortId);
   assert(
     nonSponsorRoster.enrollments.length === 0 &&
-      nonSponsorRoster.organisation[0]?.enrollment_count == null &&
-      nonSponsorRoster.satisfaction.length === 0 &&
+      nonSponsorRoster.organisation.length === 1 &&
+      nonSponsorRoster.organisation[0]?.enrollment_count === 0 &&
+      nonSponsorRoster.metadata.length === 0 &&
       nonSponsorRoster.foreignEnrollments.length === 0 &&
       nonSponsorRoster.foreignCohorts.length === 0 &&
-      nonSponsorRoster.foreignSatisfaction.length === 0,
-    "an authenticated coachee (not a sponsor) gets empty results from every function, not an error"
+      nonSponsorRoster.foreignMetadata.length === 0,
+    "an authenticated coachee (not a sponsor) gets empty results from every canonical function, not an error"
   );
 
   if (failures > 0) {

@@ -94,12 +94,22 @@
     "goalsLabel": "Mục tiêu",
     "goalsSummary_other": "{{count}} mục tiêu đang hoạt động",
     "goalsSummaryEmpty": "Chưa có mục tiêu nào — hãy đặt một mục tiêu từ trang Phát triển của tôi.",
+    "goalsLoadError": "Không thể tải mục tiêu cho đăng ký này.",
     "loadError": "Không thể tải tiến độ chương trình.",
     "enrollmentRequired": "Không thể xem tiến độ cho đến khi chọn một đợt tham gia.",
     "trainingActivity": "Hoạt động đào tạo",
     "completedUnits": "Đã hoàn thành {{completed}} / {{required}}",
     "completedUnitsNoRequirement": "Đã hoàn thành {{completed}}",
     "dueAdherence": "Đã hoàn thành {{pct}}% trong {{due}} mục đến hạn",
+    "overallProgress": "Đã hoàn thành {{completed}} / {{required}} hoạt động ({{pct}}%)",
+    "learningBreakdown": "Chi tiết học tập",
+    "learningStatus": {
+      "completed": "Đã hoàn thành",
+      "current": "Đang thực hiện",
+      "overdue": "Quá hạn",
+      "upcoming": "Sắp tới",
+      "unavailable": "Không theo dõi"
+    },
     "modules": {
       "coaching": "Khai vấn",
       "peer_coaching": "Khai vấn đồng cấp",

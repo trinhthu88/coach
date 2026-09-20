@@ -6,6 +6,30 @@
     "inOneDay": "Trong 1 ngày",
     "inDays": "Trong {{count}} ngày"
   },
+  "coacheeDashboard": {
+    "hero": {
+      "enrollmentRequired": "Thông tin chương trình của bạn sẽ hiển thị khi bạn có một đợt tham gia đang hoạt động.",
+      "checkpointPosition": "Mốc {{current}}/{{total}}"
+    },
+    "nextUp": {
+      "empty": "Hiện không có việc nào đến hạn.",
+      "itemsCount_other": "{{count}} việc",
+      "kinds": {
+        "overdue_requirement": "Quá hạn",
+        "overdue_action": "Hành động quá hạn",
+        "current_requirement": "Hiện tại",
+        "upcoming_session": "Session sắp tới",
+        "upcoming_requirement": "Sắp tới"
+      }
+    },
+    "journeyPreview": {
+      "viewFull": "Xem toàn bộ hành trình →"
+    },
+    "upcomingSessions": {
+      "empty": "Chưa có session sắp tới nào được đặt.",
+      "viewAll": "Xem tất cả session →"
+    }
+  },
   "greetingByRole": {
     "coachee": "Tìm coach tiếp theo và duy trì đà phát triển.",
     "coach": "Xem lại các yêu cầu session và truyền cảm hứng cho học viên của bạn hôm nay.",
@@ -435,6 +459,32 @@
     "upcomingHint": "Trên tất cả loại session"
   },
   "cards": {
+    "myGoal": {
+      "title": "Mục tiêu của tôi",
+      "enrollmentRequired": "Chọn một đợt tham gia để xem mục tiêu của bạn.",
+      "loadError": "Không thể tải mục tiêu của bạn.",
+      "empty": "Chưa có mục tiêu nào được tạo cho chương trình này.",
+      "targetDate": "Hạn {{date}}",
+      "progressLabel": "tiến độ",
+      "additionalGoals_other": "+{{count}} mục tiêu đang hoạt động khác",
+      "actionsLoadError": "Không thể tải hành động.",
+      "noActions": "Không có hành động nào đang mở.",
+      "actionsSummary": "{{completed}} đã hoàn thành · {{open}} đang mở",
+      "overdueSuffix": " · {{count}} quá hạn",
+      "nextUpLabel": "Tiếp theo:",
+      "openJourney": "Mở hành trình của tôi"
+    },
+    "recentDevelopment": {
+      "title": "Phát triển gần đây",
+      "empty": "Chưa có lịch sử phát triển nào.",
+      "openJourney": "Mở hành trình của tôi"
+    },
+    "myFeedback": {
+      "title": "Phản hồi & phát triển",
+      "loadError": "Không thể tải phản hồi.",
+      "empty": "Chưa có phản hồi nào hiển thị cho bạn.",
+      "someone": "Ai đó"
+    },
     "coachingGive": {
       "title": "Coachee của tôi",
       "pendingBadge": "{{count}} chờ duyệt",
@@ -498,6 +548,234 @@
       "awaitingYourResponse": "Đang chờ phản hồi của bạn",
       "reflectionsPending": "{{count}} reflection đang chờ",
       "openTriads": "Mở triads"
+    }
+  },
+  "learnerProfile": {
+    "header": {
+      "eyebrow": "Chương trình của tôi",
+      "programmeStatus": "Trạng thái chương trình",
+      "coaching": "Coaching",
+      "coachingValue": "{{completed}}/{{allocated}} session",
+      "position": "Vị trí"
+    },
+    "reference": {
+      "journeySubtitle": "Cấu trúc và thời hạn chương trình của bạn, theo cấu hình chương trình và khóa học.",
+      "journeySourceValue": "Cấu hình chương trình, lịch khóa học và hoạt động bạn đã hoàn thành",
+      "journeyWithheld": "Chưa có mốc chương trình nào được cấu hình cho đợt tham gia này.",
+      "journeyWindow": "Đang hiển thị mốc {{first}}–{{last}} trên {{total}}",
+      "trendWithheld": "Chưa có dữ liệu tham gia theo mốc.",
+      "aggregateOnly": "Cùng số liệu nhà tài trợ nhìn thấy",
+      "privacySafe": "Chỉ các mục bắt buộc",
+      "learningUnavailable": "Chưa có mục học tập bắt buộc nào được cấu hình cho đợt tham gia này.",
+      "attendanceOnly": "Chỉ các mục bắt buộc, hiển thị và được giao cho bạn mới được tính. Nhà tài trợ thấy cùng số liệu — không bao giờ thấy nội dung session của bạn.",
+      "progressOnly": "Mục tiêu của bạn",
+      "ratingTrendWithheld": "Hãy đánh giá các session coaching đã hoàn thành để góp vào điểm này.",
+      "ratingPrivacy": "Trung bình các đánh giá session bạn đã gửi. Nhà tài trợ thấy điểm trung bình, không thấy nhận xét của bạn.",
+      "ratingNone": "Bạn chưa đánh giá session nào đã hoàn thành."
+    },
+    "modules": {
+      "open": "Mở →",
+      "openTraining": "Mở phần đào tạo →"
+    },
+    "journey": {
+      "dueOn": "Hạn {{date}}",
+      "inScope": "Module trong phạm vi",
+      "detailNote": "Đơn vị tích lũy gồm mọi hoạt động bắt buộc đến hạn trước ngày này. Nhà tài trợ thấy cùng trạng thái mốc.",
+      "stateNote": {
+        "completed": "Mọi đơn vị tích lũy đến hạn trước ngày này đã hoàn thành đúng hạn.",
+        "overdue": "Chưa hoàn thành đủ các đơn vị tích lũy đến hạn trước ngày này.",
+        "current": "Mốc này đến hạn hôm nay.",
+        "upcoming": "Chưa đến hạn — hoạt động hoàn thành trước ngày này sẽ được tính."
+      }
+    },
+    "goals": {
+      "aside_other": "{{count}} mục tiêu đang hoạt động",
+      "emptyGoals": "Chưa có mục tiêu đang hoạt động. Hãy đặt mục tiêu trong Hành trình của tôi.",
+      "successMeasure": "Thành công nghĩa là: {{text}}",
+      "open": "Mở mục tiêu →",
+      "start": "Ban đầu",
+      "current": "Hiện tại",
+      "target": "Mục tiêu",
+      "targetDate": "Hạn {{date}}",
+      "noTargetDate": "Chưa có hạn",
+      "notRated": "Chưa đánh giá",
+      "progress": "Đạt {{pct}}% so với mục tiêu",
+      "latestCheckin": "Cập nhật gần nhất {{date}} · {{from}} → {{to}}",
+      "noCheckin": "Chưa có lần cập nhật nào",
+      "milestones": "Cột mốc {{done}}/{{total}}",
+      "noMilestones": "Chưa có cột mốc.",
+      "linkedActions": "Hành động {{done}}/{{total}}",
+      "noOpenActions": "Không có hành động đang mở.",
+      "otherActions": "Hành động đang mở khác",
+      "noActiveActions": "Không có hành động đang hoạt động.",
+      "allLinked": "Mọi hành động đang mở đều gắn với một mục tiêu.",
+      "actionOverdue": "Quá hạn",
+      "actionStatus": {
+        "open": "Đang mở",
+        "in_progress": "Đang thực hiện",
+        "completed": "Hoàn thành"
+      },
+      "noDueDate": "Chưa có hạn",
+      "viewAll_other": "Xem tất cả mục tiêu & hành động ({{count}} mục tiêu) →"
+    },
+    "feedback": {
+      "title": "Phản hồi & phát triển",
+      "aside": "Chỉ bạn nhìn thấy",
+      "feedbackCount": "Phản hồi đã nhận",
+      "reflectionCount": "Suy ngẫm",
+      "latestActivity": "Hoạt động gần nhất",
+      "recentTitle": "Phản hồi & suy ngẫm gần đây",
+      "activityTitle": "Hoạt động phát triển gần đây",
+      "empty": "Chưa có phản hồi nào và chưa có suy ngẫm nào được gửi.",
+      "noActivity": "Chưa ghi nhận hoạt động phát triển nào.",
+      "module": "Module: {{module}}",
+      "privacy": "Phản hồi từ mentor và bạn đồng hành, ghi chú session được chia sẻ từ coach, mentor và bạn thực hành, cùng các suy ngẫm của bạn. Ghi chú riêng của coach không bao giờ hiển thị ở đây, và không nội dung nào được chia sẻ với nhà tài trợ.",
+      "viewAll": "Xem tất cả phản hồi & phát triển →",
+      "from": {
+        "mentoring": "Phản hồi của mentor · {{name}}",
+        "peer_competency": "Phản hồi peer coaching · {{name}}",
+        "coaching_note": "Ghi chú session của coach · {{name}}",
+        "mentoring_note": "Ghi chú session của mentor · {{name}}",
+        "peer_practice_note": "Ghi chú thực hành đồng hành · {{name}}"
+      },
+      "types": {
+        "mentoring": "Phản hồi mentor",
+        "peer_competency": "Phản hồi đồng hành",
+        "coaching_note": "Ghi chú coach",
+        "mentoring_note": "Ghi chú mentor",
+        "peer_practice_note": "Ghi chú thực hành"
+      },
+      "openSource": "Mở session →"
+    },
+    "attention": {
+      "title": "Cần bạn chú ý"
+    },
+    "sessions": {
+      "book": "Đặt session"
+    },
+    "privacy": {
+      "title": "Nhà tài trợ nhìn thấy gì",
+      "body": "Nhà tài trợ thấy cùng các số liệu về tiến độ chương trình, module, mốc và coaching ở trên, cùng số lượng mục tiêu, hành động và điểm đánh giá session trung bình. Họ không bao giờ thấy nội dung mục tiêu, hành động, suy ngẫm, phản hồi, ghi chú session hay tin nhắn của bạn."
+    },
+    "errors": {
+      "progress": "Không thể tải tiến độ chương trình. Chương trình của bạn không thay đổi — vui lòng thử lại.",
+      "journey": "Không thể tải hành trình chương trình.",
+      "engagement": "Không thể tải tổng số mục tiêu và hành động.",
+      "goals": "Không thể tải mục tiêu và hành động của bạn.",
+      "feedback": "Không thể tải phản hồi do lỗi kết nối hoặc máy chủ. Vui lòng thử lại.",
+      "development": "Không thể tải hoạt động phát triển.",
+      "developmentPartial": "Một số hoạt động phát triển không tải được, danh sách có thể chưa đầy đủ.",
+      "sessions": "Không thể tải các session sắp tới.",
+      "attention": "Không thể tải các mục cần chú ý.",
+      "retry": "Thử lại",
+      "reflections": "Không thể tải các suy ngẫm của bạn. Vui lòng thử lại."
+    },
+    "journeyPage": {
+      "backToDashboard": "← Bảng điều khiển"
+    },
+    "reflections": {
+      "sources": {
+        "coaching_session_reflection": "Coaching · Suy ngẫm sau session",
+        "coaching_session_rating": "Coaching · Đánh giá session",
+        "peer_session_reflection": "Peer coaching · Suy ngẫm sau session",
+        "peer_session_rating": "Peer coaching · Đánh giá session",
+        "mentoring_session_reflection": "Mentoring · Suy ngẫm sau session",
+        "triad_reflection": "Triad · Suy ngẫm sau session",
+        "goal_checkin": "Mục tiêu · Cập nhật",
+        "training_reflection": "Đào tạo / Học tập · Câu hỏi suy ngẫm",
+        "quiz_reflection": "Đào tạo / Học tập · Suy ngẫm sau quiz",
+        "daily_prompt_response": "Đào tạo / Học tập · Câu hỏi hằng ngày",
+        "journey_reflection": "Hành trình · Suy ngẫm cá nhân"
+      },
+      "onlyYou": "Chỉ bạn",
+      "ratingChange": "Điểm {{from}} → {{to}}",
+      "ratingNow": "Điểm {{to}}",
+      "outOfFive": "{{value}} / 5",
+      "mood": "Tâm trạng: {{mood}}",
+      "open": {
+        "goal": "Mở mục tiêu →",
+        "session": "Mở session →",
+        "training": "Mở phần đào tạo →"
+      },
+      "delete": "Xóa suy ngẫm",
+      "privateNote": "chỉ bạn xem được",
+      "sourcePrefix": "Nguồn",
+      "pill": {
+        "private": "Riêng tư",
+        "linked": "Có liên kết"
+      },
+      "triadSections": {
+        "coach": "Với vai trò coach",
+        "coachee": "Với vai trò coachee",
+        "observer": "Với vai trò observer"
+      }
+    }
+  },
+  "learnerModules": {
+    "eyebrow": "Phát triển của tôi",
+    "next": "Tiếp theo",
+    "noneBooked": "chưa đặt lịch",
+    "sessionsComplete": "session đã hoàn thành",
+    "sessionsCompleted": "Session đã hoàn thành",
+    "sessionsError": "Không thể tải các session của bạn.",
+    "coaching": {
+      "title": "Coaching",
+      "subtitle": "Coach của bạn, tiến độ coaching và mọi session coaching trong chương trình.",
+      "book": "Đặt session",
+      "myCoach": "Coach của tôi",
+      "noCoach": "Bạn chưa được phân công coach. Hãy chọn coach trong danh sách bên dưới.",
+      "progressTitle": "Tiến độ coaching",
+      "privacy": "Ghi chú riêng của coach luôn được bảo mật. Chỉ những gì coach chia sẻ mới hiển thị ở đây.",
+      "sessionsLabel": "Các session coaching",
+      "noSessions": "Chưa có session coaching nào trong chương trình.",
+      "directoryTitle": "Danh sách coach"
+    },
+    "peer": {
+      "title": "Peer coaching",
+      "subtitle": "Thực hành cùng bạn đồng hành trong khóa. Khả năng đặt lịch và lịch sử session được hiển thị riêng.",
+      "book": "Đặt session peer",
+      "progressLabel": "Session peer đã hoàn thành",
+      "feedbackTitle": "Phản hồi nhận được",
+      "noFeedback": "Chưa có phản hồi peer nào được chia sẻ với bạn.",
+      "sessionsLabel": "Các session peer coaching"
+    },
+    "mentoring": {
+      "title": "Mentoring",
+      "subtitle": "Mentor của bạn, cách chuẩn bị và mọi session mentoring trong chương trình.",
+      "book": "Đặt mentoring",
+      "myMentor": "Mentor của tôi",
+      "noMentor": "Chưa có session mentoring nào được đặt. Hãy chọn mentor bên dưới.",
+      "preparation": "Chuẩn bị",
+      "prepTitle": "Chuẩn bị cho session tiếp theo",
+      "prepBody": "Thêm câu hỏi và bối cảnh trên trang session để mentor xem trước khi gặp.",
+      "addPreparation": "Thêm ghi chú chuẩn bị",
+      "prepNoSession": "Đặt một session mentoring để bắt đầu chuẩn bị.",
+      "feedbackTitle": "Phản hồi của mentor",
+      "noFeedback": "Chưa có phản hồi nào từ mentor được chia sẻ với bạn.",
+      "sessionsLabel": "Các session mentoring",
+      "noSessions": "Chưa có session mentoring nào trong chương trình.",
+      "mentorsTitle": "Mentor khả dụng"
+    },
+    "triads": {
+      "title": "Triads",
+      "subtitle": "Luyện tập theo nhóm ba: coach, coachee và người quan sát. Mỗi Triad bắt buộc có nhóm và hạn riêng.",
+      "myGroup": "Nhóm Triad của tôi",
+      "noGroup": "Bạn chưa được xếp vào nhóm Triad.",
+      "member": "Thành viên",
+      "nextTitle": "Session Triad tiếp theo",
+      "openSession": "Mở session Triad",
+      "roundsTitle": "Các session Triad của tôi",
+      "roundsSubtitle": "Mọi session Triad trong chương trình, kèm trạng thái tự phản tư của bạn",
+      "session": "Session",
+      "selfRating": "Tự đánh giá",
+      "selfReflection": "Tự phản tư",
+      "submitted": "Đã nộp",
+      "due": "Cần nộp",
+      "afterSession": "Sau session",
+      "rotateRoles": "Mọi người lần lượt đảm nhận vai trò coach, coachee và observer.",
+      "progressPill": "Hoàn thành {{completed}}/{{required}}",
+      "noRequirementPill": "Không bắt buộc",
+      "sessionPractice": "Thực hành Triad"
     }
   }
 }

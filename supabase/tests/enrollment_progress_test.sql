@@ -1,6 +1,6 @@
 begin;
 
-select plan(21);
+select plan(22);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -294,28 +294,26 @@ values
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Past mentoring', '2026-01-22 10:00:00+00', 60, 'completed', 'test/past.pdf', 'e1000000-0000-0000-0000-000000000001'),
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Future mentoring', '2026-03-22 10:00:00+00', 60, 'completed', 'test/future.pdf', 'e1000000-0000-0000-0000-000000000001');
 
-insert into public.triad_groups (
-  id, cohort_id, programme_id, name, member_1_id, member_2_id,
-  enrollment_1_id, enrollment_2_id
-)
-values (
-  'a5000000-0000-0000-0000-000000000001',
-  'd1000000-0000-0000-0000-000000000001',
-  'c1000000-0000-0000-0000-000000000001',
-  'Schedule test dyad',
-  'a1000000-0000-0000-0000-000000000001',
-  'a2000000-0000-0000-0000-000000000002',
-  'e1000000-0000-0000-0000-000000000001',
-  'e2000000-0000-0000-0000-000000000002'
-);
+-- A dyad for Triad 1 and a dyad for Triad 2 (every required Triad has its
+-- own group assignment); each completed session fulfils its own Triad for
+-- both member enrollments.
+insert into public.triad_groups (id, cohort_requirement_date_id)
+select g.id, d.id
+from (values ('a5000000-0000-0000-0000-000000000001'::uuid, 1), ('a5000000-0000-0000-0000-000000000002'::uuid, 2)) g(id, ordinal)
+join public.cohort_requirement_dates d on d.cohort_id = 'd1000000-0000-0000-0000-000000000001'
+  and d.programme_id = 'c1000000-0000-0000-0000-000000000001' and d.module = 'triads' and d.ordinal = g.ordinal;
 
-insert into public.triad_sessions (
-  triad_group_id, start_time, proposed_start_time, proposed_end_time, status,
-  coach_enrollment_id, coachee_enrollment_id
-)
+insert into public.triad_group_members (triad_group_id, enrollment_id, member_order)
 values
-  ('a5000000-0000-0000-0000-000000000001', null, '2026-01-23 10:00:00+00', '2026-01-23 11:00:00+00', 'completed', 'e1000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002'),
-  ('a5000000-0000-0000-0000-000000000001', null, '2026-03-23 10:00:00+00', '2026-03-23 11:00:00+00', 'completed', 'e1000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002');
+  ('a5000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000001', 1),
+  ('a5000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002', 2),
+  ('a5000000-0000-0000-0000-000000000002', 'e1000000-0000-0000-0000-000000000001', 1),
+  ('a5000000-0000-0000-0000-000000000002', 'e2000000-0000-0000-0000-000000000002', 2);
+
+insert into public.triad_sessions (triad_group_id, scheduled_start_time, scheduled_end_time, status)
+values
+  ('a5000000-0000-0000-0000-000000000001', '2026-01-23 10:00:00+00', '2026-01-23 11:00:00+00', 'completed'),
+  ('a5000000-0000-0000-0000-000000000002', '2026-03-23 10:00:00+00', '2026-03-23 11:00:00+00', 'completed');
 
 insert into public.training_progress (user_id, training_week_id, completed_at, enrollment_id)
 values
@@ -342,7 +340,9 @@ values
   ('a7000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'Past response', '2026-01-26 10:00:00+00', 'e1000000-0000-0000-0000-000000000001'),
   ('a7000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'Future response', '2026-03-26 10:00:00+00', 'e1000000-0000-0000-0000-000000000001');
 
-set local role authenticated;
+-- get_enrollment_progress is the HISTORICAL snapshot engine: it is no
+-- longer client-callable (20260918170000_single_source_of_truth), so its
+-- historical semantics are checked as the database owner.
 select set_config('request.jwt.claim.sub', 'a1000000-0000-0000-0000-000000000001', true);
 
 select results_eq(
@@ -364,7 +364,7 @@ select results_eq(
       ('assessment'::text, 0), ('coaching'::text, 2), ('daily_prompt'::text, 2),
       ('mentoring'::text, 2), ('peer_coaching'::text, 2), ('quiz'::text, 2),
       ('training'::text, 2), ('triads'::text, 2)$$,
-  'progress uses session dates, training completion, quiz submission, prompt response, and proposed triad dates'
+  'progress uses session dates, training completion, quiz submission, prompt response, and scheduled triad dates'
 );
 
 select is(
@@ -388,8 +388,15 @@ select is(
 select set_config('request.jwt.claim.sub', 'a4000000-0000-0000-0000-000000000004', true);
 select is_empty(
   $$select * from public.get_enrollment_progress('e1000000-0000-0000-0000-000000000001', date '2026-04-01')$$,
-  'an unrelated authenticated user cannot read enrollment progress'
+  'an unrelated user cannot read enrollment progress'
 );
+set local role authenticated;
+select throws_ok(
+  $$select * from public.get_enrollment_progress('e1000000-0000-0000-0000-000000000001', date '2026-04-01')$$,
+  '42501', null,
+  'clients cannot call the historical snapshot engine at all'
+);
+reset role;
 
 select * from finish();
 rollback;

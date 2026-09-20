@@ -40,8 +40,8 @@ export function TriadsCard() {
             {data.nextSession.status === "confirmed" ? t("cards.triads.confirmed") : t("cards.triads.proposed")}
           </p>
           <p className="mt-1 text-sm font-semibold">
-            {data.nextSession.proposed_start_time
-              ? format(new Date(data.nextSession.proposed_start_time), "MMM d · p")
+            {data.nextSession.scheduledStartTime
+              ? format(new Date(data.nextSession.scheduledStartTime), "MMM d · p")
               : t("cards.triads.timeTbd")}
           </p>
           {data.nextSession.myResponse === "pending" && (

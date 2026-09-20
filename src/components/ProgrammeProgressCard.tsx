@@ -6,9 +6,8 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
-import { useEnrollmentProgress, type EnrollmentProgressModule } from "@/hooks/useEnrollmentProgress";
+import { useLearnerCanonicalProgress, type LearnerModuleProgress } from "@/hooks/useLearnerCanonicalProgress";
 import { useProgrammeProgress } from "@/hooks/dashboard/useProgrammeProgress";
-import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { DailyPromptCard } from "@/components/training/DailyPromptCard";
 
@@ -17,10 +16,19 @@ export function ProgrammeProgressCard() {
   const { user, role } = useAuth();
   const { hasModule, hasDirection, loading: modulesLoading } = useProgrammeModules();
   const { enrollmentId, summary, loading: trainingLoading } = useProgrammeProgress(user?.id);
-  const { modules: moduleProgress, loading: progressLoading, error: progressError } = useEnrollmentProgress(enrollmentId);
+  // Programme name/dates, overall progress, and per-module required/completed
+  // counts all come from the same canonical engine Sponsor Leader Detail
+  // reads (learner_canonical_* mirrors sponsor_canonical_leader_* one-to-one)
+  // — this dashboard must never compute these facts a second, different way.
+  const {
+    progress,
+    modules: moduleProgress,
+    experience,
+    loading: progressLoading,
+    error: progressError,
+  } = useLearnerCanonicalProgress(enrollmentId);
   const receiveEnabled = hasDirection("coaching", "receive");
-  const { programme } = useJourneyProgramme(user?.id);
-  const { goals } = useJourneyGoals(user?.id);
+  const { goals, error: goalsError } = useJourneyGoals(user?.id, { enrollmentId });
 
   if (modulesLoading || trainingLoading || progressLoading) {
     return (
@@ -56,6 +64,12 @@ export function ProgrammeProgressCard() {
   const currentWeekQuizDone =
     summary.currentWeek && summary.quizScores.some((q) => q.weekNumber === summary.currentWeek!.week_number);
   const activeGoals = goals.filter((g) => g.status === "active");
+  // Learner-only enrichment beyond what Sponsor tracks: per-content-type
+  // required/completed detail (skill cards, quizzes, reflections, daily
+  // prompts), sourced from the same canonical engine, not recomputed here.
+  // required_units === 0 means "not configured for this programme", not
+  // "zero completed" — filtered out rather than shown as a false 0/0.
+  const visibleLearningItems = experience.learningBreakdown.filter((item) => item.progress_available);
 
   return (
     <Card className="rounded-[24px] border-[#e8e2d8] p-5 shadow-[0_14px_40px_-30px_rgba(6,47,62,0.5)] sm:p-[26px]">
@@ -63,14 +77,24 @@ export function ProgrammeProgressCard() {
         <div>
           <p className="text-[9.5px] font-bold uppercase tracking-[.24em] text-muted-foreground">{t("progressCard.eyebrow")}</p>
           <h2 className="font-display mt-2 text-[22px] font-normal tracking-[-0.02em] sm:text-[27px]">
-            {programme?.programmeName ?? t("progressCard.defaultProgrammeName")}
+            {progress?.programme_label ?? t("progressCard.defaultProgrammeName")}
           </h2>
+          {progress && progress.required_units > 0 && (
+            <p className="mt-1.5 text-[11px] font-semibold text-primary">
+              {t("progressCard.overallProgress", {
+                completed: progress.completed_units,
+                required: progress.required_units,
+                pct: Math.round(progress.full_completion_pct ?? 0),
+              })}
+            </p>
+          )}
         </div>
         {hasTrainingContent && summary.currentWeek && (
           <div className="text-right">
             <p className="text-[11px] font-semibold text-muted-foreground">
               {t("progressCard.weekOfTotal", { week: summary.currentWeek.week_number, total: summary.weeksTotal })}
-              {programme?.endDate && ` · ${t("progressCard.endsOn", { date: format(new Date(programme.endDate), "MMM d") })}`}
+              {progress?.programme_end_date &&
+                ` · ${t("progressCard.endsOn", { date: format(new Date(progress.programme_end_date), "MMM d") })}`}
             </p>
             <div className="mt-2 grid gap-[5px]" style={{ gridTemplateColumns: `repeat(${summary.weeksTotal}, minmax(18px, 1fr))` }}>
               {summary.weeks.map((week) => (
@@ -82,8 +106,8 @@ export function ProgrammeProgressCard() {
       </div>
 
       <div className="mt-[22px] grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {moduleProgress.map((progress) => (
-          <ModuleProgressStat key={progress.module} progress={progress} t={t} />
+        {moduleProgress.map((moduleRow) => (
+          <ModuleProgressStat key={moduleRow.module} progress={moduleRow} t={t} />
         ))}
       </div>
 
@@ -124,6 +148,25 @@ export function ProgrammeProgressCard() {
         </div>
       )}
 
+      {hasTrainingContent && visibleLearningItems.length > 0 && (
+        <div className="mt-4 border-t border-[#efeae1] pt-4">
+          <p className="mb-2 text-[9px] font-bold uppercase tracking-[.2em] text-muted-foreground">
+            {t("progressCard.learningBreakdown")}
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {visibleLearningItems.map((item) => (
+              <div key={item.key} className="rounded-xl border border-[#efeae1] bg-[#faf8f4] px-3 py-2.5">
+                <p className="truncate text-[10px] font-semibold text-muted-foreground">{item.label}</p>
+                <p className="mt-1 text-sm font-semibold">
+                  {item.completed_units}/{item.required_units}
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{t(`progressCard.learningStatus.${item.status}`)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {showStreak && (
         <div className="mt-5">
           <DailyPromptCard />
@@ -157,7 +200,9 @@ export function ProgrammeProgressCard() {
             to={journeyPath}
             className="mt-2 block rounded-[20px] border border-[#e8e2d8] bg-card px-[22px] py-[18px] text-[12.5px] text-muted-foreground transition-colors hover:border-primary/40"
           >
-            {activeGoals.length > 0
+             {goalsError
+               ? t("progressCard.goalsLoadError")
+               : activeGoals.length > 0
               ? t("progressCard.goalsSummary", { count: activeGoals.length })
               : t("progressCard.goalsSummaryEmpty")}
           </Link>
@@ -171,7 +216,7 @@ function ModuleProgressStat({
   progress,
   t,
 }: {
-  progress: EnrollmentProgressModule;
+  progress: LearnerModuleProgress;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   const completion = progress.full_completion_pct;

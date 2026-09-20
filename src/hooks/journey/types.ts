@@ -21,6 +21,7 @@ export type PeerSessionRow = Tables<"peer_sessions"> & { enrollment_actions: Enr
 export interface ProgrammeInfo {
   enrollmentId: string;
   programmeName: string;
+  cohortName: string | null;
   startDate: string | null;
   endDate: string | null;
   sessionsAllowed: number;
