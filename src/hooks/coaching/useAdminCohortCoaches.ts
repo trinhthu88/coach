@@ -8,6 +8,8 @@ export interface CohortCoachRow {
   fullName: string;
   title: string | null;
   isActive: boolean;
+  /** The Coach's account state. An inactive account cannot deliver anything. */
+  accountActive: boolean;
   assignedAt: string | null;
   /** True when this Coach has no assignment row yet (an available candidate). */
   isCandidate: boolean;
@@ -21,6 +23,10 @@ export interface CohortCoachRow {
  * "Selected Coaches" allowlist no longer governs programme Coaching -- a Coach
  * delivers for a COHORT, and every learner in that cohort may book any of
  * them.
+ *
+ * The candidate population is Coach identity (user_roles.role = 'coach'), the
+ * SAME population useAdminCohortMentors draws on: one provider identity, two
+ * independent cohort assignments. Nothing is copied between them.
  */
 export function useAdminCohortCoaches(cohortId: string | undefined) {
   return useQuery({
@@ -47,18 +53,20 @@ export function useAdminCohortCoaches(cohortId: string | undefined) {
       if (ids.length === 0) return [];
 
       const [{ data: profiles }, { data: coachProfiles }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name").in("id", ids),
+        supabase.from("profiles").select("id, full_name, status").in("id", ids),
         supabase.from("coach_profiles").select("id, title").in("id", ids),
       ]);
 
       return ids
         .map((id) => {
           const a = assignedById.get(id);
+          const profile = profiles?.find((p) => p.id === id);
           return {
             coachId: id,
-            fullName: profiles?.find((p) => p.id === id)?.full_name ?? "Coach",
+            fullName: profile?.full_name ?? "Coach",
             title: coachProfiles?.find((p) => p.id === id)?.title ?? null,
             isActive: !!a?.is_active,
+            accountActive: profile?.status === "active",
             assignedAt: a?.assigned_at ?? null,
             isCandidate: !a,
           };

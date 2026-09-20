@@ -23,6 +23,11 @@ import {
  * A learner books any active Coach in their cohort's pool, and may use a
  * different one for each requirement. There is no per-learner Coach
  * assignment for programme Coaching any more.
+ *
+ * The candidate list is Coach identity -- the same population the Mentoring
+ * panel offers, because a Mentor is a Coach with a Mentoring assignment rather
+ * than a user type. The two assignments are independent: assigning somebody
+ * here grants nothing for Mentoring, and vice versa.
  */
 export function CohortCoachingPanel({ cohortId }: { cohortId: string | undefined }) {
   const { t } = useTranslation("admin");
@@ -32,6 +37,7 @@ export function CohortCoachingPanel({ cohortId }: { cohortId: string | undefined
   if (!cohortId) return null;
 
   const assigned = (coaches ?? []).filter((c) => c.isActive);
+  const assignedButInactive = assigned.filter((c) => !c.accountActive);
 
   const toggle = (coachId: string, active: boolean) => {
     setAssignment.mutate(
@@ -73,6 +79,7 @@ export function CohortCoachingPanel({ cohortId }: { cohortId: string | undefined
               key={c.coachId}
               data-testid="cohort-coach-row"
               data-assigned={c.isActive ? "true" : "false"}
+              data-account-active={c.accountActive ? "true" : "false"}
               className="flex items-center gap-2 rounded-md border border-border bg-muted/20 px-3 py-2"
             >
               <Checkbox
@@ -85,6 +92,11 @@ export function CohortCoachingPanel({ cohortId }: { cohortId: string | undefined
               {c.title && (
                 <span className="truncate text-xs text-muted-foreground">{c.title}</span>
               )}
+              {!c.accountActive && (
+                <span className="text-xs text-warning">
+                  {t("cohorts.coaching.accountInactive")}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -95,6 +107,13 @@ export function CohortCoachingPanel({ cohortId }: { cohortId: string | undefined
         // so this is a configuration error rather than an empty state.
         <p className="text-xs text-warning" data-testid="cohort-coaching-warning">
           {t("cohorts.coaching.noneAssignedWarning")}
+        </p>
+      )}
+      {!isLoading && assignedButInactive.length > 0 && (
+        // Assigned, but the Coach account is inactive: bookable by nobody, and
+        // worth surfacing because the cohort looks staffed when it is not.
+        <p className="text-xs text-warning" data-testid="cohort-coaching-inactive-warning">
+          {t("cohorts.coaching.inactiveAssignedWarning", { count: assignedButInactive.length })}
         </p>
       )}
     </Card>

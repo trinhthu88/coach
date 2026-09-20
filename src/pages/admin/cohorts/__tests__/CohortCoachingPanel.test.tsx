@@ -48,9 +48,9 @@ function mockTables() {
           in: () =>
             Promise.resolve({
               data: [
-                { id: "anna", full_name: "Anna" },
-                { id: "paul", full_name: "Paul" },
-                { id: "huong", full_name: "Huong" },
+                { id: "anna", full_name: "Anna", status: "active" },
+                { id: "paul", full_name: "Paul", status: "active" },
+                { id: "huong", full_name: "Huong", status: "active" },
               ],
             }),
         }),
@@ -131,5 +131,55 @@ describe("CohortCoachingPanel", () => {
     });
     renderPanel();
     expect(await screen.findByTestId("cohort-coaching-warning")).toBeInTheDocument();
+  });
+
+  // Coaching and Mentoring draw the same Coach population, so an inactive
+  // Coach account has to read the same way in both panels: the cohort looks
+  // staffed while nobody can actually be booked.
+  it("flags an assigned Coach whose account is inactive", async () => {
+    from.mockImplementation((table: string) => {
+      if (table === "cohort_coach_assignments") {
+        return {
+          select: () => ({
+            eq: () =>
+              Promise.resolve({
+                data: [{ coach_id: "anna", is_active: true, assigned_at: "2026-01-01" }],
+                error: null,
+              }),
+          }),
+          upsert,
+        };
+      }
+      if (table === "user_roles") {
+        return { select: () => ({ eq: () => Promise.resolve({ data: [{ user_id: "anna" }], error: null }) }) };
+      }
+      if (table === "profiles") {
+        return {
+          select: () => ({
+            in: () =>
+              Promise.resolve({ data: [{ id: "anna", full_name: "Anna", status: "inactive" }] }),
+          }),
+        };
+      }
+      return { select: () => ({ in: () => Promise.resolve({ data: [] }) }) };
+    });
+    renderPanel();
+    const rows = await screen.findAllByTestId("cohort-coach-row");
+    const anna = rows.find((r) => r.textContent?.includes("Anna"))!;
+    expect(anna).toHaveAttribute("data-assigned", "true");
+    expect(anna).toHaveAttribute("data-account-active", "false");
+    expect(screen.getByTestId("cohort-coaching-inactive-warning")).toBeInTheDocument();
+  });
+
+  // The candidate population is Coach identity. Nothing about Mentoring is
+  // read here, and nothing is copied between the two assignments.
+  it("never consults the Mentoring assignment table", async () => {
+    renderPanel();
+    await screen.findAllByTestId("cohort-coach-row");
+    const tables = from.mock.calls.map((c) => c[0]);
+    expect(tables).toContain("cohort_coach_assignments");
+    expect(tables).toContain("user_roles");
+    expect(tables).not.toContain("cohort_mentors");
+    expect(tables).not.toContain("mentor_profiles");
   });
 });
