@@ -68,7 +68,7 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
         bookedUnits: coachingRow.booked_units ?? 0,
         dueUnits: coachingRow.due_units ?? 0,
         overdueUnits: coachingRow.overdue_units ?? 0,
-        postSessionPending: (checklistRows ?? []).filter((c) => !c.unit_complete).length,
+        postSessionPending: (checklistRows ?? []).filter((c) => !c.evidence_complete).length,
       }
     : null;
 

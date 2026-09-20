@@ -92,7 +92,7 @@ async function fetchData(userId: string, role: AppRole, enrollmentId: string): P
   const goalProgressPct = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
 
   const coachingProgress = (progressResult.data ?? []).find((r) => r.module === "coaching");
-  const postSessionPending = (checklistResult.data ?? []).filter((c) => !c.unit_complete).length;
+  const postSessionPending = (checklistResult.data ?? []).filter((c) => !c.evidence_complete).length;
 
   return {
     nextSession: next ? { id: next.id, topic: next.topic, start_time: next.start_time, coach } : null,

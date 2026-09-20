@@ -8,7 +8,7 @@
 -- unit completion, and each of the four evidence gates independently.
 begin;
 
-select plan(37);
+select plan(44);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -275,9 +275,22 @@ select pass('a cancelled requirement can be rebooked, reusing the released slot'
 -- ---------------------------------------------------------------------------
 update public.sessions set status = 'completed' where id = 'c1000000-0000-0000-0000-00000000c2c2'::uuid;
 
+-- Operational completion IS programme completion. A held session with no
+-- evidence at all already fulfils its requirement; the four evidence items are
+-- reported separately and gate nothing.
 select ok(
-  not (select unit_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
-  'a held session with no evidence does NOT complete the Coaching unit');
+  (select fulfilled_on is not null from public.canonical_coaching_requirement_fulfilment('c1000000-0000-0000-0000-00000000e1e1'::uuid)
+    where ordinal = 1),
+  'a held session with no evidence already fulfils its Coaching requirement');
+
+select ok(
+  not (select evidence_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
+  'its after-session evidence is separately reported as incomplete');
+
+select is(
+  (select completed_units from public.canonical_module_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)
+    where module = 'coaching'),
+  1, 'the bare completed session counts one programme unit');
 
 insert into public.coachee_goals (id, enrollment_id, coachee_id, title, status)
   values ('c1000000-0000-0000-0000-00000000b1b1'::uuid, 'c1000000-0000-0000-0000-00000000e1e1'::uuid,
@@ -291,9 +304,10 @@ select ok(
 insert into public.session_learning_reflections (enrollment_id, source_activity_type, source_activity_id, body)
   values ('c1000000-0000-0000-0000-00000000e1e1'::uuid, 'coaching',
           'c1000000-0000-0000-0000-00000000c2c2'::uuid, 'What I learned');
-select ok(
-  not (select unit_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
-  'reflection alone does not complete the unit');
+select is(
+  (select completed_units from public.canonical_module_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)
+    where module = 'coaching'),
+  1, 'adding a reflection does not change the completed unit count');
 
 -- Gate 2: goal check-in
 insert into public.goal_checkins
@@ -301,9 +315,10 @@ insert into public.goal_checkins
   values ('c1000000-0000-0000-0000-00000000e1e1'::uuid, 'c1000000-0000-0000-0000-00000000b1b1'::uuid,
           'coaching', 'c1000000-0000-0000-0000-00000000c2c2'::uuid, 60,
           'c1000000-0000-0000-0000-000000000003'::uuid);
-select ok(
-  not (select unit_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
-  'reflection + check-in does not complete the unit');
+select is(
+  (select completed_units from public.canonical_module_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)
+    where module = 'coaching'),
+  1, 'adding a goal check-in does not change it either');
 
 -- Gate 3: follow-up action
 insert into public.enrollment_actions
@@ -312,22 +327,27 @@ insert into public.enrollment_actions
           'c1000000-0000-0000-0000-00000000c2c2'::uuid, 'Delegate the report',
           'c1000000-0000-0000-0000-000000000003'::uuid);
 select ok(
-  not (select unit_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
-  'reflection + check-in + action does not complete the unit without satisfaction');
+  not (select evidence_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
+  'evidence stays incomplete while satisfaction is outstanding');
 
 -- A Coach private note must never be a gate.
 insert into public.coach_session_private_notes (session_id, coach_id, body)
   values ('c1000000-0000-0000-0000-00000000c2c2'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid, 'note');
 select ok(
-  not (select unit_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
-  'a Coach private note does not complete the unit');
+  not (select evidence_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
+  'a Coach private note is not an evidence item');
 
 -- Gate 4: satisfaction
 update public.sessions set coachee_rating = 5, coachee_rated_at = now()
   where id = 'c1000000-0000-0000-0000-00000000c2c2'::uuid;
 select ok(
-  (select unit_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
-  'all four evidence gates present completes the Coaching unit');
+  (select evidence_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
+  'all four evidence items present reports evidence complete');
+
+select is(
+  (select completed_units from public.canonical_module_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)
+    where module = 'coaching'),
+  1, 'and the completed unit count is still exactly what the session gave it');
 
 -- ---------------------------------------------------------------------------
 -- Canonical progress is the same source for every role
@@ -422,6 +442,101 @@ select ok(
       and has_column_privilege('anon', 'public.session_learning_reflections', 'body', 'SELECT')
   ),
   'the learner reflection narrative is not readable by anon');
+
+-- ---------------------------------------------------------------------------
+-- Operational completion drives progress; evidence is independent
+-- ---------------------------------------------------------------------------
+--
+-- Programme requires 4 Coaching units. Three sessions were held (one fully
+-- written up, one missing its reflection, one missing its satisfaction rating)
+-- and a fourth is booked for the future.
+--
+--   completed_units = 3   -- three meetings happened
+--   booked_units    = 1
+--
+-- and the two incomplete write-ups change none of it.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
+values ('c1000000-0000-0000-0000-000000000005'::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
+  'authenticated', 'authenticated', 'coaching-canon-5@example.test', 'test', now(),
+  jsonb_build_object('full_name', 'Coaching Person 5'), now(), now(), '', '', '');
+insert into public.user_roles (user_id, role)
+  values ('c1000000-0000-0000-0000-000000000005', 'coachee') on conflict do nothing;
+
+insert into public.programmes (id, name)
+  values ('c1000000-0000-0000-0000-00000000a5a5'::uuid, 'Coaching Four-Unit Programme');
+insert into public.programme_modules (programme_id, module, enabled, config)
+  values ('c1000000-0000-0000-0000-00000000a5a5'::uuid, 'coaching', true,
+          '{"required": true, "required_units": 4}'::jsonb);
+insert into public.cohorts (id, name, programme_id)
+  values ('c1000000-0000-0000-0000-00000000b5b5'::uuid, 'VC4', 'c1000000-0000-0000-0000-00000000a5a5'::uuid);
+insert into public.cohort_requirement_dates
+  (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via)
+select ('c1000000-0000-0000-0000-0000000005' || lpad(n::text, 2, '0'))::uuid,
+       'c1000000-0000-0000-0000-00000000b5b5'::uuid, 'c1000000-0000-0000-0000-00000000a5a5'::uuid,
+       'coaching', n, current_date - 40 + (n * 10), 'manual', 'admin_save'
+from generate_series(1, 4) n;
+insert into public.cohort_coach_assignments (cohort_id, coach_id)
+  values ('c1000000-0000-0000-0000-00000000b5b5'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid);
+insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status) values
+  ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'c1000000-0000-0000-0000-00000000a5a5'::uuid,
+   'c1000000-0000-0000-0000-000000000005'::uuid, 'c1000000-0000-0000-0000-00000000b5b5'::uuid, 'active');
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'c1000000-0000-0000-0000-000000000005')::text, true);
+
+-- Three held sessions and one booked for the future.
+insert into public.sessions
+  (id, enrollment_id, cohort_requirement_id, coach_id, coachee_id, topic,
+   start_time, duration_minutes, status, coachee_rating)
+values
+  ('c1000000-0000-0000-0000-0000000051c1'::uuid, 'c1000000-0000-0000-0000-00000000e5e5'::uuid,
+   'c1000000-0000-0000-0000-000000000501'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
+   'c1000000-0000-0000-0000-000000000005'::uuid, 'Fully written up',
+   now() - interval '30 days', 60, 'completed', 5),
+  ('c1000000-0000-0000-0000-0000000052c2'::uuid, 'c1000000-0000-0000-0000-00000000e5e5'::uuid,
+   'c1000000-0000-0000-0000-000000000502'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
+   'c1000000-0000-0000-0000-000000000005'::uuid, 'Reflection missing',
+   now() - interval '20 days', 60, 'completed', 4),
+  ('c1000000-0000-0000-0000-0000000053c3'::uuid, 'c1000000-0000-0000-0000-00000000e5e5'::uuid,
+   'c1000000-0000-0000-0000-000000000503'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
+   'c1000000-0000-0000-0000-000000000005'::uuid, 'Satisfaction missing',
+   now() - interval '10 days', 60, 'completed', NULL),
+  ('c1000000-0000-0000-0000-0000000054c4'::uuid, 'c1000000-0000-0000-0000-00000000e5e5'::uuid,
+   'c1000000-0000-0000-0000-000000000504'::uuid, 'c1000000-0000-0000-0000-000000000001'::uuid,
+   'c1000000-0000-0000-0000-000000000005'::uuid, 'Booked',
+   now() + interval '10 days', 60, 'confirmed', NULL);
+
+-- Session 1 is fully evidenced; session 3 has its reflection but no rating.
+insert into public.session_learning_reflections (enrollment_id, source_activity_type, source_activity_id, body) values
+  ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000051c1'::uuid, 'Written up'),
+  ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000053c3'::uuid, 'Written up');
+insert into public.enrollment_actions
+  (enrollment_id, source_activity_type, source_activity_id, title, owner_user_id) values
+  ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000051c1'::uuid, 'Act', 'c1000000-0000-0000-0000-000000000005'::uuid),
+  ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000053c3'::uuid, 'Act', 'c1000000-0000-0000-0000-000000000005'::uuid);
+
+select is(
+  (select completed_units from public.canonical_module_progress('c1000000-0000-0000-0000-00000000e5e5'::uuid, current_date)
+    where module = 'coaching'),
+  3, 'three held sessions are three completed units, whatever their write-up');
+
+select is(
+  (select booked_units from public.canonical_module_progress('c1000000-0000-0000-0000-00000000e5e5'::uuid, current_date)
+    where module = 'coaching'),
+  1, 'the future session counts as booked, never as completed');
+
+select is(
+  (select count(*)::int from public.coaching_session_evidence_bulk(ARRAY[
+     'c1000000-0000-0000-0000-0000000051c1'::uuid,
+     'c1000000-0000-0000-0000-0000000052c2'::uuid,
+     'c1000000-0000-0000-0000-0000000053c3'::uuid]) where evidence_complete),
+  1, 'evidence completeness is reported independently: only one session is fully written up');
+
+select is(
+  (select required_units from public.canonical_module_progress('c1000000-0000-0000-0000-00000000e5e5'::uuid, current_date)
+    where module = 'coaching'),
+  4, 'the denominator is the programme requirement, not the session count');
 
 select * from finish();
 rollback;

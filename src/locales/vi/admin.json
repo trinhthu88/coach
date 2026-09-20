@@ -659,8 +659,8 @@
     "coacheeNotesLabel": "Ghi chú của học viên",
     "cancel": "Hủy",
     "save": "Lưu",
-    "unitPostSessionPending": "Chờ hoàn thành sau buổi",
-    "unitComplete": "Hoàn thành hạng mục"
+    "unitPostSessionPending": "Chờ theo dõi sau buổi",
+    "evidenceComplete": "Đã hoàn tất theo dõi"
   },
   "coaches": {
     "eyebrow": "Tổ chức",

@@ -328,11 +328,11 @@
   },
   "postSession": {
     "title": "Học tập sau buổi",
-    "subtitle": "Hoàn thành các mục này để kết thúc buổi Coaching trong hành trình chương trình của bạn.",
-    "unitComplete": "Hoàn thành hạng mục chương trình",
-    "unitPending": "Hạng mục chương trình đang chờ · {{done}}/{{total}}",
+    "subtitle": "Buổi của bạn đã được ghi nhận là hoàn thành. Những việc sau vẫn còn tồn đọng.",
+    "evidenceComplete": "Đã hoàn tất theo dõi",
+    "evidencePending": "Còn tồn đọng · {{done}}/{{total}}",
     "notRequired": "không bắt buộc",
-    "footer": "Coach đã xác nhận buổi học đã diễn ra. Hạng mục chương trình hoàn tất khi tất cả mục bắt buộc được hoàn thành.",
+    "footer": "Coach đã xác nhận buổi này diễn ra, nên nó đã được tính vào chương trình của bạn. Những mục này dành cho hồ sơ phát triển của riêng bạn.",
     "reflection": {
       "label": "Phản tư của bạn",
       "help": "Bạn rút ra được điều gì từ buổi này? Chỉ bạn và Coach của bạn đọc được.",

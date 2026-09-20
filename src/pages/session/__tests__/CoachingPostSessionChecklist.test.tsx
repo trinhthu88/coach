@@ -20,7 +20,7 @@ type Evidence = {
   has_action: boolean;
   has_satisfaction: boolean;
   goal_checkin_required: boolean;
-  unit_complete: boolean;
+  evidence_complete: boolean;
 };
 
 const ALL_PRESENT: Evidence = {
@@ -30,7 +30,7 @@ const ALL_PRESENT: Evidence = {
   has_action: true,
   has_satisfaction: true,
   goal_checkin_required: true,
-  unit_complete: true,
+  evidence_complete: true,
 };
 
 function mockEvidence(overrides: Partial<Evidence>) {
@@ -85,36 +85,37 @@ describe("CoachingPostSessionChecklist", () => {
   });
 
   it("renders nothing until the Coach has marked the session held", async () => {
-    mockEvidence({ session_completed: false, unit_complete: false });
+    mockEvidence({ session_completed: false, evidence_complete: false });
     const { container } = renderChecklist();
     await waitFor(() => expect(rpc).toHaveBeenCalled());
     expect(container.querySelector('[data-testid="coaching-post-session"]')).toBeNull();
   });
 
-  it("shows the programme unit as pending while evidence is outstanding", async () => {
-    mockEvidence({ has_action: false, has_satisfaction: false, unit_complete: false });
+  it("shows follow-up as outstanding while evidence is incomplete", async () => {
+    mockEvidence({ has_action: false, has_satisfaction: false, evidence_complete: false });
     renderChecklist();
     // Two of the four required items are done.
-    expect(await screen.findByTestId("coaching-unit-status")).toHaveTextContent("2/4");
+    expect(await screen.findByTestId("coaching-evidence-status")).toHaveTextContent("2/4");
   });
 
-  // Section 17/25: each gate blocks the unit on its own.
+  // Each outstanding item is reported on its own. None of them gates the
+  // programme unit any more - the completed session already counts.
   it.each([
     ["reflection", { has_reflection: false }],
     ["goalCheckin", { has_goal_checkin: false }],
     ["action", { has_action: false }],
     ["satisfaction", { has_satisfaction: false }],
-  ])("marks %s outstanding and keeps the unit pending", async (key, missing) => {
-    mockEvidence({ ...missing, unit_complete: false });
+  ])("marks %s outstanding without touching programme completion", async (key, missing) => {
+    mockEvidence({ ...missing, evidence_complete: false });
     renderChecklist();
     expect(await item(key)).toHaveAttribute("data-done", "false");
-    expect(screen.getByTestId("coaching-unit-status")).toHaveTextContent("3/4");
+    expect(screen.getByTestId("coaching-evidence-status")).toHaveTextContent("3/4");
   });
 
-  it("completes the programme unit only when all four are present", async () => {
+  it("reports follow-up complete only when all four are present", async () => {
     mockEvidence({});
     renderChecklist();
-    const status = await screen.findByTestId("coaching-unit-status");
+    const status = await screen.findByTestId("coaching-evidence-status");
     expect(status).toHaveTextContent(/complete/i);
     for (const key of ["reflection", "goalCheckin", "action", "satisfaction"]) {
       expect(await item(key)).toHaveAttribute("data-done", "true");
@@ -123,15 +124,15 @@ describe("CoachingPostSessionChecklist", () => {
 
   // Section 20: the gate is vacuous for an enrollment carrying no active goal,
   // so it must not be counted as an outstanding requirement.
-  it("marks the goal check-in not required when the enrollment has no active goal", async () => {
-    mockEvidence({ goal_checkin_required: false, has_goal_checkin: false, unit_complete: true });
+  it("marks the goal check-in not applicable when the enrollment has no active goal", async () => {
+    mockEvidence({ goal_checkin_required: false, has_goal_checkin: false, evidence_complete: true });
     renderChecklist();
     const row = await item("goalCheckin");
     expect(row).toHaveAttribute("data-required", "false");
-    expect(screen.getByTestId("coaching-unit-status")).toHaveTextContent(/complete/i);
+    expect(screen.getByTestId("coaching-evidence-status")).toHaveTextContent(/complete/i);
   });
 
-  it("never shows a Coach private note or Admin flag as a gate", async () => {
+  it("never shows a Coach private note or Admin flag as an evidence item", async () => {
     mockEvidence({});
     renderChecklist();
     await screen.findByTestId("coaching-post-session");
@@ -139,12 +140,12 @@ describe("CoachingPostSessionChecklist", () => {
     expect(screen.queryByText(/flag/i)).toBeNull();
   });
 
-  // The reflection gate is the only one of the four whose writer lives on this
+  // The reflection item is the only one of the four whose writer lives on this
   // card. Without it `session_learning_reflections` has no INSERT path anywhere
-  // in the app and unit_complete is unreachable for every learner.
+  // in the app and the reflection stays permanently outstanding.
   describe("reflection writer", () => {
-    it("lets the learner write the reflection that satisfies the gate", async () => {
-      mockEvidence({ has_reflection: false, unit_complete: false });
+    it("lets the learner write the reflection that clears the item", async () => {
+      mockEvidence({ has_reflection: false, evidence_complete: false });
       mockStoredReflection(null);
       renderChecklist({ enrollmentId: "e1", canSubmitReflection: true });
 
@@ -165,7 +166,7 @@ describe("CoachingPostSessionChecklist", () => {
     });
 
     it("edits the one stored reflection instead of stacking a second", async () => {
-      mockEvidence({ unit_complete: true });
+      mockEvidence({ evidence_complete: true });
       mockStoredReflection("First answer");
       renderChecklist({ enrollmentId: "e1", canSubmitReflection: true });
 
@@ -181,7 +182,7 @@ describe("CoachingPostSessionChecklist", () => {
     });
 
     it("refuses to save an empty reflection", async () => {
-      mockEvidence({ has_reflection: false, unit_complete: false });
+      mockEvidence({ has_reflection: false, evidence_complete: false });
       mockStoredReflection(null);
       renderChecklist({ enrollmentId: "e1", canSubmitReflection: true });
 
@@ -193,7 +194,7 @@ describe("CoachingPostSessionChecklist", () => {
     });
 
     it("never offers the composer to anyone but the learner", async () => {
-      mockEvidence({ has_reflection: false, unit_complete: false });
+      mockEvidence({ has_reflection: false, evidence_complete: false });
       renderChecklist({ enrollmentId: "e1", canSubmitReflection: false });
       await screen.findByTestId("coaching-post-session");
       expect(screen.queryByTestId("coaching-reflection-composer")).toBeNull();
@@ -202,12 +203,12 @@ describe("CoachingPostSessionChecklist", () => {
     });
   });
 
-  it("reads completion from the backend rather than deriving it on screen", async () => {
-    // Every gate present but the backend says the unit is not complete: the
+  it("reads evidence completeness from the backend rather than deriving it on screen", async () => {
+    // Every item present but the backend says evidence is incomplete: the
     // component must follow the backend, not recompute the conjunction.
-    mockEvidence({ unit_complete: false });
+    mockEvidence({ evidence_complete: false });
     renderChecklist();
-    expect(await screen.findByTestId("coaching-unit-status")).toHaveTextContent("4/4");
-    expect(screen.getByTestId("coaching-unit-status")).not.toHaveTextContent(/^Programme unit complete$/);
+    expect(await screen.findByTestId("coaching-evidence-status")).toHaveTextContent("4/4");
+    expect(screen.getByTestId("coaching-evidence-status")).not.toHaveTextContent(/^Programme unit complete$/);
   });
 });

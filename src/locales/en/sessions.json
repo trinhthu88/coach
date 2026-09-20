@@ -331,11 +331,11 @@
   },
   "postSession": {
     "title": "Post-session learning",
-    "subtitle": "Complete these to finish this Coaching session in your programme journey.",
-    "unitComplete": "Programme unit complete",
-    "unitPending": "Programme unit pending · {{done}}/{{total}}",
+    "subtitle": "Your session is recorded as completed. These follow-ups are still outstanding.",
+    "evidenceComplete": "Follow-up complete",
+    "evidencePending": "Follow-up outstanding · {{done}}/{{total}}",
     "notRequired": "not required",
-    "footer": "Your Coach has marked the session held. The programme unit completes once all required items are done.",
+    "footer": "Your Coach has marked the session held, so it already counts towards your programme. These follow-ups are for your own development record.",
     "reflection": {
       "label": "Your reflection",
       "help": "What did you take from this session? Only you and your Coach can read it.",
