@@ -411,12 +411,24 @@ select is(
   'leader canonical completed coaching stays capped at its four-unit requirement'
 );
 reset role;
+-- Coaching activity is requirement-bound as of the 2026-09 cutover: a session
+-- counts as activity when it is a real completed session attributed to a
+-- cohort Coaching requirement. The row inserted above is a bare
+-- session_activity_attributions record whose source_activity_id points at no
+-- session at all, and audit finding G4 is precisely that such orphaned
+-- attributions must stop making things count. It therefore contributes
+-- nothing, and raw activity stays at the four real sessions.
+--
+-- Extra Coaching activity beyond the requirement count is now structurally
+-- impossible: at most one live-or-completed session per requirement, and
+-- booking is capped at the requirement count. Triads keep raw_completed_sessions
+-- because one Triad requirement may legitimately hold several sessions.
 select is(
   (select completed_activity_units from public.canonical_module_progress(
      '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-05'::date)
    where module = 'coaching'),
-  5,
-  'the extra attributed activity remains visible as raw completed_activity_units'
+  4,
+  'an orphaned coaching attribution is not activity: raw activity stays at the real sessions'
 );
 set local role authenticated;
 select is(

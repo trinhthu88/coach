@@ -38,9 +38,13 @@ select ok(pg_get_functiondef('public.get_coach_peer_session_usage(uuid)'::regpro
 select ok(pg_get_functiondef('public.enforce_coach_as_coachee_limit()'::regprocedure)
     !~* 'coach_programmes|coach_programme_enrollments',
   'completion enforcement resolves programme enrollment/module config');
-select ok(pg_get_functiondef('public.get_mentoring_received_limit(uuid)'::regprocedure)
-    !~* 'coach_programmes|coach_programme_enrollments',
-  'mentoring received limit resolves programme enrollment/module config');
+-- get_mentoring_received_limit() was DROPPED by 20260920230000: it was
+-- user-global and summed the mentoring entitlement of every enrollment a
+-- learner had ever held, so a historical enrollment inflated the current
+-- one's allowance. Absence is the stronger form of the original assertion --
+-- a function that does not exist cannot depend on anything.
+select hasnt_function('public', 'get_mentoring_received_limit', array['uuid'],
+  'the user-global mentoring received limit is retired');
 select ok(pg_get_functiondef('public.get_mentoring_given_limit(uuid)'::regprocedure)
     !~* 'coach_programmes|coach_programme_enrollments',
   'mentoring given limit resolves programme enrollment/module config');
