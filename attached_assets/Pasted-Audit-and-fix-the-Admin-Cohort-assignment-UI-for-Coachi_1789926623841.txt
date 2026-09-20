@@ -1,0 +1,104 @@
+Audit and fix the Admin Cohort assignment UI for Coaching, Mentoring, and Peer Practice.
+
+There is a confirmed bug.
+
+Admin → Coaches currently shows 9 ACTIVE coaches, including Demo Coach, Thanh Huyen Nguyen, Lan Le, Claire Dubois, Yuki Tanaka, Daniel Okafor, Marta Ruiz, Trang Trinh, etc.
+
+However Admin → Cohorts → Edit Cohort displays:
+
+"No Coaches are available to assign. Add a Coach in Admin → Coaches first."
+
+for both Coaching and Mentoring.
+
+This is false and proves that the Cohort editor is reading/filtering a different or incorrect provider source.
+
+Do NOT redesign the canonical architecture.
+
+Canonical rule:
+
+Admin → Coaches
+= global provider registry / capability
+
+Programme
+= required modules + required units
+
+Cohort
+= provider assignment and deadlines
+
+Enrollment
+= learner context
+
+For Coaching:
+- every active eligible Coach from Admin → Coaches should be available for cohort Coaching assignment
+- existing cohort assignment determines whether they can coach learners in that cohort
+
+For Mentoring:
+- active Coaches with active Mentoring/mentor capability should be available
+- cohort_mentors determines assignment for that cohort
+- mentoring_allowlist must not drive current availability
+
+For Peer:
+- learners in the same cohort can always peer together
+- Admin may additionally connect compatible other cohorts
+- the selector must show other eligible cohorts instead of incorrectly appearing empty when such cohorts exist
+
+Tasks:
+
+1. Audit the exact query/data source used by:
+   - Admin Coaches list
+   - Cohort Coaching assignment panel
+   - Cohort Mentoring assignment panel
+   - Peer cohort connection panel
+
+2. Produce a source comparison:
+   Source | Table/RPC | Filters | Why mismatch occurs
+
+3. Make Admin Coaches the provider capability source of truth.
+
+4. Coaching cohort picker:
+   - list active eligible Coaches
+   - do NOT require prior programme assignment
+   - do NOT require user_module_access
+   - do NOT use legacy learner-specific coach assignment
+   - assignment itself is cohort-scoped
+
+5. Mentoring cohort picker:
+   - list active Coaches with active mentor capability/profile
+   - use cohort_mentors for assignment
+   - do not use mentoring_allowlist as current source
+
+6. Preserve independent assignment:
+   Coach X may be:
+   - Coaching provider for Cohort A
+   - Mentor for Cohort B
+   - both
+   - neither
+
+7. Peer cohort selector:
+   Audit why no other cohorts appear.
+   Use the canonical peer eligibility rule already implemented.
+   Do not introduce a second source of truth.
+   If only same-programme cohorts are allowed, show all other cohorts of the same programme.
+   Current cohort is always implicitly included and must not require assignment.
+
+8. Add tests for:
+   - active coach appears in Coaching picker
+   - inactive coach does not
+   - active mentor appears in Mentoring picker
+   - coach without mentor capability does not appear in Mentoring picker
+   - assigning a coach creates the correct cohort assignment
+   - assigning mentor creates correct cohort_mentor assignment
+   - coaching and mentoring assignment are independent
+   - second compatible cohort appears in Peer selector
+   - current cohort is always implicitly allowed for peer practice
+
+9. Keep source-of-truth hierarchy unchanged.
+
+10. Do not touch Triad Deployment-2 hardening files.
+
+Return:
+- root cause
+- files changed
+- exact SQL/query before/after
+- tests
+- verification results
