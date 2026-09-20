@@ -14,14 +14,18 @@ import { CohortMentoringPanel } from "../CohortMentoringPanel";
 const upsert = vi.fn().mockResolvedValue({ error: null });
 
 /**
- * Mentor A: assigned, active profile.
- * Mentor B: assigned, but INACTIVE profile — assigned yet unbookable.
- * Mentor C: active profile, unassigned candidate.
+ * A Mentor is a Coach with a cohort Mentoring assignment, so the candidates
+ * come from the Coach population -- NOT from mentor_profiles, which is what
+ * made this panel show "no mentors exist yet" on a system full of Coaches.
+ *
+ * Coach A: assigned, active account.
+ * Coach B: assigned, but the account is inactive -- assigned yet unbookable.
+ * Coach C: active Coach, unassigned candidate.
  */
 function mockTables(assignments = [
   { mentor_user_id: "a", is_active: true, assigned_at: "2026-01-01" },
   { mentor_user_id: "b", is_active: true, assigned_at: "2026-01-01" },
-]) {
+], coachIds = ["a", "b", "c"]) {
   from.mockImplementation((table: string) => {
     if (table === "cohort_mentors") {
       return {
@@ -29,17 +33,15 @@ function mockTables(assignments = [
         upsert,
       };
     }
-    if (table === "mentor_profiles") {
+    if (table === "user_roles") {
       return {
-        select: () =>
-          Promise.resolve({
-            data: [
-              { coach_user_id: "a", is_active: true },
-              { coach_user_id: "b", is_active: false },
-              { coach_user_id: "c", is_active: true },
-            ],
-            error: null,
-          }),
+        select: () => ({
+          eq: () =>
+            Promise.resolve({
+              data: coachIds.map((id) => ({ user_id: id })),
+              error: null,
+            }),
+        }),
       };
     }
     if (table === "profiles") {
@@ -48,14 +50,26 @@ function mockTables(assignments = [
           in: () =>
             Promise.resolve({
               data: [
-                { id: "a", full_name: "Mentor A" },
-                { id: "b", full_name: "Mentor B" },
-                { id: "c", full_name: "Mentor C" },
+                { id: "a", full_name: "Coach A", status: "active" },
+                { id: "b", full_name: "Coach B", status: "inactive" },
+                { id: "c", full_name: "Coach C", status: "active" },
               ],
             }),
         }),
       };
     }
+    if (table === "coach_profiles") {
+      return {
+        select: () => ({
+          in: () =>
+            Promise.resolve({
+              data: [{ id: "a", title: "Executive Coach" }],
+            }),
+        }),
+      };
+    }
+    // mentor_profiles must never be consulted for eligibility.
+    if (table === "mentor_profiles") throw new Error("mentor_profiles must not decide Mentor eligibility");
     return { select: () => ({ in: () => Promise.resolve({ data: [] }) }) };
   });
 }
@@ -86,17 +100,17 @@ describe("CohortMentoringPanel", () => {
   it("flags an assigned mentor whose provider profile is inactive", async () => {
     renderPanel();
     const rows = await screen.findAllByTestId("cohort-mentor-row");
-    const b = rows.find((r) => r.textContent?.includes("Mentor B"))!;
+    const b = rows.find((r) => r.textContent?.includes("Coach B"))!;
     // Assigned to the cohort, but unbookable — the cohort looks staffed and is not.
     expect(b).toHaveAttribute("data-assigned", "true");
-    expect(b).toHaveAttribute("data-profile-active", "false");
+    expect(b).toHaveAttribute("data-account-active", "false");
     expect(screen.getByTestId("cohort-mentoring-inactive-warning")).toBeInTheDocument();
   });
 
   it("assigns a candidate mentor to the cohort", async () => {
     renderPanel();
     const rows = await screen.findAllByTestId("cohort-mentor-row");
-    const c = rows.find((r) => r.textContent?.includes("Mentor C"))!;
+    const c = rows.find((r) => r.textContent?.includes("Coach C"))!;
     fireEvent.click(c.querySelector("button, input")!);
     await waitFor(() => expect(upsert).toHaveBeenCalled());
     expect(upsert.mock.calls[0][0]).toMatchObject({
@@ -109,7 +123,7 @@ describe("CohortMentoringPanel", () => {
   it("unassigns by deactivating, so delivery history survives", async () => {
     renderPanel();
     const rows = await screen.findAllByTestId("cohort-mentor-row");
-    const a = rows.find((r) => r.textContent?.includes("Mentor A"))!;
+    const a = rows.find((r) => r.textContent?.includes("Coach A"))!;
     fireEvent.click(a.querySelector("button, input")!);
     await waitFor(() => expect(upsert).toHaveBeenCalled());
     expect(upsert.mock.calls[0][0]).toMatchObject({ mentor_user_id: "a", is_active: false });
@@ -119,5 +133,35 @@ describe("CohortMentoringPanel", () => {
     mockTables([]);
     renderPanel();
     expect(await screen.findByTestId("cohort-mentoring-warning")).toBeInTheDocument();
+  });
+
+  // The candidate population is Coach identity. No mentor_profiles row is
+  // required: mockTables throws if that table is touched at all.
+  it("offers a Coach with no mentor profile as a candidate", async () => {
+    mockTables([], ["c"]);
+    renderPanel();
+    const rows = await screen.findAllByTestId("cohort-mentor-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent("Coach C");
+    expect(rows[0]).toHaveAttribute("data-assigned", "false");
+  });
+
+  // Mentoring assignment is independent of Coaching assignment: this panel
+  // reads cohort_mentors only, and never cohort_coach_assignments.
+  it("never consults the Coaching assignment table", async () => {
+    mockTables();
+    renderPanel();
+    await screen.findAllByTestId("cohort-mentor-row");
+    const tables = from.mock.calls.map((c) => c[0]);
+    expect(tables).toContain("cohort_mentors");
+    expect(tables).not.toContain("cohort_coach_assignments");
+  });
+
+  it("says no Coaches are available rather than implying Mentor is an account type", async () => {
+    mockTables([], []);
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByText(/No Coaches are available to assign as Mentors/i)).toBeInTheDocument(),
+    );
   });
 });

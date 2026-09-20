@@ -82,12 +82,12 @@
     },
     "mentoring": {
       "title": "Mentoring",
-      "intro": "Mentors assigned here may deliver Mentoring for every learner in this cohort.",
+      "intro": "Choose which Coaches act as Mentor for this cohort. Independent of their Coaching assignment.",
       "assignedCount": "{{count}} assigned",
-      "noMentors": "No mentors exist yet.",
-      "noneAssignedWarning": "No mentor is assigned. Learners in this cohort cannot book Mentoring until at least one is.",
+      "noCoaches": "No Coaches are available to assign as Mentors. Add a Coach in Admin → Coaches first.",
+      "noneAssignedWarning": "No Coach is assigned as Mentor for this cohort, so nobody here can book Mentoring.",
       "inactiveAssignedWarning": "{{count}} assigned mentor(s) have an inactive mentor profile and cannot be booked.",
-      "profileInactive": "profile inactive",
+      "accountInactive": "account inactive",
       "assigned": "Mentor assigned to this cohort.",
       "unassigned": "Mentor removed from this cohort.",
       "toggleLabel": "Assign {{name}} to this cohort"
@@ -910,7 +910,7 @@
     "title": "Manage",
     "titleEmphasis": "Mentoring",
     "subtitle": "Designate mentors, grant module access, and assign mentee-mentor pairs.",
-    "kpiMentors": "Active mentors",
+    "kpiMentors": "Coaches assigned as Mentor",
     "kpiWithAccess": "Users with access",
     "kpiPairs": "Assigned pairs",
     "mentorsSection": "Mentors",
@@ -950,7 +950,10 @@
     "save": "Save",
     "saved": "Saved",
     "saveFailed": "Couldn't save. Please try again.",
-    "mentorAssignmentMovedToCohort": "Programme Mentoring is assigned per cohort. Manage the mentor pool in Admin → Cohorts → Mentoring."
+    "mentorAssignmentMovedToCohort": "Programme Mentoring is assigned per cohort. Manage the mentor pool in Admin → Cohorts → Mentoring.",
+    "assignmentMovedBody": "A Mentor is a Coach with a Mentoring assignment for a specific cohort — not a separate account. Assign Mentors per cohort in Cohorts → Edit cohort → Mentoring. Coach identity, profile and account state are managed in Coaches.",
+    "goToCohorts": "Go to Cohorts",
+    "goToCoaches": "Go to Coaches"
   },
   "triads": {
     "eyebrow": "Programmes",

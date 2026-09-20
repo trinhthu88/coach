@@ -18,9 +18,13 @@ import {
  *   Cohort     the requirement DATES (CohortRequirementSchedule, module-generic)
  *   Cohort     the mentor POOL -- this panel
  *
- * Mentor capability (is mentor? active? bio? expertise?) stays a global
- * provider profile and is administered separately; this panel only decides
- * which cohorts a mentor serves.
+ * A Mentor is not a user type: it is a Coach with a Mentoring assignment for
+ * this cohort. The candidate list is therefore the same Coach population the
+ * Coaching panel offers, and the two assignments are independent -- assigning
+ * somebody here grants nothing for Coaching, and vice versa.
+ *
+ * Coach identity itself (role, account state, profile, bio) is administered in
+ * Admin -> Coaches; this panel only decides who mentors for this cohort.
  */
 export function CohortMentoringPanel({ cohortId }: { cohortId: string | undefined }) {
   const { t } = useTranslation("admin");
@@ -30,9 +34,9 @@ export function CohortMentoringPanel({ cohortId }: { cohortId: string | undefine
   if (!cohortId) return null;
 
   const assigned = (mentors ?? []).filter((m) => m.isActive);
-  // Assigned but with an inactive mentor profile: bookable by neither, and
-  // worth surfacing because the cohort looks staffed when it is not.
-  const assignedButInactive = assigned.filter((m) => !m.profileActive);
+  // Assigned but the Coach account is inactive: bookable by nobody, and worth
+  // surfacing because the cohort looks staffed when it is not.
+  const assignedButInactive = assigned.filter((m) => !m.accountActive);
 
   const toggle = (mentorUserId: string, active: boolean) => {
     setAssignment.mutate(
@@ -66,7 +70,9 @@ export function CohortMentoringPanel({ cohortId }: { cohortId: string | undefine
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
         </div>
       ) : (mentors ?? []).length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("cohorts.mentoring.noMentors")}</p>
+        // There are no Coaches at all -- not "no mentors", which would imply
+        // Mentor is a separate kind of account.
+        <p className="text-sm text-muted-foreground">{t("cohorts.mentoring.noCoaches")}</p>
       ) : (
         <ul className="space-y-1.5">
           {(mentors ?? []).map((m) => (
@@ -74,7 +80,7 @@ export function CohortMentoringPanel({ cohortId }: { cohortId: string | undefine
               key={m.mentorUserId}
               data-testid="cohort-mentor-row"
               data-assigned={m.isActive ? "true" : "false"}
-              data-profile-active={m.profileActive ? "true" : "false"}
+              data-account-active={m.accountActive ? "true" : "false"}
               className="flex items-center gap-2 rounded-md border border-border bg-muted/20 px-3 py-2"
             >
               <Checkbox
@@ -84,9 +90,10 @@ export function CohortMentoringPanel({ cohortId }: { cohortId: string | undefine
                 aria-label={t("cohorts.mentoring.toggleLabel", { name: m.fullName })}
               />
               <span className="text-sm font-medium">{m.fullName}</span>
-              {!m.profileActive && (
+              {m.title && <span className="text-xs text-muted-foreground">{m.title}</span>}
+              {!m.accountActive && (
                 <span className="text-xs text-warning">
-                  {t("cohorts.mentoring.profileInactive")}
+                  {t("cohorts.mentoring.accountInactive")}
                 </span>
               )}
             </li>

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -21,17 +21,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Role = "coach" | "coachee";
 
-interface MentorRow {
-  coach_user_id: string;
-  full_name: string;
-  email: string;
-  is_mentor: boolean;
-  is_active: boolean;
-  bio: string;
-  expertise_tags: string[];
-  mentee_count: number;
-}
-
 interface AccessRow {
   id: string;
   full_name: string;
@@ -47,32 +36,33 @@ export default function AdminMentoring() {
   const { t } = useTranslation("admin");
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [mentors, setMentors] = useState<MentorRow[]>([]);
   const [access, setAccess] = useState<AccessRow[]>([]);
 
-  const [mentorQ, setMentorQ] = useState("");
   const [accessQ, setAccessQ] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | Role>("all");
 
-  const [editingMentor, setEditingMentor] = useState<MentorRow | null>(null);
   const [editingAccess, setEditingAccess] = useState<AccessRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  /** Distinct Coaches assigned as Mentor for at least one cohort. */
+  const [cohortMentorCount, setCohortMentorCount] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     const [
       { data: roles },
       { data: profiles },
-      { data: mentorProfiles },
       { data: allowlist },
       { data: moduleAccess },
+      { data: cohortMentorRows },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email"),
-      supabase.from("mentor_profiles").select("coach_user_id, is_active, bio, expertise_tags"),
       supabase.from("mentoring_allowlist").select("id, mentee_user_id, mentor_user_id"),
       supabase.from("user_module_access").select("user_id, enabled").eq("module", "mentoring"),
+      // Mentor identity is a Coach with a cohort assignment; this is only used
+      // for the headline count, never to decide eligibility.
+      supabase.from("cohort_mentors").select("mentor_user_id").eq("is_active", true),
     ]);
 
     const profileById = new Map((profiles || []).map((p) => [p.id, p]));
@@ -84,7 +74,6 @@ export default function AdminMentoring() {
       if (p) coachNameById.set(id, p.full_name);
     });
 
-    const mentorProfileById = new Map((mentorProfiles || []).map((m) => [m.coach_user_id, m]));
     const menteeCountByMentor = new Map<string, number>();
     const mentorsByMentee = new Map<string, { id: string; name: string }[]>();
     (allowlist || []).forEach((a) => {
@@ -95,24 +84,6 @@ export default function AdminMentoring() {
     });
 
     const enabledByUser = new Map((moduleAccess || []).map((m) => [m.user_id, m.enabled]));
-
-    const mentorRows: MentorRow[] = coachIds
-      .map((id) => {
-        const p = profileById.get(id);
-        if (!p) return null;
-        const mp = mentorProfileById.get(id);
-        return {
-          coach_user_id: id,
-          full_name: p.full_name,
-          email: p.email,
-          is_mentor: !!mp,
-          is_active: mp?.is_active ?? true,
-          bio: mp?.bio ?? "",
-          expertise_tags: mp?.expertise_tags ?? [],
-          mentee_count: menteeCountByMentor.get(id) || 0,
-        } as MentorRow;
-      })
-      .filter(Boolean) as MentorRow[];
 
     const accessRows: AccessRow[] = [...coachIds, ...coacheeIds]
       .map((id) => {
@@ -129,17 +100,15 @@ export default function AdminMentoring() {
       })
       .filter(Boolean) as AccessRow[];
 
-    setMentors(mentorRows.sort((a, b) => a.full_name.localeCompare(b.full_name)));
+    setCohortMentorCount(
+      new Set((cohortMentorRows || []).map((r) => r.mentor_user_id)).size,
+    );
     setAccess(accessRows.sort((a, b) => a.full_name.localeCompare(b.full_name)));
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const filteredMentors = useMemo(() => mentors.filter((m) => {
-    const query = mentorQ.trim().toLowerCase();
-    return !query || m.full_name.toLowerCase().includes(query) || m.email.toLowerCase().includes(query);
-  }), [mentors, mentorQ]);
 
   const filteredAccess = useMemo(() => access.filter((a) => {
     const query = accessQ.trim().toLowerCase();
@@ -148,59 +117,7 @@ export default function AdminMentoring() {
     return okQ && okR;
   }), [access, accessQ, roleFilter]);
 
-  const mentorPager = usePagination(filteredMentors, [mentorQ], PAGE_SIZE);
   const accessPager = usePagination(filteredAccess, [accessQ, roleFilter], PAGE_SIZE);
-
-  const toggleIsMentor = async (row: MentorRow, next: boolean) => {
-    try {
-      if (next) {
-        const { error } = await supabase
-          .from("mentor_profiles")
-          .upsert({ coach_user_id: row.coach_user_id, is_active: true }, { onConflict: "coach_user_id" });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("mentor_profiles").delete().eq("coach_user_id", row.coach_user_id);
-        if (error) throw error;
-      }
-      toast.success(t("mentoring.saved"));
-      await load();
-    } catch (e) {
-      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("mentoring.saveFailed") }));
-    }
-  };
-
-  const toggleMentorActive = async (row: MentorRow, next: boolean) => {
-    try {
-      const { error } = await supabase
-        .from("mentor_profiles")
-        .update({ is_active: next })
-        .eq("coach_user_id", row.coach_user_id);
-      if (error) throw error;
-      toast.success(t("mentoring.saved"));
-      await load();
-    } catch (e) {
-      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("mentoring.saveFailed") }));
-    }
-  };
-
-  const saveMentorEdit = async () => {
-    if (!editingMentor) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("mentor_profiles")
-        .update({ bio: editingMentor.bio || null, expertise_tags: editingMentor.expertise_tags })
-        .eq("coach_user_id", editingMentor.coach_user_id);
-      if (error) throw error;
-      toast.success(t("mentoring.saved"));
-      setEditingMentor(null);
-      await load();
-    } catch (e) {
-      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("mentoring.saveFailed") }));
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const toggleModuleAccess = async (row: AccessRow, next: boolean) => {
     try {
@@ -268,7 +185,7 @@ export default function AdminMentoring() {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
-  const totalMentors = mentors.filter((m) => m.is_mentor).length;
+  const totalMentors = cohortMentorCount;
   const totalWithAccess = access.filter((a) => a.mentoring_enabled).length;
   const totalPairs = access.reduce((sum, a) => sum + a.assigned_mentors.length, 0);
 
@@ -288,57 +205,26 @@ export default function AdminMentoring() {
         <Kpi label={t("mentoring.kpiPairs")} value={totalPairs} icon={Handshake} tone="secondary" />
       </div>
 
-      {/* Mentors */}
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("mentoring.mentorsSection")}</p>
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={mentorQ} onChange={(e) => setMentorQ(e.target.value)} placeholder={t("mentoring.searchPlaceholder")} className="pl-9" />
+      {/* Mentor assignment lives with the cohort, not here.
+          A Mentor is not a separate account: it is a Coach with a Mentoring
+          assignment for a specific cohort. This page used to create and toggle
+          mentor_profiles rows, which made "Mentor" look like its own provider
+          identity and meant a Coach without one could not be assigned at all. */}
+      <Card className="mb-6 p-4 sm:p-5" data-testid="mentoring-assignment-notice">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          {t("mentoring.mentorsSection")}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("mentoring.assignmentMovedBody")}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/admin/cohorts">{t("mentoring.goToCohorts")}</Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/admin/coaches">{t("mentoring.goToCoaches")}</Link>
+          </Button>
         </div>
-      </div>
-      <Card className="mb-6 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-[12px]">
-            <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("mentoring.tableHeaders.coach")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("mentoring.tableHeaders.isMentor")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("mentoring.tableHeaders.active")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("mentoring.tableHeaders.bio")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("mentoring.tableHeaders.menteeCount")}</th>
-                <th className="px-3 py-2.5 text-right font-semibold">{t("mentoring.tableHeaders.actions")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {mentorPager.paged.map((m) => (
-                <tr key={m.coach_user_id} className="hover:bg-muted/30">
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <Avatar name={m.full_name} />
-                      <div className="min-w-0">
-                        <p className="truncate text-[12px] font-medium text-foreground">{m.full_name}</p>
-                        <p className="truncate text-[10px] text-muted-foreground">{m.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5"><Switch checked={m.is_mentor} onCheckedChange={(v) => toggleIsMentor(m, v)} /></td>
-                  <td className="px-3 py-2.5"><Switch checked={m.is_active} disabled={!m.is_mentor} onCheckedChange={(v) => toggleMentorActive(m, v)} /></td>
-                  <td className="max-w-64 truncate px-3 py-2.5 text-[11px] text-muted-foreground">{m.bio || <span className="italic">—</span>}</td>
-                  <td className="px-3 py-2.5 text-[11px]">{m.mentee_count}</td>
-                  <td className="px-3 py-2.5 text-right">
-                    <Button variant="ghost" size="icon" title={t("mentoring.edit")} aria-label={t("mentoring.edit")} onClick={() => setEditingMentor({ ...m })}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {filteredMentors.length === 0 && (
-                <tr><td colSpan={6} className="p-12 text-center text-sm text-muted-foreground">{t("mentoring.noMatch")}</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <TablePager page={mentorPager.page} totalPages={mentorPager.totalPages} onChange={mentorPager.setPage} />
       </Card>
 
       {/* Access & pairing */}
@@ -413,45 +299,6 @@ export default function AdminMentoring() {
       </Card>
 
       {/* Edit mentor drawer */}
-      <Sheet open={!!editingMentor} onOpenChange={(o) => !o && setEditingMentor(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{t("mentoring.editMentor")}</SheetTitle>
-            <SheetDescription>{editingMentor?.email}</SheetDescription>
-          </SheetHeader>
-          {editingMentor && (
-            <div className="mt-4 space-y-4">
-              <div>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("mentoring.bio")}</p>
-                <Textarea
-                  rows={4}
-                  value={editingMentor.bio}
-                  onChange={(e) => setEditingMentor({ ...editingMentor, bio: e.target.value })}
-                />
-              </div>
-              <div>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("mentoring.expertiseTags")}</p>
-                <Input
-                  value={editingMentor.expertise_tags.join(", ")}
-                  onChange={(e) =>
-                    setEditingMentor({
-                      ...editingMentor,
-                      expertise_tags: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                    })
-                  }
-                  placeholder={t("mentoring.expertiseTagsPlaceholder")}
-                />
-              </div>
-            </div>
-          )}
-          <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => setEditingMentor(null)}>{t("mentoring.cancel")}</Button>
-            <Button onClick={saveMentorEdit} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("mentoring.save")}
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
 
       {/* Edit access & pairing drawer */}
       <Sheet open={!!editingAccess} onOpenChange={(o) => !o && setEditingAccess(null)}>

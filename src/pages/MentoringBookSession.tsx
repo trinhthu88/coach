@@ -24,6 +24,11 @@ import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { computeStartOptions } from "./bookingSlots";
 
+/**
+ * A Mentor is a Coach with a cohort Mentoring assignment, so their details
+ * come from the Coach profile. mentor_profiles is no longer consulted: a Coach
+ * assigned as Mentor without one would otherwise render blank.
+ */
 interface MentorDetail {
   coach_user_id: string;
   bio: string | null;
@@ -92,13 +97,28 @@ export default function MentoringBookSession() {
 
         const [{ data: mentorData }, { data: slotData }] = await Promise.all([
           supabase
-            .from("mentor_profiles")
-            .select("coach_user_id, bio, expertise_tags, profiles!inner(full_name, avatar_url)")
-            .eq("coach_user_id", mentorId)
+            .from("coach_profiles")
+            .select("id, specialties, profiles!inner(full_name, avatar_url, bio)")
+            .eq("id", mentorId)
             .maybeSingle(),
           slotQuery,
         ]);
-        setMentor(mentorData as unknown as MentorDetail | null);
+        const coachRow = mentorData as unknown as
+          | { id: string; specialties: string[] | null;
+              profiles: { full_name: string; avatar_url: string | null; bio: string | null } | null }
+          | null;
+        setMentor(
+          coachRow
+            ? {
+                coach_user_id: coachRow.id,
+                bio: coachRow.profiles?.bio ?? null,
+                expertise_tags: coachRow.specialties,
+                profiles: coachRow.profiles
+                  ? { full_name: coachRow.profiles.full_name, avatar_url: coachRow.profiles.avatar_url }
+                  : null,
+              }
+            : null,
+        );
         setSlots(((slotData as Slot[]) || []).map((s) => ({ ...s })));
 
         if (user) {
