@@ -168,12 +168,32 @@ export default function AdminSessions() {
         if (cancelError) throw cancelError;
       }
 
+      // Coaching status transitions go through the canonical lifecycle rather
+      // than a plain column write. Writing sessions.status directly skips the
+      // slot reservation/release, the requirement reservation and the actor
+      // and timestamp the RPCs record -- an Admin edit would silently leave
+      // those disagreeing with the session.
+      //
+      // Only "completed" is transitioned here; confirm still belongs to the
+      // Coach, and cancellation is handled above.
+      if (!isCancelling && editing.kind !== "peer" && editing.status === "completed" && editingOriginal?.status !== "completed") {
+        const { error: completeError } = await supabase.rpc("complete_coaching_session", {
+          p_session_id: editing.id,
+        });
+        if (completeError) throw completeError;
+      }
+
       const commonUpdate = {
         topic: editing.topic,
         start_time: editing.start_time,
         duration_minutes: editing.duration_minutes,
         meeting_url: editing.meeting_url,
       };
+      // Whatever the canonical calls above already applied must not be
+      // overwritten by the plain update below.
+      const statusHandledCanonically =
+        isCancelling ||
+        (editing.kind !== "peer" && editing.status === "completed" && editingOriginal?.status !== "completed");
       // Peer sessions use provider/receiver_notes, while coaching sessions
       // use coach/coachee_notes. Keep the edit model shared without sending a
       // coaching-only column to the peer table.
@@ -193,7 +213,7 @@ export default function AdminSessions() {
               ...commonUpdate,
               // Already set by cancel-session above when isCancelling; for
               // every other transition a plain status write is fine.
-              ...(isCancelling ? {} : { status: editing.status as Tables<"sessions">["status"] }),
+              ...(statusHandledCanonically ? {} : { status: editing.status as Tables<"sessions">["status"] }),
               coach_notes: editing.coach_notes,
               coachee_notes: editing.coachee_notes,
             })
