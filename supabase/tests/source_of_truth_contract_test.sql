@@ -3,7 +3,7 @@
 -- never change a number, a date or a state.
 begin;
 
-select plan(43);
+select plan(41);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -46,9 +46,8 @@ insert into public.cohort_week_overrides (cohort_id, training_week_id, unlock_da
 
 -- Coaching: evenly distributed. Mentoring: linked to Training weeks 1 and 2.
 insert into public.programme_modules (programme_id, module, enabled, config) values
-  ('c7700000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":4,"receive_limit":4,"distribution_mode":"evenly_distributed","distribution_settings":{}}'),
-  ('c7700000-0000-0000-0000-000000000001', 'mentoring', true, jsonb_build_object('required', true, 'required_units', 2, 'distribution_mode', 'training_linked',
-    'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f7700000-0000-0000-0000-000000000001', 'f7700000-0000-0000-0000-000000000002'))));
+  ('c7700000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":4,"receive_limit":4,"distribution_settings":{}}'),
+  ('c7700000-0000-0000-0000-000000000001', 'mentoring', true, jsonb_build_object('required', true, 'required_units', 2, 'distribution_settings', jsonb_build_object('training_week_ids', jsonb_build_array('f7700000-0000-0000-0000-000000000001', 'f7700000-0000-0000-0000-000000000002'))));
 
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
 select ('e7700000-0000-0000-0000-00000000000' || n)::uuid, ('a7700000-0000-0000-0000-00000000000' || n)::uuid,
@@ -130,7 +129,10 @@ select is((select count(*)::int from facts where progress is not null and jsonb_
 
 -- Every shared programme fact, compared across the three roles.
 select is(
-  (select count(distinct progress->>f)::int from facts), 1, 'identical ' || f || ' for Admin, Learner and Sponsor')
+  -- coalesce, because a fact that is legitimately NULL for every role (no unit
+  -- is due before the deadline, so adherence is undefined) is still identical.
+  (select count(distinct coalesce(progress->>f, '<null>'))::int from facts), 1,
+  'identical ' || f || ' for Admin, Learner and Sponsor')
 from unnest(array[
   'programme_start_date', 'programme_end_date', 'required_units', 'completed_units', 'due_units', 'overdue_units',
   'full_completion_pct', 'due_adherence_pct', 'pace_status', 'effective_enrollment_status',
@@ -208,15 +210,19 @@ select is(
   'requirement due dates in every journey are exactly the stored cohort dates'
 );
 select is(
-  (select array_agg(due_on order by ordinal) from public.cohort_requirement_dates
+  (select array_agg(distinct due_on) from public.cohort_requirement_dates
    where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'mentoring'),
-  array[date '2026-01-05', date '2026-03-09'],
-  'Training-linked Mentoring dates were generated from the cohort Training calendar (override wins; the programme template date 2026-02-02 does not)'
+  array[(select completion_deadline from public.cohort_module_deadlines
+          where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'mentoring')],
+  'every Mentoring requirement is due on the cohort-module completion deadline, and nowhere else'
 );
 
 -- ---------------------------------------------------------------------------
--- Required-units mismatch: explicit, deterministic, identical everywhere.
+-- Required units are the programme's answer, and the cohort materialises them.
 -- ---------------------------------------------------------------------------
+-- Under the deadline model a required_units change is not a mismatch to be
+-- reconciled by hand: the cohort materialises the missing unit on the module
+-- deadline, and every role sees the same thing at once.
 update public.programme_modules
 set config = config || '{"required_units":5,"receive_limit":5}'::jsonb
 where programme_id = 'c7700000-0000-0000-0000-000000000001' and module = 'coaching';
@@ -233,57 +239,49 @@ reset role;
 
 select is(
   (select count(*)::int from public.cohort_requirement_dates where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'coaching'),
-  4, 'raising Coaching 4 → 5 does not silently add a cohort date');
-select is((select count(distinct schedule)::int from facts), 1, 'every role receives the same mismatch state');
+  5, 'raising Coaching 4 -> 5 materialises the fifth canonical requirement');
+select is(
+  (select count(distinct due_on)::int from public.cohort_requirement_dates
+   where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'coaching'),
+  1, 'the new unit inherits the module deadline rather than a date of its own');
+select is((select count(distinct schedule)::int from facts), 1, 'every role receives the same schedule state');
 select ok(
-  (select schedule @> '[{"module":"coaching","required_units":5,"scheduled_units":4,"state":"missing_dates"}]'::jsonb from facts where role = 'learner'),
-  'the mismatch is explicit: Coaching 5 required / 4 scheduled');
+  (select schedule @> '[{"module":"coaching","required_units":5,"scheduled_units":5,"state":"aligned"}]'::jsonb from facts where role = 'learner'),
+  'the cohort is aligned again without an Admin touching anything');
 select is((select count(distinct progress->>'coaching_required_units')::int from facts), 1, 'every role agrees on the requirement (5)');
 select is((select max(progress->>'coaching_required_units') from facts), '5', 'the requirement comes from the programme');
-select is((select count(distinct journey)::int from facts), 1, 'every role receives the same journey during the mismatch');
+select is((select count(distinct journey)::int from facts), 1, 'every role receives the same journey');
 
 select set_config('request.jwt.claim.sub', 'a7700000-0000-0000-0000-000000000098', true);
 set local role authenticated;
 select is(
-  (select issue || ':' || required_units || '/' || scheduled_units from public.cohort_requirement_schedule_issues('d7700000-0000-0000-0000-000000000001') where module = 'coaching'),
-  'missing_dates:5/4', 'the Admin schedule issues report the same mismatch');
--- Explicit Admin action resolves it.
-select is(
-  public.admin_save_cohort_requirement_dates('d7700000-0000-0000-0000-000000000001',
-    '[{"programme_id":"c7700000-0000-0000-0000-000000000001","module":"coaching","ordinal":5,"due_on":"2026-06-20"}]'::jsonb),
-  1, 'the Admin adds the missing Coaching date explicitly');
-select is(
-  (select state from public.admin_canonical_schedule_state('e7700000-0000-0000-0000-000000000001') where module = 'coaching'),
-  'aligned', 'after the explicit Admin action the schedule is aligned for every role');
+  (select count(*)::int from public.cohort_requirement_schedule_issues('d7700000-0000-0000-0000-000000000001') where module = 'coaching'),
+  0, 'the Admin schedule issues report nothing to fix');
 reset role;
 
 -- ---------------------------------------------------------------------------
--- Training-linked: later Training timing changes never move saved dates.
+-- Training timing is Training's business and never moves another module.
 -- ---------------------------------------------------------------------------
 update public.cohort_week_overrides set unlock_date = date '2026-03-16'
 where cohort_id = 'd7700000-0000-0000-0000-000000000001' and training_week_id = 'f7700000-0000-0000-0000-000000000002';
 select is(
-  (select due_on from public.cohort_requirement_dates
-   where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'mentoring' and ordinal = 2),
-  date '2026-03-09', 'a Training week date change does not mutate the saved Mentoring deadline');
+  (select count(distinct due_on)::int from public.cohort_requirement_dates
+   where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'mentoring'),
+  1, 'moving a Training week does not reach into the Mentoring deadline');
 
+-- The cohort is the only place a module deadline can change.
 select set_config('request.jwt.claim.sub', 'a7700000-0000-0000-0000-000000000098', true);
 set local role authenticated;
 select is(
-  (select due_on from public.cohort_requirement_schedule_proposal('c7700000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05', 'd7700000-0000-0000-0000-000000000001')
-   where module = 'mentoring' and ordinal = 2),
-  date '2026-03-16', 'the Admin review (proposal) shows the new Training-linked date');
-select lives_ok(
-  $$select public.admin_save_cohort_requirement_dates('d7700000-0000-0000-0000-000000000001',
-      (select jsonb_agg(jsonb_build_object('programme_id', programme_id, 'module', module, 'ordinal', ordinal, 'due_on', due_on))
-       from public.cohort_requirement_schedule_proposal('c7700000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05', 'd7700000-0000-0000-0000-000000000001')
-       where module = 'mentoring'), true)$$,
-  'the Admin explicitly regenerates the Mentoring dates');
+  public.admin_set_cohort_module_deadlines('d7700000-0000-0000-0000-000000000001',
+    '[{"programme_id":"c7700000-0000-0000-0000-000000000001","module":"mentoring","completion_deadline":"2026-06-20"}]'::jsonb),
+  1, 'the Admin moves the Mentoring deadline');
 reset role;
 select is(
-  (select due_on from public.cohort_requirement_dates
-   where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'mentoring' and ordinal = 2),
-  date '2026-03-16', 'only the explicit regeneration moves the Training-linked deadline');
+  (select array_agg(distinct due_on) from public.cohort_requirement_dates
+   where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'mentoring'),
+  array[date '2026-06-20'],
+  'every Mentoring requirement moves with it -- there is nothing else to edit');
 
 -- ---------------------------------------------------------------------------
 -- One goal-progress rule; retired engines; deprecated stored percentage.

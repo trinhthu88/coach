@@ -46,29 +46,26 @@
     "cancel": "Hủy",
     "save": "Lưu",
     "schedule": {
-      "title": "Lịch yêu cầu",
-      "subtitleNew": "Đề xuất từ quy tắc lên lịch mặc định của chương trình. Điều chỉnh ngày trước khi lưu — ngày đã lưu trở thành hạn chính thức của khóa.",
-      "subtitleSaved": "Hạn yêu cầu đã lưu của khóa. Hành trình của học viên, nhà tài trợ và quản trị đều dùng các ngày này.",
-      "regenerate": "Tạo lại lịch",
-      "reviewTitle": "Xem lại ngày được tạo lại",
-      "reviewNoChanges": "Quy tắc chương trình cho ra cùng các ngày như lịch đã lưu.",
-      "useRegenerated": "Dùng ngày được tạo lại",
-      "regeneratedNote": "Ngày được tạo lại sẽ thay thế lịch đã lưu khi bạn lưu.",
-      "datesChangedNote": "Thay đổi ngày của khóa không di chuyển các hạn đã lưu. Dùng Tạo lại lịch để xem ngày mới.",
+      "title": "Hạn hoàn thành",
+      "subtitleNew": "Mỗi module một hạn: khóa này phải hoàn thành module đó trước ngày nào. Mặc định là ngày kết thúc khóa; số đơn vị bắt buộc lấy từ chương trình.",
+      "subtitleSaved": "Hạn hoàn thành đã lưu của khóa. Hành trình của học viên, nhà tài trợ và quản trị đều dùng các ngày này.",
+      "datesChangedNote": "Thay đổi ngày của khóa chỉ di chuyển những hạn vẫn đặt theo ngày kết thúc khóa. Hạn bạn tự chọn được giữ nguyên.",
       "loadError": "Không thể tải lịch yêu cầu.",
-      "needProgrammeAndDates": "Chọn chương trình, ngày bắt đầu và kết thúc để xem ngày đề xuất.",
-      "empty": "Khóa này chưa có hạn yêu cầu nào.",
+      "needProgrammeAndDates": "Chọn chương trình, ngày bắt đầu và kết thúc để xem hạn đề xuất.",
+      "empty": "Khóa này chưa đặt hạn hoàn thành nào.",
       "required_one": "yêu cầu {{count}}",
       "required_other": "yêu cầu {{count}}",
-      "dateLabel": "Hạn yêu cầu {{module}} {{n}}",
       "edited": "Đã sửa",
       "trainingNote": "Hạn Đào tạo / Học tập theo ngày của các tuần đào tạo trong khóa.",
       "issues": {
-        "missing_dates": "{{module}}: {{scheduled}}/{{required}} đơn vị yêu cầu có hạn.",
-        "surplus_dates": "{{module}}: {{scheduled}} đơn vị có hạn nhưng chỉ yêu cầu {{required}}.",
+        "missing_dates": "{{module}}: đã có {{scheduled}}/{{required}} đơn vị bắt buộc.",
+        "surplus_dates": "{{module}}: có {{scheduled}} đơn vị nhưng chỉ yêu cầu {{required}} — những đơn vị dư đã có hoạt động nên được giữ lại.",
         "outside_cohort": "{{module}}: có hạn nằm ngoài thời gian của khóa.",
-        "out_of_scope": "{{module}}: có hạn nhưng chương trình không còn yêu cầu mô-đun này."
-      }
+        "out_of_scope": "{{module}}: có hạn nhưng chương trình không còn yêu cầu mô-đun này.",
+        "missing_deadline": "{{module}}: chưa đặt hạn hoàn thành nên không thể tạo yêu cầu."
+      },
+      "deadlineLabel": "Hạn hoàn thành {{module}}",
+      "unitsNote": "Số đơn vị mỗi module yêu cầu được đặt ở chương trình; các đơn vị bắt buộc được tạo tự động và đều đến hạn vào ngày trên."
     },
     "triads": "Triad",
     "coaching": {
@@ -454,37 +451,18 @@
         "requiredToggle": "Bắt buộc hoặc tùy chọn",
         "requiredUnits": "Số đơn vị bắt buộc",
         "weightOptional": "Trọng số (tùy chọn)",
-        "distributionMode": "Lịch trình",
-        "monthlyInterval": "Khoảng cách (tháng)",
         "trainingWeeks": "Tuần đào tạo",
         "trainingWeekOption": "Tuần {{week}}: {{title}}",
         "allTrainingWeeksHint": "Chọn đúng một tuần đào tạo cho mỗi đơn vị bắt buộc.",
         "noTrainingWeeks": "Chương trình này chưa có tuần đào tạo.",
-        "customMilestones": "Mốc tùy chỉnh",
-        "addMilestone": "Thêm mốc",
-        "dueDate": "Ngày đến hạn {{number}}",
-        "milestoneUnits": "Đơn vị {{number}}",
-        "windowEnd": "Kết thúc khoảng thời gian {{number}}",
-        "removeMilestone": "Xóa mốc {{number}}",
-        "modes": {
-          "evenly_distributed": "Phân bổ đều",
-          "monthly_frequency": "Tần suất hàng tháng",
-          "training_linked": "Liên kết với tuần đào tạo",
-          "custom": "Mốc tùy chỉnh",
-          "flexible": "Linh hoạt"
-        }
+        "deadlineNote": "Thời hạn hoàn thành do khóa quyết định: đặt một hạn cho mỗi module trong Quản trị → Khóa."
       },
       "validation": {
         "requiredUnitsWholeNonNegative": "Số đơn vị bắt buộc phải là số nguyên không âm.",
         "weightNonNegative": "Trọng số phải bằng hoặc lớn hơn 0.",
         "requiredUnitsPositive": "Module bắt buộc phải có ít nhất một đơn vị.",
-        "distributionModeInvalid": "Hãy chọn một lịch trình hợp lệ.",
         "distributionSettingsInvalid": "Cài đặt lịch trình không hợp lệ.",
-        "monthlyIntervalPositive": "Khoảng cách theo tháng phải là số nguyên dương.",
         "trainingWeekIdsInvalid": "Các tuần đào tạo đã chọn không hợp lệ.",
-        "customMilestonesRequired": "Hãy thêm ít nhất một mốc tùy chỉnh.",
-        "customMilestoneInvalid": "Mỗi mốc tùy chỉnh cần ngày hợp lệ, số đơn vị nguyên dương và ngày kết thúc không trước ngày đến hạn.",
-        "customUnitsMismatch": "Tổng số đơn vị của các mốc tùy chỉnh phải bằng số đơn vị bắt buộc.",
         "trainingWeeksInsufficient": "Số tuần đào tạo được chọn phải bằng số đơn vị bắt buộc."
       }
     }

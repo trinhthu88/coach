@@ -35,10 +35,10 @@ insert into public.cohorts (id, name, programme_id, organization_id, start_date,
 values ('d7000000-0000-0000-0000-000000000001', 'History feed cohort', 'c7000000-0000-0000-0000-000000000001',
   'b7000000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05');
 insert into public.programme_modules (programme_id, module, enabled, config) values
-  ('c7000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":2,"receive_limit":5,"distribution_mode":"flexible","distribution_settings":{}}'),
-  ('c7000000-0000-0000-0000-000000000001', 'peer_coaching', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}'),
-  ('c7000000-0000-0000-0000-000000000001', 'mentoring', true, '{"required":true,"required_units":1,"distribution_mode":"flexible","distribution_settings":{}}'),
-  ('c7000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}');
+  ('c7000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":2,"receive_limit":5,"distribution_settings":{}}'),
+  ('c7000000-0000-0000-0000-000000000001', 'peer_coaching', true, '{"required":true,"required_units":2,"distribution_settings":{}}'),
+  ('c7000000-0000-0000-0000-000000000001', 'mentoring', true, '{"required":true,"required_units":1,"distribution_settings":{}}'),
+  ('c7000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":2,"distribution_settings":{}}');
 
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
 select ('e7000000-0000-0000-0000-00000000000' || n)::uuid, ('a7000000-0000-0000-0000-00000000000' || n)::uuid,

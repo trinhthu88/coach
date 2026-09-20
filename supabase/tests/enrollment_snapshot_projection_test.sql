@@ -1,9 +1,14 @@
+-- The enrollment module snapshot is a PROJECTION of the canonical cohort
+-- schedule, not a second scheduler.
+--
+-- It used to re-implement all five distribution modes, which is why a short
+-- programme could round the first "evenly distributed" milestone onto the
+-- programme start date. There is no policy left to round: a module has one
+-- cohort completion deadline and its required units are milestones on it.
+-- Training keeps its own week-driven dates.
 begin;
 
 select plan(8);
-
--- A short programme exercises the rounding case where the old n / units
--- expression placed the first Evenly milestone on the programme start date.
 insert into public.programmes (id, name)
 values
   ('aa000000-0000-0000-0000-000000000011', 'Evenly baseline test'),
@@ -28,13 +33,13 @@ insert into public.programme_modules (id, programme_id, module, enabled, config)
 values
   ('ad000000-0000-0000-0000-000000000011',
    'aa000000-0000-0000-0000-000000000011', 'coaching', true,
-   '{"required":true,"required_units":4,"distribution_mode":"evenly_distributed"}'),
+   '{"required":true,"required_units":4}'),
   ('ad000000-0000-0000-0000-000000000012',
    'aa000000-0000-0000-0000-000000000012', 'coaching', true,
-   '{"required":true,"required_units":1,"distribution_mode":"custom","distribution_settings":{"milestones":[{"due_on":"2026-01-01","required_units":1}]}}'),
+   '{"required":true,"required_units":1}'),
   ('ad000000-0000-0000-0000-000000000013',
    'aa000000-0000-0000-0000-000000000013', 'training', true,
-   '{"required":true,"required_units":2,"distribution_mode":"training_linked","distribution_settings":{"training_week_ids":["ae000000-0000-0000-0000-000000000011","ae000000-0000-0000-0000-000000000012"]}}');
+   '{"required":true,"required_units":2,"distribution_settings":{"training_week_ids":["ae000000-0000-0000-0000-000000000011","ae000000-0000-0000-0000-000000000012"]}}');
 
 insert into public.training_weeks (
   id, programme_id, week_number, title, is_visible, unlock_date, sort_order
@@ -131,7 +136,7 @@ select is(
      on s.id = m.enrollment_module_snapshot_id
    where s.enrollment_id = 'af000000-0000-0000-0000-000000000011'),
   '2026-01-02'::date,
-  'Evenly schedules never make the programme start due through rounding'
+  'no milestone can land on the programme start through rounding: there is no rounding'
 );
 select is(
   (select max(m.due_on)
@@ -140,7 +145,7 @@ select is(
      on s.id = m.enrollment_module_snapshot_id
    where s.enrollment_id = 'af000000-0000-0000-0000-000000000011'),
   '2026-01-02'::date,
-  'Evenly schedules retain the configured programme end as the final checkpoint'
+  'every required unit is a milestone on the cohort-module completion deadline'
 );
 select is(
   (select count(*)::integer
@@ -150,7 +155,7 @@ select is(
    where s.enrollment_id = 'af000000-0000-0000-0000-000000000011'
      and m.due_on = '2026-01-01'),
   0,
-  'the Evenly programme-start baseline has no due units'
+  'the programme-start baseline has no due units'
 );
 select is(
   (select min(m.due_on)
@@ -158,8 +163,8 @@ select is(
    join public.enrollment_module_snapshots s
      on s.id = m.enrollment_module_snapshot_id
    where s.enrollment_id = 'af000000-0000-0000-0000-000000000012'),
-  '2026-01-01'::date,
-  'an Admin-configured custom requirement may still be due on programme start'
+  '2026-01-11'::date,
+  'a single required unit is a single milestone, on the cohort deadline'
 );
 select is(
   (select array_agg(m.due_on order by m.sequence)
@@ -171,8 +176,10 @@ select is(
   'Training-linked checkpoints retain configured cohort training dates'
 );
 
--- A normal multi-day Evenly schedule keeps its fractional cadence and ends
--- exactly on the configured end date.
+-- Moving the cohort end date moves the deadline the system chose, and every
+-- required unit with it -- there is no cadence to preserve.
+update public.cohorts set end_date = '2026-01-11'
+where id = 'ac000000-0000-0000-0000-000000000011';
 update public.programme_enrollments
 set start_date = '2026-01-01', end_date = '2026-01-11'
 where id = 'af000000-0000-0000-0000-000000000011';
@@ -187,8 +194,8 @@ select is(
    join public.enrollment_module_snapshots s
      on s.id = m.enrollment_module_snapshot_id
    where s.enrollment_id = 'af000000-0000-0000-0000-000000000011'),
-  array['2026-01-03'::date, '2026-01-06'::date, '2026-01-08'::date, '2026-01-11'::date],
-  'Evenly checkpoints use the configured fractional cadence after the baseline'
+  array['2026-01-11'::date, '2026-01-11'::date, '2026-01-11'::date, '2026-01-11'::date],
+  'all four required units follow the cohort deadline together'
 );
 select set_config(
   'request.jwt.claim.sub',
@@ -202,8 +209,8 @@ select is(
     'ac000000-0000-0000-0000-000000000011'::uuid,
     '2026-01-01'::date
   )->0->>'due_on')::date),
-  '2026-01-02'::date,
-  'the first Sponsor journey checkpoint is after the programme-start baseline'
+  '2026-01-11'::date,
+  'the Sponsor journey checkpoint is the cohort deadline, not a generated cadence point'
 );
 select is(
   (select (public.sponsor_canonical_programme_journey(

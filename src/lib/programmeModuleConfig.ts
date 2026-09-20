@@ -1,37 +1,34 @@
-export const MODULE_DISTRIBUTION_MODES = [
-  "evenly_distributed",
-  "monthly_frequency",
-  "training_linked",
-  "custom",
-  "flexible",
-] as const;
-
-export type ModuleDistributionMode = (typeof MODULE_DISTRIBUTION_MODES)[number];
-
-export interface CustomModuleMilestone {
-  due_on: string;
-  required_units: number;
-  window_end_on?: string | null;
+/**
+ * Programme module configuration.
+ *
+ * The programme answers WHAT a module is and HOW MANY units it requires.
+ * It does not answer WHEN: that is the cohort's completion deadline, set in
+ * Admin -> Cohorts and stored in cohort_module_deadlines.
+ *
+ * Distribution modes (evenly distributed / monthly / training-linked / custom /
+ * flexible) are gone. They made the programme a second scheduling authority,
+ * and "flexible" materialised a single requirement however many units the
+ * programme required, which capped completion at one unit.
+ *
+ * distribution_settings survives for ONE thing: Training's training_week_ids,
+ * which say which weeks the Training module covers. That is content scope, not
+ * a schedule -- Training's dates come from the weeks themselves.
+ */
+export interface TrainingWeekSelection {
+  training_week_ids: string[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isIsoDate(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
-}
-
 export function normalizeModuleScheduleConfig(config: Record<string, unknown>): Record<string, unknown> {
-  const { weeks: _legacyWeeks, ...withoutLegacyWeeks } = config;
+  const { weeks: _legacyWeeks, distribution_mode: _legacyMode, ...rest } = config;
   return {
-    ...withoutLegacyWeeks,
+    ...rest,
     required: config.required === true,
     required_units: config.required_units ?? 0,
     weight: config.weight ?? null,
-    distribution_mode: config.distribution_mode ?? "flexible",
     distribution_settings: isRecord(config.distribution_settings) ? { ...config.distribution_settings } : {},
   };
 }
@@ -54,68 +51,22 @@ export function validateModuleScheduleConfig(
     return "programmes.modules.validation.requiredUnitsPositive";
   }
 
-  const mode = config.distribution_mode ?? "flexible";
-  if (!MODULE_DISTRIBUTION_MODES.includes(mode as ModuleDistributionMode)) {
-    return "programmes.modules.validation.distributionModeInvalid";
-  }
-
   const rawSettings = config.distribution_settings ?? {};
   if (!isRecord(rawSettings)) {
     return "programmes.modules.validation.distributionSettingsInvalid";
   }
 
-  if (mode === "monthly_frequency") {
-    const interval = rawSettings.interval_months;
-    if (typeof interval !== "number" || !Number.isInteger(interval) || interval <= 0) {
-      return "programmes.modules.validation.monthlyIntervalPositive";
-    }
-  }
-
-  if (mode === "training_linked") {
-    const ids = rawSettings.training_week_ids;
+  // Training week selection, when the module declares one.
+  const ids = rawSettings.training_week_ids;
+  if (ids !== undefined) {
     if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string" || id.length === 0) || new Set(ids).size !== ids.length) {
       return "programmes.modules.validation.trainingWeekIdsInvalid";
     }
-    if (Array.isArray(ids) && ids.length !== requiredUnits) {
+    if (ids.length !== requiredUnits) {
       return "programmes.modules.validation.trainingWeeksInsufficient";
     }
-    if (Array.isArray(ids) && availableTrainingWeekIds && ids.some((id) => !availableTrainingWeekIds.includes(id))) {
+    if (availableTrainingWeekIds && ids.some((id) => !availableTrainingWeekIds.includes(id as string))) {
       return "programmes.modules.validation.trainingWeekIdsInvalid";
-    }
-  }
-
-  if (mode === "custom") {
-    const milestones = rawSettings.milestones;
-    if (requiredUnits === 0 && (milestones === undefined || (Array.isArray(milestones) && milestones.length === 0))) return null;
-    if (!Array.isArray(milestones) || milestones.length === 0) {
-      return "programmes.modules.validation.customMilestonesRequired";
-    }
-
-    let totalUnits = 0;
-    for (const milestone of milestones) {
-      if (!isRecord(milestone) || !isIsoDate(milestone.due_on)) {
-        return "programmes.modules.validation.customMilestoneInvalid";
-      }
-      if (
-        typeof milestone.required_units !== "number"
-        || !Number.isInteger(milestone.required_units)
-        || milestone.required_units <= 0
-      ) {
-        return "programmes.modules.validation.customMilestoneInvalid";
-      }
-      if (
-        milestone.window_end_on !== undefined
-        && milestone.window_end_on !== null
-        && milestone.window_end_on !== ""
-        && (!isIsoDate(milestone.window_end_on) || milestone.window_end_on < milestone.due_on)
-      ) {
-        return "programmes.modules.validation.customMilestoneInvalid";
-      }
-      totalUnits += milestone.required_units;
-    }
-
-    if (totalUnits !== requiredUnits) {
-      return "programmes.modules.validation.customUnitsMismatch";
     }
   }
 

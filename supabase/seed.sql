@@ -48,12 +48,12 @@ BEGIN
   -- Modules precede enrollment creation: the RPC snapshots these exact weights.
   INSERT INTO public.programme_modules(programme_id,module,enabled,config)
   VALUES
-    (pa,'coaching',true,'{"required":true,"required_units":6,"distribution_mode":"evenly_distributed","weight":100}'),
-    (pb,'training',true,'{"required":true,"required_units":4,"distribution_mode":"training_linked","distribution_settings":{"training_week_ids":["66666666-6666-4666-8666-000000000001","66666666-6666-4666-8666-000000000002","66666666-6666-4666-8666-000000000003","66666666-6666-4666-8666-000000000004"]},"weight":30}'),
-    (pb,'coaching',true,'{"required":true,"required_units":6,"distribution_mode":"evenly_distributed","weight":25}'),
-    (pb,'mentoring',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":15}'),
-    (pb,'peer_coaching',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":15}'),
-    (pb,'triads',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":15}')
+    (pa,'coaching',true,'{"required":true,"required_units":6,"weight":100}'),
+    (pb,'training',true,'{"required":true,"required_units":4,"distribution_settings":{"training_week_ids":["66666666-6666-4666-8666-000000000001","66666666-6666-4666-8666-000000000002","66666666-6666-4666-8666-000000000003","66666666-6666-4666-8666-000000000004"]},"weight":30}'),
+    (pb,'coaching',true,'{"required":true,"required_units":6,"weight":25}'),
+    (pb,'mentoring',true,'{"required":true,"required_units":2,"weight":15}'),
+    (pb,'peer_coaching',true,'{"required":true,"required_units":2,"weight":15}'),
+    (pb,'triads',true,'{"required":true,"required_units":2,"weight":15}')
   ON CONFLICT(programme_id,module) DO UPDATE SET enabled=excluded.enabled,config=excluded.config;
 
   -- Passwordless identities: an existing email always wins and its credentials
@@ -430,11 +430,11 @@ BEGIN
   END LOOP;
   INSERT INTO programme_modules(programme_id,module,enabled,config)
     VALUES
-      (pc,'training',true,'{"required":true,"required_units":6,"distribution_mode":"training_linked","distribution_settings":{"training_week_ids":["67676767-6767-4676-8676-000000000001","67676767-6767-4676-8676-000000000002","67676767-6767-4676-8676-000000000003","67676767-6767-4676-8676-000000000004","67676767-6767-4676-8676-000000000005","67676767-6767-4676-8676-000000000006"]},"weight":25}'),
-      (pc,'coaching',true,'{"required":true,"required_units":4,"distribution_mode":"evenly_distributed","weight":25}'),
-      (pc,'mentoring',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":15}'),
-      (pc,'peer_coaching',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":15}'),
-      (pc,'triads',true,'{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","weight":20}')
+      (pc,'training',true,'{"required":true,"required_units":6,"distribution_settings":{"training_week_ids":["67676767-6767-4676-8676-000000000001","67676767-6767-4676-8676-000000000002","67676767-6767-4676-8676-000000000003","67676767-6767-4676-8676-000000000004","67676767-6767-4676-8676-000000000005","67676767-6767-4676-8676-000000000006"]},"weight":25}'),
+      (pc,'coaching',true,'{"required":true,"required_units":4,"weight":25}'),
+      (pc,'mentoring',true,'{"required":true,"required_units":2,"weight":15}'),
+      (pc,'peer_coaching',true,'{"required":true,"required_units":2,"weight":15}'),
+      (pc,'triads',true,'{"required":true,"required_units":2,"weight":20}')
     ON CONFLICT(programme_id,module) DO UPDATE SET enabled=excluded.enabled,config=excluded.config;
 
   INSERT INTO public.cohort_coach_assignments

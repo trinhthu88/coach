@@ -11,7 +11,7 @@ values ('a5000000-0000-4000-8000-000000000002','active',true);
 insert into public.programmes(id,name,duration_months) values ('a5000000-0000-4000-8000-000000000010','Action test',3);
 insert into public.programme_modules(programme_id,module,enabled,config)
 values ('a5000000-0000-4000-8000-000000000010','coaching',true,
-  '{"required":true,"required_units":1,"receive_limit":4,"distribution_mode":"flexible"}');
+  '{"required":true,"required_units":1,"receive_limit":4}');
 insert into public.cohorts(id,name,programme_id,start_date,end_date) values ('a5000000-0000-4000-8000-000000000020','Action cohort','a5000000-0000-4000-8000-000000000010','2026-01-01','2026-04-01');
 insert into public.programme_enrollments(id,user_id,programme_id,cohort_id,start_date,end_date,status) values
  ('a5000000-0000-4000-8000-000000000031','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000010','a5000000-0000-4000-8000-000000000020','2026-01-01','2026-04-01','active'),

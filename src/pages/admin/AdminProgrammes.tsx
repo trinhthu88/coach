@@ -82,11 +82,11 @@ export type ModuleRows = Record<ProgrammeModuleType, ModuleRow>;
 // JSONB shapes documented alongside the 20260903100000 migration.
 export function defaultModuleRows(): ModuleRows {
   return {
-    coaching: { enabled: false, config: { required: false, required_units: 0, distribution_mode: "flexible", distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null } },
-    peer_coaching: { enabled: false, config: { required: false, required_units: 0, distribution_mode: "flexible", distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null, monthly_limit: null } },
-    mentoring: { enabled: false, config: { required: false, required_units: 0, distribution_mode: "flexible", distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null } },
-    triads: { enabled: false, config: { required: false, required_units: 0, distribution_mode: "flexible", distribution_settings: {}, max_triads: null } },
-    training: { enabled: false, config: { required: false, required_units: 0, distribution_mode: "training_linked", distribution_settings: { training_week_ids: [] } } },
+    coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null } },
+    peer_coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null, monthly_limit: null } },
+    mentoring: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null } },
+    triads: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, max_triads: null } },
+    training: { enabled: false, config: { required: false, required_units: 0, distribution_settings: { training_week_ids: [] } } },
     quiz: { enabled: false, config: {} },
     assessment: { enabled: false, config: { include_direct_reports: false } },
     daily_prompt: { enabled: false, config: {} },
@@ -214,6 +214,7 @@ export function ModuleConfigRow({
             </label>
           )}
           <ProgrammeModuleScheduleFields
+            module={module}
             config={cfg}
             onChange={onConfigChange}
             trainingWeeks={trainingWeeks}

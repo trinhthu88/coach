@@ -48,28 +48,19 @@ insert into public.cohorts (id, name, programme_id, start_date, end_date) values
   ('f1000000-0000-0000-0000-00000000b1b1'::uuid, 'Peer Cohort B',
    'f1000000-0000-0000-0000-00000000a0a0'::uuid, current_date - 200, current_date + 200);
 
--- The COHORT says when each unit is due. A's are past; B's are not.
---
--- The cohorts carry dates, so the auto-fill trigger has already materialised
--- its own Peer requirement rows. They are replaced with explicit ones here so
--- the deadlines and ids are deterministic; ON CONFLICT alone would silently
--- keep the generated rows and leave these ids non-existent.
-delete from public.cohort_requirement_dates
- where cohort_id in ('f1000000-0000-0000-0000-00000000b0b0'::uuid,
-                     'f1000000-0000-0000-0000-00000000b1b1'::uuid)
+-- The COHORT says by when the module must be complete. A's deadline is past;
+-- B's is not. Both cohorts already have their two Peer requirements: the
+-- programme requires two units, so the system materialised two rows on the
+-- cohort end date. Moving the DEADLINE moves both of them.
+update public.cohort_module_deadlines
+   set completion_deadline = current_date - 10
+ where cohort_id = 'f1000000-0000-0000-0000-00000000b0b0'::uuid
    and module = 'peer_coaching'::public.programme_module_type;
 
-insert into public.cohort_requirement_dates
-  (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
-  ('f1000000-0000-0000-0000-0000000000a1'::uuid, 'f1000000-0000-0000-0000-00000000b0b0'::uuid,
-   'f1000000-0000-0000-0000-00000000a0a0'::uuid, 'peer_coaching', 1, current_date - 20, 'manual', 'admin_save'),
-  ('f1000000-0000-0000-0000-0000000000a2'::uuid, 'f1000000-0000-0000-0000-00000000b0b0'::uuid,
-   'f1000000-0000-0000-0000-00000000a0a0'::uuid, 'peer_coaching', 2, current_date - 10, 'manual', 'admin_save'),
-  ('f1000000-0000-0000-0000-0000000000b1'::uuid, 'f1000000-0000-0000-0000-00000000b1b1'::uuid,
-   'f1000000-0000-0000-0000-00000000a0a0'::uuid, 'peer_coaching', 1, current_date + 30, 'manual', 'admin_save'),
-  ('f1000000-0000-0000-0000-0000000000b2'::uuid, 'f1000000-0000-0000-0000-00000000b1b1'::uuid,
-   'f1000000-0000-0000-0000-00000000a0a0'::uuid, 'peer_coaching', 2, current_date + 60, 'manual', 'admin_save')
-on conflict (cohort_id, programme_id, module, ordinal) do nothing;
+update public.cohort_module_deadlines
+   set completion_deadline = current_date + 60
+ where cohort_id = 'f1000000-0000-0000-0000-00000000b1b1'::uuid
+   and module = 'peer_coaching'::public.programme_module_type;
 
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status, start_date, end_date) values
   ('f1000000-0000-0000-0000-0000000000e1'::uuid, 'f1000000-0000-0000-0000-00000000a0a0'::uuid,
@@ -202,13 +193,17 @@ select throws_ok($$
     (session_kind, peer_session_id, user_id, enrollment_id, participant_role, cohort_requirement_id)
   values ('coachee_peer', 'f1000000-0000-0000-0000-0000000000c2'::uuid,
           'f1000000-0000-0000-0000-000000000001'::uuid, 'f1000000-0000-0000-0000-0000000000e1'::uuid,
-          'provider', 'f1000000-0000-0000-0000-0000000000a1'::uuid)
+          'provider', (select id from public.cohort_requirement_dates
+                        where cohort_id = 'f1000000-0000-0000-0000-00000000b0b0'::uuid
+                          and module = 'peer_coaching'::public.programme_module_type and ordinal = 1))
 $$, '23505', NULL, 'one enrollment cannot hold the same Peer requirement twice');
 
 -- A participant may never be attributed to another cohort's requirement.
 select throws_ok($$
   update public.peer_session_participants
-     set cohort_requirement_id = 'f1000000-0000-0000-0000-0000000000b1'::uuid
+     set cohort_requirement_id = (select id from public.cohort_requirement_dates
+                                  where cohort_id = 'f1000000-0000-0000-0000-00000000b1b1'::uuid
+                                    and module = 'peer_coaching'::public.programme_module_type and ordinal = 1)
    where peer_session_id = 'f1000000-0000-0000-0000-0000000000c1'::uuid
      and user_id = 'f1000000-0000-0000-0000-000000000001'::uuid
 $$, '42501', NULL, 'a participant cannot borrow another cohort''s requirement');

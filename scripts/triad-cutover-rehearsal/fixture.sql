@@ -35,8 +35,7 @@ insert into public.programmes (id, name) values
   ('c9000000-0000-0000-0000-0000000000a0', 'Rehearsal PT (no Triads)');
 insert into public.programme_modules (programme_id, module, enabled, config) values
   ('c9000000-0000-0000-0000-0000000000a2', 'triads', true, jsonb_build_object(
-    'required', true, 'required_units', 2, 'distribution_mode', 'custom',
-    'distribution_settings', jsonb_build_object('milestones', jsonb_build_array(
+    'required', true, 'required_units', 2, 'distribution_settings', jsonb_build_object('milestones', jsonb_build_array(
       jsonb_build_object('due_on', (current_date - 60)::text, 'required_units', 1),
       jsonb_build_object('due_on', (current_date + 60)::text, 'required_units', 1))))),
   ('c9000000-0000-0000-0000-0000000000a0', 'triads', true, '{"group_size":3}');

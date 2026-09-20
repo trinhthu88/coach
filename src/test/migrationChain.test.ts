@@ -118,7 +118,10 @@ describe("migration chain — canonical final state", () => {
     for (const name of ["learner_canonical_schedule_state", "sponsor_canonical_leader_schedule_state", "admin_canonical_schedule_state"]) {
       expect(lastDefinition(name)?.body, name).toMatch(/canonical_enrollment_schedule_state/);
     }
-    expect(lastDefinition("cohort_requirement_schedule_issues")?.body).toMatch(/cohort_programme_schedule_state/);
+    // The Admin schedule health report reads the same required-units scope the
+    // materialiser does, so a mismatch cannot be reported differently.
+    expect(lastDefinition("cohort_requirement_schedule_issues")?.body).toMatch(/cohort_required_module_units/);
+    expect(lastDefinition("sync_cohort_requirement_dates")?.body).toMatch(/cohort_required_module_units/);
   });
 
   it("the retired engines are dropped and no later migration re-creates them", () => {
@@ -157,7 +160,10 @@ describe("migration chain — canonical final state", () => {
     const DEPLOYMENT_2 = join(process.cwd(), "supabase/deployment-2");
     const REQUIREMENT_GROUPS = "20260919120000_triad_requirement_groups.sql";
     const RETIRE_TRIAD = "20260919190000_triad_retire_legacy.sql";
-    const RETIRED_TRIAD_FIELDS = /(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|completion_deadline|programme_triad_rounds|\btriad_rounds\b|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)/;
+    // completion_deadline is no longer listed: it is the name of the canonical
+    // cohort-module deadline (cohort_module_deadlines), not a retired Triad
+    // column. The Triad column itself is gone with triad_rounds.
+    const RETIRED_TRIAD_FIELDS = /(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|programme_triad_rounds|\btriad_rounds\b|[a-z]\.(learned|will_use)_as_(coach|coachee|observer)/;
     // Retired cohort-scoped assignment: a group was once for the whole cohort.
     const COHORT_SCOPED_ASSIGNMENT = /triad_cohort_candidates_internal|admin_triad_create_group\(p_cohort_id|triad_create_group_internal\(\s*p_cohort_id|cohort_triad_operations/;
 

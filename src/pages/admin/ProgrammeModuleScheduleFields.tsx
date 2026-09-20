@@ -1,16 +1,9 @@
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  MODULE_DISTRIBUTION_MODES,
-  type CustomModuleMilestone,
-  type ModuleDistributionMode,
-} from "@/lib/programmeModuleConfig";
 
 export interface TrainingWeekOption {
   id: string;
@@ -19,6 +12,7 @@ export interface TrainingWeekOption {
 }
 
 interface ProgrammeModuleScheduleFieldsProps {
+  module: string;
   config: Record<string, unknown>;
   onChange: (config: Record<string, unknown>) => void;
   trainingWeeks?: TrainingWeekOption[];
@@ -30,19 +24,18 @@ function asSettings(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function asMilestones(value: unknown): CustomModuleMilestone[] {
-  if (!Array.isArray(value)) return [];
-  return value.map((entry) => {
-    const milestone = asSettings(entry);
-    return {
-      due_on: typeof milestone.due_on === "string" ? milestone.due_on : "",
-      required_units: typeof milestone.required_units === "number" ? milestone.required_units : 1,
-      window_end_on: typeof milestone.window_end_on === "string" ? milestone.window_end_on : "",
-    };
-  });
-}
-
+/**
+ * Programme -> module requirement: WHAT and HOW MANY.
+ *
+ * There is no schedule here any more. The programme used to carry a
+ * distribution mode and its settings, which made it a second scheduling
+ * authority; WHEN is now one completion deadline per module, set on the cohort.
+ *
+ * Training is the exception, and not a schedule: it needs to know WHICH weeks
+ * the module covers. Those weeks carry their own dates.
+ */
 export function ProgrammeModuleScheduleFields({
+  module,
   config,
   onChange,
   trainingWeeks = [],
@@ -50,39 +43,13 @@ export function ProgrammeModuleScheduleFields({
   const { t } = useTranslation("admin");
   const fieldId = useId();
   const settings = asSettings(config.distribution_settings);
-  const mode = MODULE_DISTRIBUTION_MODES.includes(config.distribution_mode as ModuleDistributionMode)
-    ? config.distribution_mode as ModuleDistributionMode
-    : "flexible";
   const selectedWeekIds = Array.isArray(settings.training_week_ids)
     ? settings.training_week_ids.filter((id): id is string => typeof id === "string")
     : [];
-  const milestones = asMilestones(settings.milestones);
 
   const updateConfig = (patch: Record<string, unknown>) => onChange({ ...config, ...patch });
   const updateSettings = (patch: Record<string, unknown>) => {
     updateConfig({ distribution_settings: { ...settings, ...patch } });
-  };
-  const updateMilestone = (index: number, patch: Partial<CustomModuleMilestone>) => {
-    updateSettings({
-      milestones: milestones.map((milestone, milestoneIndex) => (
-        milestoneIndex === index ? { ...milestone, ...patch } : milestone
-      )),
-    });
-  };
-  const changeMode = (nextMode: ModuleDistributionMode) => {
-    const nextSettings = { ...settings };
-    if (nextMode === "monthly_frequency" && (
-      typeof nextSettings.interval_months !== "number" || nextSettings.interval_months <= 0
-    )) {
-      nextSettings.interval_months = 1;
-    }
-    if (nextMode === "training_linked" && !Array.isArray(nextSettings.training_week_ids)) {
-      nextSettings.training_week_ids = [];
-    }
-    if (nextMode === "custom" && !Array.isArray(nextSettings.milestones)) {
-      nextSettings.milestones = [];
-    }
-    updateConfig({ distribution_mode: nextMode, distribution_settings: nextSettings });
   };
 
   return (
@@ -115,40 +82,13 @@ export function ProgrammeModuleScheduleFields({
             onChange={(event) => updateConfig({ required_units: Number(event.target.value) })}
           />
         </div>
-        <div>
-          <Label htmlFor={`${fieldId}-mode`} className="text-[10.5px] text-muted-foreground">
-            {t("programmes.modules.schedule.distributionMode")}
-          </Label>
-          <select
-            id={`${fieldId}-mode`}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            value={mode}
-            onChange={(event) => changeMode(event.target.value as ModuleDistributionMode)}
-          >
-            {MODULE_DISTRIBUTION_MODES.map((value) => (
-              <option key={value} value={value}>{t(`programmes.modules.schedule.modes.${value}`)}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
-      {mode === "monthly_frequency" && (
-        <div className="max-w-48">
-          <Label htmlFor={`${fieldId}-interval`} className="text-[10.5px] text-muted-foreground">
-            {t("programmes.modules.schedule.monthlyInterval")}
-          </Label>
-          <Input
-            id={`${fieldId}-interval`}
-            type="number"
-            min={1}
-            step={1}
-            value={typeof settings.interval_months === "number" ? settings.interval_months : 1}
-            onChange={(event) => updateSettings({ interval_months: Number(event.target.value) })}
-          />
-        </div>
-      )}
+      <p className="text-[10px] text-muted-foreground" data-testid="module-deadline-note">
+        {t("programmes.modules.schedule.deadlineNote")}
+      </p>
 
-      {mode === "training_linked" && (
+      {module === "training" && (
         <fieldset className="space-y-2">
           <legend className="text-[10.5px] font-medium text-muted-foreground">
             {t("programmes.modules.schedule.trainingWeeks")}
@@ -182,74 +122,6 @@ export function ProgrammeModuleScheduleFields({
           )}
           <p className="text-[10px] text-muted-foreground">{t("programmes.modules.schedule.allTrainingWeeksHint")}</p>
         </fieldset>
-      )}
-
-      {mode === "custom" && (
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[10.5px] font-medium text-muted-foreground">
-              {t("programmes.modules.schedule.customMilestones")}
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => updateSettings({
-                milestones: [...milestones, { due_on: "", required_units: 1, window_end_on: "" }],
-              })}
-            >
-              <Plus className="h-3.5 w-3.5" /> {t("programmes.modules.schedule.addMilestone")}
-            </Button>
-          </div>
-          {milestones.map((milestone, index) => (
-            <div key={index} className="grid items-end gap-2 rounded-lg border bg-background p-2 sm:grid-cols-[1fr_90px_1fr_auto]">
-              <div>
-                <Label htmlFor={`${fieldId}-due-${index}`} className="text-[10px] text-muted-foreground">
-                  {t("programmes.modules.schedule.dueDate", { number: index + 1 })}
-                </Label>
-                <Input
-                  id={`${fieldId}-due-${index}`}
-                  type="date"
-                  value={milestone.due_on}
-                  onChange={(event) => updateMilestone(index, { due_on: event.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor={`${fieldId}-milestone-units-${index}`} className="text-[10px] text-muted-foreground">
-                  {t("programmes.modules.schedule.milestoneUnits", { number: index + 1 })}
-                </Label>
-                <Input
-                  id={`${fieldId}-milestone-units-${index}`}
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={milestone.required_units}
-                  onChange={(event) => updateMilestone(index, { required_units: Number(event.target.value) })}
-                />
-              </div>
-              <div>
-                <Label htmlFor={`${fieldId}-window-${index}`} className="text-[10px] text-muted-foreground">
-                  {t("programmes.modules.schedule.windowEnd", { number: index + 1 })}
-                </Label>
-                <Input
-                  id={`${fieldId}-window-${index}`}
-                  type="date"
-                  value={milestone.window_end_on ?? ""}
-                  onChange={(event) => updateMilestone(index, { window_end_on: event.target.value })}
-                />
-              </div>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                aria-label={t("programmes.modules.schedule.removeMilestone", { number: index + 1 })}
-                onClick={() => updateSettings({ milestones: milestones.filter((_, milestoneIndex) => milestoneIndex !== index) })}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
       )}
     </div>
   );

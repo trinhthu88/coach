@@ -37,8 +37,8 @@ insert into public.cohorts (id, name, programme_id, organization_id, start_date,
   ('d6000000-0000-0000-0000-000000000001', 'Cohort 1', 'c6000000-0000-0000-0000-000000000001', 'b6000000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05'),
   ('d6000000-0000-0000-0000-000000000002', 'Cohort 2', 'c6000000-0000-0000-0000-000000000002', 'b6000000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05');
 insert into public.programme_modules (programme_id, module, enabled, config) values
-  ('c6000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}'),
-  ('c6000000-0000-0000-0000-000000000002', 'triads', true, '{"required":true,"required_units":2,"distribution_mode":"flexible","distribution_settings":{}}');
+  ('c6000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":2,"distribution_settings":{}}'),
+  ('c6000000-0000-0000-0000-000000000002', 'triads', true, '{"required":true,"required_units":2,"distribution_settings":{}}');
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
 select ('e6000000-0000-0000-0000-00000000000' || n)::uuid, ('a6000000-0000-0000-0000-00000000000' || n)::uuid,
   case when n <= 4 then 'c6000000-0000-0000-0000-000000000001' else 'c6000000-0000-0000-0000-000000000002' end::uuid,

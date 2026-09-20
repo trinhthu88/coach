@@ -1,11 +1,16 @@
--- Canonical cohort requirement schedule (cohort_requirement_dates).
+-- Canonical requirement model: Programme says HOW MANY, Cohort says BY WHEN.
 --
--- Programme = WHAT is required + DEFAULT scheduling policy.
--- Cohort    = WHEN each requirement unit is due (materialized, editable).
--- Learner, Sponsor and Admin all read the same stored cohort dates.
+--   PROGRAMME   module + required_units = N
+--   COHORT      one completion_deadline per module
+--   SYSTEM      exactly N canonical requirement rows, all due on that deadline
+--   ACTIVITY    fulfils one canonical requirement at a time
+--
+-- There is no distribution mode. Every module that has canonical requirements
+-- behaves identically, and requirement IDENTITY (ordinal) carries the sequence
+-- rather than the dates.
 begin;
 
-select plan(32);
+select plan(39);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -41,384 +46,387 @@ values ('a8000000-0000-0000-0000-000000000099', 'b8000000-0000-0000-0000-0000000
 insert into public.programmes (id, name)
 values ('c8000000-0000-0000-0000-000000000001', 'CRD Emerging Leaders');
 
+-- Four modules, four different unit counts. None of them names a schedule.
 insert into public.programme_modules (programme_id, module, enabled, config)
 values
-  ('c8000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":4,"receive_limit":4,"distribution_mode":"evenly_distributed","distribution_settings":{}}'),
-  ('c8000000-0000-0000-0000-000000000001', 'peer_coaching', true, '{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","distribution_settings":{}}'),
-  ('c8000000-0000-0000-0000-000000000001', 'mentoring', true, '{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","distribution_settings":{}}'),
-  ('c8000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":2,"distribution_mode":"evenly_distributed","distribution_settings":{}}');
+  ('c8000000-0000-0000-0000-000000000001', 'coaching', true, '{"required":true,"required_units":3,"receive_limit":9}'),
+  ('c8000000-0000-0000-0000-000000000001', 'peer_coaching', true, '{"required":true,"required_units":2}'),
+  ('c8000000-0000-0000-0000-000000000001', 'mentoring', true, '{"required":true,"required_units":2}'),
+  ('c8000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":2}');
 
 -- ---------------------------------------------------------------------------
--- 1. Policy → proposal
+-- 1. Creating the cohort materialises N requirements per module
+-- ---------------------------------------------------------------------------
+insert into public.cohorts (id, name, programme_id, start_date, end_date, organization_id)
+values ('d8000000-0000-0000-0000-000000000001', 'CRD Cohort', 'c8000000-0000-0000-0000-000000000001',
+        '2026-01-05', '2026-12-31', 'b8000000-0000-0000-0000-000000000001');
+
+select is(
+  (select array_agg(n order by m) from (
+     select d.module::text m, count(*)::int n
+     from public.cohort_requirement_dates d
+     where d.cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     group by d.module) s),
+  array[3, 2, 2, 2],
+  'required_units becomes exactly that many canonical requirements (coaching 3, mentoring 2, peer 2, triads 2)');
+
+select is(
+  (select count(distinct due_on)::int from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'coaching'::public.programme_module_type),
+  1,
+  'all three Coaching requirements share one completion deadline');
+
+select is(
+  (select array_agg(distinct due_on) from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid),
+  array['2026-12-31'::date],
+  'the default deadline is the cohort end date, for every module');
+
+select is(
+  (select array_agg(distinct source) from public.cohort_module_deadlines
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid),
+  array['cohort_end'],
+  'a deadline nobody chose is recorded as the cohort default, not as an Admin decision');
+
+select is(
+  (select array_agg(ordinal order by ordinal) from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'coaching'::public.programme_module_type),
+  array[1, 2, 3],
+  'requirement identity is 1..N even though the dates are identical');
+
+select is(
+  (select count(*)::int from public.cohort_requirement_dates where units <> 1),
+  0,
+  'one requirement row is one required unit');
+
+-- ---------------------------------------------------------------------------
+-- 2. Module-specific deadlines
 -- ---------------------------------------------------------------------------
 select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000098', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 set local role authenticated;
 
-select is(
-  (select array_agg(due_on order by ordinal)
-   from public.cohort_requirement_schedule_proposal(
-     'c8000000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05')
-   where module = 'coaching'),
-  array[date '2026-02-19', date '2026-04-05', date '2026-05-20', date '2026-07-05'],
-  '1. Coaching 4 × evenly distributed proposes 4 dates (Feb 19, Apr 5, May 20, Jul 5)'
-);
+select lives_ok($$
+  select public.admin_set_cohort_module_deadlines(
+    'd8000000-0000-0000-0000-000000000001'::uuid,
+    jsonb_build_array(
+      jsonb_build_object('programme_id', 'c8000000-0000-0000-0000-000000000001', 'module', 'coaching', 'completion_deadline', '2026-11-30'),
+      jsonb_build_object('programme_id', 'c8000000-0000-0000-0000-000000000001', 'module', 'peer_coaching', 'completion_deadline', '2026-09-30'))
+  )
+$$, 'an Admin sets one completion deadline per module');
 
 reset role;
 
--- ---------------------------------------------------------------------------
--- 2. Creating the cohort materializes the proposal as cohort dates
--- ---------------------------------------------------------------------------
-insert into public.cohorts (id, name, programme_id, organization_id, start_date, end_date)
-values ('d8000000-0000-0000-0000-000000000001', 'CRD cohort',
-  'c8000000-0000-0000-0000-000000000001', 'b8000000-0000-0000-0000-000000000001',
-  date '2026-01-05', date '2026-07-05');
+select is(
+  (select array_agg(distinct due_on) from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'coaching'::public.programme_module_type),
+  array['2026-11-30'::date],
+  'every Coaching requirement moves with the Coaching deadline');
 
 select is(
-  (select array_agg(due_on order by ordinal) from public.cohort_requirement_dates
-   where cohort_id = 'd8000000-0000-0000-0000-000000000001' and module = 'coaching'),
-  array[date '2026-02-19', date '2026-04-05', date '2026-05-20', date '2026-07-05'],
-  '2. the generated Coaching dates are materialized on the cohort'
-);
+  (select array_agg(distinct due_on) from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'peer_coaching'::public.programme_module_type),
+  array['2026-09-30'::date],
+  'Peer keeps its own earlier deadline: a deadline is module-specific');
+
 select is(
-  (select count(*)::integer from public.cohort_requirement_dates
-   where cohort_id = 'd8000000-0000-0000-0000-000000000001'),
-  10,
-  '2. every required unit (4 + 2 + 2 + 2) has one cohort date'
-);
+  (select array_agg(distinct due_on) from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'mentoring'::public.programme_module_type),
+  array['2026-12-31'::date],
+  'Mentoring is untouched by the Coaching and Peer deadlines');
+
+-- ---------------------------------------------------------------------------
+-- 3. Progress semantics (Cases A-D), from a real enrollment
+-- ---------------------------------------------------------------------------
+insert into public.profiles (id, full_name, email, status)
+select id, coalesce(raw_user_meta_data->>'full_name', 'CRD'), email, 'active'
+from auth.users where email like 'crd-%'
+on conflict (id) do nothing;
 
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
-select
-  ('e8000000-0000-0000-0000-00000000000' || n)::uuid,
-  ('a8000000-0000-0000-0000-00000000000' || n)::uuid,
-  'c8000000-0000-0000-0000-000000000001', 'd8000000-0000-0000-0000-000000000001',
-  'b8000000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05', 'active'
-from generate_series(1, 5) as n;
+values
+  ('e8000000-0000-0000-0000-000000000001', 'a8000000-0000-0000-0000-000000000001',
+   'c8000000-0000-0000-0000-000000000001', 'd8000000-0000-0000-0000-000000000001',
+   'b8000000-0000-0000-0000-000000000001', '2026-01-05', '2026-12-31', 'active'),
+  -- A historical enrollment of the SAME learner, in the same cohort window.
+  ('e8000000-0000-0000-0000-000000000002', 'a8000000-0000-0000-0000-000000000001',
+   'c8000000-0000-0000-0000-000000000001', 'd8000000-0000-0000-0000-000000000001',
+   'b8000000-0000-0000-0000-000000000001', '2025-01-05', '2025-12-31', 'completed');
 
+-- Case A: deadline in the future, nothing done.
 select is(
-  (select count(*)::integer from public.cohort_requirement_dates
-   where cohort_id = 'd8000000-0000-0000-0000-000000000001'),
-  10,
-  '2. enrolling learners never duplicates or rewrites existing cohort dates'
-);
+  (select array[required_units, completed_units, due_units, overdue_units]
+   from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-06-01')
+   where module = 'coaching'::public.programme_module_type),
+  array[3, 0, 0, 0],
+  'A. before the deadline: required 3, completed 0, due 0, overdue 0');
+
+-- One completed Coaching session, attributed to the first requirement. The
+-- lifecycle escape hatch is used because this fixture writes the session
+-- directly rather than going through book_coaching_session().
+select set_config('app.session_transition', 'on', true);
+
+insert into public.sessions
+  (id, enrollment_id, cohort_requirement_id, coach_id, coachee_id, topic, start_time, duration_minutes, status)
+select 'f8000000-0000-0000-0000-000000000001'::uuid,
+       'e8000000-0000-0000-0000-000000000001'::uuid, d.id,
+       'a8000000-0000-0000-0000-000000000097'::uuid, 'a8000000-0000-0000-0000-000000000001'::uuid,
+       'Coaching 1', timestamptz '2026-03-02 09:00+00', 60, 'completed'
+from public.cohort_requirement_dates d
+where d.cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+  and d.module = 'coaching'::public.programme_module_type and d.ordinal = 1;
+
+-- Case B: one of three done, still before the deadline.
+select is(
+  (select array[required_units, completed_units, due_units, overdue_units]
+   from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-06-01')
+   where module = 'coaching'::public.programme_module_type),
+  array[3, 1, 0, 0],
+  'B. one of three completed before the deadline: due 0, overdue 0');
+
+-- Case C: past the deadline.
+select is(
+  (select array[required_units, completed_units, due_units, overdue_units]
+   from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-12-01')
+   where module = 'coaching'::public.programme_module_type),
+  array[3, 1, 3, 2],
+  'C. on/after the deadline: due 3, overdue 2');
+
+insert into public.sessions
+  (id, enrollment_id, cohort_requirement_id, coach_id, coachee_id, topic, start_time, duration_minutes, status)
+select ('f8000000-0000-0000-0000-00000000000' || d.ordinal)::uuid,
+       'e8000000-0000-0000-0000-000000000001'::uuid, d.id,
+       'a8000000-0000-0000-0000-000000000097'::uuid, 'a8000000-0000-0000-0000-000000000001'::uuid,
+       'Coaching ' || d.ordinal, timestamptz '2026-03-02 09:00+00' + (d.ordinal * interval '7 days'), 60, 'completed'
+from public.cohort_requirement_dates d
+where d.cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+  and d.module = 'coaching'::public.programme_module_type and d.ordinal in (2, 3);
+
+select set_config('app.session_transition', 'off', true);
+
+-- Case D: all three done.
+select is(
+  (select array[required_units, completed_units, due_units, overdue_units]
+   from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-12-01')
+   where module = 'coaching'::public.programme_module_type),
+  array[3, 3, 3, 0],
+  'D. everything completed: overdue 0 even past the deadline');
 
 -- ---------------------------------------------------------------------------
--- 7 / 8 / 9. Checkpoints come from cohort dates, grouped by due date
+-- 4. Case E: next_*_requirement advances across every canonical unit
 -- ---------------------------------------------------------------------------
-create temporary table journey_before as
-select public.canonical_enrollment_journey('e8000000-0000-0000-0000-000000000001', date '2026-03-01') as j;
+select is(
+  (select count(*)::int from public.canonical_coaching_requirement_fulfilment('e8000000-0000-0000-0000-000000000001'::uuid)),
+  3,
+  'E. canonical Coaching fulfilment reports one row per required unit');
 
 select is(
-  (select array_agg((c->>'due_on')::date order by (c->>'checkpoint_number')::int)
-   from journey_before, jsonb_array_elements(j) c),
-  array[date '2026-02-19', date '2026-04-05', date '2026-05-20', date '2026-07-05'],
-  '7. requirements sharing a due date produce ONE checkpoint per date'
-);
-select is(
-  (select c->'module_scope' from journey_before, jsonb_array_elements(j) c where c->>'due_on' = '2026-04-05'),
-  '["coaching", "mentoring", "peer_coaching", "triads"]'::jsonb,
-  '8. the shared-date checkpoint lists every module in scope'
-);
-select is(
-  (select c->'module_scope' from journey_before, jsonb_array_elements(j) c where c->>'due_on' = '2026-02-19'),
-  '["coaching"]'::jsonb,
-  '8. a single-module checkpoint scopes only that module'
-);
-select is(
-  (select array_agg((c->>'required_units')::int order by (c->>'checkpoint_number')::int)
-   from journey_before, jsonb_array_elements(j) c),
-  array[1, 5, 6, 10],
-  '9. cumulative required units follow the canonical cohort dates'
-);
-select ok(
-  (select bool_and(c->'label' = 'null'::jsonb) from journey_before, jsonb_array_elements(j) c),
-  '6. checkpoints carry no generated module-list title (label is null without Training week titles)'
-);
-select is(
-  (select c->>'state' from journey_before, jsonb_array_elements(j) c where c->>'due_on' = '2026-02-19'),
-  'overdue',
-  '10. a passed cohort due date with no evidence is overdue'
-);
-
--- ---------------------------------------------------------------------------
--- 3. The canonical schedule reads cohort dates — it does not recalculate
--- ---------------------------------------------------------------------------
-select ok(
-  pg_get_functiondef('public.sponsor_canonical_module_schedule(uuid)'::regprocedure) ~ 'cohort_requirement_dates'
-    and pg_get_functiondef('public.sponsor_canonical_module_schedule(uuid)'::regprocedure)
-      !~ 'evenly_distributed|monthly_frequency|distribution_mode|generate_series',
-  '3. sponsor_canonical_module_schedule reads cohort_requirement_dates and interprets no policy'
-);
-select ok(
-  pg_get_functiondef('public.learner_canonical_journey(uuid,date)'::regprocedure) ~ 'canonical_enrollment_journey'
-    and pg_get_functiondef('public.sponsor_canonical_leader_journey(uuid,date)'::regprocedure) ~ 'canonical_enrollment_journey',
-  '12. Learner and Sponsor Leader journeys share one construction'
-);
-
--- ---------------------------------------------------------------------------
--- 11. A session booking date never replaces a requirement due date
--- ---------------------------------------------------------------------------
-insert into public.coachee_coach_allowlist (coachee_id, coach_id)
-values ('a8000000-0000-0000-0000-000000000001', 'a8000000-0000-0000-0000-000000000097');
-select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000001', true);
--- Programme Coaching eligibility is the COHORT Coach pool
--- (20260920100000_cohort_coach_assignments); coachee_coach_allowlist above is
--- only the historical pairing and no longer grants programme Coaching. This
--- mirrors that migration's own backfill: every (cohort, coach) pair the
--- fixture already declares becomes an assignment.
-insert into public.cohort_coach_assignments (cohort_id, coach_id)
-select distinct e.cohort_id, a.coach_id
-from public.coachee_coach_allowlist a
-join public.programme_enrollments e on e.user_id = a.coachee_id
-where e.cohort_id is not null
-on conflict (cohort_id, coach_id) do nothing;
-
-set local role authenticated;
-
-
-
-insert into public.sessions (coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id)
-values (
-  'a8000000-0000-0000-0000-000000000097', 'a8000000-0000-0000-0000-000000000001',
-  'CRD booked session', '2026-03-15T10:00:00Z', 60, 'confirmed',
-  'e8000000-0000-0000-0000-000000000001'
-);
-reset role;
+  (select count(*)::int from public.next_coaching_requirement('e8000000-0000-0000-0000-000000000001'::uuid)),
+  0,
+  'E. no Coaching requirement is left once all three are fulfilled');
 
 select is(
-  (select array_agg((c->>'due_on')::date order by (c->>'checkpoint_number')::int)
-   from jsonb_array_elements(public.canonical_enrollment_journey('e8000000-0000-0000-0000-000000000001', date '2026-03-01')) c),
-  array[date '2026-02-19', date '2026-04-05', date '2026-05-20', date '2026-07-05'],
-  '11. a booked session (Mar 15) does not create or move a requirement due date'
-);
-
--- ---------------------------------------------------------------------------
--- 4. Admin override of Coaching unit 2 changes only that cohort date
--- ---------------------------------------------------------------------------
-create temporary table dates_before as
-select module, ordinal, due_on from public.cohort_requirement_dates
-where cohort_id = 'd8000000-0000-0000-0000-000000000001';
-
-select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000098', true);
-set local role authenticated;
-select is(
-  public.admin_save_cohort_requirement_dates(
-    'd8000000-0000-0000-0000-000000000001',
-    jsonb_build_array(jsonb_build_object(
-      'programme_id', 'c8000000-0000-0000-0000-000000000001',
-      'module', 'coaching', 'ordinal', 2, 'due_on', '2026-04-12'))
-  ),
+  (select r.ordinal from public.next_mentoring_requirement('e8000000-0000-0000-0000-000000000001'::uuid) r),
   1,
-  '4. Admin saves one requirement date'
-);
-reset role;
+  'E. Mentoring starts at its first canonical unit');
 
 select is(
-  (select array_agg(module::text || '#' || ordinal order by module::text, ordinal) from (
-    select d.module, d.ordinal from public.cohort_requirement_dates d
-    join dates_before b using (module, ordinal)
-    where d.cohort_id = 'd8000000-0000-0000-0000-000000000001' and d.due_on <> b.due_on
-  ) changed),
-  array['coaching#2'],
-  '4. only Coaching unit 2 changed'
-);
-select ok(
-  (select is_overridden and generated_due_on = date '2026-04-05'
-   from public.cohort_requirement_dates
-   where cohort_id = 'd8000000-0000-0000-0000-000000000001' and module = 'coaching' and ordinal = 2),
-  '4. the override is recorded against the policy-generated date'
-);
-
--- 21 / 22. Saved Admin date appears immediately in Learner and Sponsor journeys.
-select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000099', true);
-set local role authenticated;
-create temporary table sponsor_journey as
-select public.sponsor_canonical_leader_journey('e8000000-0000-0000-0000-000000000001', date '2026-03-01') as j;
-reset role;
-
-select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000001', true);
-set local role authenticated;
-create temporary table learner_journey as
-select public.learner_canonical_journey('e8000000-0000-0000-0000-000000000001', date '2026-03-01') as j;
-reset role;
-
-select ok(
-  exists (select 1 from learner_journey, jsonb_array_elements(j) c
-          where c->>'due_on' = '2026-04-12' and c->'module_scope' = '["coaching"]'::jsonb),
-  '21. the saved Admin date appears in the Learner journey'
-);
-select ok(
-  exists (select 1 from sponsor_journey, jsonb_array_elements(j) c
-          where c->>'due_on' = '2026-04-12' and c->'module_scope' = '["coaching"]'::jsonb),
-  '22. the saved Admin date appears in the Sponsor Leader journey'
-);
-select is(
-  (select j from learner_journey),
-  (select j from sponsor_journey),
-  '12. Learner and Sponsor receive identical checkpoints, dates, scope, units and states'
-);
-select is(
-  (select c->'module_scope' from learner_journey, jsonb_array_elements(j) c where c->>'due_on' = '2026-04-05'),
-  '["mentoring", "peer_coaching", "triads"]'::jsonb,
-  '8. moving Coaching 2 removes it from the Apr 5 checkpoint scope'
-);
-
--- 13. The Admin cohort schedule exposes the same dates the journeys use.
-select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000098', true);
-set local role authenticated;
-select is(
-  (select array_agg(distinct due_on order by due_on) from public.cohort_requirement_dates
-   where cohort_id = 'd8000000-0000-0000-0000-000000000001'),
-  (select array_agg((c->>'due_on')::date order by (c->>'due_on')::date) from learner_journey, jsonb_array_elements(j) c),
-  '13. the Admin cohort schedule exposes exactly the journey checkpoint dates'
-);
-
-reset role;
-
--- 10. Overdue follows the canonical (overridden) date.
-select is(
-  (select c->>'state' from jsonb_array_elements(public.canonical_enrollment_journey('e8000000-0000-0000-0000-000000000001', date '2026-04-10')) c
-   where c->>'due_on' = '2026-04-12'),
-  'upcoming',
-  '10. Coaching 2 moved to Apr 12 is not overdue on Apr 10 (the old Apr 5 date no longer applies)'
-);
-
-select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000098', true);
-set local role authenticated;
-
--- Validation of Admin edits.
-select throws_ok(
-  $$select public.admin_save_cohort_requirement_dates('d8000000-0000-0000-0000-000000000001',
-      '[{"programme_id":"c8000000-0000-0000-0000-000000000001","module":"coaching","ordinal":1,"due_on":"2026-08-01"}]')$$,
-  '22023', null,
-  'dates outside the cohort are rejected'
-);
-select throws_ok(
-  $$select public.admin_save_cohort_requirement_dates('d8000000-0000-0000-0000-000000000001',
-      '[{"programme_id":"c8000000-0000-0000-0000-000000000001","module":"daily_prompt","ordinal":1,"due_on":"2026-03-01"}]')$$,
-  '22023', null,
-  'requirements outside the programme scope are rejected'
-);
-select throws_ok(
-  $$select public.admin_save_cohort_requirement_dates('d8000000-0000-0000-0000-000000000001',
-      '[{"programme_id":"c8000000-0000-0000-0000-000000000001","module":"coaching","ordinal":1,"due_on":null}]')$$,
-  '22023', null,
-  'missing requirement dates are rejected'
-);
-reset role;
+  (select r.ordinal from public.next_peer_requirement('e8000000-0000-0000-0000-000000000001'::uuid) r),
+  1,
+  'E. Peer starts at its first canonical unit');
 
 -- ---------------------------------------------------------------------------
--- 5. Programme template edits never silently alter an existing cohort
+-- 5. Case F: historical enrollment isolation
 -- ---------------------------------------------------------------------------
-create temporary table dates_after_override as
-select module, ordinal, due_on from public.cohort_requirement_dates
-where cohort_id = 'd8000000-0000-0000-0000-000000000001';
+select is(
+  (select completed_units from public.canonical_module_progress('e8000000-0000-0000-0000-000000000002'::uuid, '2026-12-01')
+   where module = 'coaching'::public.programme_module_type),
+  0,
+  'F. the same learner''s historical enrollment gains nothing from the current one');
+
+select is(
+  (select count(*)::int from public.canonical_coaching_requirement_fulfilment('e8000000-0000-0000-0000-000000000002'::uuid) f
+   where f.fulfilled_on is not null),
+  0,
+  'F. requirements are fulfilled per enrollment, never per user');
+
+-- ---------------------------------------------------------------------------
+-- 6. required_units changes propagate
+-- ---------------------------------------------------------------------------
+update public.programme_modules
+set config = '{"required":true,"required_units":5,"receive_limit":9}'
+where programme_id = 'c8000000-0000-0000-0000-000000000001'
+  and module = 'coaching'::public.programme_module_type;
+
+select is(
+  (select count(*)::int from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'coaching'::public.programme_module_type),
+  5,
+  'raising required_units 3 -> 5 materialises the two missing canonical units');
+
+select is(
+  (select count(distinct due_on)::int from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'coaching'::public.programme_module_type),
+  1,
+  'the new units inherit the same module deadline');
+
+select is(
+  (select required_units from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-12-01')
+   where module = 'coaching'::public.programme_module_type),
+  5,
+  'progress follows the programme immediately: 3 of 5');
 
 update public.programme_modules
-set config = '{"required":true,"required_units":5,"receive_limit":5,"distribution_mode":"monthly_frequency","distribution_settings":{"interval_months":1}}'
-where programme_id = 'c8000000-0000-0000-0000-000000000001' and module = 'coaching';
+set config = '{"required":true,"required_units":2,"receive_limit":9}'
+where programme_id = 'c8000000-0000-0000-0000-000000000001'
+  and module = 'coaching'::public.programme_module_type;
 
 select is(
-  (select count(*)::integer from (
-    (select module, ordinal, due_on from public.cohort_requirement_dates where cohort_id = 'd8000000-0000-0000-0000-000000000001'
-     except select * from dates_after_override)
-    union all
-    (select * from dates_after_override
-     except select module, ordinal, due_on from public.cohort_requirement_dates where cohort_id = 'd8000000-0000-0000-0000-000000000001')
-  ) diff),
+  (select count(*)::int from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'coaching'::public.programme_module_type),
+  3,
+  'lowering required_units to 2 drops the empty units but keeps the three that carry a session');
+
+select is(
+  (select count(*)::int from public.sessions where enrollment_id = 'e8000000-0000-0000-0000-000000000001'::uuid
+     and cohort_requirement_id is null),
   0,
-  '5. changing the programme template (units + policy) does not rewrite the cohort dates'
-);
+  'no completed session loses its requirement when the programme shrinks');
 
-select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000098', true);
-set local role authenticated;
-select is(
-  (select issue || ':' || required_units || '/' || scheduled_units
-   from public.cohort_requirement_schedule_issues('d8000000-0000-0000-0000-000000000001')
-   where module = 'coaching'),
-  'missing_dates:5/4',
-  '5. the Admin sees the template/schedule mismatch as a validation issue instead'
-);
-reset role;
+update public.programme_modules
+set config = '{"required":true,"required_units":3,"receive_limit":9}'
+where programme_id = 'c8000000-0000-0000-0000-000000000001'
+  and module = 'coaching'::public.programme_module_type;
 
 -- ---------------------------------------------------------------------------
--- 6. Cohort start/end changes do not silently rewrite saved dates
+-- 7. A cohort end-date change moves only the deadlines the system chose
 -- ---------------------------------------------------------------------------
-update public.cohorts set start_date = date '2026-02-01', end_date = date '2026-08-31'
+update public.cohorts set end_date = '2027-02-28'
 where id = 'd8000000-0000-0000-0000-000000000001';
 
 select is(
-  (select count(*)::integer from (
-    (select module, ordinal, due_on from public.cohort_requirement_dates where cohort_id = 'd8000000-0000-0000-0000-000000000001'
-     except select * from dates_after_override)
-    union all
-    (select * from dates_after_override
-     except select module, ordinal, due_on from public.cohort_requirement_dates where cohort_id = 'd8000000-0000-0000-0000-000000000001')
-  ) diff),
-  0,
-  '6. changing cohort start/end leaves every saved requirement date unchanged'
-);
+  (select completion_deadline from public.cohort_module_deadlines
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'mentoring'::public.programme_module_type),
+  '2027-02-28'::date,
+  'a deadline the system defaulted from the cohort end follows the cohort');
+
+select is(
+  (select completion_deadline from public.cohort_module_deadlines
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'coaching'::public.programme_module_type),
+  '2026-11-30'::date,
+  'a deadline an Admin chose is never silently rewritten by a cohort date change');
 
 -- ---------------------------------------------------------------------------
--- Privacy: only Admins read or write the schedule directly.
+-- 8. Authorisation and validation
 -- ---------------------------------------------------------------------------
 select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000001', true);
 set local role authenticated;
+
+select throws_ok($$
+  select public.admin_set_cohort_module_deadlines(
+    'd8000000-0000-0000-0000-000000000001'::uuid,
+    jsonb_build_array(jsonb_build_object('programme_id', 'c8000000-0000-0000-0000-000000000001',
+                                         'module', 'coaching', 'completion_deadline', '2026-10-01')))
+$$, '42501', NULL, 'a learner cannot set a cohort completion deadline');
+
+select throws_ok($$
+  select public.admin_cohort_module_deadlines('d8000000-0000-0000-0000-000000000001'::uuid)
+$$, '42501', NULL, 'a learner cannot read the Admin deadline configuration');
+
 select is(
-  (select count(*)::integer from public.cohort_requirement_dates),
+  (select count(*)::int from public.cohort_module_deadlines),
   0,
-  'learners cannot read the cohort schedule table directly (only via canonical projections)'
-);
-select throws_ok(
-  $$select public.admin_save_cohort_requirement_dates('d8000000-0000-0000-0000-000000000001', '[]'::jsonb)$$,
-  '42501', null,
-  'non-admins cannot edit cohort requirement dates'
-);
+  'the deadline table itself is closed to a learner by RLS');
+
 reset role;
-select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000099', true);
+select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000098', true);
 set local role authenticated;
-select throws_ok(
-  $$select * from public.cohort_requirement_schedule_proposal('c8000000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05')$$,
-  '42501', null,
-  'sponsors cannot run the scheduling policy'
-);
+
+select throws_ok($$
+  select public.admin_set_cohort_module_deadlines(
+    'd8000000-0000-0000-0000-000000000001'::uuid,
+    jsonb_build_array(jsonb_build_object('programme_id', 'c8000000-0000-0000-0000-000000000001',
+                                         'module', 'coaching', 'completion_deadline', '2030-01-01')))
+$$, '22023', NULL, 'a completion deadline outside the cohort window is refused');
+
+select throws_ok($$
+  select public.admin_set_cohort_module_deadlines(
+    'd8000000-0000-0000-0000-000000000001'::uuid,
+    jsonb_build_array(jsonb_build_object('programme_id', 'c8000000-0000-0000-0000-000000000001',
+                                         'module', 'quiz', 'completion_deadline', '2026-10-01')))
+$$, '22023', NULL, 'a module the programme does not require cannot be given a deadline');
+
+select is(
+  (select array_agg(module::text order by module::text)
+   from public.cohort_module_deadline_proposal('c8000000-0000-0000-0000-000000000001'::uuid, '2026-12-31')),
+  array['coaching', 'mentoring', 'peer_coaching', 'triads'],
+  'the new-cohort proposal offers one deadline per required module');
+
+select is(
+  (select array_agg(distinct completion_deadline)
+   from public.cohort_module_deadline_proposal('c8000000-0000-0000-0000-000000000001'::uuid, '2026-12-31')),
+  array['2026-12-31'::date],
+  'the proposed deadline is the cohort end date the Admin is entering');
+
 reset role;
 
 -- ---------------------------------------------------------------------------
--- 14. Existing cohorts keep their current journey dates: for every seeded
---     enrollment, the stored cohort schedule equals what the previous live
---     algorithm produced from the cohort's dates (the migration additionally
---     refuses to apply if any enrollment's schedule would change).
+-- 9. A cohort with no end date invents nothing
+-- ---------------------------------------------------------------------------
+insert into public.cohorts (id, name, programme_id, start_date, end_date, organization_id)
+values ('d8000000-0000-0000-0000-000000000002', 'CRD Undated', 'c8000000-0000-0000-0000-000000000001',
+        '2026-01-05', NULL, 'b8000000-0000-0000-0000-000000000001');
+
+select is(
+  (select count(*)::int from public.cohort_module_deadlines
+   where cohort_id = 'd8000000-0000-0000-0000-000000000002'::uuid),
+  0,
+  'no cohort end date means no fabricated deadline');
+
+select is(
+  (select count(*)::int from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000002'::uuid),
+  0,
+  'and therefore no requirement is materialised against a date nobody set');
+
+select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000098', true);
+set local role authenticated;
+select is(
+  (select array_agg(distinct issue) from public.cohort_requirement_schedule_issues('d8000000-0000-0000-0000-000000000002'::uuid)),
+  array['missing_dates', 'missing_deadline'],
+  'the gap is reported to the Admin rather than hidden');
+reset role;
+
+-- ---------------------------------------------------------------------------
+-- 10. The concept is gone from the schema
 -- ---------------------------------------------------------------------------
 select is(
-  (select count(*)::integer from (
-    (select e.id, s.module, s.due_on, s.milestone_units
-     from public.programme_enrollments e
-     join public.cohorts c on c.id = e.cohort_id
-     cross join lateral public.sponsor_canonical_module_schedule(e.id) s
-     where s.module <> 'training' and s.due_on is not null and e.cohort_id <> 'd8000000-0000-0000-0000-000000000001'
-     except all
-     select e.id, p.module, p.due_on, p.units
-     from public.programme_enrollments e
-     join public.cohorts c on c.id = e.cohort_id
-     cross join lateral public.cohort_requirement_proposal_internal(e.programme_id, e.cohort_id, c.start_date, c.end_date) p
-     where e.cohort_id <> 'd8000000-0000-0000-0000-000000000001')
-    union all
-    (select e.id, p.module, p.due_on, p.units
-     from public.programme_enrollments e
-     join public.cohorts c on c.id = e.cohort_id
-     cross join lateral public.cohort_requirement_proposal_internal(e.programme_id, e.cohort_id, c.start_date, c.end_date) p
-     where e.cohort_id <> 'd8000000-0000-0000-0000-000000000001'
-     except all
-     select e.id, s.module, s.due_on, s.milestone_units
-     from public.programme_enrollments e
-     join public.cohorts c on c.id = e.cohort_id
-     cross join lateral public.sponsor_canonical_module_schedule(e.id) s
-     where s.module <> 'training' and s.due_on is not null and e.cohort_id <> 'd8000000-0000-0000-0000-000000000001')
-  ) diff),
+  (select count(*)::int from pg_proc p
+   join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+   where p.prokind = 'f'
+     and p.proname in ('sync_cohort_requirement_dates', 'cohort_required_module_units',
+                       'admin_set_cohort_module_deadlines', 'cohort_module_deadline_proposal')
+     and regexp_replace(pg_get_functiondef(p.oid), '--[^\n]*', '', 'g') ~ 'distribution_mode'),
   0,
-  '14. every existing enrollment keeps exactly the dates the previous live algorithm produced'
-);
+  'no requirement-scheduling function reads a distribution mode');
+
+select is(
+  (select count(*)::int from pg_proc p
+   join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+   where p.proname in ('cohort_requirement_proposal_internal', 'cohort_requirement_schedule_proposal',
+                       'admin_save_cohort_requirement_dates', 'materialize_missing_cohort_requirement_dates')),
+  0,
+  'the distribution-mode generator and the per-unit Admin editor no longer exist');
 
 select * from finish();
 rollback;

@@ -10,11 +10,11 @@ const weeks = [
   { id: "week-2", weekNumber: 2, title: "Practice" },
 ];
 
-function Harness({ initialConfig }: { initialConfig: Record<string, unknown> }) {
+function Harness({ module = "coaching", initialConfig }: { module?: string; initialConfig: Record<string, unknown> }) {
   const [config, setConfig] = useState(initialConfig);
   return (
     <>
-      <ProgrammeModuleScheduleFields config={config} onChange={setConfig} trainingWeeks={weeks} />
+      <ProgrammeModuleScheduleFields module={module} config={config} onChange={setConfig} trainingWeeks={weeks} />
       <output data-testid="config">{JSON.stringify(config)}</output>
     </>
   );
@@ -29,34 +29,38 @@ beforeEach(async () => {
 });
 
 describe("ProgrammeModuleScheduleFields", () => {
-  it("updates common schedule fields while preserving unrelated configuration", () => {
+  it("sets what the module requires while preserving unrelated configuration", () => {
     render(<Harness initialConfig={{ legacy_limit: 7, distribution_settings: { keep_me: true } }} />);
 
     fireEvent.click(screen.getByRole("switch", { name: "Required or optional" }));
     fireEvent.change(screen.getByLabelText("Required units"), { target: { value: "3" } });
-    fireEvent.change(screen.getByLabelText("Schedule"), { target: { value: "monthly_frequency" } });
-    fireEvent.change(screen.getByLabelText("Interval (months)"), { target: { value: "2" } });
 
     expect(currentConfig()).toEqual({
       legacy_limit: 7,
       required: true,
       required_units: 3,
-      distribution_mode: "monthly_frequency",
-      distribution_settings: { keep_me: true, interval_months: 2 },
+      distribution_settings: { keep_me: true },
     });
   });
 
-  it("shows programme training weeks and requires one selection per required unit", () => {
-    render(<Harness initialConfig={{
+  it("offers no schedule: the deadline belongs to the cohort", () => {
+    render(<Harness initialConfig={{ required: true, required_units: 3 }} />);
+
+    expect(screen.queryByLabelText("Schedule")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Interval (months)")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add milestone" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("module-deadline-note")).toHaveTextContent(/cohort/i);
+  });
+
+  it("shows training weeks for Training only, one per required unit", () => {
+    render(<Harness module="training" initialConfig={{
       required: true,
       required_units: 2,
-      distribution_mode: "training_linked",
       distribution_settings: { training_week_ids: [], keep_me: true },
     }} />);
 
     expect(screen.getByText("Select exactly one training week for each required unit.")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Week 1: Foundations" })).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Week 2: Practice" })).not.toBeChecked();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Week 2: Practice" }));
 
@@ -65,23 +69,8 @@ describe("ProgrammeModuleScheduleFields", () => {
     });
   });
 
-  it("adds and edits custom milestone date, units, and window fields", () => {
-    render(<Harness initialConfig={{
-      required: true,
-      required_units: 2,
-      distribution_mode: "custom",
-      distribution_settings: { milestones: [] },
-    }} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Add milestone" }));
-    fireEvent.change(screen.getByLabelText("Due date 1"), { target: { value: "2026-10-15" } });
-    fireEvent.change(screen.getByLabelText("Units 1"), { target: { value: "2" } });
-    fireEvent.change(screen.getByLabelText("Window end 1"), { target: { value: "2026-10-22" } });
-
-    expect(currentConfig()).toMatchObject({
-      distribution_settings: {
-        milestones: [{ due_on: "2026-10-15", required_units: 2, window_end_on: "2026-10-22" }],
-      },
-    });
+  it("does not offer training weeks on a session module", () => {
+    render(<Harness module="coaching" initialConfig={{ required: true, required_units: 2 }} />);
+    expect(screen.queryByRole("checkbox", { name: "Week 1: Foundations" })).not.toBeInTheDocument();
   });
 });

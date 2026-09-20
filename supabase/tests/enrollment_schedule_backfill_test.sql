@@ -25,8 +25,10 @@ values
  ('ad000000-0000-0000-0000-000000000002','Backfill invalid cohort','ac000000-0000-0000-0000-000000000002','ab000000-0000-0000-0000-000000000001','2026-01-01','2026-04-01');
 insert into public.programme_modules (id,programme_id,module,enabled,config)
 values
- ('ae000000-0000-0000-0000-000000000001','ac000000-0000-0000-0000-000000000001','coaching',true,'{"required":true,"required_units":2,"distribution_mode":"flexible"}'),
- ('ae000000-0000-0000-0000-000000000002','ac000000-0000-0000-0000-000000000002','coaching',true,'{"required":true,"required_units":2,"distribution_mode":"custom","distribution_settings":{"milestones":[{"due_on":"2026-02-01","required_units":1}]}}');
+ ('ae000000-0000-0000-0000-000000000001','ac000000-0000-0000-0000-000000000001','coaching',true,'{"required":true,"required_units":2}'),
+ -- distribution_settings is not an object: the module config is unusable and no
+ -- schedule can be generated from it.
+ ('ae000000-0000-0000-0000-000000000002','ac000000-0000-0000-0000-000000000002','coaching',true,'{"required":true,"required_units":2,"distribution_settings":[]}');
 insert into public.programme_enrollments
  (id,user_id,programme_id,cohort_id,organization_id,start_date,end_date,status)
 values
@@ -40,7 +42,7 @@ values
 select public.generate_enrollment_schedule('af000000-0000-0000-0000-000000000002');
 insert into public.enrollment_module_snapshots
  (enrollment_id,programme_module_id,module,required,required_units,distribution_mode,distribution_settings,starts_on,ends_on)
-select 'af000000-0000-0000-0000-000000000004',id,module,true,2,'flexible','{}','2026-01-01','2026-04-01'
+select 'af000000-0000-0000-0000-000000000004',id,module,true,2,NULL,'{}','2026-01-01','2026-04-01'
 from public.programme_modules where id='ae000000-0000-0000-0000-000000000001';
 
 create temporary table immutable_ids as
@@ -66,7 +68,7 @@ select is((select count(*)::integer from public.enrollment_module_snapshots wher
 -- Correct the configuration; the next retry succeeds and clears only that
 -- enrollment's audit row while the unrelated partial row remains unresolved.
 update public.programme_modules
-set config='{"required":true,"required_units":2,"distribution_mode":"custom","distribution_settings":{"milestones":[{"due_on":"2026-02-01","required_units":2}]}}'
+set config='{"required":true,"required_units":2}'
 where id='ae000000-0000-0000-0000-000000000002';
 select results_eq(
  $$select processed,succeeded,unresolved,skipped from public.backfill_enrollment_schedule_snapshots()$$,
