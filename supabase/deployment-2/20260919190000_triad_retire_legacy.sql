@@ -323,6 +323,125 @@ WHERE NOT t.tgisinternal
   AND c.relname = 'triad_rounds'
   AND t.tgname = 'trg_triad_rounds_updated';
 
+-- Preserve the enrollment backfill audit surface while removing only the
+-- branches that read the Triad tables being retired. Retired Triad rows remain
+-- reconstructable from _triad_retirement_expected and the archive; active
+-- session, training, reflection, goal, and milestone audits remain unchanged.
+DO $$
+BEGIN
+  IF to_regclass('public.enrollment_scope_backfill_audit') IS NOT NULL THEN
+    EXECUTE $view$
+      CREATE OR REPLACE VIEW public.enrollment_scope_backfill_audit
+      WITH (security_invoker = true) AS
+      WITH candidates AS (
+        SELECT 'sessions'::text AS table_name, s.id AS record_id,
+          s.coachee_id AS user_id, count(pe.id)::integer AS candidate_enrollments
+        FROM public.sessions s
+        LEFT JOIN public.programme_enrollments pe
+          ON pe.user_id = s.coachee_id
+         AND s.start_time::date >= pe.start_date
+         AND (pe.end_date IS NULL OR s.start_time::date <= pe.end_date)
+        WHERE s.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('sessions'::text, s.id)
+        GROUP BY s.id, s.coachee_id
+        UNION ALL
+        SELECT 'peer_sessions'::text, s.id, s.peer_coachee_id, count(pe.id)::integer
+        FROM public.peer_sessions s
+        LEFT JOIN public.programme_enrollments pe
+          ON pe.user_id = s.peer_coachee_id
+         AND s.start_time::date >= pe.start_date
+         AND (pe.end_date IS NULL OR s.start_time::date <= pe.end_date)
+        WHERE s.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('peer_sessions'::text, s.id)
+        GROUP BY s.id, s.peer_coachee_id
+        UNION ALL
+        SELECT 'coachee_peer_sessions'::text, s.id, s.peer_receiver_id, count(pe.id)::integer
+        FROM public.coachee_peer_sessions s
+        LEFT JOIN public.programme_enrollments pe
+          ON pe.user_id = s.peer_receiver_id
+         AND s.start_time::date >= pe.start_date
+         AND (pe.end_date IS NULL OR s.start_time::date <= pe.end_date)
+        WHERE s.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('coachee_peer_sessions'::text, s.id)
+        GROUP BY s.id, s.peer_receiver_id
+        UNION ALL
+        SELECT 'mentoring_sessions'::text, s.id, s.mentee_id, count(pe.id)::integer
+        FROM public.mentoring_sessions s
+        LEFT JOIN public.programme_enrollments pe
+          ON pe.user_id = s.mentee_id
+         AND s.start_time::date >= pe.start_date
+         AND (pe.end_date IS NULL OR s.start_time::date <= pe.end_date)
+        WHERE s.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('mentoring_sessions'::text, s.id)
+        GROUP BY s.id, s.mentee_id
+        UNION ALL
+        SELECT 'training_progress'::text, tp.id, tp.user_id, count(pe.id)::integer
+        FROM public.training_progress tp
+        JOIN public.training_weeks tw ON tw.id = tp.training_week_id
+        LEFT JOIN public.programme_enrollments pe
+          ON pe.user_id = tp.user_id AND pe.programme_id = tw.programme_id
+        WHERE tp.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('training_progress'::text, tp.id)
+        GROUP BY tp.id, tp.user_id
+        UNION ALL
+        SELECT 'assignment_submissions'::text, sub.id, sub.user_id, count(pe.id)::integer
+        FROM public.assignment_submissions sub
+        JOIN public.assignments a ON a.id = sub.assignment_id
+        JOIN public.training_weeks tw ON tw.id = a.training_week_id
+        LEFT JOIN public.programme_enrollments pe
+          ON pe.user_id = sub.user_id AND pe.programme_id = tw.programme_id
+        WHERE sub.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('assignment_submissions'::text, sub.id)
+        GROUP BY sub.id, sub.user_id
+        UNION ALL
+        SELECT 'daily_prompt_responses'::text, r.id, r.user_id, count(pe.id)::integer
+        FROM public.daily_prompt_responses r
+        JOIN public.daily_prompts p ON p.id = r.daily_prompt_id
+        JOIN public.training_weeks tw ON tw.id = p.training_week_id
+        LEFT JOIN public.programme_enrollments pe
+          ON pe.user_id = r.user_id AND pe.programme_id = tw.programme_id
+        WHERE r.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('daily_prompt_responses'::text, r.id)
+        GROUP BY r.id, r.user_id
+        UNION ALL
+        SELECT 'reflection_submissions'::text, sub.id, sub.user_id, count(pe.id)::integer
+        FROM public.reflection_submissions sub
+        JOIN public.programme_reflections pr ON pr.id = sub.reflection_id
+        LEFT JOIN public.programme_enrollments pe
+          ON pe.user_id = sub.user_id AND pe.programme_id = pr.programme_id
+        WHERE sub.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('reflection_submissions'::text, sub.id)
+        GROUP BY sub.id, sub.user_id
+        UNION ALL
+        SELECT 'coachee_goals'::text, g.id, g.coachee_id, count(pe.id)::integer
+        FROM public.coachee_goals g
+        LEFT JOIN public.programme_enrollments pe ON pe.user_id = g.coachee_id
+        WHERE g.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('coachee_goals'::text, g.id)
+        GROUP BY g.id, g.coachee_id
+        UNION ALL
+        SELECT 'coachee_milestones'::text, m.id, m.coachee_id, count(pe.id)::integer
+        FROM public.coachee_milestones m
+        LEFT JOIN public.programme_enrollments pe ON pe.user_id = m.coachee_id
+        WHERE m.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('coachee_milestones'::text, m.id)
+        GROUP BY m.id, m.coachee_id
+        UNION ALL
+        SELECT 'coachee_goal_ratings'::text, r.id, r.coachee_id, count(pe.id)::integer
+        FROM public.coachee_goal_ratings r
+        LEFT JOIN public.programme_enrollments pe ON pe.user_id = r.coachee_id
+        WHERE r.enrollment_id IS NULL
+          AND NOT public.is_historical_ownership_retired('coachee_goal_ratings'::text, r.id)
+        GROUP BY r.id, r.coachee_id
+      )
+      SELECT table_name, record_id, user_id, candidate_enrollments,
+        CASE WHEN candidate_enrollments = 0 THEN 'orphaned'::text
+             ELSE 'ambiguous'::text END AS unresolved_reason
+      FROM candidates
+    $view$;
+  END IF;
+END $$;
+
 -- Reject any dependency other than an intrinsic retirement dependency before
 -- DROP. The allow-list is deliberately catalog-backed and exact: a trigger on
 -- a live canonical table, a default owned by a surviving column, or any
@@ -417,7 +536,7 @@ BEGIN
     )
     AND coalesce(pg_get_expr(p.polqual, p.polrelid), '') ||
         coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '') ~
-        '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by';
+       '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: policies still refer to retired Triad fields: %', offenders;
   END IF;
@@ -432,8 +551,13 @@ BEGIN
       'triad_alternative_proposals', 'triad_reflections',
       'triad_rounds', 'programme_triad_rounds'
     )
-    AND coalesce(pg_get_expr(t.tgqual, t.tgrelid), '') ~
-      '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by';
+     AND pg_get_triggerdef(t.oid, true) ~
+       '(^|[^a-z_])((coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by)([^a-z_]|$)'
+     AND NOT EXISTS (
+       SELECT 1
+       FROM _triad_retirement_triggers expected
+       WHERE expected.trigger_oid = t.oid
+     );
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: triggers still refer to retired Triad fields: %', offenders;
   END IF;
@@ -458,8 +582,13 @@ BEGIN
   FROM pg_constraint con
   JOIN pg_class c ON c.oid = con.conrelid
   JOIN pg_namespace n ON n.oid = c.relnamespace
-  WHERE pg_get_constraintdef(con.oid, true) ~
-    '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by'
+   WHERE c.relname IN (
+       'triad_groups', 'triad_sessions',
+       'triad_alternative_proposals', 'triad_reflections',
+       'triad_rounds', 'programme_triad_rounds'
+     )
+     AND pg_get_constraintdef(con.oid, true) ~
+       '(^|[^a-z_])((coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number|proposed_start_time|proposed_end_time|start_time|proposed_by)([^a-z_]|$)'
     AND NOT EXISTS (
       SELECT 1 FROM _triad_retirement_constraints x
       WHERE x.constraint_oid = con.oid
