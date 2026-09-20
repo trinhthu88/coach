@@ -9,7 +9,7 @@
 -- Mentor X is in no pool at all.
 begin;
 
-select plan(77);
+select plan(81);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -811,6 +811,75 @@ select ok(
   not exists (select 1 from public.cohort_coaching_coach_pool('d1000000-0000-0000-0000-00000000b3b3'::uuid)
               where coach_id = 'd1000000-0000-0000-0000-000000000007'::uuid),
   'the Mentor-only Coach is NOT in the Coaching pool');
+
+-- Pool membership is the mechanism; what a learner can actually BOOK is the
+-- business rule. Coach 2 holds a Coaching assignment only and Coach 7 a
+-- Mentoring assignment only, so each must be bookable through exactly one
+-- module -- from the SAME Coach identity population.
+--
+-- Programme A gains Coaching here rather than in the fixture so the 70-odd
+-- Mentoring assertions above keep running against the shape they were written
+-- for. Both cohorts of this programme have no end date, so the requirement
+-- sync materialises nothing on its own and these rows stay the only Coaching
+-- requirements in play.
+insert into public.programme_modules (programme_id, module, enabled, config) values
+  ('d1000000-0000-0000-0000-00000000a1a1'::uuid, 'coaching', true,
+   '{"required": true, "required_units": 2}'::jsonb);
+
+insert into public.cohort_requirement_dates
+  (cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
+  ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid,
+   'coaching', 1, current_date - 10, 'manual', 'admin_save'),
+  ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid,
+   'coaching', 2, current_date + 30, 'manual', 'admin_save');
+
+-- A learner with nothing booked yet. Enrollment C above has already spent both
+-- its Mentoring requirements, so asking it what it may book would report
+-- 'received_limit_reached' -- an entitlement answer, not the eligibility
+-- answer under test here.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
+values ('d1000000-0000-0000-0000-000000000009'::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
+  'authenticated', 'authenticated', 'mentoring-canon-9@example.test', 'test', now(),
+  jsonb_build_object('full_name', 'Fresh Learner'), now(), now(), '', '', '');
+insert into public.user_roles (user_id, role)
+  values ('d1000000-0000-0000-0000-000000000009', 'coachee') on conflict do nothing;
+insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status) values
+  ('d1000000-0000-0000-0000-00000000e5e5'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid,
+   'd1000000-0000-0000-0000-000000000009'::uuid, 'd1000000-0000-0000-0000-00000000b3b3'::uuid, 'active');
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'd1000000-0000-0000-0000-000000000009')::text, true);
+
+select ok(
+  public.can_book_session(
+    'd1000000-0000-0000-0000-000000000009'::uuid,
+    'd1000000-0000-0000-0000-000000000002'::uuid,
+    'd1000000-0000-0000-0000-00000000e5e5'::uuid),
+  'the Coaching-only Coach can be booked for Coaching');
+
+select is(
+  public.can_book_mentoring_session_reason(
+    'd1000000-0000-0000-0000-000000000009'::uuid,
+    'd1000000-0000-0000-0000-000000000002'::uuid,
+    'd1000000-0000-0000-0000-00000000e5e5'::uuid),
+  'not_in_cohort_pool',
+  'and NOT for Mentoring: a Coaching assignment grants nothing for Mentoring');
+
+select is(
+  public.can_book_mentoring_session_reason(
+    'd1000000-0000-0000-0000-000000000009'::uuid,
+    'd1000000-0000-0000-0000-000000000007'::uuid,
+    'd1000000-0000-0000-0000-00000000e5e5'::uuid),
+  'ok',
+  'the Mentoring-only Coach can be booked for Mentoring, with no mentor profile');
+
+select ok(
+  not public.can_book_session(
+    'd1000000-0000-0000-0000-000000000009'::uuid,
+    'd1000000-0000-0000-0000-000000000007'::uuid,
+    'd1000000-0000-0000-0000-00000000e5e5'::uuid),
+  'and NOT for Coaching: the two cohort assignments stay independent');
 
 -- Deactivating an assignment removes future eligibility and nothing else.
 select is(

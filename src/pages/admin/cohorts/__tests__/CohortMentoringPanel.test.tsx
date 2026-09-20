@@ -97,7 +97,9 @@ describe("CohortMentoringPanel", () => {
     expect(rows.filter((r) => r.getAttribute("data-assigned") === "true")).toHaveLength(2);
   });
 
-  it("flags an assigned mentor whose provider profile is inactive", async () => {
+  // The flag is the COACH ACCOUNT's state. There is no mentor profile to be
+  // inactive: a Mentor is a Coach with an assignment.
+  it("flags an assigned Coach whose account is inactive", async () => {
     renderPanel();
     const rows = await screen.findAllByTestId("cohort-mentor-row");
     const b = rows.find((r) => r.textContent?.includes("Coach B"))!;

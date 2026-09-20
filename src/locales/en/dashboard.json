@@ -370,7 +370,7 @@
     "bookedBadge": "Booked",
     "addASlot": "Add a slot",
     "enablePeerFirst": "Enable peer coaching above first",
-    "notAMentor": "You're not set up as a mentor yet — ask an admin",
+    "notAMentor": "No cohort has you assigned as Mentor yet — ask an admin",
     "add": "Add",
     "slotTypeGroupLabel": "Slot type",
     "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} peer, {{mentoring}} mentoring",

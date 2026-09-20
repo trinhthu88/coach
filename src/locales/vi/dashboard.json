@@ -359,7 +359,7 @@
     "bookedBadge": "Đã đặt lịch",
     "addASlot": "Thêm khung giờ",
     "enablePeerFirst": "Bật peer coaching ở trên trước",
-    "notAMentor": "Bạn chưa được thiết lập là mentor — hãy liên hệ admin",
+    "notAMentor": "Chưa cohort nào phân công bạn làm Mentor — hãy liên hệ admin",
     "add": "Thêm",
     "slotTypeGroupLabel": "Loại khung giờ",
     "dayLabelWithSlots": "{{date}}: {{coaching}} coaching, {{peer}} đồng cấp, {{mentoring}} mentoring",

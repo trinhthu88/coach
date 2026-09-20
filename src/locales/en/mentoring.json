@@ -12,9 +12,9 @@
     "eyebrow": "Mentoring",
     "titleLead": "Your",
     "titleEmphasis": "mentors",
-    "subtitle": "Book a session with a mentor your admin has paired you with.",
+    "subtitle": "Book a session with a Coach assigned as Mentor for your cohort.",
     "retry": "Try again",
-    "empty": "You don't have any mentors assigned yet. Ask your admin to pair you with one.",
+    "empty": "No Coach is assigned as Mentor for your cohort yet. Ask your admin to assign one.",
     "mentorLabel": "Mentor",
     "book": "Book a session",
     "mentorFull": "Not accepting new sessions right now"

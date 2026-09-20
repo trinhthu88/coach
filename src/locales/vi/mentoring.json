@@ -12,9 +12,9 @@
     "eyebrow": "Mentoring",
     "titleLead": "Mentor",
     "titleEmphasis": "của bạn",
-    "subtitle": "Đặt lịch với một mentor mà admin đã ghép cặp cho bạn.",
+    "subtitle": "Đặt lịch với một Coach được phân công làm Mentor cho cohort của bạn.",
     "retry": "Thử lại",
-    "empty": "Bạn chưa được gán mentor nào. Hãy liên hệ admin để được ghép cặp.",
+    "empty": "Cohort của bạn chưa có Coach nào được phân công làm Mentor. Hãy liên hệ admin để phân công.",
     "mentorLabel": "Mentor",
     "book": "Đặt lịch",
     "mentorFull": "Hiện không nhận thêm buổi mới"
