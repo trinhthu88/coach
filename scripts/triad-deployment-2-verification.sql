@@ -68,8 +68,7 @@ BEGIN
      OR to_regclass('public.triad_group_members') IS NULL
      OR to_regclass('public.triad_sessions') IS NULL
      OR to_regclass('public.triad_session_responses') IS NULL
-     OR to_regclass('public.triad_alternative_proposal_responses') IS NOT NULL
-        AND to_regclass('public.triad_alternative_proposal_responses') IS NULL
+     OR to_regclass('public.triad_alternative_proposal_responses') IS NULL
      OR to_regclass('public.triad_reflection_questions') IS NULL
      OR to_regclass('public.triad_reflection_answers') IS NULL THEN
     RAISE EXCEPTION 'Deployment 2 verification: canonical structures are missing';
