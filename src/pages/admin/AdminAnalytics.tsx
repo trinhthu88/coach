@@ -75,7 +75,8 @@ interface AnalyticsData {
     sessTotal: number;
     peerTotal: number;
     totalHours: number;
-    avgRating: number;
+    /** Canonical 1-5 satisfaction average over all four modules; null when nothing is rated. */
+    avgRating: number | null;
     dist: number[];
     totalCoachees: number;
     totalCoaches: number;
@@ -170,7 +171,7 @@ export default function AdminAnalytics() {
       // Sponsor and the admin enrollment detail show — never a client-side
       // average of one module's rating column.
       const satisfaction = await fetchAdminSatisfaction([...validEnrollmentIds]);
-      const avgRating = satisfaction.average ?? 0;
+      const avgRating = satisfaction.average;
       const dist = satisfaction.distribution;
       const totalHours = [...scopedSess, ...scopedPeer]
         .filter((s: AnalyticsSessionRow | AnalyticsPeerSessionRow) => s.status === "completed")
@@ -285,7 +286,7 @@ export default function AdminAnalytics() {
         <Kpi label={t("analytics.coachingSessions")} value={data.platform.sessTotal} icon={Award} tone="primary" />
         <Kpi label={t("analytics.peerSessions")} value={data.platform.peerTotal} icon={MessagesSquare} tone="accent" />
         <Kpi label={t("analytics.totalHours")} value={data.platform.totalHours.toFixed(0)} icon={TrendingUp} tone="success" />
-        <Kpi label={t("analytics.avgRating")} value={data.platform.avgRating ? data.platform.avgRating.toFixed(2) : "—"} icon={Star} tone="warning" />
+        <Kpi label={t("analytics.avgRating")} value={data.platform.avgRating == null ? "—" : data.platform.avgRating.toFixed(2)} icon={Star} tone="warning" />
       </div>
 
       <Tabs defaultValue="platform">
@@ -355,7 +356,7 @@ export default function AdminAnalytics() {
           <div className="grid gap-3 sm:grid-cols-3">
             <Kpi label={t("analytics.totalCoaches")} value={data.platform.totalCoaches} icon={Users} tone="primary" />
             <Kpi label={t("analytics.sessionsDelivered")} value={data.platform.sessTotal} icon={Award} tone="success" />
-            <Kpi label={t("analytics.avgRating")} value={data.platform.avgRating ? data.platform.avgRating.toFixed(2) : "—"} icon={Star} tone="warning" />
+            <Kpi label={t("analytics.avgRating")} value={data.platform.avgRating == null ? "—" : data.platform.avgRating.toFixed(2)} icon={Star} tone="warning" />
           </div>
           <SectionCard label={t("analytics.topCoachesBySessions")}>
             {data.coach.topCoaches.length === 0 ? <p className="py-6 text-center text-xs text-muted-foreground">{t("analytics.noDataYet")}</p> : (
