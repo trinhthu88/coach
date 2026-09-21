@@ -279,3 +279,8 @@ This is a business-contract decision, not a technical constraint.
 - Projection: `sync_cohort_requirement_dates()` step 5d copies it onto every ordinal's `due_on`. If per-ordinal deadlines are ever needed, that is where to change (see `20260926400000_deadline_contract_locked.sql`).
 - Scope: the session modules (Coaching, Mentoring, Peer Coaching, Triads). Training is paced by training weeks and is not materialised as cohort requirements.
 - Pinned by `supabase/tests/deadline_contract_test.sql`.
+
+## Demo data
+All demo data lives in `supabase/seed-demo.sql` (plus `scripts/seed-training-content.sql` for the Training module) and obeys canonical contracts: real `cohort_requirement_dates`, bookings through the canonical RPCs, attribution by the database, progress read back from `canonical_*`. Each demo organisation holds at least 5 enrollments (the anonymous-distribution privacy threshold).
+
+There is no other demo generator. The out-of-band production generator (`demo_*` tables/functions) was retired by `20260926900000_retire_out_of_repo_demo_generator.sql` (functions dropped, tables archived in the locked `demo_archive` schema), and the `seed-demo-data` / `seed-tasc-content` edge functions were deleted.

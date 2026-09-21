@@ -604,7 +604,10 @@ INSERT INTO _enr (slug, id, person, cohort) VALUES
   ('c5', 'd0000000-0000-4000-8000-0000000e0c05', 'learner10','d0000000-0000-4000-8000-00000000c00c'),
   ('d5', 'd0000000-0000-4000-8000-0000000e0d05', 'tasc5',    'd0000000-0000-4000-8000-00000000c00d');
 
-UPDATE _enr SET org = 'd0000000-0000-4000-8000-00000000bbbb' WHERE slug IN ('b4', 'b5', 'b6');
+-- Organisation B: learner4-6 in Cohort B, plus tasc4-5 in Cohort D, so each
+-- organisation holds at least 5 enrollments (the anonymous-distribution
+-- privacy threshold, sponsor_min_leaders_for_distribution = 5).
+UPDATE _enr SET org = 'd0000000-0000-4000-8000-00000000bbbb' WHERE slug IN ('b4', 'b5', 'b6', 'd4', 'd5');
 
 -- Cohort A first, and closed before B opens: only one ongoing enrollment per
 -- learner is allowed, which is what makes learner1's history a real second
@@ -1240,15 +1243,29 @@ BEGIN
       RAISE EXCEPTION 'VERIFY 11 FAILED: sponsor2@ sees [%] in Cohort B, expected [%]', seen, expected;
     END IF;
 
-    -- Organisation B has no learner in Cohorts A, C or D: sponsor2 sees none.
+    -- Outside Cohort B, Organisation B's only learners are tasc4-5 in Cohort D;
+    -- sponsor2 sees exactly them, never another organisation's learner.
     PERFORM pg_temp.act_as(v_s2);
-    SELECT count(*) INTO n
+    SELECT string_agg(pr.email, ',' ORDER BY pr.email) INTO seen
     FROM public.cohorts c
     CROSS JOIN LATERAL public.sponsor_canonical_enrollment_progress(c.id) p
+    JOIN public.programme_enrollments e ON e.id = p.enrollment_id
+    JOIN public.profiles pr ON pr.id = e.user_id
     WHERE c.id <> 'd0000000-0000-4000-8000-00000000c00b';
     PERFORM pg_temp.act_as_service();
-    IF n <> 0 THEN
-      RAISE EXCEPTION 'VERIFY 11 FAILED: sponsor2@ sees % enrollments outside Cohort B', n;
+    IF seen IS DISTINCT FROM 'tasc4@clariva.demo,tasc5@clariva.demo' THEN
+      RAISE EXCEPTION 'VERIFY 11 FAILED: sponsor2@ sees [%] outside Cohort B, expected tasc4-5', seen;
+    END IF;
+
+    -- P1-8: every organisation clears the privacy threshold (>= 5 enrollments).
+    SELECT string_agg(o.name || '=' || coalesce(x.n, 0), ', ') INTO bad
+    FROM public.organizations o
+    LEFT JOIN (SELECT organization_id, count(*) AS n FROM public.programme_enrollments GROUP BY 1) x
+      ON x.organization_id = o.id
+    WHERE o.id IN ('d0000000-0000-4000-8000-00000000aaaa', 'd0000000-0000-4000-8000-00000000bbbb')
+      AND coalesce(x.n, 0) < public.sponsor_min_leaders_for_distribution();
+    IF bad IS NOT NULL THEN
+      RAISE EXCEPTION 'VERIFY 11 FAILED: organisations below the privacy threshold: %', bad;
     END IF;
   END;
 
@@ -1309,7 +1326,7 @@ BEGIN
   RAISE NOTICE '%', rpad('email',26)||rpad('role',10)||'what you will see';
   RAISE NOTICE '%', rpad('trang.tt@erickson.vn',26)||rpad('admin',10)||'all cohorts, schedules, provider pools, alerts';
   RAISE NOTICE '%', rpad('sponsor@clariva.demo',26)||rpad('sponsor',10)||'Org A: learner1-3 in Cohort B (+ Org A cohorts A/C/D), no narrative';
-  RAISE NOTICE '%', rpad('sponsor2@clariva.demo',26)||rpad('sponsor',10)||'Org B: learner4-6 in Cohort B only, no narrative';
+  RAISE NOTICE '%', rpad('sponsor2@clariva.demo',26)||rpad('sponsor',10)||'Org B: learner4-6 in Cohort B, tasc4-5 in Cohort D, no narrative';
   RAISE NOTICE '%', rpad('coach1@clariva.demo',26)||rpad('coach',10)||'Coaching + Mentoring delivery across all cohorts';
   RAISE NOTICE '%', rpad('coach2@clariva.demo',26)||rpad('coach',10)||'Coaching delivery (cohorts A/B/C)';
   RAISE NOTICE '%', rpad('coach3@clariva.demo',26)||rpad('coach',10)||'Coaching delivery, behind-schedule learners';

@@ -23,8 +23,6 @@ describe("programme enrollment writer boundary", () => {
 });
 
 const permittedFixtureWriters = new Set([
-  "supabase/functions/seed-demo-data/index.ts",
-  "supabase/functions/seed-tasc-content/index.ts",
 ]);
 
 const activityOwnershipColumns: Record<string, string[]> = {
