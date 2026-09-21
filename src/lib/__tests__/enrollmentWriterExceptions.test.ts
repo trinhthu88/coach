@@ -22,7 +22,7 @@ describe("programme enrollment writer boundary", () => {
   });
 });
 
-const permittedFixtureWriters = new Set([
+const permittedFixtureWriters = new Set<string>([
 ]);
 
 const activityOwnershipColumns: Record<string, string[]> = {
