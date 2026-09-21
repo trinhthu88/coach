@@ -19,8 +19,13 @@ export interface Row {
   email: string;
   status: Status;
   created_at: string;
+  /** Pending/confirmed coaching bookings on the current enrollment (operational). */
   booked: number;
-  done: number;
+  /** Canonical required activities completed / required on the CURRENT enrollment — never a lifetime count. */
+  completed_units: number | null;
+  required_units: number | null;
+  /** The canonical progress read failed: show an error state, never a silent zero. */
+  progress_error: boolean;
   programme_id: string | null;
   programme_name: string | null;
   programme_default_limit: number | null;
@@ -48,8 +53,7 @@ export async function exportCoacheesXlsx(rows: Row[], t: TFunction<"admin">): Pr
     [t("coachees.export.registered")]: format(new Date(c.created_at), "yyyy-MM-dd"),
     [t("coachees.export.status")]: t(`coachees.statusLabels.${c.status}`),
     [t("coachees.export.bookedSessions")]: c.booked,
-    [t("coachees.export.completedSessions")]: c.done,
-    [t("coachees.export.sessionLimit")]: c.session_limit,
+    [t("coachees.export.completedUnits")]: c.required_units == null ? "" : `${c.completed_units}/${c.required_units}`,
     [t("coachees.export.programme")]: c.programme_name || "",
     [t("coachees.export.cohort")]: c.cohort_name || "",
     [t("coachees.export.selectedCoaches")]: c.selected_coaches.map((s) => s.name).join("; "),

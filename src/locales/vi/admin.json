@@ -189,7 +189,8 @@
       "programme": "Chương trình",
       "cohort": "Nhóm",
       "selectedCoaches": "Coach đã chọn",
-      "sheetName": "Học viên"
+      "sheetName": "Học viên",
+      "completedUnits": "Hoạt động bắt buộc đã hoàn thành (ghi danh hiện tại)"
     },
     "tableHeaders": {
       "coachee": "Học viên",
@@ -201,7 +202,8 @@
       "programme": "Chương trình",
       "percentComplete": "% Hoàn thành",
       "selectedCoaches": "Coach đã chọn",
-      "actions": "Thao tác"
+      "actions": "Thao tác",
+      "requiredActivities": "Hoạt động bắt buộc"
     },
     "selectedCoachesCount_other": "{{count}} coach",
     "viewProfile": "Xem hồ sơ",
@@ -217,7 +219,8 @@
       "clickToUpload": "Nhấp để tải lên .xlsx / .csv",
       "close": "Đóng"
     },
-    "addLearner": "Thêm học viên"
+    "addLearner": "Thêm học viên",
+    "progressUnavailable": "Không tải được tiến độ"
   },
   "coacheeProfileSheet": {
     "readOnly": "chỉ đọc",
@@ -253,7 +256,8 @@
     "none": "Không có",
     "recentSessions": "Session gần đây",
     "noSessionsYet": "Chưa có session nào.",
-    "close": "Đóng"
+    "close": "Đóng",
+    "requiredActivities": "Hoạt động bắt buộc (ghi danh hiện tại)"
   },
   "coacheeEditSheet": {
     "title": "Sửa học viên",

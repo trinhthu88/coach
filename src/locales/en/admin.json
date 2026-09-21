@@ -192,7 +192,8 @@
       "programme": "Programme",
       "cohort": "Cohort",
       "selectedCoaches": "Selected coaches",
-      "sheetName": "Coachees"
+      "sheetName": "Coachees",
+      "completedUnits": "Required activities completed (current enrollment)"
     },
     "tableHeaders": {
       "coachee": "Coachee",
@@ -204,7 +205,8 @@
       "programme": "Programme",
       "percentComplete": "% Complete",
       "selectedCoaches": "Selected coaches",
-      "actions": "Actions"
+      "actions": "Actions",
+      "requiredActivities": "Required activities"
     },
     "selectedCoachesCount_one": "{{count}} coach",
     "selectedCoachesCount_other": "{{count}} coaches",
@@ -221,7 +223,8 @@
       "clickToUpload": "Click to upload .xlsx / .csv",
       "close": "Close"
     },
-    "addLearner": "Add learner"
+    "addLearner": "Add learner",
+    "progressUnavailable": "Progress unavailable"
   },
   "coacheeProfileSheet": {
     "readOnly": "read-only",
@@ -257,7 +260,8 @@
     "none": "None",
     "recentSessions": "Recent sessions",
     "noSessionsYet": "No sessions yet.",
-    "close": "Close"
+    "close": "Close",
+    "requiredActivities": "Required activities (current enrollment)"
   },
   "coacheeEditSheet": {
     "title": "Edit coachee",

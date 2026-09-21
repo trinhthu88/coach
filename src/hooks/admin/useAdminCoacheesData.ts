@@ -91,10 +91,14 @@ export function useAdminCoacheesData() {
     // "% complete" is the canonical engine's number for the SAME enrollment the
     // learner sees — never a local estimate (time elapsed, session counts).
     const selectedEnrollmentIds = [...enrByUser.values()].map((e) => e.id);
-    const canonical = await fetchAdminCanonicalProgress(selectedEnrollmentIds).catch(() => []);
-    const progressByEnrollment = new Map(
-      canonical.map((c) => [c.enrollment_id, c.progress_available ? canonicalCompletionPct(c.full_completion_pct) : null]),
-    );
+    let progressFailed = false;
+    const canonical = await fetchAdminCanonicalProgress(selectedEnrollmentIds).catch((error) => {
+      // Never a silent zero: the rows show a "progress unavailable" state.
+      console.error("Admin canonical progress failed to load", error);
+      progressFailed = true;
+      return [];
+    });
+    const canonicalByEnrollment = new Map(canonical.map((c) => [c.enrollment_id, c]));
     const progById = new Map((progs || []).map((p) => [p.id, p]));
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const orgById = new Map((orgsData || []).map((o) => [o.id, o.name]));
@@ -104,12 +108,10 @@ export function useAdminCoacheesData() {
       arr.push({ id: a.coach_id, name: coachNameById.get(a.coach_id) || "—" });
       allowByCoachee.set(a.coachee_id, arr);
     });
-    const done = new Map<string, number>();
     const booked = new Map<string, number>();
     (sess || []).filter((s) => s.enrollment_id).forEach((s) => {
       const enr = enrByUser.get(s.coachee_id);
       if (!enr || enr.id !== s.enrollment_id) return;
-      if (s.status === "completed") done.set(s.coachee_id, (done.get(s.coachee_id) || 0) + 1);
       if (["pending_coach_approval", "confirmed"].includes(s.status)) booked.set(s.coachee_id, (booked.get(s.coachee_id) || 0) + 1);
     });
     const defLimit = (limits || []).find((l) => l.coachee_id === null)?.monthly_limit ?? 4;
@@ -130,6 +132,8 @@ export function useAdminCoacheesData() {
         const enr = enrByUser.get(id);
         const lim = limByCoachee.get(id);
         const prog = enr?.programme_id ? progById.get(enr.programme_id) : null;
+        const progress = enr ? canonicalByEnrollment.get(enr.id) : undefined;
+        const available = !!progress?.progress_available;
         return {
           id,
           full_name: p.full_name,
@@ -137,7 +141,9 @@ export function useAdminCoacheesData() {
           status: p.status as Status,
           created_at: p.created_at,
           booked: booked.get(id) || 0,
-          done: done.get(id) || 0,
+          completed_units: available ? progress!.completed_units : null,
+          required_units: available ? progress!.required_units : null,
+          progress_error: !!enr && progressFailed,
           programme_id: enr?.programme_id || null,
           programme_name: prog?.name || null,
           programme_default_limit: prog?.coachee_session_limit ?? null,
@@ -148,7 +154,7 @@ export function useAdminCoacheesData() {
           organization_name: enr?.organization_id ? orgById.get(enr.organization_id) || null : null,
           enrollment_id: enr?.id || null,
           enrollment_start_date: enr?.start_date || null,
-          completion_pct: enr ? progressByEnrollment.get(enr.id) ?? null : null,
+          completion_pct: available ? canonicalCompletionPct(progress!.full_completion_pct) : null,
           selected_coaches: allowByCoachee.get(id) || [],
           session_limit: lim?.monthly_limit ?? defLimit,
           limit_row_id: lim?.id || null,

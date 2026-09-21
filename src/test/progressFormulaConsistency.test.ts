@@ -120,3 +120,24 @@ describe("coachee sidebar reads the same module list as progress (spec Part 10)"
     expect(read("hooks/useProgrammeModules.ts")).toMatch(/get_enrollment_programme_modules/);
   });
 });
+
+describe("admin profile is enrollment-first (P1-6)", () => {
+  it("no admin learner surface shows a lifetime session count or a per-person session limit", () => {
+    for (const file of ["pages/admin/AdminCoachees.tsx", "pages/admin/coachees/CoacheeProfileSheet.tsx", "pages/admin/coachees/coacheeDisplay.ts"]) {
+      const text = stripComments(read(file));
+      expect(text, file).not.toMatch(/\b(r|row|c)\.done\b|\b(r|row|c)\.session_limit\b|programmeCompletionPct/);
+    }
+  });
+
+  it("the admin learner rows read canonical units for the current enrollment and surface load failures", () => {
+    const hook = read("hooks/admin/useAdminCoacheesData.ts");
+    expect(hook).toMatch(/fetchAdminCanonicalProgress\(/);
+    expect(hook).not.toMatch(/fetchAdminCanonicalProgress\([^)]*\)\.catch\(\(\)\s*=>\s*\[\]\)/);
+    expect(hook).toMatch(/progress_error/);
+  });
+
+  it("the user detail page is one section per enrollment, each from the canonical chain", () => {
+    const detail = read("hooks/admin/useAdminUserDetail.ts");
+    for (const rpc of ["admin_user_enrollments", "admin_enrollment_module_progress"]) expect(detail).toMatch(new RegExp(`rpc\\("${rpc}"`));
+  });
+});

@@ -124,7 +124,7 @@ export function CoacheeEditSheet({
                   <Label>{t("coacheeEditSheet.sessionLimitLabel")}</Label>
                   <Input type="number" min={0} value={editing.session_limit} onChange={(e) => setEditing({ ...editing, session_limit: Number(e.target.value) })} />
                   <p className="mt-1 text-[10px] text-muted-foreground">
-                    {t("coacheeEditSheet.sessionLimitHint", { used: editing.done, default: editing.programme_default_limit ?? defaultLimit })}
+                    {t("coacheeEditSheet.sessionLimitHint", { used: editing.completed_units ?? 0, default: editing.programme_default_limit ?? defaultLimit })}
                   </p>
                 </div>
               </div>
@@ -216,7 +216,7 @@ export function CoacheeEditSheet({
               </div>
 
               <div className="rounded-lg bg-muted/40 p-3 text-[11px] text-muted-foreground">
-                <p>{t("coacheeEditSheet.sessionsSummaryPrefix")} <strong>{editing.done}</strong> {t("coacheeEditSheet.sessionsSummaryCompleted")} · <strong>{editing.booked}</strong> {t("coacheeEditSheet.sessionsSummaryBooked")}</p>
+                <p>{t("coacheeEditSheet.sessionsSummaryPrefix")} <strong>{editing.required_units == null ? "—" : `${editing.completed_units}/${editing.required_units}`}</strong> {t("coacheeEditSheet.sessionsSummaryCompleted")} · <strong>{editing.booked}</strong> {t("coacheeEditSheet.sessionsSummaryBooked")}</p>
               </div>
 
               <div className="rounded-lg border p-3">

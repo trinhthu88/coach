@@ -103,9 +103,8 @@ export default function AdminCoachees() {
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.coachee")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.status")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.registered")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.limit")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.requiredActivities")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.booked")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.done")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.programme")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.percentComplete")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.selectedCoaches")}</th>
@@ -126,9 +125,14 @@ export default function AdminCoachees() {
                   </td>
                   <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{t(`coachees.statusLabels.${r.status}`)}</Pill></td>
                   <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{format(new Date(r.created_at), "MMM d, yyyy")}</td>
-                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.done}/{r.session_limit}</span></td>
+                  <td className="px-3 py-2.5">
+                    {r.progress_error ? (
+                      <span className="text-[11px] text-destructive" data-testid="coachee-progress-error">{t("coachees.progressUnavailable")}</span>
+                    ) : (
+                      <span className="font-mono text-[11px]">{r.required_units == null ? "—" : `${r.completed_units}/${r.required_units}`}</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked}</td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.done}</td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {r.programme_name ? (
                       <Link to="/admin/programmes" className="text-primary hover:underline">{r.programme_name}</Link>
