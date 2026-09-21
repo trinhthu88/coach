@@ -17,11 +17,9 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = false
   [functions.seed-demo-data]
     verify_jwt = true
-  [functions.invite-sponsor]
-    verify_jwt = true
   [functions.coach-invite-coachee]
     verify_jwt = true
-  [functions.admin-bulk-invite-users]
+  [functions.admin-invite-users]
     verify_jwt = true
   [functions.send-daily-prompt]
     verify_jwt = false

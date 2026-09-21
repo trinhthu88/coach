@@ -1,4 +1,5 @@
 import { SessionGoalRatings } from "./session/SessionGoalRatings";
+import { PostSessionChecklist } from "./session/PostSessionChecklist";
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -39,8 +40,6 @@ export default function MentoringSessionDetail() {
     saving,
     mentorNotes,
     setMentorNotes,
-    menteeNotes,
-    setMenteeNotes,
     saveNotes,
     confirmSession,
     completeSession,
@@ -100,7 +99,7 @@ export default function MentoringSessionDetail() {
   };
 
   const handleSaveNotes = async () => {
-    const { error } = await saveNotes({ includeMentorNotes: isMentor, includeMenteeNotes: isMentee });
+    const { error } = await saveNotes({ includeMentorNotes: isMentor, includeMenteeNotes: false });
     if (error) toast.error(getFriendlyErrorMessage(error, t));
     else toast.success(t("sessionDetail.notesSaved"));
   };
@@ -216,24 +215,29 @@ export default function MentoringSessionDetail() {
       {/* Notes */}
       <Card className="space-y-4 p-4 sm:p-6">
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("sessionDetail.notesSection")}</p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <p className="mb-1 text-xs font-semibold text-muted-foreground">{t("sessionDetail.mentorNotes")}</p>
-            <Textarea rows={4} value={mentorNotes} disabled={!isMentor} onChange={(e) => setMentorNotes(e.target.value)} />
-          </div>
-          <div>
-            <p className="mb-1 text-xs font-semibold text-muted-foreground">{t("sessionDetail.menteeNotes")}</p>
-            <Textarea rows={4} value={menteeNotes} disabled={!isMentee} onChange={(e) => setMenteeNotes(e.target.value)} />
-          </div>
+        {/* Mentor notes are the mentor's own record. The mentee's reflection is
+            a post-session deliverable, written in the checklist below. */}
+        <div>
+          <p className="mb-1 text-xs font-semibold text-muted-foreground">{t("sessionDetail.mentorNotes")}</p>
+          <Textarea rows={4} value={mentorNotes} disabled={!isMentor} onChange={(e) => setMentorNotes(e.target.value)} />
         </div>
-        {(isMentor || isMentee) && (
+        {isMentor && (
           <Button size="sm" onClick={handleSaveNotes} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("sessionDetail.saveNotes")}
           </Button>
         )}
       </Card>
 
-      {session.enrollment_id && <SessionGoalRatings sessionId={session.id} coacheeId={session.mentee_id} enrollmentId={session.enrollment_id} sourceActivityType="mentoring" canCreateGoal={isMentee} canEdit={isMentee && session.status === "completed"} sessionStatus={session.status} />}
+      {/* Post-session deliverables (shared base): reflection, goal check-in,
+          follow-up action and the mentee's own 1–5 rating. The mentor sees
+          the ticks read-only. */}
+      {(isMentor || isMentee) && (
+        <PostSessionChecklist sourceTable="mentoring_sessions" sessionId={session.id} viewerUserId={user?.id} />
+      )}
+      {/* The mentee's own check-in on a held session lives in the checklist. */}
+      {session.enrollment_id && !(isMentee && session.status === "completed") && (
+        <SessionGoalRatings sessionId={session.id} coacheeId={session.mentee_id} enrollmentId={session.enrollment_id} sourceActivityType="mentoring" canCreateGoal={isMentee} canEdit={false} sessionStatus={session.status} />
+      )}
       {/* Mentor feedback */}
       {(isMentor || isMentee) && (
         <MentorFeedbackForm feedback={feedback} isMentor={isMentor} canSubmit={isMentor && session.status === "completed"} />

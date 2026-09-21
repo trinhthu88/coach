@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { formatCount, formatPercent, type ProgrammeEngagementFacts } from "@/lib/programmeProfile";
+import { formatCount, goalProgressState, type ProgrammeEngagementFacts } from "@/lib/programmeProfile";
 import { ProfileLoadError, ProfileSection, ProfileSectionTitle, SmallMetric, UnavailableNote } from "./primitives";
-import { PROFILE_COLORS, useProfileText, type ProgrammeViewer } from "./profileTheme";
+import { PROFILE_COLORS, goalProgressText, useProfileText, type ProgrammeViewer } from "./profileTheme";
 
 const { TEAL } = PROFILE_COLORS;
 
@@ -33,7 +33,7 @@ export function ProgrammeGoalSummary({
       ) : (
         <div data-testid="goal-summary" className="mt-5 flex flex-wrap gap-x-[34px] gap-y-5">
           <SmallMetric value={formatCount(engagement.goal_count)} label={text("goalsSet")} />
-          <SmallMetric value={formatPercent(engagement.goal_progress_pct)} label={text("averageGoalProgress")} color={TEAL} />
+          <SmallMetric value={goalProgressText(goalProgressState(engagement), text)} label={text("averageGoalProgress")} color={TEAL} />
           <SmallMetric
             value={engagement.total_action_count == null ? "—" : `${engagement.completed_action_count ?? 0} / ${engagement.total_action_count}`}
             label={text("actionsCompleted")}

@@ -37,6 +37,8 @@ import {
   useBookCoachingSession,
   useRescheduleCoachingSession,
 } from "@/hooks/coaching/useCanonicalCoaching";
+import { BookingGoalGate } from "@/components/goals/BookingGoalGate";
+import { useBookingGoalGate } from "@/components/goals/useBookingGoalGate";
 
 interface CoachDetail {
   id: string;
@@ -319,7 +321,13 @@ export default function BookSession() {
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
 
   const overLimit = isOverSessionLimit(usage);
-  const canSubmit = !!enrollmentId && canSubmitBooking({ selectedDate, selectedStart, topic, eligible });
+  // Booking goal gate (server rule, enrollment_goal_gate). A Coaching
+  // reschedule moves an existing booking and is exempt server-side, so it is
+  // not disabled here either.
+  const { blocked: goalGateBlocked } = useBookingGoalGate(enrollmentId);
+  const goalGateApplies = goalGateBlocked && !(mode === "coaching" && rescheduleId);
+  const canSubmit =
+    !!enrollmentId && !goalGateApplies && canSubmitBooking({ selectedDate, selectedStart, topic, eligible });
   // eligible === false but the numbers don't show overLimit: something other than the
   // session cap is blocking (allowlist changed, status changed) — the usage-based banner
   // below wouldn't explain it, so show a distinct message instead of nothing.
@@ -767,6 +775,8 @@ export default function BookSession() {
               rows={3}
             />
           </div>
+
+          {goalGateApplies && <BookingGoalGate enrollmentId={enrollmentId} />}
 
           <div className="flex flex-col items-start justify-between gap-3 border-t pt-4 sm:flex-row sm:items-center">
             <div>

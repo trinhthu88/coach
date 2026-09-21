@@ -254,6 +254,46 @@ describe("programme profile architecture", () => {
     expect(read("pages/admin/AdminAlerts.tsx")).not.toMatch(/withEnrollmentActions/);
   });
 
+  it("every Admin '% complete' is the canonical number the learner sees — never time elapsed", () => {
+    for (const file of ["hooks/admin/useAdminCoacheesData.ts", "pages/admin/AdminCoaches.tsx"]) {
+      const text = read(file);
+      expect(text, file).toMatch(/fetchAdminCanonicalProgress\(/);
+      expect(text, file).toMatch(/canonicalCompletionPct\(/);
+    }
+    expect(read("components/programme/ProgrammeMetricCards.tsx")).toMatch(/canonicalCompletionPct\(facts\.full_completion_pct\)/);
+    // No surface estimates completion from enrollment dates.
+    const timeBased = /programmeCompletionPct|30\.4375/;
+    expect(files.filter((f) => timeBased.test(readFileSync(f, "utf8"))).map((f) => relative(SRC, f))).toEqual([]);
+  });
+
+  it("no client calls an internal canonical engine directly (they are revoked from authenticated)", () => {
+    // These fail with "permission denied" for every signed-in user; clients go
+    // through the role-scoped wrappers (learner_*, sponsor_*, admin_*, coach_*).
+    const internal = /rpc\(\s*"(canonical_module_progress|canonical_enrollment_progress|canonical_enrollment_engagement|canonical_overdue_items|canonical_goal_progress|canonical_learning_breakdown)"/;
+    const offenders = files.filter((f) => internal.test(readFileSync(f, "utf8")));
+    expect(offenders.map((f) => relative(SRC, f))).toEqual([]);
+  });
+
+  it("every Coach '% complete' is the canonical number — never a milestone, session or position ratio", () => {
+    expect(read("hooks/coach/useCoachClients.ts")).toMatch(/rpc\("coach_canonical_enrollment_progress"/);
+    expect(read("hooks/coach/useCoachClients.ts")).toMatch(/canonicalCompletionPct\(/);
+    expect(read("pages/coach/ClientRow.tsx")).toMatch(/client\.completionPct/);
+    expect(read("pages/CoachMyJourney.tsx")).toMatch(/canonicalCompletionPct\(canonical\.progress\?\.full_completion_pct\)/);
+    // A "%" derived from ticked milestones or elapsed days must not reappear on
+    // a progress surface.
+    const localRatio = /milestonesDone\s*\/\s*client\.milestonesTotal|overallPct\b|elapsed\s*\/\s*total\)\s*\*\s*100\)?\s*[,}]?\s*\/\/\s*completion/;
+    const progressSurfaces = [
+      "pages/coach/ClientRow.tsx",
+      "pages/coach/ClientDetailDialog.tsx",
+      "hooks/coach/useClientDetail.ts",
+      "pages/CoachMyJourney.tsx",
+      "pages/dashboard/coachee/CoacheeDashboard.tsx",
+      "pages/admin/AdminCoachees.tsx",
+      "pages/admin/coachees/CoacheeProfileSheet.tsx",
+    ];
+    expect(progressSurfaces.filter((f) => localRatio.test(read(f)))).toEqual([]);
+  });
+
   it("no surface calls a retired engine or reads a derived snapshot / deprecated cache", () => {
     const retired = /rpc\(\s*"(get_enrollment_progress|get_admin_enrollment_progress|sponsor_(cohort|enrollment)_summaries[a-z_]*|sponsor_organisation_summary[a-z_]*|sponsor_metric_rows[a-z_]*|sponsor_[a-z]+_cadence_items|sponsor_leader_engagement_summary|sponsor_enrollment_next_session|sponsor_leader_programme_history)"/;
     const snapshotReads = /from\("(enrollment_module_snapshots|enrollment_module_milestones)"\)|["'\s,]progress_pct["'\s,]/;
@@ -438,13 +478,16 @@ describe("programme profile architecture", () => {
     });
 
     it("the reflection writer is reachable from the checklist that shows the gate", () => {
-      const checklist = read("pages/session/CoachingPostSessionChecklist.tsx");
-      expect(checklist).toMatch(/useSubmitCoachingReflection/);
-      // The learner writes their own reflection; nobody else may.
-      expect(checklist).toMatch(/canSubmitReflection/);
+      // One post-session checklist serves all four modules (Coaching included).
+      const checklist = read("pages/session/PostSessionChecklist.tsx");
+      expect(checklist).toMatch(/useSubmitSessionReflection/);
+      // The learner writes their own reflection; nobody else may: the writer
+      // is only rendered for the server-identified own row (isSelf), every
+      // other viewer gets the read-only ticks.
+      expect(checklist).toMatch(/r\.isSelf/);
+      expect(checklist).toMatch(/data-mode="readonly"/);
       const detail = read("pages/SessionDetail.tsx");
-      expect(detail).toMatch(/canSubmitReflection=\{isCoachee\}/);
-      expect(detail).toMatch(/enrollmentId=\{session\.enrollment_id\}/);
+      expect(detail).toMatch(/<PostSessionChecklist sourceTable=\{tableName\} sessionId=\{session\.id\}/);
     });
 
     // The C2 regression shape precisely: the writer existed as an exported
@@ -473,7 +516,7 @@ describe("programme profile architecture", () => {
 
     it("the reflection hooks are reached from a rendered surface, not only exported", () => {
       const RENDERED = files.filter((f) => /\/(pages|components)\//.test(f));
-      for (const hook of ["useSubmitCoachingReflection", "useCoachingReflection"]) {
+      for (const hook of ["useSubmitSessionReflection", "useSessionReflection"]) {
         const callers = RENDERED.filter((f) => new RegExp(`\\b${hook}\\b`).test(readFileSync(f, "utf8")));
         expect(callers, `${hook} is exported but no screen calls it`).not.toEqual([]);
       }

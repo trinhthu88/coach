@@ -152,7 +152,7 @@ describe("canonical Coaching hooks", () => {
   describe("canonical progress", () => {
     it("reads the coaching row from canonical_module_progress, not raw sessions", async () => {
       rpc.mockImplementation((fn: string) => {
-        if (fn === "canonical_module_progress") {
+        if (fn === "learner_module_progress") {
           return Promise.resolve({
             data: [
               { module: "triads", required_units: 2, completed_units: 2 },
@@ -183,7 +183,7 @@ describe("canonical Coaching hooks", () => {
 
     it("returns null when Coaching is not a scheduled module for the enrollment", async () => {
       rpc.mockImplementation((fn: string) =>
-        fn === "canonical_module_progress"
+        fn === "learner_module_progress"
           ? Promise.resolve({ data: [{ module: "triads", required_units: 2 }], error: null })
           : Promise.resolve({ data: [], error: null }),
       );

@@ -86,6 +86,13 @@ insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, 
 values ('e8800000-0000-0000-0000-000000000009', 'a8800000-0000-0000-0000-000000000009', 'c8800000-0000-0000-0000-000000000004',
   'd8800000-0000-0000-0000-000000000001', 'b8800000-0000-0000-0000-000000000001', current_date - 120, current_date + 120, 'active');
 
+-- Booking goal gate (20260925400000): C1 started 120 days ago, so a learner
+-- who schedules or proposes a Triad time needs an active goal.
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+select ('a8800000-0000-0000-0000-0000000000' || lpad(n::text, 2, '0'))::uuid,
+       ('e8800000-0000-0000-0000-00000000000' || n)::uuid, 'Booking gate goal'
+from generate_series(1, 6) n;
+
 create temporary table unit (n integer primary key, id uuid, due_on date);
 insert into unit select d.ordinal, d.id, d.due_on from public.cohort_requirement_dates d
 where d.cohort_id = 'd8800000-0000-0000-0000-000000000001' and d.module = 'triads'

@@ -220,7 +220,8 @@
       "importing": "Importing…",
       "clickToUpload": "Click to upload .xlsx / .csv",
       "close": "Close"
-    }
+    },
+    "addLearner": "Add learner"
   },
   "coacheeProfileSheet": {
     "readOnly": "read-only",
@@ -298,10 +299,14 @@
       "saveFailed": "Save failed",
       "loginLinkEmailed": "Login link emailed",
       "emailFailedToSend": "Email failed to send",
-      "resendLinkError": "Could not resend login link"
+      "resendLinkError": "Could not resend login link",
+      "cohortRequired": "Choose a cohort — programme and organization belong to a cohort enrollment.",
+      "enrollmentTransitioned": "Previous enrollment closed and new enrollment created"
     },
     "done": "Done",
-    "coachAssignmentMovedToCohort": "Programme Coaching is now assigned per cohort. Manage the Coach pool in Admin → Cohorts → Coaching."
+    "coachAssignmentMovedToCohort": "Programme Coaching is now assigned per cohort. Manage the Coach pool in Admin → Cohorts → Coaching.",
+    "programmeFromCohortHint": "Optional. Set by the cohort; defaults the session limit below.",
+    "enrollmentTransitionHint": "Saving closes the current enrollment (kept in history) and starts a new one in this cohort."
   },
   "organizations": {
     "sections": {
@@ -341,8 +346,6 @@
     "emailNameRequired": "Email and name are required",
     "sponsorAccountCreated": "Sponsor account created",
     "couldNotInviteSponsor": "Could not invite sponsor",
-    "tempPasswordReset": "Temporary password reset",
-    "couldNotResetPassword": "Could not reset password",
     "title": "Organizations",
     "titleEmphasis": "& sponsors",
     "subtitle": "Client companies sponsoring leaders through the programme, and their sponsor contact.",
@@ -350,7 +353,6 @@
     "enrolledLeaders_one": "{{count}} enrolled leader",
     "enrolledLeaders_other": "{{count}} enrolled leaders",
     "sponsor": "Sponsor",
-    "resetPassword": "Reset password",
     "noSponsorYet": "No sponsor assigned yet.",
     "inviteSponsor": "Invite sponsor",
     "edit": "Edit",
@@ -363,18 +365,18 @@
     "cancel": "Cancel",
     "save": "Save",
     "inviteSponsorFor": "Invite sponsor for {{name}}",
-    "inviteSponsorHint": "Creates their account and shows a one-time temporary password to share privately.",
+    "inviteSponsorHint": "Creates their sponsor account and emails them a secure link to set their password.",
     "fullNameLabel": "Full name",
     "emailLabel": "Email",
     "titleLabelOptional": "Title (optional)",
     "departmentLabelOptional": "Department (optional)",
     "createSponsorAccount": "Create sponsor account",
-    "accountReadyFor": "Account ready for {{name}}",
-    "shareCredentialsHint": "Share these credentials privately. The temporary password is shown only once and is not stored anywhere.",
     "email": "Email",
-    "tempPassword": "Temporary password",
     "done": "Done",
-    "copied": "Copied"
+    "copied": "Copied",
+    "resendSetupLink": "Resend setup link",
+    "setupLinkSent": "Setup link sent to {{email}}",
+    "couldNotSendSetupLink": "Could not send the setup link"
   },
   "programmes": {
     "nameRequired": "Name is required",
@@ -754,7 +756,10 @@
       "programme": "Programme",
       "sheetName": "Coaches"
     },
-    "edit": "Edit"
+    "edit": "Edit",
+    "addCoach": "Add coach",
+    "importExcel": "Import",
+    "cohortRequired": "Choose a cohort — the programme comes from the cohort."
   },
   "registrations": {
     "eyebrow": "Admin",
@@ -1041,5 +1046,189 @@
     "overdue": "Overdue",
     "priorPartners": "· previously with {{names}}",
     "repeatedPartnersWarning": "Already grouped together in another Triad: {{pairs}}"
+  },
+  "userDetail": {
+    "eyebrow": "Admin · User detail",
+    "back": "Back to coachees",
+    "loadError": "This user could not be loaded.",
+    "unknownUser": "Unknown user",
+    "enrollmentCount_one": "{{count}} enrollment",
+    "enrollmentCount_other": "{{count}} enrollments",
+    "noEnrollments": "This user has no programme enrollments.",
+    "noEndDate": "no end date",
+    "completion": "{{value}} complete",
+    "detailError": "This enrollment's details could not be loaded.",
+    "storedStatus": "(stored: {{status}})",
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "paused": "Paused",
+      "at_risk": "At risk"
+    },
+    "sections": {
+      "enrollment": "Enrollment",
+      "modules": "Modules",
+      "sessions": "Sessions",
+      "goals": "Goals & rating history",
+      "actions": "Actions",
+      "reflections": "Reflections",
+      "feedback": "Feedback",
+      "satisfaction": "Satisfaction"
+    },
+    "fields": {
+      "programme": "Programme",
+      "cohort": "Cohort",
+      "organization": "Organization",
+      "status": "Status",
+      "start": "Start date",
+      "end": "End date"
+    },
+    "moduleHeaders": {
+      "module": "Module",
+      "required": "Required",
+      "completed": "Completed",
+      "due": "Due",
+      "booked": "Booked",
+      "overdue": "Overdue"
+    },
+    "sessionTypes": {
+      "coaching": "Coaching",
+      "peer_coaching": "Peer coaching",
+      "mentoring": "Mentoring",
+      "triad": "Triad"
+    },
+    "sessionStatus": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "no_show": "No-show",
+      "declined": "Declined",
+      "rescheduled": "Rescheduled"
+    },
+    "triadN": "Triad {{n}}",
+    "countsTowardProgramme": "Counts toward programme",
+    "goalRating": "Start {{start}} · current {{current}} · target {{target}}",
+    "goalNotRated": "Not rated yet",
+    "actionSummary": "{{open}} open · {{completed}} completed · {{total}} total",
+    "actionStatus": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "dueOn": "Due {{date}}",
+    "satisfactionValue_one": "{{value}} / 5 average from {{count}} rated session",
+    "satisfactionValue_other": "{{value}} / 5 average from {{count}} rated sessions",
+    "empty": {
+      "modules": "No required modules for this enrollment.",
+      "sessions": "No sessions in this enrollment.",
+      "goals": "No goals for this enrollment.",
+      "actions": "No actions for this enrollment.",
+      "reflections": "No shared reflections for this enrollment.",
+      "feedback": "No feedback for this enrollment.",
+      "satisfaction": "No session ratings yet."
+    }
+  },
+  "addPerson": {
+    "title": "Add a person",
+    "titleSponsor": "Add sponsor",
+    "description": "Creates an active account (no approval step) and emails a link to set a password. No password is ever shown here.",
+    "fullName": "Full name",
+    "email": "Email",
+    "role": "Role",
+    "roles": {
+      "coachee": "Learner",
+      "coach": "Coach",
+      "sponsor": "Sponsor"
+    },
+    "programme": "Programme (optional)",
+    "cohort": "Cohort (optional)",
+    "organization": "Organization",
+    "none": "— None —",
+    "cohortOrganization": "Cohort's organization ({{name}})",
+    "enrollmentHint": "Programme, cohort and organization form the enrollment. The programme comes from the cohort; the organization defaults to the cohort's. Leave empty to add the person without an enrollment.",
+    "jobTitle": "Title",
+    "department": "Department",
+    "setupEmailHint": "A setup email with a secure link to /set-new-password is sent to the person.",
+    "existingEnrollOffer": "An account with this email already exists. No new account will be created — you can add this enrollment to the existing account.",
+    "existingSponsorOffer": "An account with this email already exists. No new account will be created — you can give it sponsor access for this organization.",
+    "addEnrollmentOnly": "Add enrollment only",
+    "addSponsorAccess": "Add sponsor access",
+    "submit": "Create & send setup email",
+    "cancel": "Cancel",
+    "nameEmailRequired": "Full name and email are required",
+    "organizationRequired": "Sponsors must be linked to an organization",
+    "nothingToAdd": "An account with this email already exists — nothing to add",
+    "created": "Account created — setup email sent to {{email}}",
+    "enrolledExisting": "Enrollment added for {{email}}",
+    "sponsorLinked": "Sponsor access added for {{email}}",
+    "partial": "Account created with issues",
+    "failed": "Could not add this person",
+    "moveEnrollment": "Move to this cohort",
+    "existingTransitionOffer": "An account with this email already exists and has an ongoing enrollment in another cohort. No new account will be created — you can move them to this cohort: the current enrollment is closed and kept in their history."
+  },
+  "importUsers": {
+    "title": "Import people",
+    "description": "Upload a CSV or Excel file. You will see a preview of every row before anything is created.",
+    "columnsIntro": "Columns:",
+    "ruleRoles": "Role: learner (coachee), coach or sponsor.",
+    "ruleCohort": "Programme is derived from the cohort; a programme that doesn't match the cohort is rejected. Organization defaults to the cohort's.",
+    "ruleSponsor": "Sponsor rows need an Organization and no programme or cohort.",
+    "ruleExisting": "An email that already has an account never creates a second one — you can add the enrollment only.",
+    "downloadTemplate": "Download template",
+    "validating": "Validating rows…",
+    "emptyFile": "No rows found in this file",
+    "previewFailed": "Could not validate the file",
+    "importFailed": "Import failed",
+    "couldNotLoadBatch": "Could not load that batch",
+    "recentBatches": "Recent imports",
+    "rowsCount": "{{count}} rows",
+    "batchIdPlaceholder": "Resume by batch ID…",
+    "loadBatch": "Load",
+    "person": "Person",
+    "role": "Role",
+    "enrollment": "Programme · Cohort · Organization",
+    "statusHeader": "Status",
+    "email": "Email",
+    "note": "Note",
+    "back": "Back",
+    "close": "Close",
+    "previewFooter": "Nothing has been created yet. {{count}} row(s) will be processed when you confirm; rows with problems are skipped.",
+    "confirm": "Confirm import ({{count}})",
+    "retryFailed": "Retry {{count}} failed",
+    "resume": "Resume {{count}} rows",
+    "batchId": "Batch ID (resume later):",
+    "batchSummary": "{{total}} rows, {{pending}} pending or failed",
+    "status": {
+      "valid": "Ready",
+      "existing_user": "Existing account",
+      "missing_name": "Missing name",
+      "bad_email": "Invalid email",
+      "invalid_role": "Invalid role",
+      "duplicate_in_file": "Duplicate in file",
+      "unknown_programme": "Unknown programme",
+      "unknown_cohort": "Unknown cohort",
+      "ambiguous_cohort": "Ambiguous cohort",
+      "unknown_organization": "Unknown organization",
+      "programme_cohort_mismatch": "Programme / cohort mismatch",
+      "cohort_required": "Cohort required",
+      "cohort_closed": "Cohort ended",
+      "cohort_undated": "Cohort has no dates",
+      "organization_required": "Organization required",
+      "organization_has_sponsor": "Organization already has a sponsor",
+      "sponsor_not_enrollable": "Sponsors are not enrolled",
+      "coach_not_found": "Coach not found",
+      "organization_mismatch": "Organization differs from cohort"
+    },
+    "result": {
+      "invited": "Created · setup email sent",
+      "enrolled": "Enrollment added",
+      "linked": "Sponsor access added",
+      "partial": "Created with issues",
+      "skipped": "Skipped",
+      "failed": "Failed",
+      "pending": "Pending"
+    }
   }
 }

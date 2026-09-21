@@ -13,16 +13,6 @@ export const STATUS_TONE: Record<Status, "muted" | "success" | "warning" | "dest
   reach_limit: "warning",
 };
 
-export function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
-  if (!startDate || !durationMonths) return null;
-  const start = new Date(startDate).getTime();
-  const end = start + durationMonths * 30.4375 * 24 * 3600 * 1000;
-  const now = Date.now();
-  if (now <= start) return 0;
-  if (now >= end) return 100;
-  return Math.round(((now - start) / (end - start)) * 100);
-}
-
 export interface Row {
   id: string;
   full_name: string;
@@ -41,6 +31,8 @@ export interface Row {
   organization_name: string | null;
   enrollment_id: string | null;
   enrollment_start_date: string | null;
+  /** canonicalCompletionPct of the selected enrollment; null when canonical progress is unavailable. */
+  completion_pct: number | null;
   selected_coaches: { id: string; name: string }[];
   session_limit: number;
   limit_row_id: string | null;

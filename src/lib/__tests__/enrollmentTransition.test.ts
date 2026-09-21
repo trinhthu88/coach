@@ -41,3 +41,29 @@ describe("requestAdminEnrollment", () => {
     }));
   });
 });
+
+describe("transitionAdminEnrollment", () => {
+  it("calls the single admin transition RPC with the cohort as the source of the programme", async () => {
+    const { transitionAdminEnrollment } = await import("../enrollmentTransition");
+    const rpc = vi.fn().mockResolvedValue({
+      data: { action: "transitioned", enrollment_id: "new", closed_enrollment_id: "old" },
+      error: null,
+    });
+    const result = await transitionAdminEnrollment({ userId: "learner-1", cohortId: "cohort-b" }, { rpc });
+    expect(rpc).toHaveBeenCalledWith("admin_transition_enrollment", {
+      p_user_id: "learner-1",
+      p_programme_id: null,
+      p_cohort_id: "cohort-b",
+      p_organization_id: null,
+    });
+    expect(result).toEqual({ action: "transitioned", enrollment_id: "new", closed_enrollment_id: "old" });
+  });
+
+  it("surfaces RPC errors", async () => {
+    const { transitionAdminEnrollment } = await import("../enrollmentTransition");
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "The selected cohort does not belong to the selected programme" } });
+    await expect(transitionAdminEnrollment({ userId: "u", cohortId: "c", programmeId: "p" }, { rpc })).rejects.toMatchObject({
+      message: "The selected cohort does not belong to the selected programme",
+    });
+  });
+});

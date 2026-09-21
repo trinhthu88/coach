@@ -23,6 +23,9 @@ import { addDays, format, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { computeStartOptions } from "./bookingSlots";
+import { BookingGoalGate } from "@/components/goals/BookingGoalGate";
+import { useBookingGoalGate } from "@/components/goals/useBookingGoalGate";
+import { isGoalRequiredReason } from "@/lib/goalGate";
 
 /**
  * A Mentor is a Coach with a cohort Mentoring assignment, so their details
@@ -194,7 +197,12 @@ export default function MentoringBookSession() {
 
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
 
-  const canSubmit = !!enrollmentId && !!selectedDate && !!selectedStart && topic.trim().length > 0 && eligible !== false;
+  // Booking goal gate (server rule). The pre-check also reports it as the
+  // reason 'goal_required_before_booking'; either way the same notice shows.
+  const { blocked: goalGateBlocked } = useBookingGoalGate(enrollmentId);
+  const goalGateApplies = goalGateBlocked || isGoalRequiredReason(ineligibleReason);
+  const canSubmit =
+    !!enrollmentId && !goalGateApplies && !!selectedDate && !!selectedStart && topic.trim().length > 0 && eligible !== false;
 
   const handleBook = async () => {
     if (!user || !mentor || !selectedDate || !selectedStart || !topic.trim() || !enrollmentId) return;
@@ -320,7 +328,10 @@ export default function MentoringBookSession() {
             )}
           </div>
 
-          {eligible === false && (
+          {goalGateApplies && (
+            <BookingGoalGate enrollmentId={enrollmentId} />
+          )}
+          {eligible === false && !isGoalRequiredReason(ineligibleReason) && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
               {ineligibleReason === "received_limit_reached" || ineligibleReason === "given_limit_reached"

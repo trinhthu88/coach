@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { ProgrammeProgressCard } from "@/components/ProgrammeProgressCard";
 import { CoachingGiveCard } from "./dashboard/cards/CoachingGiveCard";
 import { CoachingReceiveCard } from "./dashboard/cards/CoachingReceiveCard";
@@ -29,14 +28,8 @@ export default function Dashboard() {
     return <Navigate to="/sponsor" replace />;
   }
 
-  // Authenticated but no role assigned yet — shouldn't linger here normally
-  if (!role) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // ProtectedRoute already shows the "no role assigned" screen; never spin here.
+  if (!role) return null;
 
   // The Coachee Dashboard follows the approved Coachee UX/UI prototype
   // (Programme Hero, Next up, Programme progress, Programme Journey preview,

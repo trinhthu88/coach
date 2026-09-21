@@ -216,7 +216,8 @@
       "importing": "Đang nhập…",
       "clickToUpload": "Nhấp để tải lên .xlsx / .csv",
       "close": "Đóng"
-    }
+    },
+    "addLearner": "Thêm học viên"
   },
   "coacheeProfileSheet": {
     "readOnly": "chỉ đọc",
@@ -294,10 +295,14 @@
       "saveFailed": "Lưu không thành công",
       "loginLinkEmailed": "Đã gửi email liên kết đăng nhập",
       "emailFailedToSend": "Gửi email không thành công",
-      "resendLinkError": "Không thể gửi lại liên kết đăng nhập"
+      "resendLinkError": "Không thể gửi lại liên kết đăng nhập",
+      "cohortRequired": "Hãy chọn cohort — chương trình và tổ chức thuộc về ghi danh theo cohort.",
+      "enrollmentTransitioned": "Đã đóng ghi danh cũ và tạo ghi danh mới"
     },
     "done": "Xong",
-    "coachAssignmentMovedToCohort": "Coaching của chương trình nay được phân công theo nhóm. Quản lý danh sách Coach tại Quản trị → Nhóm → Coaching."
+    "coachAssignmentMovedToCohort": "Coaching của chương trình nay được phân công theo nhóm. Quản lý danh sách Coach tại Quản trị → Nhóm → Coaching.",
+    "programmeFromCohortHint": "Không bắt buộc. Được đặt theo cohort; dùng làm giới hạn session mặc định bên dưới.",
+    "enrollmentTransitionHint": "Khi lưu, ghi danh hiện tại sẽ được đóng (vẫn lưu trong lịch sử) và ghi danh mới trong cohort này được tạo."
   },
   "organizations": {
     "sections": {
@@ -337,15 +342,12 @@
     "emailNameRequired": "Cần có email và tên",
     "sponsorAccountCreated": "Đã tạo tài khoản nhà tài trợ",
     "couldNotInviteSponsor": "Không thể mời nhà tài trợ",
-    "tempPasswordReset": "Đã đặt lại mật khẩu tạm thời",
-    "couldNotResetPassword": "Không thể đặt lại mật khẩu",
     "title": "Tổ chức",
     "titleEmphasis": "& nhà tài trợ",
     "subtitle": "Các doanh nghiệp khách hàng tài trợ cho lãnh đạo tham gia chương trình và thông tin liên hệ của đại diện đơn vị tài trợ.",
     "newOrganization": "Tổ chức mới",
     "enrolledLeaders_other": "{{count}} lãnh đạo đã ghi danh",
     "sponsor": "Nhà tài trợ",
-    "resetPassword": "Đặt lại mật khẩu",
     "noSponsorYet": "Chưa có nhà tài trợ được chỉ định.",
     "inviteSponsor": "Mời nhà tài trợ",
     "edit": "Sửa",
@@ -358,18 +360,18 @@
     "cancel": "Hủy",
     "save": "Lưu",
     "inviteSponsorFor": "Mời nhà tài trợ cho {{name}}",
-    "inviteSponsorHint": "Tạo tài khoản của họ và hiển thị mật khẩu tạm thời một lần để chia sẻ riêng tư.",
+    "inviteSponsorHint": "Tạo tài khoản sponsor và gửi email chứa liên kết an toàn để họ đặt mật khẩu.",
     "fullNameLabel": "Họ và tên",
     "emailLabel": "Email",
     "titleLabelOptional": "Chức danh (không bắt buộc)",
     "departmentLabelOptional": "Phòng ban (không bắt buộc)",
     "createSponsorAccount": "Tạo tài khoản nhà tài trợ",
-    "accountReadyFor": "Tài khoản đã sẵn sàng cho {{name}}",
-    "shareCredentialsHint": "Chia sẻ thông tin đăng nhập này một cách riêng tư. Mật khẩu tạm thời chỉ hiển thị một lần và không được lưu trữ ở bất kỳ đâu.",
     "email": "Email",
-    "tempPassword": "Mật khẩu tạm thời",
     "done": "Xong",
-    "copied": "Đã sao chép"
+    "copied": "Đã sao chép",
+    "resendSetupLink": "Gửi lại liên kết thiết lập",
+    "setupLinkSent": "Đã gửi liên kết thiết lập tới {{email}}",
+    "couldNotSendSetupLink": "Không thể gửi liên kết thiết lập"
   },
   "programmes": {
     "nameRequired": "Cần có tên",
@@ -743,7 +745,10 @@
       "programme": "Chương trình",
       "sheetName": "Coach"
     },
-    "edit": "Sửa"
+    "edit": "Sửa",
+    "addCoach": "Thêm coach",
+    "importExcel": "Nhập",
+    "cohortRequired": "Hãy chọn cohort — chương trình được lấy theo cohort."
   },
   "registrations": {
     "eyebrow": "Quản trị",
@@ -1022,5 +1027,189 @@
     "overdue": "Quá hạn",
     "priorPartners": "· từng cùng nhóm với {{names}}",
     "repeatedPartnersWarning": "Đã từng cùng nhóm ở Triad khác: {{pairs}}"
+  },
+  "userDetail": {
+    "eyebrow": "Admin · Chi tiết người dùng",
+    "back": "Quay lại danh sách coachee",
+    "loadError": "Không thể tải người dùng này.",
+    "unknownUser": "Người dùng không xác định",
+    "enrollmentCount_one": "{{count}} lượt ghi danh",
+    "enrollmentCount_other": "{{count}} lượt ghi danh",
+    "noEnrollments": "Người dùng này chưa có lượt ghi danh chương trình nào.",
+    "noEndDate": "không có ngày kết thúc",
+    "completion": "Hoàn thành {{value}}",
+    "detailError": "Không thể tải chi tiết của lượt ghi danh này.",
+    "storedStatus": "(đã lưu: {{status}})",
+    "status": {
+      "active": "Đang hoạt động",
+      "completed": "Đã hoàn thành",
+      "paused": "Tạm dừng",
+      "at_risk": "Có rủi ro"
+    },
+    "sections": {
+      "enrollment": "Ghi danh",
+      "modules": "Học phần",
+      "sessions": "Session",
+      "goals": "Mục tiêu & lịch sử đánh giá",
+      "actions": "Hành động",
+      "reflections": "Suy ngẫm",
+      "feedback": "Phản hồi",
+      "satisfaction": "Mức độ hài lòng"
+    },
+    "fields": {
+      "programme": "Chương trình",
+      "cohort": "Nhóm",
+      "organization": "Tổ chức",
+      "status": "Trạng thái",
+      "start": "Ngày bắt đầu",
+      "end": "Ngày kết thúc"
+    },
+    "moduleHeaders": {
+      "module": "Học phần",
+      "required": "Bắt buộc",
+      "completed": "Đã hoàn thành",
+      "due": "Đến hạn",
+      "booked": "Đã đặt",
+      "overdue": "Quá hạn"
+    },
+    "sessionTypes": {
+      "coaching": "Coaching",
+      "peer_coaching": "Peer coaching",
+      "mentoring": "Mentoring",
+      "triad": "Triad"
+    },
+    "sessionStatus": {
+      "pending": "Đang chờ",
+      "confirmed": "Đã xác nhận",
+      "completed": "Đã hoàn thành",
+      "cancelled": "Đã hủy",
+      "no_show": "Vắng mặt",
+      "declined": "Đã từ chối",
+      "rescheduled": "Đã dời lịch"
+    },
+    "triadN": "Triad {{n}}",
+    "countsTowardProgramme": "Được tính vào chương trình",
+    "goalRating": "Ban đầu {{start}} · hiện tại {{current}} · mục tiêu {{target}}",
+    "goalNotRated": "Chưa đánh giá",
+    "actionSummary": "{{open}} đang mở · {{completed}} đã hoàn thành · tổng {{total}}",
+    "actionStatus": {
+      "open": "Đang mở",
+      "in_progress": "Đang thực hiện",
+      "completed": "Đã hoàn thành",
+      "cancelled": "Đã hủy"
+    },
+    "dueOn": "Hạn {{date}}",
+    "satisfactionValue_one": "Trung bình {{value}} / 5 từ {{count}} session được đánh giá",
+    "satisfactionValue_other": "Trung bình {{value}} / 5 từ {{count}} session được đánh giá",
+    "empty": {
+      "modules": "Lượt ghi danh này không có học phần bắt buộc.",
+      "sessions": "Chưa có session nào trong lượt ghi danh này.",
+      "goals": "Chưa có mục tiêu cho lượt ghi danh này.",
+      "actions": "Chưa có hành động cho lượt ghi danh này.",
+      "reflections": "Chưa có suy ngẫm được chia sẻ cho lượt ghi danh này.",
+      "feedback": "Chưa có phản hồi cho lượt ghi danh này.",
+      "satisfaction": "Chưa có đánh giá session nào."
+    }
+  },
+  "addPerson": {
+    "title": "Thêm người dùng",
+    "titleSponsor": "Thêm sponsor",
+    "description": "Tạo tài khoản đang hoạt động (không cần duyệt) và gửi email chứa liên kết để đặt mật khẩu. Không bao giờ hiển thị mật khẩu tại đây.",
+    "fullName": "Họ tên",
+    "email": "Email",
+    "role": "Vai trò",
+    "roles": {
+      "coachee": "Học viên",
+      "coach": "Coach",
+      "sponsor": "Sponsor"
+    },
+    "programme": "Chương trình (không bắt buộc)",
+    "cohort": "Cohort (không bắt buộc)",
+    "organization": "Tổ chức",
+    "none": "— Không —",
+    "cohortOrganization": "Tổ chức của cohort ({{name}})",
+    "enrollmentHint": "Chương trình, cohort và tổ chức tạo thành ghi danh. Chương trình lấy theo cohort; tổ chức mặc định là tổ chức của cohort. Để trống nếu chỉ tạo tài khoản mà không ghi danh.",
+    "jobTitle": "Chức danh",
+    "department": "Phòng ban",
+    "setupEmailHint": "Người dùng sẽ nhận email thiết lập với liên kết an toàn tới /set-new-password.",
+    "existingEnrollOffer": "Đã có tài khoản với email này. Sẽ không tạo tài khoản mới — bạn có thể thêm ghi danh này vào tài khoản hiện có.",
+    "existingSponsorOffer": "Đã có tài khoản với email này. Sẽ không tạo tài khoản mới — bạn có thể cấp quyền sponsor cho tổ chức này.",
+    "addEnrollmentOnly": "Chỉ thêm ghi danh",
+    "addSponsorAccess": "Cấp quyền sponsor",
+    "submit": "Tạo & gửi email thiết lập",
+    "cancel": "Hủy",
+    "nameEmailRequired": "Cần nhập họ tên và email",
+    "organizationRequired": "Sponsor phải thuộc một tổ chức",
+    "nothingToAdd": "Đã có tài khoản với email này — không có gì để thêm",
+    "created": "Đã tạo tài khoản — đã gửi email thiết lập tới {{email}}",
+    "enrolledExisting": "Đã thêm ghi danh cho {{email}}",
+    "sponsorLinked": "Đã cấp quyền sponsor cho {{email}}",
+    "partial": "Đã tạo tài khoản nhưng có lỗi",
+    "failed": "Không thể thêm người dùng này",
+    "moveEnrollment": "Chuyển sang cohort này",
+    "existingTransitionOffer": "Đã có tài khoản với email này và đang có ghi danh ở một cohort khác. Sẽ không tạo tài khoản mới — bạn có thể chuyển người này sang cohort này: ghi danh hiện tại sẽ được đóng và giữ lại trong lịch sử."
+  },
+  "importUsers": {
+    "title": "Nhập danh sách người dùng",
+    "description": "Tải lên tệp CSV hoặc Excel. Bạn sẽ xem trước từng dòng trước khi bất kỳ tài khoản nào được tạo.",
+    "columnsIntro": "Các cột:",
+    "ruleRoles": "Vai trò: learner (học viên / coachee), coach hoặc sponsor.",
+    "ruleCohort": "Chương trình được lấy theo cohort; chương trình không khớp với cohort sẽ bị từ chối. Tổ chức mặc định là tổ chức của cohort.",
+    "ruleSponsor": "Dòng sponsor cần có Tổ chức và không có chương trình hay cohort.",
+    "ruleExisting": "Email đã có tài khoản sẽ không bao giờ tạo tài khoản thứ hai — bạn có thể chỉ thêm ghi danh.",
+    "downloadTemplate": "Tải mẫu",
+    "validating": "Đang kiểm tra các dòng…",
+    "emptyFile": "Không tìm thấy dòng nào trong tệp",
+    "previewFailed": "Không thể kiểm tra tệp",
+    "importFailed": "Nhập thất bại",
+    "couldNotLoadBatch": "Không thể tải lô này",
+    "recentBatches": "Các lần nhập gần đây",
+    "rowsCount": "{{count}} dòng",
+    "batchIdPlaceholder": "Tiếp tục theo mã lô…",
+    "loadBatch": "Tải",
+    "person": "Người dùng",
+    "role": "Vai trò",
+    "enrollment": "Chương trình · Cohort · Tổ chức",
+    "statusHeader": "Trạng thái",
+    "email": "Email",
+    "note": "Ghi chú",
+    "back": "Quay lại",
+    "close": "Đóng",
+    "previewFooter": "Chưa có gì được tạo. {{count}} dòng sẽ được xử lý khi bạn xác nhận; các dòng có lỗi sẽ bị bỏ qua.",
+    "confirm": "Xác nhận nhập ({{count}})",
+    "retryFailed": "Thử lại {{count}} dòng lỗi",
+    "resume": "Tiếp tục {{count}} dòng",
+    "batchId": "Mã lô (để tiếp tục sau):",
+    "batchSummary": "{{total}} dòng, {{pending}} đang chờ hoặc lỗi",
+    "status": {
+      "valid": "Sẵn sàng",
+      "existing_user": "Tài khoản đã tồn tại",
+      "missing_name": "Thiếu họ tên",
+      "bad_email": "Email không hợp lệ",
+      "invalid_role": "Vai trò không hợp lệ",
+      "duplicate_in_file": "Trùng trong tệp",
+      "unknown_programme": "Không tìm thấy chương trình",
+      "unknown_cohort": "Không tìm thấy cohort",
+      "ambiguous_cohort": "Tên cohort bị trùng",
+      "unknown_organization": "Không tìm thấy tổ chức",
+      "programme_cohort_mismatch": "Chương trình và cohort không khớp",
+      "cohort_required": "Cần chọn cohort",
+      "cohort_closed": "Cohort đã kết thúc",
+      "cohort_undated": "Cohort chưa có ngày",
+      "organization_required": "Cần chọn tổ chức",
+      "organization_has_sponsor": "Tổ chức đã có sponsor",
+      "sponsor_not_enrollable": "Sponsor không được ghi danh",
+      "coach_not_found": "Không tìm thấy coach",
+      "organization_mismatch": "Tổ chức khác với cohort"
+    },
+    "result": {
+      "invited": "Đã tạo · đã gửi email thiết lập",
+      "enrolled": "Đã thêm ghi danh",
+      "linked": "Đã thêm quyền sponsor",
+      "partial": "Đã tạo nhưng có lỗi",
+      "skipped": "Bỏ qua",
+      "failed": "Thất bại",
+      "pending": "Đang chờ"
+    }
   }
 }

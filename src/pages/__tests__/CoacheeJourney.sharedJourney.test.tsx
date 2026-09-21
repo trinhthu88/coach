@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   reflections: [] as unknown[],
   reflectionsError: null as string | null,
   reflectionFeedCalls: [] as Array<string | undefined>,
+  sessions: [] as unknown[],
 }));
 
 vi.mock("@/context/AuthContext", () => ({
@@ -47,6 +48,13 @@ vi.mock("@/hooks/journey/useJourneySessions", () => ({
 }));
 vi.mock("@/hooks/journey/useJourneyReflections", () => ({
   useJourneyReflections: () => ({ reflections: [], loading: false, addReflection: vi.fn(), deleteReflection: vi.fn() }),
+}));
+vi.mock("@/hooks/journey/useEnrollmentSessions", () => ({
+  useEnrollmentSessions: () => ({ sessions: [], loading: false, error: null }),
+}));
+// Outstanding post-session work: the canonical learner_session_deliverables rows.
+vi.mock("@/hooks/sessions/usePostSessionDeliverables", () => ({
+  useLearnerSessionDeliverables: () => ({ deliverables: state.sessions, loading: false, error: null }),
 }));
 vi.mock("@/hooks/journey/useEnrollmentDevelopmentJourney", () => ({
   useEnrollmentDevelopmentJourney: () => ({ events: [], loading: false, error: null, partialFailure: false }),
@@ -95,6 +103,7 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     state.reflections = [];
     state.reflectionsError = null;
     state.reflectionFeedCalls = [];
+    state.sessions = [];
   });
 
   it("renders the shared full journey from the canonical learner source for the selected enrollment", () => {
@@ -184,6 +193,25 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     expect(items[0]).toHaveTextContent("only you can see this");
     // Only explicit journey reflections are deletable from here.
     expect(within(list).getAllByRole("button", { name: "Delete reflection" })).toHaveLength(1);
+  });
+
+  it("lists completed sessions with outstanding deliverables from the canonical rows, linked to where they are completed", () => {
+    const base = {
+      participantRole: null, counterpartNames: [], requirementUnitNumber: null,
+      hasGoalCheckin: true, goalCheckinRequired: true, hasAction: true, hasSatisfaction: true, satisfactionRating: 4,
+    };
+    state.sessions = [
+      { ...base, module: "mentoring", sourceTable: "mentoring_sessions", sessionId: "m-1", title: "Delegation", startTime: "2026-05-02T09:00:00Z",
+        hasReflection: false, hasSatisfaction: false, satisfactionRating: null, deliverablesComplete: false },
+      { ...base, module: "coaching", sourceTable: "sessions", sessionId: "c-1", title: "All done", startTime: "2026-04-02T09:00:00Z",
+        hasReflection: true, deliverablesComplete: true },
+    ];
+    renderPage();
+    const pending = screen.getByTestId("pending-reflections");
+    expect(pending).toHaveTextContent(/1 session with follow-up to complete/i);
+    const link = within(pending).getByRole("link", { name: /Mentoring session · Delegation/ });
+    expect(link).toHaveAttribute("href", "/mentoring/sessions/m-1");
+    expect(within(link).getByTestId("pending-deliverable-items")).toHaveTextContent("Reflection · Rating");
   });
 
   it("shows a reflection load failure as an error, not as an empty reflection list", () => {

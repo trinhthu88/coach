@@ -15,20 +15,16 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
-  Loader2, Search, FileDown, Eye, Star, Users, Pencil, Save,
+  Loader2, Search, FileDown, FileUp, Eye, Star, Users, Pencil, Save, UserPlus,
 } from "lucide-react";
+import { AddPersonDialog } from "@/components/admin/AddPersonDialog";
+import { AdminImportDialog } from "@/components/admin/AdminImportDialog";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
+import { transitionAdminEnrollment } from "@/lib/enrollmentTransition";
+import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
-function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
-  if (!startDate || !durationMonths) return null;
-  const start = new Date(startDate).getTime();
-  const end = start + durationMonths * 30.4375 * 24 * 3600 * 1000;
-  const now = Date.now();
-  if (now <= start) return 0;
-  if (now >= end) return 100;
-  return Math.round(((now - start) / (end - start)) * 100);
-}
 import { format } from "date-fns";
 import { AdminPageHeader, Kpi, Pill, Avatar, TablePager } from "./_shared";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -78,6 +74,7 @@ interface CoachRow {
   programme_name: string | null;
   programme_duration_months: number | null;
   enrollment_start_date: string | null;
+  completion_pct: number | null;
   enrollment_id: string | null;
 }
 
@@ -86,12 +83,14 @@ export default function AdminCoaches() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<CoachRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
-  const [cohorts, setCohorts] = useState<{ id: string; name: string; organization_id?: string | null }[]>([]);
+  const [cohorts, setCohorts] = useState<{ id: string; name: string; organization_id?: string | null; programme_id?: string | null }[]>([]);
   const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; peer_session_limit: number; peer_given_limit: number; duration_months: number }[]>([]);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<CoachRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
@@ -114,7 +113,7 @@ export default function AdminCoaches() {
       supabase.from("sessions").select("coach_id, coachee_id, enrollment_id, status"),
       supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, enrollment_id, status"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
-      supabase.from("cohorts").select("id, name, organization_id"),
+      supabase.from("cohorts").select("id, name, organization_id, programme_id"),
       supabase.from("programmes").select("id, name, coachee_session_limit, peer_session_limit, peer_given_limit, duration_months"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, start_date, status, programmes(name)").in("status", ["active", "at_risk", "paused"]),
       supabase.from("programme_modules").select("programme_id, module, enabled, config"),
@@ -188,6 +187,12 @@ export default function AdminCoaches() {
     }
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const progById = new Map((progsData || []).map((p) => [p.id, p]));
+    // Coach-as-learner "% complete" is the canonical engine's number for the
+    // enrollment, identical to what that coach sees as a learner.
+    const canonical = await fetchAdminCanonicalProgress([...enrollByUser.values()].map((e) => e.id)).catch(() => []);
+    const progressByEnrollment = new Map(
+      canonical.map((c) => [c.enrollment_id, c.progress_available ? canonicalCompletionPct(c.full_completion_pct) : null]),
+    );
 
     const out: CoachRow[] = coachIds.map(id => {
       const p = profileById.get(id);
@@ -226,6 +231,7 @@ export default function AdminCoaches() {
         programme_duration_months: prog?.duration_months ?? null,
         enrollment_start_date: enr?.start_date || null,
         enrollment_id: enr?.id ?? null,
+        completion_pct: enr ? progressByEnrollment.get(enr.id) ?? null : null,
       } as CoachRow;
     }).filter(Boolean) as CoachRow[];
 
@@ -281,32 +287,34 @@ export default function AdminCoaches() {
 
   const saveEdit = async () => {
     if (!editing) return;
-    if (!editing.programme_id) {
-      toast.error(t("coaches.programmeRequired"));
+    const original = rows.find(r => r.id === editing.id);
+    const enrollmentChanged =
+      editing.programme_id !== (original?.programme_id ?? null) ||
+      editing.cohort_id !== (original?.cohort_id ?? null);
+    // An enrollment is cohort-scoped; the cohort owns the programme.
+    if (enrollmentChanged && !editing.cohort_id) {
+      toast.error(t("coaches.cohortRequired"));
       return;
     }
     setSaving(true);
     try {
-      const original = rows.find(r => r.id === editing.id);
-      const enrollmentChanged = !editing.enrollment_id ||
-        editing.programme_id !== original?.programme_id ||
-        editing.cohort_id !== original?.cohort_id;
-      const organizationId = cohorts.find((cohort) => cohort.id === editing.cohort_id)?.organization_id;
-      if (enrollmentChanged && (!editing.cohort_id || !organizationId)) {
-        throw new Error("A cohort with an organization is required for enrollment.");
-      }
-
+      // Profile/config only — the enrollment changes through the one
+      // transition path below (closes the ongoing enrollment, keeps history).
       const { error: updateError } = await supabase.rpc("admin_update_coach_configuration", {
         p_coach_id: editing.id,
         p_full_name: editing.full_name,
         p_profile_status: editing.status,
         p_selectable_coach_ids: editing.assigned_coaches.map((coach) => coach.id),
-        p_enrollment_id: enrollmentChanged ? null : editing.enrollment_id,
-        p_programme_id: enrollmentChanged ? editing.programme_id : null,
-        p_cohort_id: enrollmentChanged ? editing.cohort_id : null,
-        p_organization_id: enrollmentChanged ? organizationId : null,
+        p_enrollment_id: editing.enrollment_id ?? undefined,
       });
       if (updateError) throw updateError;
+      if (enrollmentChanged && editing.cohort_id) {
+        await transitionAdminEnrollment({
+          userId: editing.id,
+          programmeId: editing.programme_id,
+          cohortId: editing.cohort_id,
+        });
+      }
 
       toast.success(t("coaches.coachUpdated"));
       setEditing(null);
@@ -335,9 +343,13 @@ export default function AdminCoaches() {
         trailing=""
         subtitle={t("coaches.subtitle", { count: rows.length })}
         right={
-          <Button variant="outline" size="sm" onClick={exportXlsx}>
-            <FileDown className="h-4 w-4" /> {t("coaches.exportExcel")}
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setAddOpen(true)}><UserPlus className="h-4 w-4" /> {t("coaches.addCoach")}</Button>
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}><FileUp className="h-4 w-4" /> {t("coaches.importExcel")}</Button>
+            <Button variant="outline" size="sm" onClick={exportXlsx}>
+              <FileDown className="h-4 w-4" /> {t("coaches.exportExcel")}
+            </Button>
+          </div>
         }
       />
 
@@ -418,7 +430,7 @@ export default function AdminCoaches() {
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {(() => {
-                      const pct = programmeCompletionPct(r.enrollment_start_date, r.programme_duration_months);
+                      const pct = r.completion_pct;
                       if (pct === null) return <span className="italic text-muted-foreground">—</span>;
                       return (
                         <div className="flex items-center gap-2">
@@ -478,16 +490,18 @@ export default function AdminCoaches() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <Label>{t("coaches.programme")} <span className="text-destructive">*</span></Label>
+                  <Label>{t("coaches.programme")}</Label>
                   <Select
                     value={editing.programme_id || ""}
                     onValueChange={(v) => {
                       const prog = programmes.find((p) => p.id === v);
+                      const cohortStillFits = cohorts.find((c) => c.id === editing.cohort_id)?.programme_id === v;
                       setEditing({
                         ...editing,
                         programme_id: v,
                         programme_name: prog?.name || null,
                         programme_duration_months: prog?.duration_months ?? null,
+                        cohort_id: cohortStillFits ? editing.cohort_id : null,
                       });
                     }}
                   >
@@ -500,11 +514,23 @@ export default function AdminCoaches() {
                 </div>
                 <div>
                   <Label>{t("coaches.cohort")}</Label>
-                  <Select value={editing.cohort_id || "none"} onValueChange={(v) => setEditing({ ...editing, cohort_id: v === "none" ? null : v })}>
+                  <Select
+                    value={editing.cohort_id || "none"}
+                    onValueChange={(v) => {
+                      // The cohort owns the programme.
+                      const cohort = v === "none" ? null : cohorts.find((c) => c.id === v) ?? null;
+                      const prog = cohort?.programme_id ? programmes.find((p) => p.id === cohort.programme_id) : null;
+                      setEditing({
+                        ...editing,
+                        cohort_id: cohort?.id ?? null,
+                        ...(prog ? { programme_id: prog.id, programme_name: prog.name, programme_duration_months: prog.duration_months } : {}),
+                      });
+                    }}
+                  >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">{t("coaches.noneOption")}</SelectItem>
-                      {cohorts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {cohorts.filter(c => !editing.programme_id || !c.programme_id || c.programme_id === editing.programme_id).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -535,7 +561,7 @@ export default function AdminCoaches() {
               </div>
 
               {(() => {
-                const pct = programmeCompletionPct(editing.enrollment_start_date, editing.programme_duration_months);
+                const pct = editing.completion_pct;
                 if (pct === null) return null;
                 return (
                   <div className="rounded-lg border bg-muted/20 p-3">
@@ -585,6 +611,9 @@ export default function AdminCoaches() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <AddPersonDialog open={addOpen} onOpenChange={setAddOpen} roles={["coach", "coachee", "sponsor"]} defaultRole="coach" onCreated={load} />
+      <AdminImportDialog open={importOpen} onOpenChange={setImportOpen} defaultRole="coach" onDone={load} />
     </div>
   );
 }

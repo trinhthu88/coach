@@ -39,6 +39,11 @@ values
    'b1000000-0000-4000-8000-000000000001',
    'b1000000-0000-4000-8000-000000000012',current_date - 30,'active');
 
+-- Booking goal gate (20260925400000): the active enrollment started 30 days
+-- ago (no cohort), so the learner's booking on it needs an active goal.
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+values ('b1000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000022', 'Booking gate goal');
+
 select set_config('request.jwt.claim.sub','b1000000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 set local role authenticated;

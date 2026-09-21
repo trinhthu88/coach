@@ -4,7 +4,9 @@ export type EnrollmentActionSource =
   | "coaching"
   | "mentoring"
   | "peer_coaching"
-  | "coachee_peer_coaching";
+  | "coachee_peer_coaching"
+  /** Triad follow-ups (20260925500000). Spelling per session_deliverable_source_types(). */
+  | "triad";
 
 export interface EnrollmentActionItem {
   id?: string;

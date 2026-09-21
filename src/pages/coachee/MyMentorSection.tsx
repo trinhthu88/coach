@@ -14,6 +14,7 @@ import {
   ModulePersonCard,
   ModuleSessionList,
 } from "@/components/programme/module/ModulePage";
+import { ModuleWorkspaceSections } from "@/components/programme/module/ModuleWorkspaceSections";
 
 /**
  * Mentoring workspace (Coachee prototype → Mentoring): My mentor,
@@ -82,6 +83,9 @@ export function MyMentorSection({ fallbackMentorName = null }: { fallbackMentorN
         </ModuleCard>
       </div>
 
+      {/* Mentor availability and booking follow in the mentor list below. */}
+      <ModuleWorkspaceSections ws={ws} module="mentoring" />
+
       <ModuleFeedbackQuote
         eyebrow={t("learnerModules.mentoring.feedbackTitle")}
         quote={latestFeedback ? feedbackText(latestFeedback) : null}
@@ -91,6 +95,7 @@ export function MyMentorSection({ fallbackMentorName = null }: { fallbackMentorN
 
       <ModuleSessionList
         testId="mentoring-sessions"
+        outstandingBySession={ws.outstandingBySession}
         label={t("learnerModules.mentoring.sessionsLabel")}
         sessions={ordered}
         loading={ws.sessionsLoading}

@@ -31,8 +31,11 @@ export function ClientDetailDialog({
   onChanged,
   onRemoved,
   removeClient,
+  completionPct,
 }: {
   coacheeId: string;
+  /** Canonical programme completion (see useCoachClients) — null when unavailable. */
+  completionPct: number | null;
   coachId: string;
   onClose: () => void;
   onChanged: () => void;
@@ -56,7 +59,6 @@ export function ClientDetailDialog({
     completed,
     upcoming,
     past,
-    overallPct,
     labelFor,
   } = useClientDetail(coacheeId, coachId, onChanged);
 
@@ -139,7 +141,7 @@ export function ClientDetailDialog({
             )}
           </div>
           <div className="hidden grid-cols-3 gap-2 md:grid">
-            <MiniMetric label={t("clients.detail.miniMetrics.overall")} value={`${overallPct}%`} />
+            <MiniMetric label={t("clients.detail.miniMetrics.overall")} value={completionPct == null ? "—" : `${completionPct}%`} />
             <MiniMetric label={t("clients.detail.miniMetrics.overdue")} value={String(overdue.length)} tone={overdue.length ? "danger" : undefined} />
             <MiniMetric label={t("clients.detail.miniMetrics.next")} value={upcoming[0] ? format(new Date(upcoming[upcoming.length - 1].start_time), "MMM d") : "—"} />
           </div>

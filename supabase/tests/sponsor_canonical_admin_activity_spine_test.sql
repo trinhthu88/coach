@@ -166,9 +166,9 @@ select is(
    from public.sponsor_canonical_organisation_progress('2026-07-05'::date)),
   (select count(*)::integer
    from public.programme_enrollments e
-   join public.cohorts c on c.id = e.cohort_id
-   where c.organization_id = '11111111-1111-4111-8111-111111111111'::uuid),
-  'organisation population includes all sponsor-visible cohort enrollments'
+   where e.organization_id = '11111111-1111-4111-8111-111111111111'::uuid
+     and e.cohort_id is not null),
+  'organisation population is every enrollment of the sponsor''s organisation (enrollment organisation, not cohort organisation)'
 );
 set local role authenticated;
 
@@ -336,44 +336,41 @@ select is(
   'Sponsor journey checkpoints remain anchored to the Cohort deadlines, not the enrollment'
 );
 
--- An empty cohort is suppressed: population is not exposed as a detail
--- denominator, while the organisation population remains countable.
+-- A cohort with no enrollment of the sponsor's organisation is not listed,
+-- even when the cohort row names the sponsor's organisation: the cohort
+-- organisation is never a visibility boundary
+-- (20260925100000_sponsor_visibility_by_enrollment_org).
 reset role;
 insert into public.cohorts (
   id, name, programme_id, organization_id, start_date, end_date
 )
 values (
   'cd000000-0000-0000-0000-000000000001'::uuid,
-  'Canonical suppression fixture',
+  'Canonical empty cohort fixture',
   '11111111-1111-4111-8111-111111111112'::uuid,
   '11111111-1111-4111-8111-111111111111'::uuid,
   '2026-09-01'::date,
   '2026-12-01'::date
 );
 set local role authenticated;
-select is(
-  (select suppressed
-   from public.sponsor_canonical_cohort_progress(
-     'cd000000-0000-0000-0000-000000000001'::uuid,
-     '2026-09-16'::date)),
-  true,
-  'below-threshold cohorts remain suppressed'
+select is_empty(
+  $$select * from public.sponsor_canonical_cohort_progress(
+     'cd000000-0000-0000-0000-000000000001'::uuid, '2026-09-16'::date)$$,
+  'a cohort without visible enrollments has no sponsor rollup row'
 );
 select is(
-  (select enrollment_count
-   from public.sponsor_canonical_cohort_progress(
-     'cd000000-0000-0000-0000-000000000001'::uuid,
-     '2026-09-16'::date)),
-  NULL::integer,
-  'suppressed cohort enrollment count is null, not zero'
+  (select count(*)::integer
+   from public.sponsor_canonical_cohort_progress(NULL::uuid, '2026-09-16'::date)
+   where cohort_id = 'cd000000-0000-0000-0000-000000000001'::uuid),
+  0,
+  'a cohort without visible enrollments is not listed for the sponsor'
 );
 select is(
-  (select required_units
-   from public.sponsor_canonical_cohort_progress(
-     'cd000000-0000-0000-0000-000000000001'::uuid,
-     '2026-09-16'::date)),
-  NULL::integer,
-  'suppressed cohort progress is null, not zero'
+  (select cohort_count
+   from public.sponsor_canonical_organisation_progress('2026-09-16'::date)),
+  (select count(*)::integer
+   from public.sponsor_canonical_cohort_progress(NULL::uuid, '2026-09-16'::date)),
+  'the organisation cohort count is the listed (visible) cohorts only'
 );
 select is(
   (select count(*)::integer
@@ -381,7 +378,7 @@ select is(
      'cd000000-0000-0000-0000-000000000001'::uuid,
      '2026-09-16'::date)),
   0,
-  'suppressed cohorts expose no enrollment detail rows'
+  'a cohort without visible enrollments exposes no enrollment detail rows'
 );
 
 -- Over-requirement activity. Canonical contract: completed units are capped at

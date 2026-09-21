@@ -12,24 +12,47 @@
     }
   },
   "carousel": {
-    "roleLabel": { "coachee": "Coachee", "coach": "Coach", "sponsor": "Sponsor" },
+    "roleLabel": {
+      "coachee": "Coachee",
+      "coach": "Coach",
+      "sponsor": "Sponsor"
+    },
     "continue": "Continue",
     "takeMeIn": "Take me in →",
     "back": "Back",
     "skipIntro": "Skip intro",
-    "journey": { "session1": "Session 1", "ongoing": "Ongoing" },
+    "journey": {
+      "session1": "Session 1",
+      "ongoing": "Ongoing"
+    },
     "goals": {
       "hardConversations": "Hard conversations",
       "delegateReport": "Delegate the report",
       "protectDeepWork": "Protect deep work"
     },
     "match": {
-      "filtersCoach": ["LEADERSHIP", "TRANSITION", "EN / VN", "ICF PCC"],
-      "filtersCoachee": ["HARD CONV.", "DELEGATION", "VIETNAMESE", "THIS MONTH"],
+      "filtersCoach": [
+        "LEADERSHIP",
+        "TRANSITION",
+        "EN / VN",
+        "ICF PCC"
+      ],
+      "filtersCoachee": [
+        "HARD CONV.",
+        "DELEGATION",
+        "VIETNAMESE",
+        "THIS MONTH"
+      ],
       "matchLabel": "MATCH"
     },
     "calendar": {
-      "days": ["MON", "TUE", "WED", "THU", "FRI"],
+      "days": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI"
+      ],
       "open": "Open",
       "booked": "Booked"
     },
@@ -52,7 +75,11 @@
       "sessionsUsed": "Sessions used",
       "avgGoalGrowth": "Average goal growth"
     },
-    "growth": { "goals": "Goals", "avgGrowth": "Avg growth", "sessions": "Sessions" },
+    "growth": {
+      "goals": "Goals",
+      "avgGrowth": "Avg growth",
+      "sessions": "Sessions"
+    },
     "cohort": {
       "header": "OPS DIRECTORS Q3",
       "onTrack": "On track · 9",
@@ -70,33 +97,86 @@
       "withheld": "withheld"
     },
     "stateLabel": {
-      "step 1": "STEP 1", "step 2": "STEP 2", "live": "LIVE", "locked": "LOCKED",
-      "at risk": "AT RISK", "ok": "OK", "opt in": "OPT IN", "open": "OPEN",
-      "record": "RECORD", "review": "REVIEW", "book": "BOOK", "nudge": "NUDGE"
+      "step 1": "STEP 1",
+      "step 2": "STEP 2",
+      "live": "LIVE",
+      "locked": "LOCKED",
+      "at risk": "AT RISK",
+      "ok": "OK",
+      "opt in": "OPT IN",
+      "open": "OPEN",
+      "record": "RECORD",
+      "review": "REVIEW",
+      "book": "BOOK",
+      "nudge": "NUDGE"
     },
     "practice": {
-      "coachProfile": { "label": "My coach profile", "note": "Specialties, bio, accreditation" },
-      "availability": { "label": "My availability", "note": "Weekly windows and buffers" },
-      "clients": { "label": "My clients", "note": "9 active across 3 programmes" },
-      "sessionsNotes": { "label": "Sessions & notes", "note": "Private to each pair" }
+      "coachProfile": {
+        "label": "My coach profile",
+        "note": "Specialties, bio, accreditation"
+      },
+      "availability": {
+        "label": "My availability",
+        "note": "Weekly windows and buffers"
+      },
+      "clients": {
+        "label": "My clients",
+        "note": "9 active across 3 programmes"
+      },
+      "sessionsNotes": {
+        "label": "Sessions & notes",
+        "note": "Private to each pair"
+      }
     },
     "peer": {
-      "give": { "label": "Peer coaching · give", "note": "You coach another accredited coach" },
-      "receive": { "label": "Peer coaching · receive", "note": "A peer coaches you" },
-      "findCoach": { "label": "Find a coach", "note": "Book a coach for yourself" },
-      "analytics": { "label": "Practice analytics", "note": "Hours, peer sessions, reflections" }
+      "give": {
+        "label": "Peer coaching · give",
+        "note": "You coach another accredited coach"
+      },
+      "receive": {
+        "label": "Peer coaching · receive",
+        "note": "A peer coaches you"
+      },
+      "findCoach": {
+        "label": "Find a coach",
+        "note": "Book a coach for yourself"
+      },
+      "analytics": {
+        "label": "Practice analytics",
+        "note": "Hours, peer sessions, reflections"
+      }
     },
     "clientsSponsor": {
-      "leader07": { "label": "Leader 07", "note": "No session in 5 weeks" },
-      "leader11": { "label": "Leader 11", "note": "Invitation sent 4 June" },
-      "leader04": { "label": "Leader 04", "note": "On track · ratings moving" },
-      "leader02": { "label": "Leader 02", "note": "On track · 3 of 6 sessions" }
+      "leader07": {
+        "label": "Leader 07",
+        "note": "No session in 5 weeks"
+      },
+      "leader11": {
+        "label": "Leader 11",
+        "note": "Invitation sent 4 June"
+      },
+      "leader04": {
+        "label": "Leader 04",
+        "note": "On track · ratings moving"
+      },
+      "leader02": {
+        "label": "Leader 02",
+        "note": "On track · 3 of 6 sessions"
+      }
     },
     "clientsDefault": {
-      "trang": { "note": "No session booked in 5 weeks" },
-      "duc": { "note": "Goal ratings flat since June" },
-      "lan": { "note": "On track · session 2 of 6" },
-      "hanh": { "note": "Final session unscheduled" }
+      "trang": {
+        "note": "No session booked in 5 weeks"
+      },
+      "duc": {
+        "note": "Goal ratings flat since June"
+      },
+      "lan": {
+        "note": "On track · session 2 of 6"
+      },
+      "hanh": {
+        "note": "Final session unscheduled"
+      }
     }
   },
   "coachee": {
@@ -111,9 +191,18 @@
         "title": "Name what you want to change.",
         "body": "Write one to three goals in your own words and rate each 1-10 today. The rating is a starting line, not a judgement, and only you can change it.",
         "bullets": [
-          { "label": "Specific", "text": "'Hold a hard conversation without softening it' beats 'communicate better'." },
-          { "label": "Yours", "text": "Rewrite, split, or drop a goal at any point in the programme." },
-          { "label": "Rated", "text": "Re-rate whenever something shifts — that movement is your progress." }
+          {
+            "label": "Specific",
+            "text": "'Hold a hard conversation without softening it' beats 'communicate better'."
+          },
+          {
+            "label": "Yours",
+            "text": "Rewrite, split, or drop a goal at any point in the programme."
+          },
+          {
+            "label": "Rated",
+            "text": "Re-rate whenever something shifts — that movement is your progress."
+          }
         ]
       },
       "coach": {
@@ -121,9 +210,18 @@
         "title": "Choose your coach.",
         "body": "Your goals filter the accredited network down to the coaches who work on exactly that. Read profiles, book a free 20-minute chemistry call, and decide after you've met.",
         "bullets": [
-          { "label": "Filter", "text": "By focus area, language, and availability this month." },
-          { "label": "Meet first", "text": "Chemistry calls don't count against your session allowance." },
-          { "label": "Switch once", "text": "You can change coach mid-programme without giving a reason." }
+          {
+            "label": "Filter",
+            "text": "By focus area, language, and availability this month."
+          },
+          {
+            "label": "Meet first",
+            "text": "Chemistry calls don't count against your session allowance."
+          },
+          {
+            "label": "Switch once",
+            "text": "You can change coach mid-programme without giving a reason."
+          }
         ]
       },
       "book": {
@@ -136,9 +234,18 @@
         "title": "The session is a closed room.",
         "body": "Notes, recordings, your goal wording, and everything you say belong to you and your coach. Nothing leaves that room unless you send it yourself.",
         "bullets": [
-          { "label": "You control", "text": "What you write, what you share, and who you invite in." },
-          { "label": "Never exposed", "text": "Session notes, recordings, and the wording of your goals." },
-          { "label": "Your coach", "text": "Keeps private prep notes too; only summaries marked shared reach you." }
+          {
+            "label": "You control",
+            "text": "What you write, what you share, and who you invite in."
+          },
+          {
+            "label": "Never exposed",
+            "text": "Session notes, recordings, and the wording of your goals."
+          },
+          {
+            "label": "Your coach",
+            "text": "Keeps private prep notes too; only summaries marked shared reach you."
+          }
         ]
       },
       "progress": {
@@ -177,9 +284,18 @@
         "title": "Complete your coach profile.",
         "body": "Your specialties, experience, and languages are what the matching runs on. A thin profile simply doesn't surface when a coachee filters by their goal.",
         "bullets": [
-          { "label": "Specialties", "text": "Pick the two or three you genuinely work in, not everything you could." },
-          { "label": "Bio", "text": "One paragraph in your own voice — it appears on every match card." },
-          { "label": "Accreditation", "text": "Credentials are verified once, then shown as a badge on your profile." }
+          {
+            "label": "Specialties",
+            "text": "Pick the two or three you genuinely work in, not everything you could."
+          },
+          {
+            "label": "Bio",
+            "text": "One paragraph in your own voice — it appears on every match card."
+          },
+          {
+            "label": "Accreditation",
+            "text": "Credentials are verified once, then shown as a badge on your profile."
+          }
         ]
       },
       "availability": {
@@ -187,9 +303,18 @@
         "title": "Publish your availability.",
         "body": "Nobody can book you until windows are open. Set recurring weekly blocks in your own timezone; the platform converts them for each coachee and holds buffers between sessions.",
         "bullets": [
-          { "label": "Recurring", "text": "Set once, repeats weekly. Close any individual week when you need to." },
-          { "label": "Buffers", "text": "Add gaps so back-to-back sessions can't be booked." },
-          { "label": "Chemistry calls", "text": "Reserve a short weekly window for 20-minute intro calls." }
+          {
+            "label": "Recurring",
+            "text": "Set once, repeats weekly. Close any individual week when you need to."
+          },
+          {
+            "label": "Buffers",
+            "text": "Add gaps so back-to-back sessions can't be booked."
+          },
+          {
+            "label": "Chemistry calls",
+            "text": "Reserve a short weekly window for 20-minute intro calls."
+          }
         ]
       },
       "practice": {
@@ -197,9 +322,18 @@
         "title": "Coach, and be coached.",
         "body": "Clariva is also where your own practice grows. Opt in to peer coaching to exchange sessions with other accredited coaches, book a coach for yourself, and keep your practice hours in one record.",
         "bullets": [
-          { "label": "Peer exchange", "text": "Give a session, receive a session. Both count as peer sessions on your dashboard." },
-          { "label": "Your own coach", "text": "Find a coach works exactly as it does for a coachee — you are the coachee there." },
-          { "label": "Practice journey", "text": "Sessions delivered, peer sessions, and reflections build the record behind your accreditation." }
+          {
+            "label": "Peer exchange",
+            "text": "Give a session, receive a session. Both count as peer sessions on your dashboard."
+          },
+          {
+            "label": "Your own coach",
+            "text": "Find a coach works exactly as it does for a coachee — you are the coachee there."
+          },
+          {
+            "label": "Practice journey",
+            "text": "Sessions delivered, peer sessions, and reflections build the record behind your accreditation."
+          }
         ]
       },
       "privacy": {
@@ -207,9 +341,18 @@
         "title": "Your notes stay in the room.",
         "body": "Organisations fund programmes but have no route into sessions. That boundary is enforced by the product, not by policy.",
         "bullets": [
-          { "label": "Organisations see", "text": "That a session happened, its length, and attendance." },
-          { "label": "They never see", "text": "Notes, recordings, or your name against a named individual." },
-          { "label": "Your coachee sees", "text": "Only the summaries you mark as shared. Prep notes stay private." }
+          {
+            "label": "Organisations see",
+            "text": "That a session happened, its length, and attendance."
+          },
+          {
+            "label": "They never see",
+            "text": "Notes, recordings, or your name against a named individual."
+          },
+          {
+            "label": "Your coachee sees",
+            "text": "Only the summaries you mark as shared. Prep notes stay private."
+          }
         ]
       },
       "flags": {
@@ -253,9 +396,18 @@
         "title": "Close out enrolment.",
         "body": "Eleven of twelve leaders have accepted. Open the roster, find who hasn't, and send a reminder — it arrives from the programme, not from a manager.",
         "bullets": [
-          { "label": "Invite", "text": "Add leaders by email; each one picks their own coach." },
-          { "label": "Nudge", "text": "One tap for anyone who hasn't enrolled or hasn't booked." },
-          { "label": "At risk", "text": "Flags appear automatically after five weeks with no session." }
+          {
+            "label": "Invite",
+            "text": "Add leaders by email; each one picks their own coach."
+          },
+          {
+            "label": "Nudge",
+            "text": "One tap for anyone who hasn't enrolled or hasn't booked."
+          },
+          {
+            "label": "At risk",
+            "text": "Flags appear automatically after five weeks with no session."
+          }
         ]
       },
       "withheld": {
@@ -263,9 +415,18 @@
         "title": "What is withheld, and why.",
         "body": "Restrictions appear in the product as visible locked items, so you always know what exists rather than wondering what you're missing.",
         "bullets": [
-          { "label": "You see", "text": "Enrolment, attendance, sessions used, on-track status, goal growth." },
-          { "label": "You never see", "text": "Notes, recordings, goal wording, or an individual's chosen coach." },
-          { "label": "Under five people", "text": "Distributions are suppressed and only the cohort average shows." }
+          {
+            "label": "You see",
+            "text": "Enrolment, attendance, sessions used, on-track status, goal growth."
+          },
+          {
+            "label": "You never see",
+            "text": "Notes, recordings, goal wording, or an individual's chosen coach."
+          },
+          {
+            "label": "Under five people",
+            "text": "Distributions are suppressed and only the cohort average shows."
+          }
         ]
       },
       "metrics": {
@@ -291,5 +452,6 @@
         "body": "Enrolment, sessions used, and self-rated growth per person. Rows don't open into content — they open into the same aggregates plus what's withheld."
       }
     }
-  }
+  },
+  "saveFailed": "We couldn't save that you've seen the walkthrough, so it may appear again next time you sign in. Please check your connection."
 }

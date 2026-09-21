@@ -11,6 +11,8 @@ import { formatProfileDate } from "@/lib/programmeProfile";
 import { sessionStatusTone } from "@/lib/moduleSessions";
 import { sessionDetailPath } from "@/lib/sessionPaths";
 import { ModuleCard, ModuleEyebrow, ModulePageHeader } from "@/components/programme/module/ModulePage";
+import { ModuleWorkspaceSections } from "@/components/programme/module/ModuleWorkspaceSections";
+import { deliverableKey, type DeliverableKey } from "@/lib/postSessionDeliverables";
 import { ProfileLoadError } from "@/components/programme/primitives";
 import { TriadSessionCard } from "./components/TriadSessionCard";
 import { TriadAlternativeProposal } from "./components/TriadAlternativeProposal";
@@ -67,6 +69,10 @@ export default function TriadsPage() {
 
       <TriadProgressCard status={status} loading={statusLoading} error={statusError} />
 
+      {/* Shared module structure: progress & next requirement, post-session
+          evidence, goals & actions. Scheduling stays per requirement below. */}
+      <ModuleWorkspaceSections ws={ws} module="triads" />
+
       {groupsLoading || statusLoading ? (
         <div className="flex items-center justify-center rounded-[16px] bg-[#062f3e] p-5">
           <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -111,6 +117,7 @@ export default function TriadsPage() {
                 unitNumber={session.requirementUnitNumber ?? unitBySession.get(session.sourceId) ?? null}
                 status={reflectionBySession.get(session.sourceId) ?? null}
                 statusLoading={groupsLoading}
+                outstanding={ws.outstandingBySession.get(deliverableKey(session.sourceType, session.sourceId))}
               />
             ))}
           </div>
@@ -289,11 +296,14 @@ function TriadSessionRow({
   unitNumber,
   status,
   statusLoading,
+  outstanding,
 }: {
   session: DevelopmentSessionItem;
   unitNumber: number | null;
   status: { submitted: boolean; selfRating: number | null } | null;
   statusLoading: boolean;
+  /** Post-session items still owed (learner_session_deliverables). */
+  outstanding?: DeliverableKey[];
 }) {
   const { t } = useTranslation("journey");
   const { t: tTriads } = useTranslation("triads");
@@ -327,6 +337,16 @@ function TriadSessionRow({
           ) : null}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          {outstanding && outstanding.length > 0 && (
+            <Link
+              to={path ?? `/triads/${session.sourceId}`}
+              data-testid="session-followup-outstanding"
+              title={outstanding.map((key) => tDash(`learnerModules.shared.items.${key}`)).join(" · ")}
+              className="rounded-full bg-[#fbeee5] px-2.5 py-1.5 text-[8.5px] font-extrabold uppercase tracking-[.08em] text-[#a8541c]"
+            >
+              {tDash("learnerModules.shared.followUpOutstanding", { count: outstanding.length })}
+            </Link>
+          )}
           {session.isProgrammeEvidence && (
             <span data-testid="programme-evidence" className="rounded-full bg-[#e8f1ec] px-2.5 py-1.5 text-[8.5px] font-extrabold uppercase tracking-[.08em] text-[#17663f]">
               {t("developmentSessions.countsTowardProgramme")}

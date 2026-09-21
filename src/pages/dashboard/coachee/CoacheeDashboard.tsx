@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
-import { useLearnerCanonicalEngagement, useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
+import { useLearnerCanonicalEngagement, useLearnerCanonicalProgress, useLearnerOverdueItems } from "@/hooks/useLearnerCanonicalProgress";
 import { useEnrollmentActionsSummary } from "@/hooks/dashboard/useEnrollmentActionsSummary";
 import { formatProfileDate, journeyFocusIndex, type ProgrammeModuleKey } from "@/lib/programmeProfile";
 import { STATUS_LABEL_KEY, STATUS_TONE, effectiveSponsorStatus } from "@/pages/sponsor/sponsorUtils";
@@ -49,6 +49,7 @@ export function CoacheeDashboard() {
   const canonical = useLearnerCanonicalProgress(enrollmentId);
   const engagement = useLearnerCanonicalEngagement(enrollmentId);
   const actions = useEnrollmentActionsSummary(enrollmentId);
+  const overdueItems = useLearnerOverdueItems(enrollmentId);
   const { progress, journey, experience } = canonical;
 
   const displayName = progress?.learner_display_name || profile?.full_name || "";
@@ -151,12 +152,12 @@ export function CoacheeDashboard() {
       </div>
 
       <LearnerAttention
+        overdueModules={overdueItems.items}
         journey={journey}
-        learningBreakdown={experience.learningBreakdown}
         overdueActions={actions.overdue}
         nextSessionAt={experience.coachingUtilisation?.next_session_at ?? null}
-        loading={actions.loading}
-        error={actions.error}
+        loading={actions.loading || overdueItems.loading}
+        error={actions.error ?? overdueItems.error}
       />
 
       <LearnerFeedbackDevelopment userId={user?.id} enrollmentId={enrollmentId} />

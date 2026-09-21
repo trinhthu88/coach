@@ -1,63 +1,88 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, ArrowRight, Calendar, CheckCircle2, Clock } from "lucide-react";
-import { deriveNextUpList, type NextUpItem, type NextUpKind } from "@/lib/nextUp";
+import { deriveAttentionList, overdueUnitCount, type AttentionItem } from "@/lib/nextUp";
 import type { EnrollmentActionRow } from "@/hooks/dashboard/useEnrollmentActionsSummary";
-import { formatProfileDate, type ProgrammeJourneyPoint, type ProgrammeLearningItem } from "@/lib/programmeProfile";
+import type { LearnerOverdueItem } from "@/hooks/useLearnerCanonicalProgress";
+import { formatProfileDate, type ProgrammeJourneyPoint } from "@/lib/programmeProfile";
+import { LEARNER_MODULE_PATH, useModuleScopeLabel } from "@/components/programme/profileTheme";
 import { ProfileLoadError, ProfileSection, ProfileSkeleton } from "@/components/programme/primitives";
 
-const ICON_BY_KIND: Record<NextUpKind, typeof AlertTriangle> = {
-  overdue_requirement: AlertTriangle,
+const ICON_BY_KIND: Record<AttentionItem["kind"], typeof AlertTriangle> = {
+  overdue_module: AlertTriangle,
   overdue_action: AlertTriangle,
   current_requirement: Clock,
   upcoming_session: Calendar,
   upcoming_requirement: Calendar,
 };
 
-const ATTENTION_LIMIT = 5;
-
-/** Where each item is actioned. A learning-item requirement carries no checkpoint date (see lib/nextUp). */
-function pathFor(item: NextUpItem) {
-  if (item.kind === "overdue_action") return "/coachee/journey#goals";
-  if (item.kind === "upcoming_session") return "/sessions";
-  if (item.kind === "overdue_requirement" || item.kind === "current_requirement") {
-    return item.dueOn ? "/coachee/journey#programme-journey" : "/training";
+/** Where each item is actioned — every item is a real link. */
+function attentionPath(item: AttentionItem): string {
+  switch (item.kind) {
+    case "overdue_module":
+      return LEARNER_MODULE_PATH[item.module] ?? "/coachee/journey#programme-journey";
+    case "overdue_action":
+      return "/coachee/journey#goals";
+    case "upcoming_session":
+      return "/sessions";
+    default:
+      return "/coachee/journey#programme-journey";
   }
-  return "/coachee/journey#programme-journey";
 }
 
 /**
  * The learner's "Needs your attention" — the same position as Sponsor's
- * Attention section, populated by the existing Next Up derivation
- * (lib/nextUp.ts over canonical journey, learning breakdown, overdue
- * enrollment_actions and the next booked session). Each item links to where
- * the learner can act on it; nothing is invented when nothing is due.
+ * Attention section. Overdue items come from learner_canonical_overdue_items
+ * (canonical_module_progress across every module), so the overdue count
+ * shown here is the dashboard's Overdue KPI; nothing is capped, and nothing
+ * is invented when nothing is due. Each item links to where the learner can
+ * act on it.
  */
 export function LearnerAttention({
+  overdueModules,
   journey,
-  learningBreakdown,
   overdueActions,
   nextSessionAt,
   loading,
   error,
 }: {
+  overdueModules: LearnerOverdueItem[];
   journey: ProgrammeJourneyPoint[];
-  learningBreakdown: ProgrammeLearningItem[];
   overdueActions: EnrollmentActionRow[];
   nextSessionAt: string | null;
   loading: boolean;
   error: string | null;
 }) {
   const { t } = useTranslation("dashboard");
-  const items = loading || error ? [] : deriveNextUpList({ journey, learningBreakdown, overdueActions, nextSessionAt }, ATTENTION_LIMIT);
+  const moduleLabel = useModuleScopeLabel();
+  const items = loading || error ? [] : deriveAttentionList({ overdueModules, overdueActions, journey, nextSessionAt });
+  const overdue = overdueUnitCount(items);
+
+  const labelFor = (item: AttentionItem) => {
+    switch (item.kind) {
+      case "overdue_module":
+        return moduleLabel(item.module);
+      case "upcoming_session":
+        return t("coacheeDashboard.nextUp.nextSession");
+      default:
+        return item.label;
+    }
+  };
+  const detailFor = (item: AttentionItem) =>
+    item.kind === "overdue_module"
+      ? t("coacheeDashboard.nextUp.overdueUnits", { count: item.overdueUnits })
+      : t(`coacheeDashboard.nextUp.kinds.${item.kind}`);
 
   return (
     <ProfileSection className="mt-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-serif text-[17px] font-normal">{t("learnerProfile.attention.title")}</h2>
         {!loading && !error && (
-          <span className="rounded-full bg-[#fbeade] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#a8541c]">
-            {t("coacheeDashboard.nextUp.itemsCount", { count: items.length })}
+          <span
+            data-testid="learner-attention-overdue-count"
+            className="rounded-full bg-[#fbeade] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#a8541c]"
+          >
+            {t("coacheeDashboard.nextUp.overdueCount", { count: overdue })}
           </span>
         )}
       </div>
@@ -74,20 +99,20 @@ export function LearnerAttention({
         <ul data-testid="learner-attention" className="mt-4 flex flex-col gap-2.5">
           {items.map((item, idx) => {
             const Icon = ICON_BY_KIND[item.kind];
-            const overdue = item.kind === "overdue_requirement" || item.kind === "overdue_action";
+            const isOverdue = item.kind === "overdue_module" || item.kind === "overdue_action";
             return (
-              <li key={`${item.kind}-${item.label}-${idx}`}>
+              <li key={`${item.kind}-${idx}`}>
                 <Link
-                  to={pathFor(item)}
+                  to={attentionPath(item)}
                   className={`flex items-center gap-3.5 rounded-[10px] border px-4 py-3.5 transition-colors hover:border-[#8bd3e3] ${
-                    overdue ? "border-[#f0d5cc] bg-[#fdf6f2]" : "border-[#eee8de] bg-[#f6f3ee]"
+                    isOverdue ? "border-[#f0d5cc] bg-[#fdf6f2]" : "border-[#eee8de] bg-[#f6f3ee]"
                   }`}
                 >
-                  <Icon className={`h-3.5 w-3.5 shrink-0 ${overdue ? "text-[#a8341c]" : "text-[#2c8fa8]"}`} />
+                  <Icon className={`h-3.5 w-3.5 shrink-0 ${isOverdue ? "text-[#a8341c]" : "text-[#2c8fa8]"}`} />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-semibold">{item.label}</div>
+                    <div className="truncate text-[13px] font-semibold">{labelFor(item)}</div>
                     <div className="mt-0.5 text-[10.5px] text-[#6a6560]">
-                      {t(`coacheeDashboard.nextUp.kinds.${item.kind}`)}
+                      {detailFor(item)}
                       {item.dueOn && ` · ${formatProfileDate(item.dueOn)}`}
                     </div>
                   </div>

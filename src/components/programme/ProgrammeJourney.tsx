@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { ChevronLeft, ChevronRight, ChevronsLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   formatProfileDate,
@@ -56,8 +57,11 @@ export function ProgrammeJourney({
   const text = useProfileText(viewer);
   const moduleLabel = useModuleScopeLabel();
   const status = programmeLifecycle(start, end);
-  const window = journeyWindow(journey, variant === "summary" ? maxVisible : undefined);
+  // null = anchored on the current checkpoint; a number = the learner paged the window.
+  const [windowStart, setWindowStart] = useState<number | null>(null);
+  const window = journeyWindow(journey, variant === "summary" ? maxVisible : undefined, windowStart);
   const [selected, setSelected] = useState<number | null>(null);
+  const pageBy = (delta: number) => setWindowStart(window.firstShown - 1 + delta);
   const focusPoint = window.focusIndex >= 0 ? journey[window.focusIndex] : null;
   const selectedNumber = selected ?? focusPoint?.checkpoint_number ?? null;
   const selectedPoint = renderDetail ? journey.find((p) => p.checkpoint_number === selectedNumber) ?? null : null;
@@ -122,14 +126,54 @@ export function ProgrammeJourney({
             </div>
           </div>
           {window.truncated && (
-            <p className="mt-2 text-[10.5px] text-[#9a938a]">
-              {text("journeyWindow", { first: window.firstShown, last: window.lastShown, total: window.total })}
-            </p>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[10.5px] text-[#9a938a]">
+                {text("journeyWindow", { first: window.firstShown, last: window.lastShown, total: window.total })}
+              </p>
+              <div className="flex items-center gap-1.5" data-testid="journey-window-nav">
+                <JourneyPageButton
+                  label={t("cohortDetail.journey.firstCheckpoints")}
+                  disabled={window.firstShown <= 1}
+                  onClick={() => setWindowStart(0)}
+                >
+                  <ChevronsLeft className="h-3.5 w-3.5" />
+                </JourneyPageButton>
+                <JourneyPageButton
+                  label={t("cohortDetail.journey.earlierCheckpoints")}
+                  disabled={window.firstShown <= 1}
+                  onClick={() => pageBy(-maxVisible)}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </JourneyPageButton>
+                <JourneyPageButton
+                  label={t("cohortDetail.journey.laterCheckpoints")}
+                  disabled={window.lastShown >= window.total}
+                  onClick={() => pageBy(maxVisible)}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </JourneyPageButton>
+              </div>
+            </div>
           )}
           {selectedPoint && renderDetail && <div className="mt-4">{renderDetail(selectedPoint)}</div>}
         </>
       )}
     </ProfileSection>
+  );
+}
+
+function JourneyPageButton({ label, disabled, onClick, children }: { label: string; disabled: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#e2dbd0] bg-white text-[#6a6560] transition-colors hover:border-[#8bd3e3] hover:text-[#2c8fa8] disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {children}
+    </button>
   );
 }
 

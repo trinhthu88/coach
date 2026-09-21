@@ -46,6 +46,13 @@ select ('e7000000-0000-0000-0000-00000000000' || n)::uuid, ('a7000000-0000-0000-
   'b7000000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05', 'active'
 from generate_series(1, 3) n;
 
+-- Booking goal gate (20260925400000): the cohort started long before today, so
+-- each learner's own Peer bookings below need an active goal (the Peer cap
+-- trigger reads can_book_coachee_peer_session, which now includes the gate).
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+select ('a7000000-0000-0000-0000-00000000000' || n)::uuid, ('e7000000-0000-0000-0000-00000000000' || n)::uuid, 'Booking gate goal'
+from generate_series(1, 2) n;
+
 -- Willing AND usable: Peer eligibility requires a usable account
 -- (RULES.md §1), and the signup trigger leaves profiles at pending_approval.
 -- All three share one cohort, so they need no cross-cohort grant.

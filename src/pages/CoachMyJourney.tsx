@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
@@ -10,7 +10,6 @@ import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
 import { useFlatActionItems, type FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { useCoachSummaries } from "@/hooks/journey/useCoachSummaries";
 import {
-  useMilestoneProgress,
   useGoalRatingRows,
   useProgrammeWeeks,
   useGoalLock,
@@ -18,6 +17,8 @@ import {
   usePendingReflection,
 } from "@/hooks/journey/useJourneyDerived";
 import type { JourneySession } from "@/hooks/journey/types";
+import { useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,10 @@ export default function CoachMyJourney() {
   const allSessions = useEnrollmentSessions(programmeApi.programme?.enrollmentId, user?.id);
 
   const { goals, milestones, toggleMilestone } = goalsApi;
+  // The booking goal gate links here with #goals: open the Goals tab.
+  const { hash } = useLocation();
+  // Max 3 active goals per enrollment (server rule); create is disabled at the cap.
+  const activeGoalCount = goals.filter((g) => g.status === "active").length;
   const { ratings, sessionRatings, saveRating } = ratingsApi;
   const { coachingSessions, peerSessions, coachNames, toggleAction: toggleActionRaw } = sessionsApi;
   const { reflections, deleteReflection } = reflectionsApi;
@@ -96,7 +101,10 @@ export default function CoachMyJourney() {
 
   const { allActionItems, grouped, aiTotal, aiDone, aiOverdue } = useFlatActionItems(sessions);
 
-  const { overallPct } = useMilestoneProgress(milestones);
+  // Coach-as-learner programme completion: the canonical number (completed
+  // required activities / required activities), not a goal-milestone ratio.
+  const canonical = useLearnerCanonicalProgress(programmeApi.programme?.enrollmentId);
+  const completionPct = canonicalCompletionPct(canonical.progress?.full_completion_pct);
   const { ratingRows, avgGoalProgress } = useGoalRatingRows(goals, ratings);
   // Canonical Start→Target rating progress — same formula and per-goal
   // values Sponsor's goal_progress_pct aggregates, not milestone ratio.
@@ -158,7 +166,11 @@ export default function CoachMyJourney() {
 
       {/* METRICS */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label={t("coachMyJourney.metrics.overallProgress")} value={`${overallPct}%`} sub={t("coachMyJourney.metrics.overallProgressSub", { count: goals.length })} />
+        <Metric
+          label={t("coachMyJourney.metrics.overallProgress")}
+          value={completionPct == null ? "—" : `${completionPct}%`}
+          sub={canonical.progress ? t("coachMyJourney.metrics.overallProgressUnits", { completed: canonical.progress.completed_units, required: canonical.progress.required_units }) : undefined}
+        />
         <Metric label={t("coachMyJourney.metrics.actionsDone")} value={String(aiDone)} sub={aiOverdue ? t("coachMyJourney.metrics.actionsDoneSubOverdue", { count: aiOverdue }) : t("coachMyJourney.metrics.actionsDoneSubTotal", { count: aiTotal })} subClass={aiOverdue ? "text-destructive" : ""} />
         <Metric
           label={t("coachMyJourney.metrics.sessionsReceived")}
@@ -191,7 +203,7 @@ export default function CoachMyJourney() {
         <DevelopmentJourneyTimeline events={developmentJourney.events} loading={developmentJourney.loading} />
       </div>
 
-      <Tabs defaultValue="home">
+      <Tabs id="goals" defaultValue={hash === "#goals" ? "goals" : "home"} className="scroll-mt-4">
         <TabsList>
           <TabsTrigger value="home">{t("journeyPage.tabs.overview")}</TabsTrigger>
           <TabsTrigger value="goals">{t("journeyPage.tabs.goals")}</TabsTrigger>
@@ -227,7 +239,7 @@ export default function CoachMyJourney() {
 
           <SectionHeader
             title={t("journeyPage.tabs.goals")}
-            action={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} /> : undefined}
+            action={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} activeCount={activeGoalCount} /> : undefined}
           />
           {goals.length === 0 ? (
             <EmptyGoals onAdd={goalsApi.addGoal} description={t("coachMyJourney.emptyGoalsDescription")} />
@@ -244,6 +256,7 @@ export default function CoachMyJourney() {
                   onToggleAction={toggleAction}
                   onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
                   onDeleteGoal={goalsApi.deleteGoal}
+                  onEditGoal={goalsApi.updateGoal}
                   onDeleteMilestone={goalsApi.deleteMilestone}
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
@@ -267,7 +280,7 @@ export default function CoachMyJourney() {
 
         <TabsContent value="goals" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <GoalDialog onAdd={goalsApi.addGoal} />
+            <GoalDialog onAdd={goalsApi.addGoal} activeCount={activeGoalCount} />
           </div>
           {goals.length === 0 ? (
             <EmptyGoals onAdd={goalsApi.addGoal} description={t("coachMyJourney.emptyGoalsDescription")} />
@@ -307,6 +320,7 @@ export default function CoachMyJourney() {
                     onToggleAction={toggleAction}
                     onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
                     onDeleteGoal={goalsApi.deleteGoal}
+                    onEditGoal={goalsApi.updateGoal}
                     onDeleteMilestone={goalsApi.deleteMilestone}
                     showLinkedActions
                     defaultOpen={i === 0}

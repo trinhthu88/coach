@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
 import type { Client, RawAction } from "./types";
 import { withEnrollmentActions } from "@/lib/enrollmentActions";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 /**
  * Loads every coachee this coach has a confirmed or completed session with,
@@ -83,6 +84,8 @@ export function useCoachClients(userId: string | undefined) {
         goalsAll: [],
         milestonesDone: 0,
         milestonesTotal: 0,
+        enrollmentId: null,
+        completionPct: null,
         actionItemsDone: 0,
         actionItemsTotal: 0,
         overdueActions: 0,
@@ -133,6 +136,28 @@ export function useCoachClients(userId: string | undefined) {
       if (!visM || !visM.has(m.id)) continue; // hide milestones not linked
       c.milestonesTotal++;
       if (m.is_done) c.milestonesDone++;
+    }
+
+    // "% complete" is the canonical engine's number for the client's current
+    // enrollment with this coach — never a milestone or session ratio.
+    const latestEnrollment = new Map<string, { id: string; at: string }>();
+    for (const s of ses || []) {
+      if (!s.enrollment_id || !["confirmed", "completed"].includes(s.status)) continue;
+      const prev = latestEnrollment.get(s.coachee_id);
+      if (!prev || s.start_time > prev.at) latestEnrollment.set(s.coachee_id, { id: s.enrollment_id, at: s.start_time });
+    }
+    const enrollmentIds = [...new Set([...latestEnrollment.values()].map((e) => e.id))];
+    const { data: canonical } = enrollmentIds.length
+      ? await supabase.rpc("coach_canonical_enrollment_progress", { p_enrollment_ids: enrollmentIds })
+      : { data: [] };
+    const pctByEnrollment = new Map(
+      (canonical ?? []).map((r) => [r.enrollment_id, r.progress_available ? canonicalCompletionPct(r.full_completion_pct) : null]),
+    );
+    for (const [coacheeId, enr] of latestEnrollment) {
+      const c = byCoachee.get(coacheeId);
+      if (!c) continue;
+      c.enrollmentId = enr.id;
+      c.completionPct = pctByEnrollment.get(enr.id) ?? null;
     }
 
     // Status heuristic

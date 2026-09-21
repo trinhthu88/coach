@@ -26,6 +26,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { SponsorDataErrorState } from "./SponsorDataErrorState";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 interface OrgBannerData {
   name: string;
@@ -96,7 +97,7 @@ export default function SponsorDashboard() {
         onTrackPct: summary.on_track_pct ?? 0,
         completedUnits: summary.completed_units ?? 0,
         requiredUnits: summary.required_units ?? 0,
-        completionPct: summary.full_completion_pct ?? 0,
+        completionPct: canonicalCompletionPct(summary.full_completion_pct) ?? 0,
         signal: healthSignal(atRisk, leaders),
       };
     });

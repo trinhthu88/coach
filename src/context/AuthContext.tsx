@@ -14,11 +14,52 @@ interface AuthContextValue {
   profile: Profile | null;
   role: AppRole | null;
   isLoading: boolean;
+  /**
+   * The profile/role lookup failed (network, RLS, timeout). Distinct from "no
+   * role assigned": the routing layer offers a retry instead of misreporting a
+   * provisioning problem, and never leaves the user on a spinner.
+   */
+  roleError: string | null;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+/**
+ * user_roles is the only source of a user's role. When several rows exist the
+ * portal role wins: Sponsor is an exclusive portal, so a stray default
+ * `coachee` row (handle_new_user() provisions one for every new auth user)
+ * must never demote a Sponsor into the learner experience. Values outside
+ * the app_role enum are ignored; no role at all resolves to null, which the
+ * routing layer surfaces as an explicit error — never as a coachee default.
+ */
+const ROLE_PRIORITY: Record<AppRole, number> = { admin: 1, sponsor: 2, coach: 3, coachee: 4 };
+
+export function resolveAppRole(roles: readonly string[]): AppRole | null {
+  const known = roles.filter((r): r is AppRole => Object.prototype.hasOwnProperty.call(ROLE_PRIORITY, r));
+  if (known.length === 0) return null;
+  return [...known].sort((a, b) => ROLE_PRIORITY[a] - ROLE_PRIORITY[b])[0];
+}
+
+/** A role lookup that has not answered after this long is reported, not awaited forever. */
+const ROLE_LOAD_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Timed out loading your account")), ms);
+    Promise.resolve(promise).then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -26,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [roleError, setRoleError] = useState<string | null>(null);
 
   /**
    * Monotonically-increasing request generation counter.
@@ -52,25 +94,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfileAndRole = async (userId: string) => {
     const seq = ++loadSeqRef.current;
 
-    const [{ data: profileData }, { data: roleData }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-    ]);
+    let profileData: Profile | null = null;
+    let roles: string[] = [];
+    let failure: string | null = null;
+    try {
+      const [profileRes, roleRes] = await withTimeout(
+        Promise.all([
+          supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", userId),
+        ]),
+        ROLE_LOAD_TIMEOUT_MS,
+      );
+      // A failed role query must not read as "no role assigned".
+      if (roleRes.error) failure = roleRes.error.message;
+      else if (profileRes.error) failure = profileRes.error.message;
+      profileData = profileRes.data;
+      roles = roleRes.data?.map((r) => r.role) ?? [];
+    } catch (err) {
+      failure = err instanceof Error ? err.message : String(err);
+    }
 
     // Discard if a newer request has superseded this one
     if (seq !== loadSeqRef.current) return;
 
+    if (failure) console.error("[auth] could not load profile/role", failure);
+    setRoleError(failure);
     setProfile(profileData);
     syncLanguageFromProfile(profileData?.preferred_language);
-    if (roleData && roleData.length > 0) {
-      const priority: Record<AppRole, number> = { admin: 1, coach: 2, coachee: 3, sponsor: 4 };
-      const top = [...roleData].sort(
-        (a, b) => priority[a.role] - priority[b.role]
-      )[0];
-      setRole(top.role);
-    } else {
-      setRole(null);
-    }
+    setRole(failure ? null : resolveAppRole(roles));
     // Only the load whose results actually apply (seq check above passed) may
     // clear isLoading — see the initial-session-race regression test. Supabase's
     // onAuthStateChange can fire an INITIAL_SESSION event before getSession()'s
@@ -113,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ++loadSeqRef.current;
       setProfile(null);
       setRole(null);
+      setRoleError(null);
 
       if (newSession?.user) {
         // Defer Supabase calls to avoid deadlock inside the auth callback
@@ -136,6 +188,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setIsLoading(false);
       }
+    }).catch((err) => {
+      // Never leave the app on the loading spinner.
+      if (!mounted) return;
+      console.error("[auth] could not read the session", err);
+      setIsLoading(false);
     });
 
     return () => {
@@ -154,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, role, isLoading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, role, isLoading, roleError, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

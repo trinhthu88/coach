@@ -37,7 +37,7 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
       .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months), cohorts(name)")
       .eq("id", enrollmentId)
       .maybeSingle(),
-    supabase.rpc("canonical_module_progress", {
+    supabase.rpc("learner_module_progress", {
       p_enrollment_id: enrollmentId,
       p_as_of: new Date().toISOString().slice(0, 10),
     }),

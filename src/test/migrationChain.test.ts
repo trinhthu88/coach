@@ -293,7 +293,9 @@ describe("migration chain — canonical final state", () => {
     });
 
     it("every final Triad-reading function derives participants from historical membership", () => {
-      for (const name of ["learner_session_history", "record_goal_checkins", "canonical_triad_group_members", "validate_triad_session_cap",
+      // learner_session_history / admin_learner_session_history are scope
+      // wrappers over canonical_session_history, which holds the one body.
+      for (const name of ["canonical_session_history", "record_goal_checkins", "canonical_triad_group_members", "validate_triad_session_cap",
         "notify_triad_session_booked", "triad_sync_session_attributions", "canonical_triad_requirement_fulfilment"]) {
         const last = lastDefinition(name);
         expect(last?.body, name).toMatch(/triad_group_members/);
@@ -304,7 +306,11 @@ describe("migration chain — canonical final state", () => {
     });
 
     it("the reflection feed reads normalized answers and the goal source stays separate", () => {
-      const feed = lastDefinition("learner_reflection_feed")?.body ?? "";
+      // learner_reflection_feed (self) and admin_learner_reflection_feed are
+      // scope wrappers over the one body in canonical_reflection_feed.
+      expect(lastDefinition("learner_reflection_feed")?.body).toMatch(/canonical_reflection_feed\(e\.id\)/);
+      expect(lastDefinition("admin_learner_reflection_feed")?.body).toMatch(/canonical_reflection_feed\(p_enrollment_id\)/);
+      const feed = lastDefinition("canonical_reflection_feed")?.body ?? "";
       expect(feed).toMatch(/triad_reflection_answers/);
       expect(feed).toMatch(/goal_checkins/);
       expect(feed).not.toMatch(RETIRED_TRIAD_FIELDS);
@@ -373,6 +379,147 @@ describe("migration chain — canonical final state", () => {
     const sql = readFileSync(join(DIR, "20260918180000_retire_legacy_sponsor_sources.sql"), "utf8");
     expect(sql).toMatch(/DROP FUNCTION IF EXISTS public\.sponsor_min_leaders_for_distribution\(uuid\)/);
     expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.sponsor_min_leaders_for_distribution\(\)/);
+  });
+});
+
+/**
+ * Sponsor visibility: ONE rule — programme_enrollments.organization_id equals
+ * the sponsor's organisation. cohorts.organization_id is never an
+ * authorization boundary (a cohort may mix organisations).
+ */
+describe("sponsor visibility is decided by the enrollment organisation only", () => {
+  /** Latest live definition of every public function (DROP-aware). */
+  function liveDefinitions(): Map<string, { file: string; body: string }> {
+    const live = new Map<string, { file: string; body: string }>();
+    for (const file of files) {
+      const sql = readFileSync(join(DIR, file), "utf8");
+      const events: { at: number; name: string; body?: string }[] = [];
+      const def = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.([a-z_0-9]+)\s*\(/gi;
+      let m: RegExpExecArray | null;
+      while ((m = def.exec(sql))) {
+        const after = sql.slice(m.index);
+        const tag = /AS\s+(\$[a-z_]*\$)/i.exec(after);
+        if (!tag) continue;
+        const start = tag.index + tag[0].length;
+        events.push({ at: m.index, name: m[1], body: after.slice(start, after.indexOf(tag[1], start)) });
+      }
+      const drop = /DROP\s+FUNCTION\s+(?:IF\s+EXISTS\s+)?public\.([a-z_0-9]+)\s*\(/gi;
+      while ((m = drop.exec(sql))) events.push({ at: m.index, name: m[1] });
+      for (const event of events.sort((a, b) => a.at - b.at)) {
+        if (event.body === undefined) live.delete(event.name);
+        else live.set(event.name, { file, body: event.body });
+      }
+    }
+    return live;
+  }
+
+  const live = liveDefinitions();
+  const body = (name: string) => live.get(name)?.body ?? "";
+  // A sponsor scoped through the cohort's organisation, in any spelling used
+  // by earlier migrations.
+  const COHORT_ORG_SCOPE =
+    /sp\.organization_id\s*=\s*c\.organization_id|c\.organization_id\s*=\s*sp\.organization_id|s\.organization_id\s*=\s*c\.organization_id|cohort_organization_id|ec_c\.organization_id|COALESCE\(\s*pe\.organization_id\s*,\s*c\.organization_id\s*\)/i;
+
+  const SPONSOR_SURFACES = [
+    "sponsor_canonical_enrollment_progress",
+    "sponsor_canonical_enrollment_metadata",
+    "sponsor_canonical_leader_progress",
+    "sponsor_canonical_leader_schedule_state",
+    "sponsor_canonical_leader_experience",
+    "sponsor_canonical_leader_journey",
+    "sponsor_canonical_programme_journey",
+    "get_sponsor_programme_journey",
+    "sponsor_canonical_cohort_progress_one",
+    "sponsor_canonical_cohort_progress",
+    "sponsor_canonical_organisation_progress",
+    "sponsor_submit_report_request",
+    "sponsor_list_report_requests",
+    "get_enrollment_progress",
+  ];
+
+  it("the one rule joins the enrollment organisation, never the cohort", () => {
+    const rule = body("sponsor_visible_enrollments");
+    expect(rule).toMatch(/JOIN public\.programme_enrollments e\s+ON e\.organization_id = sp\.organization_id/);
+    expect(rule).toMatch(/sp\.user_id = auth\.uid\(\)/);
+    expect(rule).not.toMatch(/cohorts/);
+    expect(body("sponsor_can_view_enrollment")).toMatch(/sponsor_visible_enrollments\(\)/);
+    expect(body("sponsor_can_view_enrollment")).not.toMatch(/sponsor_profiles|cohorts/);
+  });
+
+  it("no live sponsor surface authorizes via cohorts.organization_id", () => {
+    for (const name of SPONSOR_SURFACES) {
+      expect(live.has(name), `${name} is live`).toBe(true);
+      expect(body(name), name).not.toMatch(COHORT_ORG_SCOPE);
+    }
+    // Only the rule itself (and organisation-owned report requests, the demo
+    // tooling, and get_sponsor_org) may read sponsor_profiles; every other
+    // live function reaches sponsor scope through the rule.
+    const allowed = new Set([
+      "sponsor_visible_enrollments",
+      "sponsor_submit_report_request",
+      "sponsor_list_report_requests",
+      "get_sponsor_org",
+    ]);
+    const readers = [...live.entries()]
+      .filter(([name, def]) => /sponsor_profiles/.test(def.body) && !allowed.has(name) && !name.startsWith("demo_"))
+      .map(([name, def]) => `${name} (${def.file})`);
+    expect(readers).toEqual([]);
+  });
+
+  it("every sponsor surface reads through the shared rule (directly or by delegation)", () => {
+    const direct = /sponsor_visible_enrollments\(\)|sponsor_can_view_enrollment\(/;
+    for (const name of [
+      "sponsor_canonical_enrollment_progress",
+      "sponsor_canonical_leader_schedule_state",
+      "sponsor_canonical_leader_experience",
+      "sponsor_canonical_leader_journey",
+      "get_sponsor_programme_journey",
+      "sponsor_canonical_cohort_progress_one",
+      "sponsor_canonical_cohort_progress",
+      "sponsor_submit_report_request",
+      "get_enrollment_progress",
+    ]) {
+      expect(body(name), name).toMatch(direct);
+    }
+    expect(body("sponsor_canonical_enrollment_metadata")).toMatch(/sponsor_canonical_enrollment_progress\(/);
+    expect(body("sponsor_canonical_leader_progress")).toMatch(/sponsor_canonical_enrollment_progress\(/);
+    expect(body("sponsor_canonical_programme_journey")).toMatch(/get_sponsor_programme_journey\(/);
+    expect(body("sponsor_canonical_organisation_progress")).toMatch(/sponsor_canonical_cohort_progress\(/);
+  });
+
+  it("cohort rollups aggregate visible enrollments only and list a cohort only when it has one", () => {
+    const one = body("sponsor_canonical_cohort_progress_one");
+    expect(one).toMatch(/WHERE v\.cohort_id = p_cohort_id/);
+    expect(one).toMatch(/EXISTS \(SELECT 1 FROM visible\)/);
+    expect(one).not.toMatch(/LEFT JOIN public\.programme_enrollments/);
+    const all = body("sponsor_canonical_cohort_progress");
+    expect(all).toMatch(/SELECT DISTINCT v\.cohort_id\s+FROM public\.sponsor_visible_enrollments\(\) v/);
+    expect(all).not.toMatch(/FROM public\.cohorts/);
+    // Satisfaction is the canonical per-enrollment engagement value, weighted
+    // by ratings, over the same visible enrollments.
+    for (const name of ["sponsor_canonical_cohort_progress_one", "sponsor_canonical_organisation_progress"]) {
+      expect(body(name), name).toMatch(/canonical_enrollment_engagement\(v\.enrollment_id\)/);
+      expect(body(name), name).toMatch(/satisfaction_avg \* g\.satisfaction_rated_count/);
+      expect(body(name), name).not.toMatch(/public\.sessions|coachee_rating/);
+    }
+  });
+
+  it("named sponsor data is not hidden by the whole-cohort size gate", () => {
+    for (const name of SPONSOR_SURFACES) {
+      expect(body(name), name).not.toMatch(/sponsor_min_leaders_for_distribution/);
+    }
+  });
+
+  it("enrollment writers allow mixed-organisation cohorts and default a NULL organisation to the cohort's", () => {
+    for (const name of ["create_programme_enrollment", "admin_create_programme_enrollment"]) {
+      const writer = body(name);
+      expect(writer, name).not.toMatch(/does not own the selected cohort/);
+      expect(writer, name).not.toMatch(/organization_id\s+is\s+distinct\s+from\s+p_organization_id/i);
+      expect(writer, name).toMatch(/coalesce\(p_organization_id, selected_cohort\.organization_id\)/i);
+      expect(writer, name).toMatch(/does not belong to the selected programme/);
+      expect(writer, name).toMatch(/ongoing_enrollment_exists/);
+    }
+    expect(body("admin_update_coach_configuration")).not.toMatch(/Programme, cohort, and organization are required together/);
   });
 });
 

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useTriadSessionEntry } from "@/hooks/triads/useMyTriads";
 import { TriadGroupHero } from "./components/TriadGroupHero";
 import { TriadSessionCard } from "./components/TriadSessionCard";
+import { PostSessionChecklist } from "../session/PostSessionChecklist";
+import { useAuth } from "@/context/AuthContext";
 
 /**
  * Detail destination for a row in the unified Sessions list.
@@ -20,6 +22,7 @@ export default function TriadSessionDetail() {
   const { t } = useTranslation("triads");
   const { sessionId } = useParams<{ sessionId: string }>();
   const { entry, loading, error, refetch } = useTriadSessionEntry(sessionId);
+  const { user } = useAuth();
 
   if (loading) {
     return (
@@ -83,6 +86,13 @@ export default function TriadSessionDetail() {
             </Link>
           </Button>
         </Card>
+      )}
+
+      {/* The shared post-session checklist: the reflection itself is written
+          on the role-based reflect page; check-in, follow-up action and the
+          1–5 rating are completed here. */}
+      {completed && entry.session && (
+        <PostSessionChecklist sourceTable="triad_sessions" sessionId={entry.session.id} viewerUserId={user?.id} />
       )}
     </div>
   );

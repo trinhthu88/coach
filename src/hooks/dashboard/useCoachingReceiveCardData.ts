@@ -58,7 +58,7 @@ async function fetchData(userId: string, role: AppRole, enrollmentId: string): P
   // operational usage figure, not programme completion -- it is deliberately
   // no longer consulted here.
   const [progressResult, checklistResult] = await Promise.all([
-    supabase.rpc("canonical_module_progress", {
+    supabase.rpc("learner_module_progress", {
       p_enrollment_id: enrollmentId,
       p_as_of: new Date().toISOString().slice(0, 10),
     }),

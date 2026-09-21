@@ -7,9 +7,7 @@ import { paletteFor, initialsOf, programmeLabel } from "./clientDisplay";
 export function ClientRow({ client, onOpen }: { client: Client; onOpen: () => void }) {
   const { t } = useTranslation("dashboard");
   const av = paletteFor(client.id);
-  const pct = client.milestonesTotal
-    ? Math.round((client.milestonesDone / client.milestonesTotal) * 100)
-    : 0;
+  const pct = client.completionPct;
 
   const avatar = (
     <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold", av)}>
@@ -30,10 +28,12 @@ export function ClientRow({ client, onOpen }: { client: Client; onOpen: () => vo
   const progressBar = (
     <div className="min-w-0">
       <p className="mb-1.5 text-[11px] text-muted-foreground">
-        {t("clients.row.sessionsAndPct", { count: client.totalSessions, pct })}
+        {pct == null
+          ? t("clients.row.sessions", { count: client.totalSessions })
+          : t("clients.row.sessionsAndPct", { count: client.totalSessions, pct })}
       </p>
       <div className="h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-primary" style={{ width: `${pct ?? 0}%` }} />
       </div>
     </div>
   );

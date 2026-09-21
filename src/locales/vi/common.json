@@ -21,7 +21,13 @@
     "reload": "Tải lại trang"
   },
   "protectedRoute": {
-    "loading": "Đang tải nền tảng…"
+    "loading": "Đang tải nền tảng…",
+    "noRoleTitle": "Tài khoản của bạn chưa được gán vai trò",
+    "noRoleBody": "Chúng tôi không tìm thấy vai trò của tài khoản này nên không thể xác định không gian làm việc cần mở. Vui lòng liên hệ quản trị viên chương trình.",
+    "signOut": "Đăng xuất",
+    "loadErrorTitle": "Không thể tải tài khoản của bạn",
+    "loadErrorBody": "Đã xảy ra lỗi khi xác định không gian làm việc cần mở. Vui lòng kiểm tra kết nối và thử lại.",
+    "retry": "Thử lại"
   },
   "pendingAccessRequests": {
     "awaiting_other": "{{count}} đơn yêu cầu truy cập đang chờ phê duyệt",
@@ -153,7 +159,13 @@
     "generic": "Đã có lỗi xảy ra. Vui lòng thử lại — nếu vẫn tiếp diễn, hãy liên hệ contact@clariva.club.",
     "duplicate": "Giá trị này đã tồn tại — vui lòng thử giá trị khác.",
     "permissionDenied": "Bạn không có quyền thực hiện thao tác này.",
-    "foreignKeyViolation": "Không thể hoàn tất vì một dữ liệu liên quan không còn tồn tại."
+    "foreignKeyViolation": "Không thể hoàn tất vì một dữ liệu liên quan không còn tồn tại.",
+    "goalRequiredBeforeBooking": "Hãy tạo ít nhất một mục tiêu chương trình trước khi đặt session tiếp theo.",
+    "keepOneActiveGoal": "Bạn cần giữ ít nhất một mục tiêu đang hoạt động — hãy thêm mục tiêu mới trước khi lưu trữ mục tiêu này."
+  },
+  "bookingGoalGate": {
+    "message": "Hãy tạo ít nhất một mục tiêu chương trình trước khi đặt session tiếp theo.",
+    "cta": "Đặt mục tiêu →"
   },
   "notifications": {
     "title": "Thông báo",

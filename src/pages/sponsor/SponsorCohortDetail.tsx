@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronDown, LockKeyhole, Loader2, ShieldCheck } from "lucid
 import type { SponsorCohortSummary, SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import { useSponsorCohortData } from "@/hooks/sponsor/useSponsorCohortData";
 import { Pill } from "@/pages/admin/_shared";
-import { STATUS_LABEL_KEY, STATUS_TONE, cohortLifecycleStatus, cohortProgress, effectiveSponsorStatus, initials } from "./sponsorUtils";
+import { STATUS_LABEL_KEY, STATUS_TONE, cohortLifecycleStatus, cohortCalendar, effectiveSponsorStatus, initials } from "./sponsorUtils";
 import { SponsorFlagDialog } from "./SponsorFlagDialog";
 import { SponsorDataErrorState } from "./SponsorDataErrorState";
 import { moduleScopeLabelFor } from "@/components/programme/profileTheme";
@@ -41,8 +41,8 @@ export default function SponsorCohortDetail() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const progress = useMemo(
-    () => cohortProgress(kpis?.programme_start_date ?? null, kpis?.programme_end_date ?? null),
+  const calendar = useMemo(
+    () => cohortCalendar(kpis?.programme_start_date ?? null, kpis?.programme_end_date ?? null),
     [kpis?.programme_end_date, kpis?.programme_start_date],
   );
   const visibleRoster = useMemo(() => {
@@ -110,7 +110,7 @@ export default function SponsorCohortDetail() {
           <SuppressedState min={minLeadersForDistribution} />
         ) : (
           <>
-            <ProgressStrip kpis={kpis} progress={progress} status={status} t={t} />
+            <CalendarStrip kpis={kpis} calendar={calendar} status={status} t={t} />
 
             <div className="mt-4 grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(198px,1fr))]">
               <ModuleCard label={t("cohortDetail.modules.coaching")} color={SKY} completed={kpis?.coaching_completed_units} due={kpis?.coaching_due_units} required={kpis?.coaching_required_units} completedLeaders={kpis?.coaching_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
@@ -169,7 +169,7 @@ export default function SponsorCohortDetail() {
   );
 }
 
-function ProgressStrip({ kpis, progress, status, t }: { kpis: SponsorCohortSummary | null; progress: ReturnType<typeof cohortProgress>; status: "upcoming" | "active" | "complete"; t: (key: string, options?: Record<string, unknown>) => string }) {
+function CalendarStrip({ kpis, calendar, status, t }: { kpis: SponsorCohortSummary | null; calendar: ReturnType<typeof cohortCalendar>; status: "upcoming" | "active" | "complete"; t: (key: string, options?: Record<string, unknown>) => string }) {
   return (
     <div className="mt-[18px] flex flex-wrap items-center gap-[26px] rounded-[14px] border px-[22px] py-[18px]" style={{ background: CARD, borderColor: LINE }}>
       <div className="flex flex-wrap gap-[26px]">
@@ -183,14 +183,14 @@ function ProgressStrip({ kpis, progress, status, t }: { kpis: SponsorCohortSumma
               ? t("cohortDetail.progressStrip.complete")
               : status === "upcoming"
                 ? t("cohortDetail.programmeDetails.status.upcoming")
-                : progress
-                  ? t("cohortDetail.programmeDetails.dayOf", { elapsed: progress.elapsed, total: progress.total })
+                : calendar
+                  ? t("cohortDetail.programmeDetails.dayOf", { elapsed: calendar.elapsed, total: calendar.total })
                   : t("cohortDetail.reference.programmeUnavailable")}
           </span>
-          {status === "active" && progress && <span className="text-[11px] text-[#9a938a]">{t("cohortDetail.progressStrip.daysRemaining", { count: Math.max(0, progress.total - progress.elapsed) })}</span>}
+          {status === "active" && calendar && <span className="text-[11px] text-[#9a938a]">{t("cohortDetail.progressStrip.daysRemaining", { count: Math.max(0, calendar.total - calendar.elapsed) })}</span>}
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eee8de]">
-           <div className="h-full rounded-full bg-[#3db4d0]" style={{ width: `${progress?.pct ?? 0}%` }} />
+           <div className="h-full rounded-full bg-[#3db4d0]" style={{ width: `${calendar?.pct ?? 0}%` }} />
         </div>
       </div>
     </div>

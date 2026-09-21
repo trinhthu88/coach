@@ -103,7 +103,7 @@ async function fetchReceive(enrollmentId: string): Promise<MentoringReceiveData>
       .select("id, topic, start_time, status, mentor_id, prep_file_path")
       .eq("enrollment_id", enrollmentId)
       .order("start_time", { ascending: false }),
-    supabase.rpc("canonical_module_progress", {
+    supabase.rpc("learner_module_progress", {
       p_enrollment_id: enrollmentId,
       p_as_of: new Date().toISOString().slice(0, 10),
     }),

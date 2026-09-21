@@ -17,6 +17,7 @@ import type { SponsorCohortSummary } from "@/hooks/sponsor/useSponsorDashboardDa
 import { cn } from "@/lib/utils";
 import { cohortLifecycleStatus } from "./sponsorUtils";
 import { SponsorDataErrorState } from "./SponsorDataErrorState";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 export default function SponsorCohorts() {
   const { t } = useTranslation("sponsor");
@@ -174,7 +175,8 @@ function CohortCard({
   const suppressed = cohort.suppressed;
   const leaderCount = cohort.enrollment_count ?? 0;
   const onTrackPct = cohort.on_track_pct ?? 0;
-  const completionPct = cohort.full_completion_pct ?? 0;
+  // The one progress formula; null (nothing required yet) renders as "—", never 0%.
+  const completionPct = canonicalCompletionPct(cohort.full_completion_pct);
   const lifecycle = cohortLifecycleStatus(cohort.programme_start_date, cohort.programme_end_date);
   return (
     <article className="group overflow-hidden rounded-[24px] border border-[#e6dfd4] bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_42px_-28px_rgba(20,80,90,.45)]">
@@ -225,7 +227,7 @@ function CohortCard({
         ) : (
           <>
             <div className="mt-6 grid grid-cols-2 gap-3 rounded-2xl bg-[#fbf9f6] p-4 sm:grid-cols-3">
-              <MiniMetric label={t("cohorts.completion")} value={`${Math.round(completionPct)}%`} />
+              <MiniMetric label={t("cohorts.completion")} value={completionPct == null ? "—" : `${completionPct}%`} />
               <MiniMetric label={t("cohorts.onTrackPct")} value={`${Math.round(onTrackPct)}%`} />
               <MiniMetric label={t("cohorts.satisfaction")} value={cohort.satisfaction_avg == null ? "—" : cohort.satisfaction_avg.toFixed(1)} />
             </div>

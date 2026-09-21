@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useTriadSession } from "@/hooks/triads/useTriadSession";
 import type { TriadGroupEntry } from "@/hooks/triads/useMyTriads";
+import { BookingGoalGate } from "@/components/goals/BookingGoalGate";
+import { useBookingGoalGate } from "@/components/goals/useBookingGoalGate";
 
 interface AvailabilitySlot {
   slot_date: string;
@@ -44,6 +46,9 @@ export function TriadAlternativeProposal({
   const { proposeAlternative, acceptAlternative, scheduleSession, isPending } = useTriadSession();
   const session = mode === "alternative" ? entry.session : null;
   const proposals = session?.pendingAlternatives ?? [];
+  // Booking goal gate: proposing a time (first session or an alternative) is a
+  // booking by this learner's enrollment. Accepting a proposal is not gated.
+  const { blocked: goalGateBlocked } = useBookingGoalGate(listOnly ? null : entry.enrollmentId);
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -131,10 +136,11 @@ export function TriadAlternativeProposal({
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label={t("alternative.pickDate")} className="border-[#dcd5c9] bg-card" />
             <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={t("alternative.pickTime")} className="border-[#dcd5c9] bg-card" />
           </div>
+          <BookingGoalGate enrollmentId={entry.enrollmentId} />
           <button
             type="button"
             onClick={handlePropose}
-            disabled={isPending}
+            disabled={isPending || goalGateBlocked}
             className="inline-flex items-center gap-1.5 rounded-xl bg-secondary px-[18px] py-[11px] text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50"
           >
             {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

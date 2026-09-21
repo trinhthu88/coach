@@ -23,6 +23,21 @@ vi.mock("@/hooks/dashboard/useLearnerFeedback", () => ({
   useLearnerFeedback: (...args: unknown[]) => learnerFeedback(...args),
 }));
 
+// Shared module structure (useModuleWorkspace): canonical requirements,
+// post-session deliverables and the booking goal gate.
+vi.mock("@/hooks/journey/useModuleRequirements", () => ({
+  useModuleRequirements: () => ({ state: null, loading: false, error: null }),
+}));
+vi.mock("@/hooks/sessions/usePostSessionDeliverables", () => ({
+  useLearnerSessionDeliverables: () => ({ deliverables: [], loading: false, error: null }),
+}));
+vi.mock("@/hooks/journey/useModuleGoalsActions", () => ({
+  useModuleGoalsActions: () => ({ actions: [], goals: [], loading: false, error: null }),
+}));
+vi.mock("@/components/goals/useBookingGoalGate", () => ({
+  useBookingGoalGate: () => ({ gate: null, blocked: false, loading: false }),
+}));
+
 import "@/i18n/config";
 import { MyMentorSection } from "../MyMentorSection";
 

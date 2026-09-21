@@ -240,12 +240,6 @@ export function parseProgrammeExperience(value: unknown): ProgrammeExperience {
 }
 
 /**
- * Index of the checkpoint that marks "where the learner is now": the
- * checkpoint the backend flagged `current`, otherwise the last checkpoint
- * whose date has passed (completed/overdue), otherwise the first upcoming
- * one. Uses only the backend-assigned states, never dates vs. a client clock.
- */
-/**
  * The learner's position on the canonical journey: the checkpoint due today,
  * else the next upcoming checkpoint (the one currently being worked towards),
  * else — programme finished — the final checkpoint. Only canonical dates and
@@ -271,20 +265,21 @@ export interface JourneyWindow {
 
 /**
  * The same canonical checkpoint list, optionally narrowed to `maxVisible`
- * consecutive checkpoints around the current position (the Dashboard's
- * summary). The points themselves are never altered — a narrowed window
- * shows exactly the checkpoints, statuses and cumulative units the full
- * journey shows for those dates.
+ * consecutive checkpoints (the Dashboard's summary). By default the window
+ * sits around the current position; `startIndex` moves it anywhere from CP1
+ * to the last checkpoint, so the whole journey stays reachable in place. The
+ * points themselves are never altered — a narrowed window shows exactly the
+ * checkpoints, statuses and cumulative units the full journey shows.
  */
-export function journeyWindow(journey: ProgrammeJourneyPoint[], maxVisible?: number): JourneyWindow {
+export function journeyWindow(journey: ProgrammeJourneyPoint[], maxVisible?: number, startIndex?: number | null): JourneyWindow {
   const focusIndex = journeyFocusIndex(journey);
   const total = journey.length;
   if (!maxVisible || total <= maxVisible) {
     return { points: journey, focusIndex, firstShown: total ? 1 : 0, lastShown: total, total, truncated: false };
   }
-  // Keep one checkpoint of context before the focus, then look ahead.
-  let start = Math.max(0, focusIndex - 1);
-  start = Math.min(start, total - maxVisible);
+  // Default: one checkpoint of context before the focus, then look ahead.
+  let start = startIndex ?? Math.max(0, focusIndex - 1);
+  start = Math.max(0, Math.min(start, total - maxVisible));
   const points = journey.slice(start, start + maxVisible);
   return {
     points,
@@ -323,6 +318,36 @@ export function configuredLearningItems(items: ProgrammeLearningItem[]): Program
 
 export function clampPct(value: number) {
   return Math.max(0, Math.min(100, value));
+}
+
+/**
+ * THE displayed overall completion for an enrollment: canonical
+ * full_completion_pct (canonical_enrollment_progress — completed required
+ * units / required units), clamped and rounded. Every Learner, Admin and
+ * Sponsor surface that shows "% complete" for one enrollment goes through
+ * this, so the same learner can never show two numbers.
+ */
+export function canonicalCompletionPct(fullCompletionPct: number | null | undefined): number | null {
+  return fullCompletionPct == null ? null : Math.round(clampPct(Number(fullCompletionPct)));
+}
+
+/**
+ * Goal progress as a displayable state. "No goal set" and "goal not rated"
+ * are different facts from "unknown", so they are never collapsed into "—":
+ * a learner in a goal-linked programme with no goal is a gap someone must act
+ * on, not an empty cell.
+ */
+export type GoalProgressState =
+  | { kind: "unknown" }
+  | { kind: "no_goal" }
+  | { kind: "not_rated" }
+  | { kind: "value"; pct: number };
+
+export function goalProgressState(engagement: Pick<ProgrammeEngagementFacts, "goal_count" | "goal_progress_pct">): GoalProgressState {
+  if (engagement.goal_count == null) return { kind: "unknown" };
+  if (engagement.goal_count === 0) return { kind: "no_goal" };
+  if (engagement.goal_progress_pct == null) return { kind: "not_rated" };
+  return { kind: "value", pct: Number(engagement.goal_progress_pct) };
 }
 
 export function formatPercent(value: number | null | undefined) {

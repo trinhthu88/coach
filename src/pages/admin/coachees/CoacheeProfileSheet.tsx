@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pill } from "../_shared";
 import { useCoacheeProfileDetail } from "@/hooks/admin/useCoacheeProfileDetail";
-import { STATUS_TONE, programmeCompletionPct, type Row } from "./coacheeDisplay";
+import { STATUS_TONE, type Row } from "./coacheeDisplay";
 
 interface CoacheeProfileSheetProps {
   row: Row | null;
@@ -20,7 +20,7 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
   const { loading, goals, sessions, profileData, enrollments } = useCoacheeProfileDetail(row?.id, row?.enrollment_id);
 
   if (!row) return null;
-  const pct = programmeCompletionPct(row.enrollment_start_date, row.programme_duration_months);
+  const pct = row.completion_pct;
 
   return (
     <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>

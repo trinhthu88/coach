@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import type { ProgrammeCheckpointState } from "@/lib/programmeProfile";
+import { formatPercent, type GoalProgressState, type ProgrammeCheckpointState } from "@/lib/programmeProfile";
 
 /**
  * Visual primitives of the programme profile — the design system first
@@ -39,6 +39,13 @@ export function useProfileText(viewer: ProgrammeViewer) {
   };
 }
 
+/** Shared wording for goalProgressState — identical for Learner and Sponsor. */
+export function goalProgressText(state: GoalProgressState, text: (key: string) => string): string {
+  if (state.kind === "no_goal") return text("noGoalSet");
+  if (state.kind === "not_rated") return text("goalNotRated");
+  return state.kind === "value" ? formatPercent(state.pct) : "—";
+}
+
 const { GREEN, TEAL, RED, FAINT } = PROFILE_COLORS;
 
 export function checkpointStateColor(state: ProgrammeCheckpointState) {
@@ -72,9 +79,9 @@ export function useModuleScopeLabel() {
   return (module: string) => moduleScopeLabelFor(module, t);
 }
 
-/** Where a learner goes to work on each canonical module_scope entry. */
+/** Where a learner goes to work on each canonical module_scope entry (the sidebar's module pages). */
 export const LEARNER_MODULE_PATH: Record<string, string> = {
-  coaching: "/sessions",
+  coaching: "/coaches",
   training: "/training",
   peer_coaching: "/coachee/peer-practice",
   mentoring: "/mentoring",

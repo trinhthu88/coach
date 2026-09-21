@@ -20,7 +20,13 @@
     "reload": "Reload page"
   },
   "protectedRoute": {
-    "loading": "Loading platform…"
+    "loading": "Loading platform…",
+    "noRoleTitle": "Your account has no role assigned",
+    "noRoleBody": "We couldn't find a role for this account, so we can't tell which workspace to open. Please contact your programme administrator.",
+    "signOut": "Sign out",
+    "loadErrorTitle": "We couldn't load your account",
+    "loadErrorBody": "Something went wrong while checking which workspace to open. Check your connection and try again.",
+    "retry": "Try again"
   },
   "pendingAccessRequests": {
     "awaiting_one": "{{count}} access request awaiting approval",
@@ -154,7 +160,13 @@
     "generic": "Something went wrong on our end. Please try again — if it keeps happening, contact contact@clariva.club.",
     "duplicate": "That already exists — try a different value.",
     "permissionDenied": "You don't have permission to do that.",
-    "foreignKeyViolation": "That can't be completed because something it depends on no longer exists."
+    "foreignKeyViolation": "That can't be completed because something it depends on no longer exists.",
+    "goalRequiredBeforeBooking": "Create at least one programme goal before booking your next session.",
+    "keepOneActiveGoal": "Keep at least one active goal — add a new goal before archiving this one."
+  },
+  "bookingGoalGate": {
+    "message": "Create at least one programme goal before booking your next session.",
+    "cta": "Set a goal →"
   },
   "notifications": {
     "title": "Notifications",

@@ -21,6 +21,7 @@ import {
 } from "@/hooks/triads/useTriadReflection";
 
 const SECTION_ORDER: TriadReflectionSection[] = ["coach", "coachee", "observer", "general"];
+const ROLE_SECTIONS: TriadReflectionSection[] = ["coach", "coachee", "observer"];
 
 /**
  * One learner experience, three canonical owners:
@@ -41,12 +42,20 @@ export default function TriadReflectionPage() {
   const { submitReflection, submitting } = useTriadReflection();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [satisfaction, setSatisfaction] = useState(0);
+  // Roles rotate and the canonical model stores no per-session role, so the
+  // learner says which role they played; only that role's questions (plus the
+  // general ones) are asked. Answers stay keyed by stable question id.
+  const [role, setRole] = useState<TriadReflectionSection | null>(null);
 
   const sections = useMemo(() => {
     const bySection = new Map<TriadReflectionSection, TriadReflectionQuestion[]>();
     for (const q of questions) bySection.set(q.section, [...(bySection.get(q.section) ?? []), q]);
     return SECTION_ORDER.filter((key) => bySection.has(key)).map((key) => ({ key, questions: bySection.get(key)! }));
   }, [questions]);
+
+  const hasRoleSections = sections.some((sec) => ROLE_SECTIONS.includes(sec.key));
+  const askedSections = sections.filter((sec) => !ROLE_SECTIONS.includes(sec.key) || !hasRoleSections || sec.key === role);
+  const askedQuestions = askedSections.flatMap((sec) => sec.questions);
 
   const session = entry?.session ?? null;
   const mine = reflections.find((r) => r.isSelf) ?? null;
@@ -62,7 +71,7 @@ export default function TriadReflectionPage() {
         sessionId,
         data: {
           satisfactionRating: satisfaction || null,
-          answers: questions.map((q) => ({ questionId: q.id, answerText: answers[q.id] ?? "" })).filter((a) => a.answerText.trim()),
+          answers: askedQuestions.map((q) => ({ questionId: q.id, answerText: answers[q.id] ?? "" })).filter((a) => a.answerText.trim()),
         },
       });
       toast.success(t("reflection.successToast"));
@@ -125,7 +134,9 @@ export default function TriadReflectionPage() {
       {mine ? (
         <>
           <p className="text-xs italic text-muted-foreground">{t("reflection.alreadySubmitted")}</p>
-          {sections.map((sec) => (
+          {sections
+            .filter((sec) => sec.questions.some((q) => mine.answers.some((a) => a.questionId === q.id)))
+            .map((sec) => (
             <div key={sec.key} className="space-y-3 rounded-[20px] border border-[#e8e2d8] bg-card p-6">
               <p className="font-display text-[21px] font-normal tracking-[-0.01em]">{t(`reflection.sections.${sec.key}`)}</p>
               <div className="space-y-2 text-sm text-muted-foreground">
@@ -143,7 +154,30 @@ export default function TriadReflectionPage() {
         <p className="rounded-[16px] border border-[#efeae1] bg-[#faf8f4] p-4 text-center text-xs italic text-muted-foreground">{t("reflection.afterCompletion")}</p>
       ) : (
         <>
-          {sections.map((sec) => (
+          {hasRoleSections && (
+            <div className="space-y-3 rounded-[20px] border border-[#e8e2d8] bg-card p-6" data-testid="triad-role-picker">
+              <p className="font-display text-[21px] font-normal tracking-[-0.01em]">{t("reflection.roleLabel")}</p>
+              <p className="text-xs text-muted-foreground">{t("reflection.roleHelp")}</p>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("reflection.roleLabel")}>
+                {ROLE_SECTIONS.filter((key) => sections.some((sec) => sec.key === key)).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={role === key}
+                    onClick={() => setRole(key)}
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-xs font-semibold",
+                      role === key ? "border-primary bg-primary-soft text-[#1d5a6b]" : "border-[#dcd5c9] bg-[#faf8f4] text-[#4a463f]",
+                    )}
+                  >
+                    {t(`reflection.sections.${key}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {askedSections.map((sec) => (
             <div key={sec.key} className="space-y-5 rounded-[20px] border border-[#e8e2d8] bg-card p-6">
               <p className="font-display text-[21px] font-normal tracking-[-0.01em]">{t(`reflection.sections.${sec.key}`)}</p>
               {sec.questions.map((q) => (
@@ -176,7 +210,7 @@ export default function TriadReflectionPage() {
 
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || (hasRoleSections && !role)}
             className="w-full rounded-[14px] bg-primary px-6 py-[15px] text-[13px] font-semibold text-secondary shadow-[0_14px_30px_-16px_rgba(61,180,208,.9)] transition-transform hover:-translate-y-0.5 disabled:opacity-50"
           >
             {submitting && <Loader2 className="mr-1.5 inline h-4 w-4 animate-spin" />}

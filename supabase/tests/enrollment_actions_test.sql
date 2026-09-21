@@ -35,14 +35,19 @@ join public.programme_enrollments e on e.user_id = a.coachee_id
 where e.cohort_id is not null
 on conflict (cohort_id, coach_id) do nothing;
 
+-- Booking goal gate (20260925400000): the cohort started long before today, so
+-- each learner's own live booking below needs an active goal. The learner's
+-- goals are therefore created before the sessions.
+insert into public.coachee_goals(id,coachee_id,enrollment_id,title) values
+ ('a5000000-0000-4000-8000-000000000051','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Goal one'),
+ ('a5000000-0000-4000-8000-000000000052','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Goal two');
+insert into public.coachee_goals(coachee_id,enrollment_id,title) values
+ ('a5000000-0000-4000-8000-000000000003','a5000000-0000-4000-8000-000000000032','Booking gate goal');
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status,action_items) values
   ('a5000000-0000-4000-8000-000000000041','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Action session','2026-02-01',60,'confirmed','[{"text":"Legacy linked action","done":true,"milestone_id":"a5000000-0000-4000-8000-000000000060"},{"text":"Broken date action","due_date":"not-a-date"}]');
 select set_config('request.jwt.claim.sub','a5000000-0000-4000-8000-000000000003',true);
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status,action_items) values
   ('a5000000-0000-4000-8000-000000000042','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000003','a5000000-0000-4000-8000-000000000032','Other action session','2026-02-02',60,'confirmed','[]');
-insert into public.coachee_goals(id,coachee_id,enrollment_id,title) values
- ('a5000000-0000-4000-8000-000000000051','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Goal one'),
- ('a5000000-0000-4000-8000-000000000052','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Goal two');
 insert into public.coachee_milestones(id,coachee_id,enrollment_id,goal_id,title) values
  ('a5000000-0000-4000-8000-000000000060','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','a5000000-0000-4000-8000-000000000051','Milestone one');
 select throws_ok($$insert into public.enrollment_actions(enrollment_id,owner_user_id,title,source_activity_type,source_activity_id) values('a5000000-0000-4000-8000-000000000031','a5000000-0000-4000-8000-000000000001','Invalid','coaching','a5000000-0000-4000-8000-000000000042')$$,'42501','Action source must belong to the action enrollment','reject source from another enrollment');

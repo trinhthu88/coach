@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { computeStartOptions } from "./bookingSlots";
 import { useEligiblePeerPartners } from "@/hooks/peer/useEligiblePeerPartners";
+import { BookingGoalGate } from "@/components/goals/BookingGoalGate";
+import { useBookingGoalGate } from "@/components/goals/useBookingGoalGate";
 
 interface Slot {
   id: string;
@@ -139,7 +141,10 @@ export default function CoacheePeerBookSession() {
 
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
 
-  const canSubmit = !!enrollmentId && !!selectedDate && !!selectedStart && topic.trim().length > 0;
+  // Booking goal gate: the receiving learner's enrollment (server rule).
+  const { blocked: goalGateBlocked } = useBookingGoalGate(enrollmentId);
+  const canSubmit =
+    !!enrollmentId && !goalGateBlocked && !!selectedDate && !!selectedStart && topic.trim().length > 0;
 
   const handleBook = async () => {
     if (!user || !partner || !selectedDate || !selectedStart || !topic.trim() || !enrollmentId) return;
@@ -364,6 +369,8 @@ export default function CoacheePeerBookSession() {
               rows={3}
             />
           </div>
+
+          <BookingGoalGate enrollmentId={enrollmentId} />
 
           <div className="flex flex-col items-start justify-between gap-3 border-t pt-4 sm:flex-row sm:items-center">
             <div>

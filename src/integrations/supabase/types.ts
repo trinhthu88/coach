@@ -289,46 +289,67 @@ export type Database = {
       }
       bulk_invite_rows: {
         Row: {
+          accept_existing: boolean
           assign_coach_id: string | null
           batch_id: string | null
           created_at: string
+          cohort_id: string | null
           created_user_id: string | null
+          department: string | null
           email: string | null
+          enrollment_id: string | null
           error_message: string | null
           full_name: string | null
           id: string
+          organization_id: string | null
+          programme_id: string | null
           role: string | null
           row_index: number | null
           session_limit: number | null
           status: string | null
+          title: string | null
         }
         Insert: {
+          accept_existing?: boolean
           assign_coach_id?: string | null
           batch_id?: string | null
           created_at?: string
+          cohort_id?: string | null
           created_user_id?: string | null
+          department?: string | null
           email?: string | null
+          enrollment_id?: string | null
           error_message?: string | null
           full_name?: string | null
           id?: string
+          organization_id?: string | null
+          programme_id?: string | null
           role?: string | null
           row_index?: number | null
           session_limit?: number | null
           status?: string | null
+          title?: string | null
         }
         Update: {
+          accept_existing?: boolean
           assign_coach_id?: string | null
           batch_id?: string | null
           created_at?: string
+          cohort_id?: string | null
           created_user_id?: string | null
+          department?: string | null
           email?: string | null
+          enrollment_id?: string | null
           error_message?: string | null
           full_name?: string | null
           id?: string
+          organization_id?: string | null
+          programme_id?: string | null
           role?: string | null
           row_index?: number | null
           session_limit?: number | null
           status?: string | null
+          title?: string | null
         }
         Relationships: [
           {
@@ -944,6 +965,8 @@ export type Database = {
           peer_receiver_id: string
           provider_notes: string | null
           provider_private_notes: string | null
+          provider_rated_at: string | null
+          provider_rating: number | null
           receiver_notes: string | null
           receiver_rated_at: string | null
           receiver_rating: number | null
@@ -969,6 +992,8 @@ export type Database = {
           peer_receiver_id: string
           provider_notes?: string | null
           provider_private_notes?: string | null
+          provider_rated_at?: string | null
+          provider_rating?: number | null
           receiver_notes?: string | null
           receiver_rated_at?: string | null
           receiver_rating?: number | null
@@ -994,6 +1019,8 @@ export type Database = {
           peer_receiver_id?: string
           provider_notes?: string | null
           provider_private_notes?: string | null
+          provider_rated_at?: string | null
+          provider_rating?: number | null
           receiver_notes?: string | null
           receiver_rated_at?: string | null
           receiver_rating?: number | null
@@ -2065,6 +2092,8 @@ export type Database = {
           meeting_url: string | null
           mentee_id: string
           mentee_notes: string | null
+          mentee_rated_at: string | null
+          mentee_rating: number | null
           mentor_id: string
           mentor_notes: string | null
           prep_file_notes: string | null
@@ -2092,6 +2121,8 @@ export type Database = {
           meeting_url?: string | null
           mentee_id: string
           mentee_notes?: string | null
+          mentee_rated_at?: string | null
+          mentee_rating?: number | null
           mentor_id: string
           mentor_notes?: string | null
           prep_file_notes?: string | null
@@ -2119,6 +2150,8 @@ export type Database = {
           meeting_url?: string | null
           mentee_id?: string
           mentee_notes?: string | null
+          mentee_rated_at?: string | null
+          mentee_rating?: number | null
           mentor_id?: string
           mentor_notes?: string | null
           prep_file_notes?: string | null
@@ -2476,6 +2509,8 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           coach_notes: string | null
+          coach_rated_at: string | null
+          coach_rating: number | null
           coachee_notes: string | null
           coachee_rated_at: string | null
           coachee_rating: number | null
@@ -2500,6 +2535,8 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           coach_notes?: string | null
+          coach_rated_at?: string | null
+          coach_rating?: number | null
           coachee_notes?: string | null
           coachee_rated_at?: string | null
           coachee_rating?: number | null
@@ -2524,6 +2561,8 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           coach_notes?: string | null
+          coach_rated_at?: string | null
+          coach_rating?: number | null
           coachee_notes?: string | null
           coachee_rated_at?: string | null
           coachee_rating?: number | null
@@ -4690,6 +4729,141 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_enrollment_actions: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          action_id: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          goal_id: string | null
+          goal_title: string | null
+          source_activity_id: string | null
+          source_activity_type: string | null
+          status: string
+          title: string
+        }[]
+      }
+      admin_enrollment_engagement: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          action_completion_pct: number | null
+          completed_action_count: number
+          goal_count: number
+          goal_progress_pct: number | null
+          goal_setup: boolean
+          open_action_count: number
+          satisfaction_avg: number | null
+          satisfaction_rated_count: number
+          total_action_count: number
+        }[]
+      }
+      admin_enrollment_goal_checkins: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          actor_name: string | null
+          actor_user_id: string
+          checkin_id: string
+          created_at: string
+          goal_id: string
+          new_rating: number | null
+          note: string | null
+          previous_rating: number | null
+          source_activity_id: string
+          source_activity_type: string
+        }[]
+      }
+      admin_enrollment_goals: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          current_rating: number | null
+          description: string | null
+          goal_id: string
+          has_rating: boolean
+          progress_pct: number | null
+          sort_order: number
+          start_rating: number | null
+          status: string
+          target_date: string | null
+          target_rating: number | null
+          title: string
+        }[]
+      }
+      admin_enrollment_module_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_activity_units: number
+          completed_units: number
+          due_units: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          overdue_units: number
+          pace_status: string
+          required_units: number
+        }[]
+      }
+      admin_learner_reflection_feed: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          body: string
+          details: Json
+          is_private: boolean
+          linked_activity_id: string
+          linked_goal_id: string
+          linked_session_id: string
+          linked_session_table: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          occurred_at: string
+          previous_rating: number
+          rating: number
+          reflection_key: string
+          source_id: string
+          source_table: string
+          source_type: string
+          title: string
+        }[]
+      }
+      admin_learner_session_history: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          attributed_to_enrollment: boolean
+          counterpart_names: string[]
+          is_programme_evidence: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          participant_role: string
+          requirement_unit_number: number
+          session_key: string
+          session_type: string
+          source_id: string
+          source_table: string
+          start_time: string
+          status: string
+          title: string
+        }[]
+      }
+      admin_user_enrollments: {
+        Args: { p_as_of?: string; p_user_id: string }
+        Returns: {
+          cohort_id: string | null
+          cohort_name: string | null
+          completed_units: number | null
+          created_at: string
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          end_date: string | null
+          enrollment_id: string
+          full_completion_pct: number | null
+          organization_id: string | null
+          organization_name: string | null
+          overdue_units: number | null
+          programme_id: string
+          programme_name: string | null
+          progress_available: boolean
+          required_units: number | null
+          start_date: string
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+        }[]
+      }
       admin_list_report_requests: {
         Args: never
         Returns: {
@@ -4752,6 +4926,16 @@ export type Database = {
       admin_triad_set_group_active: {
         Args: { p_group_id: string; p_is_active: boolean }
         Returns: undefined
+      }
+      admin_transition_enrollment: {
+        Args: {
+          p_cohort_id: string
+          p_effective_date?: string
+          p_organization_id?: string | null
+          p_programme_id?: string | null
+          p_user_id: string
+        }
+        Returns: Json
       }
       admin_update_coach_configuration: {
         Args: {
@@ -5486,6 +5670,10 @@ export type Database = {
           coach_id: string
         }[]
       }
+      enrollment_goal_gate: {
+        Args: { p_enrollment_id: string }
+        Returns: Json
+      }
       enrollment_module_config: {
         Args: {
           p_enrollment_id: string
@@ -5773,6 +5961,151 @@ export type Database = {
           module: Database["public"]["Enums"]["programme_module_type"]
           pace_status: string
           required_units: number
+        }[]
+      }
+      coach_canonical_enrollment_progress: {
+        Args: { p_as_of?: string; p_enrollment_ids: string[] }
+        Returns: {
+          completed_units: number
+          enrollment_id: string
+          full_completion_pct: number
+          overdue_units: number
+          progress_available: boolean
+          required_units: number
+        }[]
+      }
+      learner_session_deliverables: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          counterpart_names: string[]
+          deliverables_complete: boolean
+          goal_checkin_required: boolean
+          has_action: boolean
+          has_goal_checkin: boolean
+          has_reflection: boolean
+          has_satisfaction: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          participant_role: string
+          requirement_unit_number: number
+          satisfaction_rating: number
+          session_id: string
+          source_table: string
+          start_time: string
+          title: string
+        }[]
+      }
+      admin_enrollment_session_deliverables: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          counterpart_names: string[]
+          deliverables_complete: boolean
+          goal_checkin_required: boolean
+          has_action: boolean
+          has_goal_checkin: boolean
+          has_reflection: boolean
+          has_satisfaction: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          participant_role: string
+          requirement_unit_number: number
+          satisfaction_rating: number
+          session_id: string
+          source_table: string
+          start_time: string
+          title: string
+        }[]
+      }
+      session_counterpart_deliverables: {
+        Args: { p_session_id: string; p_source_table: string }
+        Returns: {
+          counterpart_role: string
+          done: boolean
+          is_self: boolean
+          item: string
+          required: boolean
+          session_completed: boolean
+          user_id: string
+        }[]
+      }
+      session_deliverables: {
+        Args: { p_session_id: string; p_source_table: string }
+        Returns: {
+          deliverables_complete: boolean
+          enrollment_id: string
+          goal_checkin_required: boolean
+          has_action: boolean
+          has_goal_checkin: boolean
+          has_reflection: boolean
+          has_satisfaction: boolean
+          is_self: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          participant_role: string
+          satisfaction_rating: number
+          session_completed: boolean
+          session_id: string
+          session_status: string
+          source_table: string
+        }[]
+      }
+      session_deliverable_source_types: {
+        Args: { p_source_table: string }
+        Returns: {
+          action_type: string
+          checkin_type: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          reflection_type: string
+        }[]
+      }
+      submit_session_satisfaction: {
+        Args: {
+          p_enrollment_id: string
+          p_rating: number
+          p_session_id: string
+          p_source_table: string
+        }
+        Returns: undefined
+      }
+      admin_enrollment_satisfaction: {
+        Args: { p_enrollment_ids: string[] }
+        Returns: {
+          enrollment_id: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          rated_count: number
+          rating_counts: number[]
+          rating_sum: number
+          satisfaction_avg: number
+        }[]
+      }
+      learner_module_requirements: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_on: string
+          due_on: string
+          fulfilled_on: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          ordinal: number
+          requirement_id: string
+        }[]
+      }
+      learner_module_progress: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          booked_units: number
+          completed_activity_units: number
+          completed_units: number
+          due_units: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          overdue_units: number
+          pace_status: string
+          required_units: number
+        }[]
+      }
+      learner_canonical_overdue_items: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          due_units: number
+          module: Database["public"]["Enums"]["programme_module_type"]
+          oldest_due_on: string
+          overdue_units: number
         }[]
       }
       learner_canonical_progress: {
@@ -6182,6 +6515,10 @@ export type Database = {
       skip:
         | { Args: { "": string }; Returns: string }
         | { Args: { how_many: number; why: string }; Returns: string }
+      sponsor_can_view_enrollment: {
+        Args: { p_enrollment_id: string }
+        Returns: boolean
+      }
       sponsor_canonical_activity: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -6235,6 +6572,8 @@ export type Database = {
           programme_start_date: string
           progress_source_complete: boolean
           required_units: number
+          satisfaction_avg: number | null
+          satisfaction_rated_count: number
           schedule_coverage_pct: number
           scheduled_count: number
           suppressed: boolean
@@ -6294,6 +6633,8 @@ export type Database = {
           programme_start_date: string
           progress_source_complete: boolean
           required_units: number
+          satisfaction_avg: number | null
+          satisfaction_rated_count: number
           schedule_coverage_pct: number
           scheduled_count: number
           suppressed: boolean
@@ -6493,12 +6834,16 @@ export type Database = {
       sponsor_canonical_organisation_progress: {
         Args: { p_as_of?: string }
         Returns: {
+          active_count: number
+          at_risk_count: number
+          behind_count: number
           booked_units: number
           coaching_booked_units: number
           coaching_completed_units: number
           coaching_due_units: number
           coaching_required_units: number
           cohort_count: number
+          completed_count: number
           completed_units: number
           due_adherence_pct: number
           due_units: number
@@ -6508,13 +6853,17 @@ export type Database = {
           mentoring_completed_units: number
           mentoring_due_units: number
           mentoring_required_units: number
+          on_track_count: number
           overdue_units: number
+          paused_count: number
           peer_booked_units: number
           peer_completed_units: number
           peer_due_units: number
           peer_required_units: number
           progress_source_complete: boolean
           required_units: number
+          satisfaction_avg: number | null
+          satisfaction_rated_count: number
           schedule_coverage_pct: number
           suppressed_cohort_count: number
           training_booked_units: number
@@ -6573,6 +6922,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      sponsor_visible_enrollments: {
+        Args: never
+        Returns: {
+          cohort_id: string
+          enrollment_id: string
+          organization_id: string
+        }[]
       }
       sync_cohort_requirement_dates: {
         Args: { p_cohort_id: string }

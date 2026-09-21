@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import type { Row, Status } from "@/pages/admin/coachees/coacheeDisplay";
 import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
+import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 export interface ProgrammeOpt {
   id: string;
@@ -16,6 +18,12 @@ export interface NamedOpt {
   name: string;
 }
 
+/** A cohort owns its programme; organization is the cohort's default. */
+export interface CohortOpt extends NamedOpt {
+  programme_id: string | null;
+  organization_id: string | null;
+}
+
 /**
  * Loads the full admin coachees list — profile, session counts, programme/
  * cohort/organization enrollment, coach allowlist and session-limit override
@@ -27,7 +35,7 @@ export function useAdminCoacheesData() {
   const [rows, setRows] = useState<Row[]>([]);
   const [coachOpts, setCoachOpts] = useState<NamedOpt[]>([]);
   const [programmes, setProgrammes] = useState<ProgrammeOpt[]>([]);
-  const [cohorts, setCohorts] = useState<NamedOpt[]>([]);
+  const [cohorts, setCohorts] = useState<CohortOpt[]>([]);
   const [organizations, setOrganizations] = useState<NamedOpt[]>([]);
   const [defaultLimit, setDefaultLimit] = useState(4);
 
@@ -50,7 +58,7 @@ export function useAdminCoacheesData() {
       supabase.from("sessions").select("coachee_id, enrollment_id, status"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date, status"),
       supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
-      supabase.from("cohorts").select("id, name"),
+      supabase.from("cohorts").select("id, name, programme_id, organization_id"),
       supabase.from("organizations").select("id, name").order("name"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
       supabase.from("session_limits").select("id, coachee_id, monthly_limit"),
@@ -80,6 +88,13 @@ export function useAdminCoacheesData() {
         if (enrollment) enrByUser.set(userId, enrollment);
       }
     }
+    // "% complete" is the canonical engine's number for the SAME enrollment the
+    // learner sees — never a local estimate (time elapsed, session counts).
+    const selectedEnrollmentIds = [...enrByUser.values()].map((e) => e.id);
+    const canonical = await fetchAdminCanonicalProgress(selectedEnrollmentIds).catch(() => []);
+    const progressByEnrollment = new Map(
+      canonical.map((c) => [c.enrollment_id, c.progress_available ? canonicalCompletionPct(c.full_completion_pct) : null]),
+    );
     const progById = new Map((progs || []).map((p) => [p.id, p]));
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const orgById = new Map((orgsData || []).map((o) => [o.id, o.name]));
@@ -133,6 +148,7 @@ export function useAdminCoacheesData() {
           organization_name: enr?.organization_id ? orgById.get(enr.organization_id) || null : null,
           enrollment_id: enr?.id || null,
           enrollment_start_date: enr?.start_date || null,
+          completion_pct: enr ? progressByEnrollment.get(enr.id) ?? null : null,
           selected_coaches: allowByCoachee.get(id) || [],
           session_limit: lim?.monthly_limit ?? defLimit,
           limit_row_id: lim?.id || null,
@@ -150,7 +166,7 @@ export function useAdminCoacheesData() {
         .sort((a, b) => a.name.localeCompare(b.name))
     );
     setProgrammes((progs || []) as ProgrammeOpt[]);
-    setCohorts((cohortsData || []) as NamedOpt[]);
+    setCohorts((cohortsData || []) as CohortOpt[]);
     setOrganizations((orgsData || []) as NamedOpt[]);
     setLoading(false);
   }, []);

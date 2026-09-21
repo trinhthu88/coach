@@ -44,7 +44,7 @@ import { ProtectedRoute } from "../ProtectedRoute";
 
 function renderAt(
   path: string,
-  role?: "admin" | "coach" | "coachee",
+  role?: "admin" | "coach" | "coachee" | "sponsor",
   opts?: { roles?: ("admin" | "coach" | "coachee")[]; module?: string }
 ) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -108,6 +108,41 @@ describe("ProtectedRoute", () => {
     });
     renderAt("/private");
     expect(screen.getByText("auth page")).toBeInTheDocument();
+  });
+
+  it("shows an explicit error — not a coachee workspace — when the user has no role", () => {
+    mockAuth.mockReturnValue({ user: { id: "u1" }, role: null, profile: baseProfile, isLoading: false, signOut: vi.fn() });
+    renderAt("/private");
+    expect(screen.getByRole("alert")).toHaveTextContent(/no role assigned/i);
+    expect(screen.queryByText("protected content")).not.toBeInTheDocument();
+    expect(screen.queryByText("dashboard page")).not.toBeInTheDocument();
+  });
+
+  it("reports a failed role lookup with a retry, never as 'no role' or a spinner", async () => {
+    const refreshProfile = vi.fn(async () => {});
+    mockAuth.mockReturnValue({
+      user: { id: "u1" },
+      role: null,
+      roleError: "network down",
+      profile: null,
+      isLoading: false,
+      signOut: vi.fn(),
+      refreshProfile,
+    });
+    renderAt("/private");
+    const alert = screen.getByTestId("role-load-error");
+    expect(alert).toHaveTextContent(/couldn't load your account/i);
+    expect(screen.queryByText(/no role assigned/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/loading platform/i)).not.toBeInTheDocument();
+    screen.getByRole("button", { name: /try again/i }).click();
+    expect(refreshProfile).toHaveBeenCalled();
+  });
+
+  it("keeps a sponsor out of learner/coach workspaces", () => {
+    mockAuth.mockReturnValue({ user: { id: "u1" }, role: "sponsor", profile: baseProfile, isLoading: false });
+    renderAt("/sessions", undefined, { roles: ["coach", "coachee"] });
+    expect(screen.getByText("dashboard page")).toBeInTheDocument();
+    expect(screen.queryByText("protected content")).not.toBeInTheDocument();
   });
 
   it("redirects users flagged must_change_password to /set-new-password", () => {

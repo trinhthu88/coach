@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-// Core account-creation mechanics shared by every "invite a new user" edge function
-// (coach-invite-coachee, admin-bulk-invite-users). Callers own their own
+// Account-creation mechanics for the coach-initiated invite (coach-invite-coachee).
+// Admin-added users go through adminInvite.ts instead. Callers own their own
 // authorization and any rate/cap checks — this only does the account creation +
 // optional coach assignment, nothing else.
 

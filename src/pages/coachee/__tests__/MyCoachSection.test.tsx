@@ -27,6 +27,21 @@ vi.mock("@/hooks/journey/useEnrollmentSessions", () => ({
   useEnrollmentSessions: (...args: unknown[]) => enrollmentSessions(...args),
 }));
 
+// Shared module structure (useModuleWorkspace): canonical requirements,
+// post-session deliverables and the booking goal gate.
+vi.mock("@/hooks/journey/useModuleRequirements", () => ({
+  useModuleRequirements: () => ({ state: null, loading: false, error: null }),
+}));
+vi.mock("@/hooks/sessions/usePostSessionDeliverables", () => ({
+  useLearnerSessionDeliverables: () => ({ deliverables: [], loading: false, error: null }),
+}));
+// Goals and actions linked to this module's sessions (listed in the shared card).
+const linkedGoalsActions = vi.fn(() => ({ actions: [] as unknown[], goals: [] as unknown[], loading: false, error: null }));
+vi.mock("@/hooks/journey/useModuleGoalsActions", () => ({ useModuleGoalsActions: () => linkedGoalsActions() }));
+vi.mock("@/components/goals/useBookingGoalGate", () => ({
+  useBookingGoalGate: () => ({ gate: null, blocked: false, loading: false }),
+}));
+
 import "@/i18n/config";
 import { MyCoachSection } from "../MyCoachSection";
 
@@ -45,15 +60,15 @@ beforeEach(() => {
 });
 
 describe("MyCoachSection", () => {
-  it("renders nothing when the coaching module isn't configured for receiving", () => {
-    programmeModules.mockReturnValue({ hasDirection: () => false, loading: false });
+  it("renders nothing when the programme has no coaching module", () => {
+    programmeModules.mockReturnValue({ hasModule: () => false, loading: false });
     myCoachCardData.mockReturnValue({ data: null, loading: false });
     const { container } = renderSection();
     expect(container).toBeEmptyDOMElement();
   });
 
   it("shows an explicit 'no coach assigned' state (never a fabricated coach) when the module is configured but no coach is assigned", () => {
-    programmeModules.mockReturnValue({ hasDirection: () => true, loading: false });
+    programmeModules.mockReturnValue({ hasModule: () => true, loading: false });
     myCoachCardData.mockReturnValue({ data: null, loading: false });
     renderSection();
     expect(screen.getByTestId("my-coach")).toHaveTextContent("No coach is assigned to you yet");
@@ -61,7 +76,7 @@ describe("MyCoachSection", () => {
   });
 
   it("shows coaching progress from the canonical progress row, not a count of session rows", () => {
-    programmeModules.mockReturnValue({ hasDirection: () => true, loading: false });
+    programmeModules.mockReturnValue({ hasModule: () => true, loading: false });
     myCoachCardData.mockReturnValue({ data: { id: "coach-1", full_name: "Casey Coach", avatar_url: null, title: null }, loading: false });
     // Canonical row says 4/4 (Demo Learner); only one completed row is in the list.
     learnerCanonicalProgress.mockReturnValue({ progress: { coaching_completed_units: 4, coaching_required_units: 4 }, loading: false, error: null });
@@ -80,8 +95,30 @@ describe("MyCoachSection", () => {
     expect(screen.getAllByTestId("session-row")).toHaveLength(1);
   });
 
+  it("lists the goals and actions connected to coaching sessions, and the upcoming session card", () => {
+    programmeModules.mockReturnValue({ hasModule: () => true, loading: false });
+    myCoachCardData.mockReturnValue({ data: null, loading: false });
+    linkedGoalsActions.mockReturnValue({
+      actions: [
+        { id: "a1", title: "Delegate the weekly report", status: "open", dueDate: "2099-01-01", sessionId: "s1" },
+        { id: "a2", title: "Ask for feedback", status: "completed", dueDate: null, sessionId: "s0" },
+      ],
+      goals: [{ id: "g1", title: "Lead decisive meetings", status: "active", checkins: 2 }],
+      loading: false,
+      error: null,
+    });
+    renderSection();
+    expect(screen.getByTestId("module-goals")).toHaveTextContent("Lead decisive meetings");
+    expect(screen.getByTestId("module-goals")).toHaveTextContent("2 check-ins");
+    const actions = screen.getAllByTestId("module-action");
+    expect(actions).toHaveLength(2);
+    expect(actions[0]).toHaveAttribute("data-status", "open");
+    expect(screen.getByTestId("module-upcoming")).toBeInTheDocument();
+    expect(screen.getByTestId("module-upcoming-none")).toBeInTheDocument();
+  });
+
   it("shows a load error for coaching sessions instead of an empty state", () => {
-    programmeModules.mockReturnValue({ hasDirection: () => true, loading: false });
+    programmeModules.mockReturnValue({ hasModule: () => true, loading: false });
     myCoachCardData.mockReturnValue({ data: null, loading: false });
     enrollmentSessions.mockReturnValue({ sessions: [], loading: false, error: "boom" });
     renderSection();
@@ -90,7 +127,7 @@ describe("MyCoachSection", () => {
   });
 
   it("shows the real assigned coach's name and sessions, not a sample name", () => {
-    programmeModules.mockReturnValue({ hasDirection: () => true, loading: false });
+    programmeModules.mockReturnValue({ hasModule: () => true, loading: false });
     myCoachCardData.mockReturnValue({ data: { id: "coach-1", full_name: "Casey Coach", avatar_url: null, title: "PCC" }, loading: false });
     enrollmentSessions.mockReturnValue({
       sessions: [

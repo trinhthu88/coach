@@ -21,7 +21,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { SessionGoalRatings } from "./session/SessionGoalRatings";
-import { CoachingPostSessionChecklist } from "./session/CoachingPostSessionChecklist";
+import { PostSessionChecklist } from "./session/PostSessionChecklist";
 import { SessionToolbox } from "@/components/tools/SessionToolbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CoachSessionFeedback } from "@/components/sessions/CoachSessionFeedback";
@@ -57,6 +57,7 @@ export default function SessionDetail() {
   const { user, role } = useAuth();
 
   const {
+    tableName,
     session,
     coach,
     coachee,
@@ -65,8 +66,6 @@ export default function SessionDetail() {
     saving,
     coachNotes,
     setCoachNotes,
-    coacheeNotes,
-    setCoacheeNotes,
     meetingUrl,
     setMeetingUrl,
     items,
@@ -154,12 +153,14 @@ export default function SessionDetail() {
   // The Coach (Coaching) or either participant (Peer) records that the
   // conversation happened, once the session is confirmed and has started. The
   // learner's post-session work is a separate fact, shown by
-  // CoachingPostSessionChecklist and enforced by coaching_session_evidence()
-  // -- it gates the programme UNIT, not this.
+  // PostSessionChecklist and read from session_deliverables()
+  // -- it gates nothing, and nothing here waits on it.
   // Peer practice has no Coach: either participant may record that the meeting
   // happened, which is what transition_peer_session_status() allows. Coaching
   // stays the Coach's (or an Admin's) observation.
   const isPeerPractice = isPeer || isCoacheePeer;
+  // The viewer is a learner of this session (coachee, or either peer).
+  const learnerSelf = isCoachee || (isPeerPractice && isCoach);
   const canMarkComplete = canMarkSessionComplete({
     isConfirmed: session.status === "confirmed",
     hasStarted: sessionStarted,
@@ -172,7 +173,9 @@ export default function SessionDetail() {
   const handleSaveProgress = async () => {
     const { error } = await saveProgress({
       includeCoachNotes: isCoach || isAdmin,
-      includeCoacheeNotes: isCoachee || isAdmin,
+      // The learner's reflection is written in the post-session checklist
+      // (session_learning_reflections); the legacy note column is not edited here.
+      includeCoacheeNotes: false,
       includeMeetingUrl: isAdmin,
     });
     if (error) {
@@ -317,24 +320,6 @@ export default function SessionDetail() {
                       />
                     </NoteBlock>
                   )}
-
-                  <NoteBlock
-                    label={t("detail.notes.clientReflectionLabel")}
-                    hint={isCoachee || isAdmin ? undefined : t("detail.notes.readOnly")}
-                  >
-                    <Textarea
-                      value={coacheeNotes}
-                      onChange={(e) => setCoacheeNotes(e.target.value)}
-                      rows={7}
-                      disabled={!(isCoachee || isAdmin)}
-                      className="resize-none border-0 bg-transparent p-0 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 disabled:opacity-100"
-                      placeholder={
-                        isCoachee || isAdmin
-                          ? t("detail.notes.clientReflectionPlaceholderEditable")
-                          : t("detail.notes.clientReflectionPlaceholderReadOnly")
-                      }
-                    />
-                  </NoteBlock>
                 </div>
               )}
 
@@ -540,19 +525,22 @@ export default function SessionDetail() {
             </div>
           </Card>
 
-          {/* Mandatory post-session learning gate. Shown for programme
-              Coaching once the Coach has marked the session held; it reads
-              every tick from the canonical backend, never from this page. */}
-          {!isPeer && !isCoacheePeer && session.enrollment_id && (
-            <CoachingPostSessionChecklist
-              sessionId={session.id}
-              enrollmentId={session.enrollment_id}
-              canSubmitReflection={isCoachee}
-            />
+          {/* Post-session deliverables: the one shared checklist (Coaching,
+              and Peer for BOTH participants, each on their own enrollment).
+              Every tick is read from session_deliverables(); outstanding
+              items are completed in place. */}
+          {!session.enrollment_id && (
+            <Card className="p-5 text-sm text-muted-foreground" data-testid="session-unscoped-notice">
+              {t("detail.unscopedNotice")}
+            </Card>
+          )}
+          {(isCoach || isCoachee || isAdmin) && (
+            <PostSessionChecklist sourceTable={tableName} sessionId={session.id} viewerUserId={user?.id} />
           )}
 
-          {/* Per-goal rating snapshot (non-peer sessions only) */}
-          {session.enrollment_id && (
+          {/* Per-goal rating snapshot. A learner's own check-in on a held
+              session lives inside the checklist above. */}
+          {session.enrollment_id && (!learnerSelf || session.status !== "completed") && (
             <SessionGoalRatings
               sessionId={session.id}
               coacheeId={session.coachee_id}

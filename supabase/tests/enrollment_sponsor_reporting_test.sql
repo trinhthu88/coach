@@ -42,8 +42,8 @@ select ok(not exists (
 ), 'sponsor result columns contain only approved scalar fields');
 select ok(pg_get_functiondef('public.sponsor_canonical_enrollment_progress(uuid,date)'::regprocedure) ~ 'canonical_enrollment_progress',
   'enrollment rows are the shared canonical construction');
-select ok(pg_get_functiondef('public.sponsor_canonical_enrollment_progress(uuid,date)'::regprocedure) ~ 'sponsor_min_leaders_for_distribution',
-  'enrollment rows enforce the minimum cohort threshold');
+select ok(pg_get_functiondef('public.sponsor_canonical_enrollment_progress(uuid,date)'::regprocedure) ~ 'sponsor_visible_enrollments\(\)',
+  'enrollment rows are scoped by the one sponsor visibility rule (enrollment organisation)');
 select ok(pg_get_functiondef('public.sponsor_canonical_cohort_progress_one(uuid,date)'::regprocedure) ~ 'sponsor_canonical_enrollment_progress'
     and pg_get_functiondef('public.sponsor_canonical_cohort_progress_one(uuid,date)'::regprocedure) !~ 'canonical_module_progress|get_enrollment_progress|coachee_goals|enrollment_actions',
   'the cohort rollup only aggregates canonical enrollment rows');
@@ -57,14 +57,14 @@ select ok(pg_get_function_result('public.canonical_enrollment_progress(uuid,date
   'booked units remain distinct from completed units');
 select ok(pg_get_functiondef('public.get_enrollment_progress(uuid,date)'::regprocedure) ~ 'least\(raw_booked',
   'historical engine: booked units are bounded to remaining required units');
-select ok(pg_get_functiondef('public.sponsor_canonical_cohort_progress_one(uuid,date)'::regprocedure) ~ 'sponsor_min_leaders_for_distribution',
-  'cohort rollup is threshold suppressed');
+select ok(pg_get_functiondef('public.sponsor_canonical_cohort_progress_one(uuid,date)'::regprocedure) ~ 'sponsor_visible_enrollments\(\)'
+    and pg_get_functiondef('public.sponsor_canonical_cohort_progress_one(uuid,date)'::regprocedure) !~ 'c\.organization_id',
+  'cohort rollup aggregates only the sponsor''s visible enrollments, never the cohort organisation');
 select ok(pg_get_function_result('public.sponsor_canonical_organisation_progress(date)'::regprocedure) !~* '(learner|full_name|user_id|coachee_id)',
   'organisation rollup is unnamed');
 
--- Sponsors have no direct table path around the threshold-aware reporting
--- functions.  In fixture runs these same checks are executed as a suppressed
--- sponsor and must return zero rows for names, enrollment ids, and progress.
+-- Sponsors have no direct table path around the visibility-scoped reporting
+-- functions (sponsor_visible_enrollments: enrollment organisation only).
 select ok(not exists (
   select 1 from pg_policies
   where schemaname='public'
@@ -72,9 +72,9 @@ select ok(not exists (
     and policyname ilike '%sponsor%'
 ), 'sponsors have no direct SELECT policies on private programme tables');
 select ok(pg_get_functiondef('public.get_enrollment_progress(uuid,date)'::regprocedure)
-  ~ 'sponsor_min_leaders_for_distribution', 'individual progress requires canonical cohort threshold');
+  ~ 'sponsor_can_view_enrollment', 'individual progress uses the one sponsor visibility rule');
 select ok(pg_get_functiondef('public.get_enrollment_progress(uuid,date)'::regprocedure)
-  ~ 'count\(\*\).*programme_enrollments', 'progress authorization counts the complete cohort');
+  !~ 'cohort_organization_id', 'progress authorization never reads the cohort organisation');
 select has_function('public', 'get_peer_session_usage', array['uuid']);
 select has_function('public', 'can_book_peer_session', array['uuid','uuid']);
 select has_function('public', 'book_peer_session', array['uuid','uuid','text','timestamptz','integer','uuid']);

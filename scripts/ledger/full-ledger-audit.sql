@@ -266,7 +266,20 @@ WITH repo(version, name) AS (VALUES
   ('20260922110000', 'peer_cohort_eligibility'),
   ('20260922120000', 'peer_booking_and_lifecycle'),
   ('20260922130000', 'peer_surface_convergence'),
-  ('20260923100000', 'programme_quantity_invariant')
+  ('20260923100000', 'programme_quantity_invariant'),
+  ('20260924100000', 'sponsor_role_exclusive'),
+  ('20260924110000', 'learner_modules_from_programme'),
+  ('20260924120000', 'learner_canonical_overdue_items'),
+  ('20260924130000', 'coach_canonical_progress'),
+  ('20260924140000', 'learner_module_progress_self_view'),
+  ('20260925100000', 'sponsor_visibility_by_enrollment_org'),
+  ('20260925200000', 'admin_provisioning_and_enrollment_transition'),
+  ('20260925300000', 'admin_enrollment_detail'),
+  ('20260925400000', 'booking_goal_gate'),
+  ('20260925500000', 'post_session_deliverables'),
+  ('20260926100000', 'admin_enrollment_transition_service_role'),
+  ('20260926200000', 'role_priority_sponsor_role_journey_state'),
+  ('20260926300000', 'counterpart_session_deliverables')
 -- END REPO MANIFEST
 ),
 

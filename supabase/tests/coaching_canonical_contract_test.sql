@@ -422,14 +422,14 @@ select is(
      from public.canonical_enrollment_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)),
   1, 'the shared spine counts the held-and-evidenced unit as completed, and only that one');
 
--- Sponsor privacy floor: sponsor_canonical_enrollment_progress additionally
--- requires a sponsor identity, a matching organisation and at least
--- sponsor_min_leaders_for_distribution() leaders in the cohort. This fixture
--- has two, so a Sponsor must see nothing -- k-anonymity, not a missing join.
+-- Sponsor visibility: sponsor reads additionally require a sponsor whose
+-- organisation equals the ENROLLMENT's organisation
+-- (sponsor_visible_enrollments). This fixture's enrollments carry no
+-- organisation, so no caller sees them through a sponsor surface.
 select is(
   (select count(*)::int
      from public.sponsor_canonical_leader_progress('c1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)),
-  0, 'a Sponsor sees no row for a cohort below the minimum-leaders privacy floor');
+  0, 'a non-sponsor caller sees no Sponsor row, and an enrollment with no organisation is visible to no sponsor');
 
 -- The Sponsor contract exposes no reflection narrative: the column set is
 -- fixed, so a narrative leak would be a schema change, not a query mistake.

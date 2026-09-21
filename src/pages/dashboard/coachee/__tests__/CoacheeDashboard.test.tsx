@@ -14,6 +14,7 @@ import {
 const state = vi.hoisted(() => ({
   canonical: {} as Record<string, unknown>,
   engagement: {} as Record<string, unknown>,
+  overdueItems: {} as Record<string, unknown>,
   goalProgress: {} as Record<string, unknown>,
   goals: {} as Record<string, unknown>,
   ratings: {} as Record<string, unknown>,
@@ -41,6 +42,7 @@ vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
     state.learnerHookCalls.push("engagement");
     return state.engagement;
   },
+  useLearnerOverdueItems: () => state.overdueItems,
   useLearnerCanonicalGoalProgress: () => {
     state.learnerHookCalls.push("goalProgress");
     return state.goalProgress;
@@ -117,6 +119,12 @@ function seedPopulated() {
     retry: vi.fn(),
   };
   state.engagement = { engagement: canonicalEngagement, loading: false, error: null };
+  // One overdue coaching unit — the fixture's canonical overdue_units is 1.
+  state.overdueItems = {
+    items: [{ module: "coaching", overdue_units: 1, due_units: 3, oldest_due_on: "2026-01-20" }],
+    loading: false,
+    error: null,
+  };
   state.goalProgress = { progressByGoal: { "goal-1": 50, "goal-2": 60 }, loading: false, error: null };
   state.goals = {
     goals: [
@@ -286,6 +294,9 @@ describe("Learner Dashboard — canonical programme profile", () => {
     expect(within(screen.getByTestId("goal-summary")).getByText("1 / 3")).toBeInTheDocument();
     // Overdue action is repositioned into "Needs your attention" with a working link.
     const attention = screen.getByTestId("learner-attention");
+    // Every overdue required unit is listed, from the same canonical source as the KPI.
+    expect(screen.getByTestId("learner-attention-overdue-count")).toHaveTextContent(/^1 overdue$/i);
+    expect(within(attention).getByRole("link", { name: /coaching/i })).toHaveAttribute("href", "/coaches");
     expect(within(attention).getByRole("link", { name: new RegExp(PRIVATE_ACTION) })).toHaveAttribute("href", "/coachee/journey#goals");
   });
 

@@ -545,9 +545,9 @@ SELECT c.id, tw.id,
 FROM public.cohorts c
 JOIN public.training_weeks tw ON tw.programme_id = c.programme_id
 JOIN (VALUES
-  ('Emerging Leaders - Cohort B', 5),
-  ('Executive Excellence - Cohort C', 6),
-  ('TASC Essential - Cohort D', 4)
+  ('Emerging Leaders · Cohort B', 5),
+  ('Executive Excellence · Cohort C', 6),
+  ('TASC Essential · Cohort D', 4)
 ) AS v(cohort_name, past_through) ON v.cohort_name = c.name
 ON CONFLICT (cohort_id, training_week_id) DO UPDATE
   SET unlock_date = EXCLUDED.unlock_date, is_visible = true;
@@ -564,29 +564,30 @@ ON CONFLICT (cohort_id, training_week_id) DO UPDATE
 CREATE TEMP TABLE _tp (email text, cohort_name text, weeks_done integer) ON COMMIT DROP;
 INSERT INTO _tp VALUES
   -- Cohort A finished: everyone completed everything.
-  ('learner1@clariva.demo', 'Emerging Leaders - Cohort A (completed)', 8),
-  ('alum1@clariva.demo',    'Emerging Leaders - Cohort A (completed)', 8),
-  ('alum2@clariva.demo',    'Emerging Leaders - Cohort A (completed)', 8),
-  ('alum3@clariva.demo',    'Emerging Leaders - Cohort A (completed)', 8),
-  ('alum4@clariva.demo',    'Emerging Leaders - Cohort A (completed)', 8),
-  -- Cohort B: complete / on track / behind / just started / just started.
-  ('learner1@clariva.demo', 'Emerging Leaders - Cohort B', 8),
-  ('learner2@clariva.demo', 'Emerging Leaders - Cohort B', 5),
-  ('learner3@clariva.demo', 'Emerging Leaders - Cohort B', 2),
-  ('learner4@clariva.demo', 'Emerging Leaders - Cohort B', 0),
-  ('learner9@clariva.demo', 'Emerging Leaders - Cohort B', 0),
+  ('learner1@clariva.demo', 'Emerging Leaders · Cohort A (completed)', 8),
+  ('alum1@clariva.demo',    'Emerging Leaders · Cohort A (completed)', 8),
+  ('alum2@clariva.demo',    'Emerging Leaders · Cohort A (completed)', 8),
+  ('alum3@clariva.demo',    'Emerging Leaders · Cohort A (completed)', 8),
+  ('alum4@clariva.demo',    'Emerging Leaders · Cohort A (completed)', 8),
+  -- Cohort B, Org A: complete / mid / behind. Org B: just started / mid / partial.
+  ('learner1@clariva.demo', 'Emerging Leaders · Cohort B', 8),
+  ('learner2@clariva.demo', 'Emerging Leaders · Cohort B', 5),
+  ('learner3@clariva.demo', 'Emerging Leaders · Cohort B', 2),
+  ('learner4@clariva.demo', 'Emerging Leaders · Cohort B', 0),
+  ('learner5@clariva.demo', 'Emerging Leaders · Cohort B', 5),
+  ('learner6@clariva.demo', 'Emerging Leaders · Cohort B', 2),
   -- Cohort C.
-  ('learner5@clariva.demo',  'Executive Excellence - Cohort C', 10),
-  ('learner6@clariva.demo',  'Executive Excellence - Cohort C', 6),
-  ('learner7@clariva.demo',  'Executive Excellence - Cohort C', 2),
-  ('learner8@clariva.demo',  'Executive Excellence - Cohort C', 0),
-  ('learner10@clariva.demo', 'Executive Excellence - Cohort C', 0),
+  ('learner9@clariva.demo',  'Executive Excellence · Cohort C', 10),
+  ('learner11@clariva.demo', 'Executive Excellence · Cohort C', 6),
+  ('learner7@clariva.demo',  'Executive Excellence · Cohort C', 2),
+  ('learner8@clariva.demo',  'Executive Excellence · Cohort C', 0),
+  ('learner10@clariva.demo', 'Executive Excellence · Cohort C', 0),
   -- Cohort D.
-  ('tasc1@clariva.demo', 'TASC Essential - Cohort D', 6),
-  ('tasc2@clariva.demo', 'TASC Essential - Cohort D', 4),
-  ('tasc3@clariva.demo', 'TASC Essential - Cohort D', 1),
-  ('tasc4@clariva.demo', 'TASC Essential - Cohort D', 0),
-  ('tasc5@clariva.demo', 'TASC Essential - Cohort D', 0);
+  ('tasc1@clariva.demo', 'TASC Essential · Cohort D', 6),
+  ('tasc2@clariva.demo', 'TASC Essential · Cohort D', 4),
+  ('tasc3@clariva.demo', 'TASC Essential · Cohort D', 1),
+  ('tasc4@clariva.demo', 'TASC Essential · Cohort D', 0),
+  ('tasc5@clariva.demo', 'TASC Essential · Cohort D', 0);
 
 CREATE TEMP TABLE _tp_enr ON COMMIT DROP AS
 SELECT t.weeks_done, e.id AS enrollment_id, e.user_id, e.programme_id, e.cohort_id, pr.email
@@ -737,7 +738,7 @@ BEGIN
     FROM _tp_enr te
     CROSS JOIN LATERAL public.canonical_module_progress(te.enrollment_id, current_date) p
     WHERE p.module = 'training'
-      AND te.email IN ('learner2@clariva.demo', 'learner6@clariva.demo', 'tasc2@clariva.demo')
+      AND te.email IN ('learner2@clariva.demo', 'learner5@clariva.demo', 'learner11@clariva.demo', 'tasc2@clariva.demo')
   ) x WHERE x.overdue_units <> 0;
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'VERIFY 4 FAILED: an on-track learner has overdue Training: %', bad;
@@ -749,7 +750,7 @@ BEGIN
     FROM _tp_enr te
     CROSS JOIN LATERAL public.canonical_module_progress(te.enrollment_id, current_date) p
     WHERE p.module = 'training'
-      AND te.email IN ('learner3@clariva.demo', 'learner7@clariva.demo')
+      AND te.email IN ('learner3@clariva.demo', 'learner6@clariva.demo', 'learner7@clariva.demo')
   ) x WHERE x.overdue_units = 0;
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'VERIFY 4 FAILED: a behind learner has no overdue Training: %', bad;
@@ -788,6 +789,27 @@ BEGIN
   SELECT count(*) INTO n FROM public.cohort_schedule_violations() WHERE violation <> 'missing_deadline';
   IF n > 0 THEN
     RAISE EXCEPTION 'VERIFY 7 FAILED: % cohort modules now violate the quantity invariant', n;
+  END IF;
+
+  -- 8. The spec's headline numbers, read from the canonical engine the
+  --    dashboard, Admin and Sponsor all use: learner1 is 100% complete and
+  --    learner4 (Tom Okafor) is 0% with exactly 11 overdue (4 Coaching +
+  --    2 Mentoring + 5 Training weeks), and "Needs your attention" sums to
+  --    the same number.
+  SELECT string_agg(format('%s: %s%% / %s overdue / attention %s', pr.email,
+           round(cp.full_completion_pct), cp.overdue_units, att.total), '; ') INTO bad
+  FROM public.programme_enrollments e
+  JOIN public.profiles pr ON pr.id = e.user_id
+  JOIN public.cohorts c ON c.id = e.cohort_id
+  CROSS JOIN LATERAL public.canonical_enrollment_progress(e.id, current_date) cp
+  CROSS JOIN LATERAL (SELECT coalesce(sum(o.overdue_units), 0) AS total
+                      FROM public.canonical_overdue_items(e.id, current_date) o) att
+  WHERE c.name = 'Emerging Leaders · Cohort B'
+    AND ((pr.email = 'learner1@clariva.demo' AND (cp.full_completion_pct <> 100 OR cp.overdue_units <> 0))
+      OR (pr.email = 'learner4@clariva.demo' AND (cp.full_completion_pct <> 0 OR cp.overdue_units <> 11))
+      OR att.total <> cp.overdue_units);
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'VERIFY 8 FAILED: Cohort B headline numbers: %', bad;
   END IF;
 
   RAISE NOTICE 'Training content verification passed.';

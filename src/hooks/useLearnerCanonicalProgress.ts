@@ -153,6 +153,40 @@ export function useLearnerCanonicalEngagement(enrollmentId: string | undefined) 
   };
 }
 
+export type LearnerOverdueItem =
+  Database["public"]["Functions"]["learner_canonical_overdue_items"]["Returns"][number];
+
+/**
+ * Overdue required units per module for the learner's own enrollment —
+ * learner_canonical_overdue_items reads canonical_module_progress, the same
+ * rows canonical_enrollment_progress sums into overdue_units, so the
+ * attention list and the dashboard's Overdue KPI always agree. Its own query
+ * so a failure shows an honest error on the attention card only.
+ */
+export function useLearnerOverdueItems(enrollmentId: string | undefined) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["learner-canonical-overdue-items", enrollmentId ?? null],
+    queryFn: async (): Promise<LearnerOverdueItem[]> => {
+      const { data: rows, error: rpcError } = await supabase.rpc("learner_canonical_overdue_items", {
+        p_enrollment_id: enrollmentId as string,
+      });
+      if (rpcError) {
+        console.error("Learner overdue items failed to load", { enrollmentId, rpcError });
+        throw rpcError;
+      }
+      return rows ?? [];
+    },
+    enabled: !!enrollmentId,
+    staleTime: 30_000,
+  });
+
+  return {
+    items: data ?? [],
+    loading: !!enrollmentId && isLoading,
+    error: errorMessage(error),
+  };
+}
+
 /** Query keys whose canonical values change when the learner edits goals/ratings/actions. */
 export const LEARNER_ENGAGEMENT_QUERY_KEYS = [["learner-canonical-engagement"], ["learner-canonical-goal-progress"]] as const;
 

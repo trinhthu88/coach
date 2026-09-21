@@ -108,12 +108,20 @@ insert into public.cohort_coach_assignments (cohort_id, coach_id)
 insert into public.cohort_mentors (cohort_id, mentor_user_id)
   values ('a2000000-0000-0000-0000-00000000b0b0'::uuid, 'a2000000-0000-0000-0000-000000000001'::uuid);
 
-insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status)
+-- Sponsor visibility is the ENROLLMENT organisation, so the enrollments carry
+-- the sponsor's organisation.
+insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status)
 select ('a2000000-0000-0000-0000-00000000e00' || n)::uuid,
        'a2000000-0000-0000-0000-00000000a0a0'::uuid,
        ('a2000000-0000-0000-0000-00000000000' || (n + 1))::uuid,
-       'a2000000-0000-0000-0000-00000000b0b0'::uuid, 'active'
+       'a2000000-0000-0000-0000-00000000b0b0'::uuid,
+       'a2000000-0000-0000-0000-00000000aaaa'::uuid, 'active'
 from generate_series(1, 5) n;
+
+-- Booking goal gate (20260925400000): the cohort started 120 days ago, so the
+-- learner's own live booking below needs an active goal.
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+values ('a2000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-00000000e001', 'Booking gate goal');
 
 select is(
   public.programme_required_units('a2000000-0000-0000-0000-00000000e001'::uuid, 'coaching'),

@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { useAdminProgrammes, useAdminProgrammeEngagement } from "@/hooks/admin/useAdminProgrammeEngagement";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Tables } from "@/integrations/supabase/types";
+import { fetchAdminSatisfaction } from "@/lib/satisfaction";
 
 type CompetencyKey =
   | "ethical_practice"
@@ -53,7 +54,6 @@ interface AnalyticsSessionRow {
   coachee_id: string;
   status: string;
   duration_minutes: number | null;
-  coachee_rating: number | null;
 }
 
 interface AnalyticsPeerSessionRow {
@@ -148,7 +148,7 @@ export default function AdminAnalytics() {
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("profiles").select("id, full_name, status"),
         supabase.from("coach_profiles").select("id, rating_avg, peer_coaching_opt_in"),
-        supabase.from("sessions").select("enrollment_id, coach_id, coachee_id, status, duration_minutes, coachee_rating"),
+        supabase.from("sessions").select("enrollment_id, coach_id, coachee_id, status, duration_minutes"),
         supabase.from("peer_sessions").select("enrollment_id, peer_coach_id, peer_coachee_id, status, duration_minutes"),
         supabase.from("peer_session_competency_feedback").select("*"),
          supabase.from("programme_enrollments").select("id, user_id, status"),
@@ -165,10 +165,13 @@ export default function AdminAnalytics() {
       // Platform KPIs
       const sessTotal = scopedSess.filter((s) => s.status === "completed").length;
       const peerTotal = scopedPeer.filter((s) => s.status === "completed").length;
-      const ratings = scopedSess.map((s) => s.coachee_rating).filter((r): r is number => r != null);
-      const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
-      const dist = [0, 0, 0, 0, 0];
-      ratings.forEach((r) => { if (r >= 1 && r <= 5) dist[r - 1]++; });
+      // Satisfaction is the canonical 1–5 aggregate over ALL four modules
+      // (Coaching, Peer Coaching, Mentoring, Triads) — the same number the
+      // Sponsor and the admin enrollment detail show — never a client-side
+      // average of one module's rating column.
+      const satisfaction = await fetchAdminSatisfaction([...validEnrollmentIds]);
+      const avgRating = satisfaction.average ?? 0;
+      const dist = satisfaction.distribution;
       const totalHours = [...scopedSess, ...scopedPeer]
         .filter((s: AnalyticsSessionRow | AnalyticsPeerSessionRow) => s.status === "completed")
         .reduce((a: number, s: AnalyticsSessionRow | AnalyticsPeerSessionRow) => a + (s.duration_minutes || 0) / 60, 0);

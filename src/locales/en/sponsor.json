@@ -352,7 +352,10 @@
         "overdue": "Overdue"
       },
       "scheduleMismatchTitle": "Schedule update pending",
-      "scheduleMismatch": "{{module}}: {{scheduled}} of {{required}} required units have a cohort due date. Checkpoints show only dated units until the cohort schedule is updated."
+      "scheduleMismatch": "{{module}}: {{scheduled}} of {{required}} required units have a cohort due date. Checkpoints show only dated units until the cohort schedule is updated.",
+      "firstCheckpoints": "Back to the first checkpoint",
+      "earlierCheckpoints": "Earlier checkpoints",
+      "laterCheckpoints": "Later checkpoints"
     },
     "modules": {
       "coaching": "Coaching",
@@ -578,7 +581,9 @@
       "confidentialityTitle": "Coaching confidentiality",
       "confidentialityBody": "Sponsors can view programme participation, progress, utilisation and aggregate outcomes only. Coaching conversations, notes, reflections and private comments are never shared.",
       "ratingNone": "No programme experience ratings yet.",
-      "journeyWindow": "Showing checkpoints {{first}}–{{last}} of {{total}}"
+      "journeyWindow": "Showing checkpoints {{first}}–{{last}} of {{total}}",
+      "noGoalSet": "No goal set",
+      "goalNotRated": "Not yet rated"
     }
   },
   "report": {

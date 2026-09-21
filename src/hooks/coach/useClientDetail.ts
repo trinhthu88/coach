@@ -137,10 +137,6 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
   const upcoming = sessions.filter((s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status));
   const past = sessions.filter((s) => new Date(s.start_time) < now || ["cancelled", "completed"].includes(s.status));
 
-  const totalMs = milestones.length;
-  const doneMs = milestones.filter((m) => m.is_done).length;
-  const overallPct = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
-
   const labelFor = useCallback(
     (mid?: string | null) => {
       if (!mid) return undefined;
@@ -168,7 +164,6 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
     completed: completedActions,
     upcoming,
     past,
-    overallPct,
     labelFor,
   };
 }

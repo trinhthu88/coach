@@ -285,7 +285,8 @@
       "feedbackPlaceholder": "Điều gì đã diễn ra tốt? Điều gì có thể phát triển thêm?",
       "updateFeedback": "Cập nhật phản hồi",
       "submitFeedback": "Gửi phản hồi"
-    }
+    },
+    "unscopedNotice": "Session này không gắn với một đăng ký chương trình nên chỉ hiển thị ở chế độ xem."
   },
   "goalRatings": {
     "enrollmentRequired": "Không thể đánh giá mục tiêu cho đến khi chọn một đợt tham gia.",
@@ -340,13 +341,68 @@
       "save": "Lưu phản tư",
       "update": "Cập nhật phản tư",
       "saved": "Đã lưu phản tư",
-      "saveFailed": "Không thể lưu phản tư của bạn."
+      "saveFailed": "Không thể lưu phản tư của bạn.",
+      "helpByModule": {
+        "coaching": "Bạn rút ra được điều gì từ buổi này? Chỉ bạn và Coach của bạn đọc được.",
+        "peer_coaching": "Bạn rút ra được điều gì từ buổi này, ở vai trò bạn đảm nhận? Chỉ bạn đọc được.",
+        "mentoring": "Bạn rút ra được điều gì từ buổi này? Chỉ bạn và Mentor của bạn đọc được.",
+        "triads": "Phản tư về vai trò bạn đảm nhận trong buổi này."
+      }
     },
     "items": {
       "reflection": "Phản tư",
       "goalCheckin": "Cập nhật mục tiêu",
       "action": "Hành động tiếp theo",
       "satisfaction": "Mức độ hài lòng"
+    },
+    "satisfaction": {
+      "label": "Bạn hài lòng với buổi này ở mức nào?",
+      "stars_one": "{{count}} sao",
+      "stars_other": "{{count}} sao",
+      "saved": "Cảm ơn — đánh giá của bạn đã được lưu.",
+      "saveFailed": "Không thể lưu đánh giá của bạn."
+    },
+    "subtitleProvider": "Bạn là người thực hiện buổi peer này. Các việc sau buổi của bạn được ghi nhận vào chương trình của bạn, tách biệt với bạn cùng thực hành.",
+    "counterpartSubtitle": "Các việc sau buổi của học viên. Bạn chỉ thấy việc đã hoàn thành hay chưa, không thấy nội dung họ viết.",
+    "outstanding": "Còn tồn đọng",
+    "roles": {
+      "receiver": "Học viên nhận session",
+      "provider": "Học viên thực hiện session",
+      "coachee": "Coachee",
+      "mentee": "Mentee",
+      "participant": "Thành viên"
+    },
+    "footerByModule": {
+      "coaching": "Coach đã xác nhận buổi này diễn ra, nên nó đã được tính vào chương trình của bạn. Những mục này dành cho hồ sơ phát triển của riêng bạn.",
+      "peer_coaching": "Session đã được ghi nhận là diễn ra và được tính vào chương trình của bạn. Mỗi người tự hoàn thành các việc sau buổi của mình.",
+      "mentoring": "Mentor đã xác nhận buổi này diễn ra, nên nó đã được tính vào chương trình của bạn. Những mục này dành cho hồ sơ phát triển của riêng bạn.",
+      "triads": "Buổi Triad đã được ghi nhận là diễn ra. Phản tư của bạn được chia sẻ với nhóm theo quy tắc mở khóa thông thường; đánh giá chỉ là con số."
+    },
+    "triad": {
+      "reflectionHelp": "Phản tư Triad theo vai trò bạn đảm nhận (coach, coachee hoặc người quan sát) và được chia sẻ với nhóm khi mọi người đã phản tư.",
+      "writeReflection": "Viết phản tư",
+      "viewReflection": "Xem phản tư",
+      "ratingAfterReflection": "Hãy đánh giá buổi sau khi bạn đã gửi phản tư."
+    },
+    "action": {
+      "label": "Hành động tiếp theo",
+      "placeholder": "Một việc tôi sẽ làm trước buổi tiếp theo…",
+      "add": "Thêm hành động",
+      "added": "Đã thêm hành động tiếp theo",
+      "addFailed": "Không thể thêm hành động."
+    },
+    "counterpart": {
+      "title": "Việc cần làm sau buổi của bạn",
+      "subtitle": "Những việc bạn còn cần hoàn thành cho buổi này. Ghi chú buổi được bảo mật — nhà tài trợ không bao giờ xem được.",
+      "complete": "Đã hoàn thành",
+      "pending": "Còn thiếu · {{done}}/{{total}}",
+      "optional": "không bắt buộc",
+      "items": {
+        "session_notes": "Ghi chú buổi",
+        "feedback_to_learner": "Ghi chú chia sẻ với học viên",
+        "feedback_to_mentee": "Phản hồi cho người được mentor",
+        "peer_feedback": "Phản hồi cho bạn thực hành"
+      }
     }
   }
 }

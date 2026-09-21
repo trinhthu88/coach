@@ -243,7 +243,9 @@ function SessionCard({
     !isMentoring &&
     !isTriad &&
     ((!isPeer && !isCoacheePeer && role === "coachee" && session.status === "completed") ||
-      ((isPeer || isCoacheePeer) && !userIsGiver && session.status === "completed"));
+      ((isPeer || isCoacheePeer) && !userIsGiver && session.status === "completed")) &&
+    // The rating belongs to the learner's own enrollment (submit_session_satisfaction).
+    !!session.enrollment_id;
   // Mentoring completion is hard-gated at the DB level on a submitted prep
   // file (enforce_mentoring_prep_file_before_completion) — the dedicated
   // /mentoring/sessions/:id page already has friendly handling for that
@@ -387,14 +389,13 @@ function RateSession({ session, onChanged }: { session: SessionRowData; onChange
     const isPeer = session.kind === "peer-give" || session.kind === "peer-receive";
     const isCoacheePeer = session.kind === "coachee-peer-give" || session.kind === "coachee-peer-receive";
     const table = isCoacheePeer ? "coachee_peer_sessions" : isPeer ? "peer_sessions" : "sessions";
-    const update = isCoacheePeer
-      ? { receiver_rating: value, receiver_rated_at: new Date().toISOString() }
-      : { coachee_rating: value, coachee_rated_at: new Date().toISOString() };
-    const { error } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .from(table as any)
-      .update(update)
-      .eq("id", session.id);
+    // The one satisfaction writer (every module, the rater's own column).
+    const { error } = await supabase.rpc("submit_session_satisfaction", {
+      p_source_table: table,
+      p_session_id: session.id,
+      p_enrollment_id: session.enrollment_id as string,
+      p_rating: value,
+    });
     setSaving(false);
     if (error) {
       toast.error(error.message);

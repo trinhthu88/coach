@@ -23,6 +23,21 @@ vi.mock("@/hooks/dashboard/useLearnerFeedback", () => ({
   useLearnerFeedback: (...args: unknown[]) => learnerFeedback(...args),
 }));
 
+// Shared module structure (useModuleWorkspace): canonical requirements,
+// post-session deliverables and the booking goal gate.
+vi.mock("@/hooks/journey/useModuleRequirements", () => ({
+  useModuleRequirements: () => ({ state: null, loading: false, error: null }),
+}));
+vi.mock("@/hooks/sessions/usePostSessionDeliverables", () => ({
+  useLearnerSessionDeliverables: () => ({ deliverables: [], loading: false, error: null }),
+}));
+vi.mock("@/hooks/journey/useModuleGoalsActions", () => ({
+  useModuleGoalsActions: () => ({ actions: [], goals: [], loading: false, error: null }),
+}));
+vi.mock("@/components/goals/useBookingGoalGate", () => ({
+  useBookingGoalGate: () => ({ gate: null, blocked: false, loading: false }),
+}));
+
 import "@/i18n/config";
 import { MyPeerPracticeSection } from "../MyPeerPracticeSection";
 
@@ -69,8 +84,8 @@ describe("MyPeerPracticeSection", () => {
     const rows = screen.getAllByTestId("session-row");
     expect(rows).toHaveLength(4);
     // Every row opens the coachee peer-practice detail (not the coach-to-coach table).
-    for (const link of screen.getAllByRole("link")) {
-      expect(link.getAttribute("href")).toMatch(/\?type=coachee_peer$/);
+    for (const row of rows) {
+      expect(row.getAttribute("href")).toMatch(/\?type=coachee_peer$/);
     }
     expect(screen.getAllByTestId("programme-evidence")).toHaveLength(2);
   });

@@ -92,7 +92,9 @@
     "descriptionPlaceholder": "Why does this matter to you? (optional)",
     "targetDateLabel": "Target date (optional)",
     "cancel": "Cancel",
-    "saveGoal": "Save goal"
+    "saveGoal": "Save goal",
+    "editGoal": "Edit goal",
+    "limitReached": "You can have up to {{max}} active goals. Archive one to add another."
   },
   "goalWheel": {
     "needThreeGoals": "Add at least 3 goals to see the goal wheel.",
@@ -262,7 +264,27 @@
     "reflectionPlaceholder": "What's on your mind? Wins, blockers, insights…",
     "saveReflection": "Save private reflection",
     "noReflectionsYet": "Your private reflections will appear here.",
-    "deleteReflection": "Delete reflection"
+    "deleteReflection": "Delete reflection",
+    "pendingReflections": {
+      "title_one": "{{count}} reflection to complete",
+      "title_other": "{{count}} reflections to complete",
+      "type": {
+        "coaching": "Coaching session",
+        "peer_coaching": "Peer practice session",
+        "mentoring": "Mentoring session",
+        "triad": "Triad session"
+      }
+    },
+    "pendingDeliverables": {
+      "title_one": "{{count}} session with follow-up to complete",
+      "title_other": "{{count}} sessions with follow-up to complete",
+      "items": {
+        "reflection": "Reflection",
+        "goalCheckin": "Goal check-in",
+        "action": "Follow-up action",
+        "satisfaction": "Rating"
+      }
+    }
   },
   "practiceCompetencyCard": {
     "title": "Practice & competency",
@@ -282,7 +304,8 @@
       "sessionsReceivedSub_one": "{{count}} upcoming",
       "sessionsReceivedSub_other": "{{count}} upcoming",
       "nextSession": "Next session",
-      "nothingScheduled": "Nothing scheduled"
+      "nothingScheduled": "Nothing scheduled",
+      "overallProgressUnits": "{{completed}} of {{required}} required activities"
     },
     "emptyGoalsDescription": "Define what you want to achieve in your own coaching journey.",
     "actionsEmptyMessage": "No action items yet. They'll appear here once a coach assigns them.",

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -14,7 +15,7 @@ import type { JourneySession } from "@/hooks/journey/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, BookOpen } from "lucide-react";
+import { Sparkles, BookOpen, ArrowRight, PenLine } from "lucide-react";
 import { format } from "date-fns";
 import { SectionHeader } from "./journey/SectionHeader";
 import { EmptyGoals } from "./journey/EmptyGoals";
@@ -42,6 +43,9 @@ import { ReflectionFeedItem } from "@/components/programme/ReflectionFeedItem";
 import { formatProfileDate } from "@/lib/programmeProfile";
 import { STATUS_LABEL_KEY, STATUS_TONE, effectiveSponsorStatus } from "@/pages/sponsor/sponsorUtils";
 import { DevelopmentJourneyList } from "@/components/journey/DevelopmentJourneyList";
+import { derivePendingDeliverables } from "@/lib/pendingReflections";
+import { useLearnerSessionDeliverables } from "@/hooks/sessions/usePostSessionDeliverables";
+import { deliverableSessionType } from "@/lib/postSessionDeliverables";
 
 const STATUS_PILL = {
   success: "bg-[#e8f1ec] text-[#17663f]",
@@ -70,6 +74,8 @@ export default function CoacheeJourney() {
   const allActionsSummary = useEnrollmentActionsSummary(programmeApi.programme?.enrollmentId);
 
   const { goals, milestones, toggleMilestone } = goalsApi;
+  // Max 3 active goals per enrollment (server rule); create is disabled at the cap.
+  const activeGoalCount = goals.filter((g) => g.status === "active").length;
   const { ratings, saveRating } = ratingsApi;
   const { coachingSessions, toggleAction: toggleActionRaw } = sessionsApi;
   const { deleteReflection } = reflectionsApi;
@@ -78,6 +84,17 @@ export default function CoacheeJourney() {
   // prompts and explicit journey reflections — projected from their original
   // records. The Dashboard shows a recent subset of this same feed.
   const reflectionFeed = useLearnerReflectionFeed(programmeApi.programme?.enrollmentId);
+  // Completed sessions with post-session deliverables still outstanding,
+  // across every module and both Peer roles: ONE definition of outstanding,
+  // learner_session_deliverables().
+  const sessionDeliverables = useLearnerSessionDeliverables(programmeApi.programme?.enrollmentId);
+  const pendingDeliverables = useMemo(
+    () =>
+      sessionDeliverables.loading || sessionDeliverables.error
+        ? []
+        : derivePendingDeliverables(sessionDeliverables.deliverables),
+    [sessionDeliverables.loading, sessionDeliverables.error, sessionDeliverables.deliverables],
+  );
   const { programme } = programmeApi;
 
   const loading =
@@ -194,7 +211,7 @@ export default function CoacheeJourney() {
         <ProfileSection id="goals" className="scroll-mt-4">
           <ProfileSectionTitle
             title={t("journeyPage.goalsAndActions.title")}
-            aside={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} /> : undefined}
+            aside={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} activeCount={activeGoalCount} /> : undefined}
           />
           <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("journeyPage.goalsAndActions.subtitle", { count: goals.length })}</p>
 
@@ -219,6 +236,7 @@ export default function CoacheeJourney() {
                         onToggleAction={toggleAction}
                         onAddMilestone={(goalId, title, target_date) => goalsApi.addMilestone({ goal_id: goalId, title, target_date })}
                         onDeleteGoal={goalsApi.deleteGoal}
+                        onEditGoal={goalsApi.updateGoal}
                         onDeleteMilestone={goalsApi.deleteMilestone}
                         defaultOpen={i === 0}
                         rating={r ?? undefined}
@@ -324,6 +342,35 @@ export default function CoacheeJourney() {
         <ProfileSection id="reflections" className="scroll-mt-4">
           <ProfileSectionTitle title={t("journeyPage.reflectionsCard.title")} aside={tDash("learnerProfile.feedback.aside")} />
           <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("journeyPage.reflectionsCard.subtitle")}</p>
+
+          {pendingDeliverables.length > 0 && (
+            <div data-testid="pending-reflections" className="mt-4 rounded-xl border border-[#f0d5cc] bg-[#fdf6f2] p-3.5">
+              <div className="text-[10px] font-bold uppercase tracking-[.1em] text-[#a8541c]">
+                {t("journeyPage.pendingDeliverables.title", { count: pendingDeliverables.length })}
+              </div>
+              <ul className="mt-2 space-y-1.5">
+                {pendingDeliverables.map(({ deliverable, outstanding, path }) => (
+                  <li key={`${deliverable.sourceTable}:${deliverable.sessionId}`}>
+                    <Link
+                      to={path}
+                      className="flex items-center gap-2.5 rounded-lg border border-[#eee8de] bg-white px-3 py-2 text-[12px] transition-colors hover:border-[#8bd3e3]"
+                    >
+                      <PenLine className="h-3.5 w-3.5 shrink-0 text-[#2c8fa8]" />
+                      <span className="min-w-0 flex-1 truncate">
+                        <span className="font-semibold">{t(`journeyPage.pendingReflections.type.${deliverableSessionType(deliverable.module)}`)}</span>
+                        {deliverable.title && ` · ${deliverable.title}`}
+                        {deliverable.startTime && <span className="text-[#9a938a]"> · {formatProfileDate(deliverable.startTime)}</span>}
+                        <span className="block truncate text-[10.5px] text-[#a8541c]" data-testid="pending-deliverable-items">
+                          {outstanding.map((key) => t(`journeyPage.pendingDeliverables.items.${key}`)).join(" · ")}
+                        </span>
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#9a938a]" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div data-testid="journey-reflections" className="mt-4 space-y-2.5">
             {reflectionFeed.loading ? (

@@ -58,7 +58,14 @@ export async function fetchLearnerReflectionFeed(enrollmentId: string): Promise<
     console.error("Learner reflection feed failed to load", { enrollmentId, error });
     throw error;
   }
-  return (data ?? []).map((row) => ({
+  return (data ?? []).map(toLearnerReflection);
+}
+
+type ReflectionFeedRow = Database["public"]["Functions"]["learner_reflection_feed"]["Returns"][number];
+
+/** One canonical_reflection_feed row (learner or admin wrapper) as a LearnerReflection. */
+export function toLearnerReflection(row: ReflectionFeedRow): LearnerReflection {
+  return {
     key: row.reflection_key,
     sourceType: row.source_type as ReflectionSourceType,
     sourceTable: row.source_table,
@@ -75,7 +82,7 @@ export async function fetchLearnerReflectionFeed(enrollmentId: string): Promise<
     linkedGoalId: row.linked_goal_id ?? null,
     linkedActivityId: row.linked_activity_id ?? null,
     isPrivate: Boolean(row.is_private),
-  }));
+  };
 }
 
 export function useLearnerReflectionFeed(enrollmentId: string | undefined) {

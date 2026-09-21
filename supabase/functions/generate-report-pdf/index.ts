@@ -14,8 +14,9 @@ import { buildCorsHeaders } from "../_shared/cors.ts";
 //
 // Two Supabase clients are used deliberately: `asUser` forwards the
 // caller's JWT so the sponsor_* SECURITY DEFINER functions resolve
-// `auth.uid()` to the actual sponsor (they're org-scoped server-side, same
-// as every other sponsor_* consumer — see useSponsorDashboardData.ts);
+// `auth.uid()` to the actual sponsor (they're scoped server-side to the
+// sponsor's visible enrollments — enrollment.organization_id — same as every
+// other sponsor_* consumer; see useSponsorDashboardData.ts);
 // `admin` (service-role) is only used for Storage, which has no per-row
 // RLS need here since the sponsor never talks to Storage directly, only
 // via the signed URL this function hands back.
@@ -75,31 +76,36 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Canonical sponsor sources (the same RPCs the Sponsor pages read). They
+    // are scoped server-side to the caller's visible enrollments —
+    // programme_enrollments.organization_id = the sponsor's organisation — so
+    // a cohort shared with another organisation only reports this sponsor's
+    // own learners.
     const [cohortRes, enrollmentRes] = await Promise.all([
-      asUser.rpc("sponsor_cohort_summaries", { p_cohort_id: requestedCohort }),
-      asUser.rpc("sponsor_enrollment_summaries", { p_cohort_id: requestedCohort }),
+      asUser.rpc("sponsor_canonical_cohort_progress", { p_cohort_id: requestedCohort }),
+      asUser.rpc("sponsor_canonical_enrollment_progress", { p_cohort_id: requestedCohort }),
     ]);
     if (cohortRes.error) throw cohortRes.error;
     if (enrollmentRes.error) throw enrollmentRes.error;
     const cohort = cohortRes.data?.[0];
-    if (!cohort || cohort.suppressed) {
-      return new Response(JSON.stringify({ error: "Detailed sponsor report is suppressed to protect privacy" }), {
+    if (!cohort) {
+      return new Response(JSON.stringify({ error: "Cohort is not available to this sponsor" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const rows = enrollmentRes.data ?? [];
-    const kpis = rows.length ? {
-      leaders_enrolled: rows.length,
-      sessions_used: rows.reduce((n, r) => n + r.coaching_completed_count, 0),
-      sessions_entitled: rows.reduce((n, r) => n + r.required_units, 0),
-    } : null;
+    const kpis = {
+      leaders_enrolled: cohort.enrollment_count ?? rows.length,
+      sessions_used: cohort.coaching_completed_units ?? 0,
+      sessions_entitled: cohort.coaching_required_units ?? 0,
+    };
     const roster = rows.map((r) => ({
       full_name: r.learner_display_name,
       cohort_name: r.cohort_label,
-      enrollment_status: r.enrollment_status,
-      sessions_completed: r.coaching_completed_count,
-      sessions_entitled: r.required_units,
+      enrollment_status: r.effective_enrollment_status,
+      sessions_completed: r.coaching_completed_units,
+      sessions_entitled: r.coaching_required_units,
     })) as RosterRow[];
 
     // ------------------------------------------------------------------
@@ -138,8 +144,8 @@ Deno.serve(async (req) => {
     });
 
     text("Key metrics", { size: 13, f: bold, gap: 10 });
-    text(`Leaders enrolled: ${kpis?.leaders_enrolled ?? "—"}`);
-    text(`Sessions used: ${kpis?.sessions_used ?? 0} / ${kpis?.sessions_entitled ?? 0}`);
+    text(`Leaders enrolled: ${kpis.leaders_enrolled}`);
+    text(`Coaching sessions used: ${kpis.sessions_used} / ${kpis.sessions_entitled}`);
     text("Privacy-safe enrollment and cohort metrics only.", { gap: 18 });
 
     if (roster.length > 0) {
