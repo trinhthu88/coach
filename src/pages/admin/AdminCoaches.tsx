@@ -84,7 +84,7 @@ export default function AdminCoaches() {
   const [rows, setRows] = useState<CoachRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
   const [cohorts, setCohorts] = useState<{ id: string; name: string; organization_id?: string | null; programme_id?: string | null }[]>([]);
-  const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; peer_session_limit: number; peer_given_limit: number; duration_months: number }[]>([]);
+  const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; duration_months: number }[]>([]);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<CoachRow | null>(null);
@@ -114,7 +114,7 @@ export default function AdminCoaches() {
       supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, enrollment_id, status"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
       supabase.from("cohorts").select("id, name, organization_id, programme_id"),
-      supabase.from("programmes").select("id, name, coachee_session_limit, peer_session_limit, peer_given_limit, duration_months"),
+      supabase.from("programmes").select("id, name, coachee_session_limit, duration_months"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, start_date, status, programmes(name)").in("status", ["active", "at_risk", "paused"]),
       supabase.from("programme_modules").select("programme_id, module, enabled, config"),
     ]);

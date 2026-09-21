@@ -34,8 +34,7 @@ export interface InviteRowInput {
   /** Sponsor-only profile fields. */
   title?: string;
   department?: string;
-  /** Legacy bulk-invite fields (learners only). */
-  session_limit?: number | string | null;
+  /** Legacy bulk-invite field (learners only). */
   assign_coach_email?: string;
   assign_coach_id?: string;
   /**
@@ -123,7 +122,6 @@ export interface ValidatedInviteRow {
   enrollment_start_date: string | null;
   title: string | null;
   department: string | null;
-  session_limit: number | null;
   assign_coach_id: string | null;
   existing_user_id: string | null;
   status: PreviewStatus;
@@ -190,12 +188,6 @@ function matchByIdOrName<T extends { id: string; name: string }>(items: T[], key
   return items.filter((i) => i.name.trim().toLowerCase() === lower);
 }
 
-function parseLimit(raw: InviteRowInput["session_limit"]): number | null {
-  if (raw === null || raw === undefined || raw === "") return null;
-  const n = typeof raw === "number" ? raw : Number(String(raw).trim());
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
-}
-
 /**
  * Validates one row against the lookups. `seenEmails` carries the
  * duplicate-in-file state across a batch (mutated).
@@ -226,7 +218,6 @@ export function validateInviteRow(
     enrollment_start_date: null,
     title: clean(raw.title) || null,
     department: clean(raw.department) || null,
-    session_limit: parseLimit(raw.session_limit),
     assign_coach_id: null,
     existing_user_id: null,
     status: "valid",
@@ -403,7 +394,6 @@ export function normalizeSheetRow(raw: Record<string, unknown>, defaultRole?: st
     }
     return "";
   };
-  const limit = pick("sessionlimit");
   return {
     full_name: pick("fullname", "name", "hoten", "họtên", "tên"),
     email: pick("email", "emailaddress"),
@@ -413,7 +403,6 @@ export function normalizeSheetRow(raw: Record<string, unknown>, defaultRole?: st
     organization: pick("organization", "organisation", "company", "tổchức", "tochuc"),
     title: pick("title", "jobtitle", "chứcdanh"),
     department: pick("department", "phòngban"),
-    session_limit: limit === "" ? undefined : limit,
     assign_coach_email: pick("assigncoachemail") || undefined,
   };
 }

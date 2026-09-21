@@ -8,7 +8,6 @@ export interface CoacheeRow {
   created_at: string;
   booked: number;
   done: number;
-  monthly_limit: number;
   selected_coaches: { id: string; name: string }[];
 }
 

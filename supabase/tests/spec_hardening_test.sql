@@ -5,7 +5,7 @@
 --     still refuses non-admins, and keeps the organization an org-only
 --     correction replaced.
 begin;
-select plan(12);
+select plan(13);
 
 insert into auth.users(id, email, raw_user_meta_data) values
  ('a8100000-0000-4000-8000-000000000001', 'hardening-admin@example.test',   '{"full_name":"Hardening admin"}'),
@@ -111,6 +111,10 @@ select is(public.sponsor_can_view_enrollment(
     (select id from public.programme_enrollments where user_id = 'a8100000-0000-4000-8000-000000000002')),
   false, 'sponsor_can_view_enrollment follows the same rule');
 reset role;
+
+-- P2-10: retired module config keys are gone from the authoring source.
+select is((select count(*)::int from public.programme_modules where config ? 'distribution_mode' or config ? 'weeks'),
+  0, 'no programme module config carries a retired scheduling key');
 
 select * from finish();
 rollback;

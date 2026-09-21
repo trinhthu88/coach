@@ -28,7 +28,6 @@ export interface Row {
   progress_error: boolean;
   programme_id: string | null;
   programme_name: string | null;
-  programme_default_limit: number | null;
   programme_duration_months: number | null;
   cohort_id: string | null;
   cohort_name: string | null;
@@ -39,8 +38,6 @@ export interface Row {
   /** canonicalCompletionPct of the selected enrollment; null when canonical progress is unavailable. */
   completion_pct: number | null;
   selected_coaches: { id: string; name: string }[];
-  session_limit: number;
-  limit_row_id: string | null;
   access_request_id: string | null;
   spoken_languages: string[];
 }

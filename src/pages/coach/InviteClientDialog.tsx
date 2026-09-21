@@ -29,7 +29,6 @@ export function InviteClientDialog({
   const { t } = useTranslation("dashboard");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [sessionLimit, setSessionLimit] = useState("");
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [atCap, setAtCap] = useState(false);
@@ -37,7 +36,6 @@ export function InviteClientDialog({
   const reset = () => {
     setFullName("");
     setEmail("");
-    setSessionLimit("");
     setInlineError(null);
     setAtCap(false);
   };
@@ -56,12 +54,7 @@ export function InviteClientDialog({
     setAtCap(false);
     setBusy(true);
     try {
-      const limitNum = sessionLimit.trim() ? Number(sessionLimit) : undefined;
-      const result = await invite({
-        full_name: fullName,
-        email,
-        session_limit: limitNum && Number.isFinite(limitNum) && limitNum > 0 ? limitNum : undefined,
-      });
+      const result = await invite({ full_name: fullName, email });
 
       if (result.ok) {
         toast.success(t("clients.invite.success"));
@@ -104,16 +97,6 @@ export function InviteClientDialog({
           <div>
             <Label>{t("clients.invite.emailLabel")}</Label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("clients.invite.emailPlaceholder")} />
-          </div>
-          <div>
-            <Label>{t("clients.invite.sessionLimitLabel")}</Label>
-            <Input
-              type="number"
-              min={1}
-              value={sessionLimit}
-              onChange={(e) => setSessionLimit(e.target.value)}
-              placeholder={t("clients.invite.sessionLimitPlaceholder")}
-            />
           </div>
 
           {inlineError && (

@@ -310,7 +310,10 @@
     "done": "Done",
     "coachAssignmentMovedToCohort": "Programme Coaching is now assigned per cohort. Manage the Coach pool in Admin → Cohorts → Coaching.",
     "programmeFromCohortHint": "Optional. Set by the cohort; defaults the session limit below.",
-    "enrollmentTransitionHint": "Saving closes the current enrollment (kept in history) and starts a new one in this cohort."
+    "enrollmentTransitionHint": "Saving closes the current enrollment (kept in history) and starts a new one in this cohort.",
+    "profileSection": "Profile",
+    "enrollmentSection": "Current enrollment",
+    "enrollmentSectionHint": "Programme, cohort and organization belong to the enrollment, not the person. A person without an enrollment is valid — leave the cohort empty. Changing programme or cohort closes the current enrollment (kept in history) and opens a new one."
   },
   "organizations": {
     "sections": {
@@ -494,7 +497,8 @@
         "trainingWeekIdsInvalid": "The selected training weeks are invalid.",
         "trainingWeeksInsufficient": "Select exactly as many training weeks as required units."
       }
-    }
+    },
+    "outsideRequirementsHint": "Coaching a learner may book outside programme requirements (used only when the programme requires no Coaching)."
   },
   "coachProgrammes": {
     "unlimited": "Unlimited",

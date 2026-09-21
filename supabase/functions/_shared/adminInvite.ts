@@ -39,7 +39,7 @@ export interface RowResult {
   email_sent?: boolean;
 }
 
-export interface PreviewRow extends Omit<ValidatedInviteRow, "session_limit" | "assign_coach_id"> {
+export interface PreviewRow extends Omit<ValidatedInviteRow, "assign_coach_id"> {
   programme_name: string | null;
   cohort_name: string | null;
   organization_name: string | null;
@@ -115,7 +115,7 @@ export function toPreviewRows(rows: ValidatedInviteRow[], lookups: InviteLookups
   const programmeName = new Map(lookups.programmes.map((p) => [p.id, p.name]));
   const cohortName = new Map(lookups.cohorts.map((c) => [c.id, c.name]));
   const orgName = new Map(lookups.organizations.map((o) => [o.id, o.name]));
-  return rows.map(({ session_limit: _s, assign_coach_id: _a, ...row }) => ({
+  return rows.map(({ assign_coach_id: _a, ...row }) => ({
     ...row,
     programme_name: row.programme_id ? programmeName.get(row.programme_id) ?? null : null,
     cohort_name: row.cohort_id ? cohortName.get(row.cohort_id) ?? null : null,
@@ -248,11 +248,6 @@ async function transitionEnrollment(
 
 async function applyLearnerExtras(admin: SupabaseClient, userId: string, row: ValidatedInviteRow, callerId: string) {
   if (row.role !== "coachee") return;
-  if (row.session_limit) {
-    await admin
-      .from("session_limits")
-      .upsert({ coachee_id: userId, monthly_limit: row.session_limit }, { onConflict: "coachee_id" });
-  }
   if (row.assign_coach_id) {
     await admin.from("coachee_coach_allowlist").upsert(
       { coachee_id: userId, coach_id: row.assign_coach_id, created_by: callerId, source: "admin_added" },
@@ -433,7 +428,6 @@ export async function runAdminInvite(admin: SupabaseClient, opts: RunAdminInvite
           department: v.department,
           accept_existing: v.accept_existing,
           assign_coach_id: v.assign_coach_id,
-          session_limit: v.session_limit,
           status: "pending",
         })
         .select("id")

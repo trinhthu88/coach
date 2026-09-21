@@ -6,7 +6,6 @@ import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type CoachProfileRow = Database["public"]["Tables"]["coach_profiles"]["Row"];
-type SessionLimitRow = Database["public"]["Tables"]["session_limits"]["Row"];
 type AllowlistRow = Database["public"]["Tables"]["coachee_coach_allowlist"]["Row"];
 type SessionRow = Database["public"]["Tables"]["sessions"]["Row"];
 type PeerSessionRow = Database["public"]["Tables"]["peer_sessions"]["Row"];
@@ -15,14 +14,12 @@ type UserRoleRow = Database["public"]["Tables"]["user_roles"]["Row"];
 
 /**
  * Loads and manages the admin registrations list (coachees + coaches),
- * including the per-list default session limits used as fallbacks.
  */
 export function useAdminRegistrations() {
   const [loading, setLoading] = useState(true);
   const [coachees, setCoachees] = useState<CoacheeRow[]>([]);
   const [coaches, setCoaches] = useState<CoachListRow[]>([]);
   const [coachOpts, setCoachOpts] = useState<CoachOpt[]>([]);
-  const [defaultLimit, setDefaultLimit] = useState(4);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,7 +34,6 @@ export function useAdminRegistrations() {
 
     const [
       { data: profiles },
-      { data: limits },
       { data: allowlist },
       { data: sess },
       { data: cps },
@@ -47,7 +43,6 @@ export function useAdminRegistrations() {
       { data: coachAllow },
     ] = await Promise.all([
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
-      supabase.from("session_limits").select("coachee_id, monthly_limit"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
       supabase.from("sessions").select("id, coach_id, coachee_id, enrollment_id, status"),
       supabase.from("coach_profiles").select("*"),
@@ -61,7 +56,6 @@ export function useAdminRegistrations() {
       ProfileRow,
       "id" | "full_name" | "email" | "status" | "created_at"
     >[];
-    const limitsData = (limits || []) as Pick<SessionLimitRow, "coachee_id" | "monthly_limit">[];
     const allowlistData = (allowlist || []) as Pick<AllowlistRow, "coachee_id" | "coach_id">[];
     const sessData = (sess || []) as Pick<SessionRow, "id" | "coach_id" | "coachee_id" | "enrollment_id" | "status">[];
     const cpsData = (cps || []) as CoachProfileRow[];
@@ -83,11 +77,6 @@ export function useAdminRegistrations() {
     const profilesById = new Map(profilesData.map((p) => [p.id, p]));
     const cpById = new Map(cpsData.map((c) => [c.id, c]));
 
-    const globalLimit = limitsData.find((l) => l.coachee_id === null)?.monthly_limit ?? 4;
-    setDefaultLimit(globalLimit);
-    const limitByCoachee = new Map(
-      limitsData.filter((l) => l.coachee_id).map((l) => [l.coachee_id as string, l.monthly_limit])
-    );
 
     const bookedByCoachee = new Map<string, number>();
     const doneByCoachee = new Map<string, number>();
@@ -139,7 +128,6 @@ export function useAdminRegistrations() {
           created_at: p.created_at,
           booked: bookedByCoachee.get(id) || 0,
           done: doneByCoachee.get(id) || 0,
-          monthly_limit: limitByCoachee.get(id) ?? globalLimit,
           selected_coaches: allowByCoachee.get(id) || [],
         };
       })
@@ -239,7 +227,6 @@ export function useAdminRegistrations() {
     coachees,
     coaches,
     coachOpts,
-    defaultLimit,
     reload: load,
   };
 }

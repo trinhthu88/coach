@@ -36,7 +36,6 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { useAdminRegistrations } from "@/hooks/admin/useAdminRegistrations";
 import { useAdminRegistrationApprovals } from "@/hooks/admin/useAdminRegistrationApprovals";
-import { useUpdateCoacheeAssignment } from "@/hooks/admin/useUpdateCoacheeAssignment";
 import { useUpdateCoachAssignment } from "@/hooks/admin/useUpdateCoachAssignment";
 import { AdminImportDialog } from "@/components/admin/AdminImportDialog";
 import { CoachListRow, CoachOpt, CoacheeRow, Status } from "@/hooks/admin/types";
@@ -63,7 +62,6 @@ export default function AdminRegistrations() {
     coachees,
     coaches,
     coachOpts,
-    defaultLimit,
     reload: load,
   } = useAdminRegistrations();
   const { busyId, setCoacheeStatusValue, setCoachStatusValue } = useAdminRegistrationApprovals(load);
@@ -92,7 +90,6 @@ export default function AdminRegistrations() {
   const [coachQuery, setCoachQuery] = useState("");
   const [coacheeStatus, setCoacheeStatus] = useState<"all" | Status>("all");
   const [coachStatus, setCoachStatus] = useState<"all" | Status>("all");
-  const [editing, setEditing] = useState<CoacheeRow | null>(null);
   const [editingCoach, setEditingCoach] = useState<CoachListRow | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -130,7 +127,6 @@ export default function AdminRegistrations() {
       [t("registrations.export.status")]: t(`registrations.statusLabels.${c.status}`),
       [t("registrations.export.bookedSessions")]: c.booked,
       [t("registrations.export.sessionsDone")]: c.done,
-      [t("registrations.export.monthlyLimit")]: c.monthly_limit,
       [t("registrations.export.selectedCoaches")]: c.selected_coaches.map((s) => s.name).join("; "),
     }));
     const ws = XLSX.utils.json_to_sheet(data);
@@ -209,7 +205,6 @@ export default function AdminRegistrations() {
                   <th className="px-4 py-3 text-left">{t("registrations.coacheeTableHeaders.status")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.booked")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.done")}</th>
-                  <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.limit")}</th>
                   <th className="px-4 py-3 text-left">{t("registrations.coacheeTableHeaders.selectedCoaches")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.actions")}</th>
                 </tr>
@@ -234,7 +229,6 @@ export default function AdminRegistrations() {
                       </td>
                       <td className="px-4 py-3 text-right">{c.booked}</td>
                       <td className="px-4 py-3 text-right">{c.done}</td>
-                      <td className="px-4 py-3 text-right">{c.monthly_limit}</td>
                       <td className="px-4 py-3">
                         {c.selected_coaches.length === 0 ? (
                           <span className="text-xs italic text-muted-foreground">
@@ -257,12 +251,11 @@ export default function AdminRegistrations() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditing(c)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" /> {t("registrations.edit")}
+                          {/* One editing surface: the person's enrollment-first admin record. */}
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/admin/coachees/${c.id}`}>
+                              <Pencil className="h-3.5 w-3.5" /> {t("registrations.edit")}
+                            </Link>
                           </Button>
                           {c.status === "pending_approval" && (
                             <>
@@ -450,16 +443,6 @@ export default function AdminRegistrations() {
         </TabsContent>
       </Tabs>
 
-      <EditCoacheeDialog
-        coachee={editing}
-        coachOpts={coachOpts}
-        defaultLimit={defaultLimit}
-        onClose={() => setEditing(null)}
-        onSaved={() => {
-          setEditing(null);
-          load();
-        }}
-      />
 
       <EditCoachDialog
         coach={editingCoach}
@@ -483,92 +466,6 @@ export default function AdminRegistrations() {
   );
 }
 
-function EditCoacheeDialog({
-  coachee,
-  defaultLimit,
-  onClose,
-  onSaved,
-}: {
-  coachee: CoacheeRow | null;
-  /** Unused since programme Coaching moved to the cohort Coach pool; the prop
-   *  stays so the existing call site does not need changing. */
-  coachOpts?: CoachOpt[];
-  defaultLimit: number;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const { t } = useTranslation("admin");
-  const [limit, setLimit] = useState<number>(defaultLimit);
-  const [picked, setPicked] = useState<Set<string>>(new Set());
-  const { saving, save: saveAssignment } = useUpdateCoacheeAssignment();
-
-  useEffect(() => {
-    if (coachee) {
-      setLimit(coachee.monthly_limit);
-      setPicked(new Set(coachee.selected_coaches.map((c) => c.id)));
-    }
-  }, [coachee]);
-
-  if (!coachee) return null;
-
-  const save = async () => {
-    // `picked` is seeded from the coachee's current allowlist and can no
-    // longer be edited here, so this saves the session limit and leaves the
-    // allowlist exactly as it was.
-    const ok = await saveAssignment(coachee.id, limit, picked);
-    if (ok) onSaved();
-  };
-
-  return (
-    <Dialog open={!!coachee} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t("registrations.editDialogTitle", { name: coachee.full_name })}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-5">
-          <div>
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {t("registrations.monthlySessionLimit")}
-            </label>
-            <Input
-              type="number"
-              min={0}
-              max={50}
-              value={limit}
-              onChange={(e) => setLimit(Number(e.target.value))}
-              className="w-32"
-            />
-          </div>
-
-          {/* Programme Coaching eligibility is the COHORT Coach pool
-              (Admin -> Cohorts -> Coaching), not a per-learner allowlist. This
-              picker wrote coachee_coach_allowlist, which no longer governs
-              programme Coaching -- keeping it would let an Admin make an
-              assignment that changes nothing. The existing rows are left
-              untouched for the non-programme relationships in RULES.md section 3.
-           */}
-          <div className="rounded-lg border border-dashed p-3">
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {t("registrations.coachAssignment")}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {t("registrations.coachAssignmentMovedToCohort")}
-            </p>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            {t("registrations.cancel")}
-          </Button>
-          <Button onClick={save} disabled={saving}>
-            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            {t("registrations.save")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function EditCoachDialog({
   coach,

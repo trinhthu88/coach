@@ -23,9 +23,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function normalizeModuleScheduleConfig(config: Record<string, unknown>): Record<string, unknown> {
-  const { weeks: _legacyWeeks, distribution_mode: _legacyMode, ...rest } = config;
+  // Retired keys were purged from stored configs (20260927300000).
   return {
-    ...rest,
+    ...config,
     required: config.required === true,
     required_units: config.required_units ?? 0,
     weight: config.weight ?? null,

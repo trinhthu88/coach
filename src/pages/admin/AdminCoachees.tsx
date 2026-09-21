@@ -24,7 +24,7 @@ const PAGE_SIZE = 25;
 
 export default function AdminCoachees() {
   const { t } = useTranslation("admin");
-  const { loading, rows, coachOpts, programmes, cohorts, organizations, defaultLimit, load } = useAdminCoacheesData();
+  const { loading, rows, coachOpts, programmes, cohorts, organizations, load } = useAdminCoacheesData();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<Row | null>(null);
@@ -193,7 +193,6 @@ export default function AdminCoachees() {
         cohorts={cohorts}
         organizations={organizations}
         coachOpts={coachOpts}
-        defaultLimit={defaultLimit}
       />
 
       <AddPersonDialog

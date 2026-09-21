@@ -141,3 +141,28 @@ describe("admin profile is enrollment-first (P1-6)", () => {
     for (const rpc of ["admin_user_enrollments", "admin_enrollment_module_progress"]) expect(detail).toMatch(new RegExp(`rpc\\("${rpc}"`));
   });
 });
+
+describe("legacy paths retired (P2-10)", () => {
+  it("no client reads or writes per-person session limits or the dead programme limit columns", () => {
+    const offenders = sourceFiles(SRC)
+      .filter((f) => !f.endsWith("integrations/supabase/types.ts") && !relative(SRC, f).startsWith("test/"))
+      .filter((f) => /from\("session_limits"\)|\b(coach_session_limit|peer_session_limit|peer_given_limit)\b\s*[:,"]/.test(readFileSync(f, "utf8")))
+      .map((f) => relative(SRC, f));
+    // AdminCoaches keeps coach-level limits read from programme config (coach_session_limit as a ROW field).
+    expect(offenders.filter((f) => f !== "pages/admin/AdminCoaches.tsx")).toEqual([]);
+    expect(read("pages/admin/AdminCoaches.tsx")).not.toMatch(/from\("programmes"\)\.select\("[^"]*(coach_session_limit|peer_session_limit|peer_given_limit)/);
+  });
+
+  it("the admin learner editor separates profile from enrollment and edits no session limit", () => {
+    const sheet = read("pages/admin/coachees/CoacheeEditSheet.tsx");
+    expect(sheet).toMatch(/edit-section-profile/);
+    expect(sheet).toMatch(/edit-section-enrollment/);
+    expect(sheet).not.toMatch(/session_limit|sessionLimit/);
+  });
+
+  it("peer raw counts are never rendered as programme progress", () => {
+    expect(read("pages/dashboard/cards/PeerCoachingCard.tsx")).not.toMatch(/completedCount/);
+    // The timeline's week count is shown as a count, never turned into a %.
+    expect(stripComments(read("pages/journey/ProgrammeTimeline.tsx"))).not.toMatch(/overallPct|completedCount\s*\/\s*weeks\.length/);
+  });
+});

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
 import type { Row, Status } from "@/pages/admin/coachees/coacheeDisplay";
 import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
 import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
@@ -37,7 +36,6 @@ export function useAdminCoacheesData() {
   const [programmes, setProgrammes] = useState<ProgrammeOpt[]>([]);
   const [cohorts, setCohorts] = useState<CohortOpt[]>([]);
   const [organizations, setOrganizations] = useState<NamedOpt[]>([]);
-  const [defaultLimit, setDefaultLimit] = useState(4);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,7 +48,6 @@ export function useAdminCoacheesData() {
       { data: cohortsData },
       { data: orgsData },
       { data: allow },
-      { data: limits },
       { data: requests },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
@@ -61,7 +58,6 @@ export function useAdminCoacheesData() {
       supabase.from("cohorts").select("id, name, programme_id, organization_id"),
       supabase.from("organizations").select("id, name").order("name"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
-      supabase.from("session_limits").select("id, coachee_id, monthly_limit"),
       supabase.from("access_requests").select("id, email, status").eq("status", "approved"),
     ]);
 
@@ -114,10 +110,6 @@ export function useAdminCoacheesData() {
       if (!enr || enr.id !== s.enrollment_id) return;
       if (["pending_coach_approval", "confirmed"].includes(s.status)) booked.set(s.coachee_id, (booked.get(s.coachee_id) || 0) + 1);
     });
-    const defLimit = (limits || []).find((l) => l.coachee_id === null)?.monthly_limit ?? 4;
-    setDefaultLimit(defLimit);
-    const limByCoachee = new Map<string, Pick<Tables<"session_limits">, "id" | "coachee_id" | "monthly_limit">>();
-    (limits || []).filter((l) => l.coachee_id).forEach((l) => limByCoachee.set(l.coachee_id as string, l));
     const requestIdByEmail = new Map<string, string>();
     (requests || []).forEach((r) => {
       if (!requestIdByEmail.has(String(r.email).toLowerCase())) {
@@ -130,7 +122,6 @@ export function useAdminCoacheesData() {
         const p = profById.get(id);
         if (!p) return null;
         const enr = enrByUser.get(id);
-        const lim = limByCoachee.get(id);
         const prog = enr?.programme_id ? progById.get(enr.programme_id) : null;
         const progress = enr ? canonicalByEnrollment.get(enr.id) : undefined;
         const available = !!progress?.progress_available;
@@ -146,7 +137,6 @@ export function useAdminCoacheesData() {
           progress_error: !!enr && progressFailed,
           programme_id: enr?.programme_id || null,
           programme_name: prog?.name || null,
-          programme_default_limit: prog?.coachee_session_limit ?? null,
           programme_duration_months: prog?.duration_months ?? null,
           cohort_id: enr?.cohort_id || null,
           cohort_name: enr?.cohort_id ? (cohortById.get(enr.cohort_id) as string) || null : null,
@@ -156,8 +146,6 @@ export function useAdminCoacheesData() {
           enrollment_start_date: enr?.start_date || null,
           completion_pct: available ? canonicalCompletionPct(progress!.full_completion_pct) : null,
           selected_coaches: allowByCoachee.get(id) || [],
-          session_limit: lim?.monthly_limit ?? defLimit,
-          limit_row_id: lim?.id || null,
           access_request_id: requestIdByEmail.get(String(p.email).toLowerCase()) ?? null,
           spoken_languages: p.spoken_languages?.length ? p.spoken_languages : ["vi"],
         } as Row;
@@ -181,5 +169,5 @@ export function useAdminCoacheesData() {
     load();
   }, [load]);
 
-  return { loading, rows, coachOpts, programmes, cohorts, organizations, defaultLimit, load };
+  return { loading, rows, coachOpts, programmes, cohorts, organizations, load };
 }

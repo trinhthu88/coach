@@ -80,10 +80,9 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { email: rawEmail, full_name, session_limit } = body as {
+    const { email: rawEmail, full_name } = body as {
       email?: string;
       full_name?: string;
-      session_limit?: number;
     };
     const email = (rawEmail ?? "").trim().toLowerCase();
     const fullName = (full_name ?? "").trim();
@@ -165,15 +164,6 @@ Deno.serve(async (req) => {
       });
     }
     const coacheeId = result.created_user_id;
-
-    if (typeof session_limit === "number" && Number.isFinite(session_limit) && session_limit > 0) {
-      await admin
-        .from("session_limits")
-        .upsert(
-          { coachee_id: coacheeId, monthly_limit: Math.floor(session_limit) },
-          { onConflict: "coachee_id" }
-        );
-    }
 
     return new Response(
       JSON.stringify({ ok: true, coachee_id: coacheeId, email }),

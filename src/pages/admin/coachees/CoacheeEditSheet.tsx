@@ -30,7 +30,6 @@ interface CoacheeEditSheetProps {
   /** No longer used: programme Coaching is assigned per cohort, not per
    *  learner. Kept so existing call sites stay valid. */
   coachOpts?: NamedOpt[];
-  defaultLimit: number;
 }
 
 export function CoacheeEditSheet({
@@ -41,7 +40,6 @@ export function CoacheeEditSheet({
   programmes,
   cohorts,
   organizations,
-  defaultLimit,
 }: CoacheeEditSheetProps) {
   const { t } = useTranslation("admin");
   const { saving, saveEdit, resendingLink, resendLoginLink, resentLink, setResentLink } = useAdminCoacheeMutations(onSaved);
@@ -78,6 +76,10 @@ export function CoacheeEditSheet({
           </SheetHeader>
           {editing && (
             <div className="mt-4 space-y-5">
+              {/* PROFILE — the person (identity, account status, languages). */}
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground" data-testid="edit-section-profile">
+                {t("coacheeEditSheet.profileSection")}
+              </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div><Label>{t("coacheeEditSheet.fullName")}</Label><Input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} /></div>
                 <div>
@@ -91,7 +93,15 @@ export function CoacheeEditSheet({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* CURRENT ENROLLMENT — programme / cohort / organization. A person
+                  without an enrollment is valid: leave the cohort empty. */}
+              <div className="border-t pt-4" data-testid="edit-section-enrollment">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {t("coacheeEditSheet.enrollmentSection")}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{t("coacheeEditSheet.enrollmentSectionHint")}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <Label>{t("coacheeEditSheet.programme")}</Label>
                   <Select
@@ -105,10 +115,7 @@ export function CoacheeEditSheet({
                         programme_id: v,
                         cohort_id: cohortStillFits ? editing.cohort_id : null,
                         programme_name: prog?.name || null,
-                        programme_default_limit: prog?.coachee_session_limit ?? null,
                         programme_duration_months: prog?.duration_months ?? null,
-                        // Auto-default the limit when programme changes (admin can still override below)
-                        session_limit: prog?.coachee_session_limit ?? editing.session_limit,
                       });
                     }}
                   >
@@ -119,13 +126,6 @@ export function CoacheeEditSheet({
                     </SelectContent>
                   </Select>
                   <p className="mt-1 text-[10px] text-muted-foreground">{t("coacheeEditSheet.programmeFromCohortHint")}</p>
-                </div>
-                <div>
-                  <Label>{t("coacheeEditSheet.sessionLimitLabel")}</Label>
-                  <Input type="number" min={0} value={editing.session_limit} onChange={(e) => setEditing({ ...editing, session_limit: Number(e.target.value) })} />
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    {t("coacheeEditSheet.sessionLimitHint", { used: editing.completed_units ?? 0, default: editing.programme_default_limit ?? defaultLimit })}
-                  </p>
                 </div>
               </div>
 
@@ -142,7 +142,6 @@ export function CoacheeEditSheet({
                       ...(prog ? {
                         programme_id: prog.id,
                         programme_name: prog.name,
-                        programme_default_limit: prog.coachee_session_limit,
                         programme_duration_months: prog.duration_months,
                       } : {}),
                       // Organization defaults to the cohort's organization.

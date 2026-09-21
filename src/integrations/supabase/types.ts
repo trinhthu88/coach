@@ -305,7 +305,6 @@ export type Database = {
           programme_id: string | null
           role: string | null
           row_index: number | null
-          session_limit: number | null
           status: string | null
           title: string | null
         }
@@ -326,7 +325,6 @@ export type Database = {
           programme_id?: string | null
           role?: string | null
           row_index?: number | null
-          session_limit?: number | null
           status?: string | null
           title?: string | null
         }
@@ -347,7 +345,6 @@ export type Database = {
           programme_id?: string | null
           role?: string | null
           row_index?: number | null
-          session_limit?: number | null
           status?: string | null
           title?: string | null
         }
@@ -2838,7 +2835,6 @@ export type Database = {
       }
       programmes: {
         Row: {
-          coach_session_limit: number
           coachee_session_limit: number
           color: string | null
           created_at: string
@@ -2848,12 +2844,9 @@ export type Database = {
           is_active: boolean
           mentoring_received_limit: number | null
           name: string
-          peer_given_limit: number
-          peer_session_limit: number
           updated_at: string
         }
         Insert: {
-          coach_session_limit?: number
           coachee_session_limit?: number
           color?: string | null
           created_at?: string
@@ -2863,12 +2856,9 @@ export type Database = {
           is_active?: boolean
           mentoring_received_limit?: number | null
           name: string
-          peer_given_limit?: number
-          peer_session_limit?: number
           updated_at?: string
         }
         Update: {
-          coach_session_limit?: number
           coachee_session_limit?: number
           color?: string | null
           created_at?: string
@@ -2878,8 +2868,6 @@ export type Database = {
           is_active?: boolean
           mentoring_received_limit?: number | null
           name?: string
-          peer_given_limit?: number
-          peer_session_limit?: number
           updated_at?: string
         }
         Relationships: []
@@ -3232,33 +3220,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      session_limits: {
-        Row: {
-          coachee_id: string | null
-          created_at: string
-          id: string
-          monthly_limit: number
-          notes: string | null
-          updated_at: string
-        }
-        Insert: {
-          coachee_id?: string | null
-          created_at?: string
-          id?: string
-          monthly_limit?: number
-          notes?: string | null
-          updated_at?: string
-        }
-        Update: {
-          coachee_id?: string | null
-          created_at?: string
-          id?: string
-          monthly_limit?: number
-          notes?: string | null
-          updated_at?: string
-        }
-        Relationships: []
       }
       session_messages: {
         Row: {

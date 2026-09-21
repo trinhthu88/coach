@@ -51,12 +51,6 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
         spoken_languages: editing.spoken_languages,
       }).eq("id", editing.id);
 
-      if (editing.limit_row_id) {
-        await supabase.from("session_limits").update({ monthly_limit: editing.session_limit }).eq("id", editing.limit_row_id);
-      } else {
-        await supabase.from("session_limits").insert({ coachee_id: editing.id, monthly_limit: editing.session_limit });
-      }
-
       const oldIds = new Set((original?.selected_coaches || []).map((c) => c.id));
       const newIds = new Set(editing.selected_coaches.map((c) => c.id));
       const toAdd = [...newIds].filter((i) => !oldIds.has(i));

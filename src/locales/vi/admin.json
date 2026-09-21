@@ -306,7 +306,10 @@
     "done": "Xong",
     "coachAssignmentMovedToCohort": "Coaching của chương trình nay được phân công theo nhóm. Quản lý danh sách Coach tại Quản trị → Nhóm → Coaching.",
     "programmeFromCohortHint": "Không bắt buộc. Được đặt theo cohort; dùng làm giới hạn session mặc định bên dưới.",
-    "enrollmentTransitionHint": "Khi lưu, ghi danh hiện tại sẽ được đóng (vẫn lưu trong lịch sử) và ghi danh mới trong cohort này được tạo."
+    "enrollmentTransitionHint": "Khi lưu, ghi danh hiện tại sẽ được đóng (vẫn lưu trong lịch sử) và ghi danh mới trong cohort này được tạo.",
+    "profileSection": "Hồ sơ",
+    "enrollmentSection": "Ghi danh hiện tại",
+    "enrollmentSectionHint": "Chương trình, cohort và tổ chức thuộc về ghi danh, không thuộc về cá nhân. Một người chưa có ghi danh vẫn hợp lệ — để trống cohort. Đổi chương trình hoặc cohort sẽ đóng ghi danh hiện tại (giữ trong lịch sử) và mở ghi danh mới."
   },
   "organizations": {
     "sections": {
@@ -488,7 +491,8 @@
         "trainingWeekIdsInvalid": "Các tuần đào tạo đã chọn không hợp lệ.",
         "trainingWeeksInsufficient": "Số tuần đào tạo được chọn phải bằng số đơn vị bắt buộc."
       }
-    }
+    },
+    "outsideRequirementsHint": "Số buổi coaching học viên được đặt ngoài yêu cầu chương trình (chỉ áp dụng khi chương trình không yêu cầu Coaching)."
   },
   "coachProgrammes": {
     "unlimited": "Không giới hạn",

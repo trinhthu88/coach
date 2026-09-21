@@ -198,12 +198,9 @@ describe("programme profile architecture", () => {
       )
         && !/__tests__|\.test\.|integrations\/supabase\/types\.ts/.test(f),
     );
-    // programmeModuleConfig is the one place the legacy key is named, and only
-    // to DELETE it from a config loaded from an older programme.
-    expect(policyFiles.map((f) => relative(SRC, f)).sort()).toEqual(["lib/programmeModuleConfig.ts"]);
-    expect(stripComments(read("lib/programmeModuleConfig.ts"))).toMatch(
-      /distribution_mode: _legacyMode/,
-    );
+    // The retired keys were purged from stored configs (20260927300000), so
+    // no client code names them at all any more.
+    expect(policyFiles.map((f) => relative(SRC, f)).sort()).toEqual([]);
     expect(stripComments(read("lib/programmeModuleConfig.ts"))).not.toMatch(
       /evenly_distributed|monthly_frequency|training_linked/,
     );

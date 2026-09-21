@@ -17,7 +17,7 @@ export { normalizeSheetRow } from "../../supabase/functions/_shared/adminInviteR
 
 export type AdminInviteRole = "coachee" | "coach" | "sponsor" | "admin";
 
-export interface AdminInvitePreviewRow extends Omit<ValidatedInviteRow, "session_limit" | "assign_coach_id"> {
+export interface AdminInvitePreviewRow extends Omit<ValidatedInviteRow, "assign_coach_id"> {
   programme_name: string | null;
   cohort_name: string | null;
   organization_name: string | null;
@@ -121,6 +121,5 @@ export function inviteRowFromBatchRow(r: InviteBatchRow): InviteRowInput {
     department: r.department ?? undefined,
     accept_existing: r.accept_existing,
     assign_coach_id: r.assign_coach_id ?? undefined,
-    session_limit: r.session_limit ?? undefined,
   };
 }
