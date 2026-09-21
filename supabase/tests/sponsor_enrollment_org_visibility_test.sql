@@ -18,7 +18,7 @@
 --     and default a NULL organisation to the cohort's.
 begin;
 
-select plan(39);
+select plan(41);
 
 -- ---------------------------------------------------------------------------
 -- Fixture
@@ -135,6 +135,17 @@ select is(
   (select suppressed from public.sponsor_canonical_cohort_progress(pg_temp.id('X'), current_date)),
   false,
   'A: a 3-leader organisation is not hidden by the whole-cohort size gate');
+
+-- The minimum-leader privacy threshold now guards anonymous distributions
+-- only; it is still defined, and it is never computed over another
+-- organisation's learners: sponsor A's leader count in the mixed cohort is its
+-- own 3, never the cohort's 7.
+select is(public.sponsor_min_leaders_for_distribution(), 5,
+  'privacy threshold for anonymous distributions is still 5');
+select is(
+  (select sum(enrollment_count)::integer from public.sponsor_canonical_cohort_progress(null, current_date)),
+  (select count(*)::integer from public.sponsor_visible_enrollments()),
+  'A: every leader count a sponsor receives is drawn from its visible enrollments only');
 
 select ok(
   (select progress_source_complete from public.sponsor_canonical_cohort_progress(pg_temp.id('X'), current_date)),

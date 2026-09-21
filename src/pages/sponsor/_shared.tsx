@@ -4,7 +4,6 @@ import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionCard, Pill, MiniBar, Avatar } from "@/pages/admin/_shared";
 import type {
-  SponsorGoalGrowth,
   SponsorRosterRow,
   SponsorCoachUtilisationRow,
 } from "@/hooks/sponsor/useSponsorDashboardData";
@@ -17,19 +16,6 @@ export function HealthSignalPill({ signal }: { signal: HealthSignal }) {
   return <Pill tone={tone}>{t(`shared.health.${signal}`)}</Pill>;
 }
 
-export function DistRow({ label, count, total, tone }: { label: string; count: number; total: number; tone: "success" | "primary" | "warning" | "destructive" }) {
-  const pct = total > 0 ? (count / total) * 100 : 0;
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-[11px]">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">{count}</span>
-      </div>
-      <MiniBar pct={pct} tone={tone} />
-    </div>
-  );
-}
-
 export function GoalProgressBar({ pct }: { pct: number }) {
   const clamped = Math.max(0, Math.min(100, pct));
   const tone = clamped >= 50 ? "bg-success" : clamped >= 20 ? "bg-warning" : "bg-muted-foreground/40";
@@ -40,56 +26,6 @@ export function GoalProgressBar({ pct }: { pct: number }) {
       </div>
       <span className="w-8 text-right text-[10px] font-medium text-muted-foreground">{Math.round(pct)}%</span>
     </div>
-  );
-}
-
-/** The goal-growth distribution card — shared between the org dashboard and a single cohort's detail page. */
-export function GoalGrowthCard({ goalGrowth, minLeadersForDistribution }: { goalGrowth: SponsorGoalGrowth | null; minLeadersForDistribution: number }) {
-  const { t } = useTranslation("sponsor");
-  const distributionShown = goalGrowth?.hit_target_count != null;
-  const distributionTotal = distributionShown
-    ? (goalGrowth!.hit_target_count + goalGrowth!.meaningful_progress_count + goalGrowth!.just_started_count + goalGrowth!.flat_declined_count) || 1
-    : 1;
-
-  return (
-    <SectionCard label={t("dashboard.goalGrowth.label")} action={
-      <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
-        {t("dashboard.goalGrowth.scaleNote")}
-      </span>
-    }>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("dashboard.goalGrowth.averageGrowth")}</p>
-          <p className="font-display mt-1 text-[2rem] font-normal leading-none">
-            {goalGrowth?.pct_progressing != null ? `${Math.round(goalGrowth.pct_progressing)}%` : "—"}
-          </p>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {goalGrowth?.pct_progressing != null
-              ? t("dashboard.goalGrowth.pctProgressing")
-              : t("dashboard.goalGrowth.noRatingsYet")}
-          </p>
-        </div>
-        <div>
-          {distributionShown ? (
-            <div className="space-y-2">
-              <DistRow label={t("dashboard.goalGrowth.hitTarget")} count={goalGrowth!.hit_target_count} total={distributionTotal} tone="success" />
-              <DistRow label={t("dashboard.goalGrowth.meaningfulProgress")} count={goalGrowth!.meaningful_progress_count} total={distributionTotal} tone="primary" />
-              <DistRow label={t("dashboard.goalGrowth.justStarted")} count={goalGrowth!.just_started_count} total={distributionTotal} tone="warning" />
-              <DistRow label={t("dashboard.goalGrowth.flatDeclined")} count={goalGrowth!.flat_declined_count} total={distributionTotal} tone="destructive" />
-            </div>
-          ) : (
-            <div className="rounded-xl bg-muted/40 p-3">
-              <p className="text-[11px] text-muted-foreground">
-                {t("dashboard.goalGrowth.distributionHidden", { min: minLeadersForDistribution })}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-      <p className="mt-4 text-[10px] italic text-muted-foreground">
-        {t("dashboard.goalGrowth.footnote")}
-      </p>
-    </SectionCard>
   );
 }
 
