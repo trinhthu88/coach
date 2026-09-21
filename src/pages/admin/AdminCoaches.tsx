@@ -612,7 +612,7 @@ export default function AdminCoaches() {
         </SheetContent>
       </Sheet>
 
-      <AddPersonDialog open={addOpen} onOpenChange={setAddOpen} roles={["coach", "coachee", "sponsor"]} defaultRole="coach" onCreated={load} />
+      <AddPersonDialog open={addOpen} onOpenChange={setAddOpen} roles={["coach", "coachee", "sponsor", "admin"]} defaultRole="coach" onCreated={load} />
       <AdminImportDialog open={importOpen} onOpenChange={setImportOpen} defaultRole="coach" onDone={load} />
     </div>
   );

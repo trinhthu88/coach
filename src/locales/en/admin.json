@@ -1140,7 +1140,8 @@
     "roles": {
       "coachee": "Learner",
       "coach": "Coach",
-      "sponsor": "Sponsor"
+      "sponsor": "Sponsor",
+      "admin": "Admin"
     },
     "programme": "Programme (optional)",
     "cohort": "Cohort (optional)",
@@ -1219,7 +1220,8 @@
       "organization_has_sponsor": "Organization already has a sponsor",
       "sponsor_not_enrollable": "Sponsors are not enrolled",
       "coach_not_found": "Coach not found",
-      "organization_mismatch": "Organization differs from cohort"
+      "organization_mismatch": "Organization differs from cohort",
+      "admin_not_enrollable": "Admins are not enrolled"
     },
     "result": {
       "invited": "Created · setup email sent",

@@ -10,7 +10,7 @@ import {
 // THE admin provisioning service. Every admin way of adding a person — single
 // add (Admin -> Learners / Coaches), sponsor creation (Admin -> Organizations)
 // and bulk import (CSV/Excel) — runs through runAdminInvite(); the only entry
-// point is the admin-invite-users edge function. Rules live in
+// point is the admin-provision-user edge function. Rules live in
 // adminInviteRules.ts (pure, unit-tested).
 //
 // Guarantees:
@@ -140,7 +140,16 @@ function errorMessage(error: unknown): string {
   return raw;
 }
 
-/** Idempotently grants the role and marks its role profile active. Never removes other roles. */
+/** Read-only: does this person hold any programme enrollment (current or past)? */
+async function hasAnyEnrollment(admin: SupabaseClient, userId: string): Promise<boolean> {
+  const { count } = await admin
+    .from("programme_enrollments")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+  return (count ?? 0) > 0;
+}
+
+/** Idempotently grants the role and marks its role profile active. Never removes other roles (an admin drops only the trigger-default coachee role). */
 async function ensureRole(
   admin: SupabaseClient,
   userId: string,
@@ -162,6 +171,20 @@ async function ensureRole(
       .from("user_roles")
       .upsert({ user_id: userId, role: "sponsor" }, { onConflict: "user_id,role" });
     return roleErr?.message ?? null;
+  }
+
+  if (row.role === "admin") {
+    const { error: adminErr } = await admin
+      .from("user_roles")
+      .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
+    if (adminErr) return adminErr.message;
+    // handle_new_user() gave every new account a default coachee role and a
+    // pending coachee profile; an admin who is not a learner keeps neither.
+    if (!(await hasAnyEnrollment(admin, userId))) {
+      await admin.from("user_roles").delete().eq("user_id", userId).eq("role", "coachee");
+      await admin.from("coachee_profiles").delete().eq("id", userId);
+    }
+    return null;
   }
 
   const { error: roleErr } = await admin
@@ -256,10 +279,11 @@ async function createAccount(
   }
   if (error || !data?.user) return { error: error?.message || "Failed to create the account" };
   const userId = data.user.id;
-  // Admin-added: active immediately, and must choose a password on first sign-in.
+  // Admin-added: active immediately. The invite link lands on /set-new-password,
+  // where the person chooses their password (no temporary password, no flag).
   const { error: profErr } = await admin
     .from("profiles")
-    .update({ full_name: row.full_name, status: "active", must_change_password: true })
+    .update({ full_name: row.full_name, status: "active" })
     .eq("id", userId);
   if (profErr) return { user_id: userId, error: profErr.message };
   return { user_id: userId };
@@ -285,7 +309,7 @@ async function adoptOrphanAuthUser(
   const { error: profErr } = await admin
     .from("profiles")
     .upsert(
-      { id: userId, email: row.email, full_name: row.full_name, status: "active", must_change_password: true },
+      { id: userId, email: row.email, full_name: row.full_name, status: "active" },
       { onConflict: "id" },
     );
   if (profErr) return { user_id: userId, error: profErr.message };
@@ -456,10 +480,7 @@ export async function resendSetupLink(
       data: { full_name: profile.full_name },
       redirectTo: SETUP_REDIRECT,
     });
-    if (!error) {
-      await admin.from("profiles").update({ must_change_password: true }).eq("id", userId);
-      return { email: profile.email, full_name: profile.full_name, email_sent: true };
-    }
+    if (!error) return { email: profile.email, full_name: profile.full_name, email_sent: true };
   }
   const { error } = await admin.auth.resetPasswordForEmail(profile.email, { redirectTo: SETUP_REDIRECT });
   return {

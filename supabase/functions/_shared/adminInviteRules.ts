@@ -5,13 +5,23 @@
 // has NO runtime imports so it runs unchanged in Deno (edge functions) and in
 // Vitest (src/lib/__tests__/adminInviteRules.test.ts).
 
-export type InviteRole = "coachee" | "coach" | "sponsor";
+export type InviteRole = "coachee" | "coach" | "sponsor" | "admin";
 
-/** One row as submitted by the client (single add, a spreadsheet row, or a resume). */
+/**
+ * One row as submitted by the client (single add, a spreadsheet row, or a
+ * resume). admin-provision-user's documented schema -- { name, email, role,
+ * programme_id?, cohort_id?, organization_id? } -- is accepted as-is; the
+ * *_id fields and `name` are aliases of programme / cohort / organization /
+ * full_name (which also accept a name, for spreadsheets).
+ */
 export interface InviteRowInput {
   /** bulk_invite_rows.id when resuming/retrying a tracked row. */
   row_id?: string;
   full_name?: string;
+  name?: string;
+  programme_id?: string;
+  cohort_id?: string;
+  organization_id?: string;
   email?: string;
   /** coachee | learner | coach | sponsor (case-insensitive; a few aliases accepted). */
   role?: string;
@@ -82,6 +92,7 @@ export type InviteProblem =
   | "organization_required"
   | "organization_has_sponsor"
   | "sponsor_not_enrollable"
+  | "admin_not_enrollable"
   | "coach_not_found";
 
 /**
@@ -126,7 +137,7 @@ export interface ValidatedInviteRow {
 export const PROBLEM_MESSAGE: Record<InviteProblem, string> = {
   missing_name: "Full name is required",
   bad_email: "Invalid email address",
-  invalid_role: "Role must be learner (coachee), coach or sponsor",
+  invalid_role: "Role must be learner (coachee), coach, sponsor or admin",
   duplicate_in_file: "Duplicate email in this file",
   unknown_programme: "Programme not found",
   unknown_cohort: "Cohort not found",
@@ -139,6 +150,7 @@ export const PROBLEM_MESSAGE: Record<InviteProblem, string> = {
   organization_required: "Sponsors must be linked to an organization",
   organization_has_sponsor: "This organization already has a sponsor",
   sponsor_not_enrollable: "Sponsors are not enrolled — leave programme and cohort empty",
+  admin_not_enrollable: "Admins are not enrolled — leave programme, cohort and organization empty",
   coach_not_found: "No matching active coach for 'Assign coach email'",
 };
 
@@ -152,6 +164,8 @@ const ROLE_ALIASES: Record<string, InviteRole> = {
   "học viên": "coachee",
   coach: "coach",
   sponsor: "sponsor",
+  admin: "admin",
+  administrator: "admin",
 };
 
 export function normalizeRole(raw: string | undefined | null): InviteRole | null {
@@ -193,11 +207,11 @@ export function validateInviteRow(
   seenEmails: Set<string>,
 ): ValidatedInviteRow {
   const email = normalizeEmail(raw.email);
-  const full_name = clean(raw.full_name);
+  const full_name = clean(raw.full_name) || clean(raw.name);
   const role = normalizeRole(raw.role);
-  const programmeKey = clean(raw.programme);
-  const cohortKey = clean(raw.cohort);
-  const organizationKey = clean(raw.organization);
+  const programmeKey = clean(raw.programme) || clean(raw.programme_id);
+  const cohortKey = clean(raw.cohort) || clean(raw.cohort_id);
+  const organizationKey = clean(raw.organization) || clean(raw.organization_id);
   const accept_existing = raw.accept_existing === true;
 
   const base: ValidatedInviteRow = {
@@ -251,7 +265,9 @@ export function validateInviteRow(
     organization = matches[0];
   }
 
-  if (role === "sponsor") {
+  if (role === "admin") {
+    if (programmeKey || cohortKey || organizationKey) return fail("admin_not_enrollable");
+  } else if (role === "sponsor") {
     if (programmeKey || cohortKey) return fail("sponsor_not_enrollable");
     if (!organization) return fail("organization_required");
     base.organization_id = organization.id;

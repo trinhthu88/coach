@@ -195,7 +195,7 @@ export default function AdminCoachees() {
       <AddPersonDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        roles={["coachee", "coach", "sponsor"]}
+        roles={["coachee", "coach", "sponsor", "admin"]}
         defaultRole="coachee"
         onCreated={load}
       />

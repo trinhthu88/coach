@@ -1,7 +1,7 @@
 -- Spec hardening (20260926100000, 20260926200000):
 --   * get_primary_role ranks admin > sponsor > coach > coachee (same as the client);
 --   * sponsor visibility requires the sponsor ROLE, not just a sponsor_profiles row;
---   * admin_transition_enrollment accepts the service role (admin-invite-users),
+--   * admin_transition_enrollment accepts the service role (admin-provision-user),
 --     still refuses non-admins, and keeps the organization an org-only
 --     correction replaced.
 begin;
@@ -55,7 +55,7 @@ select throws_ok(
   '42501', 'Only an administrator can change enrolments', 'a non-admin still cannot transition enrollments');
 reset role;
 
--- The admin-invite-users edge function: service role, no end-user subject.
+-- The admin-provision-user edge function: service role, no end-user subject.
 select set_config('request.jwt.claim.sub', '', true);
 select set_config('request.jwt.claim.role', 'service_role', true);
 select is(

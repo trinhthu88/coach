@@ -393,17 +393,17 @@ BEGIN
 END
 $admin$;
 
-INSERT INTO public.profiles (id, full_name, email, status, must_change_password, peer_coaching_opt_in)
-SELECT p.id, p.full_name, p.email, 'active'::public.user_status, false,
+INSERT INTO public.profiles (id, full_name, email, status, peer_coaching_opt_in)
+SELECT p.id, p.full_name, p.email, 'active'::public.user_status,
        p.role = 'coachee'   -- every learner is opted in, so Peer has a pool
 FROM _people p
 ON CONFLICT (id) DO UPDATE
   SET full_name = excluded.full_name, status = 'active'::public.user_status,
       peer_coaching_opt_in = excluded.peer_coaching_opt_in;
 
-INSERT INTO public.profiles (id, full_name, email, status, must_change_password)
+INSERT INTO public.profiles (id, full_name, email, status)
 SELECT a.id, coalesce(u.raw_user_meta_data->>'full_name', 'Clariva Admin'), u.email,
-       'active'::public.user_status, false
+       'active'::public.user_status
 FROM _admin a JOIN auth.users u ON u.id = a.id
 ON CONFLICT (id) DO UPDATE SET status = 'active'::public.user_status;
 

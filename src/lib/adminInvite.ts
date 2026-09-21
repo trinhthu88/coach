@@ -9,13 +9,13 @@ import type {
 } from "../../supabase/functions/_shared/adminInviteRules";
 
 // Client for the ONE admin provisioning service (edge function
-// admin-invite-users -> supabase/functions/_shared/adminInvite.ts). Single
+// admin-provision-user -> supabase/functions/_shared/adminInvite.ts). Single
 // add, sponsor creation, bulk import and "resend setup link" all go through it.
 
 export type { InviteOffer, InviteRowInput, PreviewStatus };
 export { normalizeSheetRow } from "../../supabase/functions/_shared/adminInviteRules";
 
-export type AdminInviteRole = "coachee" | "coach" | "sponsor";
+export type AdminInviteRole = "coachee" | "coach" | "sponsor" | "admin";
 
 export interface AdminInvitePreviewRow extends Omit<ValidatedInviteRow, "session_limit" | "assign_coach_id"> {
   programme_name: string | null;
@@ -56,7 +56,7 @@ export function isExecutableRow(row: Pick<AdminInvitePreviewRow, "action" | "off
 }
 
 async function invoke<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("admin-invite-users", { body });
+  const { data, error } = await supabase.functions.invoke("admin-provision-user", { body });
   if (error) throw await extractFunctionError(error);
   const payload = data as T & { error?: string };
   if (payload && typeof payload === "object" && "error" in payload && payload.error) throw new Error(payload.error);

@@ -1121,7 +1121,8 @@
     "roles": {
       "coachee": "Học viên",
       "coach": "Coach",
-      "sponsor": "Sponsor"
+      "sponsor": "Sponsor",
+      "admin": "Quản trị viên"
     },
     "programme": "Chương trình (không bắt buộc)",
     "cohort": "Cohort (không bắt buộc)",
@@ -1200,7 +1201,8 @@
       "organization_has_sponsor": "Tổ chức đã có sponsor",
       "sponsor_not_enrollable": "Sponsor không được ghi danh",
       "coach_not_found": "Không tìm thấy coach",
-      "organization_mismatch": "Tổ chức khác với cohort"
+      "organization_mismatch": "Tổ chức khác với cohort",
+      "admin_not_enrollable": "Quản trị viên không ghi danh"
     },
     "result": {
       "invited": "Đã tạo · đã gửi email thiết lập",

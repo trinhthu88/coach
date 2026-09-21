@@ -121,9 +121,9 @@ Deno.serve(async (req) => {
         );
       }
     } else {
-      // No password is set here — access is passwordless via the magic link
-      // emailed below. The user can set a real password afterwards (enforced
-      // by must_change_password below, which routes them to /set-new-password).
+      // No password is set here. The one-use link emailed below lands on
+      // /set-new-password, where the person chooses their password -- the same
+      // setup-link pattern as every admin-created account.
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email: reqRow.email,
         email_confirm: true,
@@ -151,10 +151,10 @@ Deno.serve(async (req) => {
     }
 
     // The handle_new_user trigger created profile + role + role-specific profile
-    // already with status = pending_approval. Promote to active and mark must_change_password.
+    // already with status = pending_approval. Promote to active.
     await admin
       .from("profiles")
-      .update({ status: "active", must_change_password: true })
+      .update({ status: "active" })
       .eq("id", userId);
 
     if (role === "coach") {
@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "magiclink",
       email: reqRow.email,
-      options: { redirectTo: `${SITE_URL}/dashboard` },
+      options: { redirectTo: `${SITE_URL}/set-new-password` },
     });
 
     let emailSent = false;

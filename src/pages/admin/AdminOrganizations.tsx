@@ -65,7 +65,7 @@ export default function AdminOrganizations() {
   const [editing, setEditing] = useState<Partial<Organization> | null>(null);
   const [saving, setSaving] = useState(false);
   // Sponsor creation goes through the one admin provisioning service
-  // (admin-invite-users): sponsor role + sponsor_profiles + emailed setup link.
+  // (admin-provision-user): sponsor role + sponsor_profiles + emailed setup link.
   const [inviting, setInviting] = useState<Organization | null>(null);
   const [resendBusy, setResendBusy] = useState<string | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();

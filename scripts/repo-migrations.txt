@@ -250,3 +250,4 @@
 20260926400000_deadline_contract_locked.sql
 20260926500000_coach_canonical_status.sql
 20260926600000_booking_goal_gate_unconditional.sql
+20260926700000_remove_must_change_password.sql

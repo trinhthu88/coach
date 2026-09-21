@@ -41,11 +41,6 @@ export function ProtectedRoute({ children, role: requiredRole, roles: requiredRo
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
-  // First-login forced password change
-  if (profile?.must_change_password && location.pathname !== "/set-new-password") {
-    return <Navigate to="/set-new-password" replace />;
-  }
-
   // The lookup itself failed: say so and offer a retry. This is not "no role".
   if (!role && roleError) {
     return (

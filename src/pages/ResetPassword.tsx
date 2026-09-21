@@ -44,11 +44,6 @@ export default function ResetPassword() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      // Clear must_change_password if set
-      const { data: u } = await supabase.auth.getUser();
-      if (u.user) {
-        await supabase.from("profiles").update({ must_change_password: false }).eq("id", u.user.id);
-      }
       toast({ title: t("resetPassword.toast.success.title"), description: t("resetPassword.toast.success.description") });
       navigate("/dashboard", { replace: true });
     } catch (err) {

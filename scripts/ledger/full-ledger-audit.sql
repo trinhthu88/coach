@@ -282,7 +282,8 @@ WITH repo(version, name) AS (VALUES
   ('20260926300000', 'counterpart_session_deliverables'),
   ('20260926400000', 'deadline_contract_locked'),
   ('20260926500000', 'coach_canonical_status'),
-  ('20260926600000', 'booking_goal_gate_unconditional')
+  ('20260926600000', 'booking_goal_gate_unconditional'),
+  ('20260926700000', 'remove_must_change_password')
 -- END REPO MANIFEST
 ),
 

@@ -471,7 +471,7 @@ export default function AdminRegistrations() {
         }}
       />
 
-      {/* The one admin import path (admin-invite-users): preview first, then create. */}
+      {/* The one admin import path (admin-provision-user): preview first, then create. */}
       <AdminImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}

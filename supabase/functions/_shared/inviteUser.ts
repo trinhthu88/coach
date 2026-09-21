@@ -53,8 +53,8 @@ export async function inviteUser(admin: SupabaseClient, params: InviteUserParams
   const userId = invited.user.id;
 
   // handle_new_user() already created profiles/user_roles/(coach|coachee)_profiles rows
-  // (status = pending_approval) via the auth.users insert trigger.
-  await admin.from("profiles").update({ must_change_password: true }).eq("id", userId);
+  // (status = pending_approval) via the auth.users insert trigger. The invite
+  // link lands on /set-new-password; there is no temporary password to change.
 
   if (params.assignCoachId && params.role === "coachee") {
     const { error: allowErr } = await admin.from("coachee_coach_allowlist").insert({

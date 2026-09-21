@@ -96,7 +96,7 @@ describe("admin invite rules", () => {
       [
         { full_name: "A", email: "not-an-email", role: "coachee" },
         { full_name: "", email: "b@example.com", role: "coachee" },
-        { full_name: "C", email: "c@example.com", role: "admin" },
+        { full_name: "C", email: "c@example.com", role: "superuser" },
         { full_name: "D", email: "d@example.com", role: "coachee" },
         { full_name: "D again", email: "D@example.com", role: "coach" },
       ],
@@ -151,6 +151,18 @@ describe("admin invite rules", () => {
   it("resolves the legacy assign-coach column for learners", () => {
     expect(one({ full_name: "J", email: "j@example.com", role: "coachee", assign_coach_email: "COACH@example.com" }).assign_coach_id).toBe("coach-1");
     expect(one({ full_name: "J", email: "j@example.com", role: "coachee", assign_coach_email: "nobody@example.com" }).status).toBe("coach_not_found");
+  });
+});
+
+describe("admin-provision-user input schema", () => {
+  it("accepts { name, email, role, programme_id?, cohort_id?, organization_id? }", () => {
+    const r = one({ name: "Jane", email: "jane@example.com", role: "coachee", cohort_id: "coh-a", organization_id: "org-1" });
+    expect(r).toMatchObject({ status: "valid", full_name: "Jane", cohort_id: "coh-a", programme_id: "prog-a", organization_id: "org-1" });
+  });
+
+  it("provisions an admin, who is never enrolled", () => {
+    expect(one({ name: "Ada", email: "ada@example.com", role: "admin" })).toMatchObject({ status: "valid", action: "create", role: "admin" });
+    expect(one({ name: "Ada", email: "ada@example.com", role: "admin", cohort_id: "coh-a" }).status).toBe("admin_not_enrollable");
   });
 });
 

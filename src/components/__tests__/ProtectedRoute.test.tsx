@@ -77,7 +77,6 @@ const baseProfile = {
   avatar_url: null,
   bio: null,
   status: "active",
-  must_change_password: false,
 };
 
 beforeEach(() => {
@@ -143,17 +142,6 @@ describe("ProtectedRoute", () => {
     renderAt("/sessions", undefined, { roles: ["coach", "coachee"] });
     expect(screen.getByText("dashboard page")).toBeInTheDocument();
     expect(screen.queryByText("protected content")).not.toBeInTheDocument();
-  });
-
-  it("redirects users flagged must_change_password to /set-new-password", () => {
-    mockAuth.mockReturnValue({
-      user: { id: "u1" },
-      role: "coachee",
-      profile: { ...baseProfile, must_change_password: true },
-      isLoading: false,
-    });
-    renderAt("/private");
-    expect(screen.getByText("set password page")).toBeInTheDocument();
   });
 
   it("redirects non-active users to /pending", () => {

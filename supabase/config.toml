@@ -19,7 +19,7 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.coach-invite-coachee]
     verify_jwt = true
-  [functions.admin-invite-users]
+  [functions.admin-provision-user]
     verify_jwt = true
   [functions.send-daily-prompt]
     verify_jwt = false

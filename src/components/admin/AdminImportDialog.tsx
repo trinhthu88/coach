@@ -61,7 +61,7 @@ interface AdminImportDialogProps {
  * Organization. A dry-run preview is mandatory — nothing is created until the
  * admin confirms it. Existing emails are offered "enrollment only" (or
  * "sponsor access") and never create a second account. Runs are tracked as
- * resumable batches. Everything goes through the admin-invite-users service.
+ * resumable batches. Everything goes through the admin-provision-user service.
  */
 export function AdminImportDialog({ open, onOpenChange, onDone }: AdminImportDialogProps) {
   const { t } = useTranslation("admin");

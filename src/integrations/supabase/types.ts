@@ -2600,7 +2600,6 @@ export type Database = {
           full_name: string
           id: string
           last_profile_update_at: string
-          must_change_password: boolean
           notification_prefs: Json
           onboarding_completed_at: string | null
           peer_coaching_opt_in: boolean
@@ -2617,7 +2616,6 @@ export type Database = {
           full_name: string
           id: string
           last_profile_update_at?: string
-          must_change_password?: boolean
           notification_prefs?: Json
           onboarding_completed_at?: string | null
           peer_coaching_opt_in?: boolean
@@ -2634,7 +2632,6 @@ export type Database = {
           full_name?: string
           id?: string
           last_profile_update_at?: string
-          must_change_password?: boolean
           notification_prefs?: Json
           onboarding_completed_at?: string | null
           peer_coaching_opt_in?: boolean
