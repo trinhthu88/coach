@@ -1,13 +1,16 @@
--- Booking goal gate contract (20260925400000_booking_goal_gate).
+-- Booking goal gate contract (20260925400000, made unconditional by
+-- 20260926600000_booking_goal_gate_unconditional).
 --
--- Day 1 = coalesce(cohort.start_date, enrollment.start_date). Days 1-7 are the
--- grace period; from day 8 (current_date >= start + 7) a learner with no
--- active goal on the enrollment cannot book Coaching, Peer, Mentoring or
--- Triads. Max 3 active goals; after grace the learner cannot retire their
--- last active goal.
+-- check_booking_eligibility(enrollment) = at least one active goal. With no
+-- active goal a learner cannot book Coaching, Peer, Mentoring or Triads --
+-- from day 1, there is no grace period. Day 1 = coalesce(cohort.start_date,
+-- enrollment.start_date); goal_setup_deadline = day 1 + 7 and, after it, an
+-- enrollment with no active goal is flagged goal_setup_overdue (an alert
+-- only). Max 3 active goals; from the goal setup deadline the learner cannot
+-- retire their last active goal.
 --
 -- Cohort GC (no start_date, so each enrollment's own start_date is day 1):
---   L1  start = today - 6  (day 7: grace, no goal)
+--   L1  start = today - 6  (day 7, no goal: blocked, setup not yet overdue)
 --   L2  start = today - 7  (day 8: blocked until a goal exists)
 --   L3  start = today - 7  (day 8: blocked, never gets a goal)
 --   L4  start = today - 30 (goal min/max)
@@ -15,7 +18,7 @@
 --   L5  start = today      (the cohort date wins over the enrollment date)
 begin;
 
-select plan(32);
+select plan(33);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -80,7 +83,7 @@ insert into public.coach_availability (id, coach_id, slot_date, start_time, end_
   ('b9a10000-0000-0000-0000-00000000f4f4'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
    current_date + 10, '09:00', '10:00', 'coaching');
 
--- A Triad group of L3 (blocked) and L1 (grace), with an open session.
+-- A Triad group of L3 and L1 (both without a goal, so both blocked), with an open session.
 insert into public.triad_groups (id, cohort_requirement_date_id)
   values ('b9a10000-0000-0000-0000-00000000c0c0'::uuid, 'b9a10000-0000-0000-0000-00000000d3d3'::uuid);
 insert into public.triad_group_members (triad_group_id, enrollment_id, member_order) values
@@ -97,13 +100,13 @@ select set_config('request.jwt.claims',
   json_build_object('sub', 'b9a10000-0000-0000-0000-000000000003')::text, true);
 
 select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid)->>'blocked')::boolean,
-  false, 'day 7 (start = today - 6) with no goal: booking is open');
-select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid)->>'in_grace_period')::boolean,
-  true, 'day 7 is inside the grace period');
-select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid)->>'grace_ends_on')::date,
-  current_date, 'grace_ends_on is day 7 (start + 6)');
-select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid)->>'blocked_from')::date,
-  current_date + 1, 'blocked_from is day 8 (start + 7)');
+  true, 'day 7 (start = today - 6) with no goal: booking is blocked -- there is no grace period');
+select ok(public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid) ?| array['in_grace_period', 'grace_ends_on', 'blocked_from'] = false,
+  'the gate no longer carries grace-period fields');
+select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid)->>'goal_setup_deadline')::date,
+  current_date + 1, 'goal_setup_deadline is cohort start + 7 days');
+select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid)->>'goal_setup_overdue')::boolean,
+  false, 'before the goal setup deadline the setup is not overdue (alert only)');
 
 select throws_ok($$select public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e2'::uuid)$$,
   '42501', NULL, 'a learner cannot read another learner''s gate');
@@ -122,7 +125,9 @@ select set_config('request.jwt.claims',
 select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e5'::uuid)->>'gate_starts_on')::date,
   current_date - 30, 'day 1 is the cohort start_date when the cohort has one');
 select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e5'::uuid)->>'blocked')::boolean,
-  true, 'so a learner enrolled today into an old cohort is already past grace');
+  true, 'a learner enrolled today into an old cohort with no goal is blocked');
+select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e5'::uuid)->>'goal_setup_overdue')::boolean,
+  true, 'and, past cohort start + 7 days with no goal, goal setup is overdue');
 
 select set_config('request.jwt.claims',
   json_build_object('sub', 'b9a10000-0000-0000-0000-000000000002')::text, true);
@@ -130,18 +135,18 @@ select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e2'::u
   true, 'an Admin can read any enrollment''s gate');
 
 -- ---------------------------------------------------------------------------
--- 2. Grace period: Coaching books without a goal
+-- 2. No grace period: day 7 with no goal cannot book either
 -- ---------------------------------------------------------------------------
 select set_config('request.jwt.claims',
   json_build_object('sub', 'b9a10000-0000-0000-0000-000000000003')::text, true);
-select lives_ok($$
+select throws_ok($$
   select public.book_coaching_session(
     'b9a10000-0000-0000-0000-0000000000e1'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
-    'b9a10000-0000-0000-0000-00000000f1f1'::uuid, 'b9a10000-0000-0000-0000-00000000d1d1'::uuid, 'Grace booking')
-$$, 'day <= 7 with no goal: Coaching booking succeeds');
+    'b9a10000-0000-0000-0000-00000000f1f1'::uuid, 'b9a10000-0000-0000-0000-00000000d1d1'::uuid, 'Early booking')
+$$, 'P0001', 'Create at least one goal first', 'day 7 with no goal: Coaching booking is refused');
 
 -- ---------------------------------------------------------------------------
--- 3. Day >= 8 with no goal: every booking path raises the gate error
+-- 3. With no goal: every booking path raises the gate error
 -- ---------------------------------------------------------------------------
 select set_config('request.jwt.claims',
   json_build_object('sub', 'b9a10000-0000-0000-0000-000000000004')::text, true);
@@ -149,7 +154,7 @@ select throws_ok($$
   select public.book_coaching_session(
     'b9a10000-0000-0000-0000-0000000000e2'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
     'b9a10000-0000-0000-0000-00000000f2f2'::uuid, 'b9a10000-0000-0000-0000-00000000d1d1'::uuid, 'Blocked')
-$$, 'P0001', 'goal_required_before_booking', 'Coaching: book_coaching_session is gated');
+$$, 'P0001', 'Create at least one goal first', 'Coaching: book_coaching_session is gated');
 
 select set_config('request.jwt.claims',
   json_build_object('sub', 'b9a10000-0000-0000-0000-000000000005')::text, true);
@@ -161,35 +166,35 @@ select throws_ok($$
           'b9a10000-0000-0000-0000-000000000001'::uuid, 'b9a10000-0000-0000-0000-000000000005'::uuid,
           'b9a10000-0000-0000-0000-00000000f4f4'::uuid, 'Direct',
           (current_date + 10 + time '09:00') at time zone 'UTC', 60, 'pending_coach_approval')
-$$, 'P0001', 'goal_required_before_booking', 'Coaching: a learner''s direct INSERT hits the same gate');
+$$, 'P0001', 'Create at least one goal first', 'Coaching: a learner''s direct INSERT hits the same gate');
 
 select throws_ok($$
   select public.book_mentoring_session(
     'b9a10000-0000-0000-0000-0000000000e3'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
     gen_random_uuid(), 'Blocked mentoring')
-$$, 'P0001', 'goal_required_before_booking', 'Mentoring: book_mentoring_session is gated');
+$$, 'P0001', 'Create at least one goal first', 'Mentoring: book_mentoring_session is gated');
 
 select throws_ok($$
   select public.book_coachee_peer_session(
     'b9a10000-0000-0000-0000-000000000003'::uuid, 'b9a10000-0000-0000-0000-0000000000e3'::uuid,
     'Blocked peer', now() + interval '3 days', 45, null)
-$$, 'P0001', 'goal_required_before_booking', 'Peer: book_coachee_peer_session is gated for the receiver');
+$$, 'P0001', 'Create at least one goal first', 'Peer: book_coachee_peer_session is gated for the receiver');
 
 select throws_ok($$
   select public.book_peer_session(
     'b9a10000-0000-0000-0000-000000000001'::uuid, 'b9a10000-0000-0000-0000-0000000000e3'::uuid,
     'Blocked coach peer', now() + interval '3 days', 45, null)
-$$, 'P0001', 'goal_required_before_booking', 'Peer (coach-to-coach): book_peer_session is gated');
+$$, 'P0001', 'Create at least one goal first', 'Peer (coach-to-coach): book_peer_session is gated');
 
 select throws_ok($$
   select public.learner_triad_schedule_session('b9a10000-0000-0000-0000-00000000c0c0'::uuid,
     now() + interval '6 days', now() + interval '6 days 1 hour')
-$$, 'P0001', 'goal_required_before_booking', 'Triads: learner_triad_schedule_session is gated');
+$$, 'P0001', 'Create at least one goal first', 'Triads: learner_triad_schedule_session is gated');
 
 select throws_ok($$
   select public.learner_triad_propose_alternative('b9a10000-0000-0000-0000-00000000c0c1'::uuid,
     now() + interval '7 days', now() + interval '7 days 1 hour')
-$$, 'P0001', 'goal_required_before_booking', 'Triads: learner_triad_propose_alternative is gated');
+$$, 'P0001', 'Create at least one goal first', 'Triads: learner_triad_propose_alternative is gated');
 
 -- ---------------------------------------------------------------------------
 -- 4. With an active goal, booking succeeds; reschedule is not a new booking
@@ -207,7 +212,7 @@ select lives_ok($$
   select public.book_coaching_session(
     'b9a10000-0000-0000-0000-0000000000e2'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
     'b9a10000-0000-0000-0000-00000000f2f2'::uuid, 'b9a10000-0000-0000-0000-00000000d1d1'::uuid, 'With goal')
-$$, 'day >= 8 with an active goal: Coaching booking succeeds');
+$$, 'with an active goal: Coaching booking succeeds');
 
 -- An Admin retires the goal (Admins are exempt from the minimum rule).
 select set_config('request.jwt.claims',
@@ -222,7 +227,7 @@ select throws_ok($$
   select public.book_coaching_session(
     'b9a10000-0000-0000-0000-0000000000e2'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
     'b9a10000-0000-0000-0000-00000000f4f4'::uuid, 'b9a10000-0000-0000-0000-00000000d2d2'::uuid, 'New without goal')
-$$, 'P0001', 'goal_required_before_booking', 'without a goal again, a NEW booking is refused');
+$$, 'P0001', 'Create at least one goal first', 'without a goal again, a NEW booking is refused');
 select lives_ok($$
   select public.reschedule_coaching_session(
     (select id from public.sessions
@@ -264,13 +269,13 @@ $$, 'the learner can edit their last active goal');
 
 select throws_ok($$
   update public.coachee_goals set status = 'archived' where id = 'b9a10000-0000-0000-0000-00000000a403'::uuid
-$$, 'P0001', 'last_active_goal_required', 'after grace the learner cannot archive their last active goal');
+$$, 'P0001', 'last_active_goal_required', 'from the goal setup deadline the learner cannot archive their last active goal');
 
 select throws_ok($$
   delete from public.coachee_goals where id = 'b9a10000-0000-0000-0000-00000000a403'::uuid
 $$, 'P0001', 'last_active_goal_required', 'nor delete it');
 
--- Inside the grace period the minimum does not apply yet.
+-- Before the goal setup deadline the keep-one-goal minimum does not apply yet.
 select set_config('request.jwt.claims',
   json_build_object('sub', 'b9a10000-0000-0000-0000-000000000003')::text, true);
 insert into public.coachee_goals (id, coachee_id, enrollment_id, title)
@@ -278,7 +283,7 @@ values ('b9a10000-0000-0000-0000-00000000a101'::uuid, 'b9a10000-0000-0000-0000-0
         'b9a10000-0000-0000-0000-0000000000e1'::uuid, 'Early goal');
 select lives_ok($$
   update public.coachee_goals set status = 'archived' where id = 'b9a10000-0000-0000-0000-00000000a101'::uuid
-$$, 'during grace the learner may archive their only goal');
+$$, 'before the goal setup deadline the learner may archive their only goal');
 
 select * from finish();
 rollback;

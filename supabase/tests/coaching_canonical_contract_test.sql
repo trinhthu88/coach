@@ -39,6 +39,12 @@ insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, 
    'c1000000-0000-0000-0000-000000000003'::uuid, 'c1000000-0000-0000-0000-00000000b0b0'::uuid, 'active'),
   ('c1000000-0000-0000-0000-00000000e2e2'::uuid, 'c1000000-0000-0000-0000-00000000a0a0'::uuid,
    'c1000000-0000-0000-0000-000000000004'::uuid, 'c1000000-0000-0000-0000-00000000b0b0'::uuid, 'active');
+-- Booking requires an active goal (check_booking_eligibility, 20260926600000).
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+select e.user_id, e.id, 'Fixture goal'
+from public.programme_enrollments e
+where e.status in ('active', 'at_risk', 'paused')
+  and not exists (select 1 from public.coachee_goals g where g.enrollment_id = e.id and g.status = 'active');
 
 insert into public.cohort_requirement_dates
   (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
@@ -91,6 +97,13 @@ select ok(
 select set_config('request.jwt.claims',
   json_build_object('sub', 'c1000000-0000-0000-0000-000000000003')::text, true);
 
+-- Booking requires an active goal (check_booking_eligibility, 20260926600000):
+-- give every ongoing fixture enrollment without one a goal before it books.
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+select e.user_id, e.id, 'Fixture goal'
+from public.programme_enrollments e
+where e.status in ('active', 'at_risk', 'paused')
+  and not exists (select 1 from public.coachee_goals g where g.enrollment_id = e.id and g.status = 'active');
 insert into public.sessions
   (id, enrollment_id, cohort_requirement_id, coach_id, coachee_id, slot_id, topic,
    start_time, duration_minutes, status)
@@ -481,6 +494,12 @@ insert into public.cohort_coach_assignments (cohort_id, coach_id)
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status) values
   ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'c1000000-0000-0000-0000-00000000a5a5'::uuid,
    'c1000000-0000-0000-0000-000000000005'::uuid, 'c1000000-0000-0000-0000-00000000b5b5'::uuid, 'active');
+-- Booking requires an active goal (check_booking_eligibility, 20260926600000).
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+select e.user_id, e.id, 'Fixture goal'
+from public.programme_enrollments e
+where e.status in ('active', 'at_risk', 'paused')
+  and not exists (select 1 from public.coachee_goals g where g.enrollment_id = e.id and g.status = 'active');
 
 select set_config('request.jwt.claims',
   json_build_object('sub', 'c1000000-0000-0000-0000-000000000005')::text, true);
@@ -515,6 +534,14 @@ insert into public.enrollment_actions
   (enrollment_id, source_activity_type, source_activity_id, title, owner_user_id) values
   ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000051c1'::uuid, 'Act', 'c1000000-0000-0000-0000-000000000005'::uuid),
   ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000053c3'::uuid, 'Act', 'c1000000-0000-0000-0000-000000000005'::uuid);
+-- The enrollment holds an active goal (required before booking), so a fully
+-- written-up session also carries its goal check-in.
+insert into public.goal_checkins (enrollment_id, goal_id, source_activity_type, source_activity_id, previous_rating, new_rating, actor_user_id)
+select 'c1000000-0000-0000-0000-00000000e5e5'::uuid, g.id, 'coaching', 'c1000000-0000-0000-0000-0000000051c1'::uuid, null, 50,
+       'c1000000-0000-0000-0000-000000000005'::uuid
+from public.coachee_goals g
+where g.enrollment_id = 'c1000000-0000-0000-0000-00000000e5e5'::uuid and g.status = 'active'
+limit 1;
 
 select is(
   (select completed_units from public.canonical_module_progress('c1000000-0000-0000-0000-00000000e5e5'::uuid, current_date)

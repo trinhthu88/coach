@@ -106,6 +106,13 @@ from generate_series(1, 5) n;
 select set_config('request.jwt.claims',
   json_build_object('sub', 'e1000000-0000-0000-0000-000000000003')::text, true);
 
+-- Booking requires an active goal (check_booking_eligibility, 20260926600000):
+-- give every ongoing fixture enrollment without one a goal before it books.
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+select e.user_id, e.id, 'Fixture goal'
+from public.programme_enrollments e
+where e.status in ('active', 'at_risk', 'paused')
+  and not exists (select 1 from public.coachee_goals g where g.enrollment_id = e.id and g.status = 'active');
 insert into public.sessions
   (id, enrollment_id, cohort_requirement_id, coach_id, coachee_id, topic,
    start_time, duration_minutes, status) values

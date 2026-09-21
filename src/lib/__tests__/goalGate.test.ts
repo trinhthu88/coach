@@ -8,19 +8,23 @@ import {
   parseGoalGate,
 } from "@/lib/goalGate";
 
-const GATE_MESSAGE = "Create at least one programme goal before booking your next session.";
+const GATE_MESSAGE = "Create at least one goal first.";
 
-// Shape PostgREST returns for RAISE ... USING ERRCODE 'P0001', DETAIL, HINT.
+// Shape PostgREST returns for assert_enrollment_goal_gate's RAISE ... USING
+// ERRCODE 'P0001', DETAIL, HINT (20260926600000).
 const gateError = {
   code: "P0001",
-  message: "goal_required_before_booking",
+  message: "Create at least one goal first",
   details: '{"code": "goal_required_before_booking", "enrollment_id": "e1"}',
-  hint: GATE_MESSAGE,
+  hint: "Create at least one goal first.",
 };
 
 describe("booking goal gate — client contract", () => {
   it("recognises the server's gate rejection", () => {
     expect(isGoalRequiredError(gateError)).toBe(true);
+    // Recognised by its machine code alone, or by the message alone.
+    expect(isGoalRequiredError({ code: "P0001", message: "x", details: '{"code": "goal_required_before_booking"}' })).toBe(true);
+    expect(isGoalRequiredError({ code: "P0001", message: "Create at least one goal first" })).toBe(true);
     expect(isGoalRequiredError({ code: "P0001", message: "something else" })).toBe(false);
     expect(isGoalRequiredError(null)).toBe(false);
   });
@@ -54,9 +58,8 @@ describe("booking goal gate — client contract", () => {
         has_active_goal: false,
         active_goal_count: 0,
         max_active_goals: 3,
-        in_grace_period: false,
-        grace_ends_on: "2026-09-07",
-        blocked_from: "2026-09-08",
+        goal_setup_deadline: "2026-09-08",
+        goal_setup_overdue: true,
       }),
     ).toEqual({
       enrollmentId: "e1",
@@ -64,9 +67,8 @@ describe("booking goal gate — client contract", () => {
       hasActiveGoal: false,
       activeGoalCount: 0,
       maxActiveGoals: 3,
-      inGracePeriod: false,
-      graceEndsOn: "2026-09-07",
-      blockedFrom: "2026-09-08",
+      goalSetupDeadline: "2026-09-08",
+      goalSetupOverdue: true,
     });
     expect(parseGoalGate(null)).toBeNull();
     expect(parseGoalGate({ blocked: true })).toBeNull();

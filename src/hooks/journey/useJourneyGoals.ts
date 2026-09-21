@@ -106,7 +106,7 @@ export function useJourneyGoals(coacheeId: string | undefined, options: JourneyG
       if (error) throw error;
     },
     onSuccess: notifyChanged,
-    // After the grace period the server keeps the last active goal
+    // From the goal setup deadline (cohort start + 7 days) the server keeps the last active goal
     // (last_active_goal_required); explain it instead of the raw message.
     onError: (error) =>
       toast.error(

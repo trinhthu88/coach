@@ -117,6 +117,7 @@ export default function AdminAlerts() {
         { data: assignments },
         { data: submissions },
         { data: inactivity },
+        { data: goalSetupOverdue },
         { data: flaggedFeedback },
         { data: actionRows },
         { data: reflections },
@@ -137,6 +138,7 @@ export default function AdminAlerts() {
         supabase.from("assignment_submissions").select("user_id, enrollment_id, assignment_id, score_pct, submitted_at"),
         // "Inactive 7+ days" has one canonical rule (also used by the daily reminders and the weekly email).
         supabase.rpc("admin_enrollment_inactivity", { p_programme_id: undefined }),
+        supabase.rpc("admin_goal_setup_overdue"),
         supabase.from("coach_session_feedback").select("session_id, coach_id, flag_notes").eq("flag_for_admin", true),
         supabase.from("enrollment_actions").select("enrollment_id, status, due_date").neq("status", "completed"),
         // Canonical learner reflections. sessions.coachee_notes is no longer a
@@ -223,6 +225,20 @@ export default function AdminAlerts() {
         })
       );
 
+      // Goal setup overdue (cohort start + 7 days, no active goal) — an alert
+      // only; booking is governed by check_booking_eligibility().
+      for (const row of goalSetupOverdue || []) {
+        newAlerts.push({
+          severity: "warning",
+          alert_type: "goal_setup_overdue",
+          title: `${row.learner_name || "Learner"} — Goal setup overdue`,
+          message: `No active goal since ${row.goal_setup_deadline} · the learner cannot book sessions until they set one`,
+          related_coachee_id: row.user_id,
+          related_enrollment_id: row.enrollment_id,
+          resolved: false,
+        });
+      }
+
       // Programme engagement (Phase 4) — stale participants (canonical rule), low quiz scores.
       newAlerts.push(
         ...buildStaleProgrammeParticipantAlerts({
@@ -267,6 +283,7 @@ export default function AdminAlerts() {
           "low_quiz_scores",
           "triad_not_scheduled",
           "coach_flagged_session",
+          "goal_setup_overdue",
         ])
         .eq("resolved", false);
       if (newAlerts.length) await supabase.from("admin_alerts").insert(newAlerts);

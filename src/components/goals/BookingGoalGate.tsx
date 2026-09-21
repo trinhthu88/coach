@@ -12,7 +12,9 @@ export function goalsHrefForRole(role: string | null | undefined): string {
 
 /**
  * The booking goal gate notice. Renders nothing unless the server says the
- * enrollment is blocked (day 8+ after cohort start with no active goal).
+ * enrollment is blocked (no active goal -- from day 1, no grace period). Past
+ * the goal setup deadline (cohort start + 7 days) it also flags "Goal setup
+ * overdue" -- an alert only; the booking rule is the same either way.
  * Callers keep sessions/providers visible and disable only the booking action,
  * reading `blocked` from useBookingGoalGate (the same cached query).
  */
@@ -28,7 +30,7 @@ export function BookingGoalGate({
 }) {
   const { t } = useTranslation("common");
   const { role } = useAuth();
-  const { blocked } = useBookingGoalGate(enrollmentId);
+  const { blocked, gate } = useBookingGoalGate(enrollmentId);
   if (!blocked) return null;
 
   return (
@@ -41,7 +43,12 @@ export function BookingGoalGate({
       )}
     >
       <Target className="h-4 w-4 shrink-0 text-warning" aria-hidden />
-      <p className="min-w-0 flex-1">{t("bookingGoalGate.message")}</p>
+      <p className="min-w-0 flex-1">
+        {gate?.goalSetupOverdue && (
+          <strong data-testid="goal-setup-overdue" className="mr-2 text-warning">{t("bookingGoalGate.setupOverdue")}</strong>
+        )}
+        {t("bookingGoalGate.message")}
+      </p>
       <Link to={goalsHref ?? goalsHrefForRole(role)} className="shrink-0 font-semibold text-primary underline-offset-2 hover:underline">
         {t("bookingGoalGate.cta")}
       </Link>

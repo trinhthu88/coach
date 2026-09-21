@@ -160,12 +160,13 @@
     "duplicate": "Giá trị này đã tồn tại — vui lòng thử giá trị khác.",
     "permissionDenied": "Bạn không có quyền thực hiện thao tác này.",
     "foreignKeyViolation": "Không thể hoàn tất vì một dữ liệu liên quan không còn tồn tại.",
-    "goalRequiredBeforeBooking": "Hãy tạo ít nhất một mục tiêu chương trình trước khi đặt session tiếp theo.",
+    "goalRequiredBeforeBooking": "Hãy tạo ít nhất một mục tiêu trước.",
     "keepOneActiveGoal": "Bạn cần giữ ít nhất một mục tiêu đang hoạt động — hãy thêm mục tiêu mới trước khi lưu trữ mục tiêu này."
   },
   "bookingGoalGate": {
-    "message": "Hãy tạo ít nhất một mục tiêu chương trình trước khi đặt session tiếp theo.",
-    "cta": "Đặt mục tiêu →"
+    "message": "Hãy tạo ít nhất một mục tiêu trước.",
+    "cta": "Đặt mục tiêu →",
+    "setupOverdue": "Đã quá hạn đặt mục tiêu."
   },
   "notifications": {
     "title": "Thông báo",

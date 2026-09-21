@@ -17,17 +17,16 @@ vi.mock("@/context/AuthContext", () => ({
 
 import { BookingGoalGate, goalsHrefForRole } from "../BookingGoalGate";
 
-const gate = (blocked: boolean) => ({
+const gate = (blocked: boolean, overdue = false) => ({
   enrollment_id: "e1",
   blocked,
   reason: blocked ? "goal_required_before_booking" : null,
   has_active_goal: !blocked,
   active_goal_count: blocked ? 0 : 1,
   max_active_goals: 3,
-  in_grace_period: false,
   gate_starts_on: "2026-09-01",
-  grace_ends_on: "2026-09-07",
-  blocked_from: "2026-09-08",
+  goal_setup_deadline: "2026-09-08",
+  goal_setup_overdue: overdue,
 });
 
 function renderGate(enrollmentId: string | null = "e1") {
@@ -51,11 +50,19 @@ describe("BookingGoalGate", () => {
     rpc.mockResolvedValue({ data: gate(true), error: null });
     renderGate();
     expect(
-      await screen.findByText("Create at least one programme goal before booking your next session."),
+      await screen.findByText("Create at least one goal first."),
     ).toBeInTheDocument();
+    expect(screen.queryByTestId("goal-setup-overdue")).not.toBeInTheDocument();
     const link = screen.getByRole("link", { name: "Set a goal →" });
     expect(link).toHaveAttribute("href", "/coachee/journey#goals");
     expect(rpc).toHaveBeenCalledWith("enrollment_goal_gate", { p_enrollment_id: "e1" });
+  });
+
+  it("flags goal setup overdue past cohort start + 7 days (alert only; same booking rule)", async () => {
+    rpc.mockResolvedValue({ data: gate(true, true), error: null });
+    renderGate();
+    expect(await screen.findByTestId("goal-setup-overdue")).toHaveTextContent("Goal setup overdue.");
+    expect(screen.getByText("Create at least one goal first.")).toBeInTheDocument();
   });
 
   it("links a coach-as-learner to their own journey goals", async () => {

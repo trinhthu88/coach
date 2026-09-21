@@ -64,16 +64,25 @@ describe("booking goal gate — every booking path enforces the one rule", () =>
 
   it("the assertion reads the single rule and raises the stable machine-readable error", () => {
     const assert = stripComments(lastDefinition("assert_enrollment_goal_gate")!.body);
-    expect(assert).toMatch(/enrollment_goal_gate_state\s*\(/);
+    // The assertion and the state both read THE rule, check_booking_eligibility().
+    expect(assert).toMatch(/check_booking_eligibility\s*\(/);
     expect(assert).toMatch(/'goal_required_before_booking'/);
     expect(assert).toMatch(/ERRCODE\s*=\s*'P0001'/);
     // The client-readable gate reads the same rule — never a second computation.
     expect(stripComments(lastDefinition("enrollment_goal_gate")!.body)).toMatch(/enrollment_goal_gate_state\s*\(/);
   });
 
-  it("day 8 is the first blocked day: grace is current_date < start + 7, start from the cohort then the enrollment", () => {
+  it("booking is blocked whenever there is no active goal (no grace period); cohort start + 7 is an alert only", () => {
     const state = stripComments(lastDefinition("enrollment_goal_gate_state")!.body);
-    expect(state).toMatch(/current_date\s*<\s*v_start\s*\+\s*7/);
+    expect(state).toMatch(/v_eligible\s*:=\s*public\.check_booking_eligibility\(/);
+    expect(state).toMatch(/'blocked',\s*NOT v_eligible/);
+    expect(state).not.toMatch(/grace/i);
+    expect(state).toMatch(/'goal_setup_deadline',\s*v_start\s*\+\s*7/);
+    // The one rule: at least one active goal on the enrollment.
+    const rule = stripComments(lastDefinition("check_booking_eligibility")!.body);
+    expect(rule).toMatch(/g\.enrollment_id\s*=\s*p_enrollment_id/);
+    expect(rule).toMatch(/g\.status\s*=\s*'active'/);
+    expect(stripComments(lastDefinition("assert_enrollment_goal_gate")!.body)).toMatch(/Create at least one goal first/);
     expect(stripComments(lastDefinition("enrollment_goal_gate_start_date")!.body)).toMatch(
       /COALESCE\(\s*c\.start_date\s*,\s*e\.start_date\s*\)/,
     );

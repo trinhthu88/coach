@@ -6067,6 +6067,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_goal_setup_overdue: {
+        Args: never
+        Returns: {
+          cohort_id: string
+          enrollment_id: string
+          goal_setup_deadline: string
+          learner_name: string
+          user_id: string
+        }[]
+      }
       admin_enrollment_satisfaction: {
         Args: { p_enrollment_ids: string[] }
         Returns: {
