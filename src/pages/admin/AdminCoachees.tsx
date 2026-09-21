@@ -8,7 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, FileDown, FileUp, Eye, Users, Pencil } from "lucide-react";
+import { Search, FileDown, FileUp, Eye, Users, Pencil, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Kpi, Pill, Avatar, TablePager } from "./_shared";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -16,19 +16,21 @@ import PendingAccessRequests from "@/components/PendingAccessRequests";
 import { useAdminCoacheesData } from "@/hooks/admin/useAdminCoacheesData";
 import { CoacheeProfileSheet } from "./coachees/CoacheeProfileSheet";
 import { CoacheeEditSheet } from "./coachees/CoacheeEditSheet";
-import { ImportDialog } from "./coachees/ImportDialog";
-import { STATUS_KEYS, STATUS_TONE, programmeCompletionPct, exportCoacheesXlsx, type Row, type Status } from "./coachees/coacheeDisplay";
+import { AddPersonDialog } from "@/components/admin/AddPersonDialog";
+import { AdminImportDialog } from "@/components/admin/AdminImportDialog";
+import { STATUS_KEYS, STATUS_TONE, exportCoacheesXlsx, type Row, type Status } from "./coachees/coacheeDisplay";
 
 const PAGE_SIZE = 25;
 
 export default function AdminCoachees() {
   const { t } = useTranslation("admin");
-  const { loading, rows, coachOpts, programmes, cohorts, organizations, defaultLimit, load } = useAdminCoacheesData();
+  const { loading, rows, coachOpts, programmes, cohorts, organizations, load } = useAdminCoacheesData();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<Row | null>(null);
   const [viewing, setViewing] = useState<Row | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => rows.filter(r => {
@@ -63,6 +65,7 @@ export default function AdminCoachees() {
         subtitle={t("coachees.subtitle", { total: rows.length })}
         right={
           <div className="flex gap-2">
+            <Button size="sm" onClick={() => setAddOpen(true)}><UserPlus className="h-4 w-4" /> {t("coachees.addLearner")}</Button>
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}><FileUp className="h-4 w-4" /> {t("coachees.importExcel")}</Button>
             <Button variant="outline" size="sm" onClick={exportXlsx}><FileDown className="h-4 w-4" /> {t("coachees.exportExcel")}</Button>
           </div>
@@ -100,9 +103,8 @@ export default function AdminCoachees() {
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.coachee")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.status")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.registered")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.limit")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.requiredActivities")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.booked")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.done")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.programme")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.percentComplete")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.selectedCoaches")}</th>
@@ -116,16 +118,21 @@ export default function AdminCoachees() {
                     <div className="flex items-center gap-2">
                       <Avatar name={r.full_name} />
                       <div className="min-w-0">
-                        <p className="truncate text-[12px] font-medium text-foreground">{r.full_name}</p>
+                        <Link to={`/admin/coachees/${r.id}`} className="block truncate text-[12px] font-medium text-foreground hover:text-primary hover:underline">{r.full_name}</Link>
                         <p className="truncate text-[10px] text-muted-foreground">{r.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{t(`coachees.statusLabels.${r.status}`)}</Pill></td>
                   <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{format(new Date(r.created_at), "MMM d, yyyy")}</td>
-                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.done}/{r.session_limit}</span></td>
+                  <td className="px-3 py-2.5">
+                    {r.progress_error ? (
+                      <span className="text-[11px] text-destructive" data-testid="coachee-progress-error">{t("coachees.progressUnavailable")}</span>
+                    ) : (
+                      <span className="font-mono text-[11px]">{r.required_units == null ? "—" : `${r.completed_units}/${r.required_units}`}</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked}</td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.done}</td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {r.programme_name ? (
                       <Link to="/admin/programmes" className="text-primary hover:underline">{r.programme_name}</Link>
@@ -145,7 +152,7 @@ export default function AdminCoachees() {
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {(() => {
-                      const pct = programmeCompletionPct(r.enrollment_start_date, r.programme_duration_months);
+                      const pct = r.completion_pct;
                       if (pct === null) return <span className="italic text-muted-foreground">—</span>;
                       return (
                         <div className="flex items-center gap-2">
@@ -160,7 +167,7 @@ export default function AdminCoachees() {
                   <td className="px-3 py-2.5 text-[11px]">{r.selected_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : t("coachees.selectedCoachesCount", { count: r.selected_coaches.length })}</td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
-                      <Button variant="ghost" size="icon" title={t("coachees.viewProfile")} onClick={() => setViewing(r)}><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button asChild variant="ghost" size="icon" title={t("coachees.viewProfile")}><Link to={`/admin/coachees/${r.id}`} aria-label={t("coachees.viewProfile")}><Eye className="h-3.5 w-3.5" /></Link></Button>
                       <Button variant="ghost" size="icon" title={t("coachees.edit")} onClick={() => setEditing(r)}><Pencil className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
@@ -186,15 +193,21 @@ export default function AdminCoachees() {
         cohorts={cohorts}
         organizations={organizations}
         coachOpts={coachOpts}
-        defaultLimit={defaultLimit}
       />
 
-      <ImportDialog
+      <AddPersonDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        roles={["coachee", "coach", "sponsor", "admin"]}
+        defaultRole="coachee"
+        onCreated={load}
+      />
+
+      <AdminImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
-        programmes={programmes}
-        rows={rows}
-        onImported={load}
+        defaultRole="coachee"
+        onDone={load}
       />
     </div>
   );

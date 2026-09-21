@@ -21,13 +21,13 @@ import { toast } from "sonner";
 
 type ProgrammeForm = {
   id?: string; name: string; description: string; duration_months: number; color: string;
-  is_active: boolean; coachee_session_limit: number; coach_session_limit: number;
-  peer_session_limit: number; peer_given_limit: number; mentoring_received_limit: number | null;
+  is_active: boolean; coachee_session_limit: number;
+  mentoring_received_limit: number | null;
 };
 const MODULE_TYPES: ProgrammeModuleType[] = ["coaching", "peer_coaching", "mentoring", "triads", "training", "quiz", "assessment", "daily_prompt"];
 const emptyForm: ProgrammeForm = {
   name: "", description: "", duration_months: 3, color: "cobalt", is_active: true,
-  coachee_session_limit: 8, coach_session_limit: 8, peer_session_limit: 4, peer_given_limit: 4, mentoring_received_limit: null,
+  coachee_session_limit: 8, mentoring_received_limit: null,
 };
 
 export default function ProgrammeBuilder() {
@@ -114,8 +114,7 @@ export default function ProgrammeBuilder() {
       const payload = {
         name: form.name.trim(), description: form.description || null, duration_months: Number(form.duration_months) || 3,
         color: form.color || "cobalt", is_active: !!form.is_active, coachee_session_limit: Number(form.coachee_session_limit) || 0,
-        coach_session_limit: Number(form.coach_session_limit) || 0, peer_session_limit: Number(form.peer_session_limit) || 0,
-        peer_given_limit: Number(form.peer_given_limit) || 0, mentoring_received_limit: form.mentoring_received_limit ?? null,
+        mentoring_received_limit: form.mentoring_received_limit ?? null,
       };
       let id = programmeId;
       if (id) { const { error } = await supabase.from("programmes").update(payload).eq("id", id); if (error) throw error; }
@@ -143,7 +142,7 @@ export default function ProgrammeBuilder() {
           <Card className="p-5">
             <h2 className="mb-1 text-sm font-semibold">{t("programmes.sessionLimitsHeading")}</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              {(["coachee_session_limit", "coach_session_limit", "peer_session_limit", "peer_given_limit"] as const).map((key) => <div key={key}><Label>{t(`programmes.${key === "coachee_session_limit" ? "coachingReceivedCoachee" : key === "coach_session_limit" ? "coachingReceivedCoach" : key === "peer_session_limit" ? "peerSessionsReceived" : "peerSessionsGiven"}`)}</Label><Input type="number" min={0} value={form[key]} onChange={(e) => field(key, Number(e.target.value))} /></div>)}
+              <div><Label>{t("programmes.coachingReceivedCoachee")}</Label><Input type="number" min={0} value={form.coachee_session_limit} onChange={(e) => field("coachee_session_limit", Number(e.target.value))} /><p className="mt-1 text-[10px] text-muted-foreground">{t("programmes.outsideRequirementsHint")}</p></div>
               <div><Label>{t("programmes.mentoringSessionsReceived")}</Label><Input type="number" min={0} placeholder={t("coachProgrammes.unlimited")} value={form.mentoring_received_limit ?? ""} onChange={(e) => field("mentoring_received_limit", e.target.value === "" ? null : Number(e.target.value))} /></div>
             </div>
           </Card>

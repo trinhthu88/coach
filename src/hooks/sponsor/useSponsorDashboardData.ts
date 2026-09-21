@@ -10,10 +10,6 @@ export type SponsorEnrollmentSummary = HostedCanonicalEnrollment;
 export type SponsorCohortSummary = HostedCanonicalCohort;
 export type SponsorRosterRow = SponsorEnrollmentSummary;
 export type SponsorKpis = HostedCanonicalOrganisation;
-export type SponsorGoalGrowth = {
-  hit_target_count: number; meaningful_progress_count: number; just_started_count: number;
-  flat_declined_count: number; pct_progressing: number;
-};
 export type SponsorSatisfactionTrendRow = { week_number: number; avg_rating: number | null };
 export type SponsorCoachUtilisationRow = { coach_name: string; completed_sessions: number };
 

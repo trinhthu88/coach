@@ -19,6 +19,8 @@ interface Props {
   canEdit: boolean;
   canCreateGoal?: boolean;
   sessionStatus: string;
+  /** Called after a check-in or a new goal is saved (e.g. to refresh the post-session checklist). */
+  onSaved?: () => void;
 }
 
 interface GoalRow {
@@ -33,7 +35,7 @@ interface RatingRow {
 }
 type GoalCheckinPayload = { goal_id: string; new_rating: number | null; note: string | null };
 
-export function SessionGoalRatings({ sessionId, coacheeId, enrollmentId, sourceActivityType = "coaching", canEdit, canCreateGoal = canEdit, sessionStatus }: Props) {
+export function SessionGoalRatings({ sessionId, coacheeId, enrollmentId, sourceActivityType = "coaching", canEdit, canCreateGoal = canEdit, sessionStatus, onSaved }: Props) {
   const { t } = useTranslation("sessions");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -112,6 +114,7 @@ export function SessionGoalRatings({ sessionId, coacheeId, enrollmentId, sourceA
     pendingSubmission.current = null;
     toast.success(t("goalRatings.toast.saved"));
     load();
+    onSaved?.();
   };
 
   const addGoal: AddGoalFn = async (payload) => {
@@ -119,6 +122,7 @@ export function SessionGoalRatings({ sessionId, coacheeId, enrollmentId, sourceA
     const { error } = await supabase.from("coachee_goals").insert({ ...payload, enrollment_id: enrollmentId, coachee_id: coacheeId });
     if (error) { toast.error(error.message); return false; }
     await load();
+    onSaved?.();
     return true;
   };
 

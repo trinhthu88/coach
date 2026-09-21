@@ -6,6 +6,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import type { AppRole } from "@/context/AuthContext";
+
+/** Roles with a learner/coach workspace (admin passes every role gate). */
+const WORKSPACE_ROLES: AppRole[] = ["coach", "coachee"];
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageSkeleton } from "@/components/PageSkeleton";
 
@@ -41,7 +45,7 @@ const CoachMyJourney = lazy(() => import("./pages/CoachMyJourney"));
 const AdminCoaches = lazy(() => import("./pages/admin/AdminCoaches"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminCoachees = lazy(() => import("./pages/admin/AdminCoachees"));
-const AdminEnrollmentReview = lazy(() => import("./pages/admin/AdminEnrollmentReview"));
+const AdminUserDetail = lazy(() => import("./pages/admin/AdminUserDetail"));
 const AdminAlerts = lazy(() => import("./pages/admin/AdminAlerts"));
 const AdminActivity = lazy(() => import("./pages/admin/AdminActivity"));
 const AdminProgrammes = lazy(() => import("./pages/admin/AdminProgrammes"));
@@ -124,19 +128,22 @@ const App = () => (
                   }
                 >
                   <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/coaches" element={<Coaches />} />
-                  <Route path="/coaches/:coachId" element={<CoachDetail />} />
+                  {/* Learner and coach workspaces. Sponsor is an exclusive
+                      portal (/sponsor), so these are role-gated rather than
+                      open to every signed-in user. */}
+                  <Route path="/coaches" element={<ProtectedRoute roles={WORKSPACE_ROLES}><Coaches /></ProtectedRoute>} />
+                  <Route path="/coaches/:coachId" element={<ProtectedRoute roles={WORKSPACE_ROLES}><CoachDetail /></ProtectedRoute>} />
                   <Route
                     path="/coaches/:coachId/book"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute roles={WORKSPACE_ROLES}>
                         <BookSession />
                       </ProtectedRoute>
                     }
                   />
-                  <Route path="/sessions" element={<Sessions />} />
-                  <Route path="/sessions/:sessionId" element={<SessionDetail />} />
-                  <Route path="/messages" element={<Messages />} />
+                  <Route path="/sessions" element={<ProtectedRoute roles={WORKSPACE_ROLES}><Sessions /></ProtectedRoute>} />
+                  <Route path="/sessions/:sessionId" element={<ProtectedRoute roles={WORKSPACE_ROLES}><SessionDetail /></ProtectedRoute>} />
+                  <Route path="/messages" element={<ProtectedRoute roles={WORKSPACE_ROLES}><Messages /></ProtectedRoute>} />
 
                   <Route
                     path="/coachee/profile"
@@ -363,7 +370,9 @@ const App = () => (
                   />
                   <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
                   <Route path="/admin/coachees" element={<ProtectedRoute role="admin"><AdminCoachees /></ProtectedRoute>} />
-                  <Route path="/admin/coachees/:userId/enrollments/:enrollmentId" element={<ProtectedRoute role="admin"><AdminEnrollmentReview /></ProtectedRoute>} />
+                  <Route path="/admin/coachees/:userId" element={<ProtectedRoute role="admin"><AdminUserDetail /></ProtectedRoute>} />
+                  {/* The former single-enrollment review: the same user detail, with that enrollment opened. */}
+                  <Route path="/admin/coachees/:userId/enrollments/:enrollmentId" element={<ProtectedRoute role="admin"><AdminUserDetail /></ProtectedRoute>} />
                   <Route path="/admin/alerts" element={<ProtectedRoute role="admin"><AdminAlerts /></ProtectedRoute>} />
                   <Route path="/admin/activity" element={<ProtectedRoute role="admin"><AdminActivity /></ProtectedRoute>} />
                   <Route path="/admin/programmes" element={<ProtectedRoute role="admin"><AdminProgrammes /></ProtectedRoute>} />

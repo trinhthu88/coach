@@ -39,6 +39,11 @@ values
    'b1000000-0000-4000-8000-000000000001',
    'b1000000-0000-4000-8000-000000000012',current_date - 30,'active');
 
+-- Booking goal gate (20260925400000): the active enrollment started 30 days
+-- ago (no cohort), so the learner's booking on it needs an active goal.
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+values ('b1000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000022', 'Booking gate goal');
+
 select set_config('request.jwt.claim.sub','b1000000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claim.role','authenticated',true);
 set local role authenticated;
@@ -69,6 +74,13 @@ select is(
     'b1000000-0000-4000-8000-000000000021'
   )), 0, 'usage excludes peer sessions on another enrollment');
 
+-- Booking requires an active goal (check_booking_eligibility, 20260926600000):
+-- give every ongoing fixture enrollment without one a goal before it books.
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+select e.user_id, e.id, 'Fixture goal'
+from public.programme_enrollments e
+where e.status in ('active', 'at_risk', 'paused')
+  and not exists (select 1 from public.coachee_goals g where g.enrollment_id = e.id and g.status = 'active');
 -- Consume the selected enrollment's one allowed unit through the same RLS
 -- insert path used by the application.
 insert into public.peer_sessions

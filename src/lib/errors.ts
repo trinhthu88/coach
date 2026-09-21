@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 import * as Sentry from "@sentry/react";
+import { isGoalRequiredError, isKeepOneGoalError } from "./goalGate";
 
 type KnownErrorCode = "23505" | "23503" | "42501";
 
@@ -32,6 +33,11 @@ export function getFriendlyErrorMessage(
   options: FriendlyErrorOptions = {}
 ): string {
   console.error(error);
+
+  // Stable server rules with their own copy win over the generic code
+  // mapping, so a stale booking screen still explains WHY it was refused.
+  if (isGoalRequiredError(error)) return t("errors.goalRequiredBeforeBooking", { ns: "common" });
+  if (isKeepOneGoalError(error)) return t("errors.keepOneActiveGoal", { ns: "common" });
 
   const code = getErrorCode(error);
   if (code && options.codes?.[code as KnownErrorCode]) {

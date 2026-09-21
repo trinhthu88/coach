@@ -12,6 +12,7 @@ interface PeerCoachingData {
   } | null;
   pendingCount: number;
   upcomingCount: number;
+  /** Operational stat (raw completed peer sessions). Never programme completion: that is canonical_module_progress. */
   completedCount: number;
   competencySnapshot: { label: string; score: number }[] | null;
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  canonicalCompletionPct,
   clampPct,
   formatCount,
   formatPercent,
@@ -38,7 +39,7 @@ export function ProgrammeProgressParticipation({
 }) {
   const { t } = useTranslation("sponsor");
   const text = useProfileText(viewer);
-  const completion = clampPct(facts.full_completion_pct ?? 0);
+  const completion = canonicalCompletionPct(facts.full_completion_pct) ?? 0;
   const adherence = clampPct(facts.due_adherence_pct ?? 0);
 
   return (

@@ -144,4 +144,34 @@ describe("useSessionCore", () => {
       expect(fields).toContain("coachee_notes");
     }
   });
+  // A session with no enrollment used to come back as null, so its detail
+  // page said "session not found" for a session the user could see in their
+  // list. It now loads read-only, with no programme goals or actions.
+  it("loads a session with no enrollment read-only instead of returning null", async () => {
+    mockSupabaseFrom({
+      id: "s-unscoped",
+      enrollment_id: null,
+      coach_id: "coach-1",
+      coachee_id: "coachee-1",
+      topic: "Historical coaching",
+      start_time: "2025-09-15T10:00:00Z",
+      duration_minutes: 60,
+      status: "completed",
+      meeting_url: null,
+      coach_notes: null,
+      coachee_notes: null,
+      cancelled_at: null,
+      slot_id: null,
+    });
+
+    const { result } = renderHook(() => useSessionCore({ sessionId: "s-unscoped", isPeer: false }), { wrapper });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.session?.id).toBe("s-unscoped");
+    expect(result.current.session?.enrollment_id).toBeNull();
+    expect(result.current.session?.enrollment_actions).toEqual([]);
+    expect(result.current.milestones).toEqual([]);
+    // Never falls back to another enrollment's goals.
+    expect(selectCallsByTable["coachee_goals"]).toBeUndefined();
+  });
 });

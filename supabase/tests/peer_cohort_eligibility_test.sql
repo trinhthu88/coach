@@ -67,6 +67,12 @@ insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, 
   ('f2000000-0000-0000-0000-0000000000e6'::uuid, 'f2000000-0000-0000-0000-00000000a0a0'::uuid, 'f2000000-0000-0000-0000-000000000006'::uuid, 'f2000000-0000-0000-0000-00000000b0e0'::uuid, 'active', current_date - 100, current_date + 200),
   ('f2000000-0000-0000-0000-0000000000e7'::uuid, 'f2000000-0000-0000-0000-00000000a1a1'::uuid, 'f2000000-0000-0000-0000-000000000007'::uuid, 'f2000000-0000-0000-0000-00000000b0f0'::uuid, 'active', current_date - 100, current_date + 200);
 
+-- Booking goal gate (20260925400000): these cohorts started 100 days ago, so
+-- the learners who book below (A1, A2) need an active goal.
+insert into public.coachee_goals (coachee_id, enrollment_id, title) values
+  ('f2000000-0000-0000-0000-000000000001'::uuid, 'f2000000-0000-0000-0000-0000000000e1'::uuid, 'Booking gate goal'),
+  ('f2000000-0000-0000-0000-000000000002'::uuid, 'f2000000-0000-0000-0000-0000000000e2'::uuid, 'Booking gate goal');
+
 -- The grants. Directional, and E is deliberately never granted.
 insert into public.peer_cohort_permissions (source_cohort_id, allowed_peer_cohort_id) values
   ('f2000000-0000-0000-0000-00000000b0a0'::uuid, 'f2000000-0000-0000-0000-00000000b0b0'::uuid),

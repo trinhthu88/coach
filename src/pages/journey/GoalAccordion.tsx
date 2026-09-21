@@ -13,6 +13,7 @@ import { goalProgressPct } from "@/hooks/journey/useJourneyDerived";
 import { ACCENTS, initials } from "./journeyDisplay";
 import { RatingSlider } from "./RatingSlider";
 import { ActionRow } from "./ActionRow";
+import { EditGoalDialog, type UpdateGoalFn } from "./GoalDialog";
 
 export function GoalAccordion({
   goal,
@@ -23,6 +24,7 @@ export function GoalAccordion({
   onToggleAction,
   onAddMilestone,
   onDeleteGoal,
+  onEditGoal,
   onDeleteMilestone,
   defaultOpen,
   showLinkedActions = true,
@@ -41,6 +43,8 @@ export function GoalAccordion({
   onToggleAction: (a: FlatAction) => void;
   onAddMilestone: (goalId: string, title: string, target_date: string | null) => Promise<boolean | undefined> | void;
   onDeleteGoal: (goalId: string) => Promise<void> | void;
+  /** When provided, the learner can edit the goal's title, description and target date. */
+  onEditGoal?: UpdateGoalFn;
   onDeleteMilestone: (id: string) => Promise<void> | void;
   defaultOpen?: boolean;
   showLinkedActions?: boolean;
@@ -236,9 +240,12 @@ export function GoalAccordion({
               <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
                 <Plus className="mr-1 h-3 w-3" /> {t("goalAccordion.addMilestone")}
               </Button>
-              <button onClick={deleteGoal} className="text-xs text-muted-foreground hover:text-destructive">
-                {t("goalAccordion.archiveGoal", { defaultValue: "Archive goal" })}
-              </button>
+              <span className="flex items-center gap-3">
+                {onEditGoal && <EditGoalDialog goal={goal} onSave={onEditGoal} />}
+                <button onClick={deleteGoal} className="text-xs text-muted-foreground hover:text-destructive">
+                  {t("goalAccordion.archiveGoal", { defaultValue: "Archive goal" })}
+                </button>
+              </span>
             </div>
           )}
         </div>

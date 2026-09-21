@@ -8,7 +8,6 @@ export const PALETTES = [
   "bg-secondary text-secondary-foreground",
 ];
 
-export const FILLS = ["bg-success", "bg-primary", "bg-warning", "bg-accent"];
 
 export function paletteFor(id: string) {
   let h = 0;

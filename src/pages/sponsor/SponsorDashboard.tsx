@@ -1,13 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { format, differenceInCalendarDays, addDays } from "date-fns";
-import {
-  Users, CheckCircle2, AlertTriangle, CalendarCheck,
-  ShieldCheck, Loader2, ArrowRight, Building2,
-  Clock, ChevronDown, MessageCircle, type LucideIcon,
-  Wallet, Info, FileDown, Layers,
-} from "lucide-react";
+import { differenceInCalendarDays } from "date-fns";
+import { Users, CheckCircle2, AlertTriangle, CalendarCheck, ShieldCheck, Loader2, ArrowRight, Building2, Clock, ChevronDown, MessageCircle, type LucideIcon, Info, FileDown, Layers } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { SponsorDataErrorState } from "./SponsorDataErrorState";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 interface OrgBannerData {
   name: string;
@@ -93,10 +89,10 @@ export default function SponsorDashboard() {
         cohortName: summary.cohort_label,
         cohortId: summary.cohort_id,
         leaders,
-        onTrackPct: summary.on_track_pct ?? 0,
-        completedUnits: summary.completed_units ?? 0,
-        requiredUnits: summary.required_units ?? 0,
-        completionPct: summary.full_completion_pct ?? 0,
+        onTrackPct: summary.on_track_pct,
+        completedUnits: summary.completed_units,
+        requiredUnits: summary.required_units,
+        completionPct: canonicalCompletionPct(summary.full_completion_pct) ?? 0,
         signal: healthSignal(atRisk, leaders),
       };
     });
@@ -109,27 +105,6 @@ export default function SponsorDashboard() {
     : null;
   const contractStatus: "active" | "expiring" | "expired" | null =
     contractDaysRemaining == null ? null : contractDaysRemaining < 0 ? "expired" : contractDaysRemaining < 60 ? "expiring" : "active";
-
-  // Budget Used tile — spend_to_date is a proxy (sessions completed / entitled
-  // * budget) until real billing data exists, per spec. Projected exhaustion
-  // date extrapolates the burn rate seen so far across the contract; only
-  // shown once there's enough signal (contract has started, some budget used).
-  const budgetUsedPct = org?.coaching_budget != null && kpis?.required_units
-    ? Math.min(100, ((kpis.completed_units ?? 0) / kpis.required_units) * 100)
-    : null;
-  const spendToDate = org?.coaching_budget != null && budgetUsedPct != null
-    ? (budgetUsedPct / 100) * org.coaching_budget
-    : null;
-  const daysElapsedInContract = org?.contract_start
-    ? differenceInCalendarDays(new Date(), new Date(org.contract_start))
-    : null;
-  const projectedExhaustionDate = (() => {
-    if (budgetUsedPct == null || budgetUsedPct <= 0 || !daysElapsedInContract || daysElapsedInContract <= 0) return null;
-    const dailyBurnPct = budgetUsedPct / daysElapsedInContract;
-    if (dailyBurnPct <= 0) return null;
-    const daysToExhaust = (100 - budgetUsedPct) / dailyBurnPct;
-    return addDays(new Date(), Math.round(daysToExhaust));
-  })();
 
   // Smart Alerts — derived from data already fetched, no extra round trip.
   const alerts = useMemo(() => {
@@ -320,34 +295,14 @@ export default function SponsorDashboard() {
         <div ref={kpiRowRef} className="rounded-2xl border border-border bg-card p-6">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <HeadlineStat label={t("dashboard.kpis.onTrack")} value={kpis?.on_track_count ?? 0} icon={CheckCircle2} tone="success" />
-            <HeadlineStat label={t("dashboard.kpis.enrolledActive")} value={kpis?.active_count ?? 0} icon={Users} tone="primary" />
-            <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis?.enrollment_count ?? 0} icon={Users} tone="primary" />
+            <HeadlineStat label={t("dashboard.kpis.enrolledActive")} value={kpis ? kpis.active_count : "—"} icon={Users} tone="primary" />
+            <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis ? kpis.enrollment_count : "—"} icon={Users} tone="primary" />
             <HeadlineStat
               label={t("dashboard.kpis.sessionsUsed")}
-              value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`}
+              value={kpis ? `${kpis.completed_units} / ${kpis.required_units}` : "—"}
               icon={CalendarCheck}
               tone="secondary"
             />
-            {budgetUsedPct != null && (
-              <div className="flex items-start gap-3">
-                <Wallet className={cn("mt-1 h-5 w-5 shrink-0", budgetUsedPct > 95 ? "text-destructive" : budgetUsedPct > 80 ? "text-warning" : "text-secondary")} />
-                <div className="min-w-0">
-                  <p className={cn("font-display text-[2.25rem] font-normal leading-none tracking-tight", budgetUsedPct > 95 ? "text-destructive" : budgetUsedPct > 80 ? "text-warning" : "text-foreground")}>
-                    {Math.round(budgetUsedPct)}%
-                  </p>
-                  <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("dashboard.kpis.budgetUsed")}</p>
-                  {org?.coaching_budget != null && spendToDate != null && (
-                    <p className="mt-1 truncate text-[10.5px] text-muted-foreground">
-                      {t("dashboard.kpis.budgetSubline", {
-                        spent: new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 0 }).format(spendToDate),
-                        total: new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 0 }).format(org.coaching_budget),
-                      })}
-                      {projectedExhaustionDate && ` · ${t("dashboard.kpis.budgetRunsOut", { date: format(projectedExhaustionDate, "MMM d") })}`}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
           {(kpis?.at_risk_count ?? 0) > 0 && (
             <p className="mt-5 flex items-center gap-1.5 border-t border-border pt-4 text-[12px] font-medium text-warning">
@@ -385,7 +340,7 @@ export default function SponsorDashboard() {
                         </Link>
                       </td>
                       <td className="px-2 py-2.5">{row.leaders}</td>
-                      <td className="px-2 py-2.5 hidden sm:table-cell">{Math.round(row.onTrackPct)}%</td>
+                      <td className="px-2 py-2.5 hidden sm:table-cell">{row.onTrackPct == null ? "—" : `${Math.round(row.onTrackPct)}%`}</td>
                       <td className="px-2 py-2.5 hidden md:table-cell">
                         <div className="flex min-w-[96px] items-center gap-2">
                           <div className="w-16"><MiniBar pct={row.completionPct} tone="primary" /></div>

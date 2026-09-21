@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useModuleWorkspace } from "@/hooks/journey/useModuleWorkspace";
 import { partitionSessionsByStage } from "@/lib/moduleSessions";
 import { ModuleSessionList } from "@/components/programme/module/ModulePage";
+import { ModuleWorkspaceSections } from "@/components/programme/module/ModuleWorkspaceSections";
 
 /**
  * The learner's Peer sessions, split by the stage they are actually in:
@@ -33,6 +34,7 @@ export function MyPeerPracticeSection() {
     loading: ws.sessionsLoading,
     error: ws.sessionsError,
     errorText: tProfile("myPeerPractice.historyError"),
+    outstandingBySession: ws.outstandingBySession,
   };
 
   return (
@@ -47,6 +49,8 @@ export function MyPeerPracticeSection() {
           })}
         </p>
       )}
+      {/* Booking lives on the practice pool card; the gate is shown here too. */}
+      <ModuleWorkspaceSections ws={ws} module="peer" />
       <ModuleSessionList
         {...listProps}
         testId="peer-pending"

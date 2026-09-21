@@ -14,7 +14,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 export default function SetNewPassword() {
   const { t } = useTranslation("auth");
   const navigate = useNavigate();
-  const { user, refreshProfile, signOut } = useAuth();
+  const { refreshProfile, signOut } = useAuth();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,9 +33,6 @@ export default function SetNewPassword() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      if (user) {
-        await supabase.from("profiles").update({ must_change_password: false }).eq("id", user.id);
-      }
       await refreshProfile();
       toast({ title: t("setNewPassword.toast.success.title"), description: t("setNewPassword.toast.success.description") });
       navigate("/dashboard", { replace: true });

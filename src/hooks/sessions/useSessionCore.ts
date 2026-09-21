@@ -72,7 +72,10 @@ async function fetchSessionCore(
   // provider_notes/receiver_notes) but a no-op for `sessions` since the field
   // names already match.
   const raw = data as unknown as Record<string, unknown>;
-  if (!raw.enrollment_id) return null;
+  // A session with no programme enrollment (a historical or non-programme
+  // record) is still a real session: it loads read-only rather than as "not
+  // found". Programme goals, milestones and actions are simply empty for it --
+  // they never fall back to the user's current or another enrollment.
   const norm = {
     ...raw,
     coach_id: raw[coachField],
@@ -111,7 +114,9 @@ async function fetchSessionCore(
     goal_title: goalById.get(m.goal_id),
   }));
 
-  const [withActions] = await withEnrollmentActions([norm], sourceActivityType);
+  const [withActions] = enrollmentId
+    ? await withEnrollmentActions([norm], sourceActivityType)
+    : [{ enrollment_actions: [] }];
   return {
     session: { ...norm, enrollment_actions: withActions.enrollment_actions ?? [] },
     coach: (byId.get(norm.coach_id) as ProfileLite) || null,
@@ -176,8 +181,11 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
     }) => {
       if (!session) return { error: null };
       setSaving(true);
-      const { error: actionsError } = await saveEnrollmentActions(session.enrollment_id, sourceActivityType, session.id, items);
-      if (actionsError) { setSaving(false); return { error: actionsError }; }
+      // Programme actions belong to an enrollment; an unscoped session has none to save.
+      if (session.enrollment_id) {
+        const { error: actionsError } = await saveEnrollmentActions(session.enrollment_id, sourceActivityType, session.id, items);
+        if (actionsError) { setSaving(false); return { error: actionsError }; }
+      }
       const kind = isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching";
       const updates: Array<[string, string]> = [];
       if (opts.includeCoachNotes) updates.push([coachNotesField, coachNotes]);

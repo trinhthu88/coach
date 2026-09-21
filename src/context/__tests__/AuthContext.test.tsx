@@ -31,7 +31,6 @@ vi.mock("@/integrations/supabase/client", () => ({
                 avatar_url: null,
                 bio: null,
                 status: "active",
-                must_change_password: false,
               },
               error: null,
             }),

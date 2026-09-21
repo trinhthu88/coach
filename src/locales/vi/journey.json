@@ -93,7 +93,9 @@
     "descriptionPlaceholder": "Tại sao điều này quan trọng với bạn? (không bắt buộc)",
     "targetDateLabel": "Ngày mục tiêu (không bắt buộc)",
     "cancel": "Hủy",
-    "saveGoal": "Lưu mục tiêu"
+    "saveGoal": "Lưu mục tiêu",
+    "editGoal": "Sửa mục tiêu",
+    "limitReached": "Bạn có thể có tối đa {{max}} mục tiêu đang hoạt động. Hãy lưu trữ một mục tiêu để thêm mục tiêu mới."
   },
   "goalWheel": {
     "needThreeGoals": "Thêm ít nhất 3 mục tiêu để xem bánh xe mục tiêu.",
@@ -263,7 +265,27 @@
     "reflectionPlaceholder": "Bạn đang nghĩ gì? Thành công, trở ngại, những điều nhận ra…",
     "saveReflection": "Lưu suy ngẫm riêng tư",
     "noReflectionsYet": "Những suy ngẫm riêng tư của bạn sẽ xuất hiện ở đây.",
-    "deleteReflection": "Xóa suy ngẫm"
+    "deleteReflection": "Xóa suy ngẫm",
+    "pendingReflections": {
+      "title_one": "{{count}} bài suy ngẫm cần hoàn thành",
+      "title_other": "{{count}} bài suy ngẫm cần hoàn thành",
+      "type": {
+        "coaching": "Buổi coaching",
+        "peer_coaching": "Buổi peer coaching",
+        "mentoring": "Buổi mentoring",
+        "triad": "Buổi Triad"
+      }
+    },
+    "pendingDeliverables": {
+      "title_one": "{{count}} session còn việc sau buổi cần hoàn thành",
+      "title_other": "{{count}} session còn việc sau buổi cần hoàn thành",
+      "items": {
+        "reflection": "Phản tư",
+        "goalCheckin": "Cập nhật mục tiêu",
+        "action": "Hành động tiếp theo",
+        "satisfaction": "Đánh giá"
+      }
+    }
   },
   "practiceCompetencyCard": {
     "title": "Thực hành & năng lực",
@@ -281,7 +303,8 @@
       "sessionsReceived": "Session đã nhận",
       "sessionsReceivedSub_other": "{{count}} sắp tới",
       "nextSession": "Session tiếp theo",
-      "nothingScheduled": "Chưa có lịch"
+      "nothingScheduled": "Chưa có lịch",
+      "overallProgressUnits": "{{completed}}/{{required}} hoạt động bắt buộc"
     },
     "emptyGoalsDescription": "Xác định điều bạn muốn đạt được trong hành trình coaching của chính mình.",
     "actionsEmptyMessage": "Chưa có hành động nào. Chúng sẽ xuất hiện ở đây khi một coach giao cho bạn.",

@@ -163,6 +163,7 @@ export default function CoachClients() {
         <ClientDetailDialog
           coacheeId={openId}
           coachId={user!.id}
+          completionPct={clients.find((c) => c.id === openId)?.completionPct ?? null}
           onClose={() => setOpenId(null)}
           onChanged={refreshAll}
           onRemoved={() => {

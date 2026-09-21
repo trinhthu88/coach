@@ -40,8 +40,8 @@ export function healthSignal(atRiskCount: number, total: number): HealthSignal {
   return "healthy";
 }
 
-/** Elapsed/total days for a cohort with known start/end dates, clamped to the programme window. */
-export function cohortProgress(start: string | null, end: string | null): { elapsed: number; total: number; pct: number } | null {
+/** Calendar position (elapsed/total days) of a cohort with known start/end dates, clamped to the programme window. This is TIME, never programme progress: completion is canonicalCompletionPct(full_completion_pct). */
+export function cohortCalendar(start: string | null, end: string | null): { elapsed: number; total: number; pct: number } | null {
   if (!start || !end) return null;
   const startMs = new Date(start).getTime();
   const endMs = new Date(end).getTime();

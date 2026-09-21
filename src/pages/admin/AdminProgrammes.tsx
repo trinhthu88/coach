@@ -10,11 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  Loader2, Plus, Pencil, Trash2, ArrowUpRight, AlertCircle,
-  Users, Repeat, GraduationCap, Triangle, BookOpen, HelpCircle, ClipboardCheck, Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowUpRight, Users, Repeat, GraduationCap, Triangle, BookOpen, HelpCircle, ClipboardCheck, Sparkles, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
@@ -45,9 +41,6 @@ interface Programme {
   color: string;
   is_active: boolean;
   coachee_session_limit: number;
-  coach_session_limit: number;
-  peer_session_limit: number;
-  peer_given_limit: number;
   // NULL means unlimited for the mentoring module.
   mentoring_received_limit: number | null;
 }
@@ -280,9 +273,6 @@ export default function AdminProgrammes() {
         color: editing.color || "cobalt",
         is_active: !!editing.is_active,
         coachee_session_limit: Number(editing.coachee_session_limit) || 0,
-        coach_session_limit: Number(editing.coach_session_limit) || 0,
-        peer_session_limit: Number(editing.peer_session_limit) || 0,
-        peer_given_limit: Number(editing.peer_given_limit) || 0,
         mentoring_received_limit: editing.mentoring_received_limit ?? null,
       };
       let programmeId = editing.id;
@@ -363,18 +353,6 @@ export default function AdminProgrammes() {
                 <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("programmes.coachingReceivedCoachee")}</p>
                 <p className="text-sm font-semibold">{p.coachee_session_limit}</p>
               </div>
-              <div className="rounded-md bg-primary/5 px-2 py-1.5">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("programmes.coachingReceivedCoach")}</p>
-                <p className="text-sm font-semibold">{p.coach_session_limit}</p>
-              </div>
-              <div className="rounded-md bg-accent/10 px-2 py-1.5">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("programmes.peerReceived")}</p>
-                <p className="text-sm font-semibold">{p.peer_session_limit}</p>
-              </div>
-              <div className="rounded-md bg-accent/10 px-2 py-1.5">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("programmes.peerGiven")}</p>
-                <p className="text-sm font-semibold">{p.peer_given_limit}</p>
-              </div>
               <div className="rounded-md bg-secondary/10 px-2 py-1.5">
                 <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("programmes.mentoringReceived")}</p>
                 <p className="text-sm font-semibold">{p.mentoring_received_limit === null ? t("coachProgrammes.unlimited") : p.mentoring_received_limit}</p>
@@ -453,34 +431,10 @@ export default function AdminProgrammes() {
               </div>
               <div className="rounded-lg border p-3">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmes.sessionLimitsHeading")}</p>
-                <div className="mb-3 flex gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
-                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>
-                    {t("programmes.deadLimitsWarning")}{" "}
-                    <Link to="/admin/coaches" className="font-semibold underline underline-offset-2">
-                      {t("programmes.deadLimitsWarningLink")}
-                    </Link>
-                    .
-                  </span>
-                </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label className="text-[11px]">{t("programmes.coachingReceivedCoachee")}</Label>
                     <Input type="number" min={0} value={editing.coachee_session_limit ?? 8} onChange={(e) => setEditing({ ...editing, coachee_session_limit: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <Label className="text-[11px]">{t("programmes.coachingReceivedCoach")}</Label>
-                    <Input type="number" min={0} value={editing.coach_session_limit ?? 8} onChange={(e) => setEditing({ ...editing, coach_session_limit: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <Label className="text-[11px]">{t("programmes.peerSessionsReceived")}</Label>
-                    <Input type="number" min={0} value={editing.peer_session_limit ?? 4} onChange={(e) => setEditing({ ...editing, peer_session_limit: Number(e.target.value) })} />
-                    <p className="mt-1 text-[10px] text-muted-foreground">{t("programmes.coachesOnly")}</p>
-                  </div>
-                  <div>
-                    <Label className="text-[11px]">{t("programmes.peerSessionsGiven")}</Label>
-                    <Input type="number" min={0} value={editing.peer_given_limit ?? 4} onChange={(e) => setEditing({ ...editing, peer_given_limit: Number(e.target.value) })} />
-                    <p className="mt-1 text-[10px] text-muted-foreground">{t("programmes.coachesOnly")}</p>
                   </div>
                   <div>
                     <Label className="text-[11px]">{t("programmes.mentoringSessionsReceived")}</Label>

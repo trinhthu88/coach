@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
  *   cancel_coaching_session(session, reason)     cancellation + release
  *   complete_coaching_session(session)           Coach marks it held
  *   coaching_post_session_checklist(enrollment)  the four evidence gates
- *   coaching_session_evidence(session)           per-session gate detail
+ *   (post-session evidence: usePostSessionDeliverables, shared by every module)
  */
 
 export const COACHING_KEYS = {
@@ -24,6 +24,7 @@ export const COACHING_KEYS = {
   nextRequirement: "coaching-next-requirement",
   evidence: "coaching-session-evidence",
   reflection: "coaching-session-reflection",
+  satisfaction: "coaching-session-satisfaction",
 } as const;
 
 /**
@@ -35,6 +36,7 @@ const LIFECYCLE_KEYS = [
   COACHING_KEYS.coachPool,
   COACHING_KEYS.nextRequirement,
   COACHING_KEYS.evidence,
+  COACHING_KEYS.satisfaction,
   COACHING_KEYS.reflection,
   "sessions",
   "session-detail",
@@ -47,6 +49,16 @@ const LIFECYCLE_KEYS = [
   "canonical-progress",
   "admin-sessions",
   "sponsor-progress",
+  // The learner dashboard's canonical reads: satisfaction and reflections
+  // aggregate from session records, so they must recalculate on any change.
+  "learner-canonical-progress",
+  "learner-canonical-engagement",
+  "learner-canonical-overdue-items",
+  "learner-reflection-feed",
+  // Post-session deliverables and module requirement state (all modules).
+  "learner-session-deliverables",
+  "session-deliverables",
+  "module-requirements",
 ];
 
 export function useInvalidateCoaching() {
@@ -77,9 +89,9 @@ export interface CanonicalCoachingProgress {
  * shown on one screen cannot disagree with the same number on another.
  *
  * It is not interchangeable with operational usage readers such as
- * get_coachee_session_usage_for_enrollment: those count raw sessions, which
- * treats a held-but-unevidenced session as complete. Programme progress must
- * not be reconstructed from raw sessions.
+ * get_coachee_session_usage_for_enrollment: those count raw session rows
+ * (any enrollment requirement, uncapped). A completed session = a fulfilled
+ * requirement unit (canonical rule), counted by the canonical engine only.
  */
 export function useCanonicalCoachingProgress(enrollmentId: string | null | undefined) {
   return useQuery({
@@ -87,7 +99,7 @@ export function useCanonicalCoachingProgress(enrollmentId: string | null | undef
     enabled: !!enrollmentId,
     queryFn: async (): Promise<CanonicalCoachingProgress | null> => {
       const [{ data, error }, { data: checklist }] = await Promise.all([
-        supabase.rpc("canonical_module_progress", {
+        supabase.rpc("learner_module_progress", {
           p_enrollment_id: enrollmentId!,
           p_as_of: new Date().toISOString().slice(0, 10),
         }),
@@ -96,12 +108,13 @@ export function useCanonicalCoachingProgress(enrollmentId: string | null | undef
       if (error) throw error;
       const row = (data ?? []).find((r) => r.module === "coaching");
       if (!row) return null;
+      // The engine fills every count; a missing module row is null above.
       return {
-        requiredUnits: row.required_units ?? 0,
-        completedUnits: row.completed_units ?? 0,
-        bookedUnits: row.booked_units ?? 0,
-        dueUnits: row.due_units ?? 0,
-        overdueUnits: row.overdue_units ?? 0,
+        requiredUnits: row.required_units,
+        completedUnits: row.completed_units,
+        bookedUnits: row.booked_units,
+        dueUnits: row.due_units,
+        overdueUnits: row.overdue_units,
         paceStatus: row.pace_status ?? "",
         postSessionPending: (checklist ?? []).filter((c) => !c.evidence_complete).length,
       };
@@ -217,93 +230,11 @@ export function useRescheduleCoachingSession() {
   });
 }
 
-export interface CoachingEvidence {
-  sessionId: string;
-  sessionCompleted: boolean;
-  hasReflection: boolean;
-  hasGoalCheckin: boolean;
-  hasAction: boolean;
-  hasSatisfaction: boolean;
-  goalCheckinRequired: boolean;
-  evidenceComplete: boolean;
-}
-
-/** After-session evidence for one session, straight from the backend. */
-export function useCoachingSessionEvidence(sessionId: string | null | undefined) {
-  return useQuery({
-    queryKey: [COACHING_KEYS.evidence, sessionId],
-    enabled: !!sessionId,
-    queryFn: async (): Promise<CoachingEvidence | null> => {
-      const { data, error } = await supabase.rpc("coaching_session_evidence", {
-        p_session_id: sessionId!,
-      });
-      if (error) throw error;
-      const r = data?.[0];
-      if (!r) return null;
-      return {
-        sessionId: r.session_id!,
-        sessionCompleted: !!r.session_completed,
-        hasReflection: !!r.has_reflection,
-        hasGoalCheckin: !!r.has_goal_checkin,
-        hasAction: !!r.has_action,
-        hasSatisfaction: !!r.has_satisfaction,
-        goalCheckinRequired: !!r.goal_checkin_required,
-        evidenceComplete: !!r.evidence_complete,
-      };
-    },
-  });
-}
-
-/**
- * The learner's own reflection for one Coaching session, if they have written
- * one. `session_learning_reflections` holds at most one row per
- * (enrollment, activity), so this is the row the submit mutation below
- * rewrites -- the composer edits it rather than stacking drafts.
- *
- * Returns `null` for "no reflection yet"; `undefined` while loading, so the
- * composer can avoid rendering an empty box over an unread existing answer.
+/*
+ * Post-session evidence (reflection, goal check-in, follow-up action,
+ * satisfaction) is no longer Coaching-specific: one rule serves every module.
+ * Readers and writers live in src/hooks/sessions/usePostSessionDeliverables.ts
+ * (learner_session_deliverables / session_deliverables /
+ * submit_session_satisfaction); coaching_session_evidence() is derived from
+ * the same rule for the Admin list.
  */
-export function useCoachingReflection(
-  enrollmentId: string | null | undefined,
-  sessionId: string | null | undefined,
-) {
-  return useQuery({
-    queryKey: [COACHING_KEYS.reflection, enrollmentId, sessionId],
-    enabled: !!enrollmentId && !!sessionId,
-    queryFn: async (): Promise<{ body: string } | null> => {
-      const { data, error } = await supabase
-        .from("session_learning_reflections")
-        .select("body")
-        .eq("enrollment_id", enrollmentId!)
-        .eq("source_activity_type", "coaching")
-        .eq("source_activity_id", sessionId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data ? { body: data.body } : null;
-    },
-  });
-}
-
-/** Submit the learner's post-session reflection (canonical, enrollment-scoped). */
-export function useSubmitCoachingReflection() {
-  const invalidate = useInvalidateCoaching();
-  return useMutation({
-    mutationFn: async ({
-      enrollmentId,
-      sessionId,
-      body,
-    }: { enrollmentId: string; sessionId: string; body: string }) => {
-      const { error } = await supabase.from("session_learning_reflections").upsert(
-        {
-          enrollment_id: enrollmentId,
-          source_activity_type: "coaching",
-          source_activity_id: sessionId,
-          body,
-        },
-        { onConflict: "enrollment_id,source_activity_type,source_activity_id" },
-      );
-      if (error) throw error;
-    },
-    onSuccess: invalidate,
-  });
-}

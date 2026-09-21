@@ -11,30 +11,30 @@ interface CoachingReceiveData {
     start_time: string;
     coach: { full_name: string; avatar_url: string | null } | null;
   } | null;
-  goalProgressPct: number;
   actionItemsOpen: number;
   upcomingCount: number;
   /**
-   * Canonical programme progress. Never derived from the raw session rows
-   * above: a held session whose post-session evidence is outstanding is NOT a
-   * completed programme unit, and counting sessions would say otherwise.
+   * Canonical programme progress (learner_module_progress), never derived
+   * from the raw session rows above: a completed session = a fulfilled
+   * requirement unit, counted by the canonical engine. null = the programme
+   * has no Coaching module for this enrollment. A failed read throws, so the
+   * card shows an error state -- never a silent 0.
    */
-  requiredUnits: number;
-  completedUnits: number;
-  bookedUnits: number;
-  overdueUnits: number;
+  requiredUnits: number | null;
+  completedUnits: number | null;
+  bookedUnits: number | null;
+  overdueUnits: number | null;
   postSessionPending: number;
 }
 
 const empty: CoachingReceiveData = {
   nextSession: null,
-  goalProgressPct: 0,
   actionItemsOpen: 0,
   upcomingCount: 0,
-  requiredUnits: 0,
-  completedUnits: 0,
-  bookedUnits: 0,
-  overdueUnits: 0,
+  requiredUnits: null,
+  completedUnits: null,
+  bookedUnits: null,
+  overdueUnits: null,
   postSessionPending: 0,
 };
 
@@ -44,21 +44,18 @@ async function fetchData(userId: string, role: AppRole, enrollmentId: string): P
   // instead of stacking (each hop costs real latency; see 2026-09-08
   // dashboard-load-latency investigation). Only the coach profile lookup
   // genuinely depends on a prior result (next session's coach_id).
-  const [{ data: sessions }, { data: milestones }] = await Promise.all([
-    supabase
-      .from("sessions")
-       .select("id, topic, start_time, status, coach_id, enrollment_id")
-      .eq("coachee_id", userId)
-      .eq("enrollment_id", enrollmentId)
-      .order("start_time", { ascending: false }),
-    supabase.from("coachee_milestones").select("is_done").eq("coachee_id", userId).eq("enrollment_id", enrollmentId),
-  ]);
+  const { data: sessions } = await supabase
+    .from("sessions")
+    .select("id, topic, start_time, status, coach_id, enrollment_id")
+    .eq("coachee_id", userId)
+    .eq("enrollment_id", enrollmentId)
+    .order("start_time", { ascending: false });
   // Programme progress comes from the canonical reader every role shares.
   // get_coachee_session_usage_for_enrollment() counts raw sessions and is an
   // operational usage figure, not programme completion -- it is deliberately
   // no longer consulted here.
   const [progressResult, checklistResult] = await Promise.all([
-    supabase.rpc("canonical_module_progress", {
+    supabase.rpc("learner_module_progress", {
       p_enrollment_id: enrollmentId,
       p_as_of: new Date().toISOString().slice(0, 10),
     }),
@@ -87,22 +84,18 @@ async function fetchData(userId: string, role: AppRole, enrollmentId: string): P
     return acc + arr.filter((it) => !it.done).length;
   }, 0);
 
-  const totalMs = milestones?.length ?? 0;
-  const doneMs = milestones?.filter((m) => m.is_done).length ?? 0;
-  const goalProgressPct = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
-
-  const coachingProgress = (progressResult.data ?? []).find((r) => r.module === "coaching");
+  if (progressResult.error) throw progressResult.error;
+  const coachingProgress = (progressResult.data ?? []).find((r) => r.module === "coaching") ?? null;
   const postSessionPending = (checklistResult.data ?? []).filter((c) => !c.evidence_complete).length;
 
   return {
     nextSession: next ? { id: next.id, topic: next.topic, start_time: next.start_time, coach } : null,
-    goalProgressPct,
     actionItemsOpen,
     upcomingCount: upcoming.length,
-    requiredUnits: coachingProgress?.required_units ?? 0,
-    completedUnits: coachingProgress?.completed_units ?? 0,
-    bookedUnits: coachingProgress?.booked_units ?? 0,
-    overdueUnits: coachingProgress?.overdue_units ?? 0,
+    requiredUnits: coachingProgress ? coachingProgress.required_units : null,
+    completedUnits: coachingProgress ? coachingProgress.completed_units : null,
+    bookedUnits: coachingProgress ? coachingProgress.booked_units : null,
+    overdueUnits: coachingProgress ? coachingProgress.overdue_units : null,
     postSessionPending,
   };
 }
@@ -110,11 +103,17 @@ async function fetchData(userId: string, role: AppRole, enrollmentId: string): P
 export function useCoachingReceiveCardData(userId: string | undefined, role: AppRole | null, enabled: boolean) {
   const enrollmentContext = useEnrollmentContext(userId);
   const enrollmentId = enrollmentContext.selectedEnrollment?.id;
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["coaching-receive-card", userId, enrollmentId ?? null],
     queryFn: () => fetchData(userId as string, role as AppRole, enrollmentId as string),
     enabled: !!userId && !!role && !!enrollmentId && enabled,
     staleTime: 30_000,
   });
-  return { data: data ?? empty, loading: enrollmentContext.loading || isLoading };
+  return {
+    data: data ?? empty,
+    loading: enrollmentContext.loading || isLoading,
+    /** The canonical progress read failed: render an error state, never zeros. */
+    error: !!error,
+    enrollmentId: enrollmentId ?? null,
+  };
 }

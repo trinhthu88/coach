@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, Building2, UsersRound, RotateCcw, Copy, ChevronDown, X } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Plus, Pencil, Trash2, Building2, UsersRound, Mail, ChevronDown, X } from "lucide-react";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { AddPersonDialog } from "@/components/admin/AddPersonDialog";
+import { resendSetupLink } from "@/lib/adminInvite";
 
 type CompanySize = "1-50" | "50-200" | "200-1000" | "1000+";
 type SubscriptionTier = "essentials" | "growth" | "enterprise";
@@ -62,11 +64,10 @@ export default function AdminOrganizations() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Organization> | null>(null);
   const [saving, setSaving] = useState(false);
+  // Sponsor creation goes through the one admin provisioning service
+  // (admin-provision-user): sponsor role + sponsor_profiles + emailed setup link.
   const [inviting, setInviting] = useState<Organization | null>(null);
-  const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", title: "", department: "" });
-  const [inviteBusy, setInviteBusy] = useState(false);
-  const [resetBusy, setResetBusy] = useState<string | null>(null);
-  const [credential, setCredential] = useState<{ email: string; password: string; full_name: string } | null>(null);
+  const [resendBusy, setResendBusy] = useState<string | null>(null);
   const { confirm, ConfirmDialog } = useConfirm();
 
   const load = async () => {
@@ -159,57 +160,18 @@ export default function AdminOrganizations() {
     if (error) toast.error(getFriendlyErrorMessage(error, t)); else { toast.success(t("organizations.deleted")); load(); }
   };
 
-  const openInvite = (org: Organization) => {
-    setInviting(org);
-    setInviteForm({ email: "", full_name: "", title: "", department: "" });
-  };
+  const openInvite = (org: Organization) => setInviting(org);
 
-  const submitInvite = async () => {
-    if (!inviting) return;
-    if (!inviteForm.email.trim() || !inviteForm.full_name.trim()) {
-      toast.error(t("organizations.emailNameRequired"));
-      return;
-    }
-    setInviteBusy(true);
+  const resendSponsorSetupLink = async (org: Organization, sponsor: Sponsor) => {
+    setResendBusy(org.id);
     try {
-      const { data, error } = await supabase.functions.invoke("invite-sponsor", {
-        body: {
-          organization_id: inviting.id,
-          email: inviteForm.email.trim(),
-          full_name: inviteForm.full_name.trim(),
-          title: inviteForm.title.trim() || undefined,
-          department: inviteForm.department.trim() || undefined,
-        },
-      });
-      if (error) throw error;
-      const result = data as { error?: string; temp_password?: string; email?: string; full_name?: string };
-      if (result?.error) throw new Error(result.error);
-      setCredential({ email: result.email!, password: result.temp_password!, full_name: result.full_name! });
-      toast.success(t("organizations.sponsorAccountCreated"));
-      setInviting(null);
-      await load();
+      const result = await resendSetupLink(sponsor.user_id);
+      if (result.email_sent) toast.success(t("organizations.setupLinkSent", { email: result.email }));
+      else toast.error(result.error || t("organizations.couldNotSendSetupLink"));
     } catch (e) {
-      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("organizations.couldNotInviteSponsor") }));
+      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("organizations.couldNotSendSetupLink") }));
     } finally {
-      setInviteBusy(false);
-    }
-  };
-
-  const resetSponsorPassword = async (org: Organization) => {
-    setResetBusy(org.id);
-    try {
-      const { data, error } = await supabase.functions.invoke("invite-sponsor", {
-        body: { organization_id: org.id, force_reset_password: true },
-      });
-      if (error) throw error;
-      const result = data as { error?: string; temp_password?: string; email?: string; full_name?: string };
-      if (result?.error) throw new Error(result.error);
-      setCredential({ email: result.email!, password: result.temp_password!, full_name: result.full_name! });
-      toast.success(t("organizations.tempPasswordReset"));
-    } catch (e) {
-      toast.error(getFriendlyErrorMessage(e, t, { fallback: t("organizations.couldNotResetPassword") }));
-    } finally {
-      setResetBusy(null);
+      setResendBusy(null);
     }
   };
 
@@ -254,11 +216,11 @@ export default function AdminOrganizations() {
                     {sponsor.title && <p className="text-[11px] text-muted-foreground">{sponsor.title}{sponsor.department ? ` · ${sponsor.department}` : ""}</p>}
                     <Button
                       variant="outline" size="sm" className="mt-2 w-full"
-                      onClick={() => resetSponsorPassword(o)}
-                      disabled={resetBusy === o.id}
+                      onClick={() => resendSponsorSetupLink(o, sponsor)}
+                      disabled={resendBusy === o.id}
                     >
-                      {resetBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                      {t("organizations.resetPassword")}
+                      {resendBusy === o.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                      {t("organizations.resendSetupLink")}
                     </Button>
                   </>
                 ) : (
@@ -421,46 +383,14 @@ export default function AdminOrganizations() {
         </DialogContent>
       </Dialog>
 
-      {/* Invite sponsor */}
-      <Dialog open={!!inviting} onOpenChange={(o) => !o && setInviting(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("organizations.inviteSponsorFor", { name: inviting?.name })}</DialogTitle>
-            <DialogDescription>{t("organizations.inviteSponsorHint")}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div><Label>{t("organizations.fullNameLabel")}</Label><Input value={inviteForm.full_name} onChange={(e) => setInviteForm({ ...inviteForm, full_name: e.target.value })} /></div>
-            <div><Label>{t("organizations.emailLabel")}</Label><Input type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} /></div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><Label>{t("organizations.titleLabelOptional")}</Label><Input value={inviteForm.title} onChange={(e) => setInviteForm({ ...inviteForm, title: e.target.value })} /></div>
-              <div><Label>{t("organizations.departmentLabelOptional")}</Label><Input value={inviteForm.department} onChange={(e) => setInviteForm({ ...inviteForm, department: e.target.value })} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInviting(null)}>{t("organizations.cancel")}</Button>
-            <Button onClick={submitInvite} disabled={inviteBusy}>{inviteBusy && <Loader2 className="h-4 w-4 animate-spin" />}{t("organizations.createSponsorAccount")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* One-time credential display */}
-      <Dialog open={!!credential} onOpenChange={(o) => !o && setCredential(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("organizations.accountReadyFor", { name: credential?.full_name })}</DialogTitle>
-            <DialogDescription>{t("organizations.shareCredentialsHint")}</DialogDescription>
-          </DialogHeader>
-          {credential && (
-            <div className="space-y-3 text-sm">
-              <CopyRow label={t("organizations.email")} value={credential.email} />
-              <CopyRow label={t("organizations.tempPassword")} value={credential.password} mono />
-            </div>
-          )}
-          <DialogFooter>
-            <Button onClick={() => setCredential(null)}>{t("organizations.done")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Add sponsor: account + sponsor profile + setup email (no password is ever shown) */}
+      <AddPersonDialog
+        open={!!inviting}
+        onOpenChange={(o) => !o && setInviting(null)}
+        roles={["sponsor"]}
+        defaultOrganizationId={inviting?.id ?? null}
+        onCreated={load}
+      />
       {ConfirmDialog}
     </div>
   );
@@ -511,21 +441,6 @@ function TagInput({ value, onChange, placeholder }: { value: string[]; onChange:
         }}
         onBlur={add}
       />
-    </div>
-  );
-}
-
-function CopyRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  const { t } = useTranslation("admin");
-  return (
-    <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-      <div className="mt-1 flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-        <code className={mono ? "flex-1 font-mono text-[13px]" : "flex-1 text-[13px]"}>{value}</code>
-        <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(value); toast.success(t("organizations.copied")); }}>
-          <Copy className="h-3.5 w-3.5" />
-        </Button>
-      </div>
     </div>
   );
 }

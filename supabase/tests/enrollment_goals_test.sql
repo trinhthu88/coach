@@ -16,6 +16,10 @@ insert into public.cohorts(id,name,programme_id,start_date,end_date) values ('a5
 insert into public.programme_enrollments(id,user_id,programme_id,cohort_id,start_date,end_date,status) values
  ('a5000000-0000-0000-0000-000000000031','a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000010','a5000000-0000-0000-0000-000000000020','2026-01-01','2026-04-01','active'),
  ('a5000000-0000-0000-0000-000000000032','a5000000-0000-0000-0000-000000000003','a5000000-0000-0000-0000-000000000010','a5000000-0000-0000-0000-000000000020','2026-01-01','2026-04-01','active');
+-- Booking goal gate (20260925400000): the other learner's live booking below
+-- needs an active goal on their own enrollment (the cohort started long ago).
+insert into public.coachee_goals(coachee_id,enrollment_id,title) values
+ ('a5000000-0000-0000-0000-000000000003','a5000000-0000-0000-0000-000000000032','Booking gate goal');
 insert into public.coachee_coach_allowlist(coachee_id,coach_id)
 values
  ('a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000002'),

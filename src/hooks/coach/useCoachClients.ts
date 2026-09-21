@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isAfter, isBefore, startOfWeek, endOfWeek } from "date-fns";
-import type { Client, RawAction } from "./types";
+import type { Client, ClientPaceStatus, RawAction } from "./types";
 import { withEnrollmentActions } from "@/lib/enrollmentActions";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 /**
  * Loads every coachee this coach has a confirmed or completed session with,
@@ -83,10 +84,13 @@ export function useCoachClients(userId: string | undefined) {
         goalsAll: [],
         milestonesDone: 0,
         milestonesTotal: 0,
+        enrollmentId: null,
+        completionPct: null,
         actionItemsDone: 0,
         actionItemsTotal: 0,
         overdueActions: 0,
-        status: "on_track",
+        paceStatus: null,
+        progressError: false,
         weekStart: null,
       });
     }
@@ -135,11 +139,30 @@ export function useCoachClients(userId: string | undefined) {
       if (m.is_done) c.milestonesDone++;
     }
 
-    // Status heuristic
-    for (const c of byCoachee.values()) {
-      if (c.overdueActions >= 5) c.status = "at_risk";
-      else if (c.overdueActions >= 1) c.status = "needs_attention";
-      else c.status = "on_track";
+    // "% complete" is the canonical engine's number for the client's current
+    // enrollment with this coach — never a milestone or session ratio.
+    const latestEnrollment = new Map<string, { id: string; at: string }>();
+    for (const s of ses || []) {
+      if (!s.enrollment_id || !["confirmed", "completed"].includes(s.status)) continue;
+      const prev = latestEnrollment.get(s.coachee_id);
+      if (!prev || s.start_time > prev.at) latestEnrollment.set(s.coachee_id, { id: s.enrollment_id, at: s.start_time });
+    }
+    const enrollmentIds = [...new Set([...latestEnrollment.values()].map((e) => e.id))];
+    const { data: canonical, error: canonicalError } = enrollmentIds.length
+      ? await supabase.rpc("coach_canonical_enrollment_progress", { p_enrollment_ids: enrollmentIds })
+      : { data: [], error: null };
+    if (canonicalError) console.error("Coach canonical progress failed to load", canonicalError);
+    const byEnrollment = new Map((canonical ?? []).map((r) => [r.enrollment_id, r]));
+    // Completion AND status come from the canonical engine. Goals, actions and
+    // sessions above are operational context; they never redefine status.
+    for (const [coacheeId, enr] of latestEnrollment) {
+      const c = byCoachee.get(coacheeId);
+      if (!c) continue;
+      c.enrollmentId = enr.id;
+      const row = byEnrollment.get(enr.id);
+      c.progressError = !!canonicalError;
+      c.completionPct = row?.progress_available ? canonicalCompletionPct(row.full_completion_pct) : null;
+      c.paceStatus = row?.progress_available ? ((row.pace_status as ClientPaceStatus) ?? null) : null;
     }
 
     setClients(Array.from(byCoachee.values()));
@@ -166,7 +189,7 @@ export function useCoachClients(userId: string | undefined) {
     const overdue = clients.reduce((a, c) => a + c.overdueActions, 0);
     const overdueClients = clients.filter((c) => c.overdueActions > 0).length;
 
-    // milestones hit this month — approximate using milestonesDone (no done_at on summary). Would need a separate query.
+    // Total milestones completed across clients (labelled "completed total").
     const milestonesHit = clients.reduce((a, c) => a + c.milestonesDone, 0);
 
     const nextOverall = clients

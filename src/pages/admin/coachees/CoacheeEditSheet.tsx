@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EnrollmentConflictNotice } from "@/components/EnrollmentConflictNotice";
 import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -17,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 import { useAdminCoacheeMutations } from "@/hooks/admin/useAdminCoacheeMutations";
-import type { ProgrammeOpt, NamedOpt } from "@/hooks/admin/useAdminCoacheesData";
+import type { ProgrammeOpt, NamedOpt, CohortOpt } from "@/hooks/admin/useAdminCoacheesData";
 import { STATUS_KEYS, type Row, type Status } from "./coacheeDisplay";
 
 interface CoacheeEditSheetProps {
@@ -26,12 +25,11 @@ interface CoacheeEditSheetProps {
   onClose: () => void;
   onSaved: () => void;
   programmes: ProgrammeOpt[];
-  cohorts: NamedOpt[];
+  cohorts: CohortOpt[];
   organizations: NamedOpt[];
   /** No longer used: programme Coaching is assigned per cohort, not per
    *  learner. Kept so existing call sites stay valid. */
   coachOpts?: NamedOpt[];
-  defaultLimit: number;
 }
 
 export function CoacheeEditSheet({
@@ -42,16 +40,17 @@ export function CoacheeEditSheet({
   programmes,
   cohorts,
   organizations,
-  defaultLimit,
 }: CoacheeEditSheetProps) {
   const { t } = useTranslation("admin");
-  const { saving, saveEdit, enrollmentConflict, clearEnrollmentConflict, resendingLink, resendLoginLink, resentLink, setResentLink } = useAdminCoacheeMutations(onSaved);
+  const { saving, saveEdit, resendingLink, resendLoginLink, resentLink, setResentLink } = useAdminCoacheeMutations(onSaved);
   const [editing, setEditing] = useState<Row | null>(row);
-  const conflictDisplay = enrollmentConflict && {
-    ...enrollmentConflict,
-    programmeName: enrollmentConflict.programmeName ?? programmes.find((programme) => programme.id === enrollmentConflict.programmeId)?.name,
-    cohortName: enrollmentConflict.cohortName ?? cohorts.find((cohort) => cohort.id === enrollmentConflict.cohortId)?.name ?? null,
-  };
+  // The cohort owns the programme: offer only the selected programme's cohorts.
+  const cohortChoices = editing?.programme_id
+    ? cohorts.filter((c) => c.programme_id === editing.programme_id)
+    : cohorts;
+  const enrollmentWillMove =
+    !!original?.enrollment_id && !!editing?.cohort_id &&
+    (editing.cohort_id !== original.cohort_id || editing.programme_id !== original.programme_id);
 
   // Reseed the local edit copy whenever a different row is opened.
   if (row && editing?.id !== row.id) {
@@ -77,12 +76,10 @@ export function CoacheeEditSheet({
           </SheetHeader>
           {editing && (
             <div className="mt-4 space-y-5">
-              {conflictDisplay && (
-                <EnrollmentConflictNotice
-                  conflict={conflictDisplay}
-                  reviewHref={"/admin/coachees/" + editing.id + "/enrollments/" + conflictDisplay.enrollmentId}
-                />
-              )}
+              {/* PROFILE — the person (identity, account status, languages). */}
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground" data-testid="edit-section-profile">
+                {t("coacheeEditSheet.profileSection")}
+              </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div><Label>{t("coacheeEditSheet.fullName")}</Label><Input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} /></div>
                 <div>
@@ -96,49 +93,71 @@ export function CoacheeEditSheet({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* CURRENT ENROLLMENT — programme / cohort / organization. A person
+                  without an enrollment is valid: leave the cohort empty. */}
+              <div className="border-t pt-4" data-testid="edit-section-enrollment">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {t("coacheeEditSheet.enrollmentSection")}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{t("coacheeEditSheet.enrollmentSectionHint")}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
                 <div>
-                  <Label>{t("coacheeEditSheet.programme")} <span className="text-destructive">*</span></Label>
+                  <Label>{t("coacheeEditSheet.programme")}</Label>
                   <Select
-                    value={editing.programme_id || ""}
-                    onValueChange={(v) => {
+                    value={editing.programme_id || "none"}
+                    onValueChange={(value) => {
+                      const v = value === "none" ? null : value;
                       const prog = programmes.find((p) => p.id === v);
+                      const cohortStillFits = !v || cohorts.find((c) => c.id === editing.cohort_id)?.programme_id === v;
                       setEditing({
                         ...editing,
                         programme_id: v,
+                        cohort_id: cohortStillFits ? editing.cohort_id : null,
                         programme_name: prog?.name || null,
-                        programme_default_limit: prog?.coachee_session_limit ?? null,
                         programme_duration_months: prog?.duration_months ?? null,
-                        // Auto-default the limit when programme changes (admin can still override below)
-                        session_limit: prog?.coachee_session_limit ?? editing.session_limit,
                       });
                     }}
                   >
                     <SelectTrigger><SelectValue placeholder={t("coacheeEditSheet.selectProgrammePlaceholder")} /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">{t("coacheeEditSheet.noneOption")}</SelectItem>
                       {programmes.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <p className="mt-1 text-[10px] text-muted-foreground">{t("coacheeEditSheet.programmeRequiredHint")}</p>
-                </div>
-                <div>
-                  <Label>{t("coacheeEditSheet.sessionLimitLabel")}</Label>
-                  <Input type="number" min={0} value={editing.session_limit} onChange={(e) => setEditing({ ...editing, session_limit: Number(e.target.value) })} />
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    {t("coacheeEditSheet.sessionLimitHint", { used: editing.done, default: editing.programme_default_limit ?? defaultLimit })}
-                  </p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{t("coacheeEditSheet.programmeFromCohortHint")}</p>
                 </div>
               </div>
 
               <div>
                 <Label>{t("coacheeEditSheet.cohort")}</Label>
-                <Select value={editing.cohort_id || "none"} onValueChange={(v) => setEditing({ ...editing, cohort_id: v === "none" ? null : v })}>
+                <Select
+                  value={editing.cohort_id || "none"}
+                  onValueChange={(v) => {
+                    const cohort = v === "none" ? null : cohorts.find((c) => c.id === v) ?? null;
+                    const prog = cohort?.programme_id ? programmes.find((p) => p.id === cohort.programme_id) : null;
+                    setEditing({
+                      ...editing,
+                      cohort_id: cohort?.id ?? null,
+                      ...(prog ? {
+                        programme_id: prog.id,
+                        programme_name: prog.name,
+                        programme_duration_months: prog.duration_months,
+                      } : {}),
+                      // Organization defaults to the cohort's organization.
+                      organization_id: editing.organization_id ?? cohort?.organization_id ?? null,
+                    });
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">{t("coacheeEditSheet.noneOption")}</SelectItem>
-                    {cohorts.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    {cohortChoices.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {enrollmentWillMove && (
+                  <p className="mt-1 text-[10px] text-warning">{t("coacheeEditSheet.enrollmentTransitionHint")}</p>
+                )}
               </div>
 
               <div>
@@ -196,7 +215,7 @@ export function CoacheeEditSheet({
               </div>
 
               <div className="rounded-lg bg-muted/40 p-3 text-[11px] text-muted-foreground">
-                <p>{t("coacheeEditSheet.sessionsSummaryPrefix")} <strong>{editing.done}</strong> {t("coacheeEditSheet.sessionsSummaryCompleted")} · <strong>{editing.booked}</strong> {t("coacheeEditSheet.sessionsSummaryBooked")}</p>
+                <p>{t("coacheeEditSheet.sessionsSummaryPrefix")} <strong>{editing.required_units == null ? "—" : `${editing.completed_units}/${editing.required_units}`}</strong> {t("coacheeEditSheet.sessionsSummaryCompleted")} · <strong>{editing.booked}</strong> {t("coacheeEditSheet.sessionsSummaryBooked")}</p>
               </div>
 
               <div className="rounded-lg border p-3">
@@ -211,7 +230,7 @@ export function CoacheeEditSheet({
                     type="button"
                     variant="outline"
                     onClick={() => resendLoginLink(editing)}
-                    disabled={!editing.access_request_id || resendingLink}
+                    disabled={resendingLink}
                   >
                     {resendingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     {t("coacheeEditSheet.resendLoginLink")}
@@ -222,7 +241,7 @@ export function CoacheeEditSheet({
           )}
           <SheetFooter className="mt-6">
             <Button variant="outline" onClick={onClose}>{t("coacheeEditSheet.cancel")}</Button>
-            <Button onClick={() => { clearEnrollmentConflict(); handleSave(); }} disabled={saving}>
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("coacheeEditSheet.save")}
             </Button>
           </SheetFooter>

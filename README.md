@@ -87,6 +87,8 @@ public/              # Static public assets
 
 ## Notes for contributors
 
+- **`main` is the only deployment branch. All other branches are feature branches and are deleted after merge.** See `CONTRIBUTING.md`.
+
 - Always use the semantic colour tokens in `src/index.css` (e.g. `bg-primary`, `text-secondary`). Do not hard-code hex values in components.
 - The active Supabase client lives in `src/lib/supabase-target.ts` (aliased from `@/integrations/supabase/client` in `vite.config.ts`). `src/integrations/supabase/types.ts` is auto-generated — do not hand-edit either.
 - Backend schema changes go through migrations in `supabase/migrations/`, applied with `npx supabase db push`, then reflected in frontend types with `npx supabase gen types typescript --linked`.

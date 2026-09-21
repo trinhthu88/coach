@@ -60,11 +60,10 @@ set local statement_timeout = '8s';
 select is(
   (select count(*)::integer
    from public.sponsor_canonical_cohort_progress(NULL::uuid, '2026-07-05'::date)),
-  (select count(*)::integer
-   from public.cohorts c
-   join public.sponsor_profiles sp on sp.organization_id = c.organization_id
-   where sp.user_id = '11111111-1111-4111-8111-111111111116'::uuid),
-  'all-cohort progress returns one row per sponsor-visible cohort before timeout'
+  (select count(distinct v.cohort_id)::integer
+   from public.sponsor_visible_enrollments() v
+   where v.cohort_id is not null),
+  'all-cohort progress returns one row per cohort holding a sponsor-visible enrollment before timeout'
 );
 
 select is(
@@ -107,7 +106,7 @@ select is(
    from public.sponsor_canonical_cohort_progress(NULL::uuid, '2026-07-05'::date)
    where suppressed),
   0,
-  'the optimisation preserves the existing Sponsor privacy threshold result'
+  'visible cohorts are never suppressed (named rows and their exact rollups are not size-gated)'
 );
 
 reset role;

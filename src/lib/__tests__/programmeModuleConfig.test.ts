@@ -82,15 +82,17 @@ describe("normalizeModuleScheduleConfig", () => {
     });
   });
 
-  it("drops a scheduling policy left on an older programme", () => {
+  it("normalizes the canonical fields (retired keys are purged from stored configs by 20260927300000)", () => {
     const normalized = normalizeModuleScheduleConfig({
-      weeks: 4,
       required: true,
       required_units: 6,
-      distribution_mode: "training_linked",
       distribution_settings: { training_week_ids: ["week-1"] },
     });
-    expect(normalized).not.toHaveProperty("distribution_mode");
-    expect(normalized).not.toHaveProperty("weeks");
+    expect(normalized).toMatchObject({
+      required: true,
+      required_units: 6,
+      weight: null,
+      distribution_settings: { training_week_ids: ["week-1"] },
+    });
   });
 });

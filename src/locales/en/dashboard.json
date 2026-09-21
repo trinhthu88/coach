@@ -20,7 +20,12 @@
         "current_requirement": "Current",
         "upcoming_session": "Upcoming session",
         "upcoming_requirement": "Upcoming"
-      }
+      },
+      "overdueCount_one": "{{count}} overdue",
+      "overdueCount_other": "{{count}} overdue",
+      "overdueUnits_one": "{{count}} required activity overdue",
+      "overdueUnits_other": "{{count}} required activities overdue",
+      "nextSession": "Next coaching session"
     },
     "journeyPreview": {
       "viewFull": "View full journey →"
@@ -254,8 +259,18 @@
     "row": {
       "sessionsAndPct_one": "{{count}} session · {{pct}}%",
       "sessionsAndPct_other": "{{count}} sessions · {{pct}}%",
+      "sessions_one": "{{count}} session",
+      "sessions_other": "{{count}} sessions",
       "notScheduled": "Not scheduled",
-      "defaultProgramme": "Programme"
+      "defaultProgramme": "Programme",
+      "progressUnavailable": "Progress unavailable",
+      "pace": {
+        "on_track": "On track",
+        "ahead": "Ahead",
+        "behind": "Behind",
+        "at_risk": "At risk",
+        "completed": "Completed"
+      }
     },
     "invite": {
       "requiredFields": "Full name and email are required",
@@ -312,7 +327,8 @@
       "addNote": "Add note",
       "noNotesYet": "No notes yet.",
       "deleteNote": "Delete note",
-      "ratedByCoachee": "— rated by coachee"
+      "ratedByCoachee": "— rated by coachee",
+      "milestonesDone": "{{done}}/{{total}} milestones done"
     }
   },
   "availability": {
@@ -562,7 +578,8 @@
       "awaitingYourResponse": "Awaiting your response",
       "reflectionsPending": "{{count}} reflection(s) pending",
       "openTriads": "Open triads"
-    }
+    },
+    "progressUnavailable": "Unavailable"
   },
   "learnerProfile": {
     "header": {
@@ -792,6 +809,59 @@
       "progressPill": "{{completed}}/{{required}} completed",
       "noRequirementPill": "Not required",
       "sessionPractice": "Triad practice"
+    },
+    "shared": {
+      "progressEyebrow": "Progress & next requirement",
+      "requirementsError": "Programme requirements could not be loaded.",
+      "notRequired": "This module has no required sessions in your programme.",
+      "counts": {
+        "completed": "Completed",
+        "due": "Due so far",
+        "overdue": "Overdue",
+        "booked": "Booked"
+      },
+      "nextRequirement": "Next: {{module}} {{n}}",
+      "dueBy": "due by {{date}}",
+      "wasDue": "was due {{date}}",
+      "bookedFor": "booked for {{date}}",
+      "notBooked": "not booked yet",
+      "allRequirementsMet": "Every required session is complete.",
+      "moduleUnit": {
+        "coaching": "Coaching",
+        "peer": "Peer session",
+        "mentoring": "Mentoring",
+        "triads": "Triad"
+      },
+      "evidenceEyebrow": "Post-session evidence",
+      "evidenceTitle": "Follow-up after your sessions",
+      "evidenceError": "Your post-session follow-ups could not be loaded.",
+      "evidenceNone": "Nothing yet — follow-ups appear once a session has been held.",
+      "evidenceAllDone_one": "All follow-ups done for your {{count}} held session.",
+      "evidenceAllDone_other": "All follow-ups done for your {{count}} held sessions.",
+      "evidenceOutstanding_one": "{{count}} session with follow-up outstanding",
+      "evidenceOutstanding_other": "{{count}} sessions with follow-up outstanding",
+      "untitledSession": "Session",
+      "roles": {
+        "provider": "you gave it",
+        "receiver": "you received it"
+      },
+      "items": {
+        "reflection": "Reflection",
+        "goalCheckin": "Goal check-in",
+        "action": "Follow-up action",
+        "satisfaction": "Rating"
+      },
+      "followUpOutstanding_one": "{{count}} follow-up due",
+      "followUpOutstanding_other": "{{count}} follow-ups due",
+      "goalsEyebrow": "Goals & actions from these sessions",
+      "withCheckin": "sessions with a goal check-in",
+      "withAction": "sessions with a follow-up action",
+      "openGoals": "Open my goals and actions",
+      "goalCheckins_one": "{{count}} check-in",
+      "goalCheckins_other": "{{count}} check-ins",
+      "actionDue": "due {{date}}",
+      "actionWasDue": "was due {{date}}",
+      "upcomingEyebrow": "Upcoming session"
     }
   }
 }

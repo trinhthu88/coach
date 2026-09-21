@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pill } from "../_shared";
 import { useCoacheeProfileDetail } from "@/hooks/admin/useCoacheeProfileDetail";
-import { STATUS_TONE, programmeCompletionPct, type Row } from "./coacheeDisplay";
+import { STATUS_TONE, type Row } from "./coacheeDisplay";
 
 interface CoacheeProfileSheetProps {
   row: Row | null;
@@ -20,7 +20,7 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
   const { loading, goals, sessions, profileData, enrollments } = useCoacheeProfileDetail(row?.id, row?.enrollment_id);
 
   if (!row) return null;
-  const pct = programmeCompletionPct(row.enrollment_start_date, row.programme_duration_months);
+  const pct = row.completion_pct;
 
   return (
     <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>
@@ -67,8 +67,16 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
               <p className="mt-1"><Pill tone={STATUS_TONE[row.status]}>{t(`coachees.statusLabels.${row.status}`)}</Pill></p>
             </div>
             <div className="rounded-lg border bg-muted/20 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coacheeProfileSheet.sessions")}</p>
-              <p className="mt-1 font-mono text-[13px]">{row.done}/{row.session_limit} <span className="text-muted-foreground">{t("coacheeProfileSheet.bookedSuffix", { count: row.booked })}</span></p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coacheeProfileSheet.requiredActivities")}</p>
+              {/* The CURRENT enrollment's canonical units — never a lifetime count across enrollments. */}
+              {row.progress_error ? (
+                <p className="mt-1 text-[12px] text-destructive">{t("coachees.progressUnavailable")}</p>
+              ) : (
+                <p className="mt-1 font-mono text-[13px]">
+                  {row.required_units == null ? "—" : `${row.completed_units}/${row.required_units}`}{" "}
+                  <span className="text-muted-foreground">{t("coacheeProfileSheet.bookedSuffix", { count: row.booked })}</span>
+                </p>
+              )}
             </div>
             <div className="sm:col-span-2 rounded-lg border bg-muted/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Layers className="h-3 w-3" /> {t("coacheeProfileSheet.programme")}</p>
@@ -98,7 +106,12 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
                 <p className="rounded-lg border border-dashed p-3 text-center text-[12px] text-muted-foreground">{t("coacheeProfileSheet.noEnrollmentsYet")}</p>
               )}
               {enrollments.map((e) => (
-                <div key={e.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-[12px]">
+                <Link
+                  key={e.id}
+                  to={`/admin/coachees/${row.id}/enrollments/${e.id}`}
+                  data-testid="profile-sheet-enrollment"
+                  className="flex items-center justify-between rounded-lg border px-3 py-2 text-[12px] transition-colors hover:border-primary/40"
+                >
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{e.programme_name}</p>
                     <p className="text-[10px] text-muted-foreground">
@@ -110,7 +123,7 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
                   <Pill tone={e.status === "active" ? "success" : e.status === "at_risk" ? "warning" : "muted"}>
                     {t(`coacheeProfileSheet.enrollmentStatus.${e.status}`)}
                   </Pill>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

@@ -75,6 +75,13 @@ insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, 
    'f1000000-0000-0000-0000-000000000003'::uuid, 'f1000000-0000-0000-0000-00000000b0b0'::uuid,
    'active', current_date - 200, current_date + 200);
 
+-- Booking goal gate (20260925400000): cohort A started 200 days ago. Every
+-- learner-written Peer row passes the Peer cap trigger, which reads
+-- can_book_coachee_peer_session (now gate-aware), so the receivers need a goal.
+insert into public.coachee_goals (coachee_id, enrollment_id, title) values
+  ('f1000000-0000-0000-0000-000000000001'::uuid, 'f1000000-0000-0000-0000-0000000000e1'::uuid, 'Booking gate goal'),
+  ('f1000000-0000-0000-0000-000000000003'::uuid, 'f1000000-0000-0000-0000-0000000000e3'::uuid, 'Booking gate goal');
+
 -- Phase 2 made WHO a cohort decision, and phase 3 enforces it on every write
 -- path. The cross-cohort session below is therefore only legal because cohort
 -- A is explicitly allowed to peer with cohort B. The grant is DIRECTIONAL:
@@ -230,6 +237,8 @@ insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, 
 values ('f1000000-0000-0000-0000-0000000000e4'::uuid, 'f1000000-0000-0000-0000-00000000a0a0'::uuid,
         'f1000000-0000-0000-0000-000000000004'::uuid, 'f1000000-0000-0000-0000-00000000b0b0'::uuid,
         'active', current_date - 200, current_date - 100);
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+values ('f1000000-0000-0000-0000-000000000004'::uuid, 'f1000000-0000-0000-0000-0000000000e4'::uuid, 'Booking gate goal');
 
 select set_config('request.jwt.claims',
   json_build_object('sub', 'f1000000-0000-0000-0000-000000000004')::text, true);

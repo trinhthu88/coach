@@ -72,21 +72,22 @@ interface MentoringReceiveData {
   /**
    * Canonical Mentoring programme progress. Never counted from the session
    * rows below: only a session with status 'completed', attributed to THIS
-   * enrollment, is a completed Mentoring unit.
+   * enrollment, is a completed Mentoring unit. null = no Mentoring module for
+   * this enrollment; a failed canonical read throws (error state, never 0).
    */
-  requiredUnits: number;
-  completedUnits: number;
-  bookedUnits: number;
-  overdueUnits: number;
+  requiredUnits: number | null;
+  completedUnits: number | null;
+  bookedUnits: number | null;
+  overdueUnits: number | null;
 }
 
 const emptyReceive: MentoringReceiveData = {
   nextSession: null,
   upcomingCount: 0,
-  requiredUnits: 0,
-  completedUnits: 0,
-  bookedUnits: 0,
-  overdueUnits: 0,
+  requiredUnits: null,
+  completedUnits: null,
+  bookedUnits: null,
+  overdueUnits: null,
 };
 
 /**
@@ -97,18 +98,19 @@ const emptyReceive: MentoringReceiveData = {
  * cross-enrollment leakage the canonical model forbids.
  */
 async function fetchReceive(enrollmentId: string): Promise<MentoringReceiveData> {
-  const [{ data }, { data: progressRows }] = await Promise.all([
+  const [{ data }, { data: progressRows, error: progressError }] = await Promise.all([
     supabase
       .from("mentoring_sessions")
       .select("id, topic, start_time, status, mentor_id, prep_file_path")
       .eq("enrollment_id", enrollmentId)
       .order("start_time", { ascending: false }),
-    supabase.rpc("canonical_module_progress", {
+    supabase.rpc("learner_module_progress", {
       p_enrollment_id: enrollmentId,
       p_as_of: new Date().toISOString().slice(0, 10),
     }),
   ]);
-  const mentoring = (progressRows ?? []).find((r) => r.module === "mentoring");
+  if (progressError) throw progressError;
+  const mentoring = (progressRows ?? []).find((r) => r.module === "mentoring") ?? null;
   const list = data || [];
   const now = new Date();
   const upcomingRows = list
@@ -117,10 +119,10 @@ async function fetchReceive(enrollmentId: string): Promise<MentoringReceiveData>
   const next = upcomingRows[0];
 
   const progress = {
-    requiredUnits: mentoring?.required_units ?? 0,
-    completedUnits: mentoring?.completed_units ?? 0,
-    bookedUnits: mentoring?.booked_units ?? 0,
-    overdueUnits: mentoring?.overdue_units ?? 0,
+    requiredUnits: mentoring ? mentoring.required_units : null,
+    completedUnits: mentoring ? mentoring.completed_units : null,
+    bookedUnits: mentoring ? mentoring.booked_units : null,
+    overdueUnits: mentoring ? mentoring.overdue_units : null,
   };
 
   if (!next) return { ...emptyReceive, ...progress, upcomingCount: upcomingRows.length };

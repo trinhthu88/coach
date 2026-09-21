@@ -25,8 +25,8 @@ begin;
 
 select plan(14);
 
--- Sponsor visibility needs at least sponsor_min_leaders_for_distribution()
--- leaders in the cohort (5), so the cohort carries five enrolled learners.
+-- The cohort carries five enrolled learners of the sponsor's organisation
+-- (sponsor visibility: enrollment organisation = sponsor organisation).
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
 select ('e1000000-0000-0000-0000-00000000000' || n)::uuid, '00000000-0000-0000-0000-000000000000'::uuid,
@@ -91,11 +91,14 @@ insert into public.cohort_coach_assignments (cohort_id, coach_id)
 insert into public.cohort_mentors (cohort_id, mentor_user_id)
   values ('e1000000-0000-0000-0000-00000000b0b0'::uuid, 'e1000000-0000-0000-0000-000000000002'::uuid);
 
-insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status)
+-- Sponsor visibility is the ENROLLMENT organisation, so each enrollment
+-- carries the sponsor's organisation.
+insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status)
 select ('e1000000-0000-0000-0000-0000000000e' || n)::uuid,
        'e1000000-0000-0000-0000-00000000a0a0'::uuid,
        ('e1000000-0000-0000-0000-00000000000' || (n + 2))::uuid,
-       'e1000000-0000-0000-0000-00000000b0b0'::uuid, 'active'
+       'e1000000-0000-0000-0000-00000000b0b0'::uuid,
+       'e1000000-0000-0000-0000-00000000aaaa'::uuid, 'active'
 from generate_series(1, 5) n;
 
 -- L1's activity: one Coaching session held, one booked for the future, and one
@@ -103,6 +106,13 @@ from generate_series(1, 5) n;
 select set_config('request.jwt.claims',
   json_build_object('sub', 'e1000000-0000-0000-0000-000000000003')::text, true);
 
+-- Booking requires an active goal (check_booking_eligibility, 20260926600000):
+-- give every ongoing fixture enrollment without one a goal before it books.
+insert into public.coachee_goals (coachee_id, enrollment_id, title)
+select e.user_id, e.id, 'Fixture goal'
+from public.programme_enrollments e
+where e.status in ('active', 'at_risk', 'paused')
+  and not exists (select 1 from public.coachee_goals g where g.enrollment_id = e.id and g.status = 'active');
 insert into public.sessions
   (id, enrollment_id, cohort_requirement_id, coach_id, coachee_id, topic,
    start_time, duration_minutes, status) values

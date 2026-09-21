@@ -86,7 +86,9 @@
     "successToast": "Đã gửi phản hồi",
     "errorToast": "Không thể gửi phản hồi",
     "notFound": "Session này hiện không khả dụng.",
-    "afterCompletion": "Bạn có thể phản hồi về session này sau khi session được đánh dấu hoàn thành."
+    "afterCompletion": "Bạn có thể phản hồi về session này sau khi session được đánh dấu hoàn thành.",
+    "roleLabel": "Vai trò của bạn trong buổi này",
+    "roleHelp": "Vai trò luân phiên giữa các buổi. Hãy chọn vai trò bạn đảm nhận lần này; bạn sẽ phản tư về vai trò đó cùng các câu hỏi tổng thể."
   },
   "history": {
     "title": "Các session triad của tôi",

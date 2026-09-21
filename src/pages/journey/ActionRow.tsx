@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { format, isBefore } from "date-fns";
 import { cn } from "@/lib/utils";
+import { sessionDetailPathFor } from "@/lib/sessionPaths";
 import type { FlatAction } from "@/hooks/journey/useFlatActionItems";
 
 export function ActionRow({
@@ -69,7 +70,10 @@ export function ActionRow({
               {a.source === "peer" ? t("actionRow.sourcePeer") : t("actionRow.sourceCoaching")}
             </span>
           )}
-          <Link to={`/sessions/${a.sessionId}`} className="text-muted-foreground hover:text-primary">
+          <Link
+            to={sessionDetailPathFor(a.source === "peer" ? "peer_sessions" : "sessions", a.sessionId) ?? "/sessions"}
+            className="text-muted-foreground hover:text-primary"
+          >
             · {a.sessionTopic}
           </Link>
         </div>

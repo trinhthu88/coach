@@ -198,12 +198,9 @@ describe("programme profile architecture", () => {
       )
         && !/__tests__|\.test\.|integrations\/supabase\/types\.ts/.test(f),
     );
-    // programmeModuleConfig is the one place the legacy key is named, and only
-    // to DELETE it from a config loaded from an older programme.
-    expect(policyFiles.map((f) => relative(SRC, f)).sort()).toEqual(["lib/programmeModuleConfig.ts"]);
-    expect(stripComments(read("lib/programmeModuleConfig.ts"))).toMatch(
-      /distribution_mode: _legacyMode/,
-    );
+    // The retired keys were purged from stored configs (20260927300000), so
+    // no client code names them at all any more.
+    expect(policyFiles.map((f) => relative(SRC, f)).sort()).toEqual([]);
     expect(stripComments(read("lib/programmeModuleConfig.ts"))).not.toMatch(
       /evenly_distributed|monthly_frequency|training_linked/,
     );
@@ -252,6 +249,51 @@ describe("programme profile architecture", () => {
     // Alerts count overdue actions from the original action records, not a session subset.
     expect(read("pages/admin/AdminAlerts.tsx")).toMatch(/from\("enrollment_actions"\)/);
     expect(read("pages/admin/AdminAlerts.tsx")).not.toMatch(/withEnrollmentActions/);
+  });
+
+  it("every Admin '% complete' is the canonical number the learner sees — never time elapsed", () => {
+    for (const file of ["hooks/admin/useAdminCoacheesData.ts", "pages/admin/AdminCoaches.tsx"]) {
+      const text = read(file);
+      expect(text, file).toMatch(/fetchAdminCanonicalProgress\(/);
+      expect(text, file).toMatch(/canonicalCompletionPct\(/);
+    }
+    expect(read("components/programme/ProgrammeMetricCards.tsx")).toMatch(/canonicalCompletionPct\(facts\.full_completion_pct\)/);
+    // No surface estimates completion from enrollment dates.
+    const timeBased = /programmeCompletionPct|30\.4375/;
+    expect(files.filter((f) => timeBased.test(readFileSync(f, "utf8"))).map((f) => relative(SRC, f))).toEqual([]);
+  });
+
+  it("no client calls an internal canonical engine directly (they are revoked from authenticated)", () => {
+    // These fail with "permission denied" for every signed-in user; clients go
+    // through the role-scoped wrappers (learner_*, sponsor_*, admin_*, coach_*).
+    const internal = /rpc\(\s*"(canonical_module_progress|canonical_enrollment_progress|canonical_enrollment_engagement|canonical_overdue_items|canonical_goal_progress|canonical_learning_breakdown)"/;
+    const offenders = files.filter((f) => internal.test(readFileSync(f, "utf8")));
+    expect(offenders.map((f) => relative(SRC, f))).toEqual([]);
+  });
+
+  it("every Coach '% complete' is the canonical number — never a milestone, session or position ratio", () => {
+    expect(read("hooks/coach/useCoachClients.ts")).toMatch(/rpc\("coach_canonical_enrollment_progress"/);
+    expect(read("hooks/coach/useCoachClients.ts")).toMatch(/canonicalCompletionPct\(/);
+    // Status is the canonical pace_status too -- no coach-side heuristic.
+    const coachClients = read("hooks/coach/useCoachClients.ts");
+    expect(coachClients).toMatch(/pace_status/);
+    expect(coachClients).not.toMatch(/overdueActions\s*>=|needs_attention|c\.status\s*=/);
+    expect(read("pages/coach/ClientDetailDialog.tsx")).not.toMatch(/Math\.round\(\(done\s*\/\s*ms\.length\)/);
+    expect(read("pages/coach/ClientRow.tsx")).toMatch(/client\.completionPct/);
+    expect(read("pages/CoachMyJourney.tsx")).toMatch(/canonicalCompletionPct\(canonical\.progress\?\.full_completion_pct\)/);
+    // A "%" derived from ticked milestones or elapsed days must not reappear on
+    // a progress surface.
+    const localRatio = /milestonesDone\s*\/\s*client\.milestonesTotal|overallPct\b|elapsed\s*\/\s*total\)\s*\*\s*100\)?\s*[,}]?\s*\/\/\s*completion/;
+    const progressSurfaces = [
+      "pages/coach/ClientRow.tsx",
+      "pages/coach/ClientDetailDialog.tsx",
+      "hooks/coach/useClientDetail.ts",
+      "pages/CoachMyJourney.tsx",
+      "pages/dashboard/coachee/CoacheeDashboard.tsx",
+      "pages/admin/AdminCoachees.tsx",
+      "pages/admin/coachees/CoacheeProfileSheet.tsx",
+    ];
+    expect(progressSurfaces.filter((f) => localRatio.test(read(f)))).toEqual([]);
   });
 
   it("no surface calls a retired engine or reads a derived snapshot / deprecated cache", () => {
@@ -438,13 +480,16 @@ describe("programme profile architecture", () => {
     });
 
     it("the reflection writer is reachable from the checklist that shows the gate", () => {
-      const checklist = read("pages/session/CoachingPostSessionChecklist.tsx");
-      expect(checklist).toMatch(/useSubmitCoachingReflection/);
-      // The learner writes their own reflection; nobody else may.
-      expect(checklist).toMatch(/canSubmitReflection/);
+      // One post-session checklist serves all four modules (Coaching included).
+      const checklist = read("pages/session/PostSessionChecklist.tsx");
+      expect(checklist).toMatch(/useSubmitSessionReflection/);
+      // The learner writes their own reflection; nobody else may: the writer
+      // is only rendered for the server-identified own row (isSelf), every
+      // other viewer gets the read-only ticks.
+      expect(checklist).toMatch(/r\.isSelf/);
+      expect(checklist).toMatch(/data-mode="readonly"/);
       const detail = read("pages/SessionDetail.tsx");
-      expect(detail).toMatch(/canSubmitReflection=\{isCoachee\}/);
-      expect(detail).toMatch(/enrollmentId=\{session\.enrollment_id\}/);
+      expect(detail).toMatch(/<PostSessionChecklist sourceTable=\{tableName\} sessionId=\{session\.id\}/);
     });
 
     // The C2 regression shape precisely: the writer existed as an exported
@@ -473,7 +518,7 @@ describe("programme profile architecture", () => {
 
     it("the reflection hooks are reached from a rendered surface, not only exported", () => {
       const RENDERED = files.filter((f) => /\/(pages|components)\//.test(f));
-      for (const hook of ["useSubmitCoachingReflection", "useCoachingReflection"]) {
+      for (const hook of ["useSubmitSessionReflection", "useSessionReflection"]) {
         const callers = RENDERED.filter((f) => new RegExp(`\\b${hook}\\b`).test(readFileSync(f, "utf8")));
         expect(callers, `${hook} is exported but no screen calls it`).not.toEqual([]);
       }

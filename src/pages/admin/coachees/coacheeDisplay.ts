@@ -13,27 +13,21 @@ export const STATUS_TONE: Record<Status, "muted" | "success" | "warning" | "dest
   reach_limit: "warning",
 };
 
-export function programmeCompletionPct(startDate: string | null, durationMonths: number | null): number | null {
-  if (!startDate || !durationMonths) return null;
-  const start = new Date(startDate).getTime();
-  const end = start + durationMonths * 30.4375 * 24 * 3600 * 1000;
-  const now = Date.now();
-  if (now <= start) return 0;
-  if (now >= end) return 100;
-  return Math.round(((now - start) / (end - start)) * 100);
-}
-
 export interface Row {
   id: string;
   full_name: string;
   email: string;
   status: Status;
   created_at: string;
+  /** Pending/confirmed coaching bookings on the current enrollment (operational). */
   booked: number;
-  done: number;
+  /** Canonical required activities completed / required on the CURRENT enrollment — never a lifetime count. */
+  completed_units: number | null;
+  required_units: number | null;
+  /** The canonical progress read failed: show an error state, never a silent zero. */
+  progress_error: boolean;
   programme_id: string | null;
   programme_name: string | null;
-  programme_default_limit: number | null;
   programme_duration_months: number | null;
   cohort_id: string | null;
   cohort_name: string | null;
@@ -41,9 +35,9 @@ export interface Row {
   organization_name: string | null;
   enrollment_id: string | null;
   enrollment_start_date: string | null;
+  /** canonicalCompletionPct of the selected enrollment; null when canonical progress is unavailable. */
+  completion_pct: number | null;
   selected_coaches: { id: string; name: string }[];
-  session_limit: number;
-  limit_row_id: string | null;
   access_request_id: string | null;
   spoken_languages: string[];
 }
@@ -56,8 +50,7 @@ export async function exportCoacheesXlsx(rows: Row[], t: TFunction<"admin">): Pr
     [t("coachees.export.registered")]: format(new Date(c.created_at), "yyyy-MM-dd"),
     [t("coachees.export.status")]: t(`coachees.statusLabels.${c.status}`),
     [t("coachees.export.bookedSessions")]: c.booked,
-    [t("coachees.export.completedSessions")]: c.done,
-    [t("coachees.export.sessionLimit")]: c.session_limit,
+    [t("coachees.export.completedUnits")]: c.required_units == null ? "" : `${c.completed_units}/${c.required_units}`,
     [t("coachees.export.programme")]: c.programme_name || "",
     [t("coachees.export.cohort")]: c.cohort_name || "",
     [t("coachees.export.selectedCoaches")]: c.selected_coaches.map((s) => s.name).join("; "),

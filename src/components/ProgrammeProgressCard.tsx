@@ -10,6 +10,7 @@ import { useLearnerCanonicalProgress, type LearnerModuleProgress } from "@/hooks
 import { useProgrammeProgress } from "@/hooks/dashboard/useProgrammeProgress";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { DailyPromptCard } from "@/components/training/DailyPromptCard";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 export function ProgrammeProgressCard() {
   const { t } = useTranslation("training");
@@ -84,7 +85,7 @@ export function ProgrammeProgressCard() {
               {t("progressCard.overallProgress", {
                 completed: progress.completed_units,
                 required: progress.required_units,
-                pct: Math.round(progress.full_completion_pct ?? 0),
+                pct: canonicalCompletionPct(progress.full_completion_pct) ?? 0,
               })}
             </p>
           )}

@@ -26,10 +26,10 @@ DECLARE
 BEGIN
   INSERT INTO public.organizations(id,name) VALUES(org,'Clariva Erickson Demo Organisation')
     ON CONFLICT(id) DO UPDATE SET name=excluded.name;
-  INSERT INTO public.programmes(id,name,description,duration_months,is_active,coachee_session_limit,coach_session_limit,peer_session_limit,peer_given_limit)
+  INSERT INTO public.programmes(id,name,description,duration_months,is_active,coachee_session_limit)
   VALUES
-    (pa,'Executive Coaching Accelerator','Coaching-only demonstration',3,true,6,6,0,0),
-    (pb,'Leadership Development Journey','Blended leadership demonstration',6,true,6,6,4,4)
+    (pa,'Executive Coaching Accelerator','Coaching-only demonstration',3,true,6),
+    (pb,'Leadership Development Journey','Blended leadership demonstration',6,true,6)
   ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,duration_months=excluded.duration_months;
   INSERT INTO public.cohorts(id,name,programme_id,organization_id,start_date,end_date)
   VALUES(ca,'Executive Coaching – Demo Cohort A',pa,org,'2026-09-01','2026-12-01'),
@@ -415,8 +415,8 @@ BEGIN
   SELECT p.id INTO mentor FROM profiles p JOIN user_roles r ON r.user_id=p.id
     WHERE r.role='coach' ORDER BY p.id OFFSET 1 LIMIT 1;
 
-  INSERT INTO public.programmes(id,name,description,duration_months,is_active,coachee_session_limit,coach_session_limit,peer_session_limit,peer_given_limit)
-    VALUES(pc,'Emerging Leaders','Blended coaching, learning, mentoring, peer and triad demonstration',5,true,4,4,2,2)
+  INSERT INTO public.programmes(id,name,description,duration_months,is_active,coachee_session_limit)
+    VALUES(pc,'Emerging Leaders','Blended coaching, learning, mentoring, peer and triad demonstration',5,true,4)
     ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,duration_months=excluded.duration_months;
   INSERT INTO public.cohorts(id,name,programme_id,organization_id,start_date,end_date)
     VALUES(cc,'Emerging Leaders – Cohort C',pc,org,'2026-03-01','2026-07-05')

@@ -17,6 +17,7 @@ import type { SponsorCohortSummary } from "@/hooks/sponsor/useSponsorDashboardDa
 import { cn } from "@/lib/utils";
 import { cohortLifecycleStatus } from "./sponsorUtils";
 import { SponsorDataErrorState } from "./SponsorDataErrorState";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 export default function SponsorCohorts() {
   const { t } = useTranslation("sponsor");
@@ -57,7 +58,7 @@ export default function SponsorCohorts() {
               {t("cohorts.rolledUpLabel")}
             </p>
             <h2 className="mt-2 font-display text-[clamp(1.8rem,4vw,2.7rem)] font-light leading-none tracking-tight">
-              {kpis?.enrollment_count ?? 0}{" "}
+              {kpis ? kpis.enrollment_count : "—"}{" "}
               <span className="text-primary-foreground/60">{t("cohorts.kpis.leadersEnrolled").toLowerCase()}</span>
             </h2>
             <p className="mt-3 max-w-xl text-[12px] leading-relaxed text-primary-foreground/65">
@@ -75,21 +76,21 @@ export default function SponsorCohorts() {
           <RollupMetric
             icon={CheckCircle2}
             label={t("cohorts.kpis.onTrack")}
-            value={kpis?.on_track_count ?? 0}
-            sub={t("cohorts.kpis.onTrackSub", { total: kpis?.enrollment_count ?? 0 })}
+            value={kpis?.on_track_count ?? "—"}
+            sub={t("cohorts.kpis.onTrackSub", { total: kpis?.enrollment_count ?? "—" })}
             tone="teal"
           />
           <RollupMetric
             icon={CircleAlert}
             label={t("cohorts.kpis.atRisk")}
-            value={kpis?.at_risk_count ?? 0}
+            value={kpis?.at_risk_count ?? "—"}
             sub={t("cohorts.kpis.atRiskSub")}
             tone="amber"
           />
           <RollupMetric
             icon={BarChart3}
             label={t("cohorts.kpis.sessionsUsed")}
-            value={`${kpis?.completed_units ?? 0} / ${kpis?.required_units ?? 0}`}
+            value={kpis ? `${kpis.completed_units} / ${kpis.required_units}` : "—"}
             sub={t("cohorts.kpis.sessionsSub")}
             tone="blue"
           />
@@ -173,8 +174,9 @@ function CohortCard({
   const { t } = useTranslation("sponsor");
   const suppressed = cohort.suppressed;
   const leaderCount = cohort.enrollment_count ?? 0;
-  const onTrackPct = cohort.on_track_pct ?? 0;
-  const completionPct = cohort.full_completion_pct ?? 0;
+  const onTrackPct = cohort.on_track_pct;
+  // The one progress formula; null (nothing required yet) renders as "—", never 0%.
+  const completionPct = canonicalCompletionPct(cohort.full_completion_pct);
   const lifecycle = cohortLifecycleStatus(cohort.programme_start_date, cohort.programme_end_date);
   return (
     <article className="group overflow-hidden rounded-[24px] border border-[#e6dfd4] bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_42px_-28px_rgba(20,80,90,.45)]">
@@ -225,12 +227,12 @@ function CohortCard({
         ) : (
           <>
             <div className="mt-6 grid grid-cols-2 gap-3 rounded-2xl bg-[#fbf9f6] p-4 sm:grid-cols-3">
-              <MiniMetric label={t("cohorts.completion")} value={`${Math.round(completionPct)}%`} />
-              <MiniMetric label={t("cohorts.onTrackPct")} value={`${Math.round(onTrackPct)}%`} />
+              <MiniMetric label={t("cohorts.completion")} value={completionPct == null ? "—" : `${completionPct}%`} />
+              <MiniMetric label={t("cohorts.onTrackPct")} value={onTrackPct == null ? "—" : `${Math.round(onTrackPct)}%`} />
               <MiniMetric label={t("cohorts.satisfaction")} value={cohort.satisfaction_avg == null ? "—" : cohort.satisfaction_avg.toFixed(1)} />
             </div>
             <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-[11px] text-muted-foreground">
-              <span>{t("cohorts.sessions")} <b className="text-foreground">{cohort.completed_units ?? 0} / {cohort.required_units ?? 0}</b></span>
+              <span>{t("cohorts.sessions")} <b className="text-foreground">{cohort.completed_units} / {cohort.required_units}</b></span>
             </div>
           </>
         )}

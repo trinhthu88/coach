@@ -20,7 +20,12 @@
         "current_requirement": "Hiện tại",
         "upcoming_session": "Session sắp tới",
         "upcoming_requirement": "Sắp tới"
-      }
+      },
+      "overdueCount_one": "{{count}} quá hạn",
+      "overdueCount_other": "{{count}} quá hạn",
+      "overdueUnits_one": "{{count}} hoạt động bắt buộc quá hạn",
+      "overdueUnits_other": "{{count}} hoạt động bắt buộc quá hạn",
+      "nextSession": "Buổi coaching tiếp theo"
     },
     "journeyPreview": {
       "viewFull": "Xem toàn bộ hành trình →"
@@ -244,8 +249,17 @@
     },
     "row": {
       "sessionsAndPct_other": "{{count}} session · {{pct}}%",
+      "sessions_other": "{{count}} session",
       "notScheduled": "Chưa có lịch",
-      "defaultProgramme": "Chương trình"
+      "defaultProgramme": "Chương trình",
+      "progressUnavailable": "Không tải được tiến độ",
+      "pace": {
+        "on_track": "Đúng tiến độ",
+        "ahead": "Vượt tiến độ",
+        "behind": "Chậm tiến độ",
+        "at_risk": "Có rủi ro",
+        "completed": "Hoàn thành"
+      }
     },
     "invite": {
       "requiredFields": "Cần có họ tên và email",
@@ -302,7 +316,8 @@
       "addNote": "Thêm ghi chú",
       "noNotesYet": "Chưa có ghi chú nào.",
       "deleteNote": "Xóa ghi chú",
-      "ratedByCoachee": "— được đánh giá bởi học viên"
+      "ratedByCoachee": "— được đánh giá bởi học viên",
+      "milestonesDone": "Đã xong {{done}}/{{total}} cột mốc"
     }
   },
   "availability": {
@@ -550,7 +565,8 @@
       "awaitingYourResponse": "Đang chờ phản hồi của bạn",
       "reflectionsPending": "{{count}} reflection đang chờ",
       "openTriads": "Mở triads"
-    }
+    },
+    "progressUnavailable": "Không tải được"
   },
   "learnerProfile": {
     "header": {
@@ -778,6 +794,58 @@
       "progressPill": "Hoàn thành {{completed}}/{{required}}",
       "noRequirementPill": "Không bắt buộc",
       "sessionPractice": "Thực hành Triad"
+    },
+    "shared": {
+      "progressEyebrow": "Tiến độ & yêu cầu tiếp theo",
+      "requirementsError": "Không thể tải các yêu cầu của chương trình.",
+      "notRequired": "Module này không có session bắt buộc trong chương trình của bạn.",
+      "counts": {
+        "completed": "Hoàn thành",
+        "due": "Đến hạn",
+        "overdue": "Quá hạn",
+        "booked": "Đã đặt"
+      },
+      "nextRequirement": "Tiếp theo: {{module}} {{n}}",
+      "dueBy": "hạn {{date}}",
+      "wasDue": "đã đến hạn {{date}}",
+      "bookedFor": "đã đặt cho {{date}}",
+      "notBooked": "chưa đặt",
+      "allRequirementsMet": "Tất cả session bắt buộc đã hoàn thành.",
+      "moduleUnit": {
+        "coaching": "Coaching",
+        "peer": "Peer session",
+        "mentoring": "Mentoring",
+        "triads": "Triad"
+      },
+      "evidenceEyebrow": "Minh chứng sau buổi",
+      "evidenceTitle": "Việc cần làm sau các session",
+      "evidenceError": "Không thể tải các việc sau buổi của bạn.",
+      "evidenceNone": "Chưa có — các việc sau buổi xuất hiện khi session đã diễn ra.",
+      "evidenceAllDone_one": "Đã hoàn thành mọi việc sau buổi cho {{count}} session đã diễn ra.",
+      "evidenceAllDone_other": "Đã hoàn thành mọi việc sau buổi cho {{count}} session đã diễn ra.",
+      "evidenceOutstanding_one": "{{count}} session còn việc sau buổi",
+      "evidenceOutstanding_other": "{{count}} session còn việc sau buổi",
+      "untitledSession": "Session",
+      "roles": {
+        "provider": "bạn thực hiện",
+        "receiver": "bạn nhận"
+      },
+      "items": {
+        "reflection": "Phản tư",
+        "goalCheckin": "Cập nhật mục tiêu",
+        "action": "Hành động tiếp theo",
+        "satisfaction": "Đánh giá"
+      },
+      "followUpOutstanding_one": "{{count}} việc sau buổi",
+      "followUpOutstanding_other": "{{count}} việc sau buổi",
+      "goalsEyebrow": "Mục tiêu & hành động từ các session này",
+      "withCheckin": "session có cập nhật mục tiêu",
+      "withAction": "session có hành động tiếp theo",
+      "openGoals": "Mở mục tiêu và hành động của tôi",
+      "goalCheckins_other": "{{count}} lần cập nhật",
+      "actionDue": "hạn {{date}}",
+      "actionWasDue": "quá hạn từ {{date}}",
+      "upcomingEyebrow": "Buổi sắp tới"
     }
   }
 }

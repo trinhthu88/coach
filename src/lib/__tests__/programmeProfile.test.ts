@@ -89,6 +89,16 @@ describe("journey focus and window", () => {
     expect(journeyWindow(finished, 4).points.map((p) => p.checkpoint_number)).toEqual([7, 8, 9, 10]);
   });
 
+  it("a paged window reaches CP1 and the final checkpoint without leaving the Dashboard", () => {
+    const twelve = Array.from({ length: 12 }, (_, i) => point(i + 1, i < 6 ? "completed" : i === 6 ? "current" : "upcoming"));
+    expect(journeyWindow(twelve, 4).firstShown).toBe(6);
+    expect(journeyWindow(twelve, 4, 0).points.map((p) => p.checkpoint_number)).toEqual([1, 2, 3, 4]);
+    expect(journeyWindow(twelve, 4, -3).firstShown).toBe(1);
+    expect(journeyWindow(twelve, 4, 99).points.map((p) => p.checkpoint_number)).toEqual([9, 10, 11, 12]);
+    // Paging never changes which checkpoint is "current".
+    expect(journeyWindow(twelve, 4, 0).focusIndex).toBe(6);
+  });
+
   it("a summary window is an unaltered consecutive slice around the current position", () => {
     const window = journeyWindow(journey, 4);
     expect(window.points.map((p) => p.checkpoint_number)).toEqual([4, 5, 6, 7]);

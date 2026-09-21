@@ -13,24 +13,47 @@
     }
   },
   "carousel": {
-    "roleLabel": { "coachee": "Học viên", "coach": "Coach", "sponsor": "Nhà tài trợ" },
+    "roleLabel": {
+      "coachee": "Học viên",
+      "coach": "Coach",
+      "sponsor": "Nhà tài trợ"
+    },
     "continue": "Tiếp tục",
     "takeMeIn": "Vào ngay →",
     "back": "Quay lại",
     "skipIntro": "Bỏ qua giới thiệu",
-    "journey": { "session1": "Session 1", "ongoing": "Đang diễn ra" },
+    "journey": {
+      "session1": "Session 1",
+      "ongoing": "Đang diễn ra"
+    },
     "goals": {
       "hardConversations": "Cuộc trò chuyện khó",
       "delegateReport": "Giao việc báo cáo",
       "protectDeepWork": "Bảo vệ thời gian tập trung"
     },
     "match": {
-      "filtersCoach": ["LÃNH ĐẠO", "CHUYỂN ĐỔI", "EN / VN", "ICF PCC"],
-      "filtersCoachee": ["TRÒ CHUYỆN KHÓ", "GIAO VIỆC", "TIẾNG VIỆT", "THÁNG NÀY"],
+      "filtersCoach": [
+        "LÃNH ĐẠO",
+        "CHUYỂN ĐỔI",
+        "EN / VN",
+        "ICF PCC"
+      ],
+      "filtersCoachee": [
+        "TRÒ CHUYỆN KHÓ",
+        "GIAO VIỆC",
+        "TIẾNG VIỆT",
+        "THÁNG NÀY"
+      ],
       "matchLabel": "PHÙ HỢP"
     },
     "calendar": {
-      "days": ["T2", "T3", "T4", "T5", "T6"],
+      "days": [
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6"
+      ],
       "open": "Trống",
       "booked": "Đã đặt lịch"
     },
@@ -53,7 +76,11 @@
       "sessionsUsed": "Session đã dùng",
       "avgGoalGrowth": "Tăng trưởng mục tiêu TB"
     },
-    "growth": { "goals": "Mục tiêu", "avgGrowth": "Tăng trưởng TB", "sessions": "Session" },
+    "growth": {
+      "goals": "Mục tiêu",
+      "avgGrowth": "Tăng trưởng TB",
+      "sessions": "Session"
+    },
     "cohort": {
       "header": "GIÁM ĐỐC VẬN HÀNH Q3",
       "onTrack": "Đúng tiến độ · 9",
@@ -71,33 +98,86 @@
       "withheld": "bị giới hạn"
     },
     "stateLabel": {
-      "step 1": "BƯỚC 1", "step 2": "BƯỚC 2", "live": "ĐANG HOẠT ĐỘNG", "locked": "ĐÃ KHÓA",
-      "at risk": "CÓ NGUY CƠ", "ok": "ỔN", "opt in": "ĐÃ THAM GIA", "open": "MỞ",
-      "record": "GHI NHẬN", "review": "CẦN XEM XÉT", "book": "ĐẶT LỊCH", "nudge": "NHẮC NHỞ"
+      "step 1": "BƯỚC 1",
+      "step 2": "BƯỚC 2",
+      "live": "ĐANG HOẠT ĐỘNG",
+      "locked": "ĐÃ KHÓA",
+      "at risk": "CÓ NGUY CƠ",
+      "ok": "ỔN",
+      "opt in": "ĐÃ THAM GIA",
+      "open": "MỞ",
+      "record": "GHI NHẬN",
+      "review": "CẦN XEM XÉT",
+      "book": "ĐẶT LỊCH",
+      "nudge": "NHẮC NHỞ"
     },
     "practice": {
-      "coachProfile": { "label": "Hồ sơ coach của tôi", "note": "Chuyên môn, giới thiệu, chứng nhận" },
-      "availability": { "label": "Lịch trống của tôi", "note": "Khung giờ hàng tuần và khoảng đệm" },
-      "clients": { "label": "Khách hàng của tôi", "note": "9 đang hoạt động trong 3 chương trình" },
-      "sessionsNotes": { "label": "Session & ghi chú", "note": "Riêng tư cho từng cặp" }
+      "coachProfile": {
+        "label": "Hồ sơ coach của tôi",
+        "note": "Chuyên môn, giới thiệu, chứng nhận"
+      },
+      "availability": {
+        "label": "Lịch trống của tôi",
+        "note": "Khung giờ hàng tuần và khoảng đệm"
+      },
+      "clients": {
+        "label": "Khách hàng của tôi",
+        "note": "9 đang hoạt động trong 3 chương trình"
+      },
+      "sessionsNotes": {
+        "label": "Session & ghi chú",
+        "note": "Riêng tư cho từng cặp"
+      }
     },
     "peer": {
-      "give": { "label": "Peer coaching · cho", "note": "Bạn coaching cho một coach đã chứng nhận khác" },
-      "receive": { "label": "Peer coaching · nhận", "note": "Một đồng cấp coaching cho bạn" },
-      "findCoach": { "label": "Tìm coach", "note": "Đặt lịch với một coach cho chính mình" },
-      "analytics": { "label": "Phân tích thực hành", "note": "Số giờ, session đồng cấp, suy ngẫm" }
+      "give": {
+        "label": "Peer coaching · cho",
+        "note": "Bạn coaching cho một coach đã chứng nhận khác"
+      },
+      "receive": {
+        "label": "Peer coaching · nhận",
+        "note": "Một đồng cấp coaching cho bạn"
+      },
+      "findCoach": {
+        "label": "Tìm coach",
+        "note": "Đặt lịch với một coach cho chính mình"
+      },
+      "analytics": {
+        "label": "Phân tích thực hành",
+        "note": "Số giờ, session đồng cấp, suy ngẫm"
+      }
     },
     "clientsSponsor": {
-      "leader07": { "label": "Lãnh đạo 07", "note": "Không có session trong 5 tuần" },
-      "leader11": { "label": "Lãnh đạo 11", "note": "Đã gửi lời mời ngày 4 tháng 6" },
-      "leader04": { "label": "Lãnh đạo 04", "note": "Đúng tiến độ · mức đánh giá đang thay đổi" },
-      "leader02": { "label": "Lãnh đạo 02", "note": "Đúng tiến độ · 3/6 session" }
+      "leader07": {
+        "label": "Lãnh đạo 07",
+        "note": "Không có session trong 5 tuần"
+      },
+      "leader11": {
+        "label": "Lãnh đạo 11",
+        "note": "Đã gửi lời mời ngày 4 tháng 6"
+      },
+      "leader04": {
+        "label": "Lãnh đạo 04",
+        "note": "Đúng tiến độ · mức đánh giá đang thay đổi"
+      },
+      "leader02": {
+        "label": "Lãnh đạo 02",
+        "note": "Đúng tiến độ · 3/6 session"
+      }
     },
     "clientsDefault": {
-      "trang": { "note": "Chưa đặt session trong 5 tuần" },
-      "duc": { "note": "Mức đánh giá mục tiêu không đổi từ tháng 6" },
-      "lan": { "note": "Đúng tiến độ · session 2/6" },
-      "hanh": { "note": "Session cuối chưa có lịch" }
+      "trang": {
+        "note": "Chưa đặt session trong 5 tuần"
+      },
+      "duc": {
+        "note": "Mức đánh giá mục tiêu không đổi từ tháng 6"
+      },
+      "lan": {
+        "note": "Đúng tiến độ · session 2/6"
+      },
+      "hanh": {
+        "note": "Session cuối chưa có lịch"
+      }
     }
   },
   "coachee": {
@@ -112,9 +192,18 @@
         "title": "Nêu rõ điều bạn muốn thay đổi.",
         "body": "Viết ra một đến ba mục tiêu bằng chính lời của bạn, và đánh giá mỗi mục tiêu theo thang điểm 1-10 ngay hôm nay. Mức đánh giá này là điểm khởi đầu, không phải một lời phán xét — và chỉ bạn mới có quyền thay đổi nó.",
         "bullets": [
-          { "label": "Cụ thể", "text": "\"Có thể nói thẳng một điều khó nói mà không giảm nhẹ\" tốt hơn nhiều so với \"giao tiếp tốt hơn.\"" },
-          { "label": "Của riêng bạn", "text": "Bạn có thể viết lại, tách nhỏ, hoặc bỏ một mục tiêu bất cứ lúc nào trong chương trình." },
-          { "label": "Có đánh giá", "text": "Đánh giá lại bất cứ khi nào có sự thay đổi — chính sự thay đổi đó là tiến bộ của bạn." }
+          {
+            "label": "Cụ thể",
+            "text": "\"Có thể nói thẳng một điều khó nói mà không giảm nhẹ\" tốt hơn nhiều so với \"giao tiếp tốt hơn.\""
+          },
+          {
+            "label": "Của riêng bạn",
+            "text": "Bạn có thể viết lại, tách nhỏ, hoặc bỏ một mục tiêu bất cứ lúc nào trong chương trình."
+          },
+          {
+            "label": "Có đánh giá",
+            "text": "Đánh giá lại bất cứ khi nào có sự thay đổi — chính sự thay đổi đó là tiến bộ của bạn."
+          }
         ]
       },
       "coach": {
@@ -122,9 +211,18 @@
         "title": "Chọn coach của bạn.",
         "body": "Mục tiêu của bạn sẽ lọc ra trong mạng lưới coach đã được chứng nhận những người phù hợp nhất với đúng vấn đề bạn đang cần. Đọc hồ sơ, đặt một buổi trò chuyện làm quen (chemistry call) miễn phí 20 phút, và quyết định sau khi đã gặp trực tiếp.",
         "bullets": [
-          { "label": "Lọc theo tiêu chí", "text": "Theo lĩnh vực chuyên môn, ngôn ngữ, và lịch trống trong tháng." },
-          { "label": "Gặp trước khi quyết định", "text": "Buổi trò chuyện làm quen không tính vào số session của bạn." },
-          { "label": "Có thể đổi một lần", "text": "Bạn có thể đổi coach giữa chương trình mà không cần nêu lý do." }
+          {
+            "label": "Lọc theo tiêu chí",
+            "text": "Theo lĩnh vực chuyên môn, ngôn ngữ, và lịch trống trong tháng."
+          },
+          {
+            "label": "Gặp trước khi quyết định",
+            "text": "Buổi trò chuyện làm quen không tính vào số session của bạn."
+          },
+          {
+            "label": "Có thể đổi một lần",
+            "text": "Bạn có thể đổi coach giữa chương trình mà không cần nêu lý do."
+          }
         ]
       },
       "book": {
@@ -137,9 +235,18 @@
         "title": "Session là một không gian riêng khép kín.",
         "body": "Ghi chú, bản ghi âm, cách bạn diễn đạt mục tiêu, và mọi điều bạn chia sẻ đều thuộc về bạn và coach của bạn. Không có gì rời khỏi không gian đó trừ khi chính bạn gửi đi.",
         "bullets": [
-          { "label": "Bạn là người quyết định", "text": "Bạn viết gì, chia sẻ gì, và mời ai tham gia." },
-          { "label": "Không bao giờ bị lộ", "text": "Ghi chú buổi session, bản ghi âm, và cách bạn diễn đạt mục tiêu." },
-          { "label": "Coach của bạn", "text": "Cũng giữ ghi chú chuẩn bị riêng; chỉ những phần tóm tắt được đánh dấu chia sẻ mới đến tay bạn." }
+          {
+            "label": "Bạn là người quyết định",
+            "text": "Bạn viết gì, chia sẻ gì, và mời ai tham gia."
+          },
+          {
+            "label": "Không bao giờ bị lộ",
+            "text": "Ghi chú buổi session, bản ghi âm, và cách bạn diễn đạt mục tiêu."
+          },
+          {
+            "label": "Coach của bạn",
+            "text": "Cũng giữ ghi chú chuẩn bị riêng; chỉ những phần tóm tắt được đánh dấu chia sẻ mới đến tay bạn."
+          }
         ]
       },
       "progress": {
@@ -178,9 +285,18 @@
         "title": "Hoàn thiện hồ sơ coach của bạn.",
         "body": "Chuyên môn, kinh nghiệm và ngôn ngữ của bạn chính là cơ sở để hệ thống ghép cặp hoạt động. Một hồ sơ sơ sài đơn giản sẽ không xuất hiện khi coachee lọc theo mục tiêu của họ.",
         "bullets": [
-          { "label": "Chuyên môn", "text": "Chọn hai hoặc ba lĩnh vực bạn thực sự làm việc, không phải tất cả những gì bạn có thể làm." },
-          { "label": "Giới thiệu bản thân", "text": "Một đoạn ngắn bằng chính giọng văn của bạn — nó sẽ xuất hiện trên mọi thẻ ghép cặp." },
-          { "label": "Chứng nhận chuyên môn", "text": "Chứng chỉ được xác minh một lần, sau đó hiển thị dưới dạng huy hiệu trên hồ sơ của bạn." }
+          {
+            "label": "Chuyên môn",
+            "text": "Chọn hai hoặc ba lĩnh vực bạn thực sự làm việc, không phải tất cả những gì bạn có thể làm."
+          },
+          {
+            "label": "Giới thiệu bản thân",
+            "text": "Một đoạn ngắn bằng chính giọng văn của bạn — nó sẽ xuất hiện trên mọi thẻ ghép cặp."
+          },
+          {
+            "label": "Chứng nhận chuyên môn",
+            "text": "Chứng chỉ được xác minh một lần, sau đó hiển thị dưới dạng huy hiệu trên hồ sơ của bạn."
+          }
         ]
       },
       "availability": {
@@ -188,9 +304,18 @@
         "title": "Công bố lịch trống của bạn.",
         "body": "Sẽ không ai đặt lịch được với bạn cho đến khi có khung giờ trống. Thiết lập các khung giờ lặp lại hằng tuần theo múi giờ của bạn; nền tảng sẽ tự quy đổi cho từng coachee và giữ khoảng đệm giữa các session.",
         "bullets": [
-          { "label": "Lặp lại", "text": "Thiết lập một lần, lặp lại hằng tuần. Bạn có thể đóng riêng bất kỳ tuần nào khi cần." },
-          { "label": "Khoảng đệm", "text": "Thêm khoảng trống để các session không bị đặt liền kề nhau." },
-          { "label": "Buổi trò chuyện làm quen", "text": "Dành riêng một khung giờ ngắn mỗi tuần cho các buổi trò chuyện làm quen (chemistry call) 20 phút." }
+          {
+            "label": "Lặp lại",
+            "text": "Thiết lập một lần, lặp lại hằng tuần. Bạn có thể đóng riêng bất kỳ tuần nào khi cần."
+          },
+          {
+            "label": "Khoảng đệm",
+            "text": "Thêm khoảng trống để các session không bị đặt liền kề nhau."
+          },
+          {
+            "label": "Buổi trò chuyện làm quen",
+            "text": "Dành riêng một khung giờ ngắn mỗi tuần cho các buổi trò chuyện làm quen (chemistry call) 20 phút."
+          }
         ]
       },
       "practice": {
@@ -198,9 +323,18 @@
         "title": "Vừa coaching, vừa được coaching.",
         "body": "Clariva cũng là nơi hoạt động coaching của chính bạn phát triển. Tham gia peer coaching để trao đổi session với các coach đã được chứng nhận khác, đặt lịch với một coach cho riêng mình, và lưu lại toàn bộ giờ thực hành trong một hồ sơ duy nhất.",
         "bullets": [
-          { "label": "Trao đổi peer", "text": "Cho đi một session, nhận lại một session. Cả hai đều được tính là peer session trên trang tổng quan của bạn." },
-          { "label": "Coach của riêng bạn", "text": "Find a coach hoạt động hoàn toàn giống như với một coachee — ở đó, bạn chính là coachee." },
-          { "label": "Hành trình thực hành", "text": "Các session đã thực hiện, peer session, và những chiêm nghiệm của bạn tạo nên hồ sơ đứng sau chứng nhận chuyên môn của bạn." }
+          {
+            "label": "Trao đổi peer",
+            "text": "Cho đi một session, nhận lại một session. Cả hai đều được tính là peer session trên trang tổng quan của bạn."
+          },
+          {
+            "label": "Coach của riêng bạn",
+            "text": "Find a coach hoạt động hoàn toàn giống như với một coachee — ở đó, bạn chính là coachee."
+          },
+          {
+            "label": "Hành trình thực hành",
+            "text": "Các session đã thực hiện, peer session, và những chiêm nghiệm của bạn tạo nên hồ sơ đứng sau chứng nhận chuyên môn của bạn."
+          }
         ]
       },
       "privacy": {
@@ -208,9 +342,18 @@
         "title": "Ghi chú của bạn ở lại trong không gian riêng.",
         "body": "Tổ chức tài trợ cho chương trình nhưng không có cách nào tiếp cận nội dung session. Ranh giới này được thực thi bởi chính sản phẩm, chứ không chỉ bằng chính sách.",
         "bullets": [
-          { "label": "Tổ chức nhìn thấy", "text": "Một session đã diễn ra, thời lượng của nó, và việc có tham dự hay không." },
-          { "label": "Họ không bao giờ thấy", "text": "Ghi chú, bản ghi âm, hoặc tên bạn gắn với một cá nhân cụ thể." },
-          { "label": "Coachee của bạn thấy", "text": "Chỉ những phần tóm tắt bạn đánh dấu là chia sẻ. Ghi chú chuẩn bị vẫn ở chế độ riêng tư." }
+          {
+            "label": "Tổ chức nhìn thấy",
+            "text": "Một session đã diễn ra, thời lượng của nó, và việc có tham dự hay không."
+          },
+          {
+            "label": "Họ không bao giờ thấy",
+            "text": "Ghi chú, bản ghi âm, hoặc tên bạn gắn với một cá nhân cụ thể."
+          },
+          {
+            "label": "Coachee của bạn thấy",
+            "text": "Chỉ những phần tóm tắt bạn đánh dấu là chia sẻ. Ghi chú chuẩn bị vẫn ở chế độ riêng tư."
+          }
         ]
       },
       "flags": {
@@ -254,9 +397,18 @@
         "title": "Hoàn tất việc đăng ký.",
         "body": "Mười một trong số mười hai lãnh đạo đã chấp nhận. Mở danh sách, tìm ra người còn lại, và gửi lời nhắc — lời nhắc đó đến từ chương trình, không phải từ quản lý.",
         "bullets": [
-          { "label": "Mời", "text": "Thêm lãnh đạo qua email; mỗi người sẽ tự chọn coach của riêng mình." },
-          { "label": "Nhắc nhở", "text": "Chỉ một thao tác cho bất kỳ ai chưa đăng ký hoặc chưa đặt lịch." },
-          { "label": "Có nguy cơ", "text": "Cảnh báo tự động xuất hiện sau năm tuần không có session nào." }
+          {
+            "label": "Mời",
+            "text": "Thêm lãnh đạo qua email; mỗi người sẽ tự chọn coach của riêng mình."
+          },
+          {
+            "label": "Nhắc nhở",
+            "text": "Chỉ một thao tác cho bất kỳ ai chưa đăng ký hoặc chưa đặt lịch."
+          },
+          {
+            "label": "Có nguy cơ",
+            "text": "Cảnh báo tự động xuất hiện sau năm tuần không có session nào."
+          }
         ]
       },
       "withheld": {
@@ -264,9 +416,18 @@
         "title": "Điều gì bị giới hạn, và vì sao.",
         "body": "Các giới hạn được thể hiện ngay trong sản phẩm dưới dạng mục bị khóa nhưng vẫn hiển thị, để bạn luôn biết điều gì tồn tại thay vì tự hỏi mình đang thiếu điều gì.",
         "bullets": [
-          { "label": "Bạn thấy", "text": "Tình trạng đăng ký, điểm danh, số session đã dùng, trạng thái đúng tiến độ, và mức tăng trưởng mục tiêu." },
-          { "label": "Bạn không bao giờ thấy", "text": "Ghi chú, bản ghi âm, cách diễn đạt mục tiêu, hoặc coach mà một cá nhân đã chọn." },
-          { "label": "Dưới năm người", "text": "Số liệu phân bổ sẽ bị ẩn, chỉ hiển thị mức trung bình của cả nhóm." }
+          {
+            "label": "Bạn thấy",
+            "text": "Tình trạng đăng ký, điểm danh, số session đã dùng, trạng thái đúng tiến độ, và mức tăng trưởng mục tiêu."
+          },
+          {
+            "label": "Bạn không bao giờ thấy",
+            "text": "Ghi chú, bản ghi âm, cách diễn đạt mục tiêu, hoặc coach mà một cá nhân đã chọn."
+          },
+          {
+            "label": "Dưới năm người",
+            "text": "Số liệu phân bổ sẽ bị ẩn, chỉ hiển thị mức trung bình của cả nhóm."
+          }
         ]
       },
       "metrics": {
@@ -292,5 +453,6 @@
         "body": "Tình trạng đăng ký, số session đã dùng, và mức tăng trưởng tự đánh giá của từng người. Các dòng không mở ra nội dung — chúng chỉ mở ra cùng những số liệu tổng hợp đó, cộng với phần bị giới hạn."
       }
     }
-  }
+  },
+  "saveFailed": "Chưa lưu được trạng thái đã xem hướng dẫn nên hướng dẫn có thể hiện lại ở lần đăng nhập sau. Vui lòng kiểm tra kết nối."
 }

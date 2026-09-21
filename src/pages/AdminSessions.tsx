@@ -60,15 +60,13 @@ interface SessionRow {
   coachee_id: string;
   created_at: string;
   coachee_rating: number | null;
-  coachee_rating_comment: string | null;
   kind: "coaching" | "peer";
   coach?: { full_name: string; email: string };
   coachee?: { full_name: string; email: string };
   /**
-   * Canonical Coaching unit state, read from coaching_session_evidence_bulk().
-   * A session with status "completed" whose learner evidence is outstanding is
-   * NOT a completed programme unit -- Admin must be able to see the difference
-   * rather than inferring completion from the status column.
+   * Post-session evidence state, read from coaching_session_evidence_bulk().
+   * A completed session = a fulfilled requirement unit (canonical rule); this
+   * flag only reports whether the learner's write-up is still outstanding.
    */
   evidenceComplete?: boolean;
   postSessionPending?: boolean;
@@ -89,8 +87,8 @@ export default function AdminSessions() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: sessions }, { data: peerSessions }] = await Promise.all([
-      supabase.from("sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, coach_id, coachee_id, created_at, coachee_rating, coachee_rating_comment").order("start_time", { ascending: false }),
-      supabase.from("peer_sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, peer_coach_id, peer_coachee_id, created_at, coachee_rating, coachee_rating_comment").order("start_time", { ascending: false }),
+      supabase.from("sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, coach_id, coachee_id, created_at, coachee_rating").order("start_time", { ascending: false }),
+      supabase.from("peer_sessions").select("id, topic, start_time, duration_minutes, status, meeting_url, coach_notes, coachee_notes, peer_coach_id, peer_coachee_id, created_at, coachee_rating").order("start_time", { ascending: false }),
     ]);
 
     type RawRow = (Tables<"sessions"> | Tables<"peer_sessions">) & {
@@ -107,7 +105,6 @@ export default function AdminSessions() {
       coach_notes: s.coach_notes,
       coachee_notes: s.coachee_notes,
       coachee_rating: s.coachee_rating,
-      coachee_rating_comment: s.coachee_rating_comment,
     })) as unknown as RawRow[];
     const all = [...coaching, ...peer].sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
 
@@ -412,10 +409,7 @@ export default function AdminSessions() {
                     </TableCell>
                     <TableCell>
                       {s.coachee_rating ? (
-                        <span
-                          title={s.coachee_rating_comment || ""}
-                          className="inline-flex items-center gap-1 text-sm font-semibold"
-                        >
+                        <span className="inline-flex items-center gap-1 text-sm font-semibold">
                           <Star className="h-3.5 w-3.5 fill-warning text-warning" />
                           {s.coachee_rating}
                         </span>

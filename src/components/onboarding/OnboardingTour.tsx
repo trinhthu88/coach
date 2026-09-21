@@ -1,12 +1,13 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { persistOnboardingCompletion } from "@/lib/onboarding/persistCompletion";
 import { getOnboardingContent } from "@/lib/onboarding/content";
 import { IntroCarousel } from "./IntroCarousel";
 import { PointerTour } from "./PointerTour";
 import { OnboardingDoneToast } from "./OnboardingDoneToast";
 import { trackEvent } from "@/lib/analytics";
+import { toast } from "sonner";
 
 type Stage = "intro" | "pointer" | "done" | "closed";
 
@@ -34,24 +35,39 @@ export function OnboardingTour({
   const [stage, setStage] = useState<Stage>("intro");
   const content = getOnboardingContent(t, role);
 
+  // profiles.onboarding_completed_at is the only record that the walkthrough
+  // was seen — per user, in the database, so it holds across devices and
+  // sessions. Written once, the first time the user finishes OR dismisses any
+  // stage: leaving the intro (finished or skipped/closed) already counts, so
+  // closing the tab during the pointer tour cannot bring it back next login.
+  // persistOnboardingCompletion retries by itself (it outlives this component,
+  // which unmounts when the last step is dismissed); a save that still fails is
+  // reported, never swallowed, and the next stage change tries again.
+  const persistedRef = useRef(false);
   const markComplete = useCallback(async () => {
-    if (!user) return;
-    await supabase
-      .from("profiles")
-      .update({ onboarding_completed_at: new Date().toISOString() })
-      .eq("id", user.id);
+    if (!user || persistedRef.current) return;
+    persistedRef.current = true;
+    const result = await persistOnboardingCompletion(user.id);
+    if (!result.ok) {
+      persistedRef.current = false;
+      console.error("Could not record onboarding completion", result.error);
+      toast.error(t("saveFailed"));
+      return;
+    }
     refreshProfile();
-  }, [user, refreshProfile]);
+  }, [user, refreshProfile, t]);
 
   const finishIntro = useCallback(() => {
     trackEvent("onboarding_intro_completed", { role, step_count: content.steps.length });
+    void markComplete();
     setStage("pointer");
-  }, [role, content.steps.length]);
+  }, [role, content.steps.length, markComplete]);
 
   const skipIntro = useCallback(() => {
     trackEvent("onboarding_intro_skipped", { role });
+    void markComplete();
     setStage("pointer");
-  }, [role]);
+  }, [role, markComplete]);
 
   const finishPointerTour = useCallback(() => {
     trackEvent("onboarding_completed", { role, pointer_count: content.pointers.length });

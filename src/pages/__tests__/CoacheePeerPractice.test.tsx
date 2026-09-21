@@ -7,8 +7,15 @@ vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: { id: "learner
 // queries `profiles` on the global opt-in flag -- so the only thing to stub is
 // eligible_peer_partners().
 const eligiblePartners = vi.fn(() => Promise.resolve({ data: [] as unknown[], error: null as unknown }));
+// The shared module workspace (progress, requirements, goal gate) makes its
+// own rpc calls; only eligible_peer_partners is routed to the stub.
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { rpc: (...args: unknown[]) => eligiblePartners(...(args as [])) },
+  supabase: {
+    rpc: (...args: unknown[]) =>
+      args[0] === "eligible_peer_partners"
+        ? eligiblePartners(...(args as []))
+        : Promise.resolve({ data: [], error: null }),
+  },
 }));
 vi.mock("@/hooks/useEnrollmentContext", () => ({
   useEnrollmentContext: () => ({ selectedEnrollment: { id: "enrollment-1" }, loading: false }),

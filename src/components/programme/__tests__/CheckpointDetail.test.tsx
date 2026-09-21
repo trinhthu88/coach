@@ -89,3 +89,36 @@ describe("Required-units mismatch", () => {
     expect(screen.getByTestId("schedule-mismatch")).toHaveTextContent("Coaching: 4 of 5 required units have a cohort due date");
   });
 });
+
+describe("Dashboard journey summary paging", () => {
+  const twelve: ProgrammeJourneyPoint[] = Array.from({ length: 12 }, (_, i) => ({
+    checkpoint_number: i + 1,
+    due_on: `2026-${String(i + 1).padStart(2, "0")}-15`,
+    label: null,
+    module_scope: ["coaching"],
+    required_units: i + 1,
+    completed_units: i < 6 ? i + 1 : 6,
+    state: i < 6 ? "completed" : i === 6 ? "current" : "upcoming",
+  }));
+
+  const shown = () => screen.getAllByTestId("journey-checkpoint").map((el) => within(el).getAllByText(/\d+/)[0].textContent);
+
+  it("opens around the current checkpoint and lets the learner scroll back to CP1 in place", () => {
+    render(
+      <MemoryRouter>
+        <ProgrammeJourney journey={twelve} start="2026-01-01" end="2026-12-31" viewer="learner" variant="summary" maxVisible={4} />
+      </MemoryRouter>
+    );
+    expect(screen.getByText(/Showing checkpoints 6–9 of 12/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /earlier checkpoints/i }));
+    expect(screen.getByText(/Showing checkpoints 2–5 of 12/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /back to the first checkpoint/i }));
+    expect(screen.getByText(/Showing checkpoints 1–4 of 12/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /earlier checkpoints/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /later checkpoints/i }));
+    fireEvent.click(screen.getByRole("button", { name: /later checkpoints/i }));
+    expect(screen.getByText(/Showing checkpoints 9–12 of 12/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /later checkpoints/i })).toBeDisabled();
+    expect(shown()).toHaveLength(4);
+  });
+});

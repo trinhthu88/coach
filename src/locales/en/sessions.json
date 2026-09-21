@@ -285,8 +285,11 @@
       "writtenFeedback": "Written feedback",
       "feedbackPlaceholder": "What went well? What could grow further?",
       "updateFeedback": "Update feedback",
-      "submitFeedback": "Submit feedback"
-    }
+      "submitFeedback": "Submit feedback",
+      "notRated": "Not rated",
+      "rateAtLeastOne": "Rate at least one competency before saving."
+    },
+    "unscopedNotice": "This session is not attached to a programme enrollment, so it is shown read-only."
   },
   "goalRatings": {
     "enrollmentRequired": "Goal ratings are unavailable until an enrollment is selected.",
@@ -343,13 +346,68 @@
       "save": "Save reflection",
       "update": "Update reflection",
       "saved": "Reflection saved",
-      "saveFailed": "Could not save your reflection."
+      "saveFailed": "Could not save your reflection.",
+      "helpByModule": {
+        "coaching": "What did you take from this session? Only you and your Coach can read it.",
+        "peer_coaching": "What did you take from this session, in the role you played? Only you can read it.",
+        "mentoring": "What did you take from this session? Only you and your Mentor can read it.",
+        "triads": "Reflect on the role you played in this session."
+      }
     },
     "items": {
       "reflection": "Reflection",
       "goalCheckin": "Goal check-in",
       "action": "Follow-up action",
       "satisfaction": "Session satisfaction"
+    },
+    "satisfaction": {
+      "label": "How satisfied were you with this session?",
+      "stars_one": "{{count}} star",
+      "stars_other": "{{count}} stars",
+      "saved": "Thanks — your rating is saved.",
+      "saveFailed": "Could not save your rating."
+    },
+    "subtitleProvider": "You gave this peer session. Your own follow-ups are recorded on your programme, separately from your partner's.",
+    "counterpartSubtitle": "The learner's post-session follow-ups. You see whether each is done, never what they wrote.",
+    "outstanding": "Outstanding",
+    "roles": {
+      "receiver": "Receiving learner",
+      "provider": "Providing learner",
+      "coachee": "Coachee",
+      "mentee": "Mentee",
+      "participant": "Participant"
+    },
+    "footerByModule": {
+      "coaching": "Your Coach has marked the session held, so it already counts towards your programme. These follow-ups are for your own development record.",
+      "peer_coaching": "The session is recorded as held and counts towards your programme. Each of you completes your own follow-ups.",
+      "mentoring": "Your Mentor has marked the session held, so it already counts towards your programme. These follow-ups are for your own development record.",
+      "triads": "The Triad session is recorded as held. Your reflection is shared with your group under the usual unlock rules; your rating stays numeric only."
+    },
+    "triad": {
+      "reflectionHelp": "Your Triad reflection follows the role you played (coach, coachee or observer) and is shared with your group once everyone has reflected.",
+      "writeReflection": "Write my reflection",
+      "viewReflection": "View reflections",
+      "ratingAfterReflection": "Rate the session once you have submitted your reflection."
+    },
+    "action": {
+      "label": "Follow-up actions",
+      "placeholder": "One thing I will do before the next session…",
+      "add": "Add action",
+      "added": "Follow-up action added",
+      "addFailed": "Could not add the action."
+    },
+    "counterpart": {
+      "title": "Your post-session items",
+      "subtitle": "What you still owe for this session. Session notes stay confidential — never visible to a sponsor.",
+      "complete": "All done",
+      "pending": "Outstanding · {{done}}/{{total}}",
+      "optional": "optional",
+      "items": {
+        "session_notes": "Session notes",
+        "feedback_to_learner": "Notes shared with the learner",
+        "feedback_to_mentee": "Feedback to your mentee",
+        "peer_feedback": "Feedback to your peer partner"
+      }
     }
   }
 }

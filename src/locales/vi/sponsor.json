@@ -334,7 +334,10 @@
         "overdue": "Quá hạn"
       },
       "scheduleMismatchTitle": "Lịch đang chờ cập nhật",
-      "scheduleMismatch": "{{module}}: {{scheduled}}/{{required}} đơn vị yêu cầu có hạn của khóa. Các mốc chỉ tính các đơn vị đã có hạn cho đến khi lịch khóa được cập nhật."
+      "scheduleMismatch": "{{module}}: {{scheduled}}/{{required}} đơn vị yêu cầu có hạn của khóa. Các mốc chỉ tính các đơn vị đã có hạn cho đến khi lịch khóa được cập nhật.",
+      "firstCheckpoints": "Về mốc đầu tiên",
+      "earlierCheckpoints": "Các mốc trước",
+      "laterCheckpoints": "Các mốc sau"
     },
     "modules": {
       "coaching": "Coaching",
@@ -507,7 +510,9 @@
       "confidentialityTitle": "Bảo mật coaching",
       "confidentialityBody": "Nhà tài trợ chỉ xem được mức tham gia, tiến độ, sử dụng và kết quả tổng hợp của chương trình. Hội thoại coaching, ghi chú, phản ánh và bình luận riêng tư không bao giờ được chia sẻ.",
       "ratingNone": "Chưa có đánh giá trải nghiệm chương trình.",
-      "journeyWindow": "Đang hiển thị mốc {{first}}–{{last}} trên {{total}}"
+      "journeyWindow": "Đang hiển thị mốc {{first}}–{{last}} trên {{total}}",
+      "noGoalSet": "Chưa đặt mục tiêu",
+      "goalNotRated": "Chưa đánh giá"
     }
   },
   "report": {

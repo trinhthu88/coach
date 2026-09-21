@@ -79,8 +79,10 @@ const NAV: NavItem[] = [
   { to: "/sessions", labelKey: "nav.sessions", icon: Calendar, roles: ["coachee"] },
 
   // Coachee — My development (each item is itself gated on its module being
-  // configured for the selected enrollment, so only relevant modules appear)
-  { to: "/coaches", labelKey: "nav.coaching", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", groupKey: "navGroups.developMyself", module: "coaching", moduleDirection: "receive" },
+  // configured for the selected enrollment, so only relevant modules appear).
+  // Gated on the module ONLY -- never a give/receive direction: the sidebar
+  // must list exactly the modules canonical progress counts for the learner.
+  { to: "/coaches", labelKey: "nav.coaching", icon: Search, roles: ["coachee"], onboardingId: "nav-find-coaches", groupKey: "navGroups.developMyself", module: "coaching" },
   { to: "/coachee/peer-practice", labelKey: "nav.peerCoaching", icon: MessagesSquare, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "peer_coaching" },
   { to: "/mentoring", labelKey: "nav.mentoring", icon: Handshake, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "mentoring" },
   { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coachee"], groupKey: "navGroups.developMyself", module: "triads" },

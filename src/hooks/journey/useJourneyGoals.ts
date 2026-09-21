@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import { isKeepOneGoalError } from "@/lib/goalGate";
+import { BOOKING_GOAL_GATE_QUERY_KEY } from "@/components/goals/useBookingGoalGate";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import type { Goal, Milestone } from "./types";
 import { LEARNER_ENGAGEMENT_QUERY_KEYS } from "@/hooks/useLearnerCanonicalProgress";
@@ -41,6 +44,7 @@ async function fetchJourneyGoals(coacheeId: string, enrollmentId: string): Promi
  */
 export function useJourneyGoals(coacheeId: string | undefined, options: JourneyGoalsOptions = {}) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation("common");
   const { selectedEnrollment } = useEnrollmentContext(coacheeId, options.enrollmentId);
   const enrollmentId = selectedEnrollment?.id;
   const queryKey = ["journey-goals", coacheeId, enrollmentId];
@@ -54,6 +58,8 @@ export function useJourneyGoals(coacheeId: string | undefined, options: JourneyG
 
   const refresh = () => {
     for (const key of LEARNER_ENGAGEMENT_QUERY_KEYS) void queryClient.invalidateQueries({ queryKey: [...key] });
+    // Goals open or close the booking goal gate.
+    void queryClient.invalidateQueries({ queryKey: [BOOKING_GOAL_GATE_QUERY_KEY] });
     return queryClient.invalidateQueries({ queryKey });
   };
   // onChanged is never actually passed by either consumer today (both call
@@ -78,13 +84,38 @@ export function useJourneyGoals(coacheeId: string | undefined, options: JourneyG
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
   });
 
+  // Title, description and target date are editable at any time; the
+  // enrollment trigger still validates the target date.
+  const updateGoalMutation = useMutation({
+    mutationFn: async ({ goalId, ...payload }: { goalId: string; title: string; description: string | null; target_date: string | null }) => {
+      if (!enrollmentId) throw new Error("Select an enrollment before editing a goal");
+      const { error } = await supabase
+        .from("coachee_goals")
+        .update({ title: payload.title, description: payload.description, target_date: payload.target_date })
+        .eq("id", goalId)
+        .eq("enrollment_id", enrollmentId);
+      if (error) throw error;
+    },
+    onSuccess: notifyChanged,
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
+  });
+
   const deleteGoalMutation = useMutation({
     mutationFn: async (goalId: string) => {
       const { error } = await supabase.from("coachee_goals").update({ status: "archived" }).eq("id", goalId).eq("enrollment_id", enrollmentId as string);
       if (error) throw error;
     },
     onSuccess: notifyChanged,
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
+    // From the goal setup deadline (cohort start + 7 days) the server keeps the last active goal
+    // (last_active_goal_required); explain it instead of the raw message.
+    onError: (error) =>
+      toast.error(
+        isKeepOneGoalError(error)
+          ? t("errors.keepOneActiveGoal")
+          : error instanceof Error
+            ? error.message
+            : "Failed",
+      ),
   });
 
   const addMilestoneMutation = useMutation({
@@ -127,6 +158,14 @@ export function useJourneyGoals(coacheeId: string | undefined, options: JourneyG
   const addGoal = async (payload: { title: string; description: string | null; target_date: string | null }) => {
     if (!coacheeId) return false;
     return addGoalMutation.mutateAsync(payload).then(
+      () => true,
+      () => false
+    );
+  };
+
+  const updateGoal = async (goalId: string, payload: { title: string; description: string | null; target_date: string | null }) => {
+    if (!coacheeId) return false;
+    return updateGoalMutation.mutateAsync({ goalId, ...payload }).then(
       () => true,
       () => false
     );
@@ -180,6 +219,7 @@ export function useJourneyGoals(coacheeId: string | undefined, options: JourneyG
     error: error ? (error instanceof Error ? error.message : String(error)) : null,
     refresh,
     addGoal,
+    updateGoal,
     deleteGoal,
     addMilestone,
     deleteMilestone,

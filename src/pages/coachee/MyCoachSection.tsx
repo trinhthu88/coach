@@ -8,8 +8,10 @@ import {
   ModuleChip,
   ModulePersonCard,
   ModuleProgressCard,
+  ModulePrimaryAction,
   ModuleSessionList,
 } from "@/components/programme/module/ModulePage";
+import { ModuleWorkspaceSections } from "@/components/programme/module/ModuleWorkspaceSections";
 
 /**
  * Coaching workspace (Coachee prototype → Coaching): My coach, Coaching
@@ -21,14 +23,17 @@ import {
  */
 export function MyCoachSection() {
   const { t } = useTranslation("dashboard");
-  const { hasDirection } = useProgrammeModules();
-  const receiveEnabled = hasDirection("coaching", "receive");
+  // Gated on the module alone, like the sidebar item: a learner's Coaching
+  // module is always received, and canonical progress counts it regardless
+  // of any give/receive flag.
+  const { hasModule } = useProgrammeModules();
+  const receiveEnabled = hasModule("coaching");
   const ws = useModuleWorkspace("coaching");
   const { data: coach, loading: coachLoading } = useMyCoachCardData(ws.userId, receiveEnabled);
   const next = nextOpenSession(ws.sessions);
 
-  // Coaching isn't a "receive" module for this enrollment: no workspace (the
-  // nav hides the page too) — the coach directory below still renders.
+  // Coaching isn't in this enrollment's programme: no workspace (the nav hides
+  // the page too) — the coach directory below still renders.
   if (!receiveEnabled) return null;
 
   return (
@@ -67,8 +72,19 @@ export function MyCoachSection() {
         />
       </div>
 
+      <ModuleWorkspaceSections
+        ws={ws}
+        module="coaching"
+        booking={
+          coach?.id ? (
+            <ModulePrimaryAction to={`/coaches/${coach.id}/book`}>{t("learnerModules.coaching.book")}</ModulePrimaryAction>
+          ) : undefined
+        }
+      />
+
       <ModuleSessionList
         testId="coaching-sessions"
+        outstandingBySession={ws.outstandingBySession}
         label={t("learnerModules.coaching.sessionsLabel")}
         sessions={orderSessionsForDisplay(ws.sessions)}
         loading={ws.sessionsLoading}

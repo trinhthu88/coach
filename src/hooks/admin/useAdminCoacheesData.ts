@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
 import type { Row, Status } from "@/pages/admin/coachees/coacheeDisplay";
 import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
+import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 export interface ProgrammeOpt {
   id: string;
@@ -16,6 +17,12 @@ export interface NamedOpt {
   name: string;
 }
 
+/** A cohort owns its programme; organization is the cohort's default. */
+export interface CohortOpt extends NamedOpt {
+  programme_id: string | null;
+  organization_id: string | null;
+}
+
 /**
  * Loads the full admin coachees list — profile, session counts, programme/
  * cohort/organization enrollment, coach allowlist and session-limit override
@@ -27,9 +34,8 @@ export function useAdminCoacheesData() {
   const [rows, setRows] = useState<Row[]>([]);
   const [coachOpts, setCoachOpts] = useState<NamedOpt[]>([]);
   const [programmes, setProgrammes] = useState<ProgrammeOpt[]>([]);
-  const [cohorts, setCohorts] = useState<NamedOpt[]>([]);
+  const [cohorts, setCohorts] = useState<CohortOpt[]>([]);
   const [organizations, setOrganizations] = useState<NamedOpt[]>([]);
-  const [defaultLimit, setDefaultLimit] = useState(4);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,7 +48,6 @@ export function useAdminCoacheesData() {
       { data: cohortsData },
       { data: orgsData },
       { data: allow },
-      { data: limits },
       { data: requests },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
@@ -50,10 +55,9 @@ export function useAdminCoacheesData() {
       supabase.from("sessions").select("coachee_id, enrollment_id, status"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date, status"),
       supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
-      supabase.from("cohorts").select("id, name"),
+      supabase.from("cohorts").select("id, name, programme_id, organization_id"),
       supabase.from("organizations").select("id, name").order("name"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
-      supabase.from("session_limits").select("id, coachee_id, monthly_limit"),
       supabase.from("access_requests").select("id, email, status").eq("status", "approved"),
     ]);
 
@@ -80,6 +84,17 @@ export function useAdminCoacheesData() {
         if (enrollment) enrByUser.set(userId, enrollment);
       }
     }
+    // "% complete" is the canonical engine's number for the SAME enrollment the
+    // learner sees — never a local estimate (time elapsed, session counts).
+    const selectedEnrollmentIds = [...enrByUser.values()].map((e) => e.id);
+    let progressFailed = false;
+    const canonical = await fetchAdminCanonicalProgress(selectedEnrollmentIds).catch((error) => {
+      // Never a silent zero: the rows show a "progress unavailable" state.
+      console.error("Admin canonical progress failed to load", error);
+      progressFailed = true;
+      return [];
+    });
+    const canonicalByEnrollment = new Map(canonical.map((c) => [c.enrollment_id, c]));
     const progById = new Map((progs || []).map((p) => [p.id, p]));
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const orgById = new Map((orgsData || []).map((o) => [o.id, o.name]));
@@ -89,18 +104,12 @@ export function useAdminCoacheesData() {
       arr.push({ id: a.coach_id, name: coachNameById.get(a.coach_id) || "—" });
       allowByCoachee.set(a.coachee_id, arr);
     });
-    const done = new Map<string, number>();
     const booked = new Map<string, number>();
     (sess || []).filter((s) => s.enrollment_id).forEach((s) => {
       const enr = enrByUser.get(s.coachee_id);
       if (!enr || enr.id !== s.enrollment_id) return;
-      if (s.status === "completed") done.set(s.coachee_id, (done.get(s.coachee_id) || 0) + 1);
       if (["pending_coach_approval", "confirmed"].includes(s.status)) booked.set(s.coachee_id, (booked.get(s.coachee_id) || 0) + 1);
     });
-    const defLimit = (limits || []).find((l) => l.coachee_id === null)?.monthly_limit ?? 4;
-    setDefaultLimit(defLimit);
-    const limByCoachee = new Map<string, Pick<Tables<"session_limits">, "id" | "coachee_id" | "monthly_limit">>();
-    (limits || []).filter((l) => l.coachee_id).forEach((l) => limByCoachee.set(l.coachee_id as string, l));
     const requestIdByEmail = new Map<string, string>();
     (requests || []).forEach((r) => {
       if (!requestIdByEmail.has(String(r.email).toLowerCase())) {
@@ -113,8 +122,9 @@ export function useAdminCoacheesData() {
         const p = profById.get(id);
         if (!p) return null;
         const enr = enrByUser.get(id);
-        const lim = limByCoachee.get(id);
         const prog = enr?.programme_id ? progById.get(enr.programme_id) : null;
+        const progress = enr ? canonicalByEnrollment.get(enr.id) : undefined;
+        const available = !!progress?.progress_available;
         return {
           id,
           full_name: p.full_name,
@@ -122,10 +132,11 @@ export function useAdminCoacheesData() {
           status: p.status as Status,
           created_at: p.created_at,
           booked: booked.get(id) || 0,
-          done: done.get(id) || 0,
+          completed_units: available ? progress!.completed_units : null,
+          required_units: available ? progress!.required_units : null,
+          progress_error: !!enr && progressFailed,
           programme_id: enr?.programme_id || null,
           programme_name: prog?.name || null,
-          programme_default_limit: prog?.coachee_session_limit ?? null,
           programme_duration_months: prog?.duration_months ?? null,
           cohort_id: enr?.cohort_id || null,
           cohort_name: enr?.cohort_id ? (cohortById.get(enr.cohort_id) as string) || null : null,
@@ -133,9 +144,8 @@ export function useAdminCoacheesData() {
           organization_name: enr?.organization_id ? orgById.get(enr.organization_id) || null : null,
           enrollment_id: enr?.id || null,
           enrollment_start_date: enr?.start_date || null,
+          completion_pct: available ? canonicalCompletionPct(progress!.full_completion_pct) : null,
           selected_coaches: allowByCoachee.get(id) || [],
-          session_limit: lim?.monthly_limit ?? defLimit,
-          limit_row_id: lim?.id || null,
           access_request_id: requestIdByEmail.get(String(p.email).toLowerCase()) ?? null,
           spoken_languages: p.spoken_languages?.length ? p.spoken_languages : ["vi"],
         } as Row;
@@ -150,7 +160,7 @@ export function useAdminCoacheesData() {
         .sort((a, b) => a.name.localeCompare(b.name))
     );
     setProgrammes((progs || []) as ProgrammeOpt[]);
-    setCohorts((cohortsData || []) as NamedOpt[]);
+    setCohorts((cohortsData || []) as CohortOpt[]);
     setOrganizations((orgsData || []) as NamedOpt[]);
     setLoading(false);
   }, []);
@@ -159,5 +169,5 @@ export function useAdminCoacheesData() {
     load();
   }, [load]);
 
-  return { loading, rows, coachOpts, programmes, cohorts, organizations, defaultLimit, load };
+  return { loading, rows, coachOpts, programmes, cohorts, organizations, load };
 }

@@ -56,7 +56,11 @@
 -- richer one turns all nine red, so seed.sql stays the test baseline and this
 -- file is applied on demand instead.
 --
--- Apply it to a database that has every migration and NO programme data:
+-- Apply it to a database that has every migration and NO programme data,
+-- then apply scripts/seed-training-content.sql on top. The Training module is
+-- part of the demo programmes: without it learner4 reads 6 overdue instead of
+-- the intended 11 (4 Coaching + 2 Mentoring + 5 Training weeks), and the
+-- training script verifies those headline numbers.
 --
 --   psql "$DEMO_DB_URL" -v ON_ERROR_STOP=1 \
 --        -c "SET app.seed_environment='demo'" -f supabase/seed-demo.sql
@@ -266,6 +270,40 @@ BEGIN
   RETURN v_session;
 END $$;
 
+-- One active, rated goal per enrollment in the given cohort prefixes ('a',
+-- 'bcd'), written AS THE LEARNER. Goals belong to the enrollment. They must
+-- exist before that learner books anything: from day 8 of the cohort every
+-- booking flow calls assert_enrollment_goal_gate, and a seed that booked first
+-- would be refused -- exactly as a real learner would be.
+CREATE OR REPLACE FUNCTION pg_temp.seed_goals(p_prefixes text) RETURNS void
+LANGUAGE plpgsql AS $$
+DECLARE e record; v_goal uuid;
+BEGIN
+  FOR e IN
+    SELECT en.slug, pe.id AS enrollment_id, pe.user_id, coalesce(pe.end_date, c.end_date) AS end_date
+    FROM _enr en
+    JOIN public.programme_enrollments pe ON pe.id = en.id
+    JOIN public.cohorts c ON c.id = pe.cohort_id
+    WHERE strpos(p_prefixes, left(en.slug, 1)) > 0
+  LOOP
+    PERFORM pg_temp.act_as(e.user_id);
+    v_goal := md5('demo-goal-' || e.enrollment_id)::uuid;
+    INSERT INTO public.coachee_goals (id, coachee_id, enrollment_id, title, description, target_date, status, sort_order)
+    VALUES (v_goal, e.user_id, e.enrollment_id, 'Lead team meetings that end in clear decisions',
+            'Every meeting I run closes with an owner and a date for each decision.', e.end_date, 'active', 0)
+    ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.coachee_goal_ratings (goal_id, coachee_id, enrollment_id, start_rating, current_rating, target_rating)
+    VALUES (v_goal, e.user_id, e.enrollment_id, 30,
+            CASE WHEN e.slug LIKE 'a%' OR e.slug IN ('b1','c1','d1') THEN 80
+                 WHEN e.slug IN ('b2','b5','c2','d2') THEN 60
+                 WHEN e.slug IN ('b3','b6','c3','d3') THEN 45
+                 ELSE 30 END,
+            80)
+    ON CONFLICT (goal_id) DO NOTHING;
+  END LOOP;
+  PERFORM pg_temp.act_as_service();
+END $$;
+
 -- ---------------------------------------------------------------------------
 -- 1. Accounts
 -- ---------------------------------------------------------------------------
@@ -278,6 +316,9 @@ CREATE TEMP TABLE _people (
 
 INSERT INTO _people (slug, id, email, full_name, role) VALUES
   ('sponsor',  'd0000000-0000-4000-8000-000000000001', 'sponsor@clariva.demo',  'Sam Sponsor',        'sponsor'),
+  -- Organisation B's sponsor: same cohort, different organisation. Proves that
+  -- sponsor visibility follows programme_enrollments.organization_id only.
+  ('sponsor2', 'd0000000-0000-4000-8000-000000000002', 'sponsor2@clariva.demo', 'Sasha Bui',          'sponsor'),
   ('coach1',   'd0000000-0000-4000-8000-000000000011', 'coach1@clariva.demo',   'Paul Gossen',        'coach'),
   ('coach2',   'd0000000-0000-4000-8000-000000000012', 'coach2@clariva.demo',   'Dinh Lan Huong',     'coach'),
   ('coach3',   'd0000000-0000-4000-8000-000000000013', 'coach3@clariva.demo',   'Anna Fan',           'coach'),
@@ -305,6 +346,7 @@ INSERT INTO _people (slug, id, email, full_name, role) VALUES
   ('alum4',    'd0000000-0000-4000-8000-000000000034', 'alum4@clariva.demo',    'Noor Farah',         'coachee'),
   ('learner9', 'd0000000-0000-4000-8000-000000000029', 'learner9@clariva.demo', 'Ana Silva',          'coachee'),
   ('learner10','d0000000-0000-4000-8000-00000000002a', 'learner10@clariva.demo','Peter Novak',        'coachee'),
+  ('learner11','d0000000-0000-4000-8000-00000000002b', 'learner11@clariva.demo','Minh Le',            'coachee'),
   ('tasc5',    'd0000000-0000-4000-8000-000000000045', 'tasc5@clariva.demo',    'Leila Aziz',         'coachee');
 
 INSERT INTO auth.users (
@@ -351,17 +393,17 @@ BEGIN
 END
 $admin$;
 
-INSERT INTO public.profiles (id, full_name, email, status, must_change_password, peer_coaching_opt_in)
-SELECT p.id, p.full_name, p.email, 'active'::public.user_status, false,
+INSERT INTO public.profiles (id, full_name, email, status, peer_coaching_opt_in)
+SELECT p.id, p.full_name, p.email, 'active'::public.user_status,
        p.role = 'coachee'   -- every learner is opted in, so Peer has a pool
 FROM _people p
 ON CONFLICT (id) DO UPDATE
   SET full_name = excluded.full_name, status = 'active'::public.user_status,
       peer_coaching_opt_in = excluded.peer_coaching_opt_in;
 
-INSERT INTO public.profiles (id, full_name, email, status, must_change_password)
+INSERT INTO public.profiles (id, full_name, email, status)
 SELECT a.id, coalesce(u.raw_user_meta_data->>'full_name', 'Clariva Admin'), u.email,
-       'active'::public.user_status, false
+       'active'::public.user_status
 FROM _admin a JOIN auth.users u ON u.id = a.id
 ON CONFLICT (id) DO UPDATE SET status = 'active'::public.user_status;
 
@@ -369,6 +411,24 @@ INSERT INTO public.user_roles (user_id, role)
 SELECT p.id, p.role FROM _people p
 UNION ALL SELECT a.id, 'admin'::public.app_role FROM _admin a
 ON CONFLICT DO NOTHING;
+
+-- handle_new_user() gave every account above a default `coachee` role. Only
+-- the learners are coachees: user_roles is the one source of role, so the
+-- default must not survive on the Sponsor, the Coaches or a newly created
+-- Admin (trg_user_roles_sponsor_exclusive already strips it from the Sponsor;
+-- this keeps the seed correct on its own).
+DELETE FROM public.user_roles r
+USING _people p
+WHERE r.user_id = p.id AND r.role = 'coachee'::public.app_role AND p.role <> 'coachee';
+DELETE FROM public.user_roles r
+USING _admin a
+WHERE r.user_id = a.id AND a.created AND r.role = 'coachee'::public.app_role;
+DELETE FROM public.coachee_profiles cp
+USING _people p
+WHERE cp.id = p.id AND p.role <> 'coachee';
+DELETE FROM public.coachee_profiles cp
+USING _admin a
+WHERE cp.id = a.id AND a.created;
 
 -- Coach identity. A Mentor is a Coach with a cohort assignment, so the same
 -- four people serve both roles; no mentor_profiles row is required.
@@ -380,12 +440,20 @@ ON CONFLICT (id) DO UPDATE SET approval_status = 'active'::public.user_status, p
 -- ---------------------------------------------------------------------------
 -- 2. Organisation and sponsor
 -- ---------------------------------------------------------------------------
-INSERT INTO public.organizations (id, name)
-VALUES ('d0000000-0000-4000-8000-00000000aaaa', 'Clariva Demo Organization')
+-- Two organisations deliberately share Emerging Leaders · Cohort B. The cohort
+-- row names Organisation A (a convenience label only); what a Sponsor may see
+-- is decided solely by each ENROLLMENT's organization_id, so Organisation B's
+-- sponsor sees B's three learners in that cohort and nothing of A's -- and A's
+-- sponsor, despite the cohort label, sees nothing of B's.
+INSERT INTO public.organizations (id, name) VALUES
+  ('d0000000-0000-4000-8000-00000000aaaa', 'Clariva Demo Organization'),
+  ('d0000000-0000-4000-8000-00000000bbbb', 'Clariva Demo Organization B')
 ON CONFLICT (id) DO UPDATE SET name = excluded.name;
 
 INSERT INTO public.sponsor_profiles (user_id, organization_id)
-SELECT p.id, 'd0000000-0000-4000-8000-00000000aaaa' FROM _people p WHERE p.slug = 'sponsor'
+SELECT p.id, CASE p.slug WHEN 'sponsor2' THEN 'd0000000-0000-4000-8000-00000000bbbb'::uuid
+                         ELSE 'd0000000-0000-4000-8000-00000000aaaa'::uuid END
+FROM _people p WHERE p.role = 'sponsor'
 ON CONFLICT (user_id) DO UPDATE SET organization_id = excluded.organization_id;
 
 -- ---------------------------------------------------------------------------
@@ -416,16 +484,16 @@ INSERT INTO public.programme_modules (programme_id, module, enabled, config) VAL
 --    materialise themselves through sync_cohort_requirement_dates
 -- ---------------------------------------------------------------------------
 INSERT INTO public.cohorts (id, name, programme_id, organization_id, start_date, end_date) VALUES
-  ('d0000000-0000-4000-8000-00000000c00a', 'Emerging Leaders - Cohort A (completed)',
+  ('d0000000-0000-4000-8000-00000000c00a', 'Emerging Leaders · Cohort A (completed)',
    'd0000000-0000-4000-8000-0000000f0001', 'd0000000-0000-4000-8000-00000000aaaa',
    DATE '2026-01-06', DATE '2026-06-30'),
-  ('d0000000-0000-4000-8000-00000000c00b', 'Emerging Leaders - Cohort B',
+  ('d0000000-0000-4000-8000-00000000c00b', 'Emerging Leaders · Cohort B',
    'd0000000-0000-4000-8000-0000000f0001', 'd0000000-0000-4000-8000-00000000aaaa',
    current_date - 120, DATE '2027-03-31'),
-  ('d0000000-0000-4000-8000-00000000c00c', 'Executive Excellence - Cohort C',
+  ('d0000000-0000-4000-8000-00000000c00c', 'Executive Excellence · Cohort C',
    'd0000000-0000-4000-8000-0000000f0002', 'd0000000-0000-4000-8000-00000000aaaa',
    current_date - 150, DATE '2027-06-30'),
-  ('d0000000-0000-4000-8000-00000000c00d', 'TASC Essential - Cohort D',
+  ('d0000000-0000-4000-8000-00000000c00d', 'TASC Essential · Cohort D',
    'd0000000-0000-4000-8000-0000000f0003', 'd0000000-0000-4000-8000-00000000aaaa',
    current_date - 90, DATE '2027-01-31');
 
@@ -507,7 +575,8 @@ ON CONFLICT DO NOTHING;
 -- ---------------------------------------------------------------------------
 -- 6. Enrollments
 -- ---------------------------------------------------------------------------
-CREATE TEMP TABLE _enr (slug text PRIMARY KEY, id uuid, person text, cohort uuid) ON COMMIT DROP;
+CREATE TEMP TABLE _enr (slug text PRIMARY KEY, id uuid, person text, cohort uuid,
+  org uuid NOT NULL DEFAULT 'd0000000-0000-4000-8000-00000000aaaa') ON COMMIT DROP;
 
 INSERT INTO _enr (slug, id, person, cohort) VALUES
   -- Cohort A: four finishers. learner1 also appears here, then moves to B.
@@ -515,12 +584,16 @@ INSERT INTO _enr (slug, id, person, cohort) VALUES
   ('a2', 'd0000000-0000-4000-8000-0000000e0a02', 'alum1',    'd0000000-0000-4000-8000-00000000c00a'),
   ('a3', 'd0000000-0000-4000-8000-0000000e0a03', 'alum2',    'd0000000-0000-4000-8000-00000000c00a'),
   ('a4', 'd0000000-0000-4000-8000-0000000e0a04', 'alum3',    'd0000000-0000-4000-8000-00000000c00a'),
+  -- Cohort B: learner1-3 belong to Organisation A, learner4-6 to Organisation B
+  -- (org set below).
   ('b1', 'd0000000-0000-4000-8000-0000000e0b01', 'learner1', 'd0000000-0000-4000-8000-00000000c00b'),
   ('b2', 'd0000000-0000-4000-8000-0000000e0b02', 'learner2', 'd0000000-0000-4000-8000-00000000c00b'),
   ('b3', 'd0000000-0000-4000-8000-0000000e0b03', 'learner3', 'd0000000-0000-4000-8000-00000000c00b'),
   ('b4', 'd0000000-0000-4000-8000-0000000e0b04', 'learner4', 'd0000000-0000-4000-8000-00000000c00b'),
-  ('c1', 'd0000000-0000-4000-8000-0000000e0c01', 'learner5', 'd0000000-0000-4000-8000-00000000c00c'),
-  ('c2', 'd0000000-0000-4000-8000-0000000e0c02', 'learner6', 'd0000000-0000-4000-8000-00000000c00c'),
+  ('b5', 'd0000000-0000-4000-8000-0000000e0b05', 'learner5', 'd0000000-0000-4000-8000-00000000c00b'),
+  ('b6', 'd0000000-0000-4000-8000-0000000e0b06', 'learner6', 'd0000000-0000-4000-8000-00000000c00b'),
+  ('c1', 'd0000000-0000-4000-8000-0000000e0c01', 'learner9', 'd0000000-0000-4000-8000-00000000c00c'),
+  ('c2', 'd0000000-0000-4000-8000-0000000e0c02', 'learner11','d0000000-0000-4000-8000-00000000c00c'),
   ('c3', 'd0000000-0000-4000-8000-0000000e0c03', 'learner7', 'd0000000-0000-4000-8000-00000000c00c'),
   ('c4', 'd0000000-0000-4000-8000-0000000e0c04', 'learner8', 'd0000000-0000-4000-8000-00000000c00c'),
   ('d1', 'd0000000-0000-4000-8000-0000000e0d01', 'tasc1',    'd0000000-0000-4000-8000-00000000c00d'),
@@ -528,17 +601,23 @@ INSERT INTO _enr (slug, id, person, cohort) VALUES
   ('d3', 'd0000000-0000-4000-8000-0000000e0d03', 'tasc3',    'd0000000-0000-4000-8000-00000000c00d'),
   ('d4', 'd0000000-0000-4000-8000-0000000e0d04', 'tasc4',    'd0000000-0000-4000-8000-00000000c00d'),
   ('a5', 'd0000000-0000-4000-8000-0000000e0a05', 'alum4',    'd0000000-0000-4000-8000-00000000c00a'),
-  ('b5', 'd0000000-0000-4000-8000-0000000e0b05', 'learner9', 'd0000000-0000-4000-8000-00000000c00b'),
   ('c5', 'd0000000-0000-4000-8000-0000000e0c05', 'learner10','d0000000-0000-4000-8000-00000000c00c'),
   ('d5', 'd0000000-0000-4000-8000-0000000e0d05', 'tasc5',    'd0000000-0000-4000-8000-00000000c00d');
+
+-- Organisation B: learner4-6 in Cohort B, plus tasc4-5 in Cohort D, so each
+-- organisation holds at least 5 enrollments (the anonymous-distribution
+-- privacy threshold, sponsor_min_leaders_for_distribution = 5).
+UPDATE _enr SET org = 'd0000000-0000-4000-8000-00000000bbbb' WHERE slug IN ('b4', 'b5', 'b6', 'd4', 'd5');
 
 -- Cohort A first, and closed before B opens: only one ongoing enrollment per
 -- learner is allowed, which is what makes learner1's history a real second
 -- enrollment rather than a relabelled one.
-INSERT INTO public.programme_enrollments (id, programme_id, user_id, cohort_id, status, start_date, end_date)
-SELECT e.id, c.programme_id, p.id, e.cohort, 'active'::public.enrollment_status, c.start_date, c.end_date
+INSERT INTO public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status, start_date, end_date)
+SELECT e.id, c.programme_id, p.id, e.cohort, e.org, 'active'::public.enrollment_status, c.start_date, c.end_date
 FROM _enr e JOIN _people p ON p.slug = e.person JOIN public.cohorts c ON c.id = e.cohort
 WHERE e.slug LIKE 'a%';
+
+SELECT pg_temp.seed_goals('a');
 
 -- ---------------------------------------------------------------------------
 -- 7. Cohort A activity -- a finished programme
@@ -610,18 +689,26 @@ UPDATE public.programme_enrollments
 -- ---------------------------------------------------------------------------
 -- 8. Ongoing cohorts: enrollments
 -- ---------------------------------------------------------------------------
-INSERT INTO public.programme_enrollments (id, programme_id, user_id, cohort_id, status, start_date)
-SELECT e.id, c.programme_id, p.id, e.cohort, 'active'::public.enrollment_status, c.start_date
+INSERT INTO public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status, start_date)
+SELECT e.id, c.programme_id, p.id, e.cohort, e.org, 'active'::public.enrollment_status, c.start_date
 FROM _enr e JOIN _people p ON p.slug = e.person JOIN public.cohorts c ON c.id = e.cohort
 WHERE e.slug NOT LIKE 'a%';
 
+-- Every ongoing learner is past day 7 of their cohort, so each needs an active
+-- goal before any booking (enrollment_has_active_goal gates all four booking
+-- flows from day 8). Goals are written as the learner, like the app does.
+SELECT pg_temp.seed_goals('bcd');
+
 -- ---------------------------------------------------------------------------
--- 9. Cohort B -- complete / on track / behind / just started
+-- 9. Cohort B -- two organisations in one cohort
+--    Organisation A: b1 complete / b2 mid, deliverables outstanding / b3 behind
+--    Organisation B: b4 just started (0%) / b5 mid / b6 partial
 -- ---------------------------------------------------------------------------
 DO $cohort_b$
 DECLARE
   c1 uuid; c2 uuid; c3 uuid; c4 uuid; adm uuid;
-  b1 uuid; b2 uuid; b3 uuid; b4 uuid; ub1 uuid; ub2 uuid; ub3 uuid; ub4 uuid;
+  b1 uuid; b2 uuid; b3 uuid; b4 uuid; b5 uuid; b6 uuid;
+  ub1 uuid; ub2 uuid; ub3 uuid; ub4 uuid; ub5 uuid; ub6 uuid;
   i integer;
 BEGIN
   SELECT id INTO adm FROM _admin;
@@ -633,6 +720,9 @@ BEGIN
   SELECT user_id INTO ub2 FROM public.programme_enrollments WHERE id=b2;
   SELECT user_id INTO ub3 FROM public.programme_enrollments WHERE id=b3;
   SELECT user_id INTO ub4 FROM public.programme_enrollments WHERE id=b4;
+  SELECT id INTO b5 FROM _enr WHERE slug='b5';  SELECT id INTO b6 FROM _enr WHERE slug='b6';
+  SELECT user_id INTO ub5 FROM public.programme_enrollments WHERE id=b5;
+  SELECT user_id INTO ub6 FROM public.programme_enrollments WHERE id=b6;
 
   -- b1 FULLY COMPLETE.
   FOR i IN 1..4 LOOP PERFORM pg_temp.coaching_unit(b1, c1, i, now() - make_interval(days => 100 - i*15), true); END LOOP;
@@ -646,6 +736,13 @@ BEGIN
   -- outstanding. Nothing is fabricated -- the engine derives 'behind' itself.
   FOR i IN 1..2 LOOP PERFORM pg_temp.coaching_unit(b3, c3, i, now() - make_interval(days => 90 - i*20), true); END LOOP;
 
+  -- b5 MID (Organisation B): 3 of 4 Coaching, 1 of 2 Mentoring.
+  FOR i IN 1..3 LOOP PERFORM pg_temp.coaching_unit(b5, c1, i, now() - make_interval(days => 92 - i*15), true); END LOOP;
+  PERFORM pg_temp.mentoring_unit(b5, c4, 1, now() - interval '55 days', true);
+
+  -- b6 PARTIAL (Organisation B): 2 of 4 Coaching, no Mentoring.
+  FOR i IN 1..2 LOOP PERFORM pg_temp.coaching_unit(b6, c3, i, now() - make_interval(days => 88 - i*20), true); END LOOP;
+
   -- b4 JUST STARTED: enrolled, nothing booked. Because the cohort's Coaching
   -- and Mentoring deadlines have already passed, b4 reads as overdue on those
   -- modules -- which is the honest canonical answer, not a display quirk.
@@ -656,11 +753,16 @@ BEGIN
   -- verification 6 exists to catch exactly that.
   PERFORM pg_temp.peer_unit(b1, ub2, now() - interval '40 days', true);
   PERFORM pg_temp.peer_unit(b1, ub3, now() - interval '26 days', true);
+  -- Peer partners cross organisations inside the cohort (eligibility is by
+  -- cohort); each participant's unit still belongs to their own enrollment.
+  PERFORM pg_temp.peer_unit(b2, ub5, now() - interval '33 days', true);
+  PERFORM pg_temp.peer_unit(b5, ub6, now() - interval '19 days', true);
 
   -- Triads (deadline still ahead): b1 finishes both, b2 one, b3 one booked
   -- but not yet held.
   PERFORM pg_temp.triad_unit(adm, 'd0000000-0000-4000-8000-00000000c00b', 1, ARRAY[b1, b2], now() - interval '50 days', true);
   PERFORM pg_temp.triad_unit(adm, 'd0000000-0000-4000-8000-00000000c00b', 2, ARRAY[b1, b3], now() - interval '20 days', true);
+  PERFORM pg_temp.triad_unit(adm, 'd0000000-0000-4000-8000-00000000c00b', 1, ARRAY[b5, b6], now() - interval '24 days', true);
 END
 $cohort_b$;
 
@@ -732,6 +834,246 @@ END
 $cohort_d$;
 
 -- ---------------------------------------------------------------------------
+-- 11b. Post-session deliverables -- every module, every participant
+-- ---------------------------------------------------------------------------
+-- A held session and the learner's write-up are two different facts. For each
+-- completed session a participating learner owes the shared base pattern:
+--
+--   reflection      session_learning_reflections (Triads: learner_triad_submit_reflection)
+--   goal check-in   record_goal_checkins
+--   follow-up       save_enrollment_activity_actions
+--   satisfaction    submit_session_satisfaction (Triads: on the reflection)
+--
+-- The sessions are enumerated with learner_session_deliverables -- the very
+-- list the post-session checklist renders -- and every item is written AS THE
+-- LEARNER through the writer the checklist calls, never by a direct insert
+-- into a derived column. Peer sessions give BOTH participants their own row.
+--
+-- Deliberate gaps, so outstanding states are visible in the demo:
+--   * learner3 (b3): the latest Coaching session has NO reflection -- the only
+--     missing reflection in the whole demo.
+--   * learner2 (b2): the latest Mentoring session has a reflection but no goal
+--     check-in, no follow-up action and no rating; the latest Peer session is
+--     unrated. "Sessions completed, some deliverables outstanding."
+CREATE TEMP TABLE _deliverable_gaps (
+  session_id uuid, enrollment_id uuid, skip_reflection boolean, skip_checkin boolean,
+  skip_action boolean, skip_rating boolean
+) ON COMMIT DROP;
+
+INSERT INTO _deliverable_gaps
+SELECT se.id, se.enrollment_id, true, false, false, false
+FROM public.sessions se JOIN _enr en ON en.id = se.enrollment_id
+WHERE en.slug = 'b3' AND se.status = 'completed'
+ORDER BY se.start_time DESC LIMIT 1;
+
+INSERT INTO _deliverable_gaps
+SELECT ms.id, ms.enrollment_id, false, true, true, true
+FROM public.mentoring_sessions ms JOIN _enr en ON en.id = ms.enrollment_id
+WHERE en.slug = 'b2' AND ms.status = 'completed'
+ORDER BY ms.start_time DESC LIMIT 1;
+
+INSERT INTO _deliverable_gaps
+SELECT p.peer_session_id, p.enrollment_id, false, false, false, true
+FROM public.peer_session_participants p
+JOIN public.coachee_peer_sessions cps ON p.session_kind = 'coachee_peer' AND cps.id = p.peer_session_id
+JOIN _enr en ON en.id = p.enrollment_id
+WHERE en.slug = 'b2' AND cps.status = 'completed'
+ORDER BY cps.start_time DESC LIMIT 1;
+
+DO $deliverables$
+DECLARE
+  e record; d record; t record; g record; v_gap _deliverable_gaps;
+  v_answers jsonb; v_rating smallint; n integer := 0; v_last boolean;
+BEGIN
+  FOR e IN
+    SELECT en.slug, pe.id AS enrollment_id, pe.user_id
+    FROM _enr en JOIN public.programme_enrollments pe ON pe.id = en.id
+    WHERE en.slug NOT LIKE 'a%'
+    ORDER BY en.slug
+  LOOP
+    PERFORM pg_temp.act_as(e.user_id);
+    SELECT gl.id, coalesce(gr.current_rating, 50) AS rating INTO g
+    FROM public.coachee_goals gl LEFT JOIN public.coachee_goal_ratings gr ON gr.goal_id = gl.id
+    WHERE gl.enrollment_id = e.enrollment_id AND gl.status = 'active'
+    ORDER BY gl.sort_order LIMIT 1;
+
+    FOR d IN
+      SELECT x.*, row_number() OVER (ORDER BY x.start_time DESC) = 1 AS is_latest
+      FROM public.learner_session_deliverables(e.enrollment_id) x
+      ORDER BY x.start_time
+    LOOP
+      SELECT * INTO t FROM public.session_deliverable_source_types(d.source_table);
+      SELECT * INTO v_gap FROM _deliverable_gaps gp
+      WHERE gp.session_id = d.session_id AND gp.enrollment_id = e.enrollment_id;
+      v_rating := CASE WHEN e.slug IN ('b3', 'b6', 'c3', 'd3') THEN 4 ELSE 5 END;
+
+      IF d.source_table = 'triad_sessions' THEN
+        -- The Triad reflection is role-based and carries the rating.
+        SELECT coalesce(jsonb_agg(jsonb_build_object(
+                 'question_id', q.id,
+                 'answer_text', 'In the ' || q.section ||
+                   ' seat I noticed how much a single open question changed the conversation.')), '[]'::jsonb)
+          INTO v_answers
+        FROM public.triad_reflection_questions_for_session(d.session_id) q;
+        IF NOT coalesce(v_gap.skip_reflection, false) THEN
+          PERFORM public.learner_triad_submit_reflection(
+            d.session_id, CASE WHEN coalesce(v_gap.skip_rating, false) THEN NULL ELSE v_rating END, v_answers);
+        END IF;
+      ELSE
+        IF NOT coalesce(v_gap.skip_reflection, false) THEN
+          INSERT INTO public.session_learning_reflections (enrollment_id, source_activity_type, source_activity_id, body)
+          VALUES (e.enrollment_id, t.reflection_type, d.session_id,
+                  format('%s session: I practised closing every conversation with one clear next step, and will try it with my whole team this week.',
+                         initcap(replace(d.module::text, '_', ' '))))
+          ON CONFLICT (enrollment_id, source_activity_type, source_activity_id) DO NOTHING;
+        END IF;
+        IF NOT coalesce(v_gap.skip_rating, false) THEN
+          PERFORM public.submit_session_satisfaction(d.source_table, d.session_id, e.enrollment_id, v_rating);
+        END IF;
+      END IF;
+
+      IF g.id IS NOT NULL AND NOT coalesce(v_gap.skip_checkin, false) THEN
+        PERFORM public.record_goal_checkins(
+          e.enrollment_id, t.checkin_type, d.session_id,
+          jsonb_build_array(jsonb_build_object(
+            'goal_id', g.id, 'new_rating', g.rating,
+            'note', 'Held the line on ending with owners and dates.')));
+      END IF;
+
+      IF NOT coalesce(v_gap.skip_action, false) THEN
+        -- Older commitments are done; the latest is still open, due ahead.
+        PERFORM public.save_enrollment_activity_actions(
+          e.enrollment_id, t.action_type, d.session_id,
+          jsonb_build_array(jsonb_build_object(
+            'title', 'Close my next team meeting with an owner and a date for each decision',
+            'status', CASE WHEN d.is_latest THEN 'open' ELSE 'completed' END,
+            'due_date', CASE WHEN d.is_latest THEN (current_date + 14)::text ELSE NULL END)));
+      END IF;
+      n := n + 1;
+    END LOOP;
+  END LOOP;
+  PERFORM pg_temp.act_as_service();
+  RAISE NOTICE 'Deliverables: written for % completed session participations (all four modules)', n;
+END
+$deliverables$;
+
+-- ---------------------------------------------------------------------------
+-- 11c. Counterpart deliverables -- coach notes, mentor notes and feedback
+-- ---------------------------------------------------------------------------
+-- The other side of each held session owes its own write-up
+-- (canonical_counterpart_deliverables). Written as the coach / mentor through
+-- the app's own writers: coach_session_private_notes (the coach's confidential
+-- notes), update_mentoring_session_notes and mentoring_feedback. One gap is
+-- left on purpose: coach3 has not written notes for learner6's latest session,
+-- so the coach's "Your post-session items" card shows an outstanding item.
+DO $counterpart$
+DECLARE s record; v_skip uuid; n integer := 0;
+BEGIN
+  SELECT se.id INTO v_skip
+  FROM public.sessions se JOIN _enr en ON en.id = se.enrollment_id
+  WHERE en.slug = 'b6' AND se.status = 'completed'
+  ORDER BY se.start_time DESC LIMIT 1;
+
+  FOR s IN
+    SELECT se.id, se.coach_id FROM public.sessions se JOIN _enr en ON en.id = se.enrollment_id
+    WHERE se.status = 'completed' AND en.slug NOT LIKE 'a%' AND se.id IS DISTINCT FROM v_skip
+  LOOP
+    PERFORM pg_temp.act_as(s.coach_id);
+    INSERT INTO public.coach_session_private_notes (session_id, coach_id, body)
+    VALUES (s.id, s.coach_id, 'Explored delegation; agreed one experiment for the next team meeting.')
+    ON CONFLICT (session_id) DO NOTHING;
+    n := n + 1;
+  END LOOP;
+
+  FOR s IN
+    SELECT ms.id, ms.mentor_id, ms.mentee_id FROM public.mentoring_sessions ms JOIN _enr en ON en.id = ms.enrollment_id
+    WHERE ms.status = 'completed' AND en.slug NOT LIKE 'a%'
+  LOOP
+    PERFORM pg_temp.act_as(s.mentor_id);
+    PERFORM public.update_mentoring_session_notes(s.id, 'Shared how I built trust with a new team; mentee to map stakeholders.', NULL, NULL);
+    INSERT INTO public.mentoring_feedback (mentoring_session_id, mentor_id, mentee_id, submitted_by, overall_notes)
+    VALUES (s.id, s.mentor_id, s.mentee_id, s.mentor_id, 'Clear goals for the session and honest reflection on what is not working yet.')
+    ON CONFLICT (mentoring_session_id) DO NOTHING;
+    n := n + 1;
+  END LOOP;
+  PERFORM pg_temp.act_as_service();
+  RAISE NOTICE 'Counterpart deliverables: written for % held sessions', n;
+END
+$counterpart$;
+
+DO $verify_counterpart$
+DECLARE n integer; bad text;
+BEGIN
+  SELECT count(*), string_agg(DISTINCT d.counterpart_role || ':' || d.item, ', ') INTO n, bad
+  FROM (
+    SELECT 'sessions'::text AS t, se.id FROM public.sessions se JOIN _enr en ON en.id = se.enrollment_id
+    WHERE se.status = 'completed' AND en.slug NOT LIKE 'a%'
+    UNION ALL
+    SELECT 'mentoring_sessions', ms.id FROM public.mentoring_sessions ms JOIN _enr en ON en.id = ms.enrollment_id
+    WHERE ms.status = 'completed' AND en.slug NOT LIKE 'a%'
+  ) x
+  CROSS JOIN LATERAL public.canonical_counterpart_deliverables(x.t, x.id) d
+  WHERE d.required AND NOT d.done;
+  IF n <> 1 OR bad IS DISTINCT FROM 'coach:session_notes' THEN
+    RAISE EXCEPTION 'VERIFY counterpart FAILED: expected exactly one outstanding coach session note, got % (%)', n, coalesce(bad, 'none');
+  END IF;
+END
+$verify_counterpart$;
+
+-- (Goals are created per enrollment by pg_temp.seed_goals before any booking.)
+
+DO $verify_sources$
+DECLARE bad text; n integer;
+BEGIN
+  -- Role: user_roles is the one source, and a Sponsor is only a Sponsor.
+  SELECT string_agg(p.email || ' has ' || r.role, '; ') INTO bad
+  FROM _people p JOIN public.user_roles r ON r.user_id = p.id
+  WHERE r.role::text <> p.role::text;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'VERIFY roles FAILED: %', bad;
+  END IF;
+
+  -- Goals: every ongoing enrollment has one, with a rating.
+  SELECT string_agg(en.slug, ', ') INTO bad
+  FROM _enr en
+  WHERE en.slug NOT LIKE 'a%'
+    AND NOT EXISTS (SELECT 1 FROM public.coachee_goals g JOIN public.coachee_goal_ratings gr ON gr.goal_id = g.id
+                    WHERE g.enrollment_id = en.id AND g.status = 'active');
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'VERIFY goals FAILED: no rated goal for %', bad;
+  END IF;
+
+  -- Deliverables, read back through THE rule (canonical_session_deliverables):
+  -- exactly one missing reflection in the whole demo (learner3), learner2 has
+  -- outstanding items, and every other completed session is fully delivered.
+  SELECT count(*), string_agg(en.slug || ':' || d.source_table, ', ') INTO n, bad
+  FROM _enr en CROSS JOIN LATERAL public.canonical_session_deliverables(en.id) d
+  WHERE en.slug NOT LIKE 'a%' AND NOT d.has_reflection;
+  IF n <> 1 OR bad NOT LIKE 'b3:sessions' THEN
+    RAISE EXCEPTION 'VERIFY deliverables FAILED: expected exactly one missing reflection (b3 coaching), got % (%)',
+      n, coalesce(bad, 'none');
+  END IF;
+
+  SELECT string_agg(DISTINCT en.slug, ', ') INTO bad
+  FROM _enr en CROSS JOIN LATERAL public.canonical_session_deliverables(en.id) d
+  WHERE en.slug NOT LIKE 'a%' AND NOT d.deliverables_complete;
+  IF bad IS DISTINCT FROM 'b2, b3' THEN
+    RAISE EXCEPTION 'VERIFY deliverables FAILED: outstanding deliverables expected for b2 and b3 only, got %',
+      coalesce(bad, 'none');
+  END IF;
+
+  -- Satisfaction aggregates every module: learner1 rated Coaching, Mentoring,
+  -- Peer and Triad sessions, and the enrollment average counts all of them.
+  SELECT string_agg(DISTINCT s.module::text, ',' ORDER BY s.module::text) INTO bad
+  FROM _enr en CROSS JOIN LATERAL public.canonical_enrollment_satisfaction(en.id) s
+  WHERE en.slug = 'b1';
+  IF bad IS DISTINCT FROM 'coaching,mentoring,peer_coaching,triads' THEN
+    RAISE EXCEPTION 'VERIFY satisfaction FAILED: learner1 ratings cover %, expected all four modules', coalesce(bad, 'none');
+  END IF;
+END
+$verify_sources$;
+
+-- ---------------------------------------------------------------------------
 -- 12. VERIFICATION -- the seed is only valid if every one of these holds
 -- ---------------------------------------------------------------------------
 DO $verify$
@@ -799,12 +1141,14 @@ BEGIN
     s_req integer; s_done integer;
   BEGIN
     SELECT id INTO v_admin FROM _admin;
-    SELECT id INTO v_sponsor FROM _people WHERE slug = 'sponsor';
 
     FOR r IN
-      SELECT en.slug, en.id AS enrollment_id, pe.user_id, pe.cohort_id
+      SELECT en.slug, en.id AS enrollment_id, pe.user_id, pe.cohort_id, sp.user_id AS sponsor_id
       FROM _enr en JOIN public.programme_enrollments pe ON pe.id = en.id
+      -- The sponsor of the ENROLLMENT's organisation -- never the cohort's.
+      JOIN public.sponsor_profiles sp ON sp.organization_id = pe.organization_id
     LOOP
+      v_sponsor := r.sponsor_id;
       PERFORM pg_temp.act_as(r.user_id);
       SELECT coaching_required_units, coaching_completed_units INTO l_req, l_done
       FROM public.learner_canonical_progress(r.enrollment_id);
@@ -869,6 +1213,83 @@ BEGIN
   SELECT count(*) INTO n FROM public.cohort_schedule_violations() WHERE violation <> 'missing_deadline';
   IF n > 0 THEN RAISE EXCEPTION 'VERIFY FAILED: % cohort modules violate the quantity invariant', n; END IF;
 
+  -- 11. Sponsor visibility is the enrollment's organisation, nothing else.
+  --     Both organisations share Cohort B (whose cohort row names Org A).
+  DECLARE
+    v_s1 uuid; v_s2 uuid; seen text; expected text;
+  BEGIN
+    SELECT id INTO v_s1 FROM _people WHERE slug = 'sponsor';
+    SELECT id INTO v_s2 FROM _people WHERE slug = 'sponsor2';
+
+    PERFORM pg_temp.act_as(v_s1);
+    SELECT string_agg(pr.email, ',' ORDER BY pr.email) INTO seen
+    FROM public.sponsor_canonical_enrollment_progress('d0000000-0000-4000-8000-00000000c00b') p
+    JOIN public.programme_enrollments e ON e.id = p.enrollment_id
+    JOIN public.profiles pr ON pr.id = e.user_id;
+    PERFORM pg_temp.act_as_service();
+    expected := 'learner1@clariva.demo,learner2@clariva.demo,learner3@clariva.demo';
+    IF seen IS DISTINCT FROM expected THEN
+      RAISE EXCEPTION 'VERIFY 11 FAILED: sponsor@ sees [%] in Cohort B, expected [%]', seen, expected;
+    END IF;
+
+    PERFORM pg_temp.act_as(v_s2);
+    SELECT string_agg(pr.email, ',' ORDER BY pr.email) INTO seen
+    FROM public.sponsor_canonical_enrollment_progress('d0000000-0000-4000-8000-00000000c00b') p
+    JOIN public.programme_enrollments e ON e.id = p.enrollment_id
+    JOIN public.profiles pr ON pr.id = e.user_id;
+    PERFORM pg_temp.act_as_service();
+    expected := 'learner4@clariva.demo,learner5@clariva.demo,learner6@clariva.demo';
+    IF seen IS DISTINCT FROM expected THEN
+      RAISE EXCEPTION 'VERIFY 11 FAILED: sponsor2@ sees [%] in Cohort B, expected [%]', seen, expected;
+    END IF;
+
+    -- Outside Cohort B, Organisation B's only learners are tasc4-5 in Cohort D;
+    -- sponsor2 sees exactly them, never another organisation's learner.
+    PERFORM pg_temp.act_as(v_s2);
+    SELECT string_agg(pr.email, ',' ORDER BY pr.email) INTO seen
+    FROM public.cohorts c
+    CROSS JOIN LATERAL public.sponsor_canonical_enrollment_progress(c.id) p
+    JOIN public.programme_enrollments e ON e.id = p.enrollment_id
+    JOIN public.profiles pr ON pr.id = e.user_id
+    WHERE c.id <> 'd0000000-0000-4000-8000-00000000c00b';
+    PERFORM pg_temp.act_as_service();
+    IF seen IS DISTINCT FROM 'tasc4@clariva.demo,tasc5@clariva.demo' THEN
+      RAISE EXCEPTION 'VERIFY 11 FAILED: sponsor2@ sees [%] outside Cohort B, expected tasc4-5', seen;
+    END IF;
+
+    -- P1-8: every organisation clears the privacy threshold (>= 5 enrollments).
+    SELECT string_agg(o.name || '=' || coalesce(x.n, 0), ', ') INTO bad
+    FROM public.organizations o
+    LEFT JOIN (SELECT organization_id, count(*) AS n FROM public.programme_enrollments GROUP BY 1) x
+      ON x.organization_id = o.id
+    WHERE o.id IN ('d0000000-0000-4000-8000-00000000aaaa', 'd0000000-0000-4000-8000-00000000bbbb')
+      AND coalesce(x.n, 0) < public.sponsor_min_leaders_for_distribution();
+    IF bad IS NOT NULL THEN
+      RAISE EXCEPTION 'VERIFY 11 FAILED: organisations below the privacy threshold: %', bad;
+    END IF;
+  END;
+
+  -- VERIFY 12: journey checkpoint state is derived from completion first. A
+  -- checkpoint whose required activity is all done reads 'completed' even
+  -- before its due date (learner1 finished Peer and Triads early).
+  SELECT count(*) INTO n
+  FROM _enr en
+  CROSS JOIN LATERAL jsonb_array_elements(public.canonical_enrollment_journey(en.id, current_date)) cp
+  WHERE en.slug NOT LIKE 'a%'
+    AND (cp->>'required_units')::int > 0
+    AND (cp->>'completed_units')::int >= (cp->>'required_units')::int
+    AND cp->>'state' <> 'completed';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'VERIFY 12 FAILED: % fully completed checkpoints do not read completed', n;
+  END IF;
+  SELECT count(*) INTO n
+  FROM _enr en
+  CROSS JOIN LATERAL jsonb_array_elements(public.canonical_enrollment_journey(en.id, current_date)) cp
+  WHERE en.slug = 'b1' AND (cp->>'due_on')::date > current_date AND cp->>'state' = 'completed';
+  IF n = 0 THEN
+    RAISE EXCEPTION 'VERIFY 12 FAILED: learner1 has no early-completed future checkpoint to demonstrate';
+  END IF;
+
   RAISE NOTICE 'All verification checks passed.';
 END
 $verify$;
@@ -904,20 +1325,23 @@ BEGIN
   RAISE NOTICE '== LOGIN CREDENTIALS (password for all: Clariva2026!) ==';
   RAISE NOTICE '%', rpad('email',26)||rpad('role',10)||'what you will see';
   RAISE NOTICE '%', rpad('trang.tt@erickson.vn',26)||rpad('admin',10)||'all cohorts, schedules, provider pools, alerts';
-  RAISE NOTICE '%', rpad('sponsor@clariva.demo',26)||rpad('sponsor',10)||'Clariva Demo Organization rollups, no narrative';
+  RAISE NOTICE '%', rpad('sponsor@clariva.demo',26)||rpad('sponsor',10)||'Org A: learner1-3 in Cohort B (+ Org A cohorts A/C/D), no narrative';
+  RAISE NOTICE '%', rpad('sponsor2@clariva.demo',26)||rpad('sponsor',10)||'Org B: learner4-6 in Cohort B, tasc4-5 in Cohort D, no narrative';
   RAISE NOTICE '%', rpad('coach1@clariva.demo',26)||rpad('coach',10)||'Coaching + Mentoring delivery across all cohorts';
   RAISE NOTICE '%', rpad('coach2@clariva.demo',26)||rpad('coach',10)||'Coaching delivery (cohorts A/B/C)';
   RAISE NOTICE '%', rpad('coach3@clariva.demo',26)||rpad('coach',10)||'Coaching delivery, behind-schedule learners';
   RAISE NOTICE '%', rpad('coach4@clariva.demo',26)||rpad('coach',10)||'Mentoring delivery only (Mentor, not Coaching)';
-  RAISE NOTICE '%', rpad('learner1@clariva.demo',26)||rpad('coachee',10)||'COMPLETE in B, plus a finished cohort A history';
-  RAISE NOTICE '%', rpad('learner2@clariva.demo',26)||rpad('coachee',10)||'ON TRACK - due work done, rest not yet due';
-  RAISE NOTICE '%', rpad('learner3@clariva.demo',26)||rpad('coachee',10)||'BEHIND - overdue Coaching and Mentoring';
-  RAISE NOTICE '%', rpad('learner4@clariva.demo',26)||rpad('coachee',10)||'JUST STARTED - enrolled, nothing booked';
-  RAISE NOTICE '%', rpad('learner5@clariva.demo',26)||rpad('coachee',10)||'COMPLETE - Executive Excellence (6/3/3/3)';
-  RAISE NOTICE '%', rpad('learner6@clariva.demo',26)||rpad('coachee',10)||'ON TRACK - Executive Excellence';
+  RAISE NOTICE '%', rpad('learner1@clariva.demo',26)||rpad('coachee',10)||'Org A - COMPLETE in B, plus a finished cohort A history';
+  RAISE NOTICE '%', rpad('learner2@clariva.demo',26)||rpad('coachee',10)||'Org A - MID: sessions done, deliverables outstanding';
+  RAISE NOTICE '%', rpad('learner3@clariva.demo',26)||rpad('coachee',10)||'Org A - BEHIND: overdue Coaching and Mentoring';
+  RAISE NOTICE '%', rpad('learner4@clariva.demo',26)||rpad('coachee',10)||'Org B - JUST STARTED: 0%, everything due is overdue (11 with Training)';
+  RAISE NOTICE '%', rpad('learner5@clariva.demo',26)||rpad('coachee',10)||'Org B - MID engagement';
+  RAISE NOTICE '%', rpad('learner6@clariva.demo',26)||rpad('coachee',10)||'Org B - PARTIAL completion';
+  RAISE NOTICE '%', rpad('learner9@clariva.demo',26)||rpad('coachee',10)||'COMPLETE - Executive Excellence (6/3/3/3)';
+  RAISE NOTICE '%', rpad('learner11@clariva.demo',26)||rpad('coachee',10)||'ON TRACK - Executive Excellence';
   RAISE NOTICE '%', rpad('learner7@clariva.demo',26)||rpad('coachee',10)||'BEHIND - Executive Excellence';
   RAISE NOTICE '%', rpad('learner8@clariva.demo',26)||rpad('coachee',10)||'JUST STARTED - Executive Excellence';
-  RAISE NOTICE '%', rpad('alum1..3@clariva.demo',26)||rpad('coachee',10)||'finished cohort A (100%% complete)';
+  RAISE NOTICE '%', rpad('alum1..3@clariva.demo',26)||rpad('coachee',10)||'finished cohort A (100% complete)';
   RAISE NOTICE '%', rpad('tasc1..4@clariva.demo',26)||rpad('coachee',10)||'TASC Essential - Mentoring and Triads only';
   RAISE NOTICE '';
   RAISE NOTICE 'NOTE: a cohort module deadline applies to the whole cohort. A learner who';

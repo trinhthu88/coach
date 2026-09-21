@@ -8,7 +8,6 @@ const DEFAULT_INVITE_LIMIT = 3;
 export interface InviteFormValues {
   email: string;
   full_name: string;
-  session_limit?: number;
 }
 
 type InviteResult =
@@ -51,7 +50,6 @@ export function useCoachInviteSlots(coachId: string | undefined) {
         body: {
           email: values.email.trim(),
           full_name: values.full_name.trim(),
-          session_limit: values.session_limit,
         },
       });
 

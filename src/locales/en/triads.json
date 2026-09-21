@@ -86,7 +86,9 @@
     "successToast": "Reflection submitted",
     "errorToast": "Couldn't submit your reflection",
     "notFound": "This session isn't available.",
-    "afterCompletion": "You can reflect on this session once it has been marked as completed."
+    "afterCompletion": "You can reflect on this session once it has been marked as completed.",
+    "roleLabel": "Your role in this session",
+    "roleHelp": "Roles rotate between sessions. Choose the role you played this time; you reflect on that role plus the overall questions."
   },
   "history": {
     "title": "My triad sessions",

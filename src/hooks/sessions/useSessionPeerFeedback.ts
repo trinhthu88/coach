@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { PeerFeedbackState } from "./types";
+import { hasAnyCompetencyRating, type PeerFeedbackState } from "./types";
 
 interface UseSessionPeerFeedbackOptions {
   sessionId: string | undefined;
@@ -12,15 +12,17 @@ interface UseSessionPeerFeedbackOptions {
   peerCoacheeId: string | undefined;
 }
 
+// Unrated until the rater moves a slider: no value is ever persisted that the
+// user did not set (the slider may sit at its midpoint visually).
 const DEFAULT_STATE: PeerFeedbackState = {
-  ethical_practice: 70,
-  coaching_mindset: 70,
-  maintains_agreements: 70,
-  trust_safety: 70,
-  maintains_presence: 70,
-  listens_actively: 70,
-  evokes_awareness: 70,
-  facilitates_growth: 70,
+  ethical_practice: null,
+  coaching_mindset: null,
+  maintains_agreements: null,
+  trust_safety: null,
+  maintains_presence: null,
+  listens_actively: null,
+  evokes_awareness: null,
+  facilitates_growth: null,
   feedback_note: "",
   existed: false,
 };
@@ -33,14 +35,14 @@ async function fetchPeerFeedback(sessionId: string): Promise<PeerFeedbackState> 
     .maybeSingle();
   if (!fb) return DEFAULT_STATE;
   return {
-    ethical_practice: fb.ethical_practice ?? 70,
-    coaching_mindset: fb.coaching_mindset ?? 70,
-    maintains_agreements: fb.maintains_agreements ?? 70,
-    trust_safety: fb.trust_safety ?? 70,
-    maintains_presence: fb.maintains_presence ?? 70,
-    listens_actively: fb.listens_actively ?? 70,
-    evokes_awareness: fb.evokes_awareness ?? 70,
-    facilitates_growth: fb.facilitates_growth ?? 70,
+    ethical_practice: fb.ethical_practice ?? null,
+    coaching_mindset: fb.coaching_mindset ?? null,
+    maintains_agreements: fb.maintains_agreements ?? null,
+    trust_safety: fb.trust_safety ?? null,
+    maintains_presence: fb.maintains_presence ?? null,
+    listens_actively: fb.listens_actively ?? null,
+    evokes_awareness: fb.evokes_awareness ?? null,
+    facilitates_growth: fb.facilitates_growth ?? null,
     feedback_note: fb.feedback_note ?? "",
     existed: true,
   };
@@ -109,6 +111,11 @@ export function useSessionPeerFeedback({
 
   const save = async (state: PeerFeedbackState) => {
     if (!sessionId || !peerCoachId || !peerCoacheeId) return { error: null };
+    if (!hasAnyCompetencyRating(state)) {
+      const error = new Error(t("detail.peerFeedback.rateAtLeastOne"));
+      toast.error(error.message);
+      return { error };
+    }
     try {
       await saveMutation.mutateAsync(state);
       toast.success(t("detail.toast.feedbackSaved"));
