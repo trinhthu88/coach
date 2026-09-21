@@ -7,4 +7,4 @@ If `/auth/v1/admin/users/{id}` and `/auth/v1/token?grant_type=password` both ret
 
 **Why:** SQL access through the Supabase database path and the GoTrue Auth service can fail independently. The Auth logs identify the exact scan column, and repeated password rotations do not repair malformed Auth rows.
 
-**How to apply:** Verify with both anon and service credentials, preserve user IDs and linked data, repair all affected rows idempotently, then confirm zero remaining NULL token/meta fields, Admin API 200 responses, and a successful password-token session.
+**How to apply:** Verify with both anon and service credentials, preserve user IDs and linked data, repair all affected rows idempotently, and ensure every SQL demo-user insert explicitly supplies all Auth token fields. Then confirm zero remaining NULL token/meta fields, Admin API 200 responses, and a successful password-token session.

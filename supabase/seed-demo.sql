@@ -310,11 +310,14 @@ INSERT INTO _people (slug, id, email, full_name, role) VALUES
 INSERT INTO auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
-  confirmation_token, email_change_token_new, recovery_token)
+  confirmation_token, email_change_token_new, recovery_token,
+  email_change, phone_change, phone_change_token,
+  email_change_token_current, reauthentication_token)
 SELECT p.id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated', 'authenticated',
   p.email, extensions.crypt('Clariva2026!', extensions.gen_salt('bf')), now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
-  jsonb_build_object('full_name', p.full_name), now(), now(), '', '', ''
+  jsonb_build_object('full_name', p.full_name), now(), now(), '', '', '',
+  '', '', '', '', ''
 FROM _people p
 ON CONFLICT (id) DO NOTHING;
 
@@ -334,11 +337,14 @@ BEGIN
     INSERT INTO auth.users (
       id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
       raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
-      confirmation_token, email_change_token_new, recovery_token)
+      confirmation_token, email_change_token_new, recovery_token,
+      email_change, phone_change, phone_change_token,
+      email_change_token_current, reauthentication_token)
     VALUES (v_id, '00000000-0000-0000-0000-000000000000'::uuid, 'authenticated', 'authenticated',
       'trang.tt@erickson.vn', extensions.crypt('Clariva2026!', extensions.gen_salt('bf')), now(),
       '{"provider":"email","providers":["email"]}'::jsonb,
-      '{"full_name":"Trang Trinh"}'::jsonb, now(), now(), '', '', '');
+      '{"full_name":"Trang Trinh"}'::jsonb, now(), now(), '', '', '',
+      '', '', '', '', '');
     INSERT INTO _admin VALUES (v_id, true);
     RAISE NOTICE 'Admin: created trang.tt@erickson.vn with the demo password';
   END IF;
