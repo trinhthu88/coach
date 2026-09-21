@@ -77,7 +77,7 @@ Mentoring's preparation-file gate is also worth noting here since it's a *strong
 
 ## 7. Triads: one group per required Triad, self-service scheduling
 
-EVERY REQUIRED TRIAD HAS ITS OWN GROUP ASSIGNMENT. Each Triad requirement of a cohort (Triad 1 … N, `cohort_requirement_dates`, each with its own deadline) gets its own admin-curated groups (manual, or the Admin-run auto-assign for that requirement, which avoids repeating prior partners). The members schedule the group's session themselves; a completed session of the group fulfils that requirement only. Completion is canonical (fulfilled requirements, capped at the programme requirement, each against its own deadline — see `docs/architecture/source-of-truth.md`).
+EVERY REQUIRED TRIAD HAS ITS OWN GROUP ASSIGNMENT. Each Triad requirement of a cohort (Triad 1 … N, `cohort_requirement_dates`, all sharing the cohort × Triads completion deadline — see the Deadline model in `docs/architecture/source-of-truth.md`) gets its own admin-curated groups (manual, or the Admin-run auto-assign for that requirement, which avoids repeating prior partners). The members schedule the group's session themselves; a completed session of the group fulfils that requirement only. Completion is canonical (fulfilled requirements, capped at the programme requirement, each against its `due_on` — see `docs/architecture/source-of-truth.md`).
 
 | Rule | Enforced in DB | Enforced in frontend | In sync? |
 |---|---|---|---|

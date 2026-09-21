@@ -279,7 +279,8 @@ WITH repo(version, name) AS (VALUES
   ('20260925500000', 'post_session_deliverables'),
   ('20260926100000', 'admin_enrollment_transition_service_role'),
   ('20260926200000', 'role_priority_sponsor_role_journey_state'),
-  ('20260926300000', 'counterpart_session_deliverables')
+  ('20260926300000', 'counterpart_session_deliverables'),
+  ('20260926400000', 'deadline_contract_locked')
 -- END REPO MANIFEST
 ),
 

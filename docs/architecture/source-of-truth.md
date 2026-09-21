@@ -80,7 +80,7 @@ Established by `20260918185800_triad_cutover_ledgers`, `20260918185850_triad_rev
 **EVERY REQUIRED TRIAD HAS ITS OWN GROUP ASSIGNMENT.** The business model:
 
 - **Programme** = how many Triads are required (N).
-- **Triad requirement** = `cohort_requirement_dates` row "Triad 1 … Triad N" of the cohort, each with its own deadline. This is the only Triad "round"; there is no other round object.
+- **Triad requirement** = `cohort_requirement_dates` row "Triad 1 … Triad N" of the cohort, each carrying the cohort × Triads completion deadline (see Deadline model). This is the only Triad "round"; there is no other round object.
 - **Group** = the enrollments assigned together for ONE requirement (`triad_groups.cohort_requirement_date_id`). The group owns no date: it references the requirement that owns the deadline.
 - **Session** = the actual practice session of that group (normally one).
 - **Fulfilment** = a completed session of a requirement's group fulfils THAT requirement, once, for every member of the group. It never fulfils another requirement.
@@ -102,7 +102,7 @@ A learner therefore has different group memberships for Triad 1, Triad 2, Triad 
 | Completion evidence | session × historical membership → `session_activity_attributions` (one writer: `triad_sync_session_attributions`) | `canonical_triad_requirement_fulfilment` | Session evidence only: `milestone_id` is always NULL for Triads. Dated on the session's scheduled start. A cancelled session is no evidence. |
 | **Fulfilment** | evidence of the enrollment on a completed session of a group linked to requirement N | `canonical_triad_requirement_fulfilment` (one row per requirement: `fulfilled_on`, `booked_on`, `proposed_on`) → `sponsor_canonical_activity` (one Triad row per requirement, with `requirement_due_on`) | THE rule. Each requirement contributes at most one unit; a second session in the same group is raw activity only. |
 | **Completion** | fulfilled requirements, capped at the programme's required units | `canonical_module_progress` → `canonical_triad_completion` (`completed_units`, `raw_completed_sessions` = activity only, `schedule` per requirement with its group) | |
-| **Due / overdue** | each requirement against its OWN deadline | `canonical_module_progress` → `canonical_triad_completion` (`due_units`, `overdue_units`, `next_due_on`), journeys | `due_units` = requirements with deadline ≤ as-of. `overdue_units` = due requirements − fulfilled due requirements (an early Triad 2 never hides an overdue Triad 1). Journey checkpoints count a requirement only at checkpoints on or after its own deadline. `next_due_on` = earliest unfulfilled requirement. |
+| **Due / overdue** | each requirement against its own `due_on` (the shared module deadline, see Deadline model) | `canonical_module_progress` → `canonical_triad_completion` (`due_units`, `overdue_units`, `next_due_on`), journeys | `due_units` = requirements with deadline ≤ as-of. `overdue_units` = due requirements − fulfilled due requirements (an early Triad 2 never hides an overdue Triad 1). Journey checkpoints count a requirement only at checkpoints on or after its own deadline. `next_due_on` = earliest unfulfilled requirement. |
 | Triad reflection rate | `triad_reflection_rate_internal` | `admin_programme_triad_reflection_rate`, `send-weekly-admin-summary` | An engagement signal, labelled "Triad reflection". It is never Triad completion. Weeks come from the canonical training schedule (`canonical_training_learning_items`); nothing rebuilds cohort weeks. |
 | My Journey / Your Sessions / Dashboard | projections only | `learner_reflection_feed`, `learner_session_history`, `canonical_enrollment_journey` | No Triad data is copied into another table. No round or week label. |
 
@@ -269,3 +269,13 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
      `supabase/deployment-2/20260919190000_triad_retire_legacy.sql` (no
      retired Triad field or client-callable internal Triad function; the
      requirement link is required).
+
+## Deadline model
+One completion deadline per cohort × module.
+All N ordinal requirements within that module share the same deadline.
+This is a business-contract decision, not a technical constraint.
+
+- Writer: `admin_set_cohort_module_deadlines()` — exactly one `completion_deadline` per (cohort, programme, module).
+- Projection: `sync_cohort_requirement_dates()` step 5d copies it onto every ordinal's `due_on`. If per-ordinal deadlines are ever needed, that is where to change (see `20260926400000_deadline_contract_locked.sql`).
+- Scope: the session modules (Coaching, Mentoring, Peer Coaching, Triads). Training is paced by training weeks and is not materialised as cohort requirements.
+- Pinned by `supabase/tests/deadline_contract_test.sql`.
