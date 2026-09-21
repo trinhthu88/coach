@@ -5967,9 +5967,12 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_ids: string[] }
         Returns: {
           completed_units: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
           enrollment_id: string
           full_completion_pct: number
           overdue_units: number
+          pace_status: string
           progress_available: boolean
           required_units: number
         }[]

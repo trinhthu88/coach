@@ -251,7 +251,15 @@
       "sessionsAndPct_other": "{{count}} session · {{pct}}%",
       "sessions_other": "{{count}} session",
       "notScheduled": "Chưa có lịch",
-      "defaultProgramme": "Chương trình"
+      "defaultProgramme": "Chương trình",
+      "progressUnavailable": "Không tải được tiến độ",
+      "pace": {
+        "on_track": "Đúng tiến độ",
+        "ahead": "Vượt tiến độ",
+        "behind": "Chậm tiến độ",
+        "at_risk": "Có rủi ro",
+        "completed": "Hoàn thành"
+      }
     },
     "invite": {
       "requiredFields": "Cần có họ tên và email",
@@ -308,7 +316,8 @@
       "addNote": "Thêm ghi chú",
       "noNotesYet": "Chưa có ghi chú nào.",
       "deleteNote": "Xóa ghi chú",
-      "ratedByCoachee": "— được đánh giá bởi học viên"
+      "ratedByCoachee": "— được đánh giá bởi học viên",
+      "milestonesDone": "Đã xong {{done}}/{{total}} cột mốc"
     }
   },
   "availability": {

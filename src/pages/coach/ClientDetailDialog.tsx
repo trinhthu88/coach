@@ -22,7 +22,7 @@ import { CheckCircle2, StickyNote, Trash2, ArrowLeft, UserMinus } from "lucide-r
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 import { useClientDetail, type FlatClientAction } from "@/hooks/coach/useClientDetail";
-import { paletteFor, initialsOf, FILLS } from "./clientDisplay";
+import { paletteFor, initialsOf } from "./clientDisplay";
 
 export function ClientDetailDialog({
   coacheeId,
@@ -160,19 +160,18 @@ export function ClientDetailDialog({
             {goals.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("clients.detail.noGoalsYet")}</p>
             ) : (
-              goals.map((g, gi) => {
+              goals.map((g) => {
                 const ms = milestones.filter((m) => m.goal_id === g.id);
                 const done = ms.filter((m) => m.is_done).length;
-                const pct = ms.length ? Math.round((done / ms.length) * 100) : 0;
-                const fill = FILLS[gi % FILLS.length];
+                // Operational context only: the milestone count, never a
+                // locally computed "%" (programme progress is canonical).
                 return (
                   <div key={g.id}>
                     <div className="mb-1 flex items-baseline justify-between">
                       <p className="text-sm font-medium">{g.title}</p>
-                      <span className="text-xs text-muted-foreground">{pct}% · {done}/{ms.length}</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className={cn("h-full rounded-full", fill)} style={{ width: `${pct}%` }} />
+                      <span className="text-xs text-muted-foreground" data-testid="goal-milestone-count">
+                        {t("clients.detail.milestonesDone", { done, total: ms.length })}
+                      </span>
                     </div>
                     {ms.length > 0 && (
                       <ul className="ml-1 mt-2 space-y-1.5 border-l-2 border-border pl-3">

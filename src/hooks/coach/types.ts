@@ -1,4 +1,8 @@
-export type ClientStatus = "on_track" | "needs_attention" | "at_risk";
+/**
+ * Canonical pace status (canonical_enrollment_progress.pace_status) -- the
+ * same status the Learner, Admin and Sponsor see. Never derived client-side.
+ */
+export type ClientPaceStatus = "on_track" | "ahead" | "behind" | "at_risk" | "completed";
 
 export interface RawAction {
   id?: string;
@@ -30,7 +34,11 @@ export interface Client {
   completionPct: number | null;
   actionItemsDone: number;
   actionItemsTotal: number;
+  /** Operational context only (overdue follow-up actions); never redefines status. */
   overdueActions: number;
-  status: ClientStatus;
+  /** Canonical pace status of that enrollment; null when none or not loaded. */
+  paceStatus: ClientPaceStatus | null;
+  /** The canonical progress read failed: show an error state, never a silent zero. */
+  progressError: boolean;
   weekStart: string | null;
 }

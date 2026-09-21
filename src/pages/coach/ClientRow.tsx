@@ -4,6 +4,14 @@ import { cn } from "@/lib/utils";
 import type { Client } from "@/hooks/coach/types";
 import { paletteFor, initialsOf, programmeLabel } from "./clientDisplay";
 
+const PACE_TONE: Record<string, string> = {
+  on_track: "bg-success/15 text-success",
+  ahead: "bg-success/15 text-success",
+  completed: "bg-primary-soft text-primary",
+  behind: "bg-warning/15 text-warning",
+  at_risk: "bg-destructive/15 text-destructive",
+};
+
 export function ClientRow({ client, onOpen }: { client: Client; onOpen: () => void }) {
   const { t } = useTranslation("dashboard");
   const av = paletteFor(client.id);
@@ -25,12 +33,29 @@ export function ClientRow({ client, onOpen }: { client: Client; onOpen: () => vo
     </span>
   );
 
+  // Canonical pace status -- the same status the learner, Admin and Sponsor see.
+  const paceBadge = client.paceStatus ? (
+    <span
+      data-testid="client-pace"
+      data-pace={client.paceStatus}
+      className={cn(
+        "ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+        PACE_TONE[client.paceStatus] ?? "bg-muted text-muted-foreground",
+      )}
+    >
+      {t(`clients.row.pace.${client.paceStatus}`)}
+    </span>
+  ) : null;
+
   const progressBar = (
     <div className="min-w-0">
       <p className="mb-1.5 text-[11px] text-muted-foreground">
-        {pct == null
+        {client.progressError ? (
+          <span data-testid="client-progress-error" className="text-destructive">{t("clients.row.progressUnavailable")}</span>
+        ) : pct == null
           ? t("clients.row.sessions", { count: client.totalSessions })
           : t("clients.row.sessionsAndPct", { count: client.totalSessions, pct })}
+        {!client.progressError && paceBadge}
       </p>
       <div className="h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-muted">
         <div className="h-full rounded-full bg-primary" style={{ width: `${pct ?? 0}%` }} />

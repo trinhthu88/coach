@@ -277,6 +277,11 @@ describe("programme profile architecture", () => {
   it("every Coach '% complete' is the canonical number — never a milestone, session or position ratio", () => {
     expect(read("hooks/coach/useCoachClients.ts")).toMatch(/rpc\("coach_canonical_enrollment_progress"/);
     expect(read("hooks/coach/useCoachClients.ts")).toMatch(/canonicalCompletionPct\(/);
+    // Status is the canonical pace_status too -- no coach-side heuristic.
+    const coachClients = read("hooks/coach/useCoachClients.ts");
+    expect(coachClients).toMatch(/pace_status/);
+    expect(coachClients).not.toMatch(/overdueActions\s*>=|needs_attention|c\.status\s*=/);
+    expect(read("pages/coach/ClientDetailDialog.tsx")).not.toMatch(/Math\.round\(\(done\s*\/\s*ms\.length\)/);
     expect(read("pages/coach/ClientRow.tsx")).toMatch(/client\.completionPct/);
     expect(read("pages/CoachMyJourney.tsx")).toMatch(/canonicalCompletionPct\(canonical\.progress\?\.full_completion_pct\)/);
     // A "%" derived from ticked milestones or elapsed days must not reappear on

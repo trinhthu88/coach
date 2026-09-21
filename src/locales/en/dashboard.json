@@ -262,7 +262,15 @@
       "sessions_one": "{{count}} session",
       "sessions_other": "{{count}} sessions",
       "notScheduled": "Not scheduled",
-      "defaultProgramme": "Programme"
+      "defaultProgramme": "Programme",
+      "progressUnavailable": "Progress unavailable",
+      "pace": {
+        "on_track": "On track",
+        "ahead": "Ahead",
+        "behind": "Behind",
+        "at_risk": "At risk",
+        "completed": "Completed"
+      }
     },
     "invite": {
       "requiredFields": "Full name and email are required",
@@ -319,7 +327,8 @@
       "addNote": "Add note",
       "noNotesYet": "No notes yet.",
       "deleteNote": "Delete note",
-      "ratedByCoachee": "— rated by coachee"
+      "ratedByCoachee": "— rated by coachee",
+      "milestonesDone": "{{done}}/{{total}} milestones done"
     }
   },
   "availability": {
