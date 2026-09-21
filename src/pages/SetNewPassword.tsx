@@ -14,7 +14,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 export default function SetNewPassword() {
   const { t } = useTranslation("auth");
   const navigate = useNavigate();
-  const { user, refreshProfile, signOut } = useAuth();
+  const { refreshProfile, signOut } = useAuth();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
