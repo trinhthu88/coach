@@ -51,18 +51,35 @@ export interface MilestoneLite {
 export type Attachment =
   Database["public"]["Tables"]["session_attachments"]["Row"];
 
+/** ICF competency ratings; null = not rated (never a default value). */
 export type PeerFeedbackState = {
-  ethical_practice: number;
-  coaching_mindset: number;
-  maintains_agreements: number;
-  trust_safety: number;
-  maintains_presence: number;
-  listens_actively: number;
-  evokes_awareness: number;
-  facilitates_growth: number;
+  ethical_practice: number | null;
+  coaching_mindset: number | null;
+  maintains_agreements: number | null;
+  trust_safety: number | null;
+  maintains_presence: number | null;
+  listens_actively: number | null;
+  evokes_awareness: number | null;
+  facilitates_growth: number | null;
   feedback_note: string;
   existed: boolean;
 };
+
+export const PEER_COMPETENCY_KEYS = [
+  "ethical_practice",
+  "coaching_mindset",
+  "maintains_agreements",
+  "trust_safety",
+  "maintains_presence",
+  "listens_actively",
+  "evokes_awareness",
+  "facilitates_growth",
+] as const;
+
+/** A peer feedback save needs at least one competency the rater actually set. */
+export function hasAnyCompetencyRating(state: PeerFeedbackState): boolean {
+  return PEER_COMPETENCY_KEYS.some((k) => state[k] != null);
+}
 
 export function normalizeItems(raw: EnrollmentActionItem[]): ActionItem[] {
   return raw.map((it) => ({

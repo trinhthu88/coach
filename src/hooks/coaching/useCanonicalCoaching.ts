@@ -89,9 +89,9 @@ export interface CanonicalCoachingProgress {
  * shown on one screen cannot disagree with the same number on another.
  *
  * It is not interchangeable with operational usage readers such as
- * get_coachee_session_usage_for_enrollment: those count raw sessions, which
- * treats a held-but-unevidenced session as complete. Programme progress must
- * not be reconstructed from raw sessions.
+ * get_coachee_session_usage_for_enrollment: those count raw session rows
+ * (any enrollment requirement, uncapped). A completed session = a fulfilled
+ * requirement unit (canonical rule), counted by the canonical engine only.
  */
 export function useCanonicalCoachingProgress(enrollmentId: string | null | undefined) {
   return useQuery({
@@ -108,12 +108,13 @@ export function useCanonicalCoachingProgress(enrollmentId: string | null | undef
       if (error) throw error;
       const row = (data ?? []).find((r) => r.module === "coaching");
       if (!row) return null;
+      // The engine fills every count; a missing module row is null above.
       return {
-        requiredUnits: row.required_units ?? 0,
-        completedUnits: row.completed_units ?? 0,
-        bookedUnits: row.booked_units ?? 0,
-        dueUnits: row.due_units ?? 0,
-        overdueUnits: row.overdue_units ?? 0,
+        requiredUnits: row.required_units,
+        completedUnits: row.completed_units,
+        bookedUnits: row.booked_units,
+        dueUnits: row.due_units,
+        overdueUnits: row.overdue_units,
         paceStatus: row.pace_status ?? "",
         postSessionPending: (checklist ?? []).filter((c) => !c.evidence_complete).length,
       };

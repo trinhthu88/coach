@@ -284,7 +284,9 @@
       "writtenFeedback": "Phản hồi bằng văn bản",
       "feedbackPlaceholder": "Điều gì đã diễn ra tốt? Điều gì có thể phát triển thêm?",
       "updateFeedback": "Cập nhật phản hồi",
-      "submitFeedback": "Gửi phản hồi"
+      "submitFeedback": "Gửi phản hồi",
+      "notRated": "Chưa đánh giá",
+      "rateAtLeastOne": "Hãy đánh giá ít nhất một năng lực trước khi lưu."
     },
     "unscopedNotice": "Session này không gắn với một đăng ký chương trình nên chỉ hiển thị ở chế độ xem."
   },

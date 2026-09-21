@@ -36,7 +36,7 @@ import {
   useSessionPeerFeedback,
 } from "@/hooks/sessions/useSessionDetail";
 import { useCoachSessionFeedback } from "@/hooks/sessions/useCoachSessionFeedback";
-import { PeerFeedbackState } from "@/hooks/sessions/types";
+import { hasAnyCompetencyRating, type PeerFeedbackState } from "@/hooks/sessions/types";
 import { canMarkSessionComplete } from "@/hooks/sessions/completionGate";
 import { getSessionStatusMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
 
@@ -854,6 +854,7 @@ function PeerCompetencyFeedback({
 
   const setScore = (k: keyof PeerFeedbackState, v: number) =>
     setState((p) => ({ ...p, [k]: v }));
+  const anyRated = hasAnyCompetencyRating(state);
 
   const save = async () => {
     setSaving(true);
@@ -881,17 +882,24 @@ function PeerCompetencyFeedback({
           <div key={c.key} className="space-y-1.5">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{t(`detail.peerFeedback.competencies.${c.i18nKey}`)}</span>
-              <span className="font-bold text-primary">{state[c.key]}</span>
+              {state[c.key] == null ? (
+                <span className="text-xs text-muted-foreground" data-testid={`competency-unrated-${c.key}`}>{t("detail.peerFeedback.notRated")}</span>
+              ) : (
+                <span className="font-bold text-primary">{state[c.key]}</span>
+              )}
             </div>
+            {/* An unrated competency shows the slider at its midpoint but
+                stores nothing until the rater moves it. */}
             <input
               type="range"
               min={0}
               max={100}
               step={5}
               disabled={readOnly}
-              value={state[c.key]}
+              value={state[c.key] ?? 50}
+              aria-valuetext={state[c.key] == null ? t("detail.peerFeedback.notRated") : String(state[c.key])}
               onChange={(e) => setScore(c.key, Number(e.target.value))}
-              className="w-full accent-primary"
+              className={cn("w-full accent-primary", state[c.key] == null && "opacity-40")}
             />
           </div>
         ))}
@@ -908,7 +916,7 @@ function PeerCompetencyFeedback({
       </div>
       {!readOnly && (
         <div className="flex justify-end">
-          <Button className="rounded-full" onClick={save} disabled={saving}>
+          <Button className="rounded-full" onClick={save} disabled={saving || !anyRated} title={anyRated ? undefined : t("detail.peerFeedback.rateAtLeastOne")}>
             {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
             {state.existed ? t("detail.peerFeedback.updateFeedback") : t("detail.peerFeedback.submitFeedback")}
           </Button>

@@ -285,7 +285,9 @@
       "writtenFeedback": "Written feedback",
       "feedbackPlaceholder": "What went well? What could grow further?",
       "updateFeedback": "Update feedback",
-      "submitFeedback": "Submit feedback"
+      "submitFeedback": "Submit feedback",
+      "notRated": "Not rated",
+      "rateAtLeastOne": "Rate at least one competency before saving."
     },
     "unscopedNotice": "This session is not attached to a programme enrollment, so it is shown read-only."
   },

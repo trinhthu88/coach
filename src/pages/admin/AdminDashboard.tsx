@@ -40,6 +40,8 @@ interface DashboardEnrollmentRow {
 
 interface DashboardStats {
   coachees: number;
+  /** Active learners whose account was created this calendar month (real count, never an estimate). */
+  newCoacheesThisMonth: number;
   coaches: number;
   pendingApproval: number;
   newCoachApplications: number;
@@ -64,6 +66,7 @@ interface DashboardQueryData {
 
 const EMPTY_STATS: DashboardStats = {
   coachees: 0,
+  newCoacheesThisMonth: 0,
   coaches: 0,
   pendingApproval: 0,
   newCoachApplications: 0,
@@ -122,6 +125,10 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
 
   const stats: DashboardStats = {
     coachees: Array.from(coacheeIds).filter((id) => profById.get(id)?.status === "active").length,
+    newCoacheesThisMonth: Array.from(coacheeIds).filter((id) => {
+      const p = profById.get(id);
+      return p?.status === "active" && new Date(p.created_at) >= new Date(monthStart);
+    }).length,
     coaches: Array.from(coachIds).filter((id) => profById.get(id)?.status === "active").length,
     pendingApproval: pending,
     newCoachApplications: newCoachApplications || 0,
@@ -219,7 +226,7 @@ export default function AdminDashboard() {
             stats.newCoacheeApplications > 0 ? (
               <span className="text-warning">{t("dashboard.newApplications", { count: stats.newCoacheeApplications })}</span>
             ) : (
-              <span className="text-success">{t("dashboard.growthThisMonth", { count: Math.max(0, stats.coachees - Math.round(stats.coachees * 0.93)) })}</span>
+              <span className="text-success">{t("dashboard.growthThisMonth", { count: stats.newCoacheesThisMonth })}</span>
             )
           }
         />

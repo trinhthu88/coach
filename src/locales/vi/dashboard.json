@@ -565,7 +565,8 @@
       "awaitingYourResponse": "Đang chờ phản hồi của bạn",
       "reflectionsPending": "{{count}} reflection đang chờ",
       "openTriads": "Mở triads"
-    }
+    },
+    "progressUnavailable": "Không tải được"
   },
   "learnerProfile": {
     "header": {

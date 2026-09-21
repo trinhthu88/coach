@@ -64,10 +64,9 @@ interface SessionRow {
   coach?: { full_name: string; email: string };
   coachee?: { full_name: string; email: string };
   /**
-   * Canonical Coaching unit state, read from coaching_session_evidence_bulk().
-   * A session with status "completed" whose learner evidence is outstanding is
-   * NOT a completed programme unit -- Admin must be able to see the difference
-   * rather than inferring completion from the status column.
+   * Post-session evidence state, read from coaching_session_evidence_bulk().
+   * A completed session = a fulfilled requirement unit (canonical rule); this
+   * flag only reports whether the learner's write-up is still outstanding.
    */
   evidenceComplete?: boolean;
   postSessionPending?: boolean;

@@ -578,7 +578,8 @@
       "awaitingYourResponse": "Awaiting your response",
       "reflectionsPending": "{{count}} reflection(s) pending",
       "openTriads": "Open triads"
-    }
+    },
+    "progressUnavailable": "Unavailable"
   },
   "learnerProfile": {
     "header": {

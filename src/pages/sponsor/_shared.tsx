@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SectionCard, Pill, MiniBar, Avatar } from "@/pages/admin/_shared";
+import { Pill, MiniBar, Avatar } from "@/pages/admin/_shared";
 import type {
   SponsorRosterRow,
   SponsorCoachUtilisationRow,

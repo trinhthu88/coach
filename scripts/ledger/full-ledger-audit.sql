@@ -285,7 +285,8 @@ WITH repo(version, name) AS (VALUES
   ('20260926600000', 'booking_goal_gate_unconditional'),
   ('20260926700000', 'remove_must_change_password'),
   ('20260926800000', 'canonical_session_satisfaction'),
-  ('20260926900000', 'retire_out_of_repo_demo_generator')
+  ('20260926900000', 'retire_out_of_repo_demo_generator'),
+  ('20260927100000', 'peer_feedback_requires_a_rating')
 -- END REPO MANIFEST
 ),
 

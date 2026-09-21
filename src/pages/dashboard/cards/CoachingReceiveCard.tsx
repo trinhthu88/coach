@@ -3,6 +3,8 @@ import { Compass, ListChecks } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 import { useCoachingReceiveCardData } from "@/hooks/dashboard/useCoachingReceiveCardData";
+import { useLearnerCanonicalEngagement } from "@/hooks/useLearnerCanonicalProgress";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 import { NextSessionHero, HeroMetricRow, HeroFooterLink, HeroSkeleton } from "./NextSessionHero";
 
 /** "My coaching" hero — the receiving-coaching experience, shown for both
@@ -16,7 +18,10 @@ export function CoachingReceiveCard() {
   // the programme-modules RPC too. `enabled` above still gates whether the
   // card renders at all; this just stops that check from serializing behind
   // it (see 2026-09-08 dashboard-load-latency investigation).
-  const { data, loading } = useCoachingReceiveCardData(user?.id, role, true);
+  const { data, loading, error: progressError, enrollmentId } = useCoachingReceiveCardData(user?.id, role, true);
+  // Goal progress is the canonical enrollment figure, never a milestone ratio.
+  const { engagement, error: engagementError } = useLearnerCanonicalEngagement(enrollmentId ?? undefined);
+  const goalPct = canonicalCompletionPct(engagement.goal_progress_pct);
 
   if (!modulesLoading && !enabled) return null;
   if (modulesLoading || loading) return <HeroSkeleton />;
@@ -51,13 +56,20 @@ export function CoachingReceiveCard() {
               </span>
             }
           />
-          {/* Canonical programme progress. A held session whose post-session
-              evidence is outstanding counts as booked, not completed, so this
-              can read lower than the number of sessions that have happened --
-              which is the point. */}
+          {/* Canonical programme progress: a completed session = a fulfilled
+              requirement unit, capped at the programme requirement. A failed
+              read says so -- never a silent 0. */}
           <HeroMetricRow
             label={t("cards.coachingReceive.programmeUnits")}
-            value={`${data.completedUnits} / ${data.requiredUnits}`}
+            value={
+              progressError ? (
+                <span className="text-destructive" data-testid="coaching-progress-error">{t("cards.progressUnavailable")}</span>
+              ) : data.requiredUnits == null ? (
+                "—"
+              ) : (
+                `${data.completedUnits} / ${data.requiredUnits}`
+              )
+            }
           />
           {data.postSessionPending > 0 && (
             <HeroMetricRow
@@ -65,13 +77,16 @@ export function CoachingReceiveCard() {
               value={data.postSessionPending}
             />
           )}
-          {data.overdueUnits > 0 && (
+          {!progressError && (data.overdueUnits ?? 0) > 0 && (
             <HeroMetricRow
               label={t("cards.coachingReceive.overdue")}
               value={data.overdueUnits}
             />
           )}
-          <HeroMetricRow label={t("cards.coachingReceive.goalsLabel")} value={`${data.goalProgressPct}%`} />
+          <HeroMetricRow
+            label={t("cards.coachingReceive.goalsLabel")}
+            value={engagementError ? t("cards.progressUnavailable") : goalPct == null ? "—" : `${goalPct}%`}
+          />
           <HeroFooterLink to={journeyPath} className="mt-2">
             {t("cards.coachingReceive.openJourney")}
           </HeroFooterLink>
