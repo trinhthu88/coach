@@ -185,7 +185,7 @@ describe("programme profile architecture", () => {
     expect(layout).toMatch(/staticGroups=\{role === "coachee"\}/);
   });
 
-  it("there is no scheduling policy left to interpret — the cohort owns one deadline per module", () => {
+  it("there is no scheduling policy left to interpret — the cohort owns one date per requirement", () => {
     // The distribution modes are gone from the product, not just from the UI.
     // Comments are stripped (they legitimately explain what was retired), and
     // the generated Supabase types are excluded: they still describe the
@@ -204,10 +204,10 @@ describe("programme profile architecture", () => {
     expect(stripComments(read("lib/programmeModuleConfig.ts"))).not.toMatch(
       /evenly_distributed|monthly_frequency|training_linked/,
     );
-    // Deadlines are read and written through the canonical RPCs only, and only
-    // by the Admin cohort deadline hook.
+    // Module defaults and per-requirement dates are read and written through
+    // the canonical RPCs only, and only by the Admin cohort schedule hook.
     const deadlineCallers = files.filter((f) =>
-      /rpc\(\s*"(admin_cohort_module_deadlines|admin_set_cohort_module_deadlines|cohort_module_deadline_proposal)"/.test(
+      /rpc\(\s*"(admin_cohort_module_deadlines|admin_set_cohort_module_deadlines|cohort_module_deadline_proposal|admin_cohort_requirement_schedule|admin_set_cohort_requirement_dates)"/.test(
         readFileSync(f, "utf8"),
       ),
     );
@@ -592,3 +592,95 @@ describe("programme profile architecture", () => {
   });
 });
 
+describe("requirement calendar, organisation and learning breakdown (20260928100000-120000)", () => {
+  const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
+
+  it("the Admin roster shows the ENROLLMENT's organisation in its own column and canonical booked units", () => {
+    const page = read("pages/admin/AdminCoachees.tsx");
+    expect(page).toMatch(/coachees\.tableHeaders\.organisation/);
+    expect(page).toMatch(/data-testid="coachee-organisation"/);
+    const hook = read("hooks/admin/useAdminCoacheesData.ts");
+    expect(hook).toMatch(/organization_name: enr\?\.organization_id/);
+    // Never inferred from the cohort row, never counted from raw session rows.
+    expect(hook).not.toMatch(/cohortsData[^\n]*organization_id\s*\?\?|from\("sessions"\)/);
+    expect(hook).toMatch(/booked: available \? progress!\.booked_units/);
+  });
+
+  it("organisation leader counts and lists come from enrollments via the Admin RPCs", () => {
+    const page = read("pages/admin/AdminOrganizations.tsx");
+    expect(page).toMatch(/rpc\("admin_organization_leader_summary"\)/);
+    expect(page).not.toMatch(/from\("programme_enrollments"\)/);
+    expect(read("pages/admin/organizations/OrganisationEnrollmentsDialog.tsx")).toMatch(/rpc\("admin_organization_enrollments"/);
+  });
+
+  it("the Training breakdown renders every configured child type the backend returns", () => {
+    const breakdown = read("components/programme/ProgrammeModuleProgress.tsx");
+    expect(breakdown).toMatch(/configuredLearningItems\(learningBreakdown\)/);
+    expect(breakdown).not.toMatch(/key === "skill_cards"|skill_cards"\s*\)/);
+    expect(read("lib/programmeProfile.ts")).toMatch(/item\.progress_available && item\.required_units > 0/);
+  });
+
+  it("the Admin enrollment detail shows the requirement calendar from the canonical wrapper", () => {
+    expect(read("hooks/admin/useAdminUserDetail.ts")).toMatch(/rpc\("admin_enrollment_requirement_calendar"/);
+    // No client reads the internal calendar directly.
+    const internal = files.filter((f) => /rpc\(\s*"canonical_enrollment_requirement_calendar"/.test(readFileSync(f, "utf8")));
+    expect(internal).toEqual([]);
+  });
+});
+
+describe("learner surfaces share ONE active-enrollment context (20260928130000/140000)", () => {
+  const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
+  const LEARNER_SURFACES = [
+    "pages/dashboard/coachee/CoacheeDashboard.tsx",
+    "pages/CoacheeJourney.tsx",
+    "hooks/journey/useModuleWorkspace.ts",
+    "hooks/useProgrammeModules.ts",
+    "pages/Sessions.tsx",
+    "pages/dashboard/cards/MyGoalCard.tsx",
+    "pages/dashboard/cards/MyFeedbackCard.tsx",
+    "pages/dashboard/cards/RecentDevelopmentCard.tsx",
+    "pages/dashboard/cards/MyCoachCard.tsx",
+    "pages/dashboard/cards/MentoringReceiveCard.tsx",
+    "pages/MentoringFindMentor.tsx",
+    "pages/MentoringBookSession.tsx",
+    "pages/CoacheePeerBookSession.tsx",
+  ];
+
+  it("Dashboard, My Journey, module pages, Sessions and the sidebar resolve the enrollment through useActiveEnrollment", () => {
+    for (const file of LEARNER_SURFACES) {
+      const text = read(file);
+      expect(text, file).toMatch(/useActiveEnrollment(Details)?\(\)/);
+      expect(text, file).not.toMatch(/useEnrollmentContext\(|from\("programme_enrollments"\)/);
+    }
+    // My Journey no longer derives its enrollment id from a separate ad-hoc programme fetch.
+    expect(read("pages/CoacheeJourney.tsx")).not.toMatch(/useJourneyProgramme|programmeApi/);
+    // The resolver is the shared one: single ongoing enrollment, explicit errors.
+    const hook = read("hooks/useActiveEnrollment.ts");
+    expect(hook).toMatch(/useEnrollmentContext\(user\?\.id\)/);
+    expect(hook).toMatch(/loadError/);
+  });
+
+  it("no learner hook is handed a user id where an enrollment id is expected", () => {
+    const offenders = files.filter((f) => /useMyCoachCardData\(\s*(user\?\.id|ws\.userId|userId)\b/.test(readFileSync(f, "utf8")));
+    expect(offenders.map((f) => relative(SRC, f))).toEqual([]);
+  });
+
+  it("every programme module keeps its own learner route and module-gated sidebar entry (Sessions is the hub, not a replacement)", () => {
+    const app = read("App.tsx");
+    for (const path of ["/training", "/coaches", "/mentoring", "/coachee/peer-practice", "/triads", "/sessions", "/coachee/journey"]) {
+      expect(app, path).toContain(`path="${path}"`);
+    }
+    const layout = read("components/AppLayout.tsx");
+    for (const [path, module] of [["/training", "training"], ["/coaches", "coaching"], ["/coachee/peer-practice", "peer_coaching"], ["/mentoring", "mentoring"], ["/triads", "triads"]]) {
+      expect(layout, path).toMatch(new RegExp(`to: "${path.replace(/\//g, "\\/")}"[^\\n]*roles: \\["coachee"\\][^\\n]*module: "${module}"`));
+    }
+    // Badges come from the canonical module progress, not a sidebar count.
+    expect(layout).toMatch(/useLearnerModuleProgress\(/);
+    expect(read("hooks/useLearnerModuleProgress.ts")).toMatch(/rpc\("learner_module_progress"/);
+  });
+
+  it("the Training page reads the programme-selected weeks and their canonical requirement", () => {
+    expect(read("hooks/dashboard/useProgrammeProgress.ts")).toMatch(/rpc\("learner_training_week_items"/);
+    expect(read("pages/TrainingWeeks.tsx")).toMatch(/requirement_due_on/);
+  });
+});

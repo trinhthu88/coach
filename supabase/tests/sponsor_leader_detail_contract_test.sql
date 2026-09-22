@@ -42,10 +42,7 @@ select ok(
   ) ~ 'canonical_enrollment_journey'
     AND pg_get_functiondef(
       'public.canonical_enrollment_journey(uuid,date)'::regprocedure
-    ) ~ 'sponsor_canonical_module_schedule'
-    AND pg_get_functiondef(
-      'public.canonical_enrollment_journey(uuid,date)'::regprocedure
-    ) ~ 'sponsor_canonical_activity',
+    ) ~ 'canonical_enrollment_requirement_calendar',
   'leader journey uses the current Admin schedule and real activity source'
 );
 -- The engagement summary projects the one canonical goal/action rule

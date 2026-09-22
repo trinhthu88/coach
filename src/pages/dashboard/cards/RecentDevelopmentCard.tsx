@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { useEnrollmentDevelopmentJourney } from "@/hooks/journey/useEnrollmentDevelopmentJourney";
 import type { DevelopmentJourneyEventType } from "@/hooks/journey/developmentJourneyTypes";
 import { DashboardCardShell, CardFooterLink, CardEmptyHint } from "./shared";
@@ -39,8 +39,8 @@ const ICON_BY_TYPE: Record<DevelopmentJourneyEventType, LucideIcon> = {
 export function RecentDevelopmentCard({ limit = 5 }: { limit?: number }) {
   const { t } = useTranslation("dashboard");
   const { user, role } = useAuth();
-  const { selectedEnrollment, loading: enrollmentLoading } = useEnrollmentContext(user?.id);
-  const { events, loading } = useEnrollmentDevelopmentJourney(selectedEnrollment?.id, user?.id);
+  const { enrollmentId: activeEnrollmentId, loading: enrollmentLoading } = useActiveEnrollment();
+  const { events, loading } = useEnrollmentDevelopmentJourney(activeEnrollmentId ?? undefined, user?.id);
   const journeyPath = role === "coach" ? "/coach/my-journey" : "/coachee/journey";
 
   return (

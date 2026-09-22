@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { MessageSquareHeart } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { useLearnerFeedback } from "@/hooks/dashboard/useLearnerFeedback";
 import { feedbackAuthorLabel, feedbackText } from "@/lib/feedbackLabels";
 import { DashboardCardShell, CardEmptyHint } from "./shared";
@@ -18,8 +18,8 @@ import { DashboardCardShell, CardEmptyHint } from "./shared";
 export function MyFeedbackCard() {
   const { t } = useTranslation("dashboard");
   const { user } = useAuth();
-  const { selectedEnrollment, loading: enrollmentLoading } = useEnrollmentContext(user?.id);
-  const { feedback, loading, error } = useLearnerFeedback(user?.id, selectedEnrollment?.id);
+  const { enrollmentId: activeEnrollmentId, loading: enrollmentLoading } = useActiveEnrollment();
+  const { feedback, loading, error } = useLearnerFeedback(user?.id, activeEnrollmentId ?? undefined);
 
   return (
     <DashboardCardShell icon={MessageSquareHeart} title={t("cards.myFeedback.title")} loading={loading || enrollmentLoading}>

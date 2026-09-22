@@ -29,7 +29,7 @@ export function MyCoachSection() {
   const { hasModule } = useProgrammeModules();
   const receiveEnabled = hasModule("coaching");
   const ws = useModuleWorkspace("coaching");
-  const { data: coach, loading: coachLoading } = useMyCoachCardData(ws.userId, receiveEnabled);
+  const { data: coach, loading: coachLoading } = useMyCoachCardData(ws.enrollmentId, receiveEnabled);
   const next = nextOpenSession(ws.sessions);
 
   // Coaching isn't in this enrollment's programme: no workspace (the nav hides

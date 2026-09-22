@@ -70,6 +70,16 @@ describe("journey focus and window", () => {
     expect(journeyFocusIndex([])).toBe(-1);
   });
 
+  it("position is calendar-based: requirements completed early never move it to the last checkpoint", () => {
+    const at = (n: number, due_on: string, state: ProgrammeJourneyPoint["state"]) => ({ ...point(n, state), due_on });
+    // Everything done (18/18) in September; the last checkpoints are months away.
+    const done = [at(1, "2026-06-24", "completed"), at(2, "2026-08-23", "completed"), at(3, "2026-10-06", "completed"), at(4, "2027-02-19", "completed")];
+    expect(journeyFocusIndex(done, "2026-09-22")).toBe(2);
+    expect(journeyFocusIndex(done, "2027-03-01")).toBe(3);
+    // A checkpoint due today is the position whether or not it is completed.
+    expect(journeyFocusIndex(done, "2026-10-06")).toBe(2);
+  });
+
   it("the Dashboard window is contextual (previous, current, next, next) — not the last N", () => {
     const midProgramme = [
       point(1, "completed"), point(2, "completed"), point(3, "overdue"), point(4, "upcoming"),

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
 import { useEnrollmentSessions } from "@/hooks/journey/useEnrollmentSessions";
 import { useModuleRequirements } from "@/hooks/journey/useModuleRequirements";
@@ -40,8 +40,10 @@ const PROGRAMME_MODULE: Record<WorkspaceModule, DeliverableModule> = {
  */
 export function useModuleWorkspace(module: WorkspaceModule) {
   const { user } = useAuth();
-  const { selectedEnrollment, loading: enrollmentLoading } = useEnrollmentContext(user?.id);
-  const enrollmentId = selectedEnrollment?.id;
+  // The ONE learner enrollment context every learner page reads.
+  const active = useActiveEnrollment();
+  const enrollmentId = active.enrollmentId ?? undefined;
+  const enrollmentLoading = active.loading;
   const canonical = useLearnerCanonicalProgress(enrollmentId);
   const history = useEnrollmentSessions(enrollmentId, user?.id);
   const requirements = useModuleRequirements(enrollmentId, PROGRAMME_MODULE[module]);
@@ -73,6 +75,8 @@ export function useModuleWorkspace(module: WorkspaceModule) {
     userId: user?.id,
     enrollmentId,
     enrollmentLoading,
+    /** Enrollment resolution failure (surfaced, never shown as an empty module). */
+    enrollmentError: active.error,
     progress: canonical.progress,
     progressLoading: enrollmentLoading || canonical.loading,
     progressError: canonical.error,

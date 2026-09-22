@@ -34,29 +34,29 @@
     "descriptionLabel": "Mô tả",
     "programmeLabel": "Chương trình",
     "noneOption": "— Không có —",
-    "organizationLabel": "Tổ chức (Hiển thị với Sponsor)",
+    "organizationLabel": "Tổ chức mặc định (cho lượt tham gia mới)",
     "noOrganizationOption": "— Không có tổ chức —",
     "noOrganization": "Không có tổ chức",
-    "sponsorVisible": "Hiển thị với Sponsor",
-    "notSponsorVisible": "Không hiển thị với Sponsor",
-    "sponsorVisibleHint": "Học viên trong nhóm này sẽ hiển thị với sponsor của tổ chức",
-    "sponsorHiddenHint": "Không có sponsor nào thấy nhóm này — hãy gán tổ chức để bật chế độ xem Sponsor",
+    "sponsorVisible": "mặc định cho lượt tham gia mới",
+    "notSponsorVisible": "mỗi lượt tham gia tự đặt tổ chức",
+    "sponsorVisibleHint": "Lượt tham gia mới trong khóa này mặc định thuộc tổ chức này. Nhà tài trợ thấy gì do tổ chức của từng lượt tham gia quyết định, nên một khóa có thể có học viên từ nhiều tổ chức.",
+    "sponsorHiddenHint": "Không có mặc định: đặt tổ chức cho từng lượt tham gia. Nhà tài trợ thấy đúng các lượt tham gia của tổ chức mình.",
     "startDateLabel": "Ngày bắt đầu",
     "endDateLabel": "Ngày kết thúc",
     "cancel": "Hủy",
     "save": "Lưu",
     "schedule": {
-      "title": "Hạn hoàn thành",
-      "subtitleNew": "Mỗi module một hạn: khóa này phải hoàn thành module đó trước ngày nào. Mặc định là ngày kết thúc khóa; số đơn vị bắt buộc lấy từ chương trình.",
-      "subtitleSaved": "Hạn hoàn thành đã lưu của khóa. Hành trình của học viên, nhà tài trợ và quản trị đều dùng các ngày này.",
-      "datesChangedNote": "Thay đổi ngày của khóa chỉ di chuyển những hạn vẫn đặt theo ngày kết thúc khóa. Hạn bạn tự chọn được giữ nguyên.",
+      "title": "Ngày của từng yêu cầu",
+      "subtitleNew": "Mỗi module có một hạn hoàn thành mặc định (ngày kết thúc khóa nếu bạn không chọn ngày khác). Sau khi lưu khóa, mỗi đơn vị bắt buộc có ngày riêng.",
+      "subtitleSaved": "Mỗi đơn vị bắt buộc một ngày — với Đào tạo là mỗi tuần được chọn một ngày. Tiến độ, quá hạn và các mốc của học viên, nhà tài trợ và quản trị đều dùng đúng các ngày này.",
+      "datesChangedNote": "Thay đổi ngày của khóa chỉ di chuyển những hạn mặc định vẫn theo ngày kết thúc khóa và các yêu cầu đi theo chúng. Ngày bạn tự chọn được giữ nguyên.",
       "loadError": "Không thể tải lịch yêu cầu.",
       "needProgrammeAndDates": "Chọn chương trình, ngày bắt đầu và kết thúc để xem hạn đề xuất.",
       "empty": "Khóa này chưa đặt hạn hoàn thành nào.",
       "required_one": "yêu cầu {{count}}",
       "required_other": "yêu cầu {{count}}",
       "edited": "Đã sửa",
-      "trainingNote": "Hạn Đào tạo / Học tập theo ngày của các tuần đào tạo trong khóa.",
+      "trainingNote": "Tuần Đào tạo bắt đầu theo ngày nhịp độ (ngày tuần của khóa, nếu không thì ngày bắt đầu khóa + tuần). Đặt ngày riêng cho một tuần để dời nó; khi đó nó ảnh hưởng đến hạn, quá hạn và các mốc như mọi yêu cầu khác.",
       "issues": {
         "missing_dates": "{{module}}: đã có {{scheduled}}/{{required}} đơn vị bắt buộc.",
         "surplus_dates": "{{module}}: có {{scheduled}} đơn vị nhưng chỉ yêu cầu {{required}} — những đơn vị dư đã có hoạt động nên được giữ lại.",
@@ -65,7 +65,31 @@
         "missing_deadline": "{{module}}: chưa đặt hạn hoàn thành nên không thể tạo yêu cầu."
       },
       "deadlineLabel": "Hạn hoàn thành {{module}}",
-      "unitsNote": "Số đơn vị mỗi module yêu cầu được đặt ở chương trình; các đơn vị bắt buộc được tạo tự động và đều đến hạn vào ngày trên."
+      "unitsNote": "Chương trình quy định số đơn vị mỗi module; khóa có đúng một yêu cầu có ngày cho mỗi đơn vị.",
+      "selectedWeeks_one": "{{count}} tuần được chọn",
+      "selectedWeeks_other": "{{count}} tuần được chọn",
+      "defaultDeadline": "Mặc định",
+      "applyToAll": "Áp dụng cho mọi yêu cầu",
+      "countMismatch": "Yêu cầu {{required}} đơn vị nhưng đang có {{scheduled}} yêu cầu.",
+      "requirementDateLabel": "Ngày của {{requirement}}",
+      "customDate": "Ngày riêng",
+      "followsDefault": "Mặc định",
+      "reset": "Đặt lại",
+      "resetLabel": "Đặt {{requirement}} về ngày mặc định",
+      "newCohortNote": "Ngày của từng yêu cầu (mỗi đơn vị bắt buộc, mỗi tuần Đào tạo) có thể chỉnh sau khi lưu khóa.",
+      "integrity": {
+        "training_units_mismatch": "Đào tạo: {{detail}} — chương trình cần chọn đúng một tuần cho mỗi đơn vị bắt buộc.",
+        "training_week_missing": "Đào tạo: {{detail}}.",
+        "training_week_unmapped": "Đào tạo: {{detail}}.",
+        "requirement_unresolvable": "{{module}}: {{detail}}.",
+        "enrollment_without_organization": "Một học viên trong khóa chưa có tổ chức nên không nhà tài trợ nào xem được.",
+        "schedule_unselected_week": "Đào tạo: có yêu cầu cho một tuần mà chương trình không còn chọn.",
+        "schedule_missing_requirements": "{{module}}: ít yêu cầu hơn số đơn vị bắt buộc ({{detail}}).",
+        "schedule_surplus_requirements": "{{module}}: nhiều yêu cầu hơn số đơn vị bắt buộc ({{detail}}).",
+        "schedule_duplicate_ordinals": "{{module}}: hai yêu cầu trùng số thứ tự ({{detail}}).",
+        "schedule_ordinal_gap": "{{module}}: số thứ tự yêu cầu bị thiếu ({{detail}}).",
+        "schedule_out_of_scope": "{{module}}: có yêu cầu nhưng chương trình không còn bắt buộc module này ({{detail}})."
+      }
     },
     "triads": "Triad",
     "coaching": {
@@ -106,7 +130,10 @@
       "toggleLabel": "Cho phép học viên cohort này thực hành cùng {{name}}",
       "granted": "Đã thêm cohort vào nhóm thực hành đồng hành.",
       "withdrawn": "Đã gỡ cohort. Các session đã đặt không bị ảnh hưởng."
-    }
+    },
+    "goalSettingOpensLabel": "Bắt đầu đặt mục tiêu",
+    "goalSettingDueLabel": "Hạn đặt mục tiêu",
+    "goalSettingHint": "Mỗi học viên đặt 1–3 mục tiêu trong giai đoạn này. Để trống = từ ngày bắt đầu khóa đến 7 ngày sau. Chỉ là ngày nhắc nhở, không tính là yêu cầu của chương trình."
   },
   "dashboard": {
     "eyebrow": "Tổ chức",
@@ -190,7 +217,8 @@
       "cohort": "Nhóm",
       "selectedCoaches": "Coach đã chọn",
       "sheetName": "Học viên",
-      "completedUnits": "Hoạt động bắt buộc đã hoàn thành (ghi danh hiện tại)"
+      "completedUnits": "Hoạt động bắt buộc đã hoàn thành (ghi danh hiện tại)",
+      "organisation": "Tổ chức"
     },
     "tableHeaders": {
       "coachee": "Học viên",
@@ -203,7 +231,8 @@
       "percentComplete": "% Hoàn thành",
       "selectedCoaches": "Coach đã chọn",
       "actions": "Thao tác",
-      "requiredActivities": "Hoạt động bắt buộc"
+      "requiredActivities": "Hoạt động bắt buộc",
+      "organisation": "Tổ chức"
     },
     "selectedCoachesCount_other": "{{count}} coach",
     "viewProfile": "Xem hồ sơ",
@@ -220,7 +249,14 @@
       "close": "Đóng"
     },
     "addLearner": "Thêm học viên",
-    "progressUnavailable": "Không tải được tiến độ"
+    "progressUnavailable": "Không tải được tiến độ",
+    "noOrganisation": "Chưa có tổ chức",
+    "enrollmentStatus": {
+      "active": "Đang tham gia",
+      "at_risk": "Có rủi ro",
+      "paused": "Tạm dừng",
+      "completed": "Đã hoàn thành"
+    }
   },
   "coacheeProfileSheet": {
     "readOnly": "chỉ đọc",
@@ -353,7 +389,7 @@
     "titleEmphasis": "& nhà tài trợ",
     "subtitle": "Các doanh nghiệp khách hàng tài trợ cho lãnh đạo tham gia chương trình và thông tin liên hệ của đại diện đơn vị tài trợ.",
     "newOrganization": "Tổ chức mới",
-    "enrolledLeaders_other": "{{count}} lãnh đạo đã ghi danh",
+    "enrolledLeaders_other": "{{count}} học viên đang tham gia",
     "sponsor": "Nhà tài trợ",
     "noSponsorYet": "Chưa có nhà tài trợ được chỉ định.",
     "inviteSponsor": "Mời nhà tài trợ",
@@ -378,7 +414,27 @@
     "copied": "Đã sao chép",
     "resendSetupLink": "Gửi lại liên kết thiết lập",
     "setupLinkSent": "Đã gửi liên kết thiết lập tới {{email}}",
-    "couldNotSendSetupLink": "Không thể gửi liên kết thiết lập"
+    "couldNotSendSetupLink": "Không thể gửi liên kết thiết lập",
+    "enrolledLeaders_one": "{{count}} học viên đang tham gia",
+    "historicalEnrollments_one": "{{count}} lượt tham gia trước",
+    "historicalEnrollments_other": "{{count}} lượt tham gia trước",
+    "viewLeaders": "Xem học viên",
+    "leaders": {
+      "title": "{{name}} — học viên",
+      "leader": "Học viên",
+      "cohort": "Khóa · chương trình",
+      "status": "Trạng thái",
+      "progress": "Hoạt động bắt buộc",
+      "overdue_one": "{{count}} quá hạn",
+      "overdue_other": "{{count}} quá hạn",
+      "ongoing_one": "{{count}} lượt đang tham gia",
+      "ongoing_other": "{{count}} lượt đang tham gia",
+      "historical_one": "{{count}} lượt tham gia trước",
+      "historical_other": "{{count}} lượt tham gia trước",
+      "empty": "Chưa có lượt tham gia nào thuộc tổ chức này.",
+      "loadError": "Không thể tải danh sách học viên.",
+      "note": "Học viên thuộc tổ chức ghi trên lượt tham gia của họ — cũng là liên kết quyết định nhà tài trợ của tổ chức này thấy gì. Một khóa có thể có học viên từ nhiều tổ chức."
+    }
   },
   "programmes": {
     "nameRequired": "Cần có tên",
@@ -481,7 +537,15 @@
         "trainingWeekOption": "Tuần {{week}}: {{title}}",
         "allTrainingWeeksHint": "Chọn đúng một tuần đào tạo cho mỗi đơn vị bắt buộc.",
         "noTrainingWeeks": "Chương trình này chưa có tuần đào tạo.",
-        "deadlineNote": "Thời hạn hoàn thành do khóa quyết định: đặt một hạn cho mỗi module trong Quản trị → Khóa."
+        "deadlineNote": "Thời hạn hoàn thành do khóa quyết định: đặt một hạn cho mỗi module trong Quản trị → Khóa.",
+        "learningComponents": "Nội dung học trong mỗi tuần",
+        "learningComponent": {
+          "skill_cards": "Thẻ kỹ năng (chính tuần học)",
+          "quizzes": "Bài kiểm tra",
+          "reflections": "Suy ngẫm",
+          "daily_prompts": "Gợi ý hằng ngày"
+        },
+        "learningComponentsHint": "Các loại được chọn hiển thị như bằng chứng trong phần Đào tạo / Học tập cho học viên, quản trị và nhà tài trợ (chỉ số lượng — không bao giờ có nội dung trả lời). Chúng không thêm yêu cầu: tiến độ Đào tạo vẫn là số tuần hoàn thành trên số tuần được chọn."
       },
       "validation": {
         "requiredUnitsWholeNonNegative": "Số đơn vị bắt buộc phải là số nguyên không âm.",
@@ -1062,7 +1126,8 @@
       "actions": "Hành động",
       "reflections": "Suy ngẫm",
       "feedback": "Phản hồi",
-      "satisfaction": "Mức độ hài lòng"
+      "satisfaction": "Mức độ hài lòng",
+      "calendar": "Lịch yêu cầu"
     },
     "fields": {
       "programme": "Chương trình",
@@ -1116,7 +1181,19 @@
       "actions": "Chưa có hành động cho lượt ghi danh này.",
       "reflections": "Chưa có suy ngẫm được chia sẻ cho lượt ghi danh này.",
       "feedback": "Chưa có phản hồi cho lượt ghi danh này.",
-      "satisfaction": "Chưa có đánh giá session nào."
+      "satisfaction": "Chưa có đánh giá session nào.",
+      "calendar": "Lượt tham gia này chưa có yêu cầu nào."
+    },
+    "calendarHeaders": {
+      "requirement": "Yêu cầu",
+      "dueOn": "Hạn",
+      "state": "Trạng thái"
+    },
+    "calendarStates": {
+      "completed": "Đã hoàn thành",
+      "overdue": "Quá hạn",
+      "due": "Đến hạn",
+      "upcoming": "Sắp tới"
     }
   },
   "addPerson": {

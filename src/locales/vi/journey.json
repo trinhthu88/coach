@@ -316,6 +316,7 @@
     "title": "Hành trình của tôi",
     "subtitle": "Mọi thứ cho đợt tham gia này ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự xảy ra, và mục tiêu của bạn đang ở đâu.",
     "eyebrow": "Không gian học viên",
-    "subtitleFor": "Mọi thứ về {{programme}} · {{cohort}} ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự diễn ra và mục tiêu của bạn đang ở đâu."
+    "subtitleFor": "Mọi thứ về {{programme}} · {{cohort}} ở một nơi: chương trình yêu cầu gì, điều gì đã thực sự diễn ra và mục tiêu của bạn đang ở đâu.",
+    "enrollmentError": "Không thể tải lượt tham gia chương trình của bạn: {{error}}"
   }
 }

@@ -54,6 +54,35 @@ function lastDefinition(name: string): { file: string; body: string } | null {
 }
 
 describe("migration chain — canonical final state", () => {
+  it("every multi-organisation demo enrollment is organised BEFORE any organisation is inferred from a cohort", () => {
+    // 20260925100000 repairs organisation-less enrollments from their COHORT's
+    // organisation. seed-demo.sql shares Cohort B and Cohort D between two
+    // organisations, so on a database whose demo rows predate the column that
+    // repair would put Organisation B's learners into Organisation A and show
+    // them to A's Sponsor. 20260925090000 states them first, which makes the
+    // repair a no-op for exactly those rows.
+    const seed = readFileSync(join(process.cwd(), "supabase/seed-demo.sql"), "utf8");
+    const orgB = /'(d0000000-0000-4000-8000-00000000bbbb)'/.exec(seed)?.[1];
+    expect(orgB, "seed-demo.sql must define Organisation B").toBeTruthy();
+
+    const slugs = /UPDATE _enr SET org = '[0-9a-f-]+' WHERE slug IN \(([^)]*)\)/i.exec(seed)?.[1];
+    expect(slugs, "seed-demo.sql must assign enrollments to Organisation B").toBeTruthy();
+    const enrollmentIds = [...slugs!.matchAll(/'([a-z0-9]+)'/g)].map(([, slug]) => {
+      const row = new RegExp(`\\('${slug}',\\s*'([0-9a-f-]{36})'`, "i").exec(seed);
+      expect(row, `seed-demo.sql must declare enrollment ${slug}`).toBeTruthy();
+      return row![1];
+    });
+    expect(enrollmentIds.length).toBeGreaterThan(0);
+
+    const backfill = "20260925100000_sponsor_visibility_by_enrollment_org.sql";
+    const statedIn = files.filter((f) => {
+      const sql = readFileSync(join(DIR, f), "utf8");
+      return sql.includes(orgB!) && enrollmentIds.every((id) => sql.includes(id));
+    });
+    expect(statedIn.length, "one migration must state every Organisation B enrollment").toBeGreaterThan(0);
+    for (const file of statedIn) expect(file < backfill).toBe(true);
+  });
+
   it("the superseded 20260918090000 migration defines no function (no-op in any order)", () => {
     const sql = readFileSync(join(DIR, "20260918090000_sponsor_canonical_calendar_followup.sql"), "utf8").replace(/--.*$/gm, "");
     expect(sql).not.toMatch(/CREATE\s+(OR\s+REPLACE\s+)?FUNCTION/i);
@@ -96,7 +125,11 @@ describe("migration chain — canonical final state", () => {
   });
 
   it("Learner and Sponsor journeys end on the one shared journey construction", () => {
-    expect(lastDefinition("canonical_enrollment_journey")?.body).toMatch(/sponsor_canonical_module_schedule/);
+    // Checkpoints are cumulative counts over THE requirement calendar
+    // (20260928100000), whose dates are the cohort requirement rows.
+    expect(lastDefinition("canonical_enrollment_journey")?.body).toMatch(/canonical_enrollment_requirement_calendar/);
+    expect(lastDefinition("get_sponsor_programme_journey")?.body).toMatch(/canonical_enrollment_requirement_calendar/);
+    expect(lastDefinition("canonical_enrollment_requirement_calendar")?.body).toMatch(/cohort_requirement_dates/);
     expect(lastDefinition("learner_canonical_journey")?.body).toMatch(/canonical_enrollment_journey/);
     expect(lastDefinition("sponsor_canonical_leader_journey")?.body).toMatch(/canonical_enrollment_journey/);
     expect(lastDefinition("admin_canonical_enrollment_journey")?.body).toMatch(/canonical_enrollment_journey/);
@@ -325,10 +358,14 @@ describe("migration chain — canonical final state", () => {
       // One activity row per requirement — never per session.
       expect(activity).toMatch(/FROM public\.canonical_triad_requirement_fulfilment\(p_enrollment_id\) f/);
       expect(activity).not.toMatch(/JOIN public\.triad_sessions s ON s\.id = a\.source_activity_id/);
-      const progress = lastDefinition("canonical_module_progress")?.body ?? "";
-      expect(progress).toMatch(/a\.requirement_due_on IS NULL OR a\.requirement_due_on <= p_as_of/);
+      // Each requirement is judged against its OWN due date: progress and both
+      // journeys count calendar rows, one per requirement (20260928100000).
+      const calendar = lastDefinition("canonical_enrollment_requirement_calendar")?.body ?? "";
+      expect(calendar).toMatch(/FROM public\.canonical_triad_requirement_fulfilment\(p_enrollment_id\) f/);
+      expect(calendar).toMatch(/r\.due_on IS NOT NULL AND r\.due_on <= p_as_of AND r\.completed_on IS NULL/);
+      expect(lastDefinition("canonical_module_progress")?.body).toMatch(/canonical_enrollment_requirement_calendar\(p_enrollment_id, p_as_of\)/);
       for (const name of ["canonical_enrollment_journey", "get_sponsor_programme_journey"]) {
-        expect(lastDefinition(name)?.body, name).toMatch(/a\.requirement_due_on IS NULL OR a\.requirement_due_on <= sm\.due_on/);
+        expect(lastDefinition(name)?.body, name).toMatch(/c\.due_on <= d\.due_on AND c\.completed_on IS NOT NULL AND c\.completed_on <= least\(d\.due_on, p_as_of\)/);
       }
       const completion = lastDefinition("canonical_triad_completion")?.body ?? "";
       expect(completion).toMatch(/canonical_module_progress\(p_enrollment_id, p_as_of\)/);
@@ -523,3 +560,23 @@ describe("sponsor visibility is decided by the enrollment organisation only", ()
   });
 });
 
+
+describe("learner Training and enrollment context read current-state sources only (20260928130000/140000)", () => {
+  it("the learner Training reader is gated on the programme's Training module, never on a historical snapshot", () => {
+    const body = lastDefinition("get_enrollment_training_weeks")?.body ?? "";
+    expect(body).not.toMatch(/enrollment_module_snapshots/);
+    expect(body).toMatch(/training_week_ids/);
+    expect(body).toMatch(/canonical_enrollment_requirement_calendar\(p_enrollment_id/);
+  });
+
+  it("the Sponsor breakdown and the learner per-week items aggregate the same item-level source", () => {
+    expect(lastDefinition("canonical_learning_breakdown")?.body).toMatch(/canonical_learning_items\(p_enrollment_id, p_as_of\)/);
+    expect(lastDefinition("learner_training_week_items")?.body).toMatch(/canonical_learning_items\(p_enrollment_id, p_as_of\)/);
+    expect(lastDefinition("learner_training_week_items")?.body).toMatch(/e\.user_id = auth\.uid\(\)/);
+  });
+
+  it("one effective date range per enrollment, and a self-scoped learner context", () => {
+    expect(lastDefinition("canonical_enrollment_progress")?.body).toMatch(/coalesce\(e\.end_date, c\.end_date\) AS end_date/);
+    expect(lastDefinition("learner_enrollment_context")?.body).toMatch(/e\.user_id = auth\.uid\(\)/);
+  });
+});

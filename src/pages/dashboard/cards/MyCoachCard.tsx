@@ -1,8 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Users, ArrowUpRight } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { useMyCoachCardData } from "@/hooks/dashboard/useMyCoachCardData";
 import { DashboardCardShell, CardFooterLink, CardEmptyHint } from "./shared";
 
@@ -15,11 +14,10 @@ import { DashboardCardShell, CardFooterLink, CardEmptyHint } from "./shared";
  */
 export function MyCoachCard() {
   const { t } = useTranslation("dashboard");
-  const { user } = useAuth();
-  const { selectedEnrollment } = useEnrollmentContext(user?.id);
+  const { enrollmentId: activeEnrollmentId } = useActiveEnrollment();
   const { hasDirection, loading: modulesLoading } = useProgrammeModules();
   const enabled = hasDirection("coaching", "receive");
-  const { team, loading } = useMyCoachCardData(selectedEnrollment?.id, enabled);
+  const { team, loading } = useMyCoachCardData(activeEnrollmentId ?? undefined, enabled);
 
   if (!modulesLoading && !enabled) return null;
 

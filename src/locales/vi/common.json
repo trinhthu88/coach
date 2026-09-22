@@ -153,7 +153,8 @@
     "openNavMenu": "Mở menu điều hướng",
     "mobileMore": "Thêm",
     "coachingOsTagline": "Coaching OS",
-    "defaultUserName": "Người dùng"
+    "defaultUserName": "Người dùng",
+    "modulesUnavailable": "Không thể tải các module của chương trình nên liên kết module bị ẩn. Hãy tải lại, hoặc liên hệ quản trị chương trình nếu lỗi vẫn còn."
   },
   "errors": {
     "generic": "Đã có lỗi xảy ra. Vui lòng thử lại — nếu vẫn tiếp diễn, hãy liên hệ contact@clariva.club.",

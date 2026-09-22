@@ -4,7 +4,10 @@ import {
   changedModuleDeadlines,
   sortModuleDeadlines,
   toDeadlinePayload,
+  toRequirementDatePayload,
   type CohortModuleDeadline,
+  type CohortRequirementDate,
+  type RequirementDateEdit,
 } from "@/lib/cohortSchedule";
 
 export interface CohortScheduleIssue {
@@ -13,6 +16,14 @@ export interface CohortScheduleIssue {
   issue: string;
   required_units: number | null;
   scheduled_units: number;
+}
+
+/** A requirement-integrity finding for this cohort (admin_requirement_integrity_issues). */
+export interface CohortIntegrityIssue {
+  issue: string;
+  programme_id: string | null;
+  module: string | null;
+  detail: string;
 }
 
 interface Params {
@@ -24,22 +35,27 @@ interface Params {
 }
 
 /**
- * Admin cohort requirement deadlines.
+ * Admin cohort requirement dates.
  *
- * One date per module: by when this cohort must have completed it. The
- * required unit COUNT belongs to the programme, and the canonical requirement
- * rows are materialised by the database from the two together. There is
- * nothing per-unit to edit and nothing to "regenerate".
+ * The programme says how many units each module requires (N); the cohort holds
+ * exactly N requirement rows per module -- one per selected week for Training --
+ * and each row has its OWN date. Per session module there is also a default
+ * completion deadline: new rows start at it, and every row an Admin has not
+ * dated individually follows it ("apply to all" = reset every row to it).
  *
- *  - New cohort: the proposal offers the cohort end date being entered.
- *  - Existing cohort: the saved deadlines, with the units actually materialised
- *    against each, so a mismatch is visible rather than inferred.
+ *  - New cohort: the proposal offers the cohort end date as each module
+ *    default; the individual rows exist once the cohort is saved.
+ *  - Existing cohort: the saved defaults AND every requirement row with its
+ *    date, so a count mismatch is visible rather than inferred.
  */
 export function useCohortRequirementSchedule({ open, cohortId, programmeId, start, end }: Params) {
   const isNew = !cohortId;
   const [items, setItems] = useState<CohortModuleDeadline[]>([]);
   const [baseline, setBaseline] = useState<CohortModuleDeadline[]>([]);
   const [issues, setIssues] = useState<CohortScheduleIssue[]>([]);
+  const [integrity, setIntegrity] = useState<CohortIntegrityIssue[]>([]);
+  const [requirements, setRequirements] = useState<CohortRequirementDate[]>([]);
+  const [requirementEdits, setRequirementEdits] = useState<Record<string, RequirementDateEdit>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,12 +63,14 @@ export function useCohortRequirementSchedule({ open, cohortId, programmeId, star
     if (!cohortId) return;
     setLoading(true);
     setError(null);
-    const [rows, health] = await Promise.all([
+    const [rows, health, reqs, checks] = await Promise.all([
       supabase.rpc("admin_cohort_module_deadlines", { p_cohort_id: cohortId }),
       supabase.rpc("cohort_requirement_schedule_issues", { p_cohort_id: cohortId }),
+      supabase.rpc("admin_cohort_requirement_schedule", { p_cohort_id: cohortId }),
+      supabase.rpc("admin_requirement_integrity_issues"),
     ]);
-    if (rows.error || health.error) {
-      setError((rows.error ?? health.error)?.message ?? "error");
+    if (rows.error || health.error || reqs.error) {
+      setError((rows.error ?? health.error ?? reqs.error)?.message ?? "error");
       setLoading(false);
       return;
     }
@@ -60,6 +78,14 @@ export function useCohortRequirementSchedule({ open, cohortId, programmeId, star
     setItems(saved);
     setBaseline(saved);
     setIssues((health.data ?? []) as CohortScheduleIssue[]);
+    setRequirements((reqs.data ?? []) as CohortRequirementDate[]);
+    setRequirementEdits({});
+    // Integrity findings are informational: a failure to load them never
+    // blocks editing dates.
+    setIntegrity(
+      ((checks.data ?? []) as (CohortIntegrityIssue & { cohort_id: string | null })[])
+        .filter((i) => i.cohort_id === cohortId && !i.issue.startsWith("schedule:missing_deadline")),
+    );
     setLoading(false);
   }, [cohortId]);
 
@@ -74,6 +100,9 @@ export function useCohortRequirementSchedule({ open, cohortId, programmeId, star
     if (!open || !isNew) return;
     let cancelled = false;
     setError(null);
+    setRequirements([]);
+    setRequirementEdits({});
+    setIntegrity([]);
     if (!programmeId || !start || !end) {
       setItems([]);
       setBaseline([]);
@@ -114,18 +143,51 @@ export function useCohortRequirementSchedule({ open, cohortId, programmeId, star
       ),
     );
 
-  const changed = changedModuleDeadlines(baseline, items);
-  const dirty = changed.length > 0;
+  /** Give one requirement its own date. */
+  const setRequirementDate = (requirementId: string, date: string) =>
+    setRequirementEdits((prev) => ({ ...prev, [requirementId]: date }));
 
-  /** Persist to the canonical cohort deadlines. Returns the number of modules saved. */
-  const save = async (targetCohortId: string) => {
-    if (changed.length === 0) return 0;
-    const { data, error: rpcError } = await supabase.rpc("admin_set_cohort_module_deadlines", {
-      p_cohort_id: targetCohortId,
-      p_items: toDeadlinePayload(changed),
+  /** Return one requirement to its default (module deadline / week pacing). */
+  const resetRequirement = (requirementId: string) =>
+    setRequirementEdits((prev) => ({ ...prev, [requirementId]: null }));
+
+  /** "Apply the module deadline to all requirements": every row follows the default again. */
+  const applyDefaultToModule = (key: { programme_id: string; module: string }) =>
+    setRequirementEdits((prev) => {
+      const next = { ...prev };
+      for (const r of requirements) {
+        if (r.programme_id === key.programme_id && r.module === key.module) next[r.requirement_id] = null;
+      }
+      return next;
     });
-    if (rpcError) throw rpcError;
-    return data ?? 0;
+
+  const changed = changedModuleDeadlines(baseline, items);
+  const requirementChanges = toRequirementDatePayload(requirements, requirementEdits);
+  const dirty = changed.length > 0 || requirementChanges.length > 0;
+
+  /**
+   * Persist: module defaults first (rows that follow them move), then the
+   * individual requirement dates. Returns the number of rows saved.
+   */
+  const save = async (targetCohortId: string) => {
+    let saved = 0;
+    if (changed.length > 0) {
+      const { data, error: rpcError } = await supabase.rpc("admin_set_cohort_module_deadlines", {
+        p_cohort_id: targetCohortId,
+        p_items: toDeadlinePayload(changed),
+      });
+      if (rpcError) throw rpcError;
+      saved += data ?? 0;
+    }
+    if (requirementChanges.length > 0) {
+      const { data, error: rpcError } = await supabase.rpc("admin_set_cohort_requirement_dates", {
+        p_cohort_id: targetCohortId,
+        p_items: requirementChanges,
+      });
+      if (rpcError) throw rpcError;
+      saved += data ?? 0;
+    }
+    return saved;
   };
 
   return {
@@ -133,11 +195,17 @@ export function useCohortRequirementSchedule({ open, cohortId, programmeId, star
     items,
     baseline,
     issues,
+    integrity,
+    requirements,
+    requirementEdits,
     loading,
     error,
     dirty,
     changedKeys: new Set(changed.map((i) => `${i.programme_id}:${i.module}`)),
     setDeadline,
+    setRequirementDate,
+    resetRequirement,
+    applyDefaultToModule,
     save,
     reload: loadSaved,
   };

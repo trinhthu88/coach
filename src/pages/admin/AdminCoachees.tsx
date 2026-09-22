@@ -105,6 +105,7 @@ export default function AdminCoachees() {
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.registered")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.requiredActivities")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.booked")}</th>
+                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.organisation")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.programme")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.percentComplete")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.selectedCoaches")}</th>
@@ -133,6 +134,17 @@ export default function AdminCoachees() {
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked}</td>
+                  {/* Organisation of the ENROLLMENT (the relationship Sponsor
+                      visibility uses) -- never inferred from the cohort. */}
+                  <td className="px-3 py-2.5 text-[11px]" data-testid="coachee-organisation">
+                    {r.organization_name ? (
+                      <Link to="/admin/organizations" className="font-medium text-primary hover:underline">{r.organization_name}</Link>
+                    ) : r.enrollment_id ? (
+                      <span className="text-warning">{t("coachees.noOrganisation")}</span>
+                    ) : (
+                      <span className="italic text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {r.programme_name ? (
                       <Link to="/admin/programmes" className="text-primary hover:underline">{r.programme_name}</Link>
@@ -144,9 +156,9 @@ export default function AdminCoachees() {
                         <Link to="/admin/cohorts" className="text-muted-foreground hover:text-primary hover:underline">{r.cohort_name}</Link>
                       </p>
                     )}
-                    {r.organization_name && (
-                      <p className="text-[10px]">
-                        <Link to="/admin/organizations" className="text-primary hover:underline">{r.organization_name}</Link>
+                    {r.enrollment_status && (
+                      <p className="text-[10px] text-muted-foreground" data-testid="coachee-enrollment-status">
+                        {t(`coachees.enrollmentStatus.${r.enrollment_status}`, { defaultValue: r.enrollment_status })}
                       </p>
                     )}
                   </td>
@@ -174,7 +186,7 @@ export default function AdminCoachees() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={10} className="p-12 text-center text-sm text-muted-foreground">{t("coachees.noMatch")}</td></tr>
+                <tr><td colSpan={11} className="p-12 text-center text-sm text-muted-foreground">{t("coachees.noMatch")}</td></tr>
               )}
             </tbody>
           </table>

@@ -151,7 +151,12 @@
     },
     "triadSession": "Triad {{n}}",
     "coachingRequirement": "Coaching {{n}}",
-    "requirementDue": "Due {{date}}"
+    "requirementDue": "Due {{date}}",
+    "pastProgrammes": {
+      "show_one": "Show {{count}} session from past programmes",
+      "show_other": "Show {{count}} sessions from past programmes",
+      "hide": "Current programme only"
+    }
   },
   "detail": {
     "sessionNotFound": {

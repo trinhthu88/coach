@@ -73,4 +73,22 @@ describe("ProgrammeModuleScheduleFields", () => {
     render(<Harness module="coaching" initialConfig={{ required: true, required_units: 2 }} />);
     expect(screen.queryByRole("checkbox", { name: "Week 1: Foundations" })).not.toBeInTheDocument();
   });
+  it("Training declares which child learning types count as evidence, never as extra units", () => {
+    render(<Harness module="training" initialConfig={{ required: true, required_units: 2, distribution_settings: { training_week_ids: ["week-1", "week-2"] } }} />);
+    const skill = screen.getByRole("checkbox", { name: "Skill cards (the week itself)" });
+    expect(skill).toBeChecked();
+    expect(skill).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Quizzes" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Daily prompts" }));
+    expect(currentConfig().learning_components).toEqual(["skill_cards", "quizzes", "daily_prompts"]);
+    // The requirement itself is untouched: two selected weeks, two units.
+    expect(currentConfig().required_units).toBe(2);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Quizzes" }));
+    expect(currentConfig().learning_components).toEqual(["skill_cards", "daily_prompts"]);
+  });
+
+  it("non-Training modules have no learning types", () => {
+    render(<Harness initialConfig={{ required: true, required_units: 2 }} />);
+    expect(screen.queryByTestId("learning-components")).not.toBeInTheDocument();
+  });
 });

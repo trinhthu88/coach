@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
 import { useAuth } from "@/context/AuthContext";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,8 +51,8 @@ export default function MentoringBookSession() {
   const { t } = useTranslation("mentoring");
   const { mentorId } = useParams<{ mentorId: string }>();
   const { user } = useAuth();
-  const { selectedEnrollment } = useEnrollmentContext(user?.id);
-  const enrollmentId = selectedEnrollment?.id;
+  const { enrollmentId: activeEnrollmentId } = useActiveEnrollment();
+  const enrollmentId = activeEnrollmentId ?? undefined;
   const navigate = useNavigate();
 
   const [mentor, setMentor] = useState<MentorDetail | null>(null);

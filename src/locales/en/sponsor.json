@@ -583,7 +583,8 @@
       "ratingNone": "No programme experience ratings yet.",
       "journeyWindow": "Showing checkpoints {{first}}–{{last}} of {{total}}",
       "noGoalSet": "No goal set",
-      "goalNotRated": "Not yet rated"
+      "goalNotRated": "Not yet rated",
+      "overdueUnits": "{{count}} overdue"
     }
   },
   "report": {

@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { Target, ListChecks, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
 import { useGoalRatingRows } from "@/hooks/journey/useJourneyDerived";
@@ -21,8 +21,8 @@ import { DashboardCardShell, CardFooterLink, CardEmptyHint } from "./shared";
 export function MyGoalCard() {
   const { t } = useTranslation("dashboard");
   const { user, role } = useAuth();
-  const { selectedEnrollment, loading: enrollmentLoading } = useEnrollmentContext(user?.id);
-  const enrollmentId = selectedEnrollment?.id;
+  const { enrollmentId: activeEnrollmentId, loading: enrollmentLoading } = useActiveEnrollment();
+  const enrollmentId = activeEnrollmentId ?? undefined;
 
   const { goals, loading: goalsLoading, error: goalsError } = useJourneyGoals(user?.id, { enrollmentId });
   const { ratings, loading: ratingsLoading } = useJourneyRatings(user?.id, enrollmentId);

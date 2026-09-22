@@ -19,6 +19,16 @@ export interface ProgrammeProgressSummary {
   /** Each week's visible quiz assignment id (week id → assignment id), so
    * every unlocked week — not just the current one — can link to its quiz. */
   quizAssignmentIdByWeek: Record<string, string>;
+  /** Child learning evidence per week (learner_training_week_items → canonical_learning_items). */
+  itemsByWeek: Record<string, TrainingWeekItem[]>;
+}
+
+export interface TrainingWeekItem {
+  item_type: "skill_cards" | "quizzes" | "reflections" | "daily_prompts" | string;
+  required_units: number;
+  completed_units: number;
+  due_units: number;
+  overdue_units: number;
 }
 
 export interface RawWeek {
@@ -38,6 +48,10 @@ export interface RawWeek {
   locked: boolean;
   viewed_at: string | null;
   completed_at: string | null;
+  /** The week's canonical Training requirement (cohort date) and its state. */
+  requirement_id?: string | null;
+  requirement_due_on?: string | null;
+  requirement_state?: "completed" | "overdue" | "upcoming" | "not_required" | string | null;
 }
 
 const EMPTY: ProgrammeProgressSummary = {
@@ -49,6 +63,7 @@ const EMPTY: ProgrammeProgressSummary = {
   currentWeek: null,
   currentQuizAssignmentId: null,
   quizAssignmentIdByWeek: {},
+  itemsByWeek: {},
 };
 
 async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSummary> {
@@ -61,10 +76,20 @@ async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSum
   const weekNumberById = new Map(weeks.map((w) => [w.id, w.week_number]));
   const weekUnlockById = new Map(weeks.map((w) => [w.id, w.effective_unlock_date]));
 
-  const [{ data: assignments }, { data: prompts }] = await Promise.all([
+  const [{ data: assignments }, { data: prompts }, { data: weekItems, error: itemsError }] = await Promise.all([
     supabase.from("assignments").select("id, training_week_id").eq("assignment_type", "quiz").eq("is_visible", true).in("training_week_id", weekIds),
     supabase.from("daily_prompts").select("id, training_week_id, day_offset").in("training_week_id", weekIds),
+    supabase.rpc("learner_training_week_items", { p_enrollment_id: enrollmentId }),
   ]);
+  if (itemsError) throw itemsError;
+  const itemsByWeek: Record<string, TrainingWeekItem[]> = {};
+  const ITEM_ORDER = ["skill_cards", "quizzes", "reflections", "daily_prompts"];
+  for (const item of weekItems ?? []) {
+    (itemsByWeek[item.training_week_id] ??= []).push(item);
+  }
+  for (const list of Object.values(itemsByWeek)) {
+    list.sort((a, b) => ITEM_ORDER.indexOf(a.item_type) - ITEM_ORDER.indexOf(b.item_type));
+  }
 
   const assignmentIds = (assignments || []).map((a) => a.id as string);
   const promptIds = (prompts || []).map((p) => p.id as string);
@@ -134,6 +159,7 @@ async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSum
     currentWeek,
     currentQuizAssignmentId,
     quizAssignmentIdByWeek,
+    itemsByWeek,
   };
 }
 

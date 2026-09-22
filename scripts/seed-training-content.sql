@@ -80,6 +80,8 @@ INSERT INTO public.programme_modules (programme_id, module, enabled, config)
 SELECT p.id, 'training'::public.programme_module_type, true,
   jsonb_build_object(
     'required', true, 'required_units', 8,
+    -- Child learning types that count as evidence inside each week (never extra units).
+    'learning_components', jsonb_build_array('skill_cards', 'quizzes', 'reflections', 'daily_prompts'),
     'distribution_settings', jsonb_build_object(
       'training_week_ids', (SELECT jsonb_agg(tw.id ORDER BY tw.week_number)
                             FROM public.training_weeks tw WHERE tw.programme_id = p.id)))
@@ -241,6 +243,8 @@ INSERT INTO public.programme_modules (programme_id, module, enabled, config)
 SELECT p.id, 'training'::public.programme_module_type, true,
   jsonb_build_object(
     'required', true, 'required_units', 10,
+    -- Child learning types that count as evidence inside each week (never extra units).
+    'learning_components', jsonb_build_array('skill_cards', 'quizzes', 'reflections', 'daily_prompts'),
     'distribution_settings', jsonb_build_object(
       'training_week_ids', (SELECT jsonb_agg(tw.id ORDER BY tw.week_number)
                             FROM public.training_weeks tw WHERE tw.programme_id = p.id)))
@@ -416,6 +420,8 @@ INSERT INTO public.programme_modules (programme_id, module, enabled, config)
 SELECT p.id, 'training'::public.programme_module_type, true,
   jsonb_build_object(
     'required', true, 'required_units', 6,
+    -- Child learning types that count as evidence inside each week (never extra units).
+    'learning_components', jsonb_build_array('skill_cards', 'quizzes', 'reflections', 'daily_prompts'),
     'distribution_settings', jsonb_build_object(
       'training_week_ids', (SELECT jsonb_agg(tw.id ORDER BY tw.week_number)
                             FROM public.training_weeks tw WHERE tw.programme_id = p.id)))
@@ -552,6 +558,39 @@ JOIN (VALUES
 ON CONFLICT (cohort_id, training_week_id) DO UPDATE
   SET unlock_date = EXCLUDED.unlock_date, is_visible = true;
 
+-- Content vs requirement. The pacing above gives each week its default
+-- requirement date. A learner who is ahead may finish a week early -- but only
+-- once its content is open. So for the later weeks of each ongoing cohort the
+-- Admin keeps the requirement date where the pacing put it (an individually
+-- dated Training requirement, admin_set_cohort_requirement_dates) and the
+-- cohort opens the content now. Due / overdue counts are unchanged; the
+-- learners who finished those weeks early (learner1, learner9, tasc1) did so
+-- on content they could actually open.
+DO $open_content$
+DECLARE v_admin uuid; c record;
+BEGIN
+  SELECT r.user_id INTO v_admin FROM public.user_roles r JOIN public.profiles p ON p.id = r.user_id
+  WHERE r.role = 'admin' AND lower(p.email) = 'trang.tt@erickson.vn';
+  PERFORM set_config('request.jwt.claim.sub', v_admin::text, true);
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
+  FOR c IN
+    SELECT co.id AS cohort_id,
+      jsonb_agg(jsonb_build_object('requirement_id', d.id, 'due_on', d.due_on::text)) AS items
+    FROM public.cohorts co
+    JOIN public.cohort_week_overrides cwo ON cwo.cohort_id = co.id AND cwo.unlock_date > current_date
+    JOIN public.cohort_requirement_dates d
+      ON d.cohort_id = co.id AND d.module = 'training' AND d.training_week_id = cwo.training_week_id
+    WHERE co.name IN ('Emerging Leaders · Cohort B', 'Executive Excellence · Cohort C', 'TASC Essential · Cohort D')
+    GROUP BY co.id
+  LOOP
+    PERFORM public.admin_set_cohort_requirement_dates(c.cohort_id, c.items);
+    UPDATE public.cohort_week_overrides SET unlock_date = current_date - 1
+    WHERE cohort_id = c.cohort_id AND unlock_date > current_date;
+  END LOOP;
+  PERFORM set_config('request.jwt.claim.sub', '', true);
+END
+$open_content$;
+
 -- ===========================================================================
 -- Learner training progress
 -- ===========================================================================
@@ -569,7 +608,7 @@ INSERT INTO _tp VALUES
   ('alum2@clariva.demo',    'Emerging Leaders · Cohort A (completed)', 8),
   ('alum3@clariva.demo',    'Emerging Leaders · Cohort A (completed)', 8),
   ('alum4@clariva.demo',    'Emerging Leaders · Cohort A (completed)', 8),
-  -- Cohort B, Org A: complete / mid / behind. Org B: just started / mid / partial.
+  -- Cohort B, Org A: complete / mid / behind. Org B: just started (Ana Silva) / mid / partial.
   ('learner1@clariva.demo', 'Emerging Leaders · Cohort B', 8),
   ('learner2@clariva.demo', 'Emerging Leaders · Cohort B', 5),
   ('learner3@clariva.demo', 'Emerging Leaders · Cohort B', 2),
@@ -607,14 +646,24 @@ BEGIN
 END
 $check$;
 
+-- Each completed week is finished on its own cohort requirement date (the
+-- Training requirement Admin configures), never after today -- so a finished
+-- cohort's history sits inside the cohort and its checkpoints read complete,
+-- and a learner who is ahead finished future weeks early.
+CREATE TEMP TABLE _tp_week ON COMMIT DROP AS
+SELECT te.enrollment_id, te.user_id, tw.id AS training_week_id, tw.week_number,
+  least(d.due_on::timestamptz + interval '9 hours',
+        now() - interval '1 day' - make_interval(hours => 8 - tw.week_number)) AS done_at
+FROM _tp_enr te
+JOIN public.training_weeks tw ON tw.programme_id = te.programme_id AND tw.week_number <= te.weeks_done
+JOIN public.cohort_requirement_dates d
+  ON d.cohort_id = te.cohort_id AND d.programme_id = te.programme_id
+ AND d.module = 'training' AND d.training_week_id = tw.id;
+
 -- Skill cards: THE canonical training unit.
 INSERT INTO public.training_progress (user_id, enrollment_id, training_week_id, viewed_at, completed_at)
-SELECT te.user_id, te.enrollment_id, tw.id,
-       now() - make_interval(days => 90 - tw.week_number * 5),
-       now() - make_interval(days => 88 - tw.week_number * 5)
-FROM _tp_enr te
-JOIN public.training_weeks tw ON tw.programme_id = te.programme_id
-WHERE tw.week_number <= te.weeks_done
+SELECT w.user_id, w.enrollment_id, w.training_week_id, w.done_at - interval '2 days', w.done_at
+FROM _tp_week w
 ON CONFLICT DO NOTHING;
 
 -- Quiz submissions for the weeks each learner completed. Scores vary by
@@ -625,9 +674,10 @@ SELECT a.id, te.user_id, te.enrollment_id,
   (SELECT jsonb_object_agg(qq.id::text, (qq.options->0->>'id'))
      FROM public.quiz_questions qq WHERE qq.assignment_id = a.id),
   sc.pct, round(sc.pct * 4 / 100.0)::integer, 4,
-  now() - make_interval(days => 87 - tw.week_number * 5)
+  w.done_at + interval '1 hour'
 FROM _tp_enr te
 JOIN public.training_weeks tw ON tw.programme_id = te.programme_id AND tw.week_number <= te.weeks_done
+JOIN _tp_week w ON w.enrollment_id = te.enrollment_id AND w.training_week_id = tw.id
 JOIN public.assignments a ON a.training_week_id = tw.id AND a.assignment_type = 'quiz'
 CROSS JOIN LATERAL (SELECT (75 + ((('x' || substr(md5(te.user_id::text || tw.id::text), 1, 8))::bit(32)::bigint) % 26))::numeric AS pct) sc
 ON CONFLICT DO NOTHING;
@@ -638,9 +688,10 @@ INSERT INTO public.assignment_submissions
 SELECT a.id, te.user_id, te.enrollment_id, '{}'::jsonb,
   'Completed the exercise for ' || tw.title || '. The hardest part was staying with the '
     || 'practice when the week got busy; the pattern I noticed is worth bringing to my next session.',
-  now() - make_interval(days => 86 - tw.week_number * 5)
+  w.done_at + interval '2 hours'
 FROM _tp_enr te
 JOIN public.training_weeks tw ON tw.programme_id = te.programme_id AND tw.week_number <= te.weeks_done
+JOIN _tp_week w ON w.enrollment_id = te.enrollment_id AND w.training_week_id = tw.id
 JOIN public.assignments a ON a.training_week_id = tw.id AND a.assignment_type = 'reflection'
 ON CONFLICT DO NOTHING;
 
@@ -648,9 +699,10 @@ ON CONFLICT DO NOTHING;
 INSERT INTO public.reflection_submissions (reflection_id, user_id, enrollment_id, confidence_score, submitted_at)
 SELECT r.id, te.user_id, te.enrollment_id,
   6 + ((('x' || substr(md5(te.user_id::text || r.id::text), 1, 8))::bit(32)::bigint) % 4)::smallint,
-  now() - make_interval(days => 85 - r.reflection_number * 5)
+  w.done_at + interval '3 hours'
 FROM _tp_enr te
 JOIN public.programme_reflections r ON r.programme_id = te.programme_id
+JOIN _tp_week w ON w.enrollment_id = te.enrollment_id AND w.week_number = r.appears_at_week
 WHERE r.reflection_number <= te.weeks_done
 ON CONFLICT DO NOTHING;
 
@@ -666,16 +718,17 @@ JOIN public.reflection_questions rq ON rq.reflection_id = s.reflection_id
 WHERE s.enrollment_id IN (SELECT enrollment_id FROM _tp_enr)
 ON CONFLICT DO NOTHING;
 
--- A few daily prompt responses, so the dashboard card has content.
+-- Daily prompts answered for every week the learner completed, on the
+-- prompt's own day of that week. Private text: learner-only, never Sponsor.
 INSERT INTO public.daily_prompt_responses
   (daily_prompt_id, user_id, enrollment_id, opened_at, response_text, confidence_score, responded_at)
-SELECT dp.id, te.user_id, te.enrollment_id,
-  now() - interval '3 days', 'Noted it in the moment rather than afterwards, which is new for me.',
-  7, now() - interval '3 days'
-FROM _tp_enr te
-JOIN public.training_weeks tw ON tw.programme_id = te.programme_id AND tw.week_number = 1
-JOIN public.daily_prompts dp ON dp.training_week_id = tw.id
-WHERE te.weeks_done > 0
+SELECT dp.id, w.user_id, w.enrollment_id,
+  least(w.done_at - interval '2 days' + make_interval(days => coalesce(dp.day_offset, 1) - 1), now() - interval '5 hours'),
+  'Noted it in the moment rather than afterwards, which is new for me.',
+  7, least(w.done_at - interval '2 days' + make_interval(days => coalesce(dp.day_offset, 1) - 1) + interval '4 hours',
+           now() - interval '1 hour')
+FROM _tp_week w
+JOIN public.daily_prompts dp ON dp.training_week_id = w.training_week_id AND dp.is_visible
 ON CONFLICT DO NOTHING;
 
 -- ===========================================================================
@@ -791,27 +844,35 @@ BEGIN
     RAISE EXCEPTION 'VERIFY 7 FAILED: % cohort modules now violate the quantity invariant', n;
   END IF;
 
-  -- 8. The spec's headline numbers, read from the canonical engine the
-  --    dashboard, Admin and Sponsor all use: learner1 is 100% complete and
-  --    learner4 (Tom Okafor) is 0% with exactly 11 overdue (4 Coaching +
-  --    2 Mentoring + 5 Training weeks), and "Needs your attention" sums to
-  --    the same number.
-  SELECT string_agg(format('%s: %s%% / %s overdue / attention %s', pr.email,
-           round(cp.full_completion_pct), cp.overdue_units, att.total), '; ') INTO bad
+  -- 8. The headline numbers, read from the canonical engine the dashboard,
+  --    Admin and Sponsor all use, must equal the canonical requirement
+  --    calendar -- never a constant. learner1 is 100% complete with nothing
+  --    overdue; learner4 (Ana Silva) has completed nothing, so her overdue
+  --    count is exactly the number of requirements already due, and fewer
+  --    than all 18 are due (some units lie in the future). "Needs your
+  --    attention" sums to the same number.
+  SELECT string_agg(format('%s: %s%% / %s of %s done / due %s (calendar %s) / overdue %s (calendar %s) / attention %s',
+           pr.email, round(cp.full_completion_pct), cp.completed_units, cp.required_units,
+           cp.due_units, cal.due, cp.overdue_units, cal.overdue, att.total), '; ') INTO bad
   FROM public.programme_enrollments e
   JOIN public.profiles pr ON pr.id = e.user_id
   JOIN public.cohorts c ON c.id = e.cohort_id
   CROSS JOIN LATERAL public.canonical_enrollment_progress(e.id, current_date) cp
+  CROSS JOIN LATERAL (SELECT count(*) FILTER (WHERE k.is_due_as_of) AS due,
+                             count(*) FILTER (WHERE k.is_overdue) AS overdue,
+                             count(*) AS required
+                      FROM public.canonical_enrollment_requirement_calendar(e.id, current_date) k) cal
   CROSS JOIN LATERAL (SELECT coalesce(sum(o.overdue_units), 0) AS total
                       FROM public.canonical_overdue_items(e.id, current_date) o) att
   WHERE c.name = 'Emerging Leaders · Cohort B'
     AND ((pr.email = 'learner1@clariva.demo' AND (cp.full_completion_pct <> 100 OR cp.overdue_units <> 0))
-      OR (pr.email = 'learner4@clariva.demo' AND (cp.full_completion_pct <> 0 OR cp.overdue_units <> 11))
+      OR (pr.email = 'learner4@clariva.demo' AND (cp.completed_units <> 0 OR cp.overdue_units <> cp.due_units
+                                                 OR cp.due_units = 0 OR cp.due_units >= cp.required_units))
+      OR cp.due_units <> cal.due OR cp.overdue_units <> cal.overdue OR cp.required_units <> cal.required
       OR att.total <> cp.overdue_units);
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'VERIFY 8 FAILED: Cohort B headline numbers: %', bad;
   END IF;
-
   RAISE NOTICE 'Training content verification passed.';
 END
 $verify$;

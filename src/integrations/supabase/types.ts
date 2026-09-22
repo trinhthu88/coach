@@ -1395,6 +1395,8 @@ export type Database = {
           created_at: string
           description: string | null
           end_date: string | null
+          goal_setting_due_on: string | null
+          goal_setting_opens_on: string | null
           id: string
           name: string
           organization_id: string | null
@@ -1407,6 +1409,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          goal_setting_due_on?: string | null
+          goal_setting_opens_on?: string | null
           id?: string
           name: string
           organization_id?: string | null
@@ -1419,6 +1423,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_date?: string | null
+          goal_setting_due_on?: string | null
+          goal_setting_opens_on?: string | null
           id?: string
           name?: string
           organization_id?: string | null
@@ -4582,6 +4588,23 @@ export type Database = {
           source: string
         }[]
       }
+      admin_cohort_requirement_schedule: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          default_due_on: string
+          due_on: string
+          has_activity: boolean
+          is_overridden: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          programme_name: string
+          requirement_id: string
+          requirement_index: number
+          requirement_label: string
+          training_week_id: string
+          week_number: number
+        }[]
+      }
       admin_cohort_triad_groups: {
         Args: { p_cohort_id: string }
         Returns: {
@@ -4761,6 +4784,27 @@ export type Database = {
           required_units: number
         }[]
       }
+      admin_enrollment_requirement_calendar: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          cohort_id: string
+          completed_on: string
+          completion_source: string
+          due_on: string
+          enrollment_id: string
+          is_completed: boolean
+          is_due_as_of: boolean
+          is_overdue: boolean
+          is_required: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          organization_id: string
+          programme_id: string
+          requirement_id: string
+          requirement_index: number
+          requirement_label: string
+          training_week_id: string
+        }[]
+      }
       admin_learner_reflection_feed: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -4799,6 +4843,61 @@ export type Database = {
           status: string
           title: string
         }[]
+      }
+      admin_organization_enrollments: {
+        Args: { p_as_of?: string; p_organization_id: string }
+        Returns: {
+          cohort_id: string
+          cohort_name: string
+          completed_units: number
+          due_units: number
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          end_date: string
+          enrollment_id: string
+          full_completion_pct: number
+          is_ongoing: boolean
+          learner_email: string
+          learner_name: string
+          organization_id: string
+          organization_name: string
+          overdue_units: number
+          programme_id: string
+          programme_name: string
+          progress_available: boolean
+          required_units: number
+          start_date: string
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          user_id: string
+        }[]
+      }
+      admin_organization_leader_summary: {
+        Args: never
+        Returns: {
+          cohort_count: number
+          historical_enrollments: number
+          ongoing_enrollments: number
+          ongoing_leaders: number
+          organization_id: string
+          organization_name: string
+          total_leaders: number
+        }[]
+      }
+      admin_requirement_integrity_issues: {
+        Args: never
+        Returns: {
+          cohort_id: string
+          cohort_name: string
+          detail: string
+          enrollment_id: string
+          issue: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
+          programme_name: string
+        }[]
+      }
+      admin_set_cohort_requirement_dates: {
+        Args: { p_cohort_id: string; p_items: Json }
+        Returns: number
       }
       admin_user_enrollments: {
         Args: { p_as_of?: string; p_user_id: string }
@@ -5213,6 +5312,27 @@ export type Database = {
           triad_required_units: number
         }[]
       }
+      canonical_enrollment_requirement_calendar: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          cohort_id: string
+          completed_on: string
+          completion_source: string
+          due_on: string
+          enrollment_id: string
+          is_completed: boolean
+          is_due_as_of: boolean
+          is_overdue: boolean
+          is_required: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          organization_id: string
+          programme_id: string
+          requirement_id: string
+          requirement_index: number
+          requirement_label: string
+          training_week_id: string
+        }[]
+      }
       canonical_enrollment_schedule_state: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5236,6 +5356,16 @@ export type Database = {
       canonical_learning_breakdown: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
+      }
+      canonical_learning_items: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          completed: boolean
+          due_on: string
+          item_id: string
+          item_type: string
+          training_week_id: string
+        }[]
       }
       canonical_mentoring_requirement_fulfilment: {
         Args: { p_enrollment_id: string }
@@ -5476,6 +5606,15 @@ export type Database = {
         Args: { p_id: string }
         Returns: boolean
       }
+      cohort_requirement_label: {
+        Args: {
+          p_module: Database["public"]["Enums"]["programme_module_type"]
+          p_ordinal: number
+          p_week_number?: number
+          p_week_title?: string
+        }
+        Returns: string
+      }
       cohort_requirement_legacy_spread: {
         Args: never
         Returns: {
@@ -5503,6 +5642,17 @@ export type Database = {
         Args: { p_cohort_id: string }
         Returns: {
           programme_id: string
+        }[]
+      }
+      cohort_training_requirement_weeks: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          default_due_on: string
+          ordinal: number
+          programme_id: string
+          training_week_id: string
+          week_number: number
+          week_title: string
         }[]
       }
       col_is_null:
@@ -5632,6 +5782,13 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: Json
       }
+      enrollment_goal_setting_period: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          due_on: string
+          opens_on: string
+        }[]
+      }
       enrollment_module_config: {
         Args: {
           p_enrollment_id: string
@@ -5698,6 +5855,9 @@ export type Database = {
           effective_unlock_date: string
           id: string
           locked: boolean
+          requirement_due_on: string
+          requirement_id: string
+          requirement_state: string
           skill_card_visible: boolean
           subtitle: string
           subtitle_vi: string
@@ -5935,6 +6095,45 @@ export type Database = {
           required_units: number
         }[]
       }
+      learner_enrollment_context: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          cohort_id: string
+          cohort_name: string
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          end_date: string
+          enrollment_id: string
+          is_ongoing: boolean
+          organization_id: string
+          organization_name: string
+          programme_id: string
+          programme_name: string
+          start_date: string
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          user_id: string
+        }[]
+      }
+      learner_requirement_calendar: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          cohort_id: string
+          completed_on: string
+          completion_source: string
+          due_on: string
+          enrollment_id: string
+          is_completed: boolean
+          is_due_as_of: boolean
+          is_overdue: boolean
+          is_required: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          organization_id: string
+          programme_id: string
+          requirement_id: string
+          requirement_index: number
+          requirement_label: string
+          training_week_id: string
+        }[]
+      }
       learner_session_deliverables: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5973,6 +6172,28 @@ export type Database = {
           source_table: string
           start_time: string
           title: string
+        }[]
+      }
+      learner_training_week_items: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          completed_units: number
+          due_units: number
+          item_type: string
+          overdue_units: number
+          required_units: number
+          training_week_id: string
+        }[]
+      }
+      requirement_integrity_issues: {
+        Args: never
+        Returns: {
+          cohort_id: string
+          detail: string
+          enrollment_id: string
+          issue: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          programme_id: string
         }[]
       }
       session_counterpart_deliverables: {
@@ -6014,6 +6235,27 @@ export type Database = {
           checkin_type: string
           module: Database["public"]["Enums"]["programme_module_type"]
           reflection_type: string
+        }[]
+      }
+      sponsor_leader_requirement_calendar: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          cohort_id: string
+          completed_on: string
+          completion_source: string
+          due_on: string
+          enrollment_id: string
+          is_completed: boolean
+          is_due_as_of: boolean
+          is_overdue: boolean
+          is_required: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          organization_id: string
+          programme_id: string
+          requirement_id: string
+          requirement_index: number
+          requirement_label: string
+          training_week_id: string
         }[]
       }
       submit_session_satisfaction: {

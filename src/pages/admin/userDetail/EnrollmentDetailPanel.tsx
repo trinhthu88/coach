@@ -123,6 +123,50 @@ export function EnrollmentDetailPanel({ userId, enrollment }: { userId: string; 
         )}
       </Section>
 
+      {/* The requirement calendar the module counts above are computed from:
+          each required unit with its own cohort date. */}
+      <Section title={t("userDetail.sections.calendar")} count={data.calendar.length} testId="section-calendar">
+        {data.calendar.length === 0 ? (
+          <Empty text={t("userDetail.empty.calendar")} />
+        ) : (
+          <div className="max-h-80 overflow-auto">
+            <table className="w-full text-[12px]">
+              <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="py-1.5 pr-3 text-left font-semibold">{t("userDetail.calendarHeaders.requirement")}</th>
+                  <th className="px-2 py-1.5 text-left font-semibold">{t("userDetail.calendarHeaders.dueOn")}</th>
+                  <th className="px-2 py-1.5 text-left font-semibold">{t("userDetail.calendarHeaders.state")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {[...data.calendar]
+                  .sort((a, b) => (a.due_on ?? "9999").localeCompare(b.due_on ?? "9999") || a.requirement_index - b.requirement_index)
+                  .map((r) => {
+                    const state = r.is_completed ? "completed" : r.is_overdue ? "overdue" : r.is_due_as_of ? "due" : "upcoming";
+                    return (
+                      <tr key={`${r.module}-${r.requirement_index}`} data-testid="calendar-row">
+                        <td className="py-1.5 pr-3">
+                          {r.requirement_label}
+                          <span className="block text-[10px] text-muted-foreground">{moduleLabel(r.module)}</span>
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-1.5 text-muted-foreground">{r.due_on ? formatProfileDate(r.due_on) : "—"}</td>
+                        <td className="px-2 py-1.5">
+                          <Pill tone={state === "completed" ? "success" : state === "overdue" ? "destructive" : "muted"}>
+                            {t(`userDetail.calendarStates.${state}`)}
+                          </Pill>
+                          {r.completed_on && (
+                            <span className="ml-1.5 text-[10px] text-muted-foreground">{formatProfileDate(r.completed_on)}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Section>
+
       <Section title={t("userDetail.sections.sessions")} count={data.sessions.length} testId="section-sessions">
         {data.sessions.length === 0 ? (
           <Empty text={t("userDetail.empty.sessions")} />

@@ -58,9 +58,10 @@
 --
 -- Apply it to a database that has every migration and NO programme data,
 -- then apply scripts/seed-training-content.sql on top. The Training module is
--- part of the demo programmes: without it learner4 reads 6 overdue instead of
--- the intended 11 (4 Coaching + 2 Mentoring + 5 Training weeks), and the
--- training script verifies those headline numbers.
+-- part of the demo programmes: without it learner4 (Ana Silva) reads 6 overdue
+-- instead of 11 (4 Coaching + 2 Mentoring + 5 Training weeks due of 18), and
+-- the training script verifies that the headline numbers equal the canonical
+-- requirement calendar.
 --
 --   psql "$DEMO_DB_URL" -v ON_ERROR_STOP=1 \
 --        -c "SET app.seed_environment='demo'" -f supabase/seed-demo.sql
@@ -326,7 +327,8 @@ INSERT INTO _people (slug, id, email, full_name, role) VALUES
   ('learner1', 'd0000000-0000-4000-8000-000000000021', 'learner1@clariva.demo', 'Linh Nguyen',        'coachee'),
   ('learner2', 'd0000000-0000-4000-8000-000000000022', 'learner2@clariva.demo', 'David Tran',         'coachee'),
   ('learner3', 'd0000000-0000-4000-8000-000000000023', 'learner3@clariva.demo', 'Priya Raman',        'coachee'),
-  ('learner4', 'd0000000-0000-4000-8000-000000000024', 'learner4@clariva.demo', 'Tom Okafor',         'coachee'),
+  -- Ana Silva is the "nothing completed yet, only some requirements due" leader.
+  ('learner4', 'd0000000-0000-4000-8000-000000000024', 'learner4@clariva.demo', 'Ana Silva',          'coachee'),
   ('learner5', 'd0000000-0000-4000-8000-000000000025', 'learner5@clariva.demo', 'Mai Pham',           'coachee'),
   ('learner6', 'd0000000-0000-4000-8000-000000000026', 'learner6@clariva.demo', 'Jonas Weber',        'coachee'),
   ('learner7', 'd0000000-0000-4000-8000-000000000027', 'learner7@clariva.demo', 'Sofia Rossi',        'coachee'),
@@ -344,7 +346,7 @@ INSERT INTO _people (slug, id, email, full_name, role) VALUES
   -- four-learner cohort would leave the Sponsor login staring at nothing and
   -- would make the cross-role check in section 12 compare no rows at all.
   ('alum4',    'd0000000-0000-4000-8000-000000000034', 'alum4@clariva.demo',    'Noor Farah',         'coachee'),
-  ('learner9', 'd0000000-0000-4000-8000-000000000029', 'learner9@clariva.demo', 'Ana Silva',          'coachee'),
+  ('learner9', 'd0000000-0000-4000-8000-000000000029', 'learner9@clariva.demo', 'Tom Okafor',         'coachee'),
   ('learner10','d0000000-0000-4000-8000-00000000002a', 'learner10@clariva.demo','Peter Novak',        'coachee'),
   ('learner11','d0000000-0000-4000-8000-00000000002b', 'learner11@clariva.demo','Minh Le',            'coachee'),
   ('tasc5',    'd0000000-0000-4000-8000-000000000045', 'tasc5@clariva.demo',    'Leila Aziz',         'coachee');
@@ -543,6 +545,57 @@ BEGIN
 END
 $deadlines$;
 
+-- Every required unit is its own requirement with its own date. The module
+-- deadlines above are the DEFAULT each requirement starts at; here the Admin
+-- spreads the units of the ongoing cohorts across the programme, the way a
+-- real cohort calendar reads ("Coaching 1 by week 4, Coaching 2 by week 8").
+-- Each unit stays on the same side of today as its module default, so every
+-- learner's due and overdue counts are unchanged -- only the checkpoints
+-- spread out instead of stacking a whole module onto one date. Cohort A keeps
+-- the single default date on purpose: both paths are exercised.
+-- Training weeks are dated by their pacing (scripts/seed-training-content.sql).
+CREATE TEMP TABLE _req_dates (cohort uuid, module public.programme_module_type, ordinal integer, offset_days integer)
+  ON COMMIT DROP;
+INSERT INTO _req_dates VALUES
+  ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 1, -78), ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 2, -60),
+  ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 3, -45), ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 4, -30),
+  ('d0000000-0000-4000-8000-00000000c00b', 'mentoring', 1, -45), ('d0000000-0000-4000-8000-00000000c00b', 'mentoring', 2, -15),
+  ('d0000000-0000-4000-8000-00000000c00b', 'peer_coaching', 1, 60), ('d0000000-0000-4000-8000-00000000c00b', 'peer_coaching', 2, 120),
+  ('d0000000-0000-4000-8000-00000000c00b', 'triads', 1, 90), ('d0000000-0000-4000-8000-00000000c00b', 'triads', 2, 150),
+  ('d0000000-0000-4000-8000-00000000c00c', 'coaching', 1, -120), ('d0000000-0000-4000-8000-00000000c00c', 'coaching', 2, -100),
+  ('d0000000-0000-4000-8000-00000000c00c', 'coaching', 3, -80), ('d0000000-0000-4000-8000-00000000c00c', 'coaching', 4, -60),
+  ('d0000000-0000-4000-8000-00000000c00c', 'coaching', 5, -40), ('d0000000-0000-4000-8000-00000000c00c', 'coaching', 6, -20),
+  ('d0000000-0000-4000-8000-00000000c00c', 'mentoring', 1, -70), ('d0000000-0000-4000-8000-00000000c00c', 'mentoring', 2, -40),
+  ('d0000000-0000-4000-8000-00000000c00c', 'mentoring', 3, -10),
+  ('d0000000-0000-4000-8000-00000000c00c', 'peer_coaching', 1, 60), ('d0000000-0000-4000-8000-00000000c00c', 'peer_coaching', 2, 120),
+  ('d0000000-0000-4000-8000-00000000c00c', 'peer_coaching', 3, 180),
+  ('d0000000-0000-4000-8000-00000000c00c', 'triads', 1, 100), ('d0000000-0000-4000-8000-00000000c00c', 'triads', 2, 150),
+  ('d0000000-0000-4000-8000-00000000c00c', 'triads', 3, 200),
+  ('d0000000-0000-4000-8000-00000000c00d', 'mentoring', 1, -60), ('d0000000-0000-4000-8000-00000000c00d', 'mentoring', 2, -30),
+  ('d0000000-0000-4000-8000-00000000c00d', 'mentoring', 3, -5),
+  ('d0000000-0000-4000-8000-00000000c00d', 'triads', 1, 45), ('d0000000-0000-4000-8000-00000000c00d', 'triads', 2, 90);
+
+DO $requirement_dates$
+DECLARE v_admin uuid; c uuid;
+BEGIN
+  SELECT id INTO v_admin FROM _admin;
+  PERFORM pg_temp.act_as(v_admin);
+  FOR c IN SELECT DISTINCT cohort FROM _req_dates LOOP
+    PERFORM public.admin_set_cohort_requirement_dates(c, (
+      SELECT jsonb_agg(jsonb_build_object('requirement_id', d.id, 'due_on', (current_date + r.offset_days)::text))
+      FROM _req_dates r
+      JOIN public.cohort_requirement_dates d
+        ON d.cohort_id = r.cohort AND d.module = r.module AND d.ordinal = r.ordinal
+      WHERE r.cohort = c));
+  END LOOP;
+  PERFORM pg_temp.act_as_service();
+END
+$requirement_dates$;
+
+-- The goal-setting period each cohort gives its learners (alert only).
+UPDATE public.cohorts SET goal_setting_opens_on = start_date, goal_setting_due_on = start_date + 14
+WHERE id IN ('d0000000-0000-4000-8000-00000000c00b', 'd0000000-0000-4000-8000-00000000c00c', 'd0000000-0000-4000-8000-00000000c00d');
+
 -- ---------------------------------------------------------------------------
 -- 5. Provider pools -- who may deliver, per cohort
 -- ---------------------------------------------------------------------------
@@ -699,10 +752,61 @@ WHERE e.slug NOT LIKE 'a%';
 -- flows from day 8). Goals are written as the learner, like the app does.
 SELECT pg_temp.seed_goals('bcd');
 
+-- Goals in several stages, all on the enrollment, written as the learner:
+--   b1 Linh   three goals: one achieved (completed), one progressing with a
+--             milestone done, the main goal at target
+--   b2 David  a second active goal with an open milestone
+--   c2 Minh   a milestone reached on the main goal
+--   b4 Ana    one goal set in the goal-setting period, baseline rating only
+--             (no session yet, so no check-in): "set, not yet progressed"
+-- Every session check-in (section 11b) moves ratings over time.
+DO $goal_stages$
+DECLARE e record;
+BEGIN
+  FOR e IN
+    SELECT en.slug, pe.id AS enrollment_id, pe.user_id, c.end_date
+    FROM _enr en JOIN public.programme_enrollments pe ON pe.id = en.id JOIN public.cohorts c ON c.id = pe.cohort_id
+    WHERE en.slug IN ('b1', 'b2', 'c2')
+  LOOP
+    PERFORM pg_temp.act_as(e.user_id);
+    IF e.slug = 'b1' THEN
+      INSERT INTO public.coachee_goals (id, coachee_id, enrollment_id, title, description, target_date, status, sort_order) VALUES
+        (md5('demo-goal-2-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 'Delegate one recurring report to my team',
+         'Hand over the weekly report with a clear brief and a review rhythm.', current_date - 20, 'completed', 1),
+        (md5('demo-goal-3-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 'Give specific feedback every week',
+         'One piece of specific, behaviour-based feedback to each direct report per week.', e.end_date, 'active', 2)
+      ON CONFLICT (id) DO NOTHING;
+      INSERT INTO public.coachee_goal_ratings (goal_id, coachee_id, enrollment_id, start_rating, current_rating, target_rating) VALUES
+        (md5('demo-goal-2-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 20, 85, 80),
+        (md5('demo-goal-3-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 25, 55, 80)
+      ON CONFLICT (goal_id) DO NOTHING;
+      INSERT INTO public.coachee_milestones (goal_id, coachee_id, enrollment_id, title, target_date, is_done, done_at, sort_order) VALUES
+        (md5('demo-goal-3-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 'Feedback log started', current_date - 40, true, now() - interval '42 days', 0),
+        (md5('demo-goal-3-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 'Four weeks in a row', current_date + 20, false, NULL, 1);
+    ELSIF e.slug = 'b2' THEN
+      INSERT INTO public.coachee_goals (id, coachee_id, enrollment_id, title, description, target_date, status, sort_order) VALUES
+        (md5('demo-goal-2-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 'Run a stakeholder map for my new project',
+         'Map influence and interest for every stakeholder before the kickoff.', e.end_date, 'active', 1)
+      ON CONFLICT (id) DO NOTHING;
+      INSERT INTO public.coachee_goal_ratings (goal_id, coachee_id, enrollment_id, start_rating, current_rating, target_rating)
+      VALUES (md5('demo-goal-2-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 20, 35, 80)
+      ON CONFLICT (goal_id) DO NOTHING;
+      INSERT INTO public.coachee_milestones (goal_id, coachee_id, enrollment_id, title, target_date, is_done, sort_order)
+      VALUES (md5('demo-goal-2-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 'First draft of the map', current_date + 10, false, 0);
+    ELSE
+      INSERT INTO public.coachee_milestones (goal_id, coachee_id, enrollment_id, title, target_date, is_done, done_at, sort_order)
+      VALUES (md5('demo-goal-' || e.enrollment_id)::uuid, e.user_id, e.enrollment_id, 'Decision log used in every meeting',
+              current_date - 30, true, now() - interval '31 days', 0);
+    END IF;
+  END LOOP;
+  PERFORM pg_temp.act_as_service();
+END
+$goal_stages$;
+
 -- ---------------------------------------------------------------------------
 -- 9. Cohort B -- two organisations in one cohort
 --    Organisation A: b1 complete / b2 mid, deliverables outstanding / b3 behind
---    Organisation B: b4 just started (0%) / b5 mid / b6 partial
+--    Organisation B: b4 Ana Silva just started (0%) / b5 mid / b6 partial
 -- ---------------------------------------------------------------------------
 DO $cohort_b$
 DECLARE
@@ -743,9 +847,10 @@ BEGIN
   -- b6 PARTIAL (Organisation B): 2 of 4 Coaching, no Mentoring.
   FOR i IN 1..2 LOOP PERFORM pg_temp.coaching_unit(b6, c3, i, now() - make_interval(days => 88 - i*20), true); END LOOP;
 
-  -- b4 JUST STARTED: enrolled, nothing booked. Because the cohort's Coaching
-  -- and Mentoring deadlines have already passed, b4 reads as overdue on those
-  -- modules -- which is the honest canonical answer, not a display quirk.
+  -- b4 (Ana Silva) JUST STARTED: enrolled, goal set, nothing booked. Coaching
+  -- 1-4 and Mentoring 1-2 are dated in the past, so b4 reads exactly those
+  -- requirements (plus the Training weeks already due) as overdue -- the
+  -- honest canonical answer, not a display quirk.
 
   -- Peer (deadline still ahead). Each session gives BOTH sides a unit against
   -- their own requirement, so two sessions complete b1 and start b2 and b3.
@@ -1290,6 +1395,56 @@ BEGIN
     RAISE EXCEPTION 'VERIFY 12 FAILED: learner1 has no early-completed future checkpoint to demonstrate';
   END IF;
 
+  -- 13. The canonical requirement calendar is THE authority: every
+  --     enrollment's progress numbers are exactly its calendar counts, every
+  --     cohort holds one dated requirement per required unit, and the goal
+  --     stages the demo exercises exist.
+  SELECT string_agg(format('%s req %s/%s done %s/%s due %s/%s overdue %s/%s', en.slug,
+           cp.required_units, cal.required, cp.completed_units, cal.completed,
+           cp.due_units, cal.due, cp.overdue_units, cal.overdue), '; ') INTO bad
+  FROM _enr en
+  CROSS JOIN LATERAL public.canonical_enrollment_progress(en.id, current_date) cp
+  CROSS JOIN LATERAL (
+    SELECT count(*) AS required, count(*) FILTER (WHERE k.is_completed) AS completed,
+      count(*) FILTER (WHERE k.is_due_as_of) AS due, count(*) FILTER (WHERE k.is_overdue) AS overdue
+    FROM public.canonical_enrollment_requirement_calendar(en.id, current_date) k) cal
+  WHERE (cp.required_units, cp.completed_units, cp.due_units, cp.overdue_units)
+        IS DISTINCT FROM (cal.required::int, cal.completed::int, cal.due::int, cal.overdue::int);
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'VERIFY 13 FAILED: progress differs from the requirement calendar: %', bad;
+  END IF;
+  SELECT string_agg(i.issue || ' ' || coalesce(i.detail, ''), '; ') INTO bad
+  FROM public.requirement_integrity_issues() i;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'VERIFY 13 FAILED: requirement integrity issues: %', bad;
+  END IF;
+  -- Per-requirement dates really are individual: Cohort B's four Coaching
+  -- requirements carry four different dates.
+  SELECT count(DISTINCT d.due_on) INTO n FROM public.cohort_requirement_dates d
+  WHERE d.cohort_id = 'd0000000-0000-4000-8000-00000000c00b' AND d.module = 'coaching';
+  IF n <> 4 THEN
+    RAISE EXCEPTION 'VERIFY 13 FAILED: Cohort B Coaching has % distinct requirement dates, expected 4', n;
+  END IF;
+  SELECT string_agg(x.slug || ' ' || x.stage, '; ') INTO bad FROM (
+    SELECT 'b1' AS slug, 'three goals incl. one achieved' AS stage
+    WHERE (SELECT count(*) FROM public.coachee_goals g JOIN _enr en ON en.id = g.enrollment_id WHERE en.slug = 'b1') <> 3
+       OR NOT EXISTS (SELECT 1 FROM public.coachee_goals g JOIN _enr en ON en.id = g.enrollment_id
+                      WHERE en.slug = 'b1' AND g.status = 'completed')
+    UNION ALL
+    SELECT 'b4', 'one active goal at baseline, no check-in'
+    WHERE (SELECT count(*) FROM public.coachee_goals g JOIN _enr en ON en.id = g.enrollment_id
+           JOIN public.coachee_goal_ratings r ON r.goal_id = g.id
+           WHERE en.slug = 'b4' AND g.status = 'active' AND r.current_rating = r.start_rating) <> 1
+       OR EXISTS (SELECT 1 FROM public.goal_checkins c JOIN _enr en ON en.id = c.enrollment_id WHERE en.slug = 'b4')
+    UNION ALL
+    SELECT 'b2', 'a goal with an open milestone'
+    WHERE NOT EXISTS (SELECT 1 FROM public.coachee_milestones m JOIN _enr en ON en.id = m.enrollment_id
+                      WHERE en.slug = 'b2' AND NOT m.is_done)
+  ) x;
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION 'VERIFY 13 FAILED: goal stages missing: %', bad;
+  END IF;
+
   RAISE NOTICE 'All verification checks passed.';
 END
 $verify$;
@@ -1334,19 +1489,19 @@ BEGIN
   RAISE NOTICE '%', rpad('learner1@clariva.demo',26)||rpad('coachee',10)||'Org A - COMPLETE in B, plus a finished cohort A history';
   RAISE NOTICE '%', rpad('learner2@clariva.demo',26)||rpad('coachee',10)||'Org A - MID: sessions done, deliverables outstanding';
   RAISE NOTICE '%', rpad('learner3@clariva.demo',26)||rpad('coachee',10)||'Org A - BEHIND: overdue Coaching and Mentoring';
-  RAISE NOTICE '%', rpad('learner4@clariva.demo',26)||rpad('coachee',10)||'Org B - JUST STARTED: 0%, everything due is overdue (11 with Training)';
+  RAISE NOTICE '%', rpad('learner4@clariva.demo',26)||rpad('coachee',10)||'Org B - Ana Silva, JUST STARTED: 0 completed; every requirement already due is overdue';
   RAISE NOTICE '%', rpad('learner5@clariva.demo',26)||rpad('coachee',10)||'Org B - MID engagement';
   RAISE NOTICE '%', rpad('learner6@clariva.demo',26)||rpad('coachee',10)||'Org B - PARTIAL completion';
-  RAISE NOTICE '%', rpad('learner9@clariva.demo',26)||rpad('coachee',10)||'COMPLETE - Executive Excellence (6/3/3/3)';
+  RAISE NOTICE '%', rpad('learner9@clariva.demo',26)||rpad('coachee',10)||'Tom Okafor, COMPLETE - Executive Excellence (6/3/3/3)';
   RAISE NOTICE '%', rpad('learner11@clariva.demo',26)||rpad('coachee',10)||'ON TRACK - Executive Excellence';
   RAISE NOTICE '%', rpad('learner7@clariva.demo',26)||rpad('coachee',10)||'BEHIND - Executive Excellence';
   RAISE NOTICE '%', rpad('learner8@clariva.demo',26)||rpad('coachee',10)||'JUST STARTED - Executive Excellence';
   RAISE NOTICE '%', rpad('alum1..3@clariva.demo',26)||rpad('coachee',10)||'finished cohort A (100% complete)';
   RAISE NOTICE '%', rpad('tasc1..4@clariva.demo',26)||rpad('coachee',10)||'TASC Essential - Mentoring and Triads only';
   RAISE NOTICE '';
-  RAISE NOTICE 'NOTE: a cohort module deadline applies to the whole cohort. A learner who';
-  RAISE NOTICE '      has done nothing in a cohort whose deadline has passed therefore reads';
-  RAISE NOTICE '      as overdue - that is the canonical answer, not a display fault.';
+  RAISE NOTICE 'NOTE: every requirement has its own cohort date. A learner who has done';
+  RAISE NOTICE '      nothing reads exactly the requirements already due as overdue - the';
+  RAISE NOTICE '      canonical answer (scripts/requirement-calendar-verification.sql).';
 END
 $summary$;
 

@@ -18,6 +18,8 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { getSessionStatusPillMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
 import { useSessionsData } from "@/hooks/sessions/useSessionsData";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
+import { scopeLearnerSessions } from "@/lib/learnerSessionScope";
 import { sessionRowDetailPath as sessionDetailPath } from "@/lib/sessionPaths";
 import type { SessionRow as SessionRowData, SessionKind } from "@/hooks/sessions/useSessionsData";
 
@@ -42,11 +44,22 @@ export default function Sessions() {
   const searchTerm = searchParams.get("q") || "";
   const kindFilter = (searchParams.get("kind") as KindFilter) || "all";
 
-  const { sessions, loading, reload: load } = useSessionsData(user?.id, role);
+  const { sessions: allSessions, loading, reload: load } = useSessionsData(user?.id, role);
+  // A learner's hub follows their ONE active enrollment (useActiveEnrollment);
+  // sessions of their own earlier programmes are shown only on request.
+  const active = useActiveEnrollment();
+  const includePast = searchParams.get("past") === "1";
+  const scoped = role === "coachee"
+    ? scopeLearnerSessions(allSessions, active.enrollmentId, includePast)
+    : { rows: allSessions, hiddenPast: 0 };
+  const sessions = scoped.rows;
 
-  const setTab = (v: string) => setSearchParams({ tab: v, q: searchTerm, kind: kindFilter }, { replace: true });
-  const setSearchTerm = (v: string) => setSearchParams({ tab, q: v, kind: kindFilter }, { replace: true });
-  const setKindFilter = (v: KindFilter) => setSearchParams({ tab, q: searchTerm, kind: v }, { replace: true });
+  const pastParam: Record<string, string> = includePast ? { past: "1" } : {};
+  const setTab = (v: string) => setSearchParams({ tab: v, q: searchTerm, kind: kindFilter, ...pastParam }, { replace: true });
+  const setSearchTerm = (v: string) => setSearchParams({ tab, q: v, kind: kindFilter, ...pastParam }, { replace: true });
+  const setKindFilter = (v: KindFilter) => setSearchParams({ tab, q: searchTerm, kind: v, ...pastParam }, { replace: true });
+  const setIncludePast = (v: boolean) =>
+    setSearchParams({ tab, q: searchTerm, kind: kindFilter, ...(v ? { past: "1" } : {}) }, { replace: true });
 
   // Admins have a dedicated sessions view — redirect after hooks are called
   if (role === "admin") {
@@ -144,6 +157,16 @@ export default function Sessions() {
             <TabsTrigger value="upcoming">{t("list.tabs.upcoming", { count: upcoming.length })}</TabsTrigger>
             <TabsTrigger value="past">{t("list.tabs.past", { count: past.length })}</TabsTrigger>
           </TabsList>
+          {role === "coachee" && (scoped.hiddenPast > 0 || includePast) && (
+            <button
+              type="button"
+              data-testid="sessions-past-programmes"
+              onClick={() => setIncludePast(!includePast)}
+              className="ml-3 text-[12px] font-semibold text-primary hover:underline"
+            >
+              {includePast ? t("list.pastProgrammes.hide") : t("list.pastProgrammes.show", { count: scoped.hiddenPast })}
+            </button>
+          )}
           <TabsContent value="upcoming" className="mt-4 space-y-3">
             {upcoming.length === 0 ? (
               <EmptyState

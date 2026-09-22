@@ -19,6 +19,18 @@
       "viewed": "In progress",
       "notStarted": "Up next",
       "locked": "Locked"
+    },
+    "requirementDue": "Programme requirement due {{date}}",
+    "requirementState": {
+      "completed": "Completed",
+      "overdue": "Overdue",
+      "upcoming": "Upcoming"
+    },
+    "item": {
+      "skill_cards": "Skill card",
+      "quizzes": "Quiz",
+      "reflections": "Reflection",
+      "daily_prompts": "Daily prompts"
     }
   },
   "card": {

@@ -82,7 +82,12 @@ export function ProgrammeModuleProgress({
                 </div>
                 <MiniProgress pct={ratioPct(item.completed_units, item.required_units)} color={SKY} />
                 <div className="mt-1 flex items-baseline justify-between gap-2 text-[9.5px] text-[#9a938a]">
-                  <span>{text("dueUnits", { count: item.due_units })}</span>
+                  <span>
+                    {text("dueUnits", { count: item.due_units })}
+                    {(item.overdue_units ?? 0) > 0 && (
+                      <span className="ml-1.5 text-[#b4532a]">· {text("overdueUnits", { count: item.overdue_units })}</span>
+                    )}
+                  </span>
                   {viewer === "learner" && item.status !== "unavailable" && (
                     <span className="font-bold uppercase tracking-[.12em]" style={{ color: checkpointStateColor(item.status) }}>
                       {t(`cohortDetail.journey.states.${item.status}`)}

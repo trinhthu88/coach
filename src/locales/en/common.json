@@ -154,7 +154,8 @@
     "openNavMenu": "Open navigation menu",
     "mobileMore": "More",
     "coachingOsTagline": "Coaching OS",
-    "defaultUserName": "User"
+    "defaultUserName": "User",
+    "modulesUnavailable": "Your programme modules could not be loaded, so module links are hidden. Reload, or contact your programme admin if this persists."
   },
   "errors": {
     "generic": "Something went wrong on our end. Please try again — if it keeps happening, contact contact@clariva.club.",

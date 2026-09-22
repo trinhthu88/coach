@@ -272,6 +272,7 @@ WITH repo(version, name) AS (VALUES
   ('20260924120000', 'learner_canonical_overdue_items'),
   ('20260924130000', 'coach_canonical_progress'),
   ('20260924140000', 'learner_module_progress_self_view'),
+  ('20260925090000', 'demo_organisation_b'),
   ('20260925100000', 'sponsor_visibility_by_enrollment_org'),
   ('20260925200000', 'admin_provisioning_and_enrollment_transition'),
   ('20260925300000', 'admin_enrollment_detail'),
@@ -288,7 +289,12 @@ WITH repo(version, name) AS (VALUES
   ('20260926900000', 'retire_out_of_repo_demo_generator'),
   ('20260927100000', 'peer_feedback_requires_a_rating'),
   ('20260927200000', 'retire_legacy_session_limits'),
-  ('20260927300000', 'purge_retired_module_config_keys')
+  ('20260927300000', 'purge_retired_module_config_keys'),
+  ('20260928100000', 'requirement_calendar'),
+  ('20260928110000', 'goal_setting_period'),
+  ('20260928120000', 'organisation_enrollments_and_integrity'),
+  ('20260928130000', 'learner_enrollment_context'),
+  ('20260928140000', 'learner_training_from_calendar')
 -- END REPO MANIFEST
 ),
 

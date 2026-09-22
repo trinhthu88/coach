@@ -11,6 +11,12 @@ vi.mock("@/hooks/useCanonicalScheduleState", () => ({
 
 
 const state = vi.hoisted(() => ({
+  active: {
+    enrollmentId: "enrollment-seeded-partial" as string | null,
+    loading: false,
+    error: null as string | null,
+    details: { organization_name: "Clariva Demo Organization" } as { organization_name: string } | null,
+  },
   feedbackError: null as string | null,
   feedback: [] as unknown[],
   goals: [] as unknown[],
@@ -26,8 +32,10 @@ const state = vi.hoisted(() => ({
 vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ user: { id: "learner-1" }, profile: { full_name: "Jamie Learner" }, role: "coachee" }),
 }));
-vi.mock("@/hooks/journey/useJourneyProgramme", () => ({
-  useJourneyProgramme: () => ({ programme: { enrollmentId: "enrollment-seeded-partial" }, usage: null, loading: false, error: null }),
+// The ONE learner enrollment context (the same one the Dashboard reads).
+vi.mock("@/hooks/useActiveEnrollment", () => ({
+  useActiveEnrollmentDetails: () => state.active,
+  useActiveEnrollment: () => state.active,
 }));
 vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
   useLearnerCanonicalProgress: (enrollmentId: string | undefined) => {
@@ -104,6 +112,29 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     state.reflectionsError = null;
     state.reflectionFeedCalls = [];
     state.sessions = [];
+    state.active = { enrollmentId: ENROLLMENT_ID, loading: false, error: null, details: { organization_name: "Clariva Demo Organization" } };
+  });
+
+  it("reads the same active enrollment every learner surface reads, and shows its organisation", () => {
+    renderPage();
+    expect(state.canonicalCalls.every((id) => id === ENROLLMENT_ID)).toBe(true);
+    expect(state.reflectionFeedCalls.every((id) => id === ENROLLMENT_ID)).toBe(true);
+    expect(screen.getByTestId("journey-header")).toHaveTextContent("Clariva Demo Organization");
+  });
+
+  it("a failed details lookup (organisation name) never blanks the journey", () => {
+    state.active = { enrollmentId: ENROLLMENT_ID, loading: false, error: null, details: null };
+    renderPage();
+    expect(screen.getByTestId("programme-journey")).toBeInTheDocument();
+    expect(screen.queryByTestId("journey-enrollment-state")).toBeNull();
+  });
+
+  it("an enrollment resolution failure is shown as an error, never as an empty journey", () => {
+    state.active = { enrollmentId: null, loading: false, error: "Multiple ongoing programme enrollments require an explicit selection.", details: null };
+    renderPage();
+    expect(screen.getByTestId("journey-enrollment-state")).toHaveTextContent(/could not be loaded: Multiple ongoing/);
+    expect(screen.queryByTestId("programme-journey")).toBeNull();
+    expect(screen.queryByText(/Nothing has happened/i)).toBeNull();
   });
 
   it("renders the shared full journey from the canonical learner source for the selected enrollment", () => {

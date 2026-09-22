@@ -37,6 +37,13 @@ export interface SessionRow {
   duration_minutes: number | null;
   status: SessionStatus | "proposed";
   enrollment_id: string | null;
+  /**
+   * The signed-in viewer's OWN enrollment for this session. For a shared
+   * (peer) session this is the viewer's peer_session_participants row -- never
+   * the session row's enrollment_id, which belongs to one participant only.
+   * Null when the viewer has no attributable enrollment (e.g. the coach side).
+   */
+  viewer_enrollment_id: string | null;
   programmeName: string | null;
   cohortName: string | null;
   /**
@@ -74,6 +81,36 @@ export function attachEnrollmentContext<T extends { enrollment_id?: string | nul
     programmeName: row.enrollment_id ? contexts[row.enrollment_id]?.programmeName ?? null : null,
     cohortName: row.enrollment_id ? contexts[row.enrollment_id]?.cohortName ?? null : null,
   }));
+}
+
+/** A viewer's own peer participations, keyed `${session_kind}:${peer_session_id}`. */
+export type PeerParticipationIndex = Map<string, string | null>;
+
+/**
+ * Which of the VIEWER's enrollments a session row belongs to.
+ *   coaching / mentoring (as learner)  -> the session's enrollment (it is the learner's)
+ *   peer / coachee-peer                -> the viewer's own participant row
+ *   triad                              -> the viewer's own group membership enrollment
+ *   anything the viewer delivers       -> null (no enrollment of theirs)
+ */
+export function viewerEnrollmentFor(
+  row: { kind: SessionKind; id: string; enrollment_id: string | null },
+  participations: PeerParticipationIndex,
+): string | null {
+  switch (row.kind) {
+    case "coaching":
+    case "mentoring-mentee":
+    case "triad":
+      return row.enrollment_id ?? null;
+    case "peer-give":
+    case "peer-receive":
+      return participations.get(`peer:${row.id}`) ?? null;
+    case "coachee-peer-give":
+    case "coachee-peer-receive":
+      return participations.get(`coachee_peer:${row.id}`) ?? null;
+    default:
+      return null;
+  }
 }
 
 /** One Triad session of one of the learner's groups, as a unified session row. */
@@ -154,6 +191,18 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     mentoring = await withEnrollmentActions(data || [], "mentoring");
   }
 
+  // The viewer's own peer participations: each participant of a shared peer
+  // session is attributed to THEIR OWN enrollment (peer_session_participants).
+  const participations: PeerParticipationIndex = new Map();
+  if (peer.length > 0 || coacheePeer.length > 0) {
+    const { data: rows, error } = await supabase
+      .from("peer_session_participants")
+      .select("session_kind, peer_session_id, enrollment_id")
+      .eq("user_id", userId);
+    if (error) throw error;
+    for (const r of rows ?? []) participations.set(`${r.session_kind}:${r.peer_session_id}`, r.enrollment_id);
+  }
+
   if (role === "coach" || role === "coachee") {
     // Triads: every session of every group the learner's enrollments belong
     // to (canonical membership), from the one learner Triad read model.
@@ -197,7 +246,8 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       kind: (s.mentor_id === userId ? "mentoring-mentor" : "mentoring-mentee") as SessionKind,
     })),
     ...triads,
-  ].sort((a, b) => {
+  ].map((row) => ({ ...row, viewer_enrollment_id: viewerEnrollmentFor(row, participations) }))
+  .sort((a, b) => {
     const at = a.start_time ? new Date(a.start_time).getTime() : 0;
     const bt = b.start_time ? new Date(b.start_time).getTime() : 0;
     return bt - at;

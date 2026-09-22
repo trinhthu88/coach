@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { useProgrammeProgress, RawWeek } from "@/hooks/dashboard/useProgrammeProgress";
+import { useProgrammeProgress, RawWeek, type TrainingWeekItem } from "@/hooks/dashboard/useProgrammeProgress";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 
 export default function TrainingWeeks() {
@@ -47,7 +47,14 @@ export default function TrainingWeeks() {
               isVi={isVi}
               t={t}
               // Every unlocked week (current and earlier) opens its own content.
-              quizAssignmentId={hasModule("quiz") ? summary.quizAssignmentIdByWeek[week.id] ?? null : null}
+              // Quizzes are offered when the programme makes them part of the
+              // week (learning_components) or runs a Quiz module.
+              quizAssignmentId={
+                hasModule("quiz") || (summary.itemsByWeek[week.id] ?? []).some((i) => i.item_type === "quizzes")
+                  ? summary.quizAssignmentIdByWeek[week.id] ?? null
+                  : null
+              }
+              items={summary.itemsByWeek[week.id] ?? []}
               quizScore={summary.quizScores.find((q) => q.weekNumber === week.week_number)}
               reflectionStreak={summary.reflectionStreak}
             />
@@ -66,8 +73,10 @@ function WeekTimelineCard({
   quizAssignmentId,
   quizScore,
   reflectionStreak,
+  items,
 }: {
   week: RawWeek;
+  items: TrainingWeekItem[];
   isCurrent: boolean;
   isVi: boolean;
   t: (key: string, opts?: Record<string, unknown>) => string;
@@ -75,6 +84,7 @@ function WeekTimelineCard({
   quizScore: { weekNumber: number; scorePct: number } | undefined;
   reflectionStreak: number;
 }) {
+  const requirementState = week.requirement_state && week.requirement_state !== "not_required" ? week.requirement_state : null;
   const title = (isVi && week.title_vi) || week.title;
   const subtitle = (isVi && week.subtitle_vi) || week.subtitle;
   const status = week.locked ? "locked" : week.completed_at ? "completed" : isCurrent ? "current" : week.viewed_at ? "viewed" : "notStarted";
@@ -115,6 +125,46 @@ function WeekTimelineCard({
             {t(`list.pill.${status}`)}
           </span>
         </div>
+
+        {/* The week's programme requirement: its cohort date and canonical
+            state (the same row the Dashboard, checkpoints and Sponsor count). */}
+        {week.requirement_due_on && (
+          <p data-testid="week-requirement" className="mt-2 flex flex-wrap items-center gap-2 text-[11.5px] text-muted-foreground">
+            <span>{t("list.requirementDue", { date: format(new Date(`${week.requirement_due_on}T00:00:00`), "MMM d, yyyy") })}</span>
+            {requirementState && (
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.08em]",
+                  requirementState === "completed" && "bg-[#e8f5ef] text-success",
+                  requirementState === "overdue" && "bg-[#fdf4ef] text-[#a8341c]",
+                  requirementState === "upcoming" && "bg-[#f2eee6] text-[#8a847d]"
+                )}
+              >
+                {t(`list.requirementState.${requirementState}`)}
+              </span>
+            )}
+          </p>
+        )}
+        {items.length > 0 && (
+          <div data-testid="week-items" className="mt-2 flex flex-wrap gap-1.5">
+            {items.map((item) => (
+              <span
+                key={item.item_type}
+                data-testid={`week-item-${item.item_type}`}
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-[10.5px] font-semibold",
+                  item.completed_units >= item.required_units
+                    ? "bg-[#e8f5ef] text-success"
+                    : item.overdue_units > 0
+                      ? "bg-[#fdf4ef] text-[#a8341c]"
+                      : "bg-[#f2eee6] text-[#8a847d]"
+                )}
+              >
+                {t(`list.item.${item.item_type}`, { defaultValue: item.item_type })} {item.completed_units}/{item.required_units}
+              </span>
+            ))}
+          </div>
+        )}
 
         {week.locked ? (
           <p className="mt-2 text-xs font-semibold text-muted-foreground">

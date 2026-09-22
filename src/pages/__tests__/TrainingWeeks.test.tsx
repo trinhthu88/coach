@@ -18,9 +18,9 @@ const week = (n: number, patch: Record<string, unknown>) => ({
 });
 
 const weeks = [
-  week(1, { completed_at: "2026-01-08T00:00:00Z" }),
+  week(1, { completed_at: "2026-01-08T00:00:00Z", requirement_due_on: "2026-01-08", requirement_state: "completed" }),
   week(2, { viewed_at: "2026-02-02T00:00:00Z" }),
-  week(3, {}),
+  week(3, { requirement_due_on: "2026-03-01", requirement_state: "overdue" }),
   week(4, { locked: true }),
 ];
 
@@ -38,6 +38,15 @@ vi.mock("@/hooks/dashboard/useProgrammeProgress", () => ({
       currentWeek: weeks[1],
       currentQuizAssignmentId: "q2",
       quizAssignmentIdByWeek: { w1: "q1", w2: "q2", w3: "q3", w4: "q4" },
+      // learner_training_week_items: child evidence per week (counts only).
+      itemsByWeek: {
+        w3: [
+          { item_type: "skill_cards", required_units: 1, completed_units: 0, due_units: 1, overdue_units: 1 },
+          { item_type: "quizzes", required_units: 1, completed_units: 1, due_units: 1, overdue_units: 0 },
+          { item_type: "reflections", required_units: 1, completed_units: 0, due_units: 0, overdue_units: 0 },
+          { item_type: "daily_prompts", required_units: 2, completed_units: 1, due_units: 2, overdue_units: 1 },
+        ],
+      },
     },
   }),
 }));
@@ -72,5 +81,25 @@ describe("Training & Learning — previous weeks stay open", () => {
     );
     const locked = cardFor("Week 4 title");
     expect(within(locked).queryAllByRole("link")).toHaveLength(0);
+  });
+});
+
+describe("Training & Learning — each week shows its programme requirement and child evidence", () => {
+  it("shows the canonical requirement date and state, and every configured child type with its own count", () => {
+    render(
+      <MemoryRouter>
+        <TrainingWeeks />
+      </MemoryRouter>
+    );
+    const week3 = cardFor("Week 3 title");
+    expect(within(week3).getByTestId("week-requirement")).toHaveTextContent(/Mar 1, 2026.*Overdue/);
+    expect(within(week3).getByTestId("week-item-skill_cards")).toHaveTextContent("0/1");
+    expect(within(week3).getByTestId("week-item-quizzes")).toHaveTextContent("1/1");
+    expect(within(week3).getByTestId("week-item-reflections")).toHaveTextContent("0/1");
+    // Two prompts exist in this week, so the denominator is two.
+    expect(within(week3).getByTestId("week-item-daily_prompts")).toHaveTextContent("1/2");
+    expect(within(cardFor("Week 1 title")).getByTestId("week-requirement")).toHaveTextContent(/Completed/);
+    // A week that is not a requirement carries no requirement line.
+    expect(within(cardFor("Week 2 title")).queryByTestId("week-requirement")).toBeNull();
   });
 });

@@ -19,6 +19,18 @@
       "viewed": "Đang thực hiện",
       "notStarted": "Sắp tới",
       "locked": "Đã khóa"
+    },
+    "requirementDue": "Hạn yêu cầu của chương trình {{date}}",
+    "requirementState": {
+      "completed": "Đã hoàn thành",
+      "overdue": "Quá hạn",
+      "upcoming": "Sắp tới"
+    },
+    "item": {
+      "skill_cards": "Thẻ kỹ năng",
+      "quizzes": "Bài kiểm tra",
+      "reflections": "Suy ngẫm",
+      "daily_prompts": "Gợi ý hằng ngày"
     }
   },
   "card": {

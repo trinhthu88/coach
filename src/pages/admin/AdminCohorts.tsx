@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, UsersRound, Building2, Eye, EyeOff, Users } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, UsersRound, Building2, Users } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
@@ -29,6 +29,8 @@ interface Cohort {
   organization_id: string | null;
   start_date: string | null;
   end_date: string | null;
+  goal_setting_opens_on: string | null;
+  goal_setting_due_on: string | null;
 }
 
 export default function AdminCohorts() {
@@ -83,6 +85,8 @@ export default function AdminCohorts() {
         organization_id: editing.organization_id || null,
         start_date: editing.start_date || null,
         end_date: editing.end_date || null,
+        goal_setting_opens_on: editing.goal_setting_opens_on || null,
+        goal_setting_due_on: editing.goal_setting_due_on || null,
       };
       let cohortId = editing.id ?? null;
       if (cohortId) {
@@ -146,11 +150,11 @@ export default function AdminCohorts() {
               {org ? (
                 <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-primary">
                   <Building2 className="h-3 w-3" /> {org.name}
-                  <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3" /> {t("cohorts.sponsorVisible")}</span>
+                  <span className="font-normal text-muted-foreground">· {t("cohorts.sponsorVisible")}</span>
                 </div>
               ) : (
                 <div className="mt-2 flex items-center gap-1.5 border-b border-dashed border-muted-foreground/30 pb-2 text-[11px] text-muted-foreground">
-                  <EyeOff className="h-3 w-3" /> {t("cohorts.noOrganization")} · {t("cohorts.notSponsorVisible")}
+                  <Building2 className="h-3 w-3" /> {t("cohorts.noOrganization")} · {t("cohorts.notSponsorVisible")}
                 </div>
               )}
               <div className="mt-3 flex gap-2">
@@ -195,18 +199,23 @@ export default function AdminCohorts() {
                   </SelectContent>
                 </Select>
                 {editing.organization_id ? (
-                  <p className="mt-1.5 flex items-center gap-1 text-[11px] text-primary">
-                    <Eye className="h-3 w-3" /> {t("cohorts.sponsorVisibleHint")}
-                  </p>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">{t("cohorts.sponsorVisibleHint")}</p>
                 ) : (
-                  <p className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <EyeOff className="h-3 w-3" /> {t("cohorts.sponsorHiddenHint")}
-                  </p>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">{t("cohorts.sponsorHiddenHint")}</p>
                 )}
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div><Label>{t("cohorts.startDateLabel")}</Label><Input type="date" value={editing.start_date || ""} onChange={(e) => setEditing({ ...editing, start_date: e.target.value })} /></div>
                 <div><Label>{t("cohorts.endDateLabel")}</Label><Input type="date" value={editing.end_date || ""} onChange={(e) => setEditing({ ...editing, end_date: e.target.value })} /></div>
+              </div>
+              {/* The goal-setting period (cohorts.goal_setting_*): when learners set
+                  their 1-3 enrollment goals. A reminder date, never a requirement. */}
+              <div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div><Label>{t("cohorts.goalSettingOpensLabel")}</Label><Input type="date" value={editing.goal_setting_opens_on || ""} onChange={(e) => setEditing({ ...editing, goal_setting_opens_on: e.target.value })} /></div>
+                  <div><Label>{t("cohorts.goalSettingDueLabel")}</Label><Input type="date" value={editing.goal_setting_due_on || ""} onChange={(e) => setEditing({ ...editing, goal_setting_due_on: e.target.value })} /></div>
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">{t("cohorts.goalSettingHint")}</p>
               </div>
               <CohortRequirementSchedule
                 schedule={schedule}
