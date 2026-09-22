@@ -1,0 +1,592 @@
+Continue from the completed audit. Implement the fixes below on the CURRENT authoritative working tree.
+
+Do not re-audit from scratch.
+Do not reset the branch.
+Do not deploy.
+
+The audit findings in the latest report are authoritative.
+
+==================================================
+1. TRAINING / LEARNING — FINAL COMPLETION CONTRACT
+==================================================
+
+Replace the current Skill-Card-only completion rule.
+
+FINAL RULE:
+
+ONE Training programme unit = ONE required Training Week.
+
+A required Training Week is complete only when:
+
+- Skill Card completed
+- Quiz submitted/completed
+- Reflection submitted/completed
+
+Daily Prompt is OPTIONAL.
+
+So:
+
+Skill Card 1/1
+Quiz 1/1
+Reflection 1/1
+Daily Prompt 0/1
+
+=> Training Week = COMPLETED
+
+Daily Prompt must:
+
+- appear in Learner breakdown
+- appear numerically in Sponsor breakdown
+- never gate week completion
+- never add a parent Training required unit
+- never create Training overdue by itself
+
+Create/refactor ONE canonical function such as:
+
+canonical_training_week_fulfilment(enrollment_id, p_as_of)
+
+Per required week return:
+
+- training_week_id
+- week_number
+- due_on
+- available_on/unlock_on
+- skill_card_required/completed/completed_at
+- quiz_required/completed/completed_at
+- reflection_required/completed/completed_at
+- daily_prompts_required/count
+- daily_prompts_completed/count
+- week_complete
+
+week_complete =
+skill_card_complete
+AND quiz_complete
+AND reflection_complete
+
+Do not use training_progress.completed_at alone as parent completion.
+
+Then canonical Training progress:
+
+required_units = required Training Weeks
+completed_units = completed Training Weeks
+due_units = Training Weeks due by p_as_of
+overdue_units = due Training Weeks not complete
+
+Both Learner and Sponsor must consume this same source.
+
+==================================================
+2. TRAINING / LEARNING BREAKDOWN
+==================================================
+
+Show exactly these four rows when configured:
+
+- Skill Card
+- Quiz
+- Reflection
+- Daily Prompts
+
+The breakdown must come from the same canonical backend projection for Learner and Sponsor.
+
+Do not create separate Learner/Sponsor calculations.
+
+Sponsor sees counts/status only, never answers/content.
+
+==================================================
+3. TRAINING WEEK UX
+==================================================
+
+Replace:
+
+"View skill card"
+
+with:
+
+"View content"
+
+Clicking a week opens the COMPLETE content for the week:
+
+- Skill Card
+- Quiz
+- Reflection
+- Daily Prompts
+
+Reuse existing content/storage/hooks.
+
+Do not duplicate content.
+
+The week card should clearly show:
+
+Skill Card 1/1
+Quiz 1/1
+Reflection 1/1
+Daily Prompts 0/1 · Optional
+
+and can still show:
+
+COMPLETED
+
+because Daily Prompt is optional.
+
+==================================================
+4. FUTURE / UPCOMING REQUIREMENTS
+==================================================
+
+The current seed and journey allow future requirements to appear completed.
+
+Fix this.
+
+Introduce/use a canonical availability concept.
+
+A requirement can contribute to completed_units at p_as_of only when:
+
+- completion timestamp <= p_as_of
+AND
+- requirement/activity was legitimately available by p_as_of
+
+Do not count fabricated past completion against content/session requirements that were still future/unavailable.
+
+For Training:
+available_on comes from week unlock date.
+
+For Coaching / Mentoring / Peer / Triads:
+audit the actual booking/availability rule and expose the canonical available date/state rather than guessing in React.
+
+A future checkpoint whose requirement is not yet available must remain:
+
+UPCOMING
+
+even if bad demo rows contain a past completion timestamp.
+
+Do not silently accept impossible seed data.
+
+==================================================
+5. CHECKPOINT STATE ORDER
+==================================================
+
+Current logic does:
+
+completed first
+then future/upcoming
+
+Change to source-of-truth-aware state.
+
+Conceptually:
+
+if due_on > p_as_of AND requirement not yet available:
+    UPCOMING
+else if completed:
+    COMPLETED
+else if due_on < p_as_of:
+    OVERDUE
+else:
+    CURRENT / UPCOMING according to canonical schedule
+
+Do not mark an unavailable future checkpoint COMPLETED.
+
+If early completion is legitimately possible because the requirement was already available, document and test it explicitly.
+
+==================================================
+6. FIX DEMO DATA
+==================================================
+
+The audit proves Linh's 18/18 is caused by seeded future Training/Peer/Triad work being marked completed early.
+
+Fix:
+
+supabase/seed-demo.sql
+scripts/seed-training-content.sql
+and any other demo generator
+
+The demo must represent realistic activity AS OF the demo/current date.
+
+For Linh Nguyen in Cohort B:
+
+- active programme
+- future/unavailable requirements remain upcoming
+- only legitimately available work can be complete
+- overall completion must therefore be < 100% while unavailable required units remain
+
+Do not seed future Peer/Triad/Training completion into the past simply to create a polished demo.
+
+Every demo timestamp must be coherent with:
+
+- cohort dates
+- requirement availability
+- requirement deadline
+- actual session/content date
+- p_as_of
+
+==================================================
+7. COHORT JOURNEY RECONCILIATION
+==================================================
+
+Fix the Cohort A contradiction:
+
+module cards:
+all complete
+
+journey:
+all 0 / overdue
+
+The cohort journey MUST aggregate the same canonical enrollment requirement calendar used by leader progress.
+
+For each checkpoint:
+
+cumulative_required
+=
+sum of canonical member requirements through checkpoint
+
+cumulative_completed
+=
+sum of canonical member fulfilled requirements through checkpoint
+
+If 5 learners completed the first Training Week:
+
+Checkpoint 1 = 5/5
+
+If they completed first 2:
+
+Checkpoint 2 = 10/10
+
+etc.
+
+Add a DB test that fails if:
+
+cohort module totals = complete
+
+but final journey cumulative totals disagree.
+
+==================================================
+8. PROGRESS LABELS / SEMANTICS
+==================================================
+
+Keep these definitions:
+
+Required activities
+=
+all contractual required units
+
+Due by today
+=
+required units whose due_on <= p_as_of
+
+Completed
+=
+required units legitimately completed as of p_as_of
+
+Overdue
+=
+due units not completed
+
+Completed may exceed Due ONLY when the extra requirements were genuinely available and completed early.
+
+Improve the UI labels:
+
+"18 Required activities"
+"11 Due by today"
+"13 Completed"
+
+If completed > due, optionally show:
+
+"2 completed ahead of schedule"
+
+But derive it server-side or from canonical fields, not a second progress engine.
+
+Never make future unavailable requirements count as completed.
+
+==================================================
+9. REMOVE RATIOS FROM LEARNER SIDEBAR
+==================================================
+
+Remove:
+
+4/4
+2/2
+8/8
+etc.
+
+from the module navigation.
+
+Sidebar should show names only:
+
+Coaching
+Peer coaching
+Mentoring
+Triads
+Training & Learning
+
+Progress belongs inside content pages/dashboard/journey.
+
+==================================================
+10. PEER COACHING — IMPLEMENT FIXED ADMIN DYADS
+==================================================
+
+The audit confirms the current system is NOT a fixed dyad model.
+
+Change the learner-to-learner Peer product to:
+
+Admin creates/assigns a Dyad
+=
+exactly TWO learner ENROLLMENTS
+
+not two profile/user IDs.
+
+Canonical model:
+
+peer_dyads
+- id
+- cohort_id
+- programme_id
+- status
+- created_by
+- timestamps
+
+peer_dyad_members
+- dyad_id
+- enrollment_id
+- joined_at
+- ended_at/status
+
+Exactly two active members.
+
+Both enrollments must belong to the permitted cohort/programme context.
+
+Learners do not dynamically choose arbitrary eligible partners anymore for this programme path.
+
+A real Peer session remains ONE meeting.
+
+peer_session_participants must still contain one enrollment-scoped participation row per participant, each linked to that learner's own Peer requirement.
+
+Do not duplicate the session.
+
+Preserve historical sessions.
+
+If the existing coach-provided Peer path is a distinct product, keep it explicitly separate and do not merge it into learner dyads.
+
+Retire or isolate:
+
+peer_cohort_permissions
+eligible_peer_partners
+dynamic learner partner selection
+
+from the canonical learner-dyad path.
+
+==================================================
+11. POST-SESSION FOLLOW-UP ACTIONS
+==================================================
+
+For all NEW post-session actions require:
+
+- enrollment_id
+- source_activity_type
+- source_activity_id
+- goal_id
+- text
+- due_date
+- status
+
+Both goal_id and due_date are mandatory.
+
+Server-side validation must prove:
+
+goal.enrollment_id = action.enrollment_id
+
+No cross-enrollment goal link.
+
+UI must require:
+
+Goal
+Action text
+Deadline
+
+Do not allow Save until all three are present.
+
+This applies consistently to post-session actions from:
+
+- Coaching
+- Mentoring
+- Peer Coaching
+- Triads
+
+Do not make action completion/due date gate session completion.
+
+Historical actions without goal/date:
+
+- report
+- keep
+- backfill only where deterministic
+- do not invent values
+
+==================================================
+12. REMOVE COHORT ORGANIZATION AS AUTHORITY
+==================================================
+
+The audit confirms current main Sponsor visibility already uses:
+
+programme_enrollments.organization_id
+
+Keep that as the ONLY sponsor visibility authority.
+
+Remove active uses of:
+
+cohorts.organization_id
+
+from:
+
+- Admin cohort forms/cards
+- invite defaults
+- enrollment editing assumptions
+- runtime RPCs
+- exposed Sponsor functions
+- RLS
+- seeds where it implies ownership
+
+Specifically fix/retire the two exposed legacy Sponsor RPCs identified in the audit:
+
+- sponsor_canonical_leader_progress
+- sponsor_leader_engagement_summary
+
+They must either:
+
+A. be rewritten to authorize through enrollment.organization_id
+
+or
+
+B. be retired/revoked if superseded.
+
+No live exposed RPC may authorize through cohort.organization_id.
+
+A cohort may contain multiple organizations.
+
+Sponsor A sees only enrollment.organization_id = A.
+Sponsor B sees only enrollment.organization_id = B.
+
+If cohorts.organization_id must remain temporarily for migration compatibility, mark it legacy/non-authoritative and remove it from UI/business logic.
+
+==================================================
+13. FULL CROSS-USER RECONCILIATION
+==================================================
+
+After implementing all above, run all demo users through:
+
+Learner Dashboard
+Learner Journey
+Training page
+Admin user detail
+Admin cohort detail
+Sponsor organization
+Sponsor cohort
+Sponsor leader detail
+Coach/Mentor context
+
+For the SAME enrollment and p_as_of verify equality of:
+
+required
+completed
+due
+overdue
+booked
+progress %
+
+Training parent progress must reconcile with canonical week fulfilment.
+
+Journey final cumulative totals must reconcile with canonical progress.
+
+Cohort journey must reconcile with summed member canonical progress.
+
+==================================================
+14. NO FABRICATED / STATIC DATA
+==================================================
+
+Search globally for:
+
+hardcoded progress
+fake completion
+frontend fallback progress
+future demo completion
+default numeric scores
+raw session count presented as programme progress
+milestone % presented as programme progress
+`?? 0` masking canonical RPC failure
+
+Programme truth must never be invented.
+
+If canonical data is unavailable:
+show unavailable/error.
+
+==================================================
+15. REQUIRED REGRESSION TESTS
+==================================================
+
+Training:
+- Skill ✅ Quiz ✅ Reflection ✅ Prompt ❌ => complete
+- Skill ✅ Quiz ❌ Reflection ✅ => incomplete
+- Skill ✅ Quiz ✅ Reflection ❌ => incomplete
+- Prompt changes do not affect parent completed_units
+- 5 completed weeks of 8 => 5/8
+
+Journey:
+- future unavailable checkpoint cannot be completed
+- valid available early completion can count
+- cohort journey reconciles to cohort module totals
+- no 40/40 + journey 0/40 contradiction
+
+Actions:
+- no goal => rejected
+- no due_date => rejected
+- goal different enrollment => rejected
+
+Organization:
+- two organizations in same cohort
+- Sponsor A only A enrollments
+- Sponsor B only B enrollments
+- old RPCs cannot bypass this
+
+Peer:
+- dyad requires exactly two active enrollment members
+- one rejected
+- three rejected
+- cross-cohort invalid
+- historical session remains intact if dyad closes
+
+Cross-role:
+- same enrollment + p_as_of gives same canonical numbers everywhere
+
+==================================================
+16. VALIDATION
+==================================================
+
+Run:
+
+fresh migration replay
+all DB tests
+demo seed
+training seed
+all frontend tests
+tsc
+lint
+build
+git diff --check
+
+Report exact counts.
+
+Do not claim hosted Auth verification unless actually tested.
+
+Do not deploy.
+
+==================================================
+FINAL REPORT
+==================================================
+
+Report:
+
+1. Training completion before/after
+2. Linh before/after
+3. Cohort A before/after
+4. Peer dyad final architecture
+5. Action integrity
+6. Organization cleanup
+7. Demo seed corrections
+8. Cross-role reconciliation
+9. Tests/results
+10. Remaining blockers
