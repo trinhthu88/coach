@@ -7,7 +7,7 @@ import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
 import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
 import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
 import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
-import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
+import { useActiveEnrollmentDetails } from "@/hooks/useActiveEnrollment";
 import { useFlatActionItems, type FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { useEnrollmentActionsSummary } from "@/hooks/dashboard/useEnrollmentActionsSummary";
 import { useGoalLock } from "@/hooks/journey/useJourneyDerived";
@@ -59,19 +59,22 @@ export default function CoacheeJourney() {
   const { t: tDash } = useTranslation("dashboard");
   const { t: tSponsor } = useTranslation("sponsor");
   const { user } = useAuth();
-  const programmeApi = useJourneyProgramme(user?.id);
-  const canonical = useLearnerCanonicalProgress(programmeApi.programme?.enrollmentId);
-  const goalProgress = useLearnerCanonicalGoalProgress(programmeApi.programme?.enrollmentId);
-  const goalsApi = useJourneyGoals(user?.id, { enrollmentId: programmeApi.programme?.enrollmentId });
-  const ratingsApi = useJourneyRatings(user?.id, programmeApi.programme?.enrollmentId);
-  const sessionsApi = useJourneySessions(user?.id, { includePeer: false, enrollmentId: programmeApi.programme?.enrollmentId });
-  const reflectionsApi = useJourneyReflections(user?.id, programmeApi.programme?.enrollmentId);
-  const developmentJourney = useEnrollmentDevelopmentJourney(programmeApi.programme?.enrollmentId, user?.id);
-  const learnerFeedback = useLearnerFeedback(user?.id, programmeApi.programme?.enrollmentId);
+  // The ONE learner enrollment context (same resolver as the Dashboard, the
+  // module pages and the sidebar). Every section below reads this id.
+  const active = useActiveEnrollmentDetails();
+  const enrollmentId = active.enrollmentId ?? undefined;
+  const canonical = useLearnerCanonicalProgress(enrollmentId);
+  const goalProgress = useLearnerCanonicalGoalProgress(enrollmentId);
+  const goalsApi = useJourneyGoals(user?.id, { enrollmentId: enrollmentId });
+  const ratingsApi = useJourneyRatings(user?.id, enrollmentId);
+  const sessionsApi = useJourneySessions(user?.id, { includePeer: false, enrollmentId: enrollmentId });
+  const reflectionsApi = useJourneyReflections(user?.id, enrollmentId);
+  const developmentJourney = useEnrollmentDevelopmentJourney(enrollmentId, user?.id);
+  const learnerFeedback = useLearnerFeedback(user?.id, enrollmentId);
   // Every enrollment_actions row for this enrollment, regardless of which
   // module it was created from (useFlatActionItems below only sees actions
   // whose source is a currently-loaded coaching session).
-  const allActionsSummary = useEnrollmentActionsSummary(programmeApi.programme?.enrollmentId);
+  const allActionsSummary = useEnrollmentActionsSummary(enrollmentId);
 
   const { goals, milestones, toggleMilestone } = goalsApi;
   // Max 3 active goals per enrollment (server rule); create is disabled at the cap.
@@ -83,11 +86,11 @@ export default function CoacheeJourney() {
   // mentoring and triad reflections, goal check-in comments, training
   // prompts and explicit journey reflections — projected from their original
   // records. The Dashboard shows a recent subset of this same feed.
-  const reflectionFeed = useLearnerReflectionFeed(programmeApi.programme?.enrollmentId);
+  const reflectionFeed = useLearnerReflectionFeed(enrollmentId);
   // Completed sessions with post-session deliverables still outstanding,
   // across every module and both Peer roles: ONE definition of outstanding,
   // learner_session_deliverables().
-  const sessionDeliverables = useLearnerSessionDeliverables(programmeApi.programme?.enrollmentId);
+  const sessionDeliverables = useLearnerSessionDeliverables(enrollmentId);
   const pendingDeliverables = useMemo(
     () =>
       sessionDeliverables.loading || sessionDeliverables.error
@@ -95,10 +98,8 @@ export default function CoacheeJourney() {
         : derivePendingDeliverables(sessionDeliverables.deliverables),
     [sessionDeliverables.loading, sessionDeliverables.error, sessionDeliverables.deliverables],
   );
-  const { programme } = programmeApi;
-
   const loading =
-    goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading || programmeApi.loading;
+    active.loading || goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading;
 
   const [newReflection, setNewReflection] = useState("");
   const [reflectionMood, setReflectionMood] = useState("");
@@ -174,6 +175,21 @@ export default function CoacheeJourney() {
     return <PageSkeleton />;
   }
 
+  // A failed or ambiguous enrollment resolution is shown as what it is --
+  // never as an empty journey ("Nothing has happened yet", "----").
+  if (active.error || !enrollmentId) {
+    return (
+      <div className="pb-4" style={{ color: PROFILE_COLORS.NAVY }} data-testid="journey-enrollment-state">
+        <h1 className="font-serif text-[30px] font-light leading-[1.1] tracking-[-.025em] text-[#062f3e]">{t("coacheeJourney.title")}</h1>
+        {active.error ? (
+          <div className="mt-4"><ProfileLoadError text={t("coacheeJourney.enrollmentError", { error: active.error })} /></div>
+        ) : (
+          <p className="mt-4 text-[12.5px] text-[#7d7468]">{tDash("coacheeDashboard.hero.enrollmentRequired")}</p>
+        )}
+      </div>
+    );
+  }
+
   const status = canonical.progress ? effectiveSponsorStatus(canonical.progress) : null;
 
   return (
@@ -190,6 +206,7 @@ export default function CoacheeJourney() {
                   programme: canonical.progress.programme_label,
                   cohort: canonical.progress.cohort_label || "—",
                 })
+                + (active.details?.organization_name ? ` · ${active.details.organization_name}` : "")
               : t("coacheeJourney.subtitle")}
           </p>
         </div>
@@ -205,7 +222,7 @@ export default function CoacheeJourney() {
 
       {/* The same shared Programme Journey the Dashboard and Sponsor Leader
           Detail render — full variant: every checkpoint plus detail. */}
-      <LearnerProgrammeJourney id="programme-journey" enrollmentId={programme?.enrollmentId} variant="full" />
+      <LearnerProgrammeJourney id="programme-journey" enrollmentId={enrollmentId} variant="full" />
 
       <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
         <ProfileSection id="goals" className="scroll-mt-4">
@@ -213,7 +230,7 @@ export default function CoacheeJourney() {
             title={t("journeyPage.goalsAndActions.title")}
             aside={goals.length > 0 ? <GoalDialog onAdd={goalsApi.addGoal} activeCount={activeGoalCount} /> : undefined}
           />
-          <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("journeyPage.goalsAndActions.subtitle", { count: goals.length })}</p>
+          <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{t("journeyPage.goalsAndActions.subtitle", { count: activeGoalCount })}</p>
 
           <div className="mt-4">
             {goalsApi.error || ratingsApi.error || goalProgress.error ? (
@@ -430,7 +447,7 @@ export default function CoacheeJourney() {
             <p className="mt-4 text-[10.5px] leading-relaxed text-[#9a938a]">{tDash("learnerProfile.feedback.privacy")}</p>
           </ProfileSection>
 
-          <PracticeCompetencyCard enrollmentId={programme?.enrollmentId} userId={user?.id} />
+          <PracticeCompetencyCard enrollmentId={enrollmentId} userId={user?.id} />
         </div>
       </div>
     </div>

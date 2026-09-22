@@ -5357,6 +5357,16 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
+      canonical_learning_items: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          completed: boolean
+          due_on: string
+          item_id: string
+          item_type: string
+          training_week_id: string
+        }[]
+      }
       canonical_mentoring_requirement_fulfilment: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5845,6 +5855,9 @@ export type Database = {
           effective_unlock_date: string
           id: string
           locked: boolean
+          requirement_due_on: string
+          requirement_id: string
+          requirement_state: string
           skill_card_visible: boolean
           subtitle: string
           subtitle_vi: string
@@ -6082,6 +6095,24 @@ export type Database = {
           required_units: number
         }[]
       }
+      learner_enrollment_context: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          cohort_id: string
+          cohort_name: string
+          effective_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          end_date: string
+          enrollment_id: string
+          is_ongoing: boolean
+          organization_id: string
+          organization_name: string
+          programme_id: string
+          programme_name: string
+          start_date: string
+          stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          user_id: string
+        }[]
+      }
       learner_requirement_calendar: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: {
@@ -6141,6 +6172,17 @@ export type Database = {
           source_table: string
           start_time: string
           title: string
+        }[]
+      }
+      learner_training_week_items: {
+        Args: { p_as_of?: string; p_enrollment_id: string }
+        Returns: {
+          completed_units: number
+          due_units: number
+          item_type: string
+          overdue_units: number
+          required_units: number
+          training_week_id: string
         }[]
       }
       requirement_integrity_issues: {

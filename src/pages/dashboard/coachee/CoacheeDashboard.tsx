@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { useLearnerCanonicalEngagement, useLearnerCanonicalProgress, useLearnerOverdueItems } from "@/hooks/useLearnerCanonicalProgress";
 import { useEnrollmentActionsSummary } from "@/hooks/dashboard/useEnrollmentActionsSummary";
 import { formatProfileDate, journeyFocusIndex, type ProgrammeModuleKey } from "@/lib/programmeProfile";
@@ -44,8 +44,11 @@ export function CoacheeDashboard() {
   const { t } = useTranslation("dashboard");
   const { t: tSponsor } = useTranslation("sponsor");
   const { user, profile } = useAuth();
-  const { selectedEnrollment, loading: enrollmentLoading } = useEnrollmentContext(user?.id);
-  const enrollmentId = selectedEnrollment?.id;
+  // The ONE learner enrollment context -- the same one My Journey, the module
+  // pages and the sidebar read.
+  const active = useActiveEnrollment();
+  const enrollmentId = active.enrollmentId ?? undefined;
+  const enrollmentLoading = active.loading;
   const canonical = useLearnerCanonicalProgress(enrollmentId);
   const engagement = useLearnerCanonicalEngagement(enrollmentId);
   const actions = useEnrollmentActionsSummary(enrollmentId);
@@ -61,6 +64,17 @@ export function CoacheeDashboard() {
         <ProfileSkeleton className="h-[120px] rounded-[16px]" />
         <ProfileSkeleton className="h-[96px]" />
         <ProfileSkeleton className="h-[320px]" />
+      </div>
+    );
+  }
+
+  if (active.error) {
+    return (
+      <div className="animate-rise">
+        <ProgrammeProfileHeader name={displayName} eyebrow={t("learnerProfile.header.eyebrow")} subtitle="" metas={[]} />
+        <ProfileSection className="mt-4">
+          <ProfileLoadError text={active.error} />
+        </ProfileSection>
       </div>
     );
   }

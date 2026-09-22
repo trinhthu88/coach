@@ -531,3 +531,23 @@ describe("sponsor visibility is decided by the enrollment organisation only", ()
   });
 });
 
+
+describe("learner Training and enrollment context read current-state sources only (20260928130000/140000)", () => {
+  it("the learner Training reader is gated on the programme's Training module, never on a historical snapshot", () => {
+    const body = lastDefinition("get_enrollment_training_weeks")?.body ?? "";
+    expect(body).not.toMatch(/enrollment_module_snapshots/);
+    expect(body).toMatch(/training_week_ids/);
+    expect(body).toMatch(/canonical_enrollment_requirement_calendar\(p_enrollment_id/);
+  });
+
+  it("the Sponsor breakdown and the learner per-week items aggregate the same item-level source", () => {
+    expect(lastDefinition("canonical_learning_breakdown")?.body).toMatch(/canonical_learning_items\(p_enrollment_id, p_as_of\)/);
+    expect(lastDefinition("learner_training_week_items")?.body).toMatch(/canonical_learning_items\(p_enrollment_id, p_as_of\)/);
+    expect(lastDefinition("learner_training_week_items")?.body).toMatch(/e\.user_id = auth\.uid\(\)/);
+  });
+
+  it("one effective date range per enrollment, and a self-scoped learner context", () => {
+    expect(lastDefinition("canonical_enrollment_progress")?.body).toMatch(/coalesce\(e\.end_date, c\.end_date\) AS end_date/);
+    expect(lastDefinition("learner_enrollment_context")?.body).toMatch(/e\.user_id = auth\.uid\(\)/);
+  });
+});

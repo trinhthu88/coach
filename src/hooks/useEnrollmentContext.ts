@@ -52,5 +52,7 @@ export function useEnrollmentContext(userId: string | undefined, initialEnrollme
       setSelectedEnrollmentId(typeof enrollment === "string" ? enrollment : enrollment?.id ?? null),
     enrollmentQueryKey: (resource: string) => enrollmentQueryKey(resource, selectedEnrollment?.id),
     loading: historyQuery.isLoading || ongoingQuery.isLoading,
+    /** A failed read is an error, never "no enrollment" (learner pages must not render empty states for it). */
+    loadError: (historyQuery.error ?? ongoingQuery.error ?? null) as Error | null,
   };
 }

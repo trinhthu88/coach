@@ -317,6 +317,7 @@
     "title": "My Journey",
     "subtitle": "Everything for this enrollment in one place: what the programme expects, what has actually happened, and where your goals stand.",
     "eyebrow": "Learner workspace",
-    "subtitleFor": "Everything for {{programme}} · {{cohort}} in one place: what the programme expects, what has actually happened, and where your goals stand."
+    "subtitleFor": "Everything for {{programme}} · {{cohort}} in one place: what the programme expects, what has actually happened, and where your goals stand.",
+    "enrollmentError": "Your programme enrollment could not be loaded: {{error}}"
   }
 }

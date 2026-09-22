@@ -40,6 +40,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useProgrammeModules, ProgrammeModuleType } from "@/hooks/useProgrammeModules";
+import { useLearnerModuleProgress } from "@/hooks/useLearnerModuleProgress";
 
 const OnboardingTour = lazy(() =>
   import("@/components/onboarding/OnboardingTour").then(({ OnboardingTour: Component }) => ({
@@ -172,6 +173,7 @@ function NavItemLink({
   isCurrent,
   label,
   onNavigate,
+  progress,
 }: {
   item: NavItem;
   collapsed: boolean;
@@ -179,6 +181,8 @@ function NavItemLink({
   isCurrent: boolean;
   label: string;
   onNavigate?: () => void;
+  /** Canonical "completed/required" of the item's module (learner only). */
+  progress?: string;
 }) {
   const showBadge = item.to === "/messages" && unreadCount > 0;
   const end = item.to === "/admin";
@@ -216,6 +220,11 @@ function NavItemLink({
             )}
           </span>
           {!collapsed && <span className="truncate tracking-[-0.005em]">{label}</span>}
+          {progress && !collapsed && (
+            <span data-testid={`nav-progress-${item.module}`} className="ml-auto text-2xs font-semibold tabular-nums text-secondary-foreground/60">
+              {progress}
+            </span>
+          )}
           {showBadge && !collapsed && (
             <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1.5 text-2xs font-bold text-accent-foreground">
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -234,12 +243,18 @@ function SidebarNav({
   onNavigate,
   onHowItWorks,
   staticGroups = false,
+  moduleProgress = {},
+  modulesError = null,
 }: {
   items: NavItem[];
   collapsed: boolean;
   unreadCount: number;
   onNavigate?: () => void;
   onHowItWorks?: () => void;
+  /** module -> "completed/required" from the canonical module progress. */
+  moduleProgress?: Record<string, string>;
+  /** The learner's programme modules could not be loaded: say so instead of silently hiding them. */
+  modulesError?: string | null;
   /** Learner rail (Coachee prototype): group labels are static section headings, always expanded. */
   staticGroups?: boolean;
 }) {
@@ -278,6 +293,11 @@ function SidebarNav({
       className="relative flex flex-1 flex-col gap-[3px] overflow-y-auto px-3 pb-3"
       aria-label={t("layout.mainNavigation")}
     >
+      {modulesError && !collapsed && (
+        <p role="alert" data-testid="nav-modules-error" className="mx-1 mb-1 rounded-lg bg-white/[0.06] px-3 py-2 text-2xs leading-snug text-secondary-foreground/70">
+          {t("layout.modulesUnavailable")}
+        </p>
+      )}
       {groups.map((group) => {
         const links = group.items.map((item) => (
           <NavItemLink
@@ -288,6 +308,7 @@ function SidebarNav({
             isCurrent={isItemCurrent(item)}
             label={t(item.labelKey)}
             onNavigate={onNavigate}
+            progress={item.module && !item.moduleDirection ? moduleProgress[item.module] : undefined}
           />
         ));
 
@@ -400,7 +421,16 @@ export default function AppLayout() {
 
   // Nav visibility mirrors ProtectedRoute's `module` gate (defense in depth per
   // RULES.md) — the route guard alone would still let the item render in the sidebar.
-  const { hasModule, hasDirection } = useProgrammeModules();
+  const { hasModule, hasDirection, enrollmentId: moduleEnrollmentId, error: modulesError } = useProgrammeModules();
+  // Learner module badges: the same canonical per-module progress the module
+  // pages and Dashboard read (never a sidebar-side count).
+  const learnerModules = useLearnerModuleProgress(role === "coachee" ? moduleEnrollmentId : null);
+  const moduleProgress = Object.fromEntries(
+    learnerModules.rows
+      .filter((r) => r.required_units > 0)
+      .map((r) => [r.module, `${r.completed_units}/${r.required_units}`]),
+  ) as Record<string, string>;
+  const learnerModulesError = role === "coachee" ? modulesError : null;
   const items = NAV.filter((n) => {
     if (!role || !n.roles.includes(role)) return false;
     if (role !== "admin" && role !== "sponsor") {
@@ -547,6 +577,8 @@ export default function AppLayout() {
           unreadCount={unreadCount}
           onHowItWorks={showsOnboarding ? openManualTour : undefined}
           staticGroups={role === "coachee"}
+          moduleProgress={moduleProgress}
+          modulesError={learnerModulesError}
         />
         <SidebarFooter role={role} collapsed={collapsed} onSignOut={handleSignOut} />
       </aside>
@@ -568,6 +600,8 @@ export default function AppLayout() {
             onNavigate={() => setMobileNavOpen(false)}
             onHowItWorks={showsOnboarding ? openManualTour : undefined}
             staticGroups={role === "coachee"}
+            moduleProgress={moduleProgress}
+            modulesError={learnerModulesError}
           />
           <SidebarFooter
             role={role}

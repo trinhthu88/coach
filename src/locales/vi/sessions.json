@@ -151,7 +151,12 @@
     },
     "triadSession": "Triad {{n}}",
     "coachingRequirement": "Coaching {{n}}",
-    "requirementDue": "Hạn {{date}}"
+    "requirementDue": "Hạn {{date}}",
+    "pastProgrammes": {
+      "show_one": "Hiện {{count}} buổi từ chương trình trước",
+      "show_other": "Hiện {{count}} buổi từ chương trình trước",
+      "hide": "Chỉ chương trình hiện tại"
+    }
   },
   "detail": {
     "sessionNotFound": {

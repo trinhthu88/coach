@@ -31,9 +31,17 @@ vi.mock("@/context/AuthContext", () => ({
 let mockModules: {
   hasModule: (m: string) => boolean;
   hasDirection: (m: string, d: string) => boolean;
+  enrollmentId?: string | null;
+  error?: string | null;
 };
 vi.mock("@/hooks/useProgrammeModules", () => ({
   useProgrammeModules: () => mockModules,
+}));
+
+// Canonical per-module progress (learner_module_progress) behind the badges.
+let mockModuleProgress: { rows: { module: string; required_units: number; completed_units: number }[] } = { rows: [] };
+vi.mock("@/hooks/useLearnerModuleProgress", () => ({
+  useLearnerModuleProgress: () => mockModuleProgress,
 }));
 
 import AppLayout from "../AppLayout";
@@ -58,6 +66,7 @@ function noModulesConfigured() {
 }
 
 beforeEach(() => {
+  mockModuleProgress = { rows: [] };
   mockAuth.mockReset();
   mockAuth.mockReturnValue(baseAuth);
   mockModules = noModulesConfigured();
@@ -207,5 +216,54 @@ describe("AppLayout — coachee mobile navigation", () => {
     expect(screen.getAllByRole("link", { name: "Sessions" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("link", { name: "Messages" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "More" })).toBeInTheDocument();
+  });
+});
+
+describe("AppLayout — learner module entries follow the active enrollment's canonical progress", () => {
+  const allModules = () => ({
+    hasModule: (m: string) => ["coaching", "peer_coaching", "mentoring", "triads", "training"].includes(m),
+    hasDirection: () => true,
+    enrollmentId: "enr-active",
+    error: null,
+  });
+
+  it("each enabled module links to its module page and shows the canonical completed/required", () => {
+    mockAuth.mockReturnValue(baseAuth);
+    mockModules = allModules();
+    mockModuleProgress = {
+      rows: [
+        { module: "training", required_units: 8, completed_units: 5 },
+        { module: "coaching", required_units: 4, completed_units: 4 },
+        { module: "mentoring", required_units: 2, completed_units: 2 },
+        { module: "peer_coaching", required_units: 2, completed_units: 1 },
+        { module: "triads", required_units: 2, completed_units: 1 },
+      ],
+    };
+    renderLayout();
+    for (const [path, badge] of [["/training", "5/8"], ["/coaches", "4/4"], ["/mentoring", "2/2"], ["/coachee/peer-practice", "1/2"], ["/triads", "1/2"]]) {
+      const link = document.querySelector(`aside a[href="${path}"]`);
+      expect(link, path).not.toBeNull();
+      expect(link).toHaveTextContent(badge);
+    }
+    // Sessions stays as the cross-module hub.
+    expect(document.querySelector('aside a[href="/sessions"]')).not.toBeNull();
+  });
+
+  it("a module the programme does not configure has no entry and no badge", () => {
+    mockAuth.mockReturnValue(baseAuth);
+    mockModules = { ...allModules(), hasModule: (m: string) => m === "coaching" };
+    mockModuleProgress = { rows: [{ module: "coaching", required_units: 4, completed_units: 1 }] };
+    renderLayout();
+    expect(document.querySelector('aside a[href="/coaches"]')).toHaveTextContent("1/4");
+    for (const path of ["/training", "/mentoring", "/coachee/peer-practice", "/triads"]) {
+      expect(document.querySelector(`aside a[href="${path}"]`), path).toBeNull();
+    }
+  });
+
+  it("a failed module load is surfaced, never shown as a programme without modules", () => {
+    mockAuth.mockReturnValue(baseAuth);
+    mockModules = { hasModule: () => false, hasDirection: () => false, enrollmentId: null, error: "permission denied" };
+    renderLayout();
+    expect(screen.getAllByTestId("nav-modules-error")[0]).toHaveTextContent(/could not be loaded/i);
   });
 });

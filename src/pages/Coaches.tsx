@@ -63,10 +63,11 @@ function coachesQuery() {
 export default function Coaches() {
   const { t } = useTranslation("coaches");
   const { t: tDash } = useTranslation("dashboard");
-  const { user, role } = useAuth();
+  const { role } = useAuth();
   const isLearner = role === "coachee";
-  const { hasDirection } = useProgrammeModules();
-  const { data: myCoach } = useMyCoachCardData(user?.id, isLearner && hasDirection("coaching", "receive"));
+  const { hasDirection, enrollmentId } = useProgrammeModules();
+  // The cohort Coach pool of the learner's ACTIVE enrollment (never keyed by user id).
+  const { data: myCoach } = useMyCoachCardData(enrollmentId ?? undefined, isLearner && hasDirection("coaching", "receive"));
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

@@ -243,18 +243,27 @@ export function parseProgrammeExperience(value: unknown): ProgrammeExperience {
 }
 
 /**
- * The learner's position on the canonical journey: the checkpoint due today,
- * else the next upcoming checkpoint (the one currently being worked towards),
- * else — programme finished — the final checkpoint. Only canonical dates and
- * states are read; nothing is recalculated.
+ * The learner's position on the canonical journey -- a CALENDAR position, not
+ * a completion position: the checkpoint due today, else the next checkpoint
+ * whose date has not been reached yet (even if its requirements were already
+ * completed early), else -- programme finished -- the final checkpoint. So a
+ * learner at 18/18 in September sits at the September checkpoint, not at the
+ * last one; completion is read from completed_units / required_units. Only
+ * canonical dates and states are read; nothing is recalculated.
  */
-export function journeyFocusIndex(journey: ProgrammeJourneyPoint[]): number {
+export function journeyFocusIndex(journey: ProgrammeJourneyPoint[], today: string = localIsoDate()): number {
   if (journey.length === 0) return -1;
   const current = journey.findIndex((p) => p.state === "current");
   if (current >= 0) return current;
-  const nextUpcoming = journey.findIndex((p) => p.state === "upcoming");
-  if (nextUpcoming >= 0) return nextUpcoming;
+  const next = journey.findIndex((p) => p.state === "upcoming" || (p.state === "completed" && p.due_on >= today));
+  if (next >= 0) return next;
   return journey.length - 1;
+}
+
+/** Today as YYYY-MM-DD in the viewer's calendar (the date the canonical as-of defaults to). */
+function localIsoDate(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export interface JourneyWindow {

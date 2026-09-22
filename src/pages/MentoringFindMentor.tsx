@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,8 +25,8 @@ interface MentorRow {
 
 export default function MentoringFindMentor() {
   const { user, role } = useAuth();
-  const { selectedEnrollment } = useEnrollmentContext(user?.id);
-  const enrollmentId = selectedEnrollment?.id;
+  const { enrollmentId: activeEnrollmentId } = useActiveEnrollment();
+  const enrollmentId = activeEnrollmentId ?? undefined;
   const isLearner = role === "coachee";
   const { t: tDash } = useTranslation("dashboard");
   const { t } = useTranslation("mentoring");

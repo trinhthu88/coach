@@ -558,6 +558,39 @@ JOIN (VALUES
 ON CONFLICT (cohort_id, training_week_id) DO UPDATE
   SET unlock_date = EXCLUDED.unlock_date, is_visible = true;
 
+-- Content vs requirement. The pacing above gives each week its default
+-- requirement date. A learner who is ahead may finish a week early -- but only
+-- once its content is open. So for the later weeks of each ongoing cohort the
+-- Admin keeps the requirement date where the pacing put it (an individually
+-- dated Training requirement, admin_set_cohort_requirement_dates) and the
+-- cohort opens the content now. Due / overdue counts are unchanged; the
+-- learners who finished those weeks early (learner1, learner9, tasc1) did so
+-- on content they could actually open.
+DO $open_content$
+DECLARE v_admin uuid; c record;
+BEGIN
+  SELECT r.user_id INTO v_admin FROM public.user_roles r JOIN public.profiles p ON p.id = r.user_id
+  WHERE r.role = 'admin' AND lower(p.email) = 'trang.tt@erickson.vn';
+  PERFORM set_config('request.jwt.claim.sub', v_admin::text, true);
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
+  FOR c IN
+    SELECT co.id AS cohort_id,
+      jsonb_agg(jsonb_build_object('requirement_id', d.id, 'due_on', d.due_on::text)) AS items
+    FROM public.cohorts co
+    JOIN public.cohort_week_overrides cwo ON cwo.cohort_id = co.id AND cwo.unlock_date > current_date
+    JOIN public.cohort_requirement_dates d
+      ON d.cohort_id = co.id AND d.module = 'training' AND d.training_week_id = cwo.training_week_id
+    WHERE co.name IN ('Emerging Leaders · Cohort B', 'Executive Excellence · Cohort C', 'TASC Essential · Cohort D')
+    GROUP BY co.id
+  LOOP
+    PERFORM public.admin_set_cohort_requirement_dates(c.cohort_id, c.items);
+    UPDATE public.cohort_week_overrides SET unlock_date = current_date - 1
+    WHERE cohort_id = c.cohort_id AND unlock_date > current_date;
+  END LOOP;
+  PERFORM set_config('request.jwt.claim.sub', '', true);
+END
+$open_content$;
+
 -- ===========================================================================
 -- Learner training progress
 -- ===========================================================================

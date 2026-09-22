@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 
 export type ProgrammeModuleType =
   | "coaching"
@@ -21,9 +21,13 @@ interface ProgrammeModule {
 
 export function useProgrammeModules() {
   const { user, role } = useAuth();
-  const { selectedEnrollment, selectedEnrollmentId, loading: enrollmentLoading } = useEnrollmentContext(user?.id);
+  // The learner's ONE enrollment context (see useActiveEnrollment): the
+  // sidebar and module gates follow the same enrollment every page reads.
+  const active = useActiveEnrollment();
+  const selectedEnrollmentId = active.enrollmentId;
+  const enrollmentLoading = active.loading;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["programme-modules", user?.id, selectedEnrollmentId ?? null],
     queryFn: async () => {
       if (!selectedEnrollmentId) return [];
@@ -54,7 +58,9 @@ export function useProgrammeModules() {
   return {
     modules,
     loading: !!user && (enrollmentLoading || isLoading),
-    enrollmentId: selectedEnrollment?.id ?? selectedEnrollmentId ?? null,
+    enrollmentId: selectedEnrollmentId ?? null,
+    /** Why no module is available, when it is a failure rather than configuration. */
+    error: active.error ?? (error ? (error as Error).message : null),
     enrollmentLoading,
     hasModule,
     hasDirection,

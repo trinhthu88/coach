@@ -628,3 +628,59 @@ describe("requirement calendar, organisation and learning breakdown (20260928100
   });
 });
 
+describe("learner surfaces share ONE active-enrollment context (20260928130000/140000)", () => {
+  const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
+  const LEARNER_SURFACES = [
+    "pages/dashboard/coachee/CoacheeDashboard.tsx",
+    "pages/CoacheeJourney.tsx",
+    "hooks/journey/useModuleWorkspace.ts",
+    "hooks/useProgrammeModules.ts",
+    "pages/Sessions.tsx",
+    "pages/dashboard/cards/MyGoalCard.tsx",
+    "pages/dashboard/cards/MyFeedbackCard.tsx",
+    "pages/dashboard/cards/RecentDevelopmentCard.tsx",
+    "pages/dashboard/cards/MyCoachCard.tsx",
+    "pages/dashboard/cards/MentoringReceiveCard.tsx",
+    "pages/MentoringFindMentor.tsx",
+    "pages/MentoringBookSession.tsx",
+    "pages/CoacheePeerBookSession.tsx",
+  ];
+
+  it("Dashboard, My Journey, module pages, Sessions and the sidebar resolve the enrollment through useActiveEnrollment", () => {
+    for (const file of LEARNER_SURFACES) {
+      const text = read(file);
+      expect(text, file).toMatch(/useActiveEnrollment(Details)?\(\)/);
+      expect(text, file).not.toMatch(/useEnrollmentContext\(|from\("programme_enrollments"\)/);
+    }
+    // My Journey no longer derives its enrollment id from a separate ad-hoc programme fetch.
+    expect(read("pages/CoacheeJourney.tsx")).not.toMatch(/useJourneyProgramme|programmeApi/);
+    // The resolver is the shared one: single ongoing enrollment, explicit errors.
+    const hook = read("hooks/useActiveEnrollment.ts");
+    expect(hook).toMatch(/useEnrollmentContext\(user\?\.id\)/);
+    expect(hook).toMatch(/loadError/);
+  });
+
+  it("no learner hook is handed a user id where an enrollment id is expected", () => {
+    const offenders = files.filter((f) => /useMyCoachCardData\(\s*(user\?\.id|ws\.userId|userId)\b/.test(readFileSync(f, "utf8")));
+    expect(offenders.map((f) => relative(SRC, f))).toEqual([]);
+  });
+
+  it("every programme module keeps its own learner route and module-gated sidebar entry (Sessions is the hub, not a replacement)", () => {
+    const app = read("App.tsx");
+    for (const path of ["/training", "/coaches", "/mentoring", "/coachee/peer-practice", "/triads", "/sessions", "/coachee/journey"]) {
+      expect(app, path).toContain(`path="${path}"`);
+    }
+    const layout = read("components/AppLayout.tsx");
+    for (const [path, module] of [["/training", "training"], ["/coaches", "coaching"], ["/coachee/peer-practice", "peer_coaching"], ["/mentoring", "mentoring"], ["/triads", "triads"]]) {
+      expect(layout, path).toMatch(new RegExp(`to: "${path.replace(/\//g, "\\/")}"[^\\n]*roles: \\["coachee"\\][^\\n]*module: "${module}"`));
+    }
+    // Badges come from the canonical module progress, not a sidebar count.
+    expect(layout).toMatch(/useLearnerModuleProgress\(/);
+    expect(read("hooks/useLearnerModuleProgress.ts")).toMatch(/rpc\("learner_module_progress"/);
+  });
+
+  it("the Training page reads the programme-selected weeks and their canonical requirement", () => {
+    expect(read("hooks/dashboard/useProgrammeProgress.ts")).toMatch(/rpc\("learner_training_week_items"/);
+    expect(read("pages/TrainingWeeks.tsx")).toMatch(/requirement_due_on/);
+  });
+});

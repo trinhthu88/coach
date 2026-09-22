@@ -557,8 +557,8 @@ $deadlines$;
 CREATE TEMP TABLE _req_dates (cohort uuid, module public.programme_module_type, ordinal integer, offset_days integer)
   ON COMMIT DROP;
 INSERT INTO _req_dates VALUES
-  ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 1, -90), ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 2, -70),
-  ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 3, -50), ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 4, -30),
+  ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 1, -78), ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 2, -60),
+  ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 3, -45), ('d0000000-0000-4000-8000-00000000c00b', 'coaching', 4, -30),
   ('d0000000-0000-4000-8000-00000000c00b', 'mentoring', 1, -45), ('d0000000-0000-4000-8000-00000000c00b', 'mentoring', 2, -15),
   ('d0000000-0000-4000-8000-00000000c00b', 'peer_coaching', 1, 60), ('d0000000-0000-4000-8000-00000000c00b', 'peer_coaching', 2, 120),
   ('d0000000-0000-4000-8000-00000000c00b', 'triads', 1, 90), ('d0000000-0000-4000-8000-00000000c00b', 'triads', 2, 150),
