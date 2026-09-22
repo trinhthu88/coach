@@ -147,11 +147,12 @@ describe("SponsorLeaderDrawer", () => {
           }, {
             key: "daily_prompts",
             label: "Daily Prompts",
-            required_units: 0,
-            due_units: 0,
-            completed_units: 0,
-            progress_available: false,
-            status: "unavailable",
+            required_units: 5,
+            due_units: 5,
+            completed_units: 3,
+            overdue_units: 2,
+            progress_available: true,
+            status: "overdue",
           }],
           coachingUtilisation: {
             required_units: 4,
@@ -180,7 +181,7 @@ describe("SponsorLeaderDrawer", () => {
     expect(screen.getByText("Skill Cards")).toBeInTheDocument();
     expect(screen.getByText("Quizzes")).toBeInTheDocument();
     expect(screen.getByText("Reflections")).toBeInTheDocument();
-    expect(screen.queryByText("Daily Prompts")).not.toBeInTheDocument();
+    expect(screen.getByText("Daily Prompts")).toBeInTheDocument();
     expect(screen.getByLabelText("CP1: 63%")).toBeInTheDocument();
     expect(screen.getByLabelText("CP2: 56%")).toBeInTheDocument();
     expect(screen.getAllByText("50%").length).toBeGreaterThan(0);

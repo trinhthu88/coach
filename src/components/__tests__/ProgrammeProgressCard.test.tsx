@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -53,6 +53,13 @@ const coaching = {
 };
 
 const emptyExperience = { weeklyParticipation: [], learningBreakdown: [], coachingUtilisation: null };
+
+const fourLearningItems = [
+  { key: "skill_cards", label: "Skill Cards", required_units: 8, due_units: 5, completed_units: 5, overdue_units: 0, progress_available: true, status: "current" as const },
+  { key: "quizzes", label: "Quizzes", required_units: 8, due_units: 5, completed_units: 4, overdue_units: 1, progress_available: true, status: "overdue" as const },
+  { key: "reflections", label: "Reflections", required_units: 8, due_units: 5, completed_units: 5, overdue_units: 0, progress_available: true, status: "current" as const },
+  { key: "daily_prompts", label: "Daily Prompts", required_units: 5, due_units: 5, completed_units: 3, overdue_units: 2, progress_available: true, status: "overdue" as const },
+];
 
 const defaultCanonicalProgress = () => ({
   progress: {
@@ -116,5 +123,30 @@ describe("ProgrammeProgressCard", () => {
     expect(screen.getByText("Mentoring")).toBeInTheDocument();
     expect(screen.getByText("75%")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "View skill card" })).not.toBeInTheDocument();
+  });
+
+  it("renders all four configured learning categories from the canonical breakdown", () => {
+    moduleAccess.mockReturnValue({
+      hasModule: (module: string) => module === "training",
+      hasDirection: () => false,
+      loading: false,
+    });
+    programmeProgress.mockReturnValue({
+      ...defaultProgrammeProgress(),
+      summary: { ...defaultProgrammeProgress().summary, weeksTotal: 4 },
+    });
+    learnerCanonicalProgress.mockReturnValue({
+      ...defaultCanonicalProgress(),
+      modules: [{ ...coaching, module: "training", required_units: 4, completed_units: 3 }],
+      experience: { ...emptyExperience, learningBreakdown: fourLearningItems },
+    });
+
+    render(<MemoryRouter><ProgrammeProgressCard /></MemoryRouter>);
+
+    for (const item of fourLearningItems) {
+      const card = screen.getByText(item.label).parentElement;
+      expect(card).not.toBeNull();
+      expect(within(card!).getByText(new RegExp(`${item.completed_units}\\s*/\\s*${item.required_units}`))).toBeInTheDocument();
+    }
   });
 });

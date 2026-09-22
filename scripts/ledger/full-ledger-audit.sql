@@ -266,6 +266,7 @@ WITH repo(version, name) AS (VALUES
   ('20260922110000', 'peer_cohort_eligibility'),
   ('20260922120000', 'peer_booking_and_lifecycle'),
   ('20260922130000', 'peer_surface_convergence'),
+  ('20260922182103', 'configure_training_learning_components'),
   ('20260923100000', 'programme_quantity_invariant'),
   ('20260924100000', 'sponsor_role_exclusive'),
   ('20260924110000', 'learner_modules_from_programme'),

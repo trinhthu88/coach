@@ -45,4 +45,32 @@ describe("Sponsor Training / Learning breakdown", () => {
     expect(screen.queryByTestId("learning-daily_prompts")).not.toBeInTheDocument();
     expect(screen.getByTestId("learning-quizzes")).toBeInTheDocument();
   });
+
+  it.each(["learner", "sponsor"] as const)(
+    "uses the same four configured rows and figures for the %s view",
+    (viewer) => {
+      const { rerender } = render(
+        <ProgrammeModuleProgress facts={facts} learningBreakdown={experience.learningBreakdown} viewer={viewer} />,
+      );
+      const breakdown = screen.getByTestId("learning-breakdown");
+      const expected = [
+        ["learning-skill_cards", "5/8", "5 units due"],
+        ["learning-quizzes", "4/8", "5 units due"],
+        ["learning-reflections", "5/8", "5 units due"],
+        ["learning-daily_prompts", "3/5", "5 units due"],
+      ] as const;
+
+      for (const [testId, ratio, due] of expected) {
+        const row = within(breakdown).getByTestId(testId);
+        expect(row).toHaveTextContent(ratio);
+        expect(row).toHaveTextContent(due);
+      }
+      expect(within(breakdown).getByTestId("learning-quizzes")).toHaveTextContent("1 overdue");
+      expect(within(breakdown).getByTestId("learning-daily_prompts")).toHaveTextContent("2 overdue");
+
+      rerender(<ProgrammeModuleProgress facts={facts} learningBreakdown={experience.learningBreakdown} viewer={viewer === "learner" ? "sponsor" : "learner"} />);
+      expect(screen.getByTestId("learning-breakdown")).toHaveTextContent("4/8");
+      expect(screen.getByTestId("learning-breakdown")).toHaveTextContent("3/5");
+    },
+  );
 });

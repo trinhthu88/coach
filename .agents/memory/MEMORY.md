@@ -26,3 +26,4 @@
 - [Startup bundle loading](startup-bundle-loading.md) — keep authenticated layout features and translation namespaces out of the public entry bundle; preload them only in tests.
 - [Deployment 2 retirement hardening](deployment-2-retirement-hardening.md) — exact archive conflicts fail closed; preserve prior provenance only for exact round snapshots and allow only expected auto-drops.
 - [Deployment 2 isolated rehearsal](triad-deployment-2-isolated-rehearsal.md) — when Supabase health gating blocks local reset, validate the standalone retirement transaction against a loopback PostgreSQL fixture.
+- [Training learning breakdown configuration](learning-breakdown-configuration.md) — normalize legacy null child-content config only when selected visible weeks contain the relevant visible activity.

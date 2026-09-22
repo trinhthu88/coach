@@ -105,9 +105,12 @@ describe("migration chain — canonical final state", () => {
     const writes = [...sql.matchAll(/\b(?:INSERT INTO|UPDATE|DELETE FROM)\s+public\.([a-z_]+)/gi)].map(([, t]) => t);
     expect(new Set(writes)).toEqual(new Set(["coachee_goals", "coachee_goal_ratings"]));
 
-    // It is the last migration: the calendar it reads to place a rating, and
-    // the gate it satisfies, must already exist.
-    expect(files[files.length - 1]).toBe(file);
+    // It follows the calendar migration it reads to place a rating, and the
+    // gate it satisfies, without requiring later data/config migrations to
+    // remain artificially ordered after it.
+    expect(files.indexOf(file)).toBeGreaterThan(
+      files.indexOf("20260928140000_learner_training_from_calendar.sql"),
+    );
   });
 
   it("the superseded 20260918090000 migration defines no function (no-op in any order)", () => {
