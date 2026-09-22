@@ -272,6 +272,7 @@ WITH repo(version, name) AS (VALUES
   ('20260924120000', 'learner_canonical_overdue_items'),
   ('20260924130000', 'coach_canonical_progress'),
   ('20260924140000', 'learner_module_progress_self_view'),
+  ('20260925090000', 'demo_organisation_b'),
   ('20260925100000', 'sponsor_visibility_by_enrollment_org'),
   ('20260925200000', 'admin_provisioning_and_enrollment_transition'),
   ('20260925300000', 'admin_enrollment_detail'),

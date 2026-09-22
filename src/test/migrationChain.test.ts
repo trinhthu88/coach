@@ -54,6 +54,35 @@ function lastDefinition(name: string): { file: string; body: string } | null {
 }
 
 describe("migration chain — canonical final state", () => {
+  it("every multi-organisation demo enrollment is organised BEFORE any organisation is inferred from a cohort", () => {
+    // 20260925100000 repairs organisation-less enrollments from their COHORT's
+    // organisation. seed-demo.sql shares Cohort B and Cohort D between two
+    // organisations, so on a database whose demo rows predate the column that
+    // repair would put Organisation B's learners into Organisation A and show
+    // them to A's Sponsor. 20260925090000 states them first, which makes the
+    // repair a no-op for exactly those rows.
+    const seed = readFileSync(join(process.cwd(), "supabase/seed-demo.sql"), "utf8");
+    const orgB = /'(d0000000-0000-4000-8000-00000000bbbb)'/.exec(seed)?.[1];
+    expect(orgB, "seed-demo.sql must define Organisation B").toBeTruthy();
+
+    const slugs = /UPDATE _enr SET org = '[0-9a-f-]+' WHERE slug IN \(([^)]*)\)/i.exec(seed)?.[1];
+    expect(slugs, "seed-demo.sql must assign enrollments to Organisation B").toBeTruthy();
+    const enrollmentIds = [...slugs!.matchAll(/'([a-z0-9]+)'/g)].map(([, slug]) => {
+      const row = new RegExp(`\\('${slug}',\\s*'([0-9a-f-]{36})'`, "i").exec(seed);
+      expect(row, `seed-demo.sql must declare enrollment ${slug}`).toBeTruthy();
+      return row![1];
+    });
+    expect(enrollmentIds.length).toBeGreaterThan(0);
+
+    const backfill = "20260925100000_sponsor_visibility_by_enrollment_org.sql";
+    const statedIn = files.filter((f) => {
+      const sql = readFileSync(join(DIR, f), "utf8");
+      return sql.includes(orgB!) && enrollmentIds.every((id) => sql.includes(id));
+    });
+    expect(statedIn.length, "one migration must state every Organisation B enrollment").toBeGreaterThan(0);
+    for (const file of statedIn) expect(file < backfill).toBe(true);
+  });
+
   it("the superseded 20260918090000 migration defines no function (no-op in any order)", () => {
     const sql = readFileSync(join(DIR, "20260918090000_sponsor_canonical_calendar_followup.sql"), "utf8").replace(/--.*$/gm, "");
     expect(sql).not.toMatch(/CREATE\s+(OR\s+REPLACE\s+)?FUNCTION/i);
