@@ -58,6 +58,9 @@ export function useActiveEnrollmentDetails() {
     ...active,
     details: query.data ?? null,
     loading: active.loading || (!!active.enrollmentId && query.isLoading),
-    error: active.error ?? (query.error ? (query.error as Error).message : null),
+    // Only a RESOLUTION failure is fatal for a page; the details are display
+    // extras (organisation name), so their failure is reported separately.
+    error: active.error,
+    detailsError: query.error ? (query.error as Error).message : null,
   };
 }

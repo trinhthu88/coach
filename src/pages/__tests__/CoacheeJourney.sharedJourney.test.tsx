@@ -122,6 +122,13 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     expect(screen.getByTestId("journey-header")).toHaveTextContent("Clariva Demo Organization");
   });
 
+  it("a failed details lookup (organisation name) never blanks the journey", () => {
+    state.active = { enrollmentId: ENROLLMENT_ID, loading: false, error: null, details: null };
+    renderPage();
+    expect(screen.getByTestId("programme-journey")).toBeInTheDocument();
+    expect(screen.queryByTestId("journey-enrollment-state")).toBeNull();
+  });
+
   it("an enrollment resolution failure is shown as an error, never as an empty journey", () => {
     state.active = { enrollmentId: null, loading: false, error: "Multiple ongoing programme enrollments require an explicit selection.", details: null };
     renderPage();
