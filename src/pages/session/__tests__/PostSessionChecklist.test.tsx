@@ -69,6 +69,14 @@ function mockTables() {
       };
       return chain;
     }
+    if (table === "coachee_goals") {
+      const chain = {
+        select: () => chain,
+        eq: () => chain,
+        order: () => Promise.resolve({ data: [{ id: "goal-provider", title: "Practise listening" }], error: null }),
+      };
+      return chain;
+    }
     throw new Error(`unexpected table ${table}`);
   });
 }
@@ -160,6 +168,8 @@ describe("PostSessionChecklist", () => {
 
     expect(await screen.findByText("Existing")).toBeInTheDocument();
     fireEvent.change(screen.getByTestId("post-session-action-input"), { target: { value: "Practise silence" } });
+    fireEvent.change(screen.getByTestId("post-session-action-goal"), { target: { value: "goal-provider" } });
+    fireEvent.change(screen.getByTestId("post-session-action-due-date"), { target: { value: "2026-10-15" } });
     fireEvent.click(screen.getByTestId("post-session-action-add"));
     await waitFor(() =>
       expect(rpc).toHaveBeenCalledWith("save_enrollment_activity_actions", expect.objectContaining({
@@ -168,7 +178,7 @@ describe("PostSessionChecklist", () => {
         p_source_activity_id: "p1",
         p_actions: [
           expect.objectContaining({ id: "a1", title: "Existing" }),
-          expect.objectContaining({ id: null, title: "Practise silence", status: "open" }),
+           expect.objectContaining({ id: null, title: "Practise silence", status: "open", goal_id: "goal-provider", due_date: "2026-10-15" }),
         ],
       })),
     );

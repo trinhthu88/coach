@@ -15,10 +15,9 @@
 --      'assignment' type, so each week's practical exercise is a
 --      reflection-type assignment carrying the exercise in `instructions`.
 --
---   3. canonical_training_learning_items() counts ONE thing: skill-card
---      completion (training_progress.completed_at) for the weeks named in
---      programme_modules.config.distribution_settings.training_week_ids.
---      Quizzes, reflections and prompts are engagement, not programme units.
+--   3. canonical_training_week_fulfilment() counts one required unit per
+--      week, requiring the skill card, quiz, and reflection. Prompts are
+--      optional evidence and never add to the parent Training denominator.
 --      The weeks are therefore created FIRST and the Training module row is
 --      written afterwards, pointing at their real ids.
 --
@@ -558,39 +557,6 @@ JOIN (VALUES
 ON CONFLICT (cohort_id, training_week_id) DO UPDATE
   SET unlock_date = EXCLUDED.unlock_date, is_visible = true;
 
--- Content vs requirement. The pacing above gives each week its default
--- requirement date. A learner who is ahead may finish a week early -- but only
--- once its content is open. So for the later weeks of each ongoing cohort the
--- Admin keeps the requirement date where the pacing put it (an individually
--- dated Training requirement, admin_set_cohort_requirement_dates) and the
--- cohort opens the content now. Due / overdue counts are unchanged; the
--- learners who finished those weeks early (learner1, learner9, tasc1) did so
--- on content they could actually open.
-DO $open_content$
-DECLARE v_admin uuid; c record;
-BEGIN
-  SELECT r.user_id INTO v_admin FROM public.user_roles r JOIN public.profiles p ON p.id = r.user_id
-  WHERE r.role = 'admin' AND lower(p.email) = 'trang.tt@erickson.vn';
-  PERFORM set_config('request.jwt.claim.sub', v_admin::text, true);
-  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
-  FOR c IN
-    SELECT co.id AS cohort_id,
-      jsonb_agg(jsonb_build_object('requirement_id', d.id, 'due_on', d.due_on::text)) AS items
-    FROM public.cohorts co
-    JOIN public.cohort_week_overrides cwo ON cwo.cohort_id = co.id AND cwo.unlock_date > current_date
-    JOIN public.cohort_requirement_dates d
-      ON d.cohort_id = co.id AND d.module = 'training' AND d.training_week_id = cwo.training_week_id
-    WHERE co.name IN ('Emerging Leaders · Cohort B', 'Executive Excellence · Cohort C', 'TASC Essential · Cohort D')
-    GROUP BY co.id
-  LOOP
-    PERFORM public.admin_set_cohort_requirement_dates(c.cohort_id, c.items);
-    UPDATE public.cohort_week_overrides SET unlock_date = current_date - 1
-    WHERE cohort_id = c.cohort_id AND unlock_date > current_date;
-  END LOOP;
-  PERFORM set_config('request.jwt.claim.sub', '', true);
-END
-$open_content$;
-
 -- ===========================================================================
 -- Learner training progress
 -- ===========================================================================
@@ -609,20 +575,20 @@ INSERT INTO _tp VALUES
   ('alum3@clariva.demo',    'Emerging Leaders · Cohort A (completed)', 8),
   ('alum4@clariva.demo',    'Emerging Leaders · Cohort A (completed)', 8),
   -- Cohort B, Org A: complete / mid / behind. Org B: just started (Ana Silva) / mid / partial.
-  ('learner1@clariva.demo', 'Emerging Leaders · Cohort B', 8),
+  ('learner1@clariva.demo', 'Emerging Leaders · Cohort B', 5),
   ('learner2@clariva.demo', 'Emerging Leaders · Cohort B', 5),
   ('learner3@clariva.demo', 'Emerging Leaders · Cohort B', 2),
   ('learner4@clariva.demo', 'Emerging Leaders · Cohort B', 0),
   ('learner5@clariva.demo', 'Emerging Leaders · Cohort B', 5),
   ('learner6@clariva.demo', 'Emerging Leaders · Cohort B', 2),
   -- Cohort C.
-  ('learner9@clariva.demo',  'Executive Excellence · Cohort C', 10),
+  ('learner9@clariva.demo',  'Executive Excellence · Cohort C', 6),
   ('learner11@clariva.demo', 'Executive Excellence · Cohort C', 6),
   ('learner7@clariva.demo',  'Executive Excellence · Cohort C', 2),
   ('learner8@clariva.demo',  'Executive Excellence · Cohort C', 0),
   ('learner10@clariva.demo', 'Executive Excellence · Cohort C', 0),
   -- Cohort D.
-  ('tasc1@clariva.demo', 'TASC Essential · Cohort D', 6),
+  ('tasc1@clariva.demo', 'TASC Essential · Cohort D', 4),
   ('tasc2@clariva.demo', 'TASC Essential · Cohort D', 4),
   ('tasc3@clariva.demo', 'TASC Essential · Cohort D', 1),
   ('tasc4@clariva.demo', 'TASC Essential · Cohort D', 0),

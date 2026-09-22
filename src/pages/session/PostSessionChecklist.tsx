@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -296,13 +298,39 @@ function FollowUpActions({ row }: { row: SessionParticipantDeliverable }) {
   const { data: actions } = useSessionFollowUpActions(row.enrollmentId, row.sourceTable, row.sessionId);
   const add = useAddSessionFollowUpAction();
   const [text, setText] = useState("");
+  const [goalId, setGoalId] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const { data: goals = [] } = useQuery({
+    queryKey: ["post-session-action-goals", row.enrollmentId],
+    enabled: !!row.enrollmentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("coachee_goals")
+        .select("id, title")
+        .eq("enrollment_id", row.enrollmentId)
+        .eq("status", "active")
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const handleAdd = async () => {
     const value = text.trim();
-    if (!value || !actions) return;
+    if (!value || !actions || !goalId || !dueDate) return;
     try {
-      await add.mutateAsync({ enrollmentId: row.enrollmentId, sourceTable: row.sourceTable, sessionId: row.sessionId, existing: actions, text: value });
+      await add.mutateAsync({
+        enrollmentId: row.enrollmentId,
+        sourceTable: row.sourceTable,
+        sessionId: row.sessionId,
+        existing: actions,
+        text: value,
+        goalId,
+        dueDate,
+      });
       setText("");
+      setGoalId("");
+      setDueDate("");
       toast.success(t("postSession.action.added"));
     } catch (error) {
       toast.error((error as { message?: string }).message ?? t("postSession.action.addFailed"));
@@ -317,12 +345,17 @@ function FollowUpActions({ row }: { row: SessionParticipantDeliverable }) {
           {actions.map((a, i) => (
             <li key={a.id ?? i} className={cn("flex items-center gap-2", a.done && "text-muted-foreground line-through")}>
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
-              {a.text}
+              <span>{a.text}</span>
+              {(!a.goal_id || !a.due_date) && (
+                <span className="text-xs text-warning" data-testid="post-session-action-incomplete">
+                  {t("postSession.action.metadataIncomplete")}
+                </span>
+              )}
             </li>
           ))}
         </ul>
       )}
-      <div className="flex gap-2">
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -336,12 +369,31 @@ function FollowUpActions({ row }: { row: SessionParticipantDeliverable }) {
             }
           }}
         />
+        <select
+          value={goalId}
+          onChange={(e) => setGoalId(e.target.value)}
+          aria-label={t("postSession.action.goal")}
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          data-testid="post-session-action-goal"
+        >
+          <option value="">{t("postSession.action.goalPlaceholder")}</option>
+          {goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}
+        </select>
+        <Input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          aria-label={t("postSession.action.dueDate")}
+          data-testid="post-session-action-due-date"
+        />
+      </div>
+      <div className="flex justify-end">
         <Button
           type="button"
           size="sm"
           variant="outline"
           onClick={() => void handleAdd()}
-          disabled={!text.trim() || !actions || add.isPending}
+          disabled={!text.trim() || !goalId || !dueDate || !actions || add.isPending}
           data-testid="post-session-action-add"
         >
           {add.isPending && <Loader2 className="mr-1 size-3 animate-spin" aria-hidden />}

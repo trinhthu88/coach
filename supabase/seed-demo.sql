@@ -1376,7 +1376,7 @@ BEGIN
 
   -- VERIFY 12: journey checkpoint state is derived from completion first. A
   -- checkpoint whose required activity is all done reads 'completed' even
-  -- before its due date (learner1 finished Peer and Triads early).
+  -- before its due date only when the requirement was already available.
   SELECT count(*) INTO n
   FROM _enr en
   CROSS JOIN LATERAL jsonb_array_elements(public.canonical_enrollment_journey(en.id, current_date)) cp
@@ -1391,8 +1391,8 @@ BEGIN
   FROM _enr en
   CROSS JOIN LATERAL jsonb_array_elements(public.canonical_enrollment_journey(en.id, current_date)) cp
   WHERE en.slug = 'b1' AND (cp->>'due_on')::date > current_date AND cp->>'state' = 'completed';
-  IF n = 0 THEN
-    RAISE EXCEPTION 'VERIFY 12 FAILED: learner1 has no early-completed future checkpoint to demonstrate';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'VERIFY 12 FAILED: learner1 has completed an unavailable future checkpoint';
   END IF;
 
   -- 13. The canonical requirement calendar is THE authority: every

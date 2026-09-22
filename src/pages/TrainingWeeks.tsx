@@ -186,7 +186,7 @@ function WeekTimelineCard({
 
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-[#efeae1] pt-4 text-[12.5px]">
               <Link to={`/training/${week.id}`} data-testid="week-skill-card-link" className="font-semibold text-[#2c8fa8] hover:underline">
-                {t("progressCard.viewSkillCard")} &rarr;
+                {t("progressCard.viewContent")} &rarr;
               </Link>
               {quizAssignmentId && (
                 <Link to={`/training/${week.id}/quiz/${quizAssignmentId}`} className="text-muted-foreground hover:text-[#2c8fa8]">

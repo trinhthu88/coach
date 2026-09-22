@@ -27,7 +27,7 @@
       "upcoming": "Upcoming"
     },
     "item": {
-      "skill_cards": "Skill card",
+      "skill_cards": "Skill Cards",
       "quizzes": "Quiz",
       "reflections": "Reflection",
       "daily_prompts": "Daily prompts"
@@ -101,6 +101,7 @@
     "quizScoresPerWeek": "Quiz scores",
     "weekScorePill": "W{{n}}: {{score}}%",
     "viewSkillCard": "View skill card",
+    "viewContent": "View content",
     "takeQuiz": "Take quiz",
     "triadReflectionAction": "Triad reflection",
     "goalsLabel": "Goals",
@@ -216,6 +217,9 @@
     "explanationLabel": "Explanation (shown after answering)",
     "explanationViLabel": "Explanation (Vietnamese)",
     "dailyPromptsHeading": "Daily prompts",
+    "dailyPromptsOptional": "Optional practice — it does not affect week completion.",
+    "dailyPromptAnswered": "Answered",
+    "dailyPromptOptional": "Optional",
     "dailyPromptsHint": "0–7 prompts for this training week. Pin one to a day, or leave it as any day.",
     "addPrompt": "Add prompt",
     "noPrompts": "No prompts yet.",

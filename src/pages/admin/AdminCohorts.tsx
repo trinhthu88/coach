@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, UsersRound, Building2, Users } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, UsersRound, Users } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
@@ -19,14 +19,13 @@ import { useCohortRequirementSchedule } from "@/hooks/admin/useCohortRequirement
 import { CohortRequirementSchedule } from "./cohorts/CohortRequirementSchedule";
 import { CohortCoachingPanel } from "./cohorts/CohortCoachingPanel";
 import { CohortMentoringPanel } from "./cohorts/CohortMentoringPanel";
-import { CohortPeerPanel } from "./cohorts/CohortPeerPanel";
+import { FixedPeerDyadPanel } from "./cohorts/FixedPeerDyadPanel";
 
 interface Cohort {
   id: string;
   name: string;
   description: string | null;
   programme_id: string | null;
-  organization_id: string | null;
   start_date: string | null;
   end_date: string | null;
   goal_setting_opens_on: string | null;
@@ -37,7 +36,6 @@ export default function AdminCohorts() {
   const { t } = useTranslation("admin");
   const [rows, setRows] = useState<Cohort[]>([]);
   const [progs, setProgs] = useState<{ id: string; name: string }[]>([]);
-  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Cohort> | null>(null);
@@ -56,10 +54,9 @@ export default function AdminCohorts() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: c }, { data: p }, { data: o }, { data: enr }] = await Promise.all([
+    const [{ data: c }, { data: p }, { data: enr }] = await Promise.all([
       supabase.from("cohorts").select("*").order("start_date", { ascending: false }),
       supabase.from("programmes").select("id, name").eq("is_active", true),
-      supabase.from("organizations").select("id, name").order("name"),
       supabase.from("programme_enrollments").select("cohort_id"),
     ]);
     const cnt: Record<string, number> = {};
@@ -68,7 +65,6 @@ export default function AdminCohorts() {
     });
     setRows((c || []) as Cohort[]);
     setProgs((p || []) as { id: string; name: string }[]);
-    setOrgs((o || []) as { id: string; name: string }[]);
     setCounts(cnt);
     setLoading(false);
   };
@@ -82,7 +78,6 @@ export default function AdminCohorts() {
         name: editing.name,
         description: editing.description || null,
         programme_id: editing.programme_id || null,
-        organization_id: editing.organization_id || null,
         start_date: editing.start_date || null,
         end_date: editing.end_date || null,
         goal_setting_opens_on: editing.goal_setting_opens_on || null,
@@ -135,7 +130,6 @@ export default function AdminCohorts() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((c) => {
           const prog = progs.find((p) => p.id === c.programme_id);
-          const org = orgs.find((o) => o.id === c.organization_id);
           return (
             <Card key={c.id} className="p-4">
               <div className="mb-2 flex items-start justify-between gap-2">
@@ -147,16 +141,6 @@ export default function AdminCohorts() {
                 <span className="inline-flex items-center gap-1"><UsersRound className="h-3 w-3" /> {t("cohorts.membersCount", { count: counts[c.id] || 0 })}</span>
                 {c.start_date && <span>{format(new Date(c.start_date), "MMM yyyy")}{c.end_date ? ` → ${format(new Date(c.end_date), "MMM yyyy")}` : ""}</span>}
               </div>
-              {org ? (
-                <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-primary">
-                  <Building2 className="h-3 w-3" /> {org.name}
-                  <span className="font-normal text-muted-foreground">· {t("cohorts.sponsorVisible")}</span>
-                </div>
-              ) : (
-                <div className="mt-2 flex items-center gap-1.5 border-b border-dashed border-muted-foreground/30 pb-2 text-[11px] text-muted-foreground">
-                  <Building2 className="h-3 w-3" /> {t("cohorts.noOrganization")} · {t("cohorts.notSponsorVisible")}
-                </div>
-              )}
               <div className="mt-3 flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setEditing(c)}><Pencil className="h-3.5 w-3.5" /> {t("cohorts.edit")}</Button>
                 <Button variant="outline" size="sm" asChild><Link to={`/admin/cohorts/${c.id}/triads`}><Users className="h-3.5 w-3.5" /> {t("cohorts.triads")}</Link></Button>
@@ -189,21 +173,6 @@ export default function AdminCohorts() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>{t("cohorts.organizationLabel")}</Label>
-                <Select value={editing.organization_id || "none"} onValueChange={(v) => setEditing({ ...editing, organization_id: v === "none" ? null : v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("cohorts.noOrganizationOption")}</SelectItem>
-                    {orgs.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {editing.organization_id ? (
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">{t("cohorts.sponsorVisibleHint")}</p>
-                ) : (
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">{t("cohorts.sponsorHiddenHint")}</p>
-                )}
-              </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div><Label>{t("cohorts.startDateLabel")}</Label><Input type="date" value={editing.start_date || ""} onChange={(e) => setEditing({ ...editing, start_date: e.target.value })} /></div>
                 <div><Label>{t("cohorts.endDateLabel")}</Label><Input type="date" value={editing.end_date || ""} onChange={(e) => setEditing({ ...editing, end_date: e.target.value })} /></div>
@@ -227,7 +196,7 @@ export default function AdminCohorts() {
                   deliver them. */}
               <CohortCoachingPanel cohortId={savedCohort?.id} />
               <CohortMentoringPanel cohortId={savedCohort?.id} />
-              <CohortPeerPanel cohortId={savedCohort?.id} />
+              <FixedPeerDyadPanel cohortId={savedCohort?.id} programmeId={editing.programme_id} />
             </div>
           )}
           <DialogFooter>

@@ -394,6 +394,10 @@
     "action": {
       "label": "Hành động tiếp theo",
       "placeholder": "Một việc tôi sẽ làm trước buổi tiếp theo…",
+      "goal": "Mục tiêu liên kết",
+      "goalPlaceholder": "Chọn mục tiêu",
+      "dueDate": "Hạn hoàn thành",
+      "metadataIncomplete": "Hành động cũ — chưa có mục tiêu/hạn",
       "add": "Thêm hành động",
       "added": "Đã thêm hành động tiếp theo",
       "addFailed": "Không thể thêm hành động."

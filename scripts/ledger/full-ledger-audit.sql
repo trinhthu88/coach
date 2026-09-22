@@ -296,7 +296,8 @@ WITH repo(version, name) AS (VALUES
   ('20260928120000', 'organisation_enrollments_and_integrity'),
   ('20260928130000', 'learner_enrollment_context'),
   ('20260928140000', 'learner_training_from_calendar'),
-  ('20260928150000', 'demo_goal_state')
+  ('20260928150000', 'demo_goal_state'),
+  ('20260929100000', 'canonical_contract_hardening')
 -- END REPO MANIFEST
 ),
 

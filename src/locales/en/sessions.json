@@ -397,6 +397,10 @@
     "action": {
       "label": "Follow-up actions",
       "placeholder": "One thing I will do before the next session…",
+      "goal": "Linked goal",
+      "goalPlaceholder": "Choose a goal",
+      "dueDate": "Due date",
+      "metadataIncomplete": "Older action — goal/date not recorded",
       "add": "Add action",
       "added": "Follow-up action added",
       "addFailed": "Could not add the action."

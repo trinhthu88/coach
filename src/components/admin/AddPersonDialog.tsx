@@ -79,9 +79,6 @@ export function AddPersonDialog({ open, onOpenChange, roles, defaultRole, defaul
   const isSponsor = form.role === "sponsor";
   const cohortChoices = form.programme_id ? cohorts.filter((c) => c.programme_id === form.programme_id) : cohorts;
   const selectedCohort = cohorts.find((c) => c.id === form.cohort_id) ?? null;
-  const cohortOrgName = selectedCohort?.organization_id
-    ? organizations.find((o) => o.id === selectedCohort.organization_id)?.name
-    : null;
 
   const update = (patch: Partial<FormState>) => {
     setForm((f) => ({ ...f, ...patch }));
@@ -231,9 +228,7 @@ export function AddPersonDialog({ open, onOpenChange, roles, defaultRole, defaul
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {!isSponsor && (
-                  <SelectItem value={NONE}>
-                    {cohortOrgName ? t("addPerson.cohortOrganization", { name: cohortOrgName }) : t("addPerson.none")}
-                  </SelectItem>
+                  <SelectItem value={NONE}>{t("addPerson.none")}</SelectItem>
                 )}
                 {organizations.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
               </SelectContent>

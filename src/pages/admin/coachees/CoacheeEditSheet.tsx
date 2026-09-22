@@ -144,8 +144,8 @@ export function CoacheeEditSheet({
                         programme_name: prog.name,
                         programme_duration_months: prog.duration_months,
                       } : {}),
-                      // Organization defaults to the cohort's organization.
-                      organization_id: editing.organization_id ?? cohort?.organization_id ?? null,
+                       // Organization is an enrollment property. A cohort may
+                       // contain learners from multiple organizations.
                     });
                   }}
                 >

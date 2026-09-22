@@ -38,12 +38,6 @@ vi.mock("@/hooks/useProgrammeModules", () => ({
   useProgrammeModules: () => mockModules,
 }));
 
-// Canonical per-module progress (learner_module_progress) behind the badges.
-let mockModuleProgress: { rows: { module: string; required_units: number; completed_units: number }[] } = { rows: [] };
-vi.mock("@/hooks/useLearnerModuleProgress", () => ({
-  useLearnerModuleProgress: () => mockModuleProgress,
-}));
-
 import AppLayout from "../AppLayout";
 
 function renderLayout(initialPath = "/dashboard") {
@@ -66,7 +60,6 @@ function noModulesConfigured() {
 }
 
 beforeEach(() => {
-  mockModuleProgress = { rows: [] };
   mockAuth.mockReset();
   mockAuth.mockReturnValue(baseAuth);
   mockModules = noModulesConfigured();
@@ -219,7 +212,7 @@ describe("AppLayout — coachee mobile navigation", () => {
   });
 });
 
-describe("AppLayout — learner module entries follow the active enrollment's canonical progress", () => {
+describe("AppLayout — learner module entries do not show progress ratios", () => {
   const allModules = () => ({
     hasModule: (m: string) => ["coaching", "peer_coaching", "mentoring", "triads", "training"].includes(m),
     hasDirection: () => true,
@@ -227,23 +220,14 @@ describe("AppLayout — learner module entries follow the active enrollment's ca
     error: null,
   });
 
-  it("each enabled module links to its module page and shows the canonical completed/required", () => {
+  it("each enabled module links to its module page without a completed/required badge", () => {
     mockAuth.mockReturnValue(baseAuth);
     mockModules = allModules();
-    mockModuleProgress = {
-      rows: [
-        { module: "training", required_units: 8, completed_units: 5 },
-        { module: "coaching", required_units: 4, completed_units: 4 },
-        { module: "mentoring", required_units: 2, completed_units: 2 },
-        { module: "peer_coaching", required_units: 2, completed_units: 1 },
-        { module: "triads", required_units: 2, completed_units: 1 },
-      ],
-    };
     renderLayout();
-    for (const [path, badge] of [["/training", "5/8"], ["/coaches", "4/4"], ["/mentoring", "2/2"], ["/coachee/peer-practice", "1/2"], ["/triads", "1/2"]]) {
+    for (const path of ["/training", "/coaches", "/mentoring", "/coachee/peer-practice", "/triads"]) {
       const link = document.querySelector(`aside a[href="${path}"]`);
       expect(link, path).not.toBeNull();
-      expect(link).toHaveTextContent(badge);
+      expect(link).not.toHaveTextContent(/\d+\/\d+/);
     }
     // Sessions stays as the cross-module hub.
     expect(document.querySelector('aside a[href="/sessions"]')).not.toBeNull();
@@ -252,9 +236,8 @@ describe("AppLayout — learner module entries follow the active enrollment's ca
   it("a module the programme does not configure has no entry and no badge", () => {
     mockAuth.mockReturnValue(baseAuth);
     mockModules = { ...allModules(), hasModule: (m: string) => m === "coaching" };
-    mockModuleProgress = { rows: [{ module: "coaching", required_units: 4, completed_units: 1 }] };
     renderLayout();
-    expect(document.querySelector('aside a[href="/coaches"]')).toHaveTextContent("1/4");
+    expect(document.querySelector('aside a[href="/coaches"]')).not.toHaveTextContent(/\d+\/\d+/);
     for (const path of ["/training", "/mentoring", "/coachee/peer-practice", "/triads"]) {
       expect(document.querySelector(`aside a[href="${path}"]`), path).toBeNull();
     }

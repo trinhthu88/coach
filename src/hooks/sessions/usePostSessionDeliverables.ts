@@ -252,18 +252,22 @@ export function useAddSessionFollowUpAction() {
       sessionId,
       existing,
       text,
+      goalId,
+      dueDate,
     }: {
       enrollmentId: string;
       sourceTable: SessionSourceTable;
       sessionId: string;
       existing: EnrollmentActionItem[];
       text: string;
+      goalId: string;
+      dueDate: string;
     }) => {
       const { error } = await saveEnrollmentActions(
         enrollmentId,
         DELIVERABLE_SOURCE_TYPES[sourceTable].action,
         sessionId,
-        [...existing, { text, done: false, due_date: null, milestone_id: null }],
+        [...existing, { text, done: false, due_date: dueDate, goal_id: goalId, milestone_id: null }],
       );
       if (error) throw error;
     },

@@ -674,8 +674,9 @@ describe("learner surfaces share ONE active-enrollment context (20260928130000/1
     for (const [path, module] of [["/training", "training"], ["/coaches", "coaching"], ["/coachee/peer-practice", "peer_coaching"], ["/mentoring", "mentoring"], ["/triads", "triads"]]) {
       expect(layout, path).toMatch(new RegExp(`to: "${path.replace(/\//g, "\\/")}"[^\\n]*roles: \\["coachee"\\][^\\n]*module: "${module}"`));
     }
-    // Badges come from the canonical module progress, not a sidebar count.
-    expect(layout).toMatch(/useLearnerModuleProgress\(/);
+    // Progress belongs inside the module pages and journey, not in the
+    // learner navigation rail.
+    expect(layout).not.toMatch(/useLearnerModuleProgress\(/);
     expect(read("hooks/useLearnerModuleProgress.ts")).toMatch(/rpc\("learner_module_progress"/);
   });
 
