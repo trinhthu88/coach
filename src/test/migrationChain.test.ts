@@ -83,6 +83,33 @@ describe("migration chain — canonical final state", () => {
     for (const file of statedIn) expect(file < backfill).toBe(true);
   });
 
+  it("the demo goal-state migration writes only to seeded demo enrollments, and never a second goal", () => {
+    // It exists because the unconditional booking gate (20260926600000) needs
+    // a goal the demo rows predate. Demo data is repository-only, so this must
+    // stay a one-shot repair of known rows and never become a generator.
+    const file = "20260928150000_demo_goal_state.sql";
+    expect(files).toContain(file);
+    const sql = readFileSync(join(DIR, file), "utf8");
+
+    // Both guards, on the one statement that selects what to write.
+    expect(sql).toMatch(/pr\.email LIKE '%@clariva\.demo'/);
+    expect(sql).toMatch(/pe\.id::text LIKE 'd0000000-0000-4000-8000-0000000e%'/);
+    // An enrollment that already has a goal is skipped whole.
+    expect(sql).toMatch(/NOT EXISTS\s*\(\s*SELECT 1 FROM public\.coachee_goals g WHERE g\.enrollment_id = pe\.id\)/);
+    // Deterministic id + ON CONFLICT: re-running, or a later seed run, updates
+    // the same row instead of adding another goal.
+    expect(sql).toMatch(/md5\('demo-goal-' \|\| e\.enrollment_id\)::uuid/);
+    expect((sql.match(/ON CONFLICT \([a-z_]+\) DO NOTHING/g) ?? []).length).toBe(2);
+
+    // It must not touch anything but the two goal tables.
+    const writes = [...sql.matchAll(/\b(?:INSERT INTO|UPDATE|DELETE FROM)\s+public\.([a-z_]+)/gi)].map(([, t]) => t);
+    expect(new Set(writes)).toEqual(new Set(["coachee_goals", "coachee_goal_ratings"]));
+
+    // It is the last migration: the calendar it reads to place a rating, and
+    // the gate it satisfies, must already exist.
+    expect(files[files.length - 1]).toBe(file);
+  });
+
   it("the superseded 20260918090000 migration defines no function (no-op in any order)", () => {
     const sql = readFileSync(join(DIR, "20260918090000_sponsor_canonical_calendar_followup.sql"), "utf8").replace(/--.*$/gm, "");
     expect(sql).not.toMatch(/CREATE\s+(OR\s+REPLACE\s+)?FUNCTION/i);

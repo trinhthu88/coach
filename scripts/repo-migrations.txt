@@ -262,3 +262,4 @@
 20260928120000_organisation_enrollments_and_integrity.sql
 20260928130000_learner_enrollment_context.sql
 20260928140000_learner_training_from_calendar.sql
+20260928150000_demo_goal_state.sql
