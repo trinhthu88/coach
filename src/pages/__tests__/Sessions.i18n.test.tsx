@@ -59,6 +59,12 @@ vi.mock("@/context/AuthContext", () => ({
   useAuth: () => authValue,
 }));
 
+// The learner's active enrollment: the hub's current view is the sessions
+// attributable to it (viewer_enrollment_id), so the fixture session is current.
+vi.mock("@/hooks/useActiveEnrollment", () => ({
+  useActiveEnrollment: () => ({ enrollmentId: "enrol1", ownEnrollmentIds: ["enrol1"], loading: false, error: null }),
+}));
+
 import "@/i18n/config";
 import i18n from "@/i18n/config";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";

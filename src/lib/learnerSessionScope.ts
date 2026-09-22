@@ -1,20 +1,23 @@
 /**
  * Learner Sessions hub scoping. The hub lists operational sessions across
- * modules; for a learner it shows the ACTIVE enrollment's sessions. Rows
- * attributed to one of the learner's own earlier (historical) enrollments are
- * left out unless the learner asks to include past programmes. A row
- * attributed to someone else's enrollment (e.g. a peer session the learner
- * provided) is not the learner's history and is kept. Nothing here counts
- * completion: programme progress is always the canonical engine's.
+ * modules; for a learner the CURRENT view is exactly the sessions attributable
+ * to the ACTIVE enrollment:
+ *
+ *   viewer_enrollment_id = active enrollment id
+ *
+ * where viewer_enrollment_id is the learner's OWN enrollment for the session
+ * (for a shared peer session: their own peer_session_participants row --
+ * never the session row's or the partner's enrollment). Everything else --
+ * sessions of the learner's earlier enrollments, and legacy rows with no
+ * attribution -- appears only when past programmes are requested. Nothing
+ * here counts completion: programme progress is always the canonical engine's.
  */
-export function scopeLearnerSessions<T extends { enrollment_id: string | null }>(
+export function scopeLearnerSessions<T extends { viewer_enrollment_id: string | null }>(
   rows: T[],
   activeEnrollmentId: string | null,
-  ownEnrollmentIds: string[],
   includePast: boolean,
 ): { rows: T[]; hiddenPast: number } {
-  const past = new Set(ownEnrollmentIds.filter((id) => id !== activeEnrollmentId));
-  const isPast = (r: T) => !!r.enrollment_id && past.has(r.enrollment_id);
-  const hiddenPast = rows.filter(isPast).length;
-  return includePast ? { rows, hiddenPast: 0 } : { rows: rows.filter((r) => !isPast(r)), hiddenPast };
+  const isCurrent = (r: T) => !!activeEnrollmentId && r.viewer_enrollment_id === activeEnrollmentId;
+  const hiddenPast = rows.filter((r) => !isCurrent(r)).length;
+  return includePast ? { rows, hiddenPast: 0 } : { rows: rows.filter(isCurrent), hiddenPast };
 }

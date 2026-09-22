@@ -8,7 +8,7 @@
 -- exist, so neither enrollment has a Training snapshot (the state every demo
 -- enrollment was in when the Training page read "No training weeks").
 begin;
-select plan(23);
+select plan(27);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -37,6 +37,29 @@ insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, 
 values
   ('e9910000-0000-4000-8000-00000000000a', 'c9910000-0000-4000-8000-000000000001', 'a9910000-0000-4000-8000-000000000001',
    'd9910000-0000-4000-8000-00000000000a', 'b9910000-0000-4000-8000-00000000000a', 'active', current_date - 300, current_date - 120);
+-- A peer session the learner PROVIDED during cohort A (created while cohort A
+-- ran; both cohort A enrollments are closed afterwards). The session row
+-- names the RECEIVER's (partner's) enrollment; the learner's participation
+-- must resolve to her OWN cohort A enrollment -- never the active one.
+update public.profiles set peer_coaching_opt_in = true
+where id in ('a9910000-0000-4000-8000-000000000001', 'a9910000-0000-4000-8000-000000000002');
+insert into public.programme_modules (programme_id, module, enabled, config) values
+  ('c9910000-0000-4000-8000-000000000001', 'peer_coaching', true, '{"required": true, "required_units": 1, "monthly_limit": 20}');
+insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status, start_date, end_date)
+values ('e9910000-0000-4000-8000-00000000002a', 'c9910000-0000-4000-8000-000000000001', 'a9910000-0000-4000-8000-000000000002',
+   'd9910000-0000-4000-8000-00000000000a', 'b9910000-0000-4000-8000-00000000000a', 'active', current_date - 300, current_date - 120);
+insert into public.coachee_goals (coachee_id, enrollment_id, title, status) values
+  ('a9910000-0000-4000-8000-000000000002', 'e9910000-0000-4000-8000-00000000002a', 'Partner goal', 'active'),
+  ('a9910000-0000-4000-8000-000000000001', 'e9910000-0000-4000-8000-00000000000a', 'Cohort A goal', 'active');
+select set_config('request.jwt.claim.sub', 'a9910000-0000-4000-8000-000000000002', true);   -- the receiver books
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('app.session_transition', 'on', true);
+insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, enrollment_id, topic, start_time, duration_minutes, status)
+values ('19910000-0000-4000-8000-0000000000a1', 'a9910000-0000-4000-8000-000000000001', 'a9910000-0000-4000-8000-000000000002',
+  'e9910000-0000-4000-8000-00000000002a', 'Cohort A peer practice', now() - interval '200 days', 60, 'completed');
+select set_config('app.session_transition', 'off', true);
+select set_config('request.jwt.claim.sub', '', true);
+update public.programme_enrollments set status = 'completed' where id = 'e9910000-0000-4000-8000-00000000002a';
 update public.programme_enrollments set status = 'completed' where id = 'e9910000-0000-4000-8000-00000000000a';
 -- The ACTIVE enrollment carries no end date of its own (as every seeded ongoing enrollment).
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status, start_date)
@@ -123,7 +146,7 @@ select is(
   'module pages (learner_module_progress) sum to the Dashboard aggregate');
 select is(
   (select array_agg(module::text order by module::text) from public.get_enrollment_programme_modules('e9910000-0000-4000-8000-00000000000b')),
-  array['coaching', 'training'], 'the sidebar modules are the programme''s enabled modules for the active enrollment');
+  array['coaching', 'peer_coaching', 'training'], 'the sidebar modules are the programme''s enabled modules for the active enrollment');
 
 -- Dashboard and My Journey read the same checkpoint source.
 create temp table learner_journey on commit drop as
@@ -143,6 +166,28 @@ select ok(
 select is(
   (select array_agg(goal_id) from public.canonical_goal_progress('e9910000-0000-4000-8000-00000000000b')),
   array['59910000-0000-4000-8000-00000000000b'::uuid], 'goal progress reads only the active enrollment''s goal');
+
+-- Peer participation: each participant is attributed to their OWN enrollment.
+select is(
+  (select enrollment_id from public.peer_session_participants
+   where session_kind = 'coachee_peer' and peer_session_id = '19910000-0000-4000-8000-0000000000a1'
+     and user_id = 'a9910000-0000-4000-8000-000000000001'),
+  'e9910000-0000-4000-8000-00000000000a'::uuid,
+  'the PROVIDER''s participation resolves to her own historical cohort A enrollment (readable by her under RLS)');
+select isnt(
+  (select enrollment_id from public.peer_session_participants
+   where peer_session_id = '19910000-0000-4000-8000-0000000000a1' and user_id = 'a9910000-0000-4000-8000-000000000001'),
+  (select enrollment_id from public.coachee_peer_sessions where id = '19910000-0000-4000-8000-0000000000a1'),
+  'the session row''s enrollment (the receiver''s) is NOT the provider''s participation enrollment');
+select is(
+  (select count(*)::int from public.peer_session_participants
+   where user_id = 'a9910000-0000-4000-8000-000000000001' and enrollment_id = 'e9910000-0000-4000-8000-00000000000b'),
+  0, 'the cohort A peer session is not attributed to the active cohort B enrollment');
+select is(
+  (select array_agg(enrollment_id order by enrollment_id) from public.peer_session_participants
+   where peer_session_id = '19910000-0000-4000-8000-0000000000a1'),
+  array['e9910000-0000-4000-8000-00000000000a', 'e9910000-0000-4000-8000-00000000002a']::uuid[],
+  'the same physical session resolves to each participant''s own enrollment');
 
 -- ---------------------------------------------------------------------------
 -- Other learners and roles

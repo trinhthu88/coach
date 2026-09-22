@@ -47,6 +47,7 @@
 ALTER TABLE public.cohort_requirement_dates DROP CONSTRAINT IF EXISTS cohort_requirement_dates_module_check;
 ALTER TABLE public.cohort_requirement_dates DROP CONSTRAINT IF EXISTS cohort_requirement_dates_generation_method_check;
 ALTER TABLE public.cohort_requirement_dates DROP CONSTRAINT IF EXISTS cohort_requirement_dates_materialized_via_check;
+ALTER TABLE public.cohort_requirement_dates DROP CONSTRAINT IF EXISTS cohort_requirement_dates_training_week_required;
 ALTER TABLE public.cohort_requirement_dates
   ADD CONSTRAINT cohort_requirement_dates_generation_method_check
     CHECK (generation_method IN ('module_deadline', 'training_week', 'manual')),

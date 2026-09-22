@@ -50,7 +50,7 @@ export default function Sessions() {
   const active = useActiveEnrollment();
   const includePast = searchParams.get("past") === "1";
   const scoped = role === "coachee"
-    ? scopeLearnerSessions(allSessions, active.enrollmentId, active.ownEnrollmentIds, includePast)
+    ? scopeLearnerSessions(allSessions, active.enrollmentId, includePast)
     : { rows: allSessions, hiddenPast: 0 };
   const sessions = scoped.rows;
 
