@@ -72,12 +72,16 @@ describe("booking goal gate — every booking path enforces the one rule", () =>
     expect(stripComments(lastDefinition("enrollment_goal_gate")!.body)).toMatch(/enrollment_goal_gate_state\s*\(/);
   });
 
-  it("booking is blocked whenever there is no active goal (no grace period); cohort start + 7 is an alert only", () => {
+  it("booking is blocked whenever there is no active goal (no grace period); the goal-setting deadline is an alert only", () => {
     const state = stripComments(lastDefinition("enrollment_goal_gate_state")!.body);
     expect(state).toMatch(/v_eligible\s*:=\s*public\.check_booking_eligibility\(/);
     expect(state).toMatch(/'blocked',\s*NOT v_eligible/);
     expect(state).not.toMatch(/grace/i);
-    expect(state).toMatch(/'goal_setup_deadline',\s*v_start\s*\+\s*7/);
+    // The deadline is the cohort's goal-setting period (default start + 7),
+    // resolved in one place (20260928110000) and never part of 'blocked'.
+    expect(state).toMatch(/enrollment_goal_setting_period\(p_enrollment_id\)/);
+    expect(state).toMatch(/'goal_setup_deadline',\s*v_due/);
+    expect(stripComments(lastDefinition("enrollment_goal_setting_period")!.body)).toMatch(/coalesce\(c\.goal_setting_due_on,\s*coalesce\(c\.start_date,\s*e\.start_date\)\s*\+\s*7\)/);
     // The one rule: at least one active goal on the enrollment.
     const rule = stripComments(lastDefinition("check_booking_eligibility")!.body);
     expect(rule).toMatch(/g\.enrollment_id\s*=\s*p_enrollment_id/);

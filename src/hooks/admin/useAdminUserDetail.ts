@@ -13,6 +13,7 @@ export type AdminGoalRow = Fn["admin_enrollment_goals"]["Returns"][number];
 export type AdminGoalCheckinRow = Fn["admin_enrollment_goal_checkins"]["Returns"][number];
 export type AdminActionRow = Fn["admin_enrollment_actions"]["Returns"][number];
 export type AdminSessionRow = Fn["admin_learner_session_history"]["Returns"][number];
+export type AdminRequirementCalendarRow = Fn["admin_enrollment_requirement_calendar"]["Returns"][number];
 
 export interface AdminUserProfile {
   id: string;
@@ -51,6 +52,8 @@ export function useAdminUser(userId: string | undefined) {
 export interface AdminEnrollmentDetail {
   progress: AdminCanonicalProgressRow | null;
   modules: AdminModuleProgressRow[];
+  /** One row per requirement instance with its date and state (the numbers above are its counts). */
+  calendar: AdminRequirementCalendarRow[];
   engagement: AdminEngagementRow | null;
   goals: AdminGoalRow[];
   checkins: AdminGoalCheckinRow[];
@@ -69,6 +72,7 @@ function unwrap<T>(result: { data: T | null; error: unknown }): T {
  * the engine the learner and sponsor read — nothing is recomputed here:
  *   admin_canonical_enrollment_progress → canonical_enrollment_progress
  *   admin_enrollment_module_progress    → canonical_module_progress
+ *   admin_enrollment_requirement_calendar → canonical_enrollment_requirement_calendar
  *   admin_enrollment_engagement         → canonical_enrollment_engagement
  *   admin_enrollment_goals              → canonical_goal_progress
  *   admin_learner_session_history       → canonical_session_history
@@ -76,9 +80,10 @@ function unwrap<T>(result: { data: T | null; error: unknown }): T {
  */
 async function fetchAdminEnrollmentDetail(enrollmentId: string): Promise<AdminEnrollmentDetail> {
   const p = { p_enrollment_id: enrollmentId };
-  const [progress, modules, engagement, goals, checkins, actions, sessions, reflections] = await Promise.all([
+  const [progress, modules, calendar, engagement, goals, checkins, actions, sessions, reflections] = await Promise.all([
     fetchAdminCanonicalProgress([enrollmentId]),
     supabase.rpc("admin_enrollment_module_progress", p),
+    supabase.rpc("admin_enrollment_requirement_calendar", p),
     supabase.rpc("admin_enrollment_engagement", p),
     supabase.rpc("admin_enrollment_goals", p),
     supabase.rpc("admin_enrollment_goal_checkins", p),
@@ -89,6 +94,7 @@ async function fetchAdminEnrollmentDetail(enrollmentId: string): Promise<AdminEn
   return {
     progress: progress[0] ?? null,
     modules: unwrap(modules) ?? [],
+    calendar: unwrap(calendar) ?? [],
     engagement: (unwrap(engagement) ?? [])[0] ?? null,
     goals: unwrap(goals) ?? [],
     checkins: unwrap(checkins) ?? [],

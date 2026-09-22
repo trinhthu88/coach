@@ -18,6 +18,9 @@ interface ProgrammeModuleScheduleFieldsProps {
   trainingWeeks?: TrainingWeekOption[];
 }
 
+/** Child learning types a Training week can carry (canonical_learning_breakdown keys). */
+const LEARNING_COMPONENTS = ["skill_cards", "quizzes", "reflections", "daily_prompts"] as const;
+
 function asSettings(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -45,6 +48,10 @@ export function ProgrammeModuleScheduleFields({
   const settings = asSettings(config.distribution_settings);
   const selectedWeekIds = Array.isArray(settings.training_week_ids)
     ? settings.training_week_ids.filter((id): id is string => typeof id === "string")
+    : [];
+
+  const learningComponents = Array.isArray(config.learning_components)
+    ? config.learning_components.filter((k): k is string => typeof k === "string")
     : [];
 
   const updateConfig = (patch: Record<string, unknown>) => onChange({ ...config, ...patch });
@@ -121,6 +128,38 @@ export function ProgrammeModuleScheduleFields({
             <p className="text-[10px] text-muted-foreground">{t("programmes.modules.schedule.noTrainingWeeks")}</p>
           )}
           <p className="text-[10px] text-muted-foreground">{t("programmes.modules.schedule.allTrainingWeeksHint")}</p>
+        </fieldset>
+      )}
+
+      {module === "training" && (
+        // Which child learning types count as evidence inside each selected
+        // week (config.learning_components). They never add programme units:
+        // Training stays "completed weeks / selected weeks".
+        <fieldset className="space-y-2" data-testid="learning-components">
+          <legend className="text-[10.5px] font-medium text-muted-foreground">
+            {t("programmes.modules.schedule.learningComponents")}
+          </legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {LEARNING_COMPONENTS.map((key) => {
+              const label = t(`programmes.modules.schedule.learningComponent.${key}`);
+              const locked = key === "skill_cards";
+              return (
+                <label key={key} className="flex items-center gap-2 text-[11px]">
+                  <Checkbox
+                    aria-label={label}
+                    checked={locked || learningComponents.includes(key)}
+                    disabled={locked}
+                    onCheckedChange={(nextChecked) => updateConfig({
+                      learning_components: LEARNING_COMPONENTS.filter((k) =>
+                        k === "skill_cards" || (k === key ? nextChecked === true : learningComponents.includes(k))),
+                    })}
+                  />
+                  {label}
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground">{t("programmes.modules.schedule.learningComponentsHint")}</p>
         </fieldset>
       )}
     </div>

@@ -44,6 +44,8 @@ export type ProgrammeLearningItem = {
   required_units: number;
   due_units: number;
   completed_units: number;
+  /** Due child items not yet completed (canonical_learning_breakdown). */
+  overdue_units?: number;
   progress_available: boolean;
   status: ProgrammeCheckpointState | "unavailable";
 };
@@ -222,6 +224,7 @@ export function parseProgrammeExperience(value: unknown): ProgrammeExperience {
         required_units: item.required_units,
         due_units: item.due_units,
         completed_units: item.completed_units,
+        ...(typeof item.overdue_units === "number" ? { overdue_units: item.overdue_units } : {}),
         progress_available: item.progress_available,
         status: item.status,
       })),

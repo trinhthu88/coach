@@ -42,7 +42,6 @@ export function useAdminCoacheesData() {
     const [
       { data: roles },
       { data: profiles },
-      { data: sess },
       { data: enrolls },
       { data: progs },
       { data: cohortsData },
@@ -52,7 +51,6 @@ export function useAdminCoacheesData() {
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at, spoken_languages"),
-      supabase.from("sessions").select("coachee_id, enrollment_id, status"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date, status"),
       supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
       supabase.from("cohorts").select("id, name, programme_id, organization_id"),
@@ -104,12 +102,6 @@ export function useAdminCoacheesData() {
       arr.push({ id: a.coach_id, name: coachNameById.get(a.coach_id) || "—" });
       allowByCoachee.set(a.coachee_id, arr);
     });
-    const booked = new Map<string, number>();
-    (sess || []).filter((s) => s.enrollment_id).forEach((s) => {
-      const enr = enrByUser.get(s.coachee_id);
-      if (!enr || enr.id !== s.enrollment_id) return;
-      if (["pending_coach_approval", "confirmed"].includes(s.status)) booked.set(s.coachee_id, (booked.get(s.coachee_id) || 0) + 1);
-    });
     const requestIdByEmail = new Map<string, string>();
     (requests || []).forEach((r) => {
       if (!requestIdByEmail.has(String(r.email).toLowerCase())) {
@@ -131,7 +123,10 @@ export function useAdminCoacheesData() {
           email: p.email,
           status: p.status as Status,
           created_at: p.created_at,
-          booked: booked.get(id) || 0,
+          // Canonical booked-but-not-held units (capped at what is still
+          // required) -- the same figure Sponsor and Learner read, never a
+          // count of raw session rows.
+          booked: available ? progress!.booked_units : 0,
           completed_units: available ? progress!.completed_units : null,
           required_units: available ? progress!.required_units : null,
           progress_error: !!enr && progressFailed,
@@ -144,6 +139,9 @@ export function useAdminCoacheesData() {
           organization_name: enr?.organization_id ? orgById.get(enr.organization_id) || null : null,
           enrollment_id: enr?.id || null,
           enrollment_start_date: enr?.start_date || null,
+          // The enrollment's state as every role sees it (effective status from
+          // the canonical engine, e.g. at_risk after the programme ends).
+          enrollment_status: progress?.effective_enrollment_status ?? enr?.status ?? null,
           completion_pct: available ? canonicalCompletionPct(progress!.full_completion_pct) : null,
           selected_coaches: allowByCoachee.get(id) || [],
           access_request_id: requestIdByEmail.get(String(p.email).toLowerCase()) ?? null,

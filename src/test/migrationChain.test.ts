@@ -96,7 +96,11 @@ describe("migration chain — canonical final state", () => {
   });
 
   it("Learner and Sponsor journeys end on the one shared journey construction", () => {
-    expect(lastDefinition("canonical_enrollment_journey")?.body).toMatch(/sponsor_canonical_module_schedule/);
+    // Checkpoints are cumulative counts over THE requirement calendar
+    // (20260928100000), whose dates are the cohort requirement rows.
+    expect(lastDefinition("canonical_enrollment_journey")?.body).toMatch(/canonical_enrollment_requirement_calendar/);
+    expect(lastDefinition("get_sponsor_programme_journey")?.body).toMatch(/canonical_enrollment_requirement_calendar/);
+    expect(lastDefinition("canonical_enrollment_requirement_calendar")?.body).toMatch(/cohort_requirement_dates/);
     expect(lastDefinition("learner_canonical_journey")?.body).toMatch(/canonical_enrollment_journey/);
     expect(lastDefinition("sponsor_canonical_leader_journey")?.body).toMatch(/canonical_enrollment_journey/);
     expect(lastDefinition("admin_canonical_enrollment_journey")?.body).toMatch(/canonical_enrollment_journey/);
@@ -325,10 +329,14 @@ describe("migration chain — canonical final state", () => {
       // One activity row per requirement — never per session.
       expect(activity).toMatch(/FROM public\.canonical_triad_requirement_fulfilment\(p_enrollment_id\) f/);
       expect(activity).not.toMatch(/JOIN public\.triad_sessions s ON s\.id = a\.source_activity_id/);
-      const progress = lastDefinition("canonical_module_progress")?.body ?? "";
-      expect(progress).toMatch(/a\.requirement_due_on IS NULL OR a\.requirement_due_on <= p_as_of/);
+      // Each requirement is judged against its OWN due date: progress and both
+      // journeys count calendar rows, one per requirement (20260928100000).
+      const calendar = lastDefinition("canonical_enrollment_requirement_calendar")?.body ?? "";
+      expect(calendar).toMatch(/FROM public\.canonical_triad_requirement_fulfilment\(p_enrollment_id\) f/);
+      expect(calendar).toMatch(/r\.due_on IS NOT NULL AND r\.due_on <= p_as_of AND r\.completed_on IS NULL/);
+      expect(lastDefinition("canonical_module_progress")?.body).toMatch(/canonical_enrollment_requirement_calendar\(p_enrollment_id, p_as_of\)/);
       for (const name of ["canonical_enrollment_journey", "get_sponsor_programme_journey"]) {
-        expect(lastDefinition(name)?.body, name).toMatch(/a\.requirement_due_on IS NULL OR a\.requirement_due_on <= sm\.due_on/);
+        expect(lastDefinition(name)?.body, name).toMatch(/c\.due_on <= d\.due_on AND c\.completed_on IS NOT NULL AND c\.completed_on <= least\(d\.due_on, p_as_of\)/);
       }
       const completion = lastDefinition("canonical_triad_completion")?.body ?? "";
       expect(completion).toMatch(/canonical_module_progress\(p_enrollment_id, p_as_of\)/);

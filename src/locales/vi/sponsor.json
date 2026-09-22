@@ -512,7 +512,8 @@
       "ratingNone": "Chưa có đánh giá trải nghiệm chương trình.",
       "journeyWindow": "Đang hiển thị mốc {{first}}–{{last}} trên {{total}}",
       "noGoalSet": "Chưa đặt mục tiêu",
-      "goalNotRated": "Chưa đánh giá"
+      "goalNotRated": "Chưa đánh giá",
+      "overdueUnits": "{{count}} quá hạn"
     }
   },
   "report": {

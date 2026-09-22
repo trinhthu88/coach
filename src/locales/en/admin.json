@@ -33,29 +33,29 @@
     "descriptionLabel": "Description",
     "programmeLabel": "Programme",
     "noneOption": "— None —",
-    "organizationLabel": "Organisation (Sponsor visibility)",
+    "organizationLabel": "Default organisation (for new enrollments)",
     "noOrganizationOption": "— No organisation —",
     "noOrganization": "No organisation",
-    "sponsorVisible": "Sponsor visible",
-    "notSponsorVisible": "Not in Sponsor view",
-    "sponsorVisibleHint": "Leaders in this cohort are visible to this organisation's sponsor",
-    "sponsorHiddenHint": "No sponsor will see this cohort — assign an organisation to enable Sponsor view",
+    "sponsorVisible": "default for new enrollments",
+    "notSponsorVisible": "each enrollment sets its organisation",
+    "sponsorVisibleHint": "New enrollments in this cohort default to this organisation. What a Sponsor sees is decided by each enrollment's organisation, so one cohort can hold leaders from several organisations.",
+    "sponsorHiddenHint": "No default: set the organisation on each enrollment. A Sponsor sees exactly the enrollments of their organisation.",
     "startDateLabel": "Start date",
     "endDateLabel": "End date",
     "cancel": "Cancel",
     "save": "Save",
     "schedule": {
-      "title": "Completion deadlines",
-      "subtitleNew": "One deadline per module: by when this cohort must complete it. Defaults to the cohort end date; the required units themselves come from the programme.",
-      "subtitleSaved": "This cohort's saved completion deadlines. Learner, Sponsor and Admin journeys all use these dates.",
-      "datesChangedNote": "Changing the cohort dates moves only the deadlines still set to the cohort end date. A deadline you chose stays where you put it.",
+      "title": "Requirement dates",
+      "subtitleNew": "Each module gets a default completion deadline (the cohort end date unless you choose another). Once the cohort is saved, every required unit has its own date.",
+      "subtitleSaved": "One date per required unit — one per selected week for Training. Learner, Sponsor and Admin progress, overdue and checkpoints all use exactly these dates.",
+      "datesChangedNote": "Changing the cohort dates moves only the defaults still set to the cohort end date, and the requirements that follow them. A date you chose stays where you put it.",
       "loadError": "The requirement schedule could not be loaded.",
       "needProgrammeAndDates": "Choose a programme, start date and end date to see the proposed deadlines.",
       "empty": "No completion deadlines are set for this cohort.",
       "required_one": "{{count}} required",
       "required_other": "{{count}} required",
       "edited": "Edited",
-      "trainingNote": "Training / Learning deadlines follow the cohort's training week dates.",
+      "trainingNote": "A Training week starts at its pacing date (cohort week date, else cohort start + week). Give a week its own date to move it; it then affects due, overdue and checkpoints like any other requirement.",
       "issues": {
         "missing_dates": "{{module}}: {{scheduled}} of {{required}} required units exist.",
         "surplus_dates": "{{module}}: {{scheduled}} units exist but only {{required}} are required — the extra ones already carry activity and were kept.",
@@ -64,7 +64,31 @@
         "missing_deadline": "{{module}}: no completion deadline is set, so no requirement can be created."
       },
       "deadlineLabel": "{{module}} completion deadline",
-      "unitsNote": "How many units each module requires is set on the programme; the required units are created automatically and are all due on the deadline above."
+      "unitsNote": "The programme sets how many units each module requires; the cohort holds exactly one dated requirement per unit.",
+      "selectedWeeks_one": "{{count}} selected week",
+      "selectedWeeks_other": "{{count}} selected weeks",
+      "defaultDeadline": "Default",
+      "applyToAll": "Apply to all requirements",
+      "countMismatch": "{{required}} units are required but {{scheduled}} requirements exist.",
+      "requirementDateLabel": "{{requirement}} date",
+      "customDate": "Own date",
+      "followsDefault": "Default",
+      "reset": "Reset",
+      "resetLabel": "Reset {{requirement}} to its default date",
+      "newCohortNote": "Individual requirement dates (one per required unit, one per Training week) can be edited once the cohort is saved.",
+      "integrity": {
+        "training_units_mismatch": "Training: {{detail}} — the programme should select exactly one week per required unit.",
+        "training_week_missing": "Training: {{detail}}.",
+        "training_week_unmapped": "Training: {{detail}}.",
+        "requirement_unresolvable": "{{module}}: {{detail}}.",
+        "enrollment_without_organization": "A learner in this cohort has no organisation, so no Sponsor can see them.",
+        "schedule_unselected_week": "Training: a requirement exists for a week the programme no longer selects.",
+        "schedule_missing_requirements": "{{module}}: fewer requirements than required units ({{detail}}).",
+        "schedule_surplus_requirements": "{{module}}: more requirements than required units ({{detail}}).",
+        "schedule_duplicate_ordinals": "{{module}}: two requirements share a number ({{detail}}).",
+        "schedule_ordinal_gap": "{{module}}: requirement numbers have a gap ({{detail}}).",
+        "schedule_out_of_scope": "{{module}}: requirements exist but the module is no longer required ({{detail}})."
+      }
     },
     "triads": "Triads",
     "coaching": {
@@ -105,7 +129,10 @@
       "toggleLabel": "Allow this cohort's learners to peer with {{name}}",
       "granted": "Cohort added to the peer practice pool.",
       "withdrawn": "Cohort removed. Sessions already booked are unaffected."
-    }
+    },
+    "goalSettingOpensLabel": "Goal setting opens",
+    "goalSettingDueLabel": "Goals due by",
+    "goalSettingHint": "Each learner sets 1–3 goals in this period. Empty = cohort start to start + 7 days. A reminder date only: it never counts as a programme requirement."
   },
   "dashboard": {
     "eyebrow": "Organisation",
@@ -193,7 +220,8 @@
       "cohort": "Cohort",
       "selectedCoaches": "Selected coaches",
       "sheetName": "Coachees",
-      "completedUnits": "Required activities completed (current enrollment)"
+      "completedUnits": "Required activities completed (current enrollment)",
+      "organisation": "Organisation"
     },
     "tableHeaders": {
       "coachee": "Coachee",
@@ -206,7 +234,8 @@
       "percentComplete": "% Complete",
       "selectedCoaches": "Selected coaches",
       "actions": "Actions",
-      "requiredActivities": "Required activities"
+      "requiredActivities": "Required activities",
+      "organisation": "Organisation"
     },
     "selectedCoachesCount_one": "{{count}} coach",
     "selectedCoachesCount_other": "{{count}} coaches",
@@ -224,7 +253,14 @@
       "close": "Close"
     },
     "addLearner": "Add learner",
-    "progressUnavailable": "Progress unavailable"
+    "progressUnavailable": "Progress unavailable",
+    "noOrganisation": "No organisation",
+    "enrollmentStatus": {
+      "active": "Enrollment active",
+      "at_risk": "Enrollment at risk",
+      "paused": "Enrollment paused",
+      "completed": "Enrollment completed"
+    }
   },
   "coacheeProfileSheet": {
     "readOnly": "read-only",
@@ -357,8 +393,8 @@
     "titleEmphasis": "& sponsors",
     "subtitle": "Client companies sponsoring leaders through the programme, and their sponsor contact.",
     "newOrganization": "New organization",
-    "enrolledLeaders_one": "{{count}} enrolled leader",
-    "enrolledLeaders_other": "{{count}} enrolled leaders",
+    "enrolledLeaders_one": "{{count}} active leader",
+    "enrolledLeaders_other": "{{count}} active leaders",
     "sponsor": "Sponsor",
     "noSponsorYet": "No sponsor assigned yet.",
     "inviteSponsor": "Invite sponsor",
@@ -383,7 +419,26 @@
     "copied": "Copied",
     "resendSetupLink": "Resend setup link",
     "setupLinkSent": "Setup link sent to {{email}}",
-    "couldNotSendSetupLink": "Could not send the setup link"
+    "couldNotSendSetupLink": "Could not send the setup link",
+    "historicalEnrollments_one": "{{count}} past enrollment",
+    "historicalEnrollments_other": "{{count}} past enrollments",
+    "viewLeaders": "View leaders",
+    "leaders": {
+      "title": "{{name}} — leaders",
+      "leader": "Leader",
+      "cohort": "Cohort · programme",
+      "status": "Enrollment",
+      "progress": "Required activities",
+      "overdue_one": "{{count}} overdue",
+      "overdue_other": "{{count}} overdue",
+      "ongoing_one": "{{count}} ongoing enrollment",
+      "ongoing_other": "{{count}} ongoing enrollments",
+      "historical_one": "{{count}} past enrollment",
+      "historical_other": "{{count}} past enrollments",
+      "empty": "No enrollment belongs to this organisation yet.",
+      "loadError": "The leaders could not be loaded.",
+      "note": "A leader belongs to the organisation of their enrollment — the same link that decides what this organisation's Sponsor can see. One cohort may contain leaders from several organisations."
+    }
   },
   "programmes": {
     "nameRequired": "Name is required",
@@ -487,7 +542,15 @@
         "trainingWeekOption": "Week {{week}}: {{title}}",
         "allTrainingWeeksHint": "Select exactly one training week for each required unit.",
         "noTrainingWeeks": "No training weeks are configured for this programme yet.",
-        "deadlineNote": "When these units are due is the cohort's decision: set one completion deadline per module in Admin → Cohorts."
+        "deadlineNote": "When these units are due is the cohort's decision: set one completion deadline per module in Admin → Cohorts.",
+        "learningComponents": "Learning inside each week",
+        "learningComponent": {
+          "skill_cards": "Skill cards (the week itself)",
+          "quizzes": "Quizzes",
+          "reflections": "Reflections",
+          "daily_prompts": "Daily prompts"
+        },
+        "learningComponentsHint": "Selected types appear as evidence in the Training / Learning breakdown for Learner, Admin and Sponsor (counts only — never answers). They never add requirements: Training progress stays completed weeks out of selected weeks."
       },
       "validation": {
         "requiredUnitsWholeNonNegative": "Required units must be a whole number of zero or more.",
@@ -1081,7 +1144,8 @@
       "actions": "Actions",
       "reflections": "Reflections",
       "feedback": "Feedback",
-      "satisfaction": "Satisfaction"
+      "satisfaction": "Satisfaction",
+      "calendar": "Requirement calendar"
     },
     "fields": {
       "programme": "Programme",
@@ -1135,7 +1199,19 @@
       "actions": "No actions for this enrollment.",
       "reflections": "No shared reflections for this enrollment.",
       "feedback": "No feedback for this enrollment.",
-      "satisfaction": "No session ratings yet."
+      "satisfaction": "No session ratings yet.",
+      "calendar": "No requirement is configured for this enrollment."
+    },
+    "calendarHeaders": {
+      "requirement": "Requirement",
+      "dueOn": "Due",
+      "state": "State"
+    },
+    "calendarStates": {
+      "completed": "Completed",
+      "overdue": "Overdue",
+      "due": "Due",
+      "upcoming": "Upcoming"
     }
   },
   "addPerson": {

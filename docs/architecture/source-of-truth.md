@@ -13,9 +13,11 @@ never a second answer to a business question.
 | Business fact | Authoritative source | Read through (all roles) | Notes |
 |---|---|---|---|
 | **Programme required units** (what is required) | `programme_modules.config` (`required`, `required_units`) | `canonical_module_progress` → `canonical_enrollment_progress` | Admin edits the programme template. |
-| **Cohort completion deadline** | `cohort_module_deadlines.completion_deadline` (one per cohort × module) | `sync_cohort_requirement_dates` → `cohort_requirement_dates.due_on` | The cohort answers BY WHEN, and only that. `distribution_mode` and the proposal functions were retired in `20260922100000`: a policy that materialised one row for a four-unit requirement could never record more than one completed unit. |
-| **Cohort requirement identity** (Coaching / Peer / Mentoring / Triads) | `cohort_requirement_dates` — exactly `required_units` rows, `units = 1`, ordinals 1..N | `sponsor_canonical_module_schedule` | Materialised in full on cohort creation and reconciled by `sync_cohort_requirement_dates` whenever the programme, the cohort or the deadline changes. **A mismatch is an integrity violation, not an operational state** — see below. |
-| **Training / Learning cohort timing** | `training_weeks.unlock_date` + `cohort_week_overrides` | `canonical_training_learning_items` → `sponsor_canonical_module_schedule` | Training-linked *other* modules copy these dates at materialization and don't follow later changes (Admin regenerates explicitly). |
+| **Requirement due date** (every module, Training included) | `cohort_requirement_dates.due_on` — one date per requirement instance | `canonical_enrollment_requirement_calendar` | The cohort answers BY WHEN, per unit. A row an Admin dated (`is_overridden`) keeps its date; every other row follows its default. Written by `admin_set_cohort_requirement_dates` (`20260928100000`). `distribution_mode` stays retired: no policy spreads dates. |
+| **Default module deadline** (session modules) | `cohort_module_deadlines.completion_deadline` (one per cohort × module) | `sync_cohort_requirement_dates` | The date new rows start at and non-overridden rows follow; "apply to all" resets rows to it. It never replaces the per-requirement dates. |
+| **Cohort requirement identity** (Coaching / Peer / Mentoring / Triads / Training) | `cohort_requirement_dates` — exactly `required_units` rows per session module (`units = 1`, ordinals 1..N) and exactly one row per selected Training week (`training_week_id`, ordinal = week position) | `canonical_enrollment_requirement_calendar`, `sponsor_canonical_module_schedule` | Materialised in full on cohort creation and reconciled by `sync_cohort_requirement_dates` whenever the programme, the cohort, a training week, a cohort week override or the default deadline changes. **A mismatch is an integrity violation, not an operational state** — see below. |
+| **Training week default date** | `cohort_week_overrides.unlock_date` → cohort start + (week − 1) × 7 → `training_weeks.unlock_date`, capped at the cohort end | `cohort_training_requirement_weeks` → `cohort_requirement_dates` (training rows) | Only the DEFAULT of a Training requirement. The date every role sees is the requirement's `due_on`; an Admin date on "Week 4" moves Week 4 everywhere. |
+| **Training child learning types** | `programme_modules(training).config.learning_components` ⊆ {`skill_cards`, `quizzes`, `reflections`, `daily_prompts`} | `canonical_learning_breakdown` | Evidence inside each week, never extra units: Training = completed weeks / selected weeks. Only selected, visible weeks and visible items count; each child is dated from its week's requirement date. Counts only. |
 | **Required vs scheduled (mismatch)** | derived from the two rows above | `cohort_module_schedule_violation`, `cohort_schedule_violations`, `cohort_requirement_schedule_issues` | **Diagnostic only.** "Coaching 5 required / 4 scheduled" is a migration or corruption state that the deferred guards refuse to commit and the booking RPCs refuse to operate against. Nothing is invented, and no projection compensates. |
 | **Enrollment applicability** | `programme_enrollments` (programme, cohort, status) | canonical progress / journey wrappers | *Effective* status (after the programme end date) is computed once in `canonical_enrollment_progress`. |
 | **Activity completion** | the session lifecycle, per requirement (Coaching / Mentoring / Triads); `peer_session_participants` for Peer (`20260921210000`); `session_activity_attributions` for quiz, daily prompt and Training | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. See the operational-vs-evidence rule below. |
@@ -26,8 +28,11 @@ never a second answer to a business question.
 | **Mentoring requirement link** | `mentoring_sessions.cohort_requirement_id` (server-assigned) | `canonical_mentoring_requirement_fulfilment` | One live session per LEARNER per requirement. |
 | **Mentoring completion** | a COMPLETED session attributed to a requirement | `canonical_mentoring_requirement_fulfilment` → `sponsor_canonical_activity` | The preparation document is optional and gates nothing. |
 | **After-session evidence** | the evidence records themselves | `coaching_session_evidence`, `mentoring_session_evidence` | REPORTING ONLY. Neither returns a unit or progress field. |
-| **Module completion, overall completion %, due-to-date adherence %, overdue units, pace** | computed once | `canonical_enrollment_progress` (per module: `canonical_module_progress`) → `learner_canonical_progress`, `sponsor_canonical_enrollment_progress` / `_leader_progress` / `_enrollment_metadata`, `admin_canonical_enrollment_progress` | Cohort and organisation rollups aggregate these per-enrollment rows. |
-| **Programme Journey checkpoints** | computed once | `canonical_enrollment_journey` → `learner_canonical_journey`, `sponsor_canonical_leader_journey`, `admin_canonical_enrollment_journey`; cohort view `get_sponsor_programme_journey` (same schedule, cohort aggregate) | One checkpoint per due date. Modules only in `module_scope`, never as a title. The UI never regroups checkpoints. |
+| **Requirement calendar** (due / completed / overdue per requirement) | computed once | `canonical_enrollment_requirement_calendar(enrollment, as_of)` → `admin_enrollment_requirement_calendar`, `learner_requirement_calendar`, `sponsor_leader_requirement_calendar` | `is_due_as_of = due_on ≤ as_of`; `is_completed` = fulfilled on/before as_of; `is_overdue = due AND NOT completed`. Carries no narrative, so every role gets the same rows. |
+| **Module completion, overall completion %, due-to-date adherence %, overdue units, pace** | counts over the calendar | `canonical_enrollment_progress` (per module: `canonical_module_progress`, which aggregates the calendar) → `learner_canonical_progress`, `sponsor_canonical_enrollment_progress` / `_leader_progress` / `_enrollment_metadata`, `admin_canonical_enrollment_progress` | Cohort and organisation rollups aggregate these per-enrollment rows. |
+| **Programme Journey checkpoints** | cumulative calendar counts | `canonical_enrollment_journey` → `learner_canonical_journey`, `sponsor_canonical_leader_journey`, `admin_canonical_enrollment_journey`; cohort view `get_sponsor_programme_journey` (same calendar, cohort aggregate) | One checkpoint per distinct requirement date D: required = requirements due ≤ D, completed = those fulfilled by D. Modules only in `module_scope`, never as a title. The UI never regroups checkpoints. |
+| **Organisation membership** | `programme_enrollments.organization_id` | `sponsor_visible_enrollments`, `admin_organization_enrollments`, `admin_organization_leader_summary`, the Admin roster | Never inferred from `cohorts.organization_id` (a default for new enrollments only); one cohort may mix organisations. |
+| **Goal-setting period** | `cohorts.goal_setting_opens_on` / `goal_setting_due_on` (NULL = cohort start / start + 7) | `enrollment_goal_setting_period` → `enrollment_goal_gate_state` | An alert date only: never a requirement unit, never part of the booking decision (1–3 active goals, first one required before any booking). |
 | **Session history** | session tables (`sessions`, `coachee_peer_sessions`, `peer_sessions`, `mentoring_sessions`, `triad_sessions`) | `learner_session_history` | |
 | **Goals / actions** | `coachee_goals`, `coachee_goal_ratings`, `enrollment_actions` | per-goal progress `canonical_goal_progress`; aggregates `canonical_enrollment_engagement` | Archived goals are excluded; unrated goals have no progress. |
 | **Reflections** | original reflection records; for Coaching and Mentoring `session_learning_reflections` | `learner_reflection_feed` | `sessions.coachee_notes` is historical for Coaching (`20260921190000`): it was a second place a reflection could live, so the feed and the Admin alert disagreed with the evidence record. |
@@ -40,11 +45,12 @@ never a second answer to a business question.
 programme_modules.config.required_units = N      the ONLY answer to "how many?"
         ↓
 exactly N rows in cohort_requirement_dates       units = 1, ordinals 1..N
-        ↓
-each row carries one deadline                    projected from cohort_module_deadlines
+        ↓                                         (Training: one row per selected week)
+each row carries its OWN due date                default = module deadline / week pacing,
+                                                 or the date an Admin set for that unit
 ```
 
-**One programme unit = one cohort requirement = one ordinal = one deadline.**
+**One programme unit = one cohort requirement = one ordinal = one date.**
 The cohort never decides quantity; it decides only when each
 programme-defined requirement is due.
 
@@ -197,8 +203,9 @@ Rollups only aggregate canonical rows (sums, counts of effective status and pace
 | Object | Class | Canonical replacement / note |
 |---|---|---|
 | `programme_modules` | CANONICAL | Requirements + default policy |
-| `cohort_requirement_dates` | CANONICAL | Cohort due dates (non-Training) |
-| `training_weeks`, `cohort_week_overrides` | CANONICAL | Training cohort timing. For requirement dates the precedence is cohort override → cohort calendar → programme template date. |
+| `cohort_requirement_dates` | CANONICAL | One dated requirement per required unit, Training weeks included |
+| `canonical_enrollment_requirement_calendar` | CANONICAL (INTERNAL) | THE per-requirement due / completed / overdue rows; progress, overdue items and journeys aggregate it |
+| `training_weeks`, `cohort_week_overrides` | CANONICAL | Training week content and pacing. They supply only the DEFAULT of a Training requirement date (cohort override → cohort calendar → programme template date). |
 | `session_activity_attributions` | CANONICAL | Completion evidence |
 | `canonical_module_progress`, `canonical_enrollment_progress`, `canonical_enrollment_journey`, `canonical_enrollment_experience(_base)`, `canonical_enrollment_engagement`, `canonical_goal_progress`, `canonical_training_learning_items`, `canonical_learning_breakdown`, `sponsor_canonical_module_schedule`, `sponsor_canonical_activity`, `cohort_programme_schedule_state`, `canonical_enrollment_schedule_state`, `sync_cohort_requirement_dates`, `cohort_module_schedule_violation` | CANONICAL (INTERNAL) | Shared constructions. Not client-callable. |
 | `learner_canonical_*`, `sponsor_canonical_*`, `admin_canonical_*` | CANONICAL wrappers | Role eligibility only |
@@ -242,14 +249,18 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
    the shared construction (`canonical_enrollment_progress`,
    `canonical_enrollment_journey`, `canonical_enrollment_schedule_state`).
    Never write a new aggregation.
-3. **Changing when a requirement is due** belongs in `cohort_module_deadlines` (the cohort's completion deadline), never in a per-unit edit
-   only. Materialized cohort dates are never rewritten implicitly.
+3. **Changing when a requirement is due** goes through the cohort: the
+   module default (`admin_set_cohort_module_deadlines`) or one requirement's
+   own date (`admin_set_cohort_requirement_dates`). An Admin-dated requirement
+   is never rewritten implicitly.
 4. **Snapshots and caches** must not be read by user-facing current-state
    surfaces.
 5. **Guards enforce this contract** and must stay green:
    - `src/test/programmeProfileArchitecture.test.ts` and
      `src/test/migrationChain.test.ts` (frontend and migration chain);
    - `supabase/tests/cohort_requirement_schedule_test.sql`,
+     `supabase/tests/requirement_calendar_contract_test.sql` (N units = N dated
+     requirements, Admin = Learner = Sponsor numbers, organisation isolation),
      `supabase/tests/source_of_truth_contract_test.sql` and
      `supabase/tests/triad_canonical_contract_test.sql` (database);
    - the "Triad source of truth" block in `src/test/programmeProfileArchitecture.test.ts`,
@@ -271,16 +282,27 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
      requirement link is required).
 
 ## Deadline model
-One completion deadline per cohort × module.
-All N ordinal requirements within that module share the same deadline.
-This is a business-contract decision, not a technical constraint.
+One date per requirement instance (`20260928100000_requirement_calendar`,
+superseding the one-deadline-per-module lock of `20260926400000`).
 
-- Writer: `admin_set_cohort_module_deadlines()` — exactly one `completion_deadline` per (cohort, programme, module).
-- Projection: `sync_cohort_requirement_dates()` step 5d copies it onto every ordinal's `due_on`. If per-ordinal deadlines are ever needed, that is where to change (see `20260926400000_deadline_contract_locked.sql`).
-- Scope: the session modules (Coaching, Mentoring, Peer Coaching, Triads). Training is paced by training weeks and is not materialised as cohort requirements.
-- Pinned by `supabase/tests/deadline_contract_test.sql`.
+- Programme: `required_units = N` (Training: N selected weeks).
+- Cohort: exactly N `cohort_requirement_dates` rows per required module, each with its own `due_on`.
+- Default: a session row starts at, and while not overridden follows, `cohort_module_deadlines`; a Training row starts at, and follows, its week pacing date.
+- Admin: `admin_cohort_requirement_schedule` (read) and `admin_set_cohort_requirement_dates` (a date = keep it; `null` = back to the default). "Apply the deadline to all" = reset every row of the module.
+- Integrity: `cohort_module_schedule_violation` (Training included), `requirement_integrity_issues()` / `admin_requirement_integrity_issues()` (count mismatch, missing/duplicate ordinal, unmapped or unselected week, Training `required_units` ≠ selected weeks, requirement outside the cohort's programmes, ongoing enrollment without an organisation).
+- Pinned by `supabase/tests/deadline_contract_test.sql` and `supabase/tests/requirement_calendar_contract_test.sql`.
+- Verify any environment read-only with `scripts/requirement-calendar-verification.sql`.
 
 ## Demo data
-All demo data lives in `supabase/seed-demo.sql` (plus `scripts/seed-training-content.sql` for the Training module) and obeys canonical contracts: real `cohort_requirement_dates`, bookings through the canonical RPCs, attribution by the database, progress read back from `canonical_*`. Each demo organisation holds at least 5 enrollments (the anonymous-distribution privacy threshold).
+All demo data lives in `supabase/seed-demo.sql` (plus `scripts/seed-training-content.sql` for the Training module) and obeys canonical contracts: real `cohort_requirement_dates` (individually dated per unit in the ongoing cohorts), bookings through the canonical RPCs, attribution by the database, progress read back from `canonical_*`. Each demo organisation holds at least 5 enrollments (the anonymous-distribution privacy threshold).
+
+Topology (password for every account: `Clariva2026!`):
+
+| Sponsor | Organisation | Leaders visible in *Emerging Leaders · Cohort B* (shared) | Elsewhere |
+|---|---|---|---|
+| `sponsor@clariva.demo` (Sam Sponsor) | Clariva Demo Organization | Linh Nguyen (complete), David Tran (on track), Priya Raman (behind) | Cohort A alumni incl. Grace Adeyemi (completed), Executive Excellence · Cohort C, TASC · Cohort D (3) |
+| `sponsor2@clariva.demo` (Sasha Bui) | Clariva Demo Organization B | Ana Silva (nothing completed yet; exactly the requirements already due are overdue), Mai Pham, Jonas Weber | TASC · Cohort D (2) |
+
+Admin (`trang.tt@erickson.vn`) sees both organisations. Goals exercise several stages (achieved, progressing with milestones and check-ins, baseline only), and Training carries skill cards, quizzes, reflections and daily prompts.
 
 There is no other demo generator. The out-of-band production generator (`demo_*` tables/functions) was retired by `20260926900000_retire_out_of_repo_demo_generator.sql` (functions dropped, tables archived in the locked `demo_archive` schema), and the `seed-demo-data` / `seed-tasc-content` edge functions were deleted.

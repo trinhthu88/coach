@@ -288,7 +288,10 @@ WITH repo(version, name) AS (VALUES
   ('20260926900000', 'retire_out_of_repo_demo_generator'),
   ('20260927100000', 'peer_feedback_requires_a_rating'),
   ('20260927200000', 'retire_legacy_session_limits'),
-  ('20260927300000', 'purge_retired_module_config_keys')
+  ('20260927300000', 'purge_retired_module_config_keys'),
+  ('20260928100000', 'requirement_calendar'),
+  ('20260928110000', 'goal_setting_period'),
+  ('20260928120000', 'organisation_enrollments_and_integrity')
 -- END REPO MANIFEST
 ),
 

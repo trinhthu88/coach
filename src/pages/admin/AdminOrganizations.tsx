@@ -17,6 +17,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { AddPersonDialog } from "@/components/admin/AddPersonDialog";
 import { resendSetupLink } from "@/lib/adminInvite";
+import { OrganisationEnrollmentsDialog } from "./organizations/OrganisationEnrollmentsDialog";
 
 type CompanySize = "1-50" | "50-200" | "200-1000" | "1000+";
 type SubscriptionTier = "essentials" | "growth" | "enterprise";
@@ -59,7 +60,10 @@ export default function AdminOrganizations() {
   const { t } = useTranslation("admin");
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [sponsorsByOrg, setSponsorsByOrg] = useState<Record<string, Sponsor>>({});
-  const [enrollmentCounts, setEnrollmentCounts] = useState<Record<string, number>>({});
+  // Leader counts derived from enrollments (admin_organization_leader_summary):
+  // the same organisation relationship Sponsor visibility uses.
+  const [leaderCounts, setLeaderCounts] = useState<Record<string, { ongoing: number; historical: number }>>({});
+  const [viewingLeaders, setViewingLeaders] = useState<Organization | null>(null);
   const [adminOpts, setAdminOpts] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Organization> | null>(null);
@@ -72,10 +76,10 @@ export default function AdminOrganizations() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: o }, { data: sp }, { data: enr }, { data: adminRoles }] = await Promise.all([
+    const [{ data: o }, { data: sp }, { data: summary }, { data: adminRoles }] = await Promise.all([
       supabase.from("organizations").select("*").order("name"),
       supabase.from("sponsor_profiles").select("user_id, organization_id, title, department, profiles(full_name, email)"),
-      supabase.from("programme_enrollments").select("organization_id").not("organization_id", "is", null),
+      supabase.rpc("admin_organization_leader_summary"),
       supabase.from("user_roles").select("user_id").eq("role", "admin"),
     ]);
     // user_roles has no FK to profiles (see useMyCoachCardData.ts for the
@@ -99,13 +103,13 @@ export default function AdminOrganizations() {
         email: profile.email,
       };
     });
-    const counts: Record<string, number> = {};
-    (enr || []).forEach((e) => {
-      if (e.organization_id) counts[e.organization_id] = (counts[e.organization_id] || 0) + 1;
+    const counts: Record<string, { ongoing: number; historical: number }> = {};
+    (summary || []).forEach((row) => {
+      counts[row.organization_id] = { ongoing: row.ongoing_leaders, historical: row.historical_enrollments };
     });
     setOrgs((o || []) as Organization[]);
     setSponsorsByOrg(byOrg);
-    setEnrollmentCounts(counts);
+    setLeaderCounts(counts);
     setAdminOpts(admins);
     setLoading(false);
   };
@@ -203,9 +207,17 @@ export default function AdminOrganizations() {
                 {o.industry && <Pill tone="secondary" className="shrink-0">{o.industry}</Pill>}
               </div>
 
-              <p className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                <UsersRound className="h-3 w-3" /> {t("organizations.enrolledLeaders", { count: enrollmentCounts[o.id] || 0 })}
-              </p>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1" data-testid="organisation-leader-count">
+                  <UsersRound className="h-3 w-3" /> {t("organizations.enrolledLeaders", { count: leaderCounts[o.id]?.ongoing ?? 0 })}
+                </span>
+                {(leaderCounts[o.id]?.historical ?? 0) > 0 && (
+                  <span>· {t("organizations.historicalEnrollments", { count: leaderCounts[o.id]?.historical ?? 0 })}</span>
+                )}
+                <Button variant="link" size="sm" className="h-auto p-0 text-[11px]" onClick={() => setViewingLeaders(o)}>
+                  {t("organizations.viewLeaders")}
+                </Button>
+              </div>
 
               <div className="mt-3 rounded-lg border bg-muted/20 p-2.5">
                 {sponsor ? (
@@ -391,6 +403,7 @@ export default function AdminOrganizations() {
         defaultOrganizationId={inviting?.id ?? null}
         onCreated={load}
       />
+      <OrganisationEnrollmentsDialog organisation={viewingLeaders} onClose={() => setViewingLeaders(null)} />
       {ConfirmDialog}
     </div>
   );

@@ -299,8 +299,12 @@ async function main() {
   const asB = await callAllAsUser(sponsorB.email, sponsorB.cohortId, sponsorA.cohortId);
 
   console.log("\nAssertions:");
-  assert(asA.enrollments.length === 0, "sponsor A enrollment report is suppressed below privacy threshold");
-  assert(asB.enrollments.length === 0, "sponsor B enrollment report is suppressed below privacy threshold");
+  // Visibility is the enrollment's organisation (20260925100000): no size
+  // gate, each sponsor sees exactly its own organisation's leader.
+  assert(asA.enrollments.length === 1 && asA.enrollments[0].enrollment_id === leaderA.enrollmentId,
+    "sponsor A sees exactly organisation A's leader");
+  assert(asB.enrollments.length === 1 && asB.enrollments[0].enrollment_id === leaderB.enrollmentId,
+    "sponsor B sees exactly organisation B's leader");
   assert(asA.cohorts.length === 1 && asA.cohorts[0].cohort_id === sponsorA.cohortId &&
     asB.cohorts.length === 1 && asB.cohorts[0].cohort_id === sponsorB.cohortId,
     "each sponsor cohort RPC returns only its own cohort identity");
@@ -309,8 +313,9 @@ async function main() {
       asB.enrollments.every((row) => row.enrollment_id !== leaderA.enrollmentId),
     "sponsor reports cannot cross org or enrollment boundaries"
   );
-  assert(asA.metadata.length === 0 && asB.metadata.length === 0,
-    "sponsor metadata is suppressed below privacy threshold");
+  assert(asA.metadata.every((row) => row.enrollment_id === leaderA.enrollmentId) &&
+      asB.metadata.every((row) => row.enrollment_id === leaderB.enrollmentId),
+    "sponsor metadata carries only the sponsor's own organisation's leaders");
   assert(asA.foreignEnrollments.length === 0 && asA.foreignCohorts.length === 0 &&
     asA.foreignMetadata.length === 0 &&
     asB.foreignEnrollments.length === 0 && asB.foreignCohorts.length === 0 &&

@@ -185,7 +185,7 @@ describe("programme profile architecture", () => {
     expect(layout).toMatch(/staticGroups=\{role === "coachee"\}/);
   });
 
-  it("there is no scheduling policy left to interpret — the cohort owns one deadline per module", () => {
+  it("there is no scheduling policy left to interpret — the cohort owns one date per requirement", () => {
     // The distribution modes are gone from the product, not just from the UI.
     // Comments are stripped (they legitimately explain what was retired), and
     // the generated Supabase types are excluded: they still describe the
@@ -204,10 +204,10 @@ describe("programme profile architecture", () => {
     expect(stripComments(read("lib/programmeModuleConfig.ts"))).not.toMatch(
       /evenly_distributed|monthly_frequency|training_linked/,
     );
-    // Deadlines are read and written through the canonical RPCs only, and only
-    // by the Admin cohort deadline hook.
+    // Module defaults and per-requirement dates are read and written through
+    // the canonical RPCs only, and only by the Admin cohort schedule hook.
     const deadlineCallers = files.filter((f) =>
-      /rpc\(\s*"(admin_cohort_module_deadlines|admin_set_cohort_module_deadlines|cohort_module_deadline_proposal)"/.test(
+      /rpc\(\s*"(admin_cohort_module_deadlines|admin_set_cohort_module_deadlines|cohort_module_deadline_proposal|admin_cohort_requirement_schedule|admin_set_cohort_requirement_dates)"/.test(
         readFileSync(f, "utf8"),
       ),
     );
@@ -589,6 +589,42 @@ describe("programme profile architecture", () => {
     expect(hook).toMatch(/admin_canonical_schedule_state/);
     expect(read("components/programme/LearnerProgrammeJourney.tsx")).toMatch(/useCanonicalScheduleState\("learner"/);
     expect(read("pages/sponsor/SponsorLeaderDrawer.tsx")).toMatch(/useCanonicalScheduleState\("sponsor"/);
+  });
+});
+
+describe("requirement calendar, organisation and learning breakdown (20260928100000-120000)", () => {
+  const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
+
+  it("the Admin roster shows the ENROLLMENT's organisation in its own column and canonical booked units", () => {
+    const page = read("pages/admin/AdminCoachees.tsx");
+    expect(page).toMatch(/coachees\.tableHeaders\.organisation/);
+    expect(page).toMatch(/data-testid="coachee-organisation"/);
+    const hook = read("hooks/admin/useAdminCoacheesData.ts");
+    expect(hook).toMatch(/organization_name: enr\?\.organization_id/);
+    // Never inferred from the cohort row, never counted from raw session rows.
+    expect(hook).not.toMatch(/cohortsData[^\n]*organization_id\s*\?\?|from\("sessions"\)/);
+    expect(hook).toMatch(/booked: available \? progress!\.booked_units/);
+  });
+
+  it("organisation leader counts and lists come from enrollments via the Admin RPCs", () => {
+    const page = read("pages/admin/AdminOrganizations.tsx");
+    expect(page).toMatch(/rpc\("admin_organization_leader_summary"\)/);
+    expect(page).not.toMatch(/from\("programme_enrollments"\)/);
+    expect(read("pages/admin/organizations/OrganisationEnrollmentsDialog.tsx")).toMatch(/rpc\("admin_organization_enrollments"/);
+  });
+
+  it("the Training breakdown renders every configured child type the backend returns", () => {
+    const breakdown = read("components/programme/ProgrammeModuleProgress.tsx");
+    expect(breakdown).toMatch(/configuredLearningItems\(learningBreakdown\)/);
+    expect(breakdown).not.toMatch(/key === "skill_cards"|skill_cards"\s*\)/);
+    expect(read("lib/programmeProfile.ts")).toMatch(/item\.progress_available && item\.required_units > 0/);
+  });
+
+  it("the Admin enrollment detail shows the requirement calendar from the canonical wrapper", () => {
+    expect(read("hooks/admin/useAdminUserDetail.ts")).toMatch(/rpc\("admin_enrollment_requirement_calendar"/);
+    // No client reads the internal calendar directly.
+    const internal = files.filter((f) => /rpc\(\s*"canonical_enrollment_requirement_calendar"/.test(readFileSync(f, "utf8")));
+    expect(internal).toEqual([]);
   });
 });
 

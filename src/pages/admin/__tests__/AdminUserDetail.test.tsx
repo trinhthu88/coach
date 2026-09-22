@@ -82,6 +82,10 @@ const DETAIL: Record<string, Record<string, unknown[]>> = {
       { module: "coaching", required_units: 4, completed_units: 2, completed_activity_units: 2, due_units: 3, booked_units: 1, overdue_units: 1, pace_status: "behind" },
       { module: "peer_coaching", required_units: 2, completed_units: 1, completed_activity_units: 1, due_units: 1, booked_units: 0, overdue_units: 0, pace_status: "on_track" },
     ],
+    admin_enrollment_requirement_calendar: [
+      { enrollment_id: "enr-current", programme_id: "p", cohort_id: "c", organization_id: "o", module: "coaching", requirement_id: "r-1", requirement_index: 1, requirement_label: "Coaching Session 1", training_week_id: null, due_on: "2026-01-31", is_required: true, is_due_as_of: true, is_completed: true, completed_on: "2026-01-20", is_overdue: false, completion_source: "coaching_session" },
+      { enrollment_id: "enr-current", programme_id: "p", cohort_id: "c", organization_id: "o", module: "coaching", requirement_id: "r-2", requirement_index: 2, requirement_label: "Coaching Session 2", training_week_id: null, due_on: "2026-02-28", is_required: true, is_due_as_of: true, is_completed: false, completed_on: null, is_overdue: true, completion_source: null },
+    ],
     admin_enrollment_engagement: [
       { goal_count: 1, goal_setup: true, goal_progress_pct: 50, open_action_count: 1, completed_action_count: 0, total_action_count: 1, action_completion_pct: 0, satisfaction_avg: 4.5, satisfaction_rated_count: 2 },
     ],
@@ -103,6 +107,9 @@ const DETAIL: Record<string, Record<string, unknown[]>> = {
   "enr-past": {
     admin_enrollment_module_progress: [
       { module: "mentoring", required_units: 3, completed_units: 3, completed_activity_units: 3, due_units: 3, booked_units: 0, overdue_units: 0, pace_status: "complete" },
+    ],
+    admin_enrollment_requirement_calendar: [
+      { enrollment_id: "enr-past", programme_id: "p", cohort_id: "c", organization_id: "o", module: "mentoring", requirement_id: "r-9", requirement_index: 1, requirement_label: "Mentoring Session 1", training_week_id: null, due_on: "2025-03-31", is_required: true, is_due_as_of: true, is_completed: true, completed_on: "2025-03-01", is_overdue: false, completion_source: "mentoring_session" },
     ],
     admin_enrollment_engagement: [
       { goal_count: 0, goal_setup: false, goal_progress_pct: null, open_action_count: 0, completed_action_count: 0, total_action_count: 0, action_completion_pct: null, satisfaction_avg: null, satisfaction_rated_count: 0 },
@@ -189,6 +196,11 @@ describe("AdminUserDetail", () => {
 
     const current = await screen.findByTestId("enrollment-detail-enr-current");
     expect(within(current).getByTestId("module-row-coaching")).toHaveTextContent(/4\s*2\s*3\s*1\s*1/);
+    // The requirement calendar behind those counts: one row per requirement, own date and state.
+    const calendarRows = within(current).getAllByTestId("calendar-row");
+    expect(calendarRows).toHaveLength(2);
+    expect(calendarRows[0]).toHaveTextContent(/Coaching Session 1.*Completed/);
+    expect(calendarRows[1]).toHaveTextContent(/Coaching Session 2.*Overdue/);
     expect(within(current).getAllByTestId("session-row")).toHaveLength(2);
     expect(within(current).getByText("Kick-off coaching").closest("a")).toHaveAttribute("href", "/sessions/s-1");
     expect(within(current).getByText("Triad 1")).toBeInTheDocument();
@@ -223,6 +235,7 @@ describe("AdminUserDetail", () => {
       "admin_enrollment_goal_checkins",
       "admin_enrollment_goals",
       "admin_enrollment_module_progress",
+      "admin_enrollment_requirement_calendar",
       "admin_learner_reflection_feed",
       "admin_learner_session_history",
     ]);
