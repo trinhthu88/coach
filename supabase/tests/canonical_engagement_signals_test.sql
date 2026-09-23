@@ -8,7 +8,9 @@
 --   N3 active, started 30 days ago, no activity ever                    -> inactive
 --   N4 active, started 3 days ago                                       -> not in population (grace week)
 --   N5 paused                                                           -> not in population
---   N6 stored active in the ended cohort (effective status is not active) -> not in population
+--   N6 stored active, its programme ended yesterday (enrollment and cohort end
+--      alike; 20261001110000 settles status on the enrollment's own end)
+--      (effective status is not active)                                -> not in population
 begin;
 
 select plan(7);
@@ -33,7 +35,7 @@ select ('e9900000-0000-0000-0000-00000000000' || n)::uuid, ('a9900000-0000-0000-
   'c9900000-0000-0000-0000-000000000001',
   case when n = 6 then 'd9900000-0000-0000-0000-000000000002' else 'd9900000-0000-0000-0000-000000000001' end::uuid,
   case when n = 4 then current_date - 3 else current_date - 30 end,
-  current_date + 60,
+  case when n = 6 then current_date - 1 else current_date + 60 end,
   case when n = 5 then 'paused' else 'active' end::public.enrollment_status
 from generate_series(1, 6) n;
 

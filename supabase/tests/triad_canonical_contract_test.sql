@@ -24,7 +24,7 @@
 -- 20260930100000): F1..F12 for the completion and due/overdue scenarios.
 begin;
 
-select plan(155);
+select plan(156);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_user_meta_data, created_at, updated_at, confirmation_token, email_change_token_new, recovery_token)
@@ -92,11 +92,12 @@ select ('f8800000-0000-0000-0000-0000000000' || lpad(n::text, 2, '0'))::uuid, ('
   'c8800000-0000-0000-0000-000000000003'::uuid, 'd8800000-0000-0000-0000-000000000004'::uuid,
   'b8800000-0000-0000-0000-000000000001'::uuid, '2026-01-05'::date, '2026-07-31'::date, 'active'::public.enrollment_status
 from generate_series(1, 12) n;
--- A learner of the No-Triad programme placed in cohort C1 (a cohort can
--- schedule several programmes).
+-- A learner of the No-Triad programme, in that programme's own cohort: since
+-- 20261001110000 an enrollment's cohort must run its programme, so a No-Triad
+-- learner can no longer sit in C1.
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
 values ('e8800000-0000-0000-0000-000000000009', 'a8800000-0000-0000-0000-000000000009', 'c8800000-0000-0000-0000-000000000004',
-  'd8800000-0000-0000-0000-000000000001', 'b8800000-0000-0000-0000-000000000001', current_date - 120, current_date + 120, 'active');
+  'd8800000-0000-0000-0000-000000000005', 'b8800000-0000-0000-0000-000000000001', current_date - 120, current_date + 120, 'active');
 
 -- Booking goal gate (20260925400000): C1 started 120 days ago, so a learner
 -- who schedules or proposes a Triad time needs an active goal.
@@ -159,7 +160,7 @@ select throws_ok(
 select throws_ok(
   $$select public.admin_triad_create_group((select id from unit where n = 1),
       array['e8800000-0000-0000-0000-000000000001', 'e8800000-0000-0000-0000-000000000009']::uuid[], 'vi')$$,
-  '42501', null, '6c. a learner whose programme requires no Triads cannot be grouped');
+  '42501', null, '6c. a learner of a programme without Triads (so of another cohort) cannot be grouped');
 select throws_ok(
   $$select public.admin_triad_create_group((select id from unit where n = 1),
       array['e8800000-0000-0000-0000-000000000001']::uuid[], 'vi')$$,
@@ -721,9 +722,12 @@ select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000098
 select results_eq(
   $$select programme_id, required_units, (select array_agg((x->>'due_on')::date order by (x->>'milestone')::int) from jsonb_array_elements(schedule) x)
     from public.admin_cohort_triad_requirement('d8800000-0000-0000-0000-000000000001') order by 1$$,
-  $$values ('c8800000-0000-0000-0000-000000000001'::uuid, 2, array[current_date - 30, current_date - 30]),
-           ('c8800000-0000-0000-0000-000000000004'::uuid, 0, null::date[])$$,
-  '27a. Admin Triads: "2 required" with the cohort''s cumulative dates; a programme without Triads reads 0 (not an error)');
+  $$values ('c8800000-0000-0000-0000-000000000001'::uuid, 2, array[current_date - 30, current_date - 30])$$,
+  '27a. Admin Triads: "2 required" with the cohort''s cumulative dates');
+select results_eq(
+  $$select programme_id, required_units from public.admin_cohort_triad_requirement('d8800000-0000-0000-0000-000000000005')$$,
+  $$values ('c8800000-0000-0000-0000-000000000004'::uuid, 0)$$,
+  '27a2. a programme without Triads reads 0 required (not an error)');
 select throws_ok($$select * from public.admin_cohort_triad_requirement('d8800000-0000-0000-0000-00000000dead')$$,
   'P0002', null, '26d. an unknown cohort is an error, never "0 required"');
 select lives_ok($$select public.admin_set_cohort_requirement_dates('d8800000-0000-0000-0000-000000000001',

@@ -298,7 +298,8 @@
     "recentSessions": "Recent sessions",
     "noSessionsYet": "No sessions yet.",
     "close": "Close",
-    "requiredActivities": "Required activities (current enrollment)"
+    "requiredActivities": "Required activities (current enrollment)",
+    "paceBehind": "Behind"
   },
   "coacheeEditSheet": {
     "title": "Edit coachee",

@@ -294,7 +294,8 @@
     "recentSessions": "Session gần đây",
     "noSessionsYet": "Chưa có session nào.",
     "close": "Đóng",
-    "requiredActivities": "Hoạt động bắt buộc (ghi danh hiện tại)"
+    "requiredActivities": "Hoạt động bắt buộc (ghi danh hiện tại)",
+    "paceBehind": "Chậm tiến độ"
   },
   "coacheeEditSheet": {
     "title": "Sửa học viên",

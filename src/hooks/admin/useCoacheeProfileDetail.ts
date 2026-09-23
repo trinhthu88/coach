@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
 
 export interface ProfileGoal {
   id: string;
@@ -31,7 +32,12 @@ export interface EnrollmentHistoryRow {
   id: string;
   programme_name: string;
   cohort_name: string | null;
+  /** The canonical EFFECTIVE status (canonical_enrollment_progress); the stored
+   * lifecycle column only when canonical progress is unavailable. A stored
+   * at_risk is never shown as-is (20261001110000). */
   status: string;
+  /** Canonical pace (behind / on_track / ...) -- the derived risk signal. */
+  pace_status: string | null;
   start_date: string;
   end_date: string | null;
 }
@@ -95,12 +101,15 @@ export function useCoacheeProfileDetail(coacheeId: string | undefined, enrollmen
         timezone: cprof?.timezone ?? null,
         goals: cprof?.goals ?? null,
       });
+      const canonical = await fetchAdminCanonicalProgress((enr || []).map((e) => e.id)).catch(() => []);
+      const canonicalById = new Map(canonical.map((c) => [c.enrollment_id, c]));
       setEnrollments(
         (enr || []).map((e) => ({
           id: e.id,
           programme_name: (e.programmes as { name: string } | null)?.name ?? "—",
           cohort_name: (e.cohorts as { name: string } | null)?.name ?? null,
-          status: e.status,
+          status: canonicalById.get(e.id)?.effective_enrollment_status ?? (e.status === "at_risk" ? "active" : e.status),
+          pace_status: canonicalById.get(e.id)?.pace_status ?? null,
           start_date: e.start_date,
           end_date: e.end_date,
         }))

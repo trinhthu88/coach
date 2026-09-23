@@ -120,9 +120,15 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
                       {e.cohort_name ? ` · ${e.cohort_name}` : ""}
                     </p>
                   </div>
-                  <Pill tone={e.status === "active" ? "success" : e.status === "at_risk" ? "warning" : "muted"}>
-                    {t(`coacheeProfileSheet.enrollmentStatus.${e.status}`)}
-                  </Pill>
+                  {/* Canonical status and pace, never the stored lifecycle column (20261001110000). */}
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {e.pace_status === "behind" && e.status === "active" && (
+                      <Pill tone="warning">{t("coacheeProfileSheet.paceBehind")}</Pill>
+                    )}
+                    <Pill tone={e.status === "active" ? "success" : e.status === "at_risk" ? "warning" : "muted"}>
+                      {t(`coacheeProfileSheet.enrollmentStatus.${e.status}`)}
+                    </Pill>
+                  </span>
                 </Link>
               ))}
             </div>
