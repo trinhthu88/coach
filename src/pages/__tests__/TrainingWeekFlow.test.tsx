@@ -34,8 +34,12 @@ vi.mock("@/hooks/training/useAssignments", () => ({
 vi.mock("@/hooks/training/useReflections", () => ({
   useWeekReflection: () => ({
     loading: false,
-    reflection: { id: "r1", title: "Reflection: Leadership basics", title_vi: null },
-    submission: state.reflectionSubmitted ? { id: "s1" } : null,
+    reflection: { id: "r1", title: "Reflection: Leadership basics", title_vi: null, instructions: null, instructions_vi: null },
+    questions: [{ id: "rq1", question_text: "Which part of your old job are you still holding on to?", question_text_vi: null, question_type: "open_text", is_required: true }],
+    answers: state.reflectionSubmitted ? [{ question_id: "rq1", answer_text: "I still check every production report myself.", answer_value: null }] : [],
+    submission: state.reflectionSubmitted ? { id: "s1", confidence_score: 9 } : null,
+    submitting: false,
+    submit: vi.fn(),
   }),
 }));
 vi.mock("@/hooks/training/useQuiz", () => ({
@@ -57,6 +61,7 @@ vi.mock("@/hooks/training/useQuiz", () => ({
 import "@/i18n/config";
 import SkillCardView from "../SkillCardView";
 import QuizView from "../QuizView";
+import ReflectionView from "../ReflectionView";
 import { MODULE_TYPES } from "../admin/AdminProgrammes";
 
 function renderAt(path: string) {
@@ -65,6 +70,7 @@ function renderAt(path: string) {
       <Routes>
         <Route path="/training/:weekId" element={<SkillCardView />} />
         <Route path="/training/:weekId/quiz/:assignmentId" element={<QuizView />} />
+        <Route path="/training/:weekId/reflect" element={<ReflectionView />} />
       </Routes>
     </MemoryRouter>
   );
@@ -102,6 +108,17 @@ describe("Skill Card -> Quiz -> Reflection", () => {
     expect(within(review).getByText(/Results come through other people —/)).toHaveTextContent("Correct");
     expect(screen.queryByRole("button", { name: "Submit quiz" })).toBeNull();
     expect(screen.queryByRole("radio")).toBeNull();
+  });
+});
+
+describe("Reflection review", () => {
+  it("a submitted reflection opens read-only: the question, the learner's answer and confidence", () => {
+    state.reflectionSubmitted = true;
+    renderAt("/training/w1/reflect");
+    expect(screen.getByText("Which part of your old job are you still holding on to?")).toBeInTheDocument();
+    expect(screen.getByText("I still check every production report myself.")).toBeInTheDocument();
+    expect(screen.getByText("9/10")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).toBeNull();
   });
 });
 
