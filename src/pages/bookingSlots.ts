@@ -6,6 +6,8 @@
  * commitments (`busy`, e.g. their other upcoming sessions/peer-sessions).
  */
 
+import { slotInstant } from "@/lib/slotTime";
+
 export interface DaySlot {
   id: string;
   slot_date: string;
@@ -42,7 +44,7 @@ export function computeStartOptions(opts: {
     const startMin = timeToMinutes(s.start_time);
     const endMin = timeToMinutes(s.end_time);
     for (let m = startMin; m + durationMinutes <= endMin; m += 15) {
-      const startISO = new Date(`${dateKey}T${minutesToTime(m)}:00`).getTime();
+      const startISO = slotInstant(dateKey, minutesToTime(m)).getTime();
       const endISO = startISO + durationMinutes * 60_000;
       const conflicts = busy.some((b) => startISO < b.end && endISO > b.start);
       if (!conflicts) result.push({ start: minutesToTime(m), slotId: s.id });

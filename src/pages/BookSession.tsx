@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams, useLocation } from "reac
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
+import { SLOT_TIME_ZONE, slotInstant } from "@/lib/slotTime";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { Card } from "@/components/ui/card";
@@ -339,7 +340,8 @@ export default function BookSession() {
     if (!opt) return;
     setSubmitting(true);
     const ds = dateKey(selectedDate);
-    const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
+    // The slot's time is Vietnam time, whatever the browser's zone (see slotTime.ts).
+    const startISO = slotInstant(ds, selectedStart).toISOString();
     const selectedHour = Number(selectedStart.split(":")[0]);
     const timeBucket = selectedHour < 12 ? "morning" : selectedHour < 17 ? "afternoon" : "evening";
 
@@ -725,7 +727,7 @@ export default function BookSession() {
 
           <Step
             number={3}
-            label={t("bookSession.steps.time", { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
+            label={t("bookSession.steps.time", { timezone: SLOT_TIME_ZONE })}
           >
             {!selectedDate ? (
               <p className="mt-3 text-sm text-muted-foreground">{t("bookSession.pickDatePrompt")}</p>

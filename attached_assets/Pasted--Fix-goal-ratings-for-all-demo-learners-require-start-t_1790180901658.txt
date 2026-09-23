@@ -1,0 +1,68 @@
+# Fix: goal ratings for all demo learners + require start/target
+
+## 1. Data fix — add goal ratings for all learners missing them
+
+Run this against production. These are the learners whose goals
+show "—" for start/current/target:
+
+Check the schema first: how are start and target stored? From the
+screenshot it says "START & TARGET · 0–100" and uses a ratings table.
+Read the coachee_goals and coachee_goal_ratings tables to understand
+the structure.
+
+Set these values (all on the 0–100 scale):
+
+| Leader | Goal | Start | Target | Current (if session completed) |
+|---|---|---|---|---|
+| Dat (dat.bv@demo-orgB.vn) | "Move from doing the work to leading the shift" | 25 | 75 | 30 (after Coaching 1) |
+| Ngoc (ngoc.vt@demo-orgA.vn) | Goal 1 | 20 | 70 | 25 (after Coaching 1) |
+| Ngoc | Goal 2 | 35 | 75 | — (no second rating yet) |
+| Anh (anh.hd@demo-orgA.vn) | Goal 1 | 15 | 70 | — (no sessions yet) |
+| Anh | Goal 2 | 20 | 65 | — |
+| Tung (tung.lv@demo-orgA.vn) | Goal 1 | 25 | 75 | — (no sessions yet) |
+| Tung | Goal 2 | 30 | 70 | — |
+
+For leaders who have completed coaching sessions (Dat, Ngoc), also
+create a goal_rating entry with a "current" value showing slight
+progress from their start.
+
+Write this as a single SQL script, show it to me before running.
+
+## 2. App fix — require start and target when creating a goal
+
+The goal creation flow currently allows empty start and target values,
+then locks them with "Locked after your next completed session."
+
+Change this:
+
+a) In the goal creation form (find the React component — likely in
+   src/pages/ or src/components/ under goals), make Start and Target
+   REQUIRED fields. The form should not submit without both values.
+
+b) Remove the "Locked after your next completed session" behaviour
+   for Start and Target. These are set by the learner when they
+   create the goal, not after a session.
+
+c) "Current" is the only value that updates after sessions — this
+   one CAN start empty and gets populated after the first completed
+   session where the learner rates their goal.
+
+d) So the flow becomes:
+   - Create goal: learner sets Start (required) and Target (required)
+   - After each coaching session: learner rates Current
+   - The goal wheel shows Start → Current → Target progression
+
+e) Check if there's a database constraint that should enforce
+   NOT NULL on the start and target rating rows. If not, consider
+   adding one in a migration.
+
+f) The "Locked" UI should only apply to Current (not Start/Target):
+   "Your current rating is captured after each session"
+
+---
+
+Commit:
+- fix: seed goal ratings for Dat, Ngoc, Anh, Tung
+- feat: require start and target values on goal creation
+
+Push to main. Show me the production SQL before running it.

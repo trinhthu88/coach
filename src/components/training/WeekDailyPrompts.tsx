@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 
 export const WEEK_PROMPTS_ANCHOR = "daily-prompts";
 
@@ -41,10 +42,13 @@ export function WeekDailyPrompts({
   const queryClient = useQueryClient();
   const sectionRef = useRef<HTMLDivElement>(null);
   const queryKey = ["training-week-prompts", weekId, enrollmentId, userId];
+  // Off in the programme's Training checklist: no prompts section at all.
+  const { hasModule } = useProgrammeModules();
+  const promptsOn = hasModule("daily_prompt");
 
   const { data: prompts = [], isLoading, isError } = useQuery({
     queryKey,
-    enabled: !!weekId && !!enrollmentId,
+    enabled: promptsOn && !!weekId && !!enrollmentId,
     queryFn: async (): Promise<WeekPrompt[]> => {
       const { data, error } = await supabase
         .from("daily_prompts")
@@ -99,6 +103,7 @@ export function WeekDailyPrompts({
     return true;
   };
 
+  if (!promptsOn) return null;
   // Nothing to show for a week without prompts, unless the learner came here for them.
   if (!isLoading && !isError && prompts.length === 0 && !anchored) return null;
 

@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { DevelopmentJourneyEvent } from "./developmentJourneyTypes";
+import { useProgrammeModules } from "@/hooks/useProgrammeModules";
+import { withoutHiddenPrompts } from "./useLearnerReflectionFeed";
 
 interface DevelopmentJourneyResult {
   events: DevelopmentJourneyEvent[];
@@ -353,6 +355,7 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
  * history.
  */
 export function useEnrollmentDevelopmentJourney(enrollmentId: string | undefined, coacheeId: string | undefined) {
+  const { hasModule } = useProgrammeModules();
   const { data, isLoading, error } = useQuery({
     queryKey: ["development-journey", enrollmentId ?? null, coacheeId ?? null],
     queryFn: () => fetchDevelopmentJourney(enrollmentId as string, coacheeId as string),
@@ -361,7 +364,7 @@ export function useEnrollmentDevelopmentJourney(enrollmentId: string | undefined
   });
 
   return {
-    events: data?.events ?? [],
+    events: withoutHiddenPrompts(data?.events ?? [], hasModule("daily_prompt")),
     loading: !!enrollmentId && !!coacheeId && isLoading,
     error: error ? (error instanceof Error ? error.message : String(error)) : null,
     /** Some sources failed: `events` is incomplete and must not be presented as the full history. */

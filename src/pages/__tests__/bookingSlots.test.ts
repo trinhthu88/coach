@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { computeStartOptions, type DaySlot } from "../bookingSlots";
+import { slotInstant } from "@/lib/slotTime";
 
 const DATE = "2026-08-20";
-const toEpoch = (hhmm: string) => new Date(`${DATE}T${hhmm}:00`).getTime();
+// Busy times are instants; a slot's wall-clock time is Vietnam time.
+const toEpoch = (hhmm: string) => slotInstant(DATE, hhmm).getTime();
 
 const morningSlot: DaySlot = {
   id: "s1",
@@ -126,5 +128,23 @@ describe("computeStartOptions", () => {
       busy: [],
     });
     expect(opts).toEqual([]);
+  });
+});
+
+describe("slot times are Vietnam time, whatever the browser's zone", () => {
+  it("a slot's 09:00 is 02:00 UTC — what book_coaching_session / book_mentoring_session read", () => {
+    expect(slotInstant("2026-10-08", "09:00").toISOString()).toBe("2026-10-08T02:00:00.000Z");
+    expect(slotInstant("2026-10-14", "16:00").toISOString()).toBe("2026-10-14T09:00:00.000Z");
+  });
+
+  it("an existing session at 09:00 Vietnam time blocks the 09:00 start of that slot", () => {
+    const at = (iso: string) => new Date(iso).getTime();
+    const options = computeStartOptions({
+      dateKey: "2026-10-08",
+      slots: [{ id: "s9", slot_date: "2026-10-08", start_time: "09:00:00", end_time: "10:00:00" }],
+      durationMinutes: 30,
+      busy: [{ start: at("2026-10-08T02:00:00Z"), end: at("2026-10-08T02:30:00Z") }],
+    });
+    expect(options.map((o) => o.start)).toEqual(["09:30"]);
   });
 });

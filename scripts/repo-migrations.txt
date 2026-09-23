@@ -271,3 +271,4 @@
 20261001110000_p1_source_of_truth.sql
 20261001120000_p2_consistency.sql
 20261002100000_training_checklist_grants_quiz_and_prompts.sql
+20261003100000_availability_slots_in_vietnam_time.sql

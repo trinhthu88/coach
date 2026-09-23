@@ -20,7 +20,7 @@ function MiniBadge({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-function WeekCard({ week }: { week: TimelineWeek }) {
+function WeekCard({ week, promptsOn }: { week: TimelineWeek; promptsOn: boolean }) {
   const { t, i18n } = useTranslation("journey");
   const isVi = i18n.language?.startsWith("vi");
   const title = (isVi && week.titleVi) || week.title;
@@ -61,7 +61,7 @@ function WeekCard({ week }: { week: TimelineWeek }) {
           {week.reflection.total > 0 && (
             <MiniBadge ok={week.reflection.submitted > 0} label={week.reflection.submitted > 0 ? t("programmeTimeline.reflectionSubmitted") : t("programmeTimeline.reflectionPending")} />
           )}
-          {week.promptStreak.total > 0 && (
+          {promptsOn && week.promptStreak.total > 0 && (
             <MiniBadge
               ok={week.promptStreak.done === week.promptStreak.total}
               label={t("programmeTimeline.promptStreak", { done: week.promptStreak.done, total: week.promptStreak.total })}
@@ -110,7 +110,7 @@ export function ProgrammeTimeline() {
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {weeks.map((w) => (
-          <WeekCard key={w.id} week={w} />
+          <WeekCard key={w.id} week={w} promptsOn={hasModule("daily_prompt")} />
         ))}
       </div>
     </div>

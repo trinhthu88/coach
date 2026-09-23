@@ -69,7 +69,8 @@ export default function TrainingWeeks() {
               }
               items={summary.itemsByWeek[week.id] ?? []}
               quizScore={summary.quizScores.find((q) => q.weekNumber === week.week_number)}
-              reflectionStreak={summary.reflectionStreak}
+              // The prompt streak only exists while Daily Prompts are on in the Training checklist.
+              reflectionStreak={hasModule("daily_prompt") ? summary.reflectionStreak : 0}
             />
           ))}
         </div>

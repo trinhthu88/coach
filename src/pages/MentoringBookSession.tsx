@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
+import { SLOT_TIME_ZONE, slotInstant } from "@/lib/slotTime";
 import { useAuth } from "@/context/AuthContext";
 import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { Card } from "@/components/ui/card";
@@ -210,7 +211,8 @@ export default function MentoringBookSession() {
     if (!opt) return;
     setSubmitting(true);
     const ds = dateKey(selectedDate);
-    const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
+    // The slot's time is Vietnam time, whatever the browser's zone (see slotTime.ts).
+    const startISO = slotInstant(ds, selectedStart).toISOString();
 
     // Canonical atomic booking. The server owns enrollment validation, mentor
     // eligibility, requirement resolution, the slot window, slot reservation
@@ -416,7 +418,7 @@ export default function MentoringBookSession() {
             </div>
           </Step>
 
-          <Step number={3} label={t("bookSession.steps.time", { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })}>
+          <Step number={3} label={t("bookSession.steps.time", { timezone: SLOT_TIME_ZONE })}>
             {!selectedDate ? (
               <p className="mt-3 text-sm text-muted-foreground">{t("bookSession.pickDatePrompt")}</p>
             ) : startOptions.length === 0 ? (

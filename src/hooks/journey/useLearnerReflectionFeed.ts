@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { useProgrammeModules } from "@/hooks/useProgrammeModules";
 
 export type ReflectionSourceType =
   | "coaching_session_reflection"
@@ -85,7 +86,17 @@ export function toLearnerReflection(row: ReflectionFeedRow): LearnerReflection {
   };
 }
 
+/**
+ * Daily Prompts switched off in the programme's Training checklist leave no
+ * trace for the learner: earlier prompt answers are left out of every view.
+ */
+export function withoutHiddenPrompts<T extends { sourceType?: string; subtype?: string }>(items: T[], promptsOn: boolean): T[] {
+  // A feed row names its kind in sourceType; a journey event in subtype.
+  return promptsOn ? items : items.filter((i) => i.sourceType !== "daily_prompt_response" && i.subtype !== "daily_prompt_response");
+}
+
 export function useLearnerReflectionFeed(enrollmentId: string | undefined) {
+  const { hasModule } = useProgrammeModules();
   const { data, isLoading, error } = useQuery({
     queryKey: [LEARNER_REFLECTION_FEED_KEY, enrollmentId ?? null],
     queryFn: () => fetchLearnerReflectionFeed(enrollmentId as string),
@@ -97,7 +108,7 @@ export function useLearnerReflectionFeed(enrollmentId: string | undefined) {
   });
 
   return {
-    reflections: data ?? [],
+    reflections: withoutHiddenPrompts(data ?? [], hasModule("daily_prompt")),
     loading: !!enrollmentId && isLoading,
     error: error ? (error instanceof Error ? error.message : String((error as { message?: unknown }).message ?? error)) : null,
   };
