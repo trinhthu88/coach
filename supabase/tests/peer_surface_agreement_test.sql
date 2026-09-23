@@ -207,9 +207,14 @@ select ok(
                          'session is not live, so it holds no requirement')),
   'every unattributed participation has an explained reason');
 
-select is(
-  (select count(*)::integer from public.peer_cohort_permission_issues()),
-  0, 'the seeded configuration has no unusable Peer cohort grant');
+-- The legacy cohort grant graph is read-only history (20260930110000): the
+-- Admin-assigned dyad is the only learner Peer partner authority.
+select ok(
+  not has_table_privilege('authenticated', 'public.peer_cohort_permissions', 'INSERT')
+  and not has_table_privilege('authenticated', 'public.peer_cohort_permissions', 'UPDATE')
+  and not has_table_privilege('authenticated', 'public.peer_cohort_permissions', 'DELETE')
+  and to_regprocedure('public.peer_cohort_permission_issues()') is null,
+  'the legacy Peer cohort grant graph can no longer be written or diagnosed as live configuration');
 
 select * from finish();
 rollback;
