@@ -344,15 +344,10 @@ superseding the one-deadline-per-module lock of `20260926400000`).
 - Verify any environment read-only with `scripts/requirement-calendar-verification.sql`.
 
 ## Demo data
-All demo data lives in `supabase/seed-demo.sql` (plus `scripts/seed-training-content.sql` for the Training module) and obeys canonical contracts: real `cohort_requirement_dates` (individually dated per unit in the ongoing cohorts), bookings through the canonical RPCs, attribution by the database, progress read back from `canonical_*`. Each demo organisation holds at least 5 enrollments (the anonymous-distribution privacy threshold).
+As of 2026-09-23 there is no demo dataset. `supabase/seed-demo.sql` only ensures the Admin (`trang.tt@erickson.vn`) exists; an existing account is left untouched. The previous dataset (Organisations A/B, sponsors, coaches, the Cohort A–D learners such as Linh Nguyen and Ana Silva, and the Training content in `scripts/seed-training-content.sql`) was removed: it dated everything relative to the day it ran, so databases seeded on different days disagreed, and several learners contradicted the fulfilment rules of `20260930100000`. It remains in git history (up to commit `4ae79b0`).
 
-Topology (password for every account: `Clariva2026!`):
+A replacement will use fixed calendar dates, an explicit `cohort_requirement_dates.due_on` for every requirement, and must pass `admin_ineligible_programme_activity()`, `requirement_integrity_issues()` and `scripts/journey-current-fulfilment-verification.sql` with zero issues before it is applied anywhere.
 
-| Sponsor | Organisation | Leaders visible in *Emerging Leaders · Cohort B* (shared) | Elsewhere |
-|---|---|---|---|
-| `sponsor@clariva.demo` (Sam Sponsor) | Clariva Demo Organization | Linh Nguyen (complete), David Tran (on track), Priya Raman (behind) | Cohort A alumni incl. Grace Adeyemi (completed), Executive Excellence · Cohort C, TASC · Cohort D (3) |
-| `sponsor2@clariva.demo` (Sasha Bui) | Clariva Demo Organization B | Ana Silva (nothing completed yet; exactly the requirements already due are overdue), Mai Pham, Jonas Weber | TASC · Cohort D (2) |
-
-Admin (`trang.tt@erickson.vn`) sees both organisations. Goals exercise several stages (achieved, progressing with milestones and check-ins, baseline only), and Training carries skill cards, quizzes, reflections and daily prompts.
+`supabase/seed.sql` is separate: it is the local-only pgTAP fixture baseline applied by `supabase db reset`, not demo data.
 
 There is no other demo generator. The out-of-band production generator (`demo_*` tables/functions) was retired by `20260926900000_retire_out_of_repo_demo_generator.sql` (functions dropped, tables archived in the locked `demo_archive` schema), and the `seed-demo-data` / `seed-tasc-content` edge functions were deleted.
