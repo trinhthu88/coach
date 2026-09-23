@@ -143,3 +143,35 @@ describe("Training & Learning — each week shows its programme requirement and 
     expect(within(cardFor("Week 2 title")).queryByTestId("week-requirement")).toBeNull();
   });
 });
+
+describe("Training & Learning — what finishes a week is clear", () => {
+  it("marks Skill Card, Quiz and Reflection Required, Daily Prompts Optional, and says so under the list", () => {
+    render(
+      <MemoryRouter>
+        <TrainingWeeks />
+      </MemoryRouter>
+    );
+    const content = expand(cardFor("Week 3 title"));
+    for (const type of ["skill_cards", "quizzes", "reflections"]) {
+      const row = within(content).getByTestId(`week-item-${type}`);
+      expect(within(row).getByTestId("content-required-badge")).toHaveTextContent("Required");
+      expect(row).not.toHaveTextContent("Optional");
+    }
+    const prompts = within(content).getByTestId("week-item-daily_prompts");
+    expect(within(prompts).queryByTestId("content-required-badge")).toBeNull();
+    expect(prompts).toHaveTextContent("Optional");
+    expect(within(content).getByTestId("week-completion-note")).toHaveTextContent(
+      "Complete Skill Card, Quiz and Reflection to finish this week. Daily Prompts are optional."
+    );
+  });
+
+  it("Daily Prompts opens the week at its prompts section", () => {
+    render(
+      <MemoryRouter>
+        <TrainingWeeks />
+      </MemoryRouter>
+    );
+    const prompts = within(expand(cardFor("Week 3 title"))).getByTestId("week-item-daily_prompts");
+    expect(within(prompts).getByRole("link", { name: "Daily Prompts" })).toHaveAttribute("href", "/training/w3#daily-prompts");
+  });
+});

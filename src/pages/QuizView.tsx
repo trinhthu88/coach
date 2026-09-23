@@ -51,7 +51,13 @@ export default function QuizView() {
       </header>
 
       {submission ? (
-        <div className="space-y-4">
+        // A completed quiz stays open, read-only: the learner's answers with
+        // the correct ones highlighted.
+        <div className="space-y-4" data-testid="quiz-review">
+          <div>
+            <h2 className="text-[15px] font-semibold text-foreground">{t("quiz.reviewHeading")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("quiz.reviewIntro")}</p>
+          </div>
           <Card className="rounded-[22px] border-[#e8e2d8] p-5">
             <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t("quiz.yourScore")}</p>
             <p className="font-display mt-1 text-3xl text-foreground">

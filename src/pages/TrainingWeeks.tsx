@@ -276,6 +276,7 @@ function WeekContentList({
     if (week.locked) return null;
     if (type === "quizzes") return quizAssignmentId ? `/training/${week.id}/quiz/${quizAssignmentId}` : null;
     if (type === "reflections") return `/training/${week.id}/reflect`;
+    if (type === "daily_prompts") return `/training/${week.id}#daily-prompts`;
     return `/training/${week.id}`;
   };
 
@@ -298,6 +299,8 @@ function WeekContentList({
       {items.map((item) => {
         const state = contentState(item, !!week.locked);
         const optional = item.item_type === "daily_prompts";
+        // Skill Card, Quiz and Reflection each count toward finishing the week.
+        const required = !optional && item.required_units > 0;
         const Icon = CONTENT_ICON[item.item_type] ?? FileText;
         const StateIcon = STATE_ICON[state];
         const href = hrefFor(item.item_type);
@@ -329,6 +332,14 @@ function WeekContentList({
               ) : (
                 <span className="font-semibold text-[#062f3e]">{label}</span>
               )}
+              {required && (
+                <span
+                  data-testid="content-required-badge"
+                  className="rounded-full bg-[#e4f3f7] px-2 py-0.5 text-[10px] font-semibold text-[#2c8fa8]"
+                >
+                  {t("list.content.required")}
+                </span>
+              )}
               {optional && (
                 <span className="rounded-full bg-[#f2eee6] px-2 py-0.5 text-[10px] font-semibold text-[#8a847d]">
                   {t("list.content.optional")}
@@ -349,6 +360,11 @@ function WeekContentList({
           </li>
         );
       })}
+      {items.length > 0 && (
+        <li data-testid="week-completion-note" className="px-4 py-2.5 text-[11.5px] text-muted-foreground">
+          {t("list.content.completionNote")}
+        </li>
+      )}
     </ul>
   );
 }

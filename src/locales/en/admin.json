@@ -545,14 +545,14 @@
         "allTrainingWeeksHint": "Select exactly one training week for each required unit.",
         "noTrainingWeeks": "No training weeks are configured for this programme yet.",
         "deadlineNote": "When these units are due is the cohort's decision: set one completion deadline per module in Admin → Cohorts.",
-        "learningComponents": "Learning inside each week",
+        "learningComponents": "Included in each Training week",
         "learningComponent": {
           "skill_cards": "Skill cards (the week itself)",
           "quizzes": "Quizzes",
           "reflections": "Reflections",
           "daily_prompts": "Daily prompts"
         },
-        "learningComponentsHint": "Selected types appear as evidence in the Training / Learning breakdown for Learner, Admin and Sponsor (counts only — never answers). They never add requirements: Training progress stays completed weeks out of selected weeks."
+        "learningComponentsHint": "These are part of every selected Training week, not separate modules: ticking Quizzes or Daily Prompts here is what makes them available to learners. A week is complete when its Skill Card, Quiz and Reflection are done; Daily Prompts are optional practice. They never add programme units: Training progress stays completed weeks out of selected weeks."
       },
       "validation": {
         "requiredUnitsWholeNonNegative": "Required units must be a whole number of zero or more.",

@@ -45,7 +45,9 @@
         "notStarted": "Not started",
         "upcoming": "Upcoming",
         "overdue": "Overdue"
-      }
+      },
+      "required": "Required",
+      "completionNote": "Complete Skill Card, Quiz and Reflection to finish this week. Daily Prompts are optional."
     }
   },
   "card": {
@@ -71,7 +73,12 @@
     "quizPending": "Not yet taken",
     "quizScored": "Score: {{score}}%",
     "reflectionPending": "Not yet submitted",
-    "reflectionSubmitted": "Submitted"
+    "reflectionSubmitted": "Submitted",
+    "nextHeading": "Next in this week",
+    "takeQuizCta": "Take the Quiz",
+    "writeReflectionCta": "Write your Reflection",
+    "reviewAnswers": "Review your answers",
+    "reviewReflection": "Review your reflection"
   },
   "quiz": {
     "title": "Quiz",
@@ -84,7 +91,9 @@
     "yourScore": "Your score",
     "previous": "Previous",
     "next": "Next",
-    "jumpToQuestion": "Go to question {{n}}"
+    "jumpToQuestion": "Go to question {{n}}",
+    "reviewHeading": "Review your answers",
+    "reviewIntro": "You've completed this quiz. Your answers and the correct answers are shown below."
   },
   "reflection": {
     "title": "Reflection",
@@ -101,6 +110,16 @@
     "respond": "Done",
     "submitted": "Thanks — logged for today.",
     "noPromptToday": "No prompt for today — check back tomorrow."
+  },
+  "weekPrompts": {
+    "heading": "Daily Prompts",
+    "intro": "Short practices for this week. Optional — they never affect week completion.",
+    "optional": "Optional",
+    "answered": "Done",
+    "dayN": "Day {{n}}",
+    "placeholder": "What did you try, and what happened? (optional)",
+    "markDone": "Mark done",
+    "error": "This week's prompts could not be loaded."
   },
   "progressCard": {
     "eyebrow": "My programme progress",

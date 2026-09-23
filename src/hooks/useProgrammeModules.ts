@@ -43,8 +43,21 @@ export function useProgrammeModules() {
 
   const modules = data ?? [];
 
-  const hasModule = (mod: ProgrammeModuleType) =>
-    modules.some((m) => m.module === mod && m.enabled);
+  // A week's Quiz and Daily Prompts are switched on by the Training module's
+  // "Learning inside each week" checklist; the separate quiz / daily_prompt
+  // modules only answer for a programme without Training. Mirrors
+  // has_programme_module() (20261002100000), which gates the same content.
+  const training = modules.find((m) => m.module === "training" && m.enabled);
+  const trainingComponents = Array.isArray(training?.config?.learning_components)
+    ? (training.config.learning_components as unknown[])
+    : [];
+
+  const hasModule = (mod: ProgrammeModuleType) => {
+    if (training && (mod === "quiz" || mod === "daily_prompt")) {
+      return trainingComponents.includes(mod === "quiz" ? "quizzes" : "daily_prompts");
+    }
+    return modules.some((m) => m.module === mod && m.enabled);
+  };
 
   const hasDirection = (mod: ProgrammeModuleType, direction: "give" | "receive") => {
     const m = modules.find((x) => x.module === mod && x.enabled);

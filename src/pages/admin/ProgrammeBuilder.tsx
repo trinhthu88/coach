@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { AdminPageHeader } from "./_shared";
-import { ModuleConfigRow, defaultModuleRows, type ModuleRows } from "./AdminProgrammes";
+import { MODULE_TYPES, ModuleConfigRow, defaultModuleRows, type ModuleRows } from "./AdminProgrammes";
 import type { TrainingWeekOption } from "./ProgrammeModuleScheduleFields";
 import type { ProgrammeModuleType } from "@/hooks/useProgrammeModules";
 import { normalizeModuleScheduleConfig, validateModuleScheduleConfig } from "@/lib/programmeModuleConfig";
@@ -24,7 +24,6 @@ type ProgrammeForm = {
   is_active: boolean; coachee_session_limit: number;
   mentoring_received_limit: number | null;
 };
-const MODULE_TYPES: ProgrammeModuleType[] = ["coaching", "peer_coaching", "mentoring", "triads", "training", "quiz", "assessment", "daily_prompt"];
 const emptyForm: ProgrammeForm = {
   name: "", description: "", duration_months: 3, color: "cobalt", is_active: true,
   coachee_session_limit: 8, mentoring_received_limit: null,

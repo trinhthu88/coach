@@ -45,7 +45,9 @@
         "notStarted": "Chưa bắt đầu",
         "upcoming": "Sắp tới",
         "overdue": "Quá hạn"
-      }
+      },
+      "required": "Bắt buộc",
+      "completionNote": "Hoàn thành Thẻ kỹ năng, Bài kiểm tra và Suy ngẫm để kết thúc tuần này. Gợi ý hằng ngày là không bắt buộc."
     }
   },
   "card": {
@@ -71,7 +73,12 @@
     "quizPending": "Chưa làm",
     "quizScored": "Điểm: {{score}}%",
     "reflectionPending": "Chưa gửi",
-    "reflectionSubmitted": "Đã gửi"
+    "reflectionSubmitted": "Đã gửi",
+    "nextHeading": "Tiếp theo trong tuần này",
+    "takeQuizCta": "Làm bài kiểm tra",
+    "writeReflectionCta": "Viết suy ngẫm của bạn",
+    "reviewAnswers": "Xem lại câu trả lời",
+    "reviewReflection": "Xem lại suy ngẫm"
   },
   "quiz": {
     "title": "Trắc nghiệm",
@@ -84,7 +91,9 @@
     "yourScore": "Điểm của bạn",
     "previous": "Trước",
     "next": "Tiếp theo",
-    "jumpToQuestion": "Đi tới câu hỏi {{n}}"
+    "jumpToQuestion": "Đi tới câu hỏi {{n}}",
+    "reviewHeading": "Xem lại câu trả lời",
+    "reviewIntro": "Bạn đã hoàn thành bài kiểm tra này. Câu trả lời của bạn và đáp án đúng được hiển thị bên dưới."
   },
   "reflection": {
     "title": "Suy ngẫm",
@@ -101,6 +110,16 @@
     "respond": "Xong",
     "submitted": "Cảm ơn — đã ghi nhận cho hôm nay.",
     "noPromptToday": "Hôm nay chưa có gợi ý — quay lại vào ngày mai nhé."
+  },
+  "weekPrompts": {
+    "heading": "Gợi ý hằng ngày",
+    "intro": "Các bài thực hành ngắn cho tuần này. Không bắt buộc — không ảnh hưởng đến việc hoàn thành tuần.",
+    "optional": "Không bắt buộc",
+    "answered": "Đã làm",
+    "dayN": "Ngày {{n}}",
+    "placeholder": "Bạn đã thử điều gì và kết quả ra sao? (không bắt buộc)",
+    "markDone": "Đánh dấu đã làm",
+    "error": "Không thể tải gợi ý của tuần này."
   },
   "progressCard": {
     "eyebrow": "Tiến độ chương trình của tôi",

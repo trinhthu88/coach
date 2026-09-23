@@ -540,14 +540,14 @@
         "allTrainingWeeksHint": "Chọn đúng một tuần đào tạo cho mỗi đơn vị bắt buộc.",
         "noTrainingWeeks": "Chương trình này chưa có tuần đào tạo.",
         "deadlineNote": "Thời hạn hoàn thành do khóa quyết định: đặt một hạn cho mỗi module trong Quản trị → Khóa.",
-        "learningComponents": "Nội dung học trong mỗi tuần",
+        "learningComponents": "Có trong mỗi tuần Đào tạo",
         "learningComponent": {
           "skill_cards": "Thẻ kỹ năng (chính tuần học)",
           "quizzes": "Bài kiểm tra",
           "reflections": "Suy ngẫm",
           "daily_prompts": "Gợi ý hằng ngày"
         },
-        "learningComponentsHint": "Các loại được chọn hiển thị như bằng chứng trong phần Đào tạo / Học tập cho học viên, quản trị và nhà tài trợ (chỉ số lượng — không bao giờ có nội dung trả lời). Chúng không thêm yêu cầu: tiến độ Đào tạo vẫn là số tuần hoàn thành trên số tuần được chọn."
+        "learningComponentsHint": "Đây là một phần của mỗi tuần Đào tạo được chọn, không phải module riêng: chọn Bài kiểm tra hoặc Gợi ý hằng ngày tại đây là cách để học viên truy cập được chúng. Một tuần hoàn thành khi Thẻ kỹ năng, Bài kiểm tra và Suy ngẫm đã xong; Gợi ý hằng ngày là phần thực hành không bắt buộc. Chúng không thêm đơn vị chương trình: tiến độ Đào tạo vẫn là số tuần hoàn thành trên số tuần được chọn."
       },
       "validation": {
         "requiredUnitsWholeNonNegative": "Số đơn vị bắt buộc phải là số nguyên không âm.",

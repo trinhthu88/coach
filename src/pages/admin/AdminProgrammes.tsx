@@ -53,15 +53,18 @@ interface Cohort {
   end_date: string | null;
 }
 
-const MODULE_TYPES: ProgrammeModuleType[] = [
+// The modules an Admin configures. Quizzes and Daily Prompts are not among
+// them: they are part of each Training week, switched on by the Training
+// card's "Included in each Training week" checklist (learning_components),
+// which is also what gives learners access to them (has_programme_module).
+// Existing legacy quiz / daily_prompt rows are left untouched on save.
+export const MODULE_TYPES: ProgrammeModuleType[] = [
   "coaching",
   "peer_coaching",
   "mentoring",
   "triads",
   "training",
-  "quiz",
   "assessment",
-  "daily_prompt",
 ];
 
 export interface ModuleRow {

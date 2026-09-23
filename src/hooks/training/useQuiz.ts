@@ -102,7 +102,9 @@ export function useQuiz(assignmentId: string | undefined) {
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["quiz", assignmentId, user.id, enrollmentId] });
-      queryClient.invalidateQueries({ queryKey: ["assignments", data?.assignment?.training_week_id, user.id, enrollmentId] });
+      // useAssignments keys on [week, user]: the Skill Card then offers "Review your answers".
+      queryClient.invalidateQueries({ queryKey: ["assignments", data?.assignment?.training_week_id] });
+      queryClient.invalidateQueries({ queryKey: ["programme-training-progress", enrollmentId] });
     },
     [assignmentId, user, enrollmentId, queryClient, data?.assignment?.training_week_id]
   );

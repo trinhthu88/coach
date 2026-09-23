@@ -1,7 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Download, CheckCircle2, Loader2, ListChecks, NotebookPen, ArrowUpRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, Download, CheckCircle2, Loader2, ListChecks, NotebookPen } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSkillCard } from "@/hooks/training/useSkillCard";
@@ -9,15 +8,7 @@ import { useAssignments, AssignmentListItem } from "@/hooks/training/useAssignme
 import { useWeekReflection } from "@/hooks/training/useReflections";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
-import { supabase } from "@/integrations/supabase/client";
-
-interface WeekPrompt {
-  id: string;
-  prompt_text: string;
-  prompt_text_vi: string | null;
-  day_offset: number | null;
-  responded: boolean;
-}
+import { WeekDailyPrompts } from "@/components/training/WeekDailyPrompts";
 
 export default function SkillCardView() {
   const { weekId } = useParams<{ weekId: string }>();
@@ -31,33 +22,6 @@ export default function SkillCardView() {
     week?.week_number,
     week?.programme_id
   );
-  const { data: dailyPrompts = [] } = useQuery({
-    queryKey: ["training-week-prompts", weekId, selectedEnrollment?.id, user?.id],
-    enabled: !!weekId && !!selectedEnrollment?.id,
-    queryFn: async (): Promise<WeekPrompt[]> => {
-      const { data: prompts, error } = await supabase
-        .from("daily_prompts")
-        .select("id, prompt_text, prompt_text_vi, day_offset")
-        .eq("training_week_id", weekId!)
-        .eq("is_visible", true)
-        .order("sort_order");
-      if (error) throw error;
-      const ids = (prompts ?? []).map((p) => p.id);
-      if (!ids.length) return [];
-      const { data: responses, error: responseError } = await supabase
-        .from("daily_prompt_responses")
-        .select("daily_prompt_id")
-        .eq("enrollment_id", selectedEnrollment!.id)
-        .in("daily_prompt_id", ids);
-      if (responseError) throw responseError;
-      const responded = new Set((responses ?? []).map((r) => r.daily_prompt_id));
-      return (prompts ?? []).map((p) => ({
-        ...p,
-        responded: responded.has(p.id),
-      }));
-    },
-  });
-
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -143,58 +107,38 @@ export default function SkillCardView() {
         <Card className="p-6 text-center text-sm text-muted-foreground">{t("card.skillCardUnavailable")}</Card>
       )}
 
-      {(!assignmentsLoading && assignments.length > 0) || (!reflectionLoading && reflection) || dailyPrompts.length > 0 ? (
-        <div className="mt-8">
-          <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-muted-foreground mb-3">{t("assignments.heading")}</p>
-          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
-            {assignments.map((a) => (
-              <AssignmentCard key={a.id} weekId={weekId!} assignment={a} isVi={isVi} t={t} />
-            ))}
-            {reflection && (
-              <Card className="flex flex-col gap-3 rounded-[18px] border-[#e8e2d8] p-5">
-                <div className="flex items-center gap-2.5">
-                  <NotebookPen className="h-4 w-4 shrink-0 text-primary" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{(isVi && reflection.title_vi) || reflection.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {reflectionSubmission ? t("assignments.reflectionSubmitted") : t("assignments.reflectionPending")}
-                    </p>
-                  </div>
+      {/* Read the Skill Card -> take the Quiz -> write the Reflection. Both
+          links stay here once done, leading to the learner's own answers. */}
+      <div className="mt-8">
+        {((!assignmentsLoading && assignments.length > 0) || (!reflectionLoading && reflection)) && (
+          <p className="text-[9.5px] font-bold uppercase tracking-[.22em] text-muted-foreground mb-3">{t("assignments.nextHeading")}</p>
+        )}
+        <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+          {!assignmentsLoading && assignments.map((a) => (
+            <AssignmentCard key={a.id} weekId={weekId!} assignment={a} isVi={isVi} t={t} />
+          ))}
+          {!reflectionLoading && reflection && (
+            <Card className="flex flex-col gap-3 rounded-[18px] border-[#e8e2d8] p-5">
+              <div className="flex items-center gap-2.5">
+                <NotebookPen className="h-4 w-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{(isVi && reflection.title_vi) || reflection.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {reflectionSubmission ? t("assignments.reflectionSubmitted") : t("assignments.reflectionPending")}
+                  </p>
                 </div>
-                <Button asChild variant={reflectionSubmission ? "outline" : "default"} size="sm" className="w-fit">
-                  <Link to={`/training/${weekId}/reflect`}>
-                    {reflectionSubmission ? t("assignments.viewResults") : t("assignments.writeReflection")}
-                    <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              </Card>
-            )}
-            {dailyPrompts.length > 0 && (
-              <Card className="flex flex-col gap-3 rounded-[18px] border-[#e8e2d8] p-5 sm:col-span-2">
-                <div className="flex items-center gap-2.5">
-                  <ListChecks className="h-4 w-4 shrink-0 text-primary" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{t("dailyPromptsHeading")}</p>
-                    <p className="text-xs text-muted-foreground">{t("dailyPromptsOptional")}</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {dailyPrompts.map((prompt) => (
-                    <div key={prompt.id} className="rounded-xl bg-[#f7f4ee] px-3 py-2.5 text-sm">
-                      <div className="flex items-start justify-between gap-3">
-                        <span>{(isVi && prompt.prompt_text_vi) || prompt.prompt_text}</span>
-                        <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-                          {prompt.responded ? t("dailyPromptAnswered") : t("dailyPromptOptional")}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-          </div>
+              </div>
+              <Button asChild variant={reflectionSubmission ? "outline" : "default"} size="sm" className="w-fit">
+                <Link to={`/training/${weekId}/reflect`} data-testid="skill-card-reflection-link">
+                  {reflectionSubmission ? t("assignments.reviewReflection") : t("assignments.writeReflectionCta")}
+                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </Card>
+          )}
+          <WeekDailyPrompts weekId={weekId!} userId={user?.id} enrollmentId={selectedEnrollment?.id} isVi={isVi} />
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -226,9 +170,9 @@ function AssignmentCard({
         </div>
       </div>
       <Button asChild variant={assignment.submitted ? "outline" : "default"} size="sm" className="w-fit">
-        <Link to={href}>
-          {assignment.submitted ? t("assignments.viewResults") : t("assignments.takeQuiz")}
-          <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+        <Link to={href} data-testid="skill-card-quiz-link">
+          {assignment.submitted ? t("assignments.reviewAnswers") : t("assignments.takeQuizCta")}
+          <ArrowRight className="ml-1 h-3.5 w-3.5" />
         </Link>
       </Button>
     </Card>
