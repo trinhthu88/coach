@@ -24,6 +24,8 @@ This is the working reference for reviewing every `vi/*.json` batch Claude Code 
 | action item | việc cần làm | Recommended |
 | peer coaching | *peer coaching* | Recommended to keep English — this is a specific product feature name, translating it risks losing the concept; revisit if it tests poorly |
 
+Note: The HILAC programme proposal does not reference "dashboard" or "trang tổng quan" — its measurement system uses terms like "bảng theo dõi tiến độ" and "hồ sơ tác động". Do not introduce "dashboard" into HILAC-related translations unless the product explicitly adds one.
+
 Add to this table as new terms come up in later batches rather than making one-off calls per file — consistency across the whole app matters more than any single "better" phrasing.
 
 ## Register notes (from Vietnamese corporate coaching norms)
