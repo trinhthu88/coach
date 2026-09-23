@@ -119,8 +119,23 @@ export function SessionGoalRatings({ sessionId, coacheeId, enrollmentId, sourceA
 
   const addGoal: AddGoalFn = async (payload) => {
     if (!canCreateGoal || !enrollmentId) return false;
-    const { error } = await supabase.from("coachee_goals").insert({ ...payload, enrollment_id: enrollmentId, coachee_id: coacheeId });
+    const { start_rating, target_rating, ...goalPayload } = payload;
+    const { data: createdGoal, error } = await supabase
+      .from("coachee_goals")
+      .insert({ ...goalPayload, enrollment_id: enrollmentId, coachee_id: coacheeId })
+      .select("id")
+      .single();
     if (error) { toast.error(error.message); return false; }
+    const { error: ratingError } = await supabase.from("coachee_goal_ratings").upsert({
+      goal_id: createdGoal.id,
+      coachee_id: coacheeId,
+      enrollment_id: enrollmentId,
+      start_rating,
+      current_rating: null,
+      target_rating,
+      current_updated_at: new Date().toISOString(),
+    }, { onConflict: "enrollment_id,goal_id" });
+    if (ratingError) { toast.error(ratingError.message); return false; }
     await load();
     onSaved?.();
     return true;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Check, Lock, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Check, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,6 @@ export function GoalAccordion({
   showLinkedActions = true,
   rating,
   onRatingChange,
-  startTargetLocked,
   showCompletionMarks,
   renderHeader,
   progressPct,
@@ -50,7 +49,6 @@ export function GoalAccordion({
   showLinkedActions?: boolean;
   rating?: GoalRatingRow;
   onRatingChange?: (patch: { start_rating?: number; current_rating?: number; target_rating?: number }) => void;
-  startTargetLocked?: boolean;
   /** Shows the goal-done checkmark, target date in the header, and a check inside done milestone circles — used by the coach's own journey view. */
   showCompletionMarks?: boolean;
   /** Replaces the default compact header row with a custom one (e.g. the Journey page's richer goal card), while the toggle button and all of the expanded content below stay the same. `pct` is the same start→target progress this component already computes, handed back so the caller never has to recompute it. */
@@ -126,34 +124,27 @@ export function GoalAccordion({
         <div className="border-t p-4">
           {goal.description && <p className="mb-3 text-xs text-muted-foreground">{goal.description}</p>}
 
-          {/* Self-rating sliders — Start & Target only, locked once a session is completed after adding this goal */}
+          {/* Start and Target are learner-owned baseline values. Current is captured after sessions. */}
           {rating && onRatingChange && (
             <div className="mb-4 rounded-lg border bg-muted/20 p-3">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   {t("goalAccordion.startAndTarget")}
                 </p>
-                {startTargetLocked && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground" title={t("goalAccordion.lockedHint")}>
-                    <Lock className="h-3 w-3" /> {t("goalAccordion.locked")}
-                  </span>
-                )}
               </div>
               <div className="space-y-3">
                 <RatingSlider
                   label={t("goalAccordion.startLabel")}
-                  hint={startTargetLocked ? t("goalAccordion.lockedHint") : t("goalAccordion.startHint")}
+                  hint={t("goalAccordion.startHint")}
                   value={rating.start}
                   trackColor="bg-primary/40"
-                  disabled={startTargetLocked}
                   onChange={(v) => onRatingChange({ start_rating: v })}
                 />
                 <RatingSlider
                   label={t("goalAccordion.targetLabel")}
-                  hint={startTargetLocked ? t("goalAccordion.lockedHint") : t("goalAccordion.targetHint")}
+                  hint={t("goalAccordion.targetHint")}
                   value={rating.target}
                   trackColor="bg-accent"
-                  disabled={startTargetLocked}
                   onChange={(v) => onRatingChange({ target_rating: v })}
                 />
               </div>

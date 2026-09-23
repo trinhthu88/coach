@@ -10,7 +10,6 @@ import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
 import { useActiveEnrollmentDetails } from "@/hooks/useActiveEnrollment";
 import { useFlatActionItems, type FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { useEnrollmentActionsSummary } from "@/hooks/dashboard/useEnrollmentActionsSummary";
-import { useGoalLock } from "@/hooks/journey/useJourneyDerived";
 import type { JourneySession } from "@/hooks/journey/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,8 +152,6 @@ export default function CoacheeJourney() {
     return open[0] ?? null;
   };
 
-  const { isGoalLocked } = useGoalLock(sessions);
-
   const addReflection = async () => {
     if (!newReflection.trim() || !user) return;
     setSavingRef(true);
@@ -258,7 +255,6 @@ export default function CoacheeJourney() {
                         defaultOpen={i === 0}
                         rating={r ?? undefined}
                         onRatingChange={(patch) => saveRating(g.id, patch)}
-                        startTargetLocked={isGoalLocked(g.created_at)}
                         progressPct={goalProgress.error ? null : goalProgress.progressByGoal[g.id] ?? null}
                         renderHeader={({ pct, open }) => {
                           const goalMilestones = milestones.filter((m) => m.goal_id === g.id);

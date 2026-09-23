@@ -7,6 +7,7 @@ import { BOOKING_GOAL_GATE_QUERY_KEY } from "@/components/goals/useBookingGoalGa
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import type { Goal, Milestone } from "./types";
 import { LEARNER_ENGAGEMENT_QUERY_KEYS } from "@/hooks/useLearnerCanonicalProgress";
+import type { GoalPayload } from "@/pages/journey/GoalDialog";
 
 interface JourneyGoalsData {
   goals: Goal[];
@@ -69,16 +70,25 @@ export function useJourneyGoals(coacheeId: string | undefined, options: JourneyG
   const notifyChanged = () => (options.onChanged ? Promise.resolve(options.onChanged()) : refresh());
 
   const addGoalMutation = useMutation({
-    mutationFn: async (payload: { title: string; description: string | null; target_date: string | null }) => {
+    mutationFn: async (payload: GoalPayload) => {
       if (!enrollmentId) throw new Error("Select an enrollment before adding a goal");
-      const { error } = await supabase.from("coachee_goals").insert({
+      const { start_rating, target_rating, ...goalPayload } = payload;
+      const { data: createdGoal, error } = await supabase.from("coachee_goals").insert({
         coachee_id: coacheeId as string,
         enrollment_id: enrollmentId,
-        title: payload.title,
-        description: payload.description,
-        target_date: payload.target_date,
-      });
+        ...goalPayload,
+      }).select("id").single();
       if (error) throw error;
+      const { error: ratingError } = await supabase.from("coachee_goal_ratings").upsert({
+        goal_id: createdGoal.id,
+        coachee_id: coacheeId as string,
+        enrollment_id: enrollmentId,
+        start_rating,
+        current_rating: null,
+        target_rating,
+        current_updated_at: new Date().toISOString(),
+      }, { onConflict: "enrollment_id,goal_id" });
+      if (ratingError) throw ratingError;
     },
     onSuccess: notifyChanged,
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
@@ -155,7 +165,7 @@ export function useJourneyGoals(coacheeId: string | undefined, options: JourneyG
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),
   });
 
-  const addGoal = async (payload: { title: string; description: string | null; target_date: string | null }) => {
+  const addGoal = async (payload: GoalPayload) => {
     if (!coacheeId) return false;
     return addGoalMutation.mutateAsync(payload).then(
       () => true,

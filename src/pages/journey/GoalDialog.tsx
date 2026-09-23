@@ -18,10 +18,13 @@ export type GoalPayload = {
   title: string;
   description: string | null;
   target_date: string | null;
+  start_rating: number;
+  target_rating: number;
 };
 
 export type AddGoalFn = (payload: GoalPayload) => Promise<boolean | undefined> | void;
-export type UpdateGoalFn = (goalId: string, payload: GoalPayload) => Promise<boolean | undefined> | void;
+export type UpdateGoalPayload = Omit<GoalPayload, "start_rating" | "target_rating">;
+export type UpdateGoalFn = (goalId: string, payload: UpdateGoalPayload) => Promise<boolean | undefined> | void;
 
 function GoalForm({
   heading,
@@ -31,27 +34,38 @@ function GoalForm({
 }: {
   heading: string;
   initial?: { title: string; description: string | null; target_date: string | null };
-  onSubmit: (payload: GoalPayload) => Promise<boolean | undefined> | void;
+  onSubmit: (payload: GoalPayload | UpdateGoalPayload) => Promise<boolean | undefined> | void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation("journey");
   const [title, setTitle] = useState(initial?.title ?? "");
   const [desc, setDesc] = useState(initial?.description ?? "");
   const [date, setDate] = useState(initial?.target_date ?? "");
+  const [startRating, setStartRating] = useState("");
+  const [targetRating, setTargetRating] = useState("");
+  const [ratingError, setRatingError] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     if (!title.trim()) return;
+    const start = Number(startRating);
+    const target = Number(targetRating);
+    if (!initial && (!Number.isInteger(start) || start < 0 || start > 100 || !Number.isInteger(target) || target < 0 || target > 100)) {
+      setRatingError(true);
+      return;
+    }
     setSaving(true);
-    const ok = await onSubmit({
+    const payload = {
       title: title.trim(),
       description: desc.trim() || null,
       target_date: date || null,
-    });
+      ...(!initial ? { start_rating: start, target_rating: target } : {}),
+    } as GoalPayload | UpdateGoalPayload;
+    const ok = await onSubmit(payload);
     setSaving(false);
     if (ok === false) return;
     if (!initial) {
-      setTitle(""); setDesc(""); setDate("");
+      setTitle(""); setDesc(""); setDate(""); setStartRating(""); setTargetRating("");
     }
     onCancel();
   };
@@ -62,6 +76,39 @@ function GoalForm({
       <div className="space-y-3">
         <Input placeholder={t("goalDialog.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} />
         <Textarea placeholder={t("goalDialog.descriptionPlaceholder")} value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} />
+        {!initial && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-muted-foreground">
+              {t("goalDialog.startRatingLabel")}
+              <Input
+                className="mt-1"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                required
+                placeholder="0–100"
+                value={startRating}
+                onChange={(e) => { setStartRating(e.target.value); setRatingError(false); }}
+              />
+            </label>
+            <label className="text-xs font-medium text-muted-foreground">
+              {t("goalDialog.targetRatingLabel")}
+              <Input
+                className="mt-1"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                required
+                placeholder="0–100"
+                value={targetRating}
+                onChange={(e) => { setTargetRating(e.target.value); setRatingError(false); }}
+              />
+            </label>
+          </div>
+        )}
+        {ratingError && <p role="alert" className="text-xs text-destructive">{t("goalDialog.ratingRequired")}</p>}
         <div>
           <p className="mb-1 text-xs font-medium text-muted-foreground">{t("goalDialog.targetDateLabel")}</p>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -69,7 +116,7 @@ function GoalForm({
       </div>
       <DialogFooter>
         <Button variant="ghost" onClick={onCancel}>{t("goalDialog.cancel")}</Button>
-        <Button onClick={save} disabled={saving || !title.trim()}>{t("goalDialog.saveGoal")}</Button>
+        <Button onClick={save} disabled={saving || !title.trim() || (!initial && (!startRating || !targetRating))}>{t("goalDialog.saveGoal")}</Button>
       </DialogFooter>
     </>
   );

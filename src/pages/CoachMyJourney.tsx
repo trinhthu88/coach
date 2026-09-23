@@ -12,7 +12,6 @@ import { useCoachSummaries } from "@/hooks/journey/useCoachSummaries";
 import {
   useGoalRatingRows,
   useProgrammeWeeks,
-  useGoalLock,
   useSessionRatingSeries,
   usePendingReflection,
 } from "@/hooks/journey/useJourneyDerived";
@@ -123,7 +122,6 @@ export default function CoachMyJourney() {
   const coachSummaries = useCoachSummaries(sessions, coachNames, now);
 
   const programmeWeeks = useProgrammeWeeks(programme, now);
-  const { isGoalLocked } = useGoalLock(sessions);
   const sessionRatingSeries = useSessionRatingSeries(sessionRatings, sessions);
   const { pendingReflectionSession, needsRatingUpdate } = usePendingReflection(sessions, sessionRatings, goals.length > 0);
 
@@ -261,7 +259,6 @@ export default function CoachMyJourney() {
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
-                  startTargetLocked={isGoalLocked(g.created_at)}
                   showCompletionMarks
                 />
               ))}
@@ -326,7 +323,6 @@ export default function CoachMyJourney() {
                     defaultOpen={i === 0}
                     rating={ratingRows.find((r) => r.goalId === g.id)}
                     onRatingChange={(patch) => saveRating(g.id, patch)}
-                    startTargetLocked={isGoalLocked(g.created_at)}
                     showCompletionMarks
                   />
                 ))}
