@@ -17,7 +17,7 @@
   "cohorts": {
     "nameRequired": "Name is required",
     "saved": "Cohort saved",
-    "deleteConfirm": "Delete cohort? Enrolled coachees keep their programme.",
+    "deleteConfirm": "Delete this cohort? Only a cohort with no enrollments can be deleted.",
     "deleted": "Deleted",
     "title": "Cohorts",
     "titleEmphasis": "& groups",
@@ -132,7 +132,8 @@
     },
     "goalSettingOpensLabel": "Goal setting opens",
     "goalSettingDueLabel": "Goals due by",
-    "goalSettingHint": "Each learner sets 1–3 goals in this period. Empty = cohort start to start + 7 days. A reminder date only: it never counts as a programme requirement."
+    "goalSettingHint": "Each learner sets 1–3 goals in this period. Empty = cohort start to start + 7 days. A reminder date only: it never counts as a programme requirement.",
+    "deleteBlockedEnrollments": "This cohort has enrolled leaders and cannot be deleted. Move or end their enrollments first."
   },
   "dashboard": {
     "eyebrow": "Organisation",

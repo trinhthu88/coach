@@ -267,3 +267,4 @@
 20260929100000_canonical_contract_hardening.sql
 20260930100000_journey_current_fulfilment.sql
 20260930110000_peer_dyad_cutover.sql
+20261001100000_p0_security_guards.sql

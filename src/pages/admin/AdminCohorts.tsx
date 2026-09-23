@@ -113,7 +113,8 @@ export default function AdminCohorts() {
     });
     if (!ok) return;
     const { error } = await supabase.from("cohorts").delete().eq("id", id);
-    if (error) toast.error(getFriendlyErrorMessage(error, t)); else { toast.success(t("cohorts.deleted")); load(); }
+    // 23503: the cohort has enrollments (guard_cohort_delete, 20261001100000).
+    if (error) toast.error(getFriendlyErrorMessage(error, t, { codes: { "23503": t("cohorts.deleteBlockedEnrollments") } })); else { toast.success(t("cohorts.deleted")); load(); }
   };
 
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;

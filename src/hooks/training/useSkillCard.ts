@@ -93,6 +93,8 @@ export function useSkillCard(weekId: string | undefined) {
     const { error } = await supabase
       .from("training_progress")
       .upsert(
+        // A non-null completed_at asks the server to mark the week complete;
+        // the value itself is replaced by the server time (20261001100000).
         { user_id: user.id, enrollment_id: enrollmentId, training_week_id: weekId, completed_at: new Date().toISOString() },
         { onConflict: "enrollment_id,training_week_id" }
       );

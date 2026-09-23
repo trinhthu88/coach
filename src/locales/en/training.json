@@ -172,7 +172,7 @@
     "edit": "Edit",
     "delete": "Delete",
     "deleteConfirmTitle": "Delete this training week?",
-    "deleteConfirmBody": "This also removes its progress records. This can't be undone.",
+    "deleteConfirmBody": "Only a week no learner has worked on can be deleted. If learners have progress in it, hide the week instead. This can't be undone.",
     "deleted": "Training week deleted",
     "empty": "No training weeks yet for this programme.",
     "dialogTitleNew": "New training week",
@@ -261,6 +261,7 @@
       },
       "required": "Required",
       "confidenceNote": "Confidence score (1–10) is always collected automatically — no need to add a question for it."
-    }
+    },
+    "deleteBlockedEvidence": "This week has learner data and cannot be deleted. Hide it instead."
   }
 }

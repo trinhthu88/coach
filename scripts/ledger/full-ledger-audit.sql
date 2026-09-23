@@ -299,7 +299,8 @@ WITH repo(version, name) AS (VALUES
   ('20260928150000', 'demo_goal_state'),
   ('20260929100000', 'canonical_contract_hardening'),
   ('20260930100000', 'journey_current_fulfilment'),
-  ('20260930110000', 'peer_dyad_cutover')
+  ('20260930110000', 'peer_dyad_cutover'),
+  ('20261001100000', 'p0_security_guards')
 -- END REPO MANIFEST
 ),
 

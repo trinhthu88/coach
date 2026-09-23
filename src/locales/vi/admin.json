@@ -18,7 +18,7 @@
   "cohorts": {
     "nameRequired": "Cần có tên",
     "saved": "Đã lưu nhóm",
-    "deleteConfirm": "Xóa nhóm? Học viên đã ghi danh vẫn giữ chương trình của họ.",
+    "deleteConfirm": "Xóa nhóm này? Chỉ có thể xóa nhóm chưa có học viên ghi danh.",
     "deleted": "Đã xóa",
     "title": "Khóa học",
     "titleEmphasis": "& Nhóm",
@@ -133,7 +133,8 @@
     },
     "goalSettingOpensLabel": "Bắt đầu đặt mục tiêu",
     "goalSettingDueLabel": "Hạn đặt mục tiêu",
-    "goalSettingHint": "Mỗi học viên đặt 1–3 mục tiêu trong giai đoạn này. Để trống = từ ngày bắt đầu khóa đến 7 ngày sau. Chỉ là ngày nhắc nhở, không tính là yêu cầu của chương trình."
+    "goalSettingHint": "Mỗi học viên đặt 1–3 mục tiêu trong giai đoạn này. Để trống = từ ngày bắt đầu khóa đến 7 ngày sau. Chỉ là ngày nhắc nhở, không tính là yêu cầu của chương trình.",
+    "deleteBlockedEnrollments": "Nhóm này đã có học viên ghi danh nên không thể xóa. Hãy chuyển hoặc kết thúc các ghi danh trước."
   },
   "dashboard": {
     "eyebrow": "Tổ chức",

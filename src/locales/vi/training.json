@@ -171,7 +171,7 @@
     "edit": "Sửa",
     "delete": "Xóa",
     "deleteConfirmTitle": "Xóa tuần đào tạo này?",
-    "deleteConfirmBody": "Thao tác này cũng xóa tiến độ liên quan. Không thể hoàn tác.",
+    "deleteConfirmBody": "Chỉ có thể xóa tuần chưa có học viên nào thực hiện. Nếu đã có tiến độ của học viên, hãy ẩn tuần này. Không thể hoàn tác.",
     "deleted": "Đã xóa tuần đào tạo",
     "empty": "Chương trình này chưa có tuần đào tạo nào.",
     "dialogTitleNew": "Tuần đào tạo mới",
@@ -260,6 +260,7 @@
       },
       "required": "Bắt buộc",
       "confidenceNote": "Điểm tự tin (1–10) luôn được thu thập tự động — không cần thêm câu hỏi cho mục này."
-    }
+    },
+    "deleteBlockedEvidence": "Tuần này đã có dữ liệu của học viên nên không thể xóa. Hãy ẩn tuần này."
   }
 }

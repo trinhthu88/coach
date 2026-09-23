@@ -64,6 +64,7 @@ export function useDailyPrompt() {
           enrollment_id: enrollmentId,
           daily_prompt_id: data.prompt_id,
           response_text: responseText || null,
+          // Marks the prompt answered; the server replaces the value with its own time (20261001100000).
           responded_at: new Date().toISOString(),
         },
         { onConflict: "enrollment_id,daily_prompt_id" }

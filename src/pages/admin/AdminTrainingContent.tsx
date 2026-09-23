@@ -146,7 +146,8 @@ export default function AdminTrainingContent() {
     });
     if (!ok) return;
     const { error } = await supabase.from("training_weeks").delete().eq("id", w.id);
-    if (error) toast.error(getFriendlyErrorMessage(error, t));
+    // 23503: the week has learner evidence (guard_week_delete, 20261001100000).
+    if (error) toast.error(getFriendlyErrorMessage(error, t, { codes: { "23503": t("admin.deleteBlockedEvidence") } }));
     else {
       toast.success(t("admin.deleted"));
       loadWeeks(programmeId);
