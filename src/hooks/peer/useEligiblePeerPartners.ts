@@ -11,19 +11,16 @@ export interface EligiblePeerPartner {
   cohortId: string;
   cohortName: string;
   programmeName: string | null;
-  /** True for the learner's own cohort, false for a cohort explicitly granted to it. */
+  /** Retained for response compatibility; fixed dyads always stay within one cohort. */
   isOwnCohort: boolean;
 }
 
 /**
  * Who this ENROLLMENT may book peer practice with.
  *
- * The one source is eligible_peer_partners(), which resolves own cohort plus
- * every cohort granted to it by peer_cohort_permissions. This page used to
- * select straight from `profiles` on peer_coaching_opt_in, which is a global
- * flag: it listed every opted-in learner in the system, including learners of
- * cohorts -- and organisations -- this one was never connected to, and it had
- * no way to say whether a candidate was still actively enrolled.
+ * The one source is eligible_peer_partners(), which resolves the learner's
+ * Admin-assigned active dyad. The legacy cohort-permission graph and the
+ * peer_coaching_opt_in flag are not learner eligibility authorities.
  *
  * Asking per ENROLLMENT rather than per user is the point: a learner holding a
  * closed enrollment in one cohort and a live one in another gets the live
