@@ -11,7 +11,6 @@ export type SponsorCohortSummary = HostedCanonicalCohort;
 export type SponsorRosterRow = SponsorEnrollmentSummary;
 export type SponsorKpis = HostedCanonicalOrganisation;
 export type SponsorSatisfactionTrendRow = { week_number: number; avg_rating: number | null };
-export type SponsorCoachUtilisationRow = { coach_name: string; completed_sessions: number };
 
 interface SponsorDashboardData {
   kpis: SponsorKpis | null;

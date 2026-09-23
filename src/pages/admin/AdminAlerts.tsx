@@ -102,6 +102,21 @@ export default function AdminAlerts() {
 
   useEffect(() => { load(); }, []);
 
+  // TODO(P3, RULES_AUDIT.md P2 #14): move alert generation into a canonical
+  // database function that returns alerts as a result set (not stored rows).
+  // This scan is a Source of Truth risk:
+  //   - it runs in the admin's browser, reads raw tables (sessions,
+  //     submissions, actions) and re-derives rules the database already owns
+  //     (overdue, missed, at risk), so the two can disagree;
+  //   - its alerts are written into admin_alerts as a snapshot and go stale
+  //     the moment the underlying data changes, until someone scans again;
+  //   - "programme at risk" comes from effective_enrollment_status, which is
+  //     only at_risk after an incomplete programme has ended (20261001110000);
+  //     a leader falling behind mid-programme (pace_status = behind) raises
+  //     no alert here.
+  // The replacement should read canonical_enrollment_requirement_calendar /
+  // canonical_overdue_items for overdue work and canonical session status for
+  // missed sessions.
   const runScan = async () => {
     setScanning(true);
     try {

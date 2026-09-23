@@ -3,13 +3,13 @@ const { rpc, stored, scopes } = vi.hoisted(() => ({ rpc: vi.fn(), stored: [] as 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, from: (table: string) => {
   const query = { select: () => query, eq: (key: string, value: unknown) => { scopes.push([table,key,value]); return query; }, in: () => query, order: () => Promise.resolve({data: stored, error: null}) }; return query;
 } } }));
-import { withEnrollmentActions, saveEnrollmentActions } from "../enrollmentActions";
+import { withEnrollmentActions, saveEnrollmentActions, actionStatusToSave } from "../enrollmentActions";
 beforeEach(() => { scopes.length = 0; stored.length = 0; rpc.mockReset().mockResolvedValue({ error: null }); });
 describe("normalized enrollment actions", () => {
   it("uses normalized rows and preserves their identities and relationships instead of legacy JSON", async () => {
     stored.push({id:"action",enrollment_id:"enrollment",source_activity_type:"coaching",source_activity_id:"session",title:"Actual action",status:"completed",goal_id:"goal",milestone_id:"milestone",due_date:null});
     const rows = await withEnrollmentActions([{id:"session",enrollment_id:"enrollment",action_items:[{text:"Legacy stale text"}]}],"coaching");
-    expect(rows[0].enrollment_actions).toEqual([{id:"action",text:"Actual action",description:null,done:true,goal_id:"goal",milestone_id:"milestone",due_date:null}]);
+    expect(rows[0].enrollment_actions).toEqual([{id:"action",text:"Actual action",description:null,done:true,status:"completed",goal_id:"goal",milestone_id:"milestone",due_date:null}]);
     expect(rows[0].enrollment_actions).not.toEqual([{text:"Legacy stale text"}]);
     expect(scopes).toContainEqual(["enrollment_actions","enrollment_id","enrollment"]);
   });
@@ -28,5 +28,22 @@ describe("normalized enrollment actions", () => {
   it("writes stable action IDs and source/goal/milestone links to the sole authoritative RPC", async () => {
     await saveEnrollmentActions("enrollment","peer_coaching","session",[{id:"action",text:"Follow up",done:false,goal_id:"goal",milestone_id:"milestone"}]);
     expect(rpc).toHaveBeenCalledWith("save_enrollment_activity_actions", {p_enrollment_id:"enrollment",p_source_activity_type:"peer_coaching",p_source_activity_id:"session",p_actions:[{id:"action",title:"Follow up",description:null,status:"open",goal_id:"goal",milestone_id:"milestone",due_date:null}]});
+  });
+  it("keeps an in_progress or cancelled action's status on save instead of resetting it to open", async () => {
+    stored.push(
+      {id:"a1",enrollment_id:"enrollment",source_activity_type:"coaching",source_activity_id:"session",title:"Started",status:"in_progress",goal_id:"goal",milestone_id:null,due_date:"2026-10-01"},
+      {id:"a2",enrollment_id:"enrollment",source_activity_type:"coaching",source_activity_id:"session",title:"Dropped",status:"cancelled",goal_id:"goal",milestone_id:null,due_date:"2026-10-01"},
+    );
+    const [row] = await withEnrollmentActions([{id:"session",enrollment_id:"enrollment"}],"coaching");
+    await saveEnrollmentActions("enrollment","coaching","session",row.enrollment_actions);
+    const saved = rpc.mock.calls[0][1].p_actions.map((a: {id: string; status: string}) => [a.id, a.status]);
+    expect(saved).toEqual([["a1","in_progress"],["a2","cancelled"]]);
+  });
+  it("derives the saved status from done only when done changes it", () => {
+    expect(actionStatusToSave({done:true,status:"in_progress"})).toBe("completed");
+    expect(actionStatusToSave({done:false,status:"completed"})).toBe("open");
+    expect(actionStatusToSave({done:false,status:"in_progress"})).toBe("in_progress");
+    expect(actionStatusToSave({done:false,status:"cancelled"})).toBe("cancelled");
+    expect(actionStatusToSave({done:false})).toBe("open");
   });
 });

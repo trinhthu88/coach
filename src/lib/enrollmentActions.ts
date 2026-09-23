@@ -8,10 +8,23 @@ export type EnrollmentActionSource =
   /** Triad follow-ups (20260925500000). Spelling per session_deliverable_source_types(). */
   | "triad";
 
+export type EnrollmentActionStatus = "open" | "in_progress" | "completed" | "cancelled";
+
+/** The status to store: done wins; un-ticking a completed action reopens it;
+ * otherwise the stored status (in_progress, cancelled) is kept. */
+export function actionStatusToSave(action: Pick<EnrollmentActionItem, "done" | "status">): EnrollmentActionStatus {
+  if (action.done) return "completed";
+  if (!action.status || action.status === "completed") return "open";
+  return action.status;
+}
+
 export interface EnrollmentActionItem {
   id?: string;
   text: string;
   done?: boolean;
+  /** The stored status. Kept on save unless `done` changes it, so an
+   * in_progress or cancelled action is never reset to open. */
+  status?: EnrollmentActionStatus;
   goal_id?: string | null;
   milestone_id?: string | null;
   due_date?: string | null;
@@ -86,6 +99,7 @@ export async function withEnrollmentActions<T extends EnrollmentOwnedActivity>(
             id: action.id,
             text: action.title,
             done: action.status === "completed",
+            status: action.status as EnrollmentActionStatus,
             goal_id: action.goal_id,
             milestone_id: action.milestone_id,
             due_date: action.due_date,
@@ -113,7 +127,7 @@ export async function saveEnrollmentActions(
       id: action.id ?? null,
       title: action.text,
       description: action.description ?? null,
-      status: action.done ? "completed" : "open",
+      status: actionStatusToSave(action),
       goal_id: action.goal_id ?? null,
       milestone_id: action.milestone_id ?? null,
       due_date: action.due_date ?? null,

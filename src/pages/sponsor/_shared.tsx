@@ -3,10 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill, MiniBar, Avatar } from "@/pages/admin/_shared";
-import type {
-  SponsorRosterRow,
-  SponsorCoachUtilisationRow,
-} from "@/hooks/sponsor/useSponsorDashboardData";
+import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import { STATUS_TONE, STATUS_LABEL_KEY, effectiveSponsorStatus, initials, type HealthSignal } from "./sponsorUtils";
 import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
@@ -25,26 +22,6 @@ export function GoalProgressBar({ pct }: { pct: number }) {
         <div className={cn("h-full rounded-full", tone)} style={{ width: `${clamped}%` }} />
       </div>
       <span className="w-8 text-right text-[10px] font-medium text-muted-foreground">{Math.round(pct)}%</span>
-    </div>
-  );
-}
-
-export function CoachUtilisationBars({ rows }: { rows: SponsorCoachUtilisationRow[] }) {
-  const maxCoachSessions = Math.max(1, ...rows.map((c) => c.completed_sessions));
-  return (
-    <div className="space-y-2.5">
-      {rows.map((c) => (
-        <div key={c.coach_name} className="flex items-center gap-3">
-          <span className="w-28 shrink-0 truncate text-[12px] font-medium">{c.coach_name}</span>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${(c.completed_sessions / maxCoachSessions) * 100}%` }}
-            />
-          </div>
-          <span className="w-6 shrink-0 text-right font-mono text-[11px] text-muted-foreground">{c.completed_sessions}</span>
-        </div>
-      ))}
     </div>
   );
 }
