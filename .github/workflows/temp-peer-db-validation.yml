@@ -1,0 +1,32 @@
+name: Temporary Peer DB validation
+
+on:
+  push:
+    branches:
+      - validation/peer-dyad-cutover
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_CLI_VERSION: '2.117.0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - run: npm ci
+      - name: Replay migrations and run database validation
+        env:
+          SUPABASE_CLI_BIN: supabase
+        run: npm run validate:db
+      - name: Verify peer migration/test files
+        run: |
+          test -f supabase/migrations/20260930110000_peer_dyad_cutover.sql
+          test -f supabase/tests/peer_cohort_eligibility_test.sql
+          test -f supabase/tests/peer_surface_agreement_test.sql
