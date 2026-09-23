@@ -601,9 +601,10 @@
       "detailNote": "Đơn vị tích lũy gồm mọi hoạt động bắt buộc đến hạn trước ngày này. Nhà tài trợ thấy cùng trạng thái mốc.",
       "stateNote": {
         "completed": "Mọi đơn vị tích lũy đến hạn trước ngày này đã hoàn thành đúng hạn.",
-        "overdue": "Chưa hoàn thành đủ các đơn vị tích lũy đến hạn trước ngày này.",
-        "current": "Mốc này đến hạn hôm nay.",
-        "upcoming": "Chưa đến hạn — hoạt động hoàn thành trước ngày này sẽ được tính."
+        "completed_late": "Mọi đơn vị tích lũy đến hạn trước ngày này đã hoàn thành — một phần hoàn thành sau ngày này.",
+        "overdue": "Đã qua ngày này và vẫn còn đơn vị đến hạn chưa hoàn thành.",
+        "current": "Chưa đến hạn — mọi nội dung cần thiết đã mở. Các session diễn ra sớm được tính ngay.",
+        "upcoming": "Chưa đến hạn — một phần nội dung Training chưa mở."
       }
     },
     "goals": {

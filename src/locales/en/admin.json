@@ -1211,7 +1211,8 @@
       "completed": "Completed",
       "overdue": "Overdue",
       "due": "Due",
-      "upcoming": "Upcoming"
+      "upcoming": "Upcoming",
+      "completed_late": "Completed late"
     }
   },
   "addPerson": {

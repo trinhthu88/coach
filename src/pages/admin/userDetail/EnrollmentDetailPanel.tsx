@@ -142,7 +142,9 @@ export function EnrollmentDetailPanel({ userId, enrollment }: { userId: string; 
                 {[...data.calendar]
                   .sort((a, b) => (a.due_on ?? "9999").localeCompare(b.due_on ?? "9999") || a.requirement_index - b.requirement_index)
                   .map((r) => {
-                    const state = r.is_completed ? "completed" : r.is_overdue ? "overdue" : r.is_due_as_of ? "due" : "upcoming";
+                    const state = r.is_completed
+                      ? r.due_on && r.completed_on && r.completed_on > r.due_on ? "completed_late" : "completed"
+                      : r.is_overdue ? "overdue" : r.is_due_as_of ? "due" : "upcoming";
                     return (
                       <tr key={`${r.module}-${r.requirement_index}`} data-testid="calendar-row">
                         <td className="py-1.5 pr-3">
@@ -151,7 +153,7 @@ export function EnrollmentDetailPanel({ userId, enrollment }: { userId: string; 
                         </td>
                         <td className="whitespace-nowrap px-2 py-1.5 text-muted-foreground">{r.due_on ? formatProfileDate(r.due_on) : "—"}</td>
                         <td className="px-2 py-1.5">
-                          <Pill tone={state === "completed" ? "success" : state === "overdue" ? "destructive" : "muted"}>
+                          <Pill tone={state === "completed" || state === "completed_late" ? "success" : state === "overdue" ? "destructive" : "muted"}>
                             {t(`userDetail.calendarStates.${state}`)}
                           </Pill>
                           {r.completed_on && (

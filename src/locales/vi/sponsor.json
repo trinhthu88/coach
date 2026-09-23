@@ -331,7 +331,8 @@
         "upcoming": "Sắp tới",
         "current": "Hiện tại",
         "completed": "Đã hoàn thành",
-        "overdue": "Quá hạn"
+        "overdue": "Quá hạn",
+        "completed_late": "Hoàn thành trễ hạn"
       },
       "scheduleMismatchTitle": "Lịch đang chờ cập nhật",
       "scheduleMismatch": "{{module}}: {{scheduled}}/{{required}} đơn vị yêu cầu có hạn của khóa. Các mốc chỉ tính các đơn vị đã có hạn cho đến khi lịch khóa được cập nhật.",

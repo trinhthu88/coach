@@ -7,6 +7,7 @@ import {
   formatPercent,
   formatProfileDateTime,
   formatRatio,
+  journeyFocusIndex,
   ratioPct,
   type ProgrammeCoachingUtilisation,
   type ProgrammeJourneyPoint,
@@ -90,6 +91,7 @@ export function ProgrammeProgressParticipation({
 
 /** Cumulative completion at each canonical checkpoint (the individual participation trend). */
 function CheckpointTrend({ journey }: { journey: ProgrammeJourneyPoint[] }) {
+  const focus = journeyFocusIndex(journey);
   return (
     <div className="mt-3 overflow-hidden rounded-xl border border-[#eee8de] bg-[#f6f3ee] px-3 pb-2.5 pt-3">
       <div className="flex min-w-0 gap-2">
@@ -105,7 +107,7 @@ function CheckpointTrend({ journey }: { journey: ProgrammeJourneyPoint[] }) {
             <span className="absolute inset-x-0 bottom-0 border-t border-[#d7cec1]" />
           </div>
           <div className="relative grid h-[142px] min-w-0 gap-1" style={{ gridTemplateColumns: `repeat(${journey.length}, minmax(0, 1fr))` }}>
-            {journey.map((point) => {
+            {journey.map((point, index) => {
               const pct = ratioPct(point.completed_units, point.required_units);
               const label = `CP${point.checkpoint_number}`;
               return (
@@ -115,7 +117,7 @@ function CheckpointTrend({ journey }: { journey: ProgrammeJourneyPoint[] }) {
                     <div
                       role="img"
                       aria-label={`${label}: ${pct == null ? "not available" : formatPercent(pct)}`}
-                      className={`w-[min(22px,65%)] rounded-t-[4px] transition-[height] ${point.state === "current" ? "bg-[#3db4d0]" : "bg-[#2c8fa8]"}`}
+                      className={`w-[min(22px,65%)] rounded-t-[4px] transition-[height] ${index === focus ? "bg-[#3db4d0]" : "bg-[#2c8fa8]"}`}
                       style={{ height: `${pct ?? 0}%` }}
                     />
                   </div>

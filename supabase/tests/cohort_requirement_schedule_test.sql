@@ -1,16 +1,20 @@
 -- Canonical requirement model: Programme says HOW MANY, Cohort says BY WHEN.
 --
 --   PROGRAMME   module + required_units = N
---   COHORT      one completion_deadline per module
---   SYSTEM      exactly N canonical requirement rows, all due on that deadline
+--   COHORT      N canonical requirement rows, each with its OWN due_on
+--               (cohort_requirement_dates). The module completion_deadline
+--               is only the DEFAULT a row starts at when it is materialised.
+--   ADMIN       dates individual requirements explicitly
+--               (admin_set_cohort_requirement_dates); an explicit date is
+--               never rewritten by the module default
 --   ACTIVITY    fulfils one canonical requirement at a time
 --
--- There is no distribution mode. Every module that has canonical requirements
--- behaves identically, and requirement IDENTITY (ordinal) carries the sequence
--- rather than the dates.
+-- There is no distribution mode and no automatic staggering. Requirement
+-- IDENTITY (ordinal) carries the sequence; a date is either the default or
+-- the date an Admin set.
 begin;
 
-select plan(39);
+select plan(42);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -158,6 +162,31 @@ values
    'c8000000-0000-0000-0000-000000000001', 'd8000000-0000-0000-0000-000000000001',
    'b8000000-0000-0000-0000-000000000001', '2025-01-05', '2025-12-31', 'completed');
 
+-- The Admin dates each Coaching requirement individually. These explicit
+-- per-requirement dates, not the 30 Nov module default, drive every case
+-- below: Coaching 1 due 24 Nov, Coaching 2 due 30 Nov, Coaching 3 due 6 Dec.
+select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000098', true);
+set local role authenticated;
+select lives_ok($$
+  select public.admin_set_cohort_requirement_dates(
+    'd8000000-0000-0000-0000-000000000001'::uuid,
+    (select jsonb_agg(jsonb_build_object('requirement_id', d.id, 'due_on', v.due_on))
+     from public.cohort_requirement_dates d
+     join (values (1, '2026-11-24'), (2, '2026-11-30'), (3, '2026-12-06')) v(ordinal, due_on)
+       on v.ordinal = d.ordinal
+     where d.cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+       and d.module = 'coaching'::public.programme_module_type))
+$$, 'an Admin dates each Coaching requirement explicitly');
+reset role;
+
+select is(
+  (select array_agg(due_on::text || ':' || is_overridden::text order by ordinal)
+   from public.cohort_requirement_dates
+   where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
+     and module = 'coaching'::public.programme_module_type),
+  array['2026-11-24:true', '2026-11-30:true', '2026-12-06:true'],
+  'each Coaching requirement carries its own explicit due date');
+
 -- Case A: deadline in the future, nothing done.
 select is(
   (select array[required_units, completed_units, due_units, overdue_units]
@@ -169,6 +198,12 @@ select is(
 -- One completed Coaching session, attributed to the first requirement. The
 -- lifecycle escape hatch is used because this fixture writes the session
 -- directly rather than going through book_coaching_session().
+--
+-- Each requirement becomes available 14 days before its own due date
+-- (20260930100000): Coaching 1 on 10 Nov, Coaching 2 on 16 Nov, Coaching 3 on
+-- 22 Nov. A session held before then fulfils nothing. The sessions below are
+-- held inside those windows (19, 22 and 25 Nov), and Case B is read on 20 Nov
+-- -- after Coaching 1 was held, still before its deadline.
 select set_config('app.session_transition', 'on', true);
 
 insert into public.sessions
@@ -176,7 +211,7 @@ insert into public.sessions
 select 'f8000000-0000-0000-0000-000000000001'::uuid,
        'e8000000-0000-0000-0000-000000000001'::uuid, d.id,
        'a8000000-0000-0000-0000-000000000097'::uuid, 'a8000000-0000-0000-0000-000000000001'::uuid,
-       'Coaching 1', timestamptz '2026-03-02 09:00+00', 60, 'completed'
+       'Coaching 1', timestamptz '2026-11-19 09:00+00', 60, 'completed'
 from public.cohort_requirement_dates d
 where d.cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
   and d.module = 'coaching'::public.programme_module_type and d.ordinal = 1;
@@ -184,25 +219,32 @@ where d.cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
 -- Case B: one of three done, still before the deadline.
 select is(
   (select array[required_units, completed_units, due_units, overdue_units]
-   from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-06-01')
+   from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-11-20')
    where module = 'coaching'::public.programme_module_type),
   array[3, 1, 0, 0],
   'B. one of three completed before the deadline: due 0, overdue 0');
 
--- Case C: past the deadline.
+-- Case C: past the first two deadlines, before the third.
 select is(
   (select array[required_units, completed_units, due_units, overdue_units]
    from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-12-01')
    where module = 'coaching'::public.programme_module_type),
+  array[3, 1, 2, 1],
+  'C. each requirement falls due on its own date: due 2, overdue 1 on 1 Dec');
+
+select is(
+  (select array[required_units, completed_units, due_units, overdue_units]
+   from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-12-07')
+   where module = 'coaching'::public.programme_module_type),
   array[3, 1, 3, 2],
-  'C. on/after the deadline: due 3, overdue 2');
+  'C. after the last requirement date: due 3, overdue 2');
 
 insert into public.sessions
   (id, enrollment_id, cohort_requirement_id, coach_id, coachee_id, topic, start_time, duration_minutes, status)
 select ('f8000000-0000-0000-0000-00000000000' || d.ordinal)::uuid,
        'e8000000-0000-0000-0000-000000000001'::uuid, d.id,
        'a8000000-0000-0000-0000-000000000097'::uuid, 'a8000000-0000-0000-0000-000000000001'::uuid,
-       'Coaching ' || d.ordinal, timestamptz '2026-03-02 09:00+00' + (d.ordinal * interval '7 days'), 60, 'completed'
+       'Coaching ' || d.ordinal, timestamptz '2026-11-16 09:00+00' + (d.ordinal * interval '3 days'), 60, 'completed'
 from public.cohort_requirement_dates d
 where d.cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
   and d.module = 'coaching'::public.programme_module_type and d.ordinal in (2, 3);
@@ -212,7 +254,7 @@ select set_config('app.session_transition', 'off', true);
 -- Case D: all three done.
 select is(
   (select array[required_units, completed_units, due_units, overdue_units]
-   from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-12-01')
+   from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-12-07')
    where module = 'coaching'::public.programme_module_type),
   array[3, 3, 3, 0],
   'D. everything completed: overdue 0 even past the deadline');
@@ -271,11 +313,12 @@ select is(
   'raising required_units 3 -> 5 materialises the two missing canonical units');
 
 select is(
-  (select count(distinct due_on)::int from public.cohort_requirement_dates
+  (select array_agg(due_on::text || ':' || is_overridden::text order by ordinal)
+   from public.cohort_requirement_dates
    where cohort_id = 'd8000000-0000-0000-0000-000000000001'::uuid
      and module = 'coaching'::public.programme_module_type),
-  1,
-  'the new units inherit the same module deadline');
+  array['2026-11-24:true', '2026-11-30:true', '2026-12-06:true', '2026-11-30:false', '2026-11-30:false'],
+  'new units start at the module default; the explicitly dated units keep their own dates');
 
 select is(
   (select required_units from public.canonical_module_progress('e8000000-0000-0000-0000-000000000001'::uuid, '2026-12-01')

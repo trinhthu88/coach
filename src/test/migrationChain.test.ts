@@ -156,9 +156,12 @@ describe("migration chain — canonical final state", () => {
 
   it("Learner and Sponsor journeys end on the one shared journey construction", () => {
     // Checkpoints are cumulative counts over THE requirement calendar
-    // (20260928100000), whose dates are the cohort requirement rows.
-    expect(lastDefinition("canonical_enrollment_journey")?.body).toMatch(/canonical_enrollment_requirement_calendar/);
-    expect(lastDefinition("get_sponsor_programme_journey")?.body).toMatch(/canonical_enrollment_requirement_calendar/);
+    // (20260928100000), whose dates are the cohort requirement rows, read
+    // through the per-requirement status (20260930100000).
+    expect(lastDefinition("canonical_enrollment_journey")?.body).toMatch(/canonical_enrollment_checkpoints\(p_enrollment_id, p_as_of\)/);
+    expect(lastDefinition("canonical_enrollment_checkpoints")?.body).toMatch(/canonical_enrollment_requirement_status\(p_enrollment_id, p_as_of\)/);
+    expect(lastDefinition("get_sponsor_programme_journey")?.body).toMatch(/canonical_enrollment_requirement_status\(e\.id, p_as_of\)/);
+    expect(lastDefinition("canonical_enrollment_requirement_status")?.body).toMatch(/canonical_enrollment_requirement_calendar\(p_enrollment_id, p_as_of\)/);
     expect(lastDefinition("canonical_enrollment_requirement_calendar")?.body).toMatch(/cohort_requirement_dates/);
     expect(lastDefinition("learner_canonical_journey")?.body).toMatch(/canonical_enrollment_journey/);
     expect(lastDefinition("sponsor_canonical_leader_journey")?.body).toMatch(/canonical_enrollment_journey/);
@@ -383,7 +386,8 @@ describe("migration chain — canonical final state", () => {
     it("Triad completion = requirements fulfilled by a completed session of THEIR group, capped, each against its own deadline", () => {
       const fulfilment = lastDefinition("canonical_triad_requirement_fulfilment")?.body ?? "";
       expect(fulfilment).toMatch(/WHERE g\.cohort_requirement_date_id = d\.id/);
-      expect(fulfilment).toMatch(/min\(ev\.occurred_on\) FILTER \(WHERE ev\.status = 'completed'\)/);
+      // The first completed session inside the requirement's window (due_on - 14) fulfils it (20260930100000).
+      expect(fulfilment).toMatch(/min\(ev\.occurred_on\) FILTER \(\s*WHERE ev\.status = 'completed'\s*AND ev\.occurred_on >= public\.canonical_session_requirement_available_on\(d\.due_on\)\)/);
       const activity = lastDefinition("sponsor_canonical_activity")?.body ?? "";
       // One activity row per requirement — never per session.
       expect(activity).toMatch(/FROM public\.canonical_triad_requirement_fulfilment\(p_enrollment_id\) f/);
@@ -392,10 +396,21 @@ describe("migration chain — canonical final state", () => {
       // journeys count calendar rows, one per requirement (20260928100000).
       const calendar = lastDefinition("canonical_enrollment_requirement_calendar")?.body ?? "";
       expect(calendar).toMatch(/FROM public\.canonical_triad_requirement_fulfilment\(p_enrollment_id\) f/);
-      expect(calendar).toMatch(/r\.due_on IS NOT NULL AND r\.due_on <= p_as_of AND r\.completed_on IS NULL/);
+      // Overdue = the due date has PASSED and the requirement is still open (20260930100000).
+      // Evaluated at the effective as-of: least(as_of, programme end).
+      expect(calendar).toMatch(/r\.due_on IS NOT NULL AND r\.due_on < \(SELECT eff\.as_of FROM eff\) AND r\.completed_on IS NULL/);
+      expect(calendar).toMatch(/canonical_enrollment_effective_as_of\(p_enrollment_id, p_as_of\)/);
+      // A session requirement counts only when fulfilled within [due_on - 14, effective as-of].
+      expect(calendar).toMatch(/f\.fulfilled_on BETWEEN public\.canonical_session_requirement_available_on\(d\.due_on\) AND \(SELECT eff\.as_of FROM eff\)/);
       expect(lastDefinition("canonical_module_progress")?.body).toMatch(/canonical_enrollment_requirement_calendar\(p_enrollment_id, p_as_of\)/);
-      for (const name of ["canonical_enrollment_journey", "get_sponsor_programme_journey"]) {
-        expect(lastDefinition(name)?.body, name).toMatch(/c\.due_on <= d\.due_on AND c\.completed_on IS NOT NULL AND c\.completed_on <= least\(d\.due_on, p_as_of\)/);
+      // Journeys show CURRENT fulfilment: a requirement due by the checkpoint
+      // counts once it is completed as of p_as_of, late work included, so the
+      // final checkpoint reconciles with the canonical totals (20260930100000).
+      for (const name of ["canonical_enrollment_checkpoints", "get_sponsor_programme_journey"]) {
+        const body = lastDefinition(name)?.body ?? "";
+        expect(body, name).toMatch(/r\.due_on <= d\.due_on AND r\.completed_on IS NOT NULL/);
+        expect(body, name).not.toMatch(/least\(d\.due_on, p_as_of\)/);
+        expect(body, name).toMatch(/'completed_late'/);
       }
       const completion = lastDefinition("canonical_triad_completion")?.body ?? "";
       expect(completion).toMatch(/canonical_module_progress\(p_enrollment_id, p_as_of\)/);
@@ -596,12 +611,14 @@ describe("learner Training and enrollment context read current-state sources onl
     const body = lastDefinition("get_enrollment_training_weeks")?.body ?? "";
     expect(body).not.toMatch(/enrollment_module_snapshots/);
     expect(body).toMatch(/training_week_ids/);
-    expect(body).toMatch(/canonical_enrollment_requirement_calendar\(p_enrollment_id/);
+    // Each week's state is the canonical requirement state (20260930100000).
+    expect(body).toMatch(/canonical_enrollment_requirement_status\(p_enrollment_id/);
   });
 
   it("the Sponsor breakdown and the learner per-week items aggregate the same item-level source", () => {
-    expect(lastDefinition("canonical_learning_breakdown")?.body).toMatch(/canonical_learning_items\(p_enrollment_id, p_as_of\)/);
-    expect(lastDefinition("learner_training_week_items")?.body).toMatch(/canonical_learning_items\(p_enrollment_id, p_as_of\)/);
+    // Both at the enrollment's effective as-of (frozen at the programme end, 20260930100000).
+    expect(lastDefinition("canonical_learning_breakdown")?.body).toMatch(/canonical_learning_items\(p_enrollment_id, \(SELECT eff\.as_of FROM eff\)\)/);
+    expect(lastDefinition("learner_training_week_items")?.body).toMatch(/canonical_learning_items\(p_enrollment_id, \(SELECT eff\.as_of FROM eff\)\)/);
     expect(lastDefinition("learner_training_week_items")?.body).toMatch(/e\.user_id = auth\.uid\(\)/);
   });
 

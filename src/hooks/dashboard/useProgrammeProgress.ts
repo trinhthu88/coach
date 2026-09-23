@@ -51,7 +51,7 @@ export interface RawWeek {
   /** The week's canonical Training requirement (cohort date) and its state. */
   requirement_id?: string | null;
   requirement_due_on?: string | null;
-  requirement_state?: "completed" | "overdue" | "upcoming" | "not_required" | string | null;
+  requirement_state?: "completed" | "completed_late" | "current" | "overdue" | "upcoming" | "not_required" | string | null;
 }
 
 const EMPTY: ProgrammeProgressSummary = {

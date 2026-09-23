@@ -280,7 +280,10 @@ select is(
    )
    where module = 'coaching'::public.programme_module_type
      and due_on IS NOT NULL),
-  '2026-07-05'::date,
+  -- Cohort C dates each Coaching requirement individually (seed.sql: Admin
+  -- per-requirement dates); Coaching 1 is 2026-04-01, before this
+  -- enrollment's own 2026-04-15 start.
+  '2026-04-01'::date,
   'canonical schedule uses the Cohort Coaching deadline, not the enrollment dates'
 );
 select is(
@@ -293,12 +296,22 @@ select is(
   '2026-07-05'::date,
   'canonical schedule uses Cohort end date when enrollment dates differ'
 );
+-- Restore Leader C1's enrollment dates: the over-requirement checks below
+-- read C1 as the leader who finished everything, and since 20260930100000
+-- completion freezes at the enrollment's own end date (a 2026-06-15 end would
+-- drop C1's 2026-07-05 sessions from the programme numbers).
+update public.programme_enrollments
+set start_date = '2026-03-01'::date,
+    end_date = '2026-07-05'::date
+where id = '14141414-1414-4141-8141-000000000001'::uuid;
 set local role authenticated;
 
 -- A late enrollment is evaluated against the already-running Cohort timeline.
--- Leader C7 has no coaching activity, so once the Cohort's Coaching deadline
--- has passed every unit is overdue -- even though the enrollment itself ends
--- before that deadline.
+-- Leader C7 has no coaching activity. Its programme freezes at its own end
+-- (2026-06-15, canonical_enrollment_effective_as_of, 20260930100000), so the
+-- Cohort Coaching requirements dated 2026-04-01, 05-03 and 06-03 are due --
+-- including one that fell before the enrollment even started -- and the
+-- 2026-07-05 one, after the freeze, is not.
 reset role;
 update public.programme_enrollments
 set start_date = '2026-04-15'::date,
@@ -311,7 +324,7 @@ select is(
       '11111111-1111-4111-8111-111111111119'::uuid,
       '2026-07-06'::date)
     where enrollment_id = '14141414-1414-4141-8141-000000000007'::uuid),
-  4,
+  3,
   'late enrollment is due against the existing Cohort timeline'
 );
 select is(
@@ -332,7 +345,7 @@ select is(
      )
    ) point
    where point->'module_scope' @> '["coaching"]'::jsonb),
-  '2026-07-05'::date,
+  '2026-04-01'::date,
   'Sponsor journey checkpoints remain anchored to the Cohort deadlines, not the enrollment'
 );
 

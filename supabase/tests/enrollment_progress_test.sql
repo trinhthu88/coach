@@ -267,6 +267,16 @@ values
 insert into public.peer_sessions (peer_coach_id, peer_coachee_id, topic, start_time, duration_minutes, status, enrollment_id)
 values ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Past peer session', '2026-01-21 10:00:00+00', 60, 'completed', 'e1000000-0000-0000-0000-000000000001');
 
+-- Learner Peer sessions require an assigned dyad
+-- (20260929100000_canonical_contract_hardening): the learner and the partner
+-- are the cohort's fixed Peer pair.
+insert into public.peer_dyads (id, cohort_id, programme_id, created_by)
+values ('a8000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000003');
+insert into public.peer_dyad_members (dyad_id, enrollment_id)
+values
+  ('a8000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000001'),
+  ('a8000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002');
+
 insert into public.coachee_peer_sessions (peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id)
 values ('a2000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'Future peer session', '2026-03-21 10:00:00+00', 60, 'completed', 'e1000000-0000-0000-0000-000000000001');
 

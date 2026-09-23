@@ -35,13 +35,22 @@ select ok(
 );
 -- The leader journey delegates to the one shared journey construction
 -- (canonical_enrollment_journey), which reads the canonical cohort schedule
--- and the real activity source.
+-- and the real activity source. Since 20260930100000 the journey reads the
+-- calendar through canonical_enrollment_checkpoints ->
+-- canonical_enrollment_requirement_status (the per-requirement state with
+-- availability and the programme-end freeze), not directly.
 select ok(
   pg_get_functiondef(
     'public.sponsor_canonical_leader_journey(uuid,date)'::regprocedure
   ) ~ 'canonical_enrollment_journey'
     AND pg_get_functiondef(
       'public.canonical_enrollment_journey(uuid,date)'::regprocedure
+    ) ~ 'canonical_enrollment_checkpoints'
+    AND pg_get_functiondef(
+      'public.canonical_enrollment_checkpoints(uuid,date)'::regprocedure
+    ) ~ 'canonical_enrollment_requirement_status'
+    AND pg_get_functiondef(
+      'public.canonical_enrollment_requirement_status(uuid,date)'::regprocedure
     ) ~ 'canonical_enrollment_requirement_calendar',
   'leader journey uses the current Admin schedule and real activity source'
 );
@@ -209,15 +218,15 @@ select is(
   1, 'Leader C2''s engagement summary is independently scoped and also returns exactly one row'
 );
 
--- Individual Journey: same four checkpoint states as the Cohort Journey,
--- derived from the same canonical schedule, never invented.
+-- Individual Journey: same five checkpoint states as the Cohort Journey
+-- (20260930100000), derived from the same canonical schedule, never invented.
 select ok(
-  (select bool_and(point->>'state' IN ('upcoming', 'current', 'completed', 'overdue'))
+  (select bool_and(point->>'state' IN ('upcoming', 'current', 'completed', 'completed_late', 'overdue'))
    from jsonb_array_elements(
      public.sponsor_canonical_leader_journey(
        '14141414-1414-4141-8141-000000000001'::uuid, '2026-07-06'::date)
    ) point),
-  'leader journey checkpoints only ever use the canonical four states'
+  'leader journey checkpoints only ever use the canonical five states'
 );
 select ok(
   (select count(*) > 0

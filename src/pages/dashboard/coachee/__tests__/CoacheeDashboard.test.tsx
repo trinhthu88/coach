@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import {
@@ -409,7 +409,11 @@ describe("My Journey — shared Programme Journey (full variant)", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("en");
     seedPopulated();
+    // The position is a calendar position: today = checkpoint 5's date.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-03-02T12:00:00"));
   });
+  afterEach(() => vi.useRealTimers());
 
   it("renders every checkpoint identically to Sponsor Leader Detail, plus learner detail", () => {
     const sponsor = renderSponsor();
@@ -426,7 +430,7 @@ describe("My Journey — shared Programme Journey (full variant)", () => {
     const detail = screen.getByTestId("checkpoint-detail");
     // Training week title is source content, shown with the Training item — not as the checkpoint title.
     expect(within(detail).getByTestId("checkpoint-training-weeks")).toHaveTextContent("Training / Learning · Week 9");
-    expect(within(detail).getByText("This checkpoint is due today.")).toBeInTheDocument();
+    expect(within(detail).getByText(/everything it needs is available now/)).toBeInTheDocument();
     expect(within(detail).getByRole("link", { name: /Training \/ Learning/ })).toHaveAttribute("href", "/training");
   });
 });

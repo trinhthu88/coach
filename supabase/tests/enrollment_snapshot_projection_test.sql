@@ -217,7 +217,9 @@ select is(
     'ac000000-0000-0000-0000-000000000011'::uuid,
     '2026-01-01'::date
   )->0->>'state')),
-  'upcoming',
+  -- Its session requirements opened 14 days before the 11 Jan deadline, so on
+  -- 1 Jan they are available and not yet due: current (20260930100000).
+  'current',
   'the Sponsor journey does not mark the programme-start baseline overdue'
 );
 

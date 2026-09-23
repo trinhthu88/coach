@@ -75,7 +75,13 @@ values
    'Coaching two', '2026-01-26T10:00:00Z', 60, 'completed', 'e6000000-0000-0000-0000-000000000001', null);
 
 -- Peer: P1 learner 1 RECEIVES (with a legacy receiver note and rating 3);
--- P2 learner 1 PROVIDES to learner 2.
+-- P2 learner 1 PROVIDES to learner 2. Learners 1 and 2 are an assigned Peer
+-- dyad (a learner Peer session needs one, 20260929100000).
+insert into public.peer_dyads (id, cohort_id, programme_id, created_by)
+values ('f6000000-0000-0000-0000-0000000000d1', 'd6000000-0000-0000-0000-000000000001', 'c6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-000000000009');
+insert into public.peer_dyad_members (dyad_id, enrollment_id) values
+  ('f6000000-0000-0000-0000-0000000000d1', 'e6000000-0000-0000-0000-000000000001'),
+  ('f6000000-0000-0000-0000-0000000000d1', 'e6000000-0000-0000-0000-000000000002');
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, receiver_rating)
 values ('f6000000-0000-0000-0000-000000000011', 'a6000000-0000-0000-0000-000000000002', 'a6000000-0000-0000-0000-000000000001',
   'Peer received', '2026-02-02T10:00:00Z', 60, 'completed', 'e6000000-0000-0000-0000-000000000001', 'Peer note: open questions helped.', 3);
@@ -116,9 +122,10 @@ values ('e6000000-0000-0000-0000-000000000001', 'coaching', 'f6000000-0000-0000-
 insert into public.goal_checkins (enrollment_id, goal_id, source_activity_type, source_activity_id, previous_rating, new_rating, actor_user_id)
 values ('e6000000-0000-0000-0000-000000000001', 'f6000000-0000-0000-0000-000000000901', 'coaching',
   'f6000000-0000-0000-0000-000000000001', 10, 20, 'a6000000-0000-0000-0000-000000000001');
-insert into public.enrollment_actions (enrollment_id, owner_user_id, source_activity_type, source_activity_id, title)
+-- A new action carries its goal and a due date (validate_enrollment_action, 20260929100000).
+insert into public.enrollment_actions (enrollment_id, owner_user_id, source_activity_type, source_activity_id, title, goal_id, due_date)
 values ('e6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-000000000001', 'coaching',
-  'f6000000-0000-0000-0000-000000000001', 'Try the new opener');
+  'f6000000-0000-0000-0000-000000000001', 'Try the new opener', 'f6000000-0000-0000-0000-000000000901', date '2026-03-01');
 
 -- ===== Bridging (run as the migration owner) =====
 select ok(exists(select 1 from public.session_learning_reflections
@@ -187,7 +194,7 @@ insert into public.session_learning_reflections (enrollment_id, source_activity_
 values ('e6000000-0000-0000-0000-000000000001', 'peer_coaching', 'f6000000-0000-0000-0000-000000000012', 'What I learned giving the session.');
 select lives_ok($$
   select public.save_enrollment_activity_actions('e6000000-0000-0000-0000-000000000001', 'coachee_peer_coaching',
-    'f6000000-0000-0000-0000-000000000012', '[{"title":"Practise silence"}]'::jsonb)
+    'f6000000-0000-0000-0000-000000000012', '[{"title":"Practise silence","goal_id":"f6000000-0000-0000-0000-000000000901","due_date":"2026-03-01"}]'::jsonb)
 $$, 'the providing learner records a follow-up action on their own enrollment');
 select lives_ok($$
   select * from public.record_goal_checkins('e6000000-0000-0000-0000-000000000001', 'peer_coaching',
@@ -204,7 +211,7 @@ select lives_ok($$
 $$, 'the mentee rates the mentoring session');
 select lives_ok($$
   select public.save_enrollment_activity_actions('e6000000-0000-0000-0000-000000000001', 'triad',
-    'f6000000-0000-0000-0000-000000000031', '[{"title":"Observe one more session"}]'::jsonb)
+    'f6000000-0000-0000-0000-000000000031', '[{"title":"Observe one more session","goal_id":"f6000000-0000-0000-0000-000000000901","due_date":"2026-03-01"}]'::jsonb)
 $$, 'a Triad member records a follow-up action on their own enrollment');
 
 create temporary table d1 as

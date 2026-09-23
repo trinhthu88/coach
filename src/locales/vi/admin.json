@@ -1193,7 +1193,8 @@
       "completed": "Đã hoàn thành",
       "overdue": "Quá hạn",
       "due": "Đến hạn",
-      "upcoming": "Sắp tới"
+      "upcoming": "Sắp tới",
+      "completed_late": "Hoàn thành trễ hạn"
     }
   },
   "addPerson": {

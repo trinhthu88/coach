@@ -51,6 +51,13 @@ values ('e9910000-0000-4000-8000-00000000002a', 'c9910000-0000-4000-8000-0000000
 insert into public.coachee_goals (coachee_id, enrollment_id, title, status) values
   ('a9910000-0000-4000-8000-000000000002', 'e9910000-0000-4000-8000-00000000002a', 'Partner goal', 'active'),
   ('a9910000-0000-4000-8000-000000000001', 'e9910000-0000-4000-8000-00000000000a', 'Cohort A goal', 'active');
+-- The two cohort A learners are an assigned Peer dyad (a learner Peer session
+-- needs one, 20260929100000_canonical_contract_hardening).
+insert into public.peer_dyads (id, cohort_id, programme_id, created_by) values
+  ('a9910000-0000-4000-8000-0000000000d1', 'd9910000-0000-4000-8000-00000000000a', 'c9910000-0000-4000-8000-000000000001', 'a9910000-0000-4000-8000-000000000004');
+insert into public.peer_dyad_members (dyad_id, enrollment_id) values
+  ('a9910000-0000-4000-8000-0000000000d1', 'e9910000-0000-4000-8000-00000000000a'),
+  ('a9910000-0000-4000-8000-0000000000d1', 'e9910000-0000-4000-8000-00000000002a');
 select set_config('request.jwt.claim.sub', 'a9910000-0000-4000-8000-000000000002', true);   -- the receiver books
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('app.session_transition', 'on', true);
@@ -90,7 +97,15 @@ insert into public.coachee_goal_ratings (goal_id, coachee_id, enrollment_id, sta
   ('59910000-0000-4000-8000-00000000000b', 'a9910000-0000-4000-8000-000000000001', 'e9910000-0000-4000-8000-00000000000b', 20, 50, 80);
 insert into public.training_progress (user_id, enrollment_id, training_week_id, viewed_at, completed_at)
 values ('a9910000-0000-4000-8000-000000000001', 'e9910000-0000-4000-8000-00000000000b',
-  '79910000-0000-4000-8000-000000000001', now() - interval '15 days', now() - interval '15 days');
+  '79910000-0000-4000-8000-000000000001', now() - interval '20 days', now() - interval '20 days');
+-- A configured Quiz gates its week (Skill Card AND Quiz,
+-- 20260929100000_canonical_contract_hardening), so week 1 is done only with
+-- its Quiz submitted too. Both land on week 1's availability day, which is
+-- also its due date (cohort start): on time, and not before the week opened
+-- (20260930100000_journey_current_fulfilment).
+insert into public.assignment_submissions (assignment_id, user_id, answers, submitted_at, enrollment_id)
+select a.id, 'a9910000-0000-4000-8000-000000000001', '{}', now() - interval '20 days', 'e9910000-0000-4000-8000-00000000000b'
+from public.assignments a where a.training_week_id = '79910000-0000-4000-8000-000000000001' and a.title = 'Quiz 1';
 
 select ok(not exists (select 1 from public.enrollment_module_snapshots
                       where enrollment_id = 'e9910000-0000-4000-8000-00000000000b' and module = 'training'),
@@ -131,7 +146,9 @@ select is(
 select is(
   (select jsonb_object_agg(item_type, completed_units || '/' || required_units) from public.learner_training_week_items('e9910000-0000-4000-8000-00000000000b') i
    where i.training_week_id = '79910000-0000-4000-8000-000000000001'),
-  '{"skill_cards": "1/1", "quizzes": "0/1"}'::jsonb, 'per-week child evidence counts every configured child type');
+  -- Every child category is always exposed, with a zero row when not
+  -- configured (20260929100000_canonical_contract_hardening).
+  '{"skill_cards": "1/1", "quizzes": "1/1", "reflections": "0/0", "daily_prompts": "0/0"}'::jsonb, 'per-week child evidence counts every configured child type');
 select is(
   (select sum(required_units)::int from public.learner_training_week_items('e9910000-0000-4000-8000-00000000000b') where item_type = 'skill_cards'),
   (select training_required_units from public.learner_canonical_progress('e9910000-0000-4000-8000-00000000000b', current_date)),

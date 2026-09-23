@@ -349,7 +349,8 @@
         "upcoming": "Upcoming",
         "current": "Current",
         "completed": "Completed",
-        "overdue": "Overdue"
+        "overdue": "Overdue",
+        "completed_late": "Completed late"
       },
       "scheduleMismatchTitle": "Schedule update pending",
       "scheduleMismatch": "{{module}}: {{scheduled}} of {{required}} required units have a cohort due date. Checkpoints show only dated units until the cohort schedule is updated.",

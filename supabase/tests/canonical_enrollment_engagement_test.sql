@@ -91,8 +91,8 @@ set local role authenticated;
 
 
 
-insert into public.sessions (coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id, coachee_rating)
-values (
+insert into public.sessions (id, coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id, coachee_rating)
+values ('58000000-0000-0000-0000-000000000001',
   'a8000000-0000-0000-0000-000000000002', 'a8000000-0000-0000-0000-000000000001',
   'Engagement recon coaching session', '2026-02-01T10:00:00Z', 60, 'completed',
   'e8000000-0000-0000-0000-000000000001', 4
@@ -107,10 +107,13 @@ reset role;
 insert into public.coachee_goal_ratings (coachee_id, enrollment_id, goal_id, start_rating, current_rating, target_rating) values
   ('a8000000-0000-0000-0000-000000000001', 'e8000000-0000-0000-0000-000000000001', '98000000-0000-0000-0000-000000000001', 20, 50, 80),
   ('a8000000-0000-0000-0000-000000000001', 'e8000000-0000-0000-0000-000000000001', '98000000-0000-0000-0000-000000000002', 10, 40, 60);
-insert into public.enrollment_actions (enrollment_id, owner_user_id, goal_id, title, status) values
-  ('e8000000-0000-0000-0000-000000000001', 'a8000000-0000-0000-0000-000000000001', '98000000-0000-0000-0000-000000000001', 'Done action', 'completed'),
-  ('e8000000-0000-0000-0000-000000000001', 'a8000000-0000-0000-0000-000000000001', '98000000-0000-0000-0000-000000000001', 'Open action', 'open'),
-  ('e8000000-0000-0000-0000-000000000001', 'a8000000-0000-0000-0000-000000000001', null, 'Cancelled action', 'cancelled');
+-- Every new action is a post-session follow-up: its source session, a goal of
+-- its enrollment and a due date (validate_enrollment_action, 20260930100000).
+insert into public.enrollment_actions (enrollment_id, owner_user_id, goal_id, title, status, due_date,
+  source_activity_type, source_activity_id)
+select 'e8000000-0000-0000-0000-000000000001', 'a8000000-0000-0000-0000-000000000001', '98000000-0000-0000-0000-000000000001',
+  v.title, v.status, current_date + 14, 'coaching', '58000000-0000-0000-0000-000000000001'
+from (values ('Done action', 'completed'), ('Open action', 'open'), ('Cancelled action', 'cancelled')) v(title, status);
 
 -- Sponsor read first (5-enrollment cohort meets the k-anonymity threshold).
 select set_config('request.jwt.claim.sub', 'a8000000-0000-0000-0000-000000000099', true);

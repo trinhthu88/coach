@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProgrammeJourneyPoint } from "@/lib/programmeProfile";
 
 const JOURNEY: ProgrammeJourneyPoint[] = [
@@ -38,6 +38,13 @@ function renderFull() {
 }
 
 describe("Programme Journey checkpoint detail", () => {
+  // The position is a calendar position: on 1 May, checkpoint 9 (20 May) is next.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-05-01T12:00:00"));
+  });
+  afterEach(() => vi.useRealTimers());
+
   it("My Journey exposes every canonical checkpoint (never truncated)", () => {
     renderFull();
     expect(screen.getAllByTestId("journey-checkpoint")).toHaveLength(4);
@@ -91,6 +98,13 @@ describe("Required-units mismatch", () => {
 });
 
 describe("Dashboard journey summary paging", () => {
+  // Today = CP7's date (15 July).
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-15T12:00:00"));
+  });
+  afterEach(() => vi.useRealTimers());
+
   const twelve: ProgrammeJourneyPoint[] = Array.from({ length: 12 }, (_, i) => ({
     checkpoint_number: i + 1,
     due_on: `2026-${String(i + 1).padStart(2, "0")}-15`,

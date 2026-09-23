@@ -40,6 +40,20 @@ insert into public.programme_modules (programme_id, module, enabled, config) val
   ('c7000000-0000-0000-0000-000000000001', 'mentoring', true, '{"required":true,"required_units":1,"distribution_settings":{}}'),
   ('c7000000-0000-0000-0000-000000000001', 'triads', true, '{"required":true,"required_units":2,"distribution_settings":{}}');
 
+-- Every requirement is dated explicitly by the Admin (its own
+-- cohort_requirement_dates.due_on). A session fulfils a requirement only from
+-- due_on - 14 (20260930100000), so each date sits just after the session that
+-- fulfils it. Peer is re-dated further down, where its rows are rebuilt.
+update public.cohort_requirement_dates d
+   set due_on = v.due_on, is_overridden = true,
+       generation_method = 'manual', materialized_via = 'admin_save'
+  from (values ('coaching', 1, date '2026-01-20'), ('coaching', 2, date '2026-02-05'),
+               ('mentoring', 1, date '2026-01-25'),
+               ('triads', 1, date '2026-02-20'), ('triads', 2, date '2026-06-30')) v(module, ordinal, due_on)
+ where d.cohort_id = 'd7000000-0000-0000-0000-000000000001'
+   and d.module = v.module::public.programme_module_type
+   and d.ordinal = v.ordinal;
+
 insert into public.programme_enrollments (id, user_id, programme_id, cohort_id, organization_id, start_date, end_date, status)
 select ('e7000000-0000-0000-0000-00000000000' || n)::uuid, ('a7000000-0000-0000-0000-00000000000' || n)::uuid,
   'c7000000-0000-0000-0000-000000000001', 'd7000000-0000-0000-0000-000000000001',
@@ -116,11 +130,30 @@ on conflict (enrollment_id, source_activity_type, source_activity_id) do nothing
 
 -- Peer practice: learner 1 received 3 completed (requirement is 2) and gave 2
 -- (stored under learner 2's enrollment, same cohort).
+-- A learner Peer session needs an assigned, active dyad at booking time
+-- (20260929100000_canonical_contract_hardening). Learner 1 was first paired
+-- with learner 3 (one received session), that dyad was closed, and learner 1
+-- was then paired with learner 2 for the rest; closing a dyad leaves its
+-- historical sessions untouched.
+insert into public.peer_dyads (id, cohort_id, programme_id, created_by) values
+  ('a8700000-0000-0000-0000-000000000013', 'd7000000-0000-0000-0000-000000000001', 'c7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000009');
+insert into public.peer_dyad_members (dyad_id, enrollment_id) values
+  ('a8700000-0000-0000-0000-000000000013', 'e7000000-0000-0000-0000-000000000001'),
+  ('a8700000-0000-0000-0000-000000000013', 'e7000000-0000-0000-0000-000000000003');
+insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, provider_notes, provider_private_notes)
+values
+  ('f7000000-0000-0000-0000-000000000013', 'a7000000-0000-0000-0000-000000000003', 'a7000000-0000-0000-0000-000000000001', 'Peer received 3', '2026-03-16T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', null, null, null);
+update public.peer_dyads set status = 'closed' where id = 'a8700000-0000-0000-0000-000000000013';
+
+insert into public.peer_dyads (id, cohort_id, programme_id, created_by) values
+  ('a8700000-0000-0000-0000-000000000012', 'd7000000-0000-0000-0000-000000000001', 'c7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000009');
+insert into public.peer_dyad_members (dyad_id, enrollment_id) values
+  ('a8700000-0000-0000-0000-000000000012', 'e7000000-0000-0000-0000-000000000001'),
+  ('a8700000-0000-0000-0000-000000000012', 'e7000000-0000-0000-0000-000000000002');
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, provider_notes, provider_private_notes)
 values
   ('f7000000-0000-0000-0000-000000000011', 'a7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000001', 'Peer received 1', '2026-02-02T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', 'Peer reflection: open questions helped.', 'PROVIDER SHARED NOTE', 'PROVIDER PRIVATE NOTE'),
-  ('f7000000-0000-0000-0000-000000000012', 'a7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000001', 'Peer received 2', '2026-03-02T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', null, null, null),
-  ('f7000000-0000-0000-0000-000000000013', 'a7000000-0000-0000-0000-000000000003', 'a7000000-0000-0000-0000-000000000001', 'Peer received 3', '2026-03-16T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', null, null, null);
+  ('f7000000-0000-0000-0000-000000000012', 'a7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000001', 'Peer received 2', '2026-03-02T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', null, null, null);
 select set_config('request.jwt.claim.sub', 'a7000000-0000-0000-0000-000000000002', true);
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, provider_notes, provider_private_notes)
 values
@@ -150,11 +183,11 @@ delete from public.cohort_requirement_dates
  where cohort_id = 'd7000000-0000-0000-0000-000000000001'::uuid
    and module = 'peer_coaching'::public.programme_module_type;
 insert into public.cohort_requirement_dates
-  (cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
+  (cohort_id, programme_id, module, ordinal, due_on, is_overridden, generation_method, materialized_via) values
   ('d7000000-0000-0000-0000-000000000001', 'c7000000-0000-0000-0000-000000000001',
-   'peer_coaching', 1, date '2026-03-05', 'manual', 'admin_save'),
+   'peer_coaching', 1, date '2026-02-10', true, 'manual', 'admin_save'),
   ('d7000000-0000-0000-0000-000000000001', 'c7000000-0000-0000-0000-000000000001',
-   'peer_coaching', 2, date '2026-05-05', 'manual', 'admin_save');
+   'peer_coaching', 2, date '2026-02-20', true, 'manual', 'admin_save');
 
 -- Re-attribute the Peer participations now that both requirements exist.
 with ordered as (

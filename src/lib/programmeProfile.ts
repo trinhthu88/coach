@@ -14,7 +14,15 @@ import type { Database } from "@/integrations/supabase/types";
  * completed, due, overdue, adherence or checkpoint values itself.
  */
 
-export type ProgrammeCheckpointState = "completed" | "current" | "overdue" | "upcoming";
+/**
+ * Canonical requirement / checkpoint states (20260930100000):
+ *   upcoming        not yet available
+ *   current         available, not yet due, not complete
+ *   completed       fulfilled on or before its due date
+ *   completed_late  fulfilled after its due date
+ *   overdue         due date passed and still incomplete now
+ */
+export type ProgrammeCheckpointState = "completed" | "completed_late" | "current" | "overdue" | "upcoming";
 
 export type ProgrammeJourneyPoint = {
   checkpoint_number: number;
@@ -141,7 +149,7 @@ function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-const CHECKPOINT_STATES = ["completed", "current", "overdue", "upcoming"];
+const CHECKPOINT_STATES = ["completed", "completed_late", "current", "overdue", "upcoming"];
 
 /** Parses sponsor_canonical_leader_journey / learner_canonical_journey (same JSON contract). */
 export function parseProgrammeJourney(value: unknown): ProgrammeJourneyPoint[] {
@@ -253,11 +261,10 @@ export function parseProgrammeExperience(value: unknown): ProgrammeExperience {
  */
 export function journeyFocusIndex(journey: ProgrammeJourneyPoint[], today: string = localIsoDate()): number {
   if (journey.length === 0) return -1;
-  const current = journey.findIndex((p) => p.state === "current");
-  if (current >= 0) return current;
-  const next = journey.findIndex((p) => p.state === "upcoming" || (p.state === "completed" && p.due_on >= today));
-  if (next >= 0) return next;
-  return journey.length - 1;
+  // Several checkpoints can be "current" (available, not yet due), so the
+  // position is read from the calendar alone, never from a state.
+  const next = journey.findIndex((p) => p.due_on >= today);
+  return next >= 0 ? next : journey.length - 1;
 }
 
 /** Today as YYYY-MM-DD in the viewer's calendar (the date the canonical as-of defaults to). */
@@ -283,8 +290,13 @@ export interface JourneyWindow {
  * points themselves are never altered — a narrowed window shows exactly the
  * checkpoints, statuses and cumulative units the full journey shows.
  */
-export function journeyWindow(journey: ProgrammeJourneyPoint[], maxVisible?: number, startIndex?: number | null): JourneyWindow {
-  const focusIndex = journeyFocusIndex(journey);
+export function journeyWindow(
+  journey: ProgrammeJourneyPoint[],
+  maxVisible?: number,
+  startIndex?: number | null,
+  today: string = localIsoDate(),
+): JourneyWindow {
+  const focusIndex = journeyFocusIndex(journey, today);
   const total = journey.length;
   if (!maxVisible || total <= maxVisible) {
     return { points: journey, focusIndex, firstShown: total ? 1 : 0, lastShown: total, total, truncated: false };

@@ -46,17 +46,22 @@ insert into public.cohorts (id, name, programme_id) values
   ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'Cohort A', 'd1000000-0000-0000-0000-00000000a1a1'::uuid),
   ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'Cohort B', 'd1000000-0000-0000-0000-00000000a2a2'::uuid);
 
--- Cohort owns WHEN (section 3): deadlines come from the generic schedule.
+-- Cohort owns WHEN (section 3): each requirement carries its own Admin-set
+-- date. A session counts only inside its requirement's window
+-- [due_on - 14, as-of] (20260930100000), so Cohort B's dates are set where
+-- its sessions below land: Mentoring 1 (the session held yesterday, later
+-- moved to 40 days ago) is due 26 days ago, so both dates fall in its window
+-- (yesterday as late work); Mentoring 2 (held 2 days ago) is due in 10 days.
 insert into public.cohort_requirement_dates
-  (cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
-  ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 200, 'manual', 'admin_save'),
-  ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date - 100, 'manual', 'admin_save'),
-  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 1, current_date + 30, 'manual', 'admin_save'),
-  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 2, current_date + 60, 'manual', 'admin_save'),
+  (cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via, is_overridden) values
+  ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 200, 'manual', 'admin_save', true),
+  ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date - 100, 'manual', 'admin_save', true),
+  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 1, current_date - 26, 'manual', 'admin_save', true),
+  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 2, current_date + 10, 'manual', 'admin_save', true),
   -- A third requirement so the cancelled-session case below has one to occupy.
   -- Quantity is now the cohort requirement count, so a third session against a
   -- two-requirement cohort is correctly refused.
-  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 3, current_date + 90, 'manual', 'admin_save');
+  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 3, current_date + 90, 'manual', 'admin_save', true);
 
 -- One learner, two enrollments. A is history; B is current.
 -- Enrollment A is opened first so its Mentoring history can be recorded, then
@@ -513,12 +518,15 @@ insert into public.user_roles (user_id, role)
 insert into public.cohorts (id, name, programme_id) values
   ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'Cohort C', 'd1000000-0000-0000-0000-00000000a1a1'::uuid);
 
+-- Mentoring 2 is due in 5 days, so the session held 5 days ago is early but
+-- inside its availability window (due_on - 14, 20260930100000) and genuinely
+-- fulfils it.
 insert into public.cohort_requirement_dates
-  (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
+  (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via, is_overridden) values
   ('d1000000-0000-0000-0000-0000000000d1'::uuid, 'd1000000-0000-0000-0000-00000000b3b3'::uuid,
-   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 10, 'manual', 'admin_save'),
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 10, 'manual', 'admin_save', true),
   ('d1000000-0000-0000-0000-0000000000d2'::uuid, 'd1000000-0000-0000-0000-00000000b3b3'::uuid,
-   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date + 30, 'manual', 'admin_save');
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date + 5, 'manual', 'admin_save', true);
 
 insert into public.cohort_mentors (cohort_id, mentor_user_id) values
   ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid);
@@ -780,11 +788,15 @@ select ok(
 insert into public.session_learning_reflections (enrollment_id, source_activity_type, source_activity_id, body)
   values ('d1000000-0000-0000-0000-00000000e4e4'::uuid, 'mentoring',
           'd1000000-0000-0000-0000-00000000c8c8'::uuid, 'What I took from it');
+-- New actions carry a goal and a due date (20260929100000).
 insert into public.enrollment_actions
-  (enrollment_id, source_activity_type, source_activity_id, title, owner_user_id)
+  (enrollment_id, source_activity_type, source_activity_id, title, owner_user_id, goal_id, due_date)
   values ('d1000000-0000-0000-0000-00000000e4e4'::uuid, 'mentoring',
           'd1000000-0000-0000-0000-00000000c8c8'::uuid, 'Follow up',
-          'd1000000-0000-0000-0000-000000000006'::uuid);
+          'd1000000-0000-0000-0000-000000000006'::uuid,
+          (select g.id from public.coachee_goals g
+            where g.enrollment_id = 'd1000000-0000-0000-0000-00000000e4e4'::uuid and g.status = 'active' limit 1),
+          current_date + 7);
 
 select is(
   (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e4e4'::uuid, current_date)

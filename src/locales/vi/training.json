@@ -24,7 +24,9 @@
     "requirementState": {
       "completed": "Đã hoàn thành",
       "overdue": "Quá hạn",
-      "upcoming": "Sắp tới"
+      "upcoming": "Sắp tới",
+      "current": "Đang mở",
+      "completed_late": "Hoàn thành trễ hạn"
     },
     "item": {
       "skill_cards": "Thẻ kỹ năng",

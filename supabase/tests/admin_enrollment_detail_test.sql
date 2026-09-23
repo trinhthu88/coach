@@ -50,6 +50,9 @@ values ('c3a00000-0000-0000-0000-0000000000e0', 'c3a00000-0000-0000-0000-0000000
 select set_config('request.jwt.claim.sub', 'c3a00000-0000-0000-0000-000000000001', true);
 
 -- One completed Triad for the current enrollment, with learner 1's reflection.
+-- It is held inside the requirement's window (due on the cohort end 2026-07-05,
+-- available from due - 14 days: 20260930100000_journey_current_fulfilment), so
+-- it fulfils Triad 1.
 insert into public.triad_groups (id, cohort_requirement_date_id, is_active)
 select 'c3a00000-0000-0000-0000-0000000000f0', d.id, true
 from public.cohort_requirement_dates d
@@ -59,7 +62,7 @@ insert into public.triad_group_members (triad_group_id, enrollment_id, member_or
   ('c3a00000-0000-0000-0000-0000000000f0', 'c3a00000-0000-0000-0000-0000000000e2', 2),
   ('c3a00000-0000-0000-0000-0000000000f0', 'c3a00000-0000-0000-0000-0000000000e3', 3);
 insert into public.triad_sessions (id, triad_group_id, scheduled_start_time, status)
-values ('c3a00000-0000-0000-0000-0000000000f1', 'c3a00000-0000-0000-0000-0000000000f0', '2026-02-16T10:00:00Z', 'completed');
+values ('c3a00000-0000-0000-0000-0000000000f1', 'c3a00000-0000-0000-0000-0000000000f0', '2026-06-25T10:00:00Z', 'completed');
 insert into public.triad_reflections (id, triad_session_id, enrollment_id, satisfaction_rating)
 values ('c3a00000-0000-0000-0000-0000000000f2', 'c3a00000-0000-0000-0000-0000000000f1', 'c3a00000-0000-0000-0000-0000000000e1', 4);
 insert into public.triad_reflection_answers (triad_reflection_id, question_id, answer_text)
@@ -70,9 +73,14 @@ insert into public.coachee_reflections (coachee_id, enrollment_id, body, mood)
 values ('c3a00000-0000-0000-0000-000000000001', 'c3a00000-0000-0000-0000-0000000000e1', 'PRIVATE JOURNEY NOTE', 'proud');
 insert into public.coachee_goals (id, coachee_id, enrollment_id, title)
 values ('c3a00000-0000-0000-0000-0000000000d1', 'c3a00000-0000-0000-0000-000000000001', 'c3a00000-0000-0000-0000-0000000000e1', 'Delegate more');
-insert into public.enrollment_actions (enrollment_id, owner_user_id, goal_id, title, status)
+-- A new action is a post-session follow-up: it names its source activity (the
+-- Triad session above), a goal of its enrollment and a due date
+-- (validate_enrollment_action, 20260930100000).
+insert into public.enrollment_actions (enrollment_id, owner_user_id, goal_id, title, status, due_date,
+  source_activity_type, source_activity_id)
 values ('c3a00000-0000-0000-0000-0000000000e1', 'c3a00000-0000-0000-0000-000000000001',
-  'c3a00000-0000-0000-0000-0000000000d1', 'Open action', 'open');
+  'c3a00000-0000-0000-0000-0000000000d1', 'Open action', 'open', current_date + 14,
+  'triad', 'c3a00000-0000-0000-0000-0000000000f1');
 
 -- ===== Grants =====
 select ok(not has_function_privilege('authenticated', 'public.canonical_session_history(uuid)', 'EXECUTE'),

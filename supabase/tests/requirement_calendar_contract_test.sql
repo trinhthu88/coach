@@ -102,6 +102,8 @@ from unnest(array[11, 12, 13, 14, 15]) n;
 
 -- Learner 12: an active rated goal, one completed Coaching session (on
 -- requirement 1), Week 1 finished, and private text in every learning table.
+-- Coaching 1 is due today-5 and available from today-19 (due_on - 14,
+-- 20260930100000); the session is held inside that window, before the deadline.
 insert into public.coachee_goals (id, coachee_id, enrollment_id, title, status)
 values ('59900000-0000-4000-8000-000000000012', 'a9900000-0000-4000-8000-000000000012',
   'e9900000-0000-4000-8000-000000000012', 'Calendar goal', 'active');
@@ -113,7 +115,7 @@ select set_config('app.session_transition', 'on', true);
 insert into public.sessions (id, enrollment_id, cohort_requirement_id, coach_id, coachee_id, topic, start_time, duration_minutes, status)
 select '19900000-0000-4000-8000-000000000001', 'e9900000-0000-4000-8000-000000000012', d.id,
   'a9900000-0000-4000-8000-000000000004', 'a9900000-0000-4000-8000-000000000012',
-  'Coaching 1', now() - interval '20 days', 60, 'completed'
+  'Coaching 1', now() - interval '15 days', 60, 'completed'
 from public.cohort_requirement_dates d
 where d.cohort_id = 'd9900000-0000-4000-8000-000000000001' and d.module = 'coaching' and d.ordinal = 1;
 select set_config('app.session_transition', 'off', true);

@@ -46,10 +46,11 @@ export function goalProgressText(state: GoalProgressState, text: (key: string) =
   return state.kind === "value" ? formatPercent(state.pct) : "—";
 }
 
-const { GREEN, TEAL, RED, FAINT } = PROFILE_COLORS;
+const { GREEN, TEAL, RED, AMBER, FAINT } = PROFILE_COLORS;
 
 export function checkpointStateColor(state: ProgrammeCheckpointState) {
   if (state === "completed") return GREEN;
+  if (state === "completed_late") return AMBER;
   if (state === "current") return TEAL;
   if (state === "overdue") return RED;
   return FAINT;

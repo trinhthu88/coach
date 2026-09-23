@@ -93,13 +93,15 @@ on conflict (cohort_id, coach_id) do nothing;
 -- cohort Coaching requirement (20260920110000); a session with no requirement
 -- is raw activity. Inserted BEFORE the role switch below, because
 -- cohort_requirement_dates is admin-only under RLS and a learner-scoped
--- lookup would silently match nothing.
+-- lookup would silently match nothing. Coaching 1 is due on the module
+-- deadline (the cohort end, 5 Jul) and becomes available 14 days earlier
+-- (20260930100000), so the session is held inside that window.
 insert into public.sessions (
   coach_id, coachee_id, topic, start_time, duration_minutes, status,
   enrollment_id, cohort_requirement_id)
 select 'a9000000-0000-0000-0000-000000000002'::uuid,
   'a9000000-0000-0000-0000-000000000001'::uuid,
-  'Recon coaching session', '2026-02-01T10:00:00Z'::timestamptz, 60,
+  'Recon coaching session', '2026-06-25T10:00:00Z'::timestamptz, 60,
   'completed'::public.session_status,
   'e9000000-0000-0000-0000-000000000001'::uuid, d.id
 from public.cohort_requirement_dates d

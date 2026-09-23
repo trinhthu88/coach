@@ -24,7 +24,9 @@
     "requirementState": {
       "completed": "Completed",
       "overdue": "Overdue",
-      "upcoming": "Upcoming"
+      "upcoming": "Upcoming",
+      "current": "Available",
+      "completed_late": "Completed late"
     },
     "item": {
       "skill_cards": "Skill Cards",

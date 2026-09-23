@@ -613,10 +613,11 @@
       "inScope": "Modules in scope",
       "detailNote": "Cumulative units count every required activity due up to this date. Your sponsor sees the same checkpoint status.",
       "stateNote": {
-        "completed": "Every cumulative unit due by this date was completed on time.",
-        "overdue": "Not every cumulative unit due by this date was completed by then.",
-        "current": "This checkpoint is due today.",
-        "upcoming": "Not yet due — activity completed before this date counts towards it."
+        "completed": "Every cumulative unit due by this date is complete, on time.",
+        "completed_late": "Every cumulative unit due by this date is complete — some of it after this date.",
+        "overdue": "This date has passed and some units due by it are still incomplete.",
+        "current": "Not yet due — everything it needs is available now. Sessions held early count straight away.",
+        "upcoming": "Not yet due — some of its Training content is not available yet."
       }
     },
     "goals": {

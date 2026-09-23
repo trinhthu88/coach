@@ -118,6 +118,7 @@ export function ProgrammeJourney({
                     moduleLabel={moduleLabel}
                     stateLabel={t(`cohortDetail.journey.states.${point.state}`)}
                     cumulativeLabel={t("cohortDetail.journey.cumulative")}
+                    isFocus={focusPoint?.checkpoint_number === point.checkpoint_number}
                     selected={renderDetail ? point.checkpoint_number === selectedNumber : false}
                     onSelect={renderDetail ? () => setSelected(point.checkpoint_number) : undefined}
                   />
@@ -183,6 +184,7 @@ export function JourneyCheckpointCard({
   moduleLabel,
   stateLabel,
   cumulativeLabel,
+  isFocus = false,
   selected = false,
   onSelect,
 }: {
@@ -191,11 +193,13 @@ export function JourneyCheckpointCard({
   moduleLabel: (module: string) => string;
   stateLabel: string;
   cumulativeLabel: string;
+  /** The calendar position (journeyFocusIndex), not a state: several checkpoints can be "current". */
+  isFocus?: boolean;
   selected?: boolean;
   onSelect?: () => void;
 }) {
   const color = checkpointStateColor(point.state);
-  const highlighted = point.state === "current" || selected;
+  const highlighted = isFocus || selected;
   const body = (
     <div
       className={cn(
@@ -225,7 +229,7 @@ export function JourneyCheckpointCard({
           {point.completed_units} / {point.required_units}
         </div>
         <div className="mt-1 text-[9.5px] text-[#6a6560]">{cumulativeLabel}</div>
-        {point.state === "current" && <div className="mt-1 text-[9.5px] font-semibold text-[#2c8fa8]">{text("youAreHere")}</div>}
+        {isFocus && <div className="mt-1 text-[9.5px] font-semibold text-[#2c8fa8]">{text("youAreHere")}</div>}
       </div>
     </div>
   );

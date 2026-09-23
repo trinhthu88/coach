@@ -57,17 +57,25 @@ describe("parseProgrammeExperience", () => {
 });
 
 describe("journey focus and window", () => {
+  // point(n) is due 2026-01-(3n): CP5 is due 2026-01-15.
   const journey = [point(1, "overdue"), point(2, "overdue"), point(3, "completed"), point(4, "completed"), point(5, "current"), point(6, "upcoming"), point(7, "upcoming")];
+  const TODAY = "2026-01-15";
 
-  it("focuses the backend's current checkpoint", () => {
-    expect(journeyFocusIndex(journey)).toBe(4);
+  it("focuses the checkpoint due today", () => {
+    expect(journeyFocusIndex(journey, TODAY)).toBe(4);
   });
 
-  it("without a checkpoint due today, focuses the next upcoming checkpoint; a finished programme focuses its final checkpoint", () => {
-    expect(journeyFocusIndex([point(1, "completed"), point(2, "overdue"), point(3, "upcoming")])).toBe(2);
-    expect(journeyFocusIndex([point(1, "upcoming"), point(2, "upcoming")])).toBe(0);
-    expect(journeyFocusIndex([point(1, "completed"), point(2, "overdue")])).toBe(1);
+  it("without a checkpoint due today, focuses the next one by date; a finished programme focuses its final checkpoint", () => {
+    expect(journeyFocusIndex([point(1, "completed"), point(2, "overdue"), point(3, "upcoming")], "2026-01-07")).toBe(2);
+    expect(journeyFocusIndex([point(1, "upcoming"), point(2, "upcoming")], "2026-01-01")).toBe(0);
+    expect(journeyFocusIndex([point(1, "completed"), point(2, "overdue")], "2026-02-01")).toBe(1);
     expect(journeyFocusIndex([])).toBe(-1);
+  });
+
+  it("several checkpoints can be current (available, not yet due): the position is still one calendar point", () => {
+    const available = [point(1, "completed"), point(2, "completed_late"), point(3, "current"), point(4, "current"), point(5, "current")];
+    expect(journeyFocusIndex(available, "2026-01-08")).toBe(2);
+    expect(journeyWindow(available, 3, null, "2026-01-08").focusIndex).toBe(2);
   });
 
   it("position is calendar-based: requirements completed early never move it to the last checkpoint", () => {
@@ -85,32 +93,32 @@ describe("journey focus and window", () => {
       point(1, "completed"), point(2, "completed"), point(3, "overdue"), point(4, "upcoming"),
       point(5, "upcoming"), point(6, "upcoming"), point(7, "upcoming"), point(8, "upcoming"), point(9, "upcoming"), point(10, "upcoming"),
     ];
-    const window = journeyWindow(midProgramme, 4);
+    // CP3 (01-09) has passed; CP4 (01-12) is next.
+    const window = journeyWindow(midProgramme, 4, null, "2026-01-10");
     expect(window.points.map((p) => p.checkpoint_number)).toEqual([3, 4, 5, 6]);
     expect(window.points).toEqual(midProgramme.slice(2, 6));
     expect(window.lastShown).not.toBe(window.total);
 
     // Not started yet: the first checkpoints.
-    const notStarted = midProgramme.map((p) => ({ ...p, state: "upcoming" as const }));
-    expect(journeyWindow(notStarted, 4).points.map((p) => p.checkpoint_number)).toEqual([1, 2, 3, 4]);
+    expect(journeyWindow(midProgramme, 4, null, "2025-12-01").points.map((p) => p.checkpoint_number)).toEqual([1, 2, 3, 4]);
 
     // Finished programme: the window ends on the final checkpoint.
-    const finished = midProgramme.map((p) => ({ ...p, state: "overdue" as const }));
-    expect(journeyWindow(finished, 4).points.map((p) => p.checkpoint_number)).toEqual([7, 8, 9, 10]);
+    expect(journeyWindow(midProgramme, 4, null, "2026-03-01").points.map((p) => p.checkpoint_number)).toEqual([7, 8, 9, 10]);
   });
 
   it("a paged window reaches CP1 and the final checkpoint without leaving the Dashboard", () => {
     const twelve = Array.from({ length: 12 }, (_, i) => point(i + 1, i < 6 ? "completed" : i === 6 ? "current" : "upcoming"));
-    expect(journeyWindow(twelve, 4).firstShown).toBe(6);
-    expect(journeyWindow(twelve, 4, 0).points.map((p) => p.checkpoint_number)).toEqual([1, 2, 3, 4]);
-    expect(journeyWindow(twelve, 4, -3).firstShown).toBe(1);
-    expect(journeyWindow(twelve, 4, 99).points.map((p) => p.checkpoint_number)).toEqual([9, 10, 11, 12]);
-    // Paging never changes which checkpoint is "current".
-    expect(journeyWindow(twelve, 4, 0).focusIndex).toBe(6);
+    const today = "2026-01-21"; // CP7
+    expect(journeyWindow(twelve, 4, null, today).firstShown).toBe(6);
+    expect(journeyWindow(twelve, 4, 0, today).points.map((p) => p.checkpoint_number)).toEqual([1, 2, 3, 4]);
+    expect(journeyWindow(twelve, 4, -3, today).firstShown).toBe(1);
+    expect(journeyWindow(twelve, 4, 99, today).points.map((p) => p.checkpoint_number)).toEqual([9, 10, 11, 12]);
+    // Paging never changes the position.
+    expect(journeyWindow(twelve, 4, 0, today).focusIndex).toBe(6);
   });
 
   it("a summary window is an unaltered consecutive slice around the current position", () => {
-    const window = journeyWindow(journey, 4);
+    const window = journeyWindow(journey, 4, null, TODAY);
     expect(window.points.map((p) => p.checkpoint_number)).toEqual([4, 5, 6, 7]);
     expect(window.points).toEqual(journey.slice(3, 7));
     expect(window).toMatchObject({ firstShown: 4, lastShown: 7, total: 7, truncated: true });
@@ -119,6 +127,11 @@ describe("journey focus and window", () => {
   it("the full journey is never narrowed", () => {
     expect(journeyWindow(journey).points).toBe(journey);
     expect(journeyWindow(journey.slice(0, 3), 4).truncated).toBe(false);
+  });
+
+  it("parses completed_late as a canonical state", () => {
+    const parsed = parseProgrammeJourney([{ checkpoint_number: 1, due_on: "2026-01-05", label: null, module_scope: ["training"], required_units: 1, completed_units: 1, state: "completed_late" }]);
+    expect(parsed.map((p) => p.state)).toEqual(["completed_late"]);
   });
 });
 

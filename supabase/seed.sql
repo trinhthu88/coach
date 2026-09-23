@@ -150,9 +150,6 @@ BEGIN
     INSERT INTO coachee_goal_ratings(id,goal_id,coachee_id,enrollment_id,start_rating,current_rating,target_rating)
       VALUES(('33333333-3333-4333-8333-'||lpad(i::text,12,'0'))::uuid,gid,uid,eid,20,CASE WHEN i=3 THEN 25 ELSE 65 END,85)
       ON CONFLICT(goal_id) DO UPDATE SET enrollment_id=excluded.enrollment_id,current_rating=excluded.current_rating;
-    INSERT INTO enrollment_actions(id,enrollment_id,goal_id,owner_user_id,title,description,status,due_date)
-      VALUES(('44444444-4444-4444-8444-'||lpad(i::text,12,'0'))::uuid,eid,gid,uid,'Demo action','Private action detail',CASE WHEN i=3 THEN 'open' ELSE 'completed' END,start_date+30)
-      ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status=excluded.status;
     END IF;
     INSERT INTO public.coachee_coach_allowlist(coachee_id,coach_id,created_by)
       VALUES(uid,coach,admin_id)
@@ -166,6 +163,17 @@ BEGIN
           CASE WHEN i=4 THEN '2026-11-20'::date WHEN i=10 THEN '2027-02-01'::date ELSE '2026-09-20'::date END,60,
           CASE WHEN i IN (4,10) THEN 'confirmed'::session_status ELSE 'completed'::session_status END,
           CASE WHEN i=10 THEN NULL ELSE 4 END);
+    END IF;
+    -- A follow-up action is a post-session action: it names the session it
+    -- came from, a goal of the same enrollment and a due date
+    -- (validate_enrollment_action, 20260930100000).
+    IF i <> 10 THEN
+    INSERT INTO enrollment_actions(id,enrollment_id,goal_id,owner_user_id,title,description,status,due_date,
+                                   source_activity_type,source_activity_id)
+      VALUES(('44444444-4444-4444-8444-'||lpad(i::text,12,'0'))::uuid,eid,gid,uid,'Demo action','Private action detail',
+        CASE WHEN i=3 THEN 'open' ELSE 'completed' END,start_date+30,
+        'coaching',('55555555-5555-4555-8555-'||lpad(i::text,12,'0'))::uuid)
+      ON CONFLICT(id) DO UPDATE SET enrollment_id=excluded.enrollment_id,status=excluded.status;
     END IF;
     IF i=4 THEN
       IF NOT EXISTS (
@@ -508,6 +516,59 @@ BEGIN
       VALUES(cc,mentor) ON CONFLICT(cohort_id,mentor_user_id) DO NOTHING;
   END LOOP;
 
+  -- Per-requirement due dates (Admin per-unit override, the same path as the
+  -- Admin schedule editor: admin_set_cohort_requirement_dates -> explicit
+  -- due_on, is_overridden = true, generation_method = 'manual').
+  -- A session requirement is only fulfillable from due_on - 14 days
+  -- (canonical_session_requirement_available_on, 20260930100000), so each unit
+  -- is dated on the day its seeded session below takes place -- the dates the
+  -- completion matrix was written against. Without this every unit would sit
+  -- on the single module deadline (2026-07-05) and sessions held months
+  -- earlier would no longer count. Re-running writes the same dates.
+  --   Coaching 1..4                   2026-04-01, 05-03, 06-03, 07-05
+  --   Mentoring / Peer / Triads 1..2  2026-05-03, 07-05
+  -- Training keeps its week pacing dates (not overridden).
+  PERFORM public.admin_set_cohort_requirement_dates(cc, (
+    SELECT jsonb_agg(jsonb_build_object('requirement_id', d.id, 'due_on', v.due_on) ORDER BY d.module, d.ordinal)
+    FROM public.cohort_requirement_dates d
+    JOIN (VALUES
+      ('coaching'::public.programme_module_type, 1, '2026-04-01'::date),
+      ('coaching', 2, '2026-05-03'), ('coaching', 3, '2026-06-03'), ('coaching', 4, '2026-07-05'),
+      ('mentoring', 1, '2026-05-03'), ('mentoring', 2, '2026-07-05'),
+      ('peer_coaching', 1, '2026-05-03'), ('peer_coaching', 2, '2026-07-05'),
+      ('triads', 1, '2026-05-03'), ('triads', 2, '2026-07-05')
+    ) AS v(module, ordinal, due_on) ON v.module = d.module AND v.ordinal = d.ordinal
+    WHERE d.cohort_id = cc AND d.programme_id = pc));
+  IF (SELECT count(*) FROM public.cohort_requirement_dates d
+      WHERE d.cohort_id = cc AND d.programme_id = pc AND d.is_overridden
+        AND d.generation_method = 'manual') <> 10 THEN
+    RAISE EXCEPTION 'seed: cohort C per-requirement dates were not all applied';
+  END IF;
+
+  -- Fixed learner Peer pairs (20260929100000_canonical_contract_hardening):
+  -- a learner's Peer partner pool (eligible_peer_partners) and the learner
+  -- Peer booking gate are the Admin-assigned dyad, not the opted-in cohort.
+  -- Without a dyad every Cohort C leader opens the Peer page to nobody.
+  -- Leaders are paired C1-C2, C3-C4, ... C11-C12 (the same rows the Admin
+  -- dyad editor, admin_create_peer_dyad, writes; fixed ids so a re-run is a
+  -- no-op).
+  FOR i IN 1..6 LOOP
+    INSERT INTO public.peer_dyads(id,cohort_id,programme_id,status,created_by)
+      VALUES(('1d1d1d1d-1d1d-41d1-81d1-'||lpad(i::text,12,'0'))::uuid,cc,pc,'active',auth.uid())
+      ON CONFLICT(id) DO NOTHING;
+    INSERT INTO public.peer_dyad_members(dyad_id,enrollment_id)
+      SELECT ('1d1d1d1d-1d1d-41d1-81d1-'||lpad(i::text,12,'0'))::uuid,
+             ('14141414-1414-4141-8141-'||lpad(k::text,12,'0'))::uuid
+      FROM unnest(ARRAY[2*i-1, 2*i]) AS k
+      -- NOT EXISTS, not ON CONFLICT: the BEFORE INSERT validate_peer_dyad
+      -- trigger runs before a conflict is detected and would refuse a third
+      -- member on a re-run.
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.peer_dyad_members m
+        WHERE m.dyad_id = ('1d1d1d1d-1d1d-41d1-81d1-'||lpad(i::text,12,'0'))::uuid
+          AND m.enrollment_id = ('14141414-1414-4141-8141-'||lpad(k::text,12,'0'))::uuid);
+  END LOOP;
+
   -- Small, varied, hand-reconcilable completion data for the 12 Cohort C
   -- leaders: 2 relatively complete, several partially complete, several
   -- with little/no activity. Inserted as ordinary rows through the real
@@ -701,22 +762,28 @@ BEGIN
           format('Leader C%s leadership goal',k),'active',eid,true);
     END LOOP;
 
-    INSERT INTO enrollment_actions(id,enrollment_id,title,owner_user_id,status,completed_at) VALUES
-      ('17171717-1717-4171-8171-000000000001','14141414-1414-4141-8141-000000000001','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000001','completed',now()),
-      ('17171717-1717-4171-8171-000000000002','14141414-1414-4141-8141-000000000001','Share triad reflection with peer group','13131313-1313-4131-8131-000000000001','completed',now()),
-      ('17171717-1717-4171-8171-000000000003','14141414-1414-4141-8141-000000000002','Draft delegation plan','13131313-1313-4131-8131-000000000002','completed',now()),
-      ('17171717-1717-4171-8171-000000000004','14141414-1414-4141-8141-000000000002','Schedule follow-up peer session','13131313-1313-4131-8131-000000000002','open',NULL),
-      ('17171717-1717-4171-8171-000000000005','14141414-1414-4141-8141-000000000003','Review mentoring notes','13131313-1313-4131-8131-000000000003','open',NULL),
-      ('17171717-1717-4171-8171-000000000006','14141414-1414-4141-8141-000000000004','Book next coaching session','13131313-1313-4131-8131-000000000004','open',NULL),
-      ('17171717-1717-4171-8171-000000000007','14141414-1414-4141-8141-000000000009','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000009','completed',now()),
-      ('17171717-1717-4171-8171-000000000008','14141414-1414-4141-8141-000000000009','Share triad reflection with peer group','13131313-1313-4131-8131-000000000009','completed',now()),
-      ('17171717-1717-4171-8171-000000000009','14141414-1414-4141-8141-000000000010','Book next peer session','13131313-1313-4131-8131-000000000010','open',NULL)
+    -- Every action is a post-session follow-up: it carries its source session
+    -- (the leader's first Coaching session), its goal (the leader's own, same
+    -- enrollment) and a due date (validate_enrollment_action, 20260930100000).
+    INSERT INTO enrollment_actions(id,enrollment_id,goal_id,title,owner_user_id,status,completed_at,due_date,
+                                   source_activity_type,source_activity_id) VALUES
+      ('17171717-1717-4171-8171-000000000001','14141414-1414-4141-8141-000000000001','16161616-1616-4161-8161-000000000001','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000001','completed',now(),current_date + 14,'coaching','19191919-1919-4191-8191-000000000011'),
+      ('17171717-1717-4171-8171-000000000002','14141414-1414-4141-8141-000000000001','16161616-1616-4161-8161-000000000001','Share triad reflection with peer group','13131313-1313-4131-8131-000000000001','completed',now(),current_date + 14,'coaching','19191919-1919-4191-8191-000000000011'),
+      ('17171717-1717-4171-8171-000000000003','14141414-1414-4141-8141-000000000002','16161616-1616-4161-8161-000000000002','Draft delegation plan','13131313-1313-4131-8131-000000000002','completed',now(),current_date + 14,'coaching','19191919-1919-4191-8191-000000000021'),
+      ('17171717-1717-4171-8171-000000000004','14141414-1414-4141-8141-000000000002','16161616-1616-4161-8161-000000000002','Schedule follow-up peer session','13131313-1313-4131-8131-000000000002','open',NULL,current_date + 14,'coaching','19191919-1919-4191-8191-000000000021'),
+      ('17171717-1717-4171-8171-000000000005','14141414-1414-4141-8141-000000000003','16161616-1616-4161-8161-000000000003','Review mentoring notes','13131313-1313-4131-8131-000000000003','open',NULL,current_date + 14,'coaching','19191919-1919-4191-8191-000000000031'),
+      ('17171717-1717-4171-8171-000000000006','14141414-1414-4141-8141-000000000004','16161616-1616-4161-8161-000000000004','Book next coaching session','13131313-1313-4131-8131-000000000004','open',NULL,current_date + 14,'coaching','19191919-1919-4191-8191-000000000041'),
+      ('17171717-1717-4171-8171-000000000007','14141414-1414-4141-8141-000000000009','16161616-1616-4161-8161-000000000009','Apply coaching feedback to team 1:1s','13131313-1313-4131-8131-000000000009','completed',now(),current_date + 14,'coaching','19191919-1919-4191-8191-000000000091'),
+      ('17171717-1717-4171-8171-000000000008','14141414-1414-4141-8141-000000000009','16161616-1616-4161-8161-000000000009','Share triad reflection with peer group','13131313-1313-4131-8131-000000000009','completed',now(),current_date + 14,'coaching','19191919-1919-4191-8191-000000000091'),
+      ('17171717-1717-4171-8171-000000000009','14141414-1414-4141-8141-000000000010','16161616-1616-4161-8161-000000000010','Book next peer session','13131313-1313-4131-8131-000000000010','open',NULL,current_date + 14,'coaching','19191919-1919-4191-8191-000000000101')
       ON CONFLICT(id) DO UPDATE SET
         enrollment_id=excluded.enrollment_id,
+        goal_id=excluded.goal_id,
         title=excluded.title,
         owner_user_id=excluded.owner_user_id,
         status=excluded.status,
-        completed_at=excluded.completed_at;
+        completed_at=excluded.completed_at,
+        due_date=excluded.due_date;
   END;
 END $cohort_c$;
 -- The Coaching redesign makes requirement and slot attribution explicit. Keep

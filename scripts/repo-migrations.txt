@@ -233,6 +233,7 @@
 20260922110000_peer_cohort_eligibility.sql
 20260922120000_peer_booking_and_lifecycle.sql
 20260922130000_peer_surface_convergence.sql
+20260922182103_configure_training_learning_components.sql
 20260923100000_programme_quantity_invariant.sql
 20260924100000_sponsor_role_exclusive.sql
 20260924110000_learner_modules_from_programme.sql
@@ -264,3 +265,4 @@
 20260928140000_learner_training_from_calendar.sql
 20260928150000_demo_goal_state.sql
 20260929100000_canonical_contract_hardening.sql
+20260930100000_journey_current_fulfilment.sql

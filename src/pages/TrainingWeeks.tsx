@@ -136,6 +136,8 @@ function WeekTimelineCard({
                 className={cn(
                   "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.08em]",
                   requirementState === "completed" && "bg-[#e8f5ef] text-success",
+                  requirementState === "completed_late" && "bg-[#faf0e3] text-[#a8541c]",
+                  requirementState === "current" && "bg-[#e4f3f7] text-[#2c8fa8]",
                   requirementState === "overdue" && "bg-[#fdf4ef] text-[#a8341c]",
                   requirementState === "upcoming" && "bg-[#f2eee6] text-[#8a847d]"
                 )}

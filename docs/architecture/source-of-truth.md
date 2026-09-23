@@ -28,9 +28,9 @@ never a second answer to a business question.
 | **Mentoring requirement link** | `mentoring_sessions.cohort_requirement_id` (server-assigned) | `canonical_mentoring_requirement_fulfilment` | One live session per LEARNER per requirement. |
 | **Mentoring completion** | a COMPLETED session attributed to a requirement | `canonical_mentoring_requirement_fulfilment` → `sponsor_canonical_activity` | The preparation document is optional and gates nothing. |
 | **After-session evidence** | the evidence records themselves | `coaching_session_evidence`, `mentoring_session_evidence` | REPORTING ONLY. Neither returns a unit or progress field. |
-| **Requirement calendar** (due / completed / overdue per requirement) | computed once | `canonical_enrollment_requirement_calendar(enrollment, as_of)` → `admin_enrollment_requirement_calendar`, `learner_requirement_calendar`, `sponsor_leader_requirement_calendar` | `is_due_as_of = due_on ≤ as_of`; `is_completed` = fulfilled on/before as_of; `is_overdue = due AND NOT completed`. Carries no narrative, so every role gets the same rows. |
+| **Requirement calendar** (due / completed / overdue per requirement) | computed once | `canonical_enrollment_requirement_calendar(enrollment, as_of)` → `admin_enrollment_requirement_calendar`, `learner_requirement_calendar`, `sponsor_leader_requirement_calendar` | `is_due_as_of = due_on ≤ as_of`; `is_completed` = fulfilled on/before as_of; `is_overdue = due_on < as_of AND NOT completed` (the due date has PASSED; due today is not yet overdue — `20260930100000`). Carries no narrative, so every role gets the same rows. |
 | **Module completion, overall completion %, due-to-date adherence %, overdue units, pace** | counts over the calendar | `canonical_enrollment_progress` (per module: `canonical_module_progress`, which aggregates the calendar) → `learner_canonical_progress`, `sponsor_canonical_enrollment_progress` / `_leader_progress` / `_enrollment_metadata`, `admin_canonical_enrollment_progress` | Cohort and organisation rollups aggregate these per-enrollment rows. |
-| **Programme Journey checkpoints** | cumulative calendar counts | `canonical_enrollment_journey` → `learner_canonical_journey`, `sponsor_canonical_leader_journey`, `admin_canonical_enrollment_journey`; cohort view `get_sponsor_programme_journey` (same calendar, cohort aggregate) | One checkpoint per distinct requirement date D: required = requirements due ≤ D, completed = those fulfilled by D. Modules only in `module_scope`, never as a title. The UI never regroups checkpoints. The learner's "position" is a CALENDAR position (`journeyFocusIndex`: the checkpoint due today, else the next one by date, even if its requirements were completed early), never a completion position. |
+| **Programme Journey checkpoints** | cumulative calendar counts | `canonical_enrollment_journey` → `learner_canonical_journey`, `sponsor_canonical_leader_journey`, `admin_canonical_enrollment_journey`; cohort view `get_sponsor_programme_journey` (same calendar, cohort aggregate) | One checkpoint per distinct requirement date D: required = requirements due ≤ D, completed = those that count for the programme as of the effective as-of (current fulfilment inside each requirement's availability window, late work included — `20260930100000`), so the final checkpoint always equals the canonical programme totals for the same population and as_of. State: see *Requirement availability, states and the programme-end freeze* below. Modules only in `module_scope`, never as a title. The UI never regroups checkpoints. The learner's "position" is a CALENDAR position (`journeyFocusIndex`: the checkpoint due today, else the next one by date, even if its requirements were completed early), never a completion position and never read from a state — several checkpoints can be `current` at once. |
 | **Learner's current enrollment** (which enrollment every learner screen shows) | the learner's ONE ongoing `programme_enrollments` row (historical rows never chosen implicitly; two ongoing rows are an error) | `useActiveEnrollment()` (client resolver, built on `useEnrollmentContext`) → `learner_enrollment_context` (programme, cohort, organisation, effective dates) | Dashboard, My Journey, every module page, the Sessions hub and the sidebar read this one id. A failed or ambiguous resolution is shown as an error, never as an empty page. |
 | **Whose enrollment a session belongs to (per viewer)** | the viewer's OWN participation: the session's enrollment for their own Coaching / Mentoring (as mentee) / Triad membership; their own `peer_session_participants` row for Peer | `viewerEnrollmentFor` → `viewer_enrollment_id` on every Sessions-hub row | One physical peer session can belong to different enrollments for its two participants. The learner hub's current view is `viewer_enrollment_id = active enrollment`; never the session row's or a partner's enrollment. |
 | **Enrollment date range** | the enrollment's own dates, else its cohort's | `canonical_enrollment_progress.enrollment_start_date / enrollment_end_date` (effective, `20260928130000`) | One range on the learner header, the journey card, Sponsor and Admin. |
@@ -148,6 +148,52 @@ For deployment 1 (already applied), `scripts/triad-cutover-readiness.sql` (read-
 - **Section 5** shows each enrollment's Triad progress before and after.
 - **Section 6** lists past `confirmed` sessions. The legacy `trg_auto_confirm_triad` reset a learner's "Mark complete". A session updated after both its insert and its start is a candidate for a reviewed restore. A session never updated since insert isn't one.
 
+
+## Requirement availability, states and the programme-end freeze
+
+Confirmed 2026-09-23, implemented by `20260930100000_journey_current_fulfilment`.
+
+| Rule | Definition | Source |
+|---|---|---|
+| Training availability | a week's effective availability date; **no early-completion window** | `canonical_training_week_fulfilment.available_on` |
+| Session availability (Coaching, Mentoring, Peer, Triads) | `due_on - 14 days` | `canonical_session_requirement_available_on` |
+| Effective as-of | `least(as_of, programme end)`; programme end = the enrollment end date, else the cohort's | `canonical_enrollment_effective_as_of` |
+| Counts for the programme | `available_on <= completed_on <= effective as-of` | `canonical_enrollment_requirement_calendar` |
+| Training week complete | Skill Card AND Quiz (when configured) AND Reflection (when configured), each dated inside that window; Daily Prompts tracked, never gating | `canonical_training_week_fulfilment` |
+
+Evidence dated before `available_on`, and activity after the programme end,
+stay in their tables as history but earn no programme credit;
+`admin_ineligible_programme_activity()` lists both. Booking rules are
+unchanged: a session booked more than 14 days before its requirement's
+deadline is still created, but fulfils nothing.
+
+| State | Meaning (per requirement: `canonical_enrollment_requirement_status`) |
+|---|---|
+| `upcoming` | `available_on > effective as-of` |
+| `completed` | counted, `completed_on <= due_on` |
+| `completed_late` | counted, `completed_on > due_on` (necessarily <= programme end) |
+| `overdue` | not counted and `due_on < effective as-of` |
+| `current` | otherwise: available, not yet due, not complete |
+
+**Journey checkpoints** (`canonical_enrollment_checkpoints`, and
+`get_sponsor_programme_journey` for a cohort) count the SAME counted rows as
+module progress: `required` = requirements due by D, `completed` = those that
+count. An unavailable Training week can raise a checkpoint's denominator but
+never its numerator. A checkpoint is `completed` / `completed_late` when all
+its requirements count (late when one due ON D was fulfilled after D);
+otherwise `overdue` when D has passed and an open requirement is available,
+`upcoming` when an open requirement is not yet available, else `current`.
+Late work is never a permanent `overdue`.
+
+**Invariants** (asserted read-only by
+`scripts/journey-current-fulfilment-verification.sql`, and by
+`supabase/tests/requirement_availability_window_test.sql`): the final
+checkpoint equals the canonical totals for the same population and as-of;
+cohort totals are sums of the canonical leader rows, per module; nothing
+counts outside its window.
+
+**Training child learning types** (`learning_components`) are always explicit
+on a Training module (`programme_modules_training_learning_components`).
 
 ## Operational completion is not evidence completion
 

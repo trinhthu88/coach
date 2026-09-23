@@ -79,7 +79,9 @@ export function defaultModuleRows(): ModuleRows {
     peer_coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null, monthly_limit: null } },
     mentoring: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null } },
     triads: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, max_triads: null } },
-    training: { enabled: false, config: { required: false, required_units: 0, distribution_settings: { training_week_ids: [] } } },
+    // learning_components is always explicit (programme_modules_training_learning_components):
+    // a Training module without it used to lose Quizzes and Daily Prompts from the breakdown.
+    training: { enabled: false, config: { required: false, required_units: 0, distribution_settings: { training_week_ids: [] }, learning_components: ["skill_cards", "quizzes", "reflections", "daily_prompts"] } },
     quiz: { enabled: false, config: {} },
     assessment: { enabled: false, config: { include_direct_reports: false } },
     daily_prompt: { enabled: false, config: {} },

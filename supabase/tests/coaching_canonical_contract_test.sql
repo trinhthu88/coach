@@ -46,12 +46,15 @@ from public.programme_enrollments e
 where e.status in ('active', 'at_risk', 'paused')
   and not exists (select 1 from public.coachee_goals g where g.enrollment_id = e.id and g.status = 'active');
 
+-- Each Coaching requirement carries its own Admin-set date. Coaching 1 is due
+-- in 13 days, so its availability window (due_on - 14,
+-- 20260930100000) opens yesterday: the session held yesterday below fulfils it.
 insert into public.cohort_requirement_dates
-  (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
+  (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via, is_overridden) values
   ('c1000000-0000-0000-0000-00000000d1d1'::uuid, 'c1000000-0000-0000-0000-00000000b0b0'::uuid,
-   'c1000000-0000-0000-0000-00000000a0a0'::uuid, 'coaching', 1, current_date + 30, 'manual', 'admin_save'),
+   'c1000000-0000-0000-0000-00000000a0a0'::uuid, 'coaching', 1, current_date + 13, 'manual', 'admin_save', true),
   ('c1000000-0000-0000-0000-00000000d2d2'::uuid, 'c1000000-0000-0000-0000-00000000b0b0'::uuid,
-   'c1000000-0000-0000-0000-00000000a0a0'::uuid, 'coaching', 2, current_date + 60, 'manual', 'admin_save');
+   'c1000000-0000-0000-0000-00000000a0a0'::uuid, 'coaching', 2, current_date + 60, 'manual', 'admin_save', true);
 
 -- Only Coach K is in the pool.
 insert into public.cohort_coach_assignments (cohort_id, coach_id)
@@ -334,11 +337,13 @@ select is(
   1, 'adding a goal check-in does not change it either');
 
 -- Gate 3: follow-up action
+-- New actions carry a goal and a due date (20260929100000).
 insert into public.enrollment_actions
-  (enrollment_id, source_activity_type, source_activity_id, title, owner_user_id)
+  (enrollment_id, source_activity_type, source_activity_id, title, owner_user_id, goal_id, due_date)
   values ('c1000000-0000-0000-0000-00000000e1e1'::uuid, 'coaching',
           'c1000000-0000-0000-0000-00000000c2c2'::uuid, 'Delegate the report',
-          'c1000000-0000-0000-0000-000000000003'::uuid);
+          'c1000000-0000-0000-0000-000000000003'::uuid,
+          'c1000000-0000-0000-0000-00000000b1b1'::uuid, current_date + 7);
 select ok(
   not (select evidence_complete from public.coaching_session_evidence('c1000000-0000-0000-0000-00000000c2c2'::uuid)),
   'evidence stays incomplete while satisfaction is outstanding');
@@ -531,9 +536,12 @@ insert into public.session_learning_reflections (enrollment_id, source_activity_
   ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000051c1'::uuid, 'Written up'),
   ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000053c3'::uuid, 'Written up');
 insert into public.enrollment_actions
-  (enrollment_id, source_activity_type, source_activity_id, title, owner_user_id) values
-  ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000051c1'::uuid, 'Act', 'c1000000-0000-0000-0000-000000000005'::uuid),
-  ('c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', 'c1000000-0000-0000-0000-0000000053c3'::uuid, 'Act', 'c1000000-0000-0000-0000-000000000005'::uuid);
+  (enrollment_id, source_activity_type, source_activity_id, title, owner_user_id, goal_id, due_date)
+select 'c1000000-0000-0000-0000-00000000e5e5'::uuid, 'coaching', s.id, 'Act', 'c1000000-0000-0000-0000-000000000005'::uuid,
+       (select g.id from public.coachee_goals g
+         where g.enrollment_id = 'c1000000-0000-0000-0000-00000000e5e5'::uuid and g.status = 'active' limit 1),
+       current_date + 7
+from unnest(array['c1000000-0000-0000-0000-0000000051c1'::uuid, 'c1000000-0000-0000-0000-0000000053c3'::uuid]) s(id);
 -- The enrollment holds an active goal (required before booking), so a fully
 -- written-up session also carries its goal check-in.
 insert into public.goal_checkins (enrollment_id, goal_id, source_activity_type, source_activity_id, previous_rating, new_rating, actor_user_id)

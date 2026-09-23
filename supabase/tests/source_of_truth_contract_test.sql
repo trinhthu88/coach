@@ -55,6 +55,18 @@ select ('e7700000-0000-0000-0000-00000000000' || n)::uuid, ('a7700000-0000-0000-
   'b7700000-0000-0000-0000-000000000001', date '2026-01-05', date '2026-07-05', 'active'
 from generate_series(1, 5) as n;
 
+-- The Admin dates each Coaching requirement explicitly (one date per
+-- requirement; cohort_requirement_dates.due_on). Mentoring keeps its module
+-- default on purpose: the assertions below exercise that default path.
+update public.cohort_requirement_dates d
+   set due_on = v.due_on, is_overridden = true,
+       generation_method = 'manual', materialized_via = 'admin_save'
+  from (values (1, date '2026-02-20'), (2, date '2026-03-20'),
+               (3, date '2026-04-20'), (4, date '2026-05-20')) v(ordinal, due_on)
+ where d.cohort_id = 'd7700000-0000-0000-0000-000000000001'
+   and d.module = 'coaching'::public.programme_module_type
+   and d.ordinal = v.ordinal;
+
 -- Evidence: one completed coaching session; goals incl. an archived one.
 insert into public.coachee_coach_allowlist (coachee_id, coach_id)
 values ('a7700000-0000-0000-0000-000000000001', 'a7700000-0000-0000-0000-000000000097');
@@ -241,9 +253,13 @@ select is(
   (select count(*)::int from public.cohort_requirement_dates where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'coaching'),
   5, 'raising Coaching 4 -> 5 materialises the fifth canonical requirement');
 select is(
-  (select count(distinct due_on)::int from public.cohort_requirement_dates
+  (select array_agg(due_on::text || ':' || is_overridden::text order by ordinal)
+   from public.cohort_requirement_dates
    where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'coaching'),
-  1, 'the new unit inherits the module deadline rather than a date of its own');
+  array['2026-02-20:true', '2026-03-20:true', '2026-04-20:true', '2026-05-20:true',
+        (select completion_deadline::text from public.cohort_module_deadlines
+          where cohort_id = 'd7700000-0000-0000-0000-000000000001' and module = 'coaching') || ':false'],
+  'the new unit starts at the module default; the explicitly dated units keep their own dates');
 select is((select count(distinct schedule)::int from facts), 1, 'every role receives the same schedule state');
 select ok(
   (select schedule @> '[{"module":"coaching","required_units":5,"scheduled_units":5,"state":"aligned"}]'::jsonb from facts where role = 'learner'),

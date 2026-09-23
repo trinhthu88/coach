@@ -213,6 +213,22 @@ select is(
 
 -- DECREASE 4 -> 3 with activity on requirement 4 (Coaching). The booking is
 -- made first, then the reduction attempted.
+--
+-- The session is held 2 days ago and later counted in section 7, so an Admin
+-- gives Coaching 4 its own date first: due in 10 days, it is available from 4
+-- days ago (due_on - 14, 20260930100000). On the module default (the cohort
+-- end) it would not be available yet and the session would fulfil nothing.
+insert into public.user_roles (user_id, role)
+  values ('a2000000-0000-0000-0000-000000000009', 'admin') on conflict do nothing;
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'a2000000-0000-0000-0000-000000000009')::text, true);
+select public.admin_set_cohort_requirement_dates(
+  'a2000000-0000-0000-0000-00000000b0b0'::uuid,
+  (select jsonb_build_array(jsonb_build_object('requirement_id', d.id, 'due_on', current_date + 10))
+     from public.cohort_requirement_dates d
+    where d.cohort_id = 'a2000000-0000-0000-0000-00000000b0b0'::uuid
+      and d.module = 'coaching' and d.ordinal = 4));
+
 select set_config('request.jwt.claims',
   json_build_object('sub', 'a2000000-0000-0000-0000-000000000002')::text, true);
 
