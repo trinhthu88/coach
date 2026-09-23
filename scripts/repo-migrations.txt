@@ -269,3 +269,4 @@
 20260930110000_peer_dyad_cutover.sql
 20261001100000_p0_security_guards.sql
 20261001110000_p1_source_of_truth.sql
+20261001120000_p2_consistency.sql

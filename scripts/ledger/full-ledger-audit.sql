@@ -301,7 +301,8 @@ WITH repo(version, name) AS (VALUES
   ('20260930100000', 'journey_current_fulfilment'),
   ('20260930110000', 'peer_dyad_cutover'),
   ('20261001100000', 'p0_security_guards'),
-  ('20261001110000', 'p1_source_of_truth')
+  ('20261001110000', 'p1_source_of_truth'),
+  ('20261001120000', 'p2_consistency')
 -- END REPO MANIFEST
 ),
 
