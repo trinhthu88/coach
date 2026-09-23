@@ -142,13 +142,16 @@ async function makeLeader(label, orgId, cohortId, programmeId, coachId) {
       start_rating: 20, current_rating: 60, target_rating: 80 });
   if (ratingErr) throw ratingErr;
 
-  const { error: allowlistErr } = await admin
-    .from("coachee_coach_allowlist")
+  // Programme Coaching eligibility is cohort-scoped. The learner-level
+  // allowlist is legacy/non-programme authority and must not be used by this
+  // canonical sponsor fixture.
+  const { error: assignmentErr } = await admin
+    .from("cohort_coach_assignments")
     .upsert(
-      { coachee_id: userId, coach_id: coachId },
-      { onConflict: "coachee_id,coach_id" }
+      { cohort_id: cohortId, coach_id: coachId, is_active: true },
+      { onConflict: "cohort_id,coach_id" }
     );
-  if (allowlistErr) throw allowlistErr;
+  if (assignmentErr) throw assignmentErr;
 
   const session = await insertCoachingSessionAsLeader(email, {
     enrollment_id: enrollment.id,
