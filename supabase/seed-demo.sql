@@ -1475,8 +1475,9 @@ $triad_groups$;
 -- 7. Goals (0-100 scale) -- set in each cohort's first week
 -- ---------------------------------------------------------------------------
 -- start/finish: the baseline and the rating after the last check-in; target
--- defaults to the finish rating or 80, whichever is higher. A NULL start
--- means the goal is set but not yet rated.
+-- defaults to the finish rating or 80, whichever is higher. Start and target
+-- are set with the goal; a NULL finish means no session has rated it yet, so
+-- its current rating stays empty.
 CREATE TEMP TABLE _goals (slug text, n integer, title text, description text,
   start_rating integer, finish_rating integer, target_rating integer) ON COMMIT DROP;
 INSERT INTO _goals VALUES
@@ -1526,27 +1527,30 @@ INSERT INTO _goals VALUES
    'Pipeline reviews ask what the customer is trying to achieve before discussing price.', 30, 40),
   ('tam', 2, 'Rebuild trust with the northern region team',
    'Regular one-to-ones with every northern manager, kept even in closing weeks.', 20, 30),
-  -- Cohort 3 (active): Yen has rated her baseline and target; Ngoc's and
-  -- Dat's goals are set, not yet rated.
+  -- Cohort 3 (active): Ngoc and Dat rated after Coaching 1 (Ngoc's second
+  -- goal not yet); Yen has held no session.
   ('ngoc', 1, 'Hold my first round of one-to-ones with every team member',
-   'A 30-minute one-to-one with each of my eight team members by the end of October.', NULL, NULL),
+   'A 30-minute one-to-one with each of my eight team members by the end of October.', 20, 25),
   ('ngoc', 2, 'Give recognition that is specific, not generic',
-   'Recognise one concrete contribution in each weekly team huddle.', NULL, NULL),
+   'Recognise one concrete contribution in each weekly team huddle.', 35, NULL),
   ('dat', 1, 'Move from doing the work to leading the shift',
-   'Spend at least half of each shift observing and coaching instead of operating the line.', NULL, NULL),
+   'Spend at least half of each shift observing and coaching instead of operating the line.', 25, 30),
   ('yen', 1, 'Lead my former peers with confidence',
    'Agree working norms with my team in the first month of the new role.', 25, 25),
   ('yen', 2, 'Plan the team''s work a week ahead',
    'A weekly plan shared every Monday, with priorities the team helped set.', 30, 30),
-  -- Cohort 4 (starting): set, not yet rated.
+  -- Cohort 4 (starting): start and target set, no session yet.
   ('anh', 1, 'Delegate daily liquidity reporting to my team',
-   'Two analysts produce the daily report; I review exceptions only.', NULL, NULL),
+   'Two analysts produce the daily report; I review exceptions only.', 15, NULL),
   ('anh', 2, 'Communicate market risk clearly to non-specialists',
-   'One-page summaries the branch network can act on without follow-up questions.', NULL, NULL),
+   'One-page summaries the branch network can act on without follow-up questions.', 20, NULL),
   ('tung', 1, 'Lead the cards squad through the new product launch',
-   'The squad owns the launch plan and I remove blockers instead of assigning tasks.', NULL, NULL);
--- Yen set her own targets.
-UPDATE _goals SET target_rating = CASE n WHEN 1 THEN 75 WHEN 2 THEN 70 END WHERE slug = 'yen';
+   'The squad owns the launch plan and I remove blockers instead of assigning tasks.', 25, NULL);
+-- Cohorts 3 and 4 set their own targets.
+UPDATE _goals g SET target_rating = t.target
+FROM (VALUES ('ngoc', 1, 70), ('ngoc', 2, 75), ('dat', 1, 75), ('yen', 1, 75), ('yen', 2, 70),
+             ('anh', 1, 70), ('anh', 2, 65), ('tung', 1, 75)) AS t(slug, n, target)
+WHERE g.slug = t.slug AND g.n = t.n;
 
 -- Goals are written as the learner, as in the app.
 DO $goals$
@@ -1569,7 +1573,9 @@ BEGIN
       INSERT INTO public.coachee_goal_ratings (goal_id, coachee_id, enrollment_id, start_rating, current_rating,
         target_rating, current_updated_at, created_at, updated_at)
       VALUES (pg_temp.uid('goal:' || g.slug || ':' || g.n), g.user_id, g.enrollment_id, g.start_rating,
-        g.start_rating, coalesce(g.target_rating, greatest(g.finish_rating, 80)), pg_temp.ict(g.start_date + 2, '19:00'),
+        -- Current starts at the baseline only where a session will move it
+        -- (the check-ins below); otherwise it is empty until one does.
+        CASE WHEN g.finish_rating IS NOT NULL THEN g.start_rating END, coalesce(g.target_rating, greatest(g.finish_rating, 80)), pg_temp.ict(g.start_date + 2, '19:00'),
         pg_temp.ict(g.start_date + 2, '19:00'), pg_temp.ict(g.start_date + 2, '19:00'));
     END IF;
   END LOOP;
@@ -1889,6 +1895,8 @@ SELECT set_config('app.session_transition', 'off', true);
 --   (30% / 65% / 100% of the way from baseline to finish, rounded to 5);
 --   the peer and mentoring check-ins record a note without a new rating.
 --   Cohort 2: one rating, after the learner's first completed session.
+--   Cohort 3: Ngoc and Dat, after Coaching 1 (Ngoc's second goal: a note,
+--   no rating yet).
 DO $checkins$
 DECLARE h record; v_items jsonb;
 BEGIN
@@ -1897,13 +1905,13 @@ BEGIN
     FROM _held hd
     JOIN _enr e ON e.slug = hd.learner JOIN _people p ON p.slug = hd.learner
     CROSS JOIN LATERAL public.session_deliverable_source_types(hd.source_table) t
-    WHERE hd.cohort = 1 OR (hd.cohort = 2 AND hd.ordinal = 1)
+    WHERE hd.cohort = 1 OR (hd.cohort IN (2, 3) AND hd.ordinal = 1)
     ORDER BY hd.day, hd.at
   LOOP
     SELECT jsonb_agg(jsonb_build_object(
              'goal_id', pg_temp.uid('goal:' || g.slug || ':' || g.n),
              'new_rating', CASE
-               WHEN h.cohort = 2 THEN to_jsonb(g.finish_rating)
+               WHEN h.cohort IN (2, 3) THEN coalesce(to_jsonb(g.finish_rating), 'null'::jsonb)
                WHEN h.module = 'coaching' THEN to_jsonb((round((g.start_rating + (g.finish_rating - g.start_rating)
                      * CASE h.ordinal WHEN 1 THEN 0.30 WHEN 2 THEN 0.65 ELSE 1.0 END) / 5.0) * 5)::integer)
                ELSE 'null'::jsonb END,
@@ -2207,21 +2215,25 @@ BEGIN
   JOIN public.coachee_goal_ratings r ON r.goal_id = pg_temp.uid('goal:' || g.slug || ':' || g.n)
   WHERE (r.start_rating, r.current_rating) IS DISTINCT FROM (g.start_rating, g.finish_rating);
   IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY goals FAILED: %', bad; END IF;
+  -- Every goal of an ongoing cohort has a start and a target; current only
+  -- once a session has rated it -- exactly these values.
+  SELECT string_agg(format('%s#%s %s/%s/%s', x.slug, x.n, r.start_rating, r.current_rating, r.target_rating), '; ') INTO bad
+  FROM (VALUES ('ngoc', 1, 20, 25, 70), ('ngoc', 2, 35, NULL, 75), ('dat', 1, 25, 30, 75),
+               ('yen', 1, 25, 25, 75), ('yen', 2, 30, 30, 70),
+               ('anh', 1, 15, NULL, 70), ('anh', 2, 20, NULL, 65), ('tung', 1, 25, NULL, 75)) AS x(slug, n, s, c, t)
+  LEFT JOIN public.coachee_goal_ratings r ON r.goal_id = pg_temp.uid('goal:' || x.slug || ':' || x.n)
+  WHERE (r.start_rating, r.current_rating, r.target_rating) IS DISTINCT FROM (x.s::smallint, x.c::smallint, x.t::smallint);
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY goals FAILED: start/current/target %', bad; END IF;
   SELECT string_agg(g.slug || '#' || g.n, ', ') INTO bad
   FROM _goals g JOIN _enr e ON e.slug = g.slug
+  LEFT JOIN public.coachee_goal_ratings r ON r.goal_id = pg_temp.uid('goal:' || g.slug || ':' || g.n)
+  WHERE e.cohort IN (2, 3, 4) AND (r.start_rating IS NULL OR r.target_rating IS NULL);
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY goals FAILED: goals without a start or target: %', bad; END IF;
+  -- Only a learner with a completed session has checked in.
+  SELECT string_agg(e.slug, ', ') INTO bad FROM _enr e
   WHERE e.cohort IN (3, 4)
-    AND (EXISTS (SELECT 1 FROM public.goal_checkins c WHERE c.enrollment_id = e.id)
-         OR (g.start_rating IS NULL) = EXISTS (SELECT 1 FROM public.coachee_goal_ratings c
-                                               WHERE c.goal_id = pg_temp.uid('goal:' || g.slug || ':' || g.n)));
-  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY goals FAILED: ratings do not match the goals rated: %', bad; END IF;
-  -- Yen's goals show a start and a target.
-  SELECT string_agg(format('#%s %s->%s', g.n, r.start_rating, r.target_rating), '; ') INTO bad
-  FROM _goals g JOIN public.coachee_goal_ratings r ON r.goal_id = pg_temp.uid('goal:' || g.slug || ':' || g.n)
-  WHERE g.slug = 'yen' AND (r.start_rating, r.target_rating) NOT IN ((25, 75), (30, 70));
-  IF bad IS NOT NULL OR (SELECT count(*) FROM _goals g JOIN public.coachee_goal_ratings r
-                         ON r.goal_id = pg_temp.uid('goal:' || g.slug || ':' || g.n) WHERE g.slug = 'yen') <> 2 THEN
-    RAISE EXCEPTION 'VERIFY goals FAILED: Yen''s start/target %', coalesce(bad, 'missing');
-  END IF;
+    AND EXISTS (SELECT 1 FROM public.goal_checkins c WHERE c.enrollment_id = e.id) <> (e.slug IN ('ngoc', 'dat'));
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY goals FAILED: check-ins do not match the sessions held: %', bad; END IF;
 
   -- Triads (Cohort 3): two required, one active group of Ngoc, Dat and Yen for
   -- each, 11 checkpoints in all, and nothing held yet.
