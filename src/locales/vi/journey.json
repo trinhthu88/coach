@@ -16,7 +16,8 @@
     "overdue": "Quá hạn",
     "due": "Đến hạn",
     "sourcePeer": "Đồng cấp",
-    "sourceCoaching": "Coaching"
+    "sourceCoaching": "Coaching",
+    "goal": "Mục tiêu: {{title}}"
   },
   "programmeCard": {
     "coachesInProgramme": "Coach trong chương trình này",

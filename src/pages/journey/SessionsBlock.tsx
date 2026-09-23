@@ -181,6 +181,7 @@ function SessionRow<S extends DisplaySession>({
                     source,
                   } as FlatAction}
                   milestoneLabel={labelFor(it.milestone_id)}
+                  goalTitle={goals?.find((g) => g.id === it.goal_id)?.title}
                   onToggle={onToggleAction}
                   showSourceBadge={showSourceBadge}
                 />

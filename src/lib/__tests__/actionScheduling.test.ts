@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bucketByDueDate } from "../actionScheduling";
+import { actionDueStatus, bucketByDueDate } from "../actionScheduling";
 
 interface Item {
   id: string;
@@ -29,11 +29,40 @@ describe("bucketByDueDate", () => {
     expect(upcoming.map((i) => i.id)).toEqual(["c"]);
   });
 
+  it("does not treat an action due today as overdue", () => {
+    const items: Item[] = [{ id: "e", due: "2026-06-10" }];
+    const { overdue, thisWeek } = bucketByDueDate(items, (i) => i.due, now);
+    expect(overdue).toEqual([]);
+    expect(thisWeek.map((i) => i.id)).toEqual(["e"]);
+  });
+
   it("treats a null due date as upcoming, never overdue", () => {
     const items: Item[] = [{ id: "d", due: null }];
     const { overdue, thisWeek, upcoming } = bucketByDueDate(items, (i) => i.due, now);
     expect(overdue).toEqual([]);
     expect(thisWeek).toEqual([]);
     expect(upcoming.map((i) => i.id)).toEqual(["d"]);
+  });
+});
+
+describe("actionDueStatus", () => {
+  const now = new Date("2026-06-10T12:00:00");
+
+  it("is red once the due day has passed", () => {
+    expect(actionDueStatus("2026-06-09", false, now)).toBe("overdue");
+  });
+
+  it("is orange from the due day back to seven days before it", () => {
+    expect(actionDueStatus("2026-06-10", false, now)).toBe("dueSoon");
+    expect(actionDueStatus("2026-06-17", false, now)).toBe("dueSoon");
+  });
+
+  it("is green further out", () => {
+    expect(actionDueStatus("2026-06-18", false, now)).toBe("onTrack");
+  });
+
+  it("is done when done, whatever the date, and has no state without a date", () => {
+    expect(actionDueStatus("2026-06-01", true, now)).toBe("done");
+    expect(actionDueStatus(null, false, now)).toBeNull();
   });
 });

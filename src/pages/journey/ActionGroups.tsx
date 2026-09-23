@@ -55,7 +55,14 @@ export function ActionGroups({
         </p>
         <div className="divide-y">
           {items.map((a, i) => (
-            <ActionRow key={i} a={a} milestoneLabel={labelFor(a)} onToggle={onToggleAction} showSourceBadge={showSourceBadge} />
+            <ActionRow
+              key={i}
+              a={a}
+              milestoneLabel={labelFor(a)}
+              goalTitle={goals?.find((g) => g.id === a.goal_id)?.title}
+              onToggle={onToggleAction}
+              showSourceBadge={showSourceBadge}
+            />
           ))}
         </div>
       </div>

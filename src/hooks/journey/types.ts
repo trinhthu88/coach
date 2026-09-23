@@ -40,6 +40,8 @@ export interface RawActionItem {
   description?: string | null;
   due_date?: string | null;
   milestone_id?: string | null;
+  /** The programme goal this action supports (required for new actions). */
+  goal_id?: string | null;
 }
 
 export type SessionSource = "coaching" | "peer";

@@ -15,7 +15,8 @@
     "overdue": "Overdue",
     "due": "Due",
     "sourcePeer": "Peer",
-    "sourceCoaching": "Coaching"
+    "sourceCoaching": "Coaching",
+    "goal": "Goal: {{title}}"
   },
   "programmeCard": {
     "coachesInProgramme": "Coaches in this programme",

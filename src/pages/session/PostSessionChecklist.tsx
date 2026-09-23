@@ -12,6 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, Circle, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { useAuth } from "@/context/AuthContext";
+import { actionDueStatus } from "@/lib/actionScheduling";
 import {
   DELIVERABLE_SOURCE_TYPES,
   deliverableItems,
@@ -295,6 +298,9 @@ function TriadReflectionLink({ row }: { row: SessionParticipantDeliverable }) {
 
 function FollowUpActions({ row }: { row: SessionParticipantDeliverable }) {
   const { t } = useTranslation("sessions");
+  const { t: tJourney } = useTranslation("journey");
+  const { role } = useAuth();
+  const journeyPath = role === "coach" ? "/coach/my-journey" : "/coachee/journey";
   const { data: actions } = useSessionFollowUpActions(row.enrollmentId, row.sourceTable, row.sessionId);
   const add = useAddSessionFollowUpAction();
   const [text, setText] = useState("");
@@ -346,6 +352,16 @@ function FollowUpActions({ row }: { row: SessionParticipantDeliverable }) {
             <li key={a.id ?? i} className={cn("flex items-center gap-2", a.done && "text-muted-foreground line-through")}>
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
               <span>{a.text}</span>
+              {a.due_date && <ActionDue due={a.due_date} done={a.done} t={tJourney} />}
+              {a.goal_id && goals.some((g) => g.id === a.goal_id) && (
+                <Link
+                  to={`${journeyPath}#goal-${a.goal_id}`}
+                  data-testid="action-goal"
+                  className="rounded-full bg-primary/10 px-1.5 text-xs text-primary no-underline hover:bg-primary/20"
+                >
+                  {tJourney("actionRow.goal", { title: goals.find((g) => g.id === a.goal_id)?.title })}
+                </Link>
+              )}
               {(!a.goal_id || !a.due_date) && (
                 <span className="text-xs text-warning" data-testid="post-session-action-incomplete">
                   {t("postSession.action.metadataIncomplete")}
@@ -401,6 +417,35 @@ function FollowUpActions({ row }: { row: SessionParticipantDeliverable }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Due date coloured by the shared rule: green on track, orange due within 7 days, red overdue. */
+function ActionDue({
+  due,
+  done,
+  t,
+}: {
+  due: string;
+  done?: boolean;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const status = actionDueStatus(due, done);
+  return (
+    <span
+      data-testid="action-due"
+      data-status={status ?? undefined}
+      className={cn(
+        "text-xs font-medium no-underline",
+        status === "done" && "font-normal text-muted-foreground",
+        status === "overdue" && "text-destructive",
+        status === "dueSoon" && "text-warning",
+        status === "onTrack" && "text-success",
+      )}
+    >
+      {done ? t("actionRow.done") : status === "overdue" ? t("actionRow.overdue") : t("actionRow.due")}{" "}
+      {format(new Date(`${due.slice(0, 10)}T00:00:00`), "MMM d")}
+    </span>
   );
 }
 

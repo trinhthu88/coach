@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
-import { format, isBefore } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { actionDueStatus } from "@/lib/actionScheduling";
 import { sessionDetailPathFor } from "@/lib/sessionPaths";
 import type { FlatAction } from "@/hooks/journey/useFlatActionItems";
 
@@ -10,18 +12,24 @@ export function ActionRow({
   a,
   milestoneLabel,
   hideMilestone,
+  goalTitle,
   onToggle,
   showSourceBadge,
 }: {
   a: FlatAction;
   milestoneLabel?: string;
+  /** Title of the goal this action supports; shown as a tag linking to it. Omit inside the goal itself. */
+  goalTitle?: string;
   hideMilestone?: boolean;
   onToggle?: (a: FlatAction) => void;
   /** Shows the done-check inline with the text and a Peer/Coaching badge — used by the coach's own journey view, which mixes both session sources. */
   showSourceBadge?: boolean;
 }) {
   const { t } = useTranslation("journey");
-  const overdue = !a.done && a.due_date && isBefore(new Date(a.due_date), new Date());
+  const { role } = useAuth();
+  const dueStatus = actionDueStatus(a.due_date, a.done);
+  const overdue = dueStatus === "overdue";
+  const journeyPath = role === "coach" ? "/coach/my-journey" : "/coachee/journey";
   return (
     <div className="flex items-start gap-2 py-1">
       <button
@@ -53,9 +61,28 @@ export function ActionRow({
         )}
         <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
           {a.due_date && (
-            <span className={cn(overdue ? "text-destructive font-medium" : "text-muted-foreground")}>
-              {a.done ? t("actionRow.done") : overdue ? t("actionRow.overdue") : t("actionRow.due")} {format(new Date(a.due_date), "MMM d")}
+            <span
+              data-testid="action-due"
+              data-status={dueStatus ?? undefined}
+              className={cn(
+                "font-medium",
+                dueStatus === "done" && "text-muted-foreground font-normal",
+                dueStatus === "overdue" && "text-destructive",
+                dueStatus === "dueSoon" && "text-warning",
+                dueStatus === "onTrack" && "text-success",
+              )}
+            >
+              {a.done ? t("actionRow.done") : overdue ? t("actionRow.overdue") : t("actionRow.due")} {format(new Date(`${a.due_date.slice(0, 10)}T00:00:00`), "MMM d")}
             </span>
+          )}
+          {goalTitle && a.goal_id && (
+            <Link
+              to={`${journeyPath}#goal-${a.goal_id}`}
+              data-testid="action-goal"
+              className="rounded-full bg-primary/10 px-1.5 text-primary hover:bg-primary/20"
+            >
+              {t("actionRow.goal", { title: goalTitle })}
+            </Link>
           )}
           {!hideMilestone && milestoneLabel && (
             <span className="text-primary">· {milestoneLabel}</span>

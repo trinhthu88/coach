@@ -2,6 +2,7 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { addDays, format } from "date-fns";
 
 const { rpc, from, upsert, stored } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -11,6 +12,7 @@ const { rpc, from, upsert, stored } = vi.hoisted(() => ({
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, from } }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ role: "coachee" }) }));
 // The goal check-in writer has its own tests; here only its placement matters.
 vi.mock("../SessionGoalRatings", () => ({
   SessionGoalRatings: (props: { enrollmentId: string; sourceActivityType: string }) => (
@@ -182,6 +184,28 @@ describe("PostSessionChecklist", () => {
         ],
       })),
     );
+  });
+
+  it("shows each saved action's due date by status colour and its goal as a link", async () => {
+    const day = (n: number) => format(addDays(new Date(), n), "yyyy-MM-dd");
+    const action = (id: string, due: string) => ({
+      id, enrollment_id: "e-self", source_activity_type: "coaching", source_activity_id: "s1",
+      title: `Action ${id}`, status: "open", goal_id: "goal-provider", milestone_id: null, due_date: due,
+    });
+    mockRows([base]);
+    stored.actions = [action("late", day(-1)), action("soon", day(7)), action("later", day(8))];
+    renderChecklist();
+
+    expect(await screen.findByText("Action late")).toBeInTheDocument();
+    const dues = screen.getAllByTestId("action-due");
+    expect(dues.map((d) => d.getAttribute("data-status"))).toEqual(["overdue", "dueSoon", "onTrack"]);
+    expect(dues[0]).toHaveClass("text-destructive");
+    expect(dues[1]).toHaveClass("text-warning");
+    expect(dues[2]).toHaveClass("text-success");
+    const goals = await screen.findAllByTestId("action-goal");
+    expect(goals).toHaveLength(3);
+    expect(goals[0]).toHaveTextContent("Goal: Practise listening");
+    expect(goals[0]).toHaveAttribute("href", "/coachee/journey#goal-goal-provider");
   });
 
   it("sends a Triad member to the role-based reflection page and waits for it before rating", async () => {
