@@ -507,20 +507,18 @@ BEGIN
     RAISE EXCEPTION 'Triad retirement: functions still refer to retired Triad fields: %', offenders;
   END IF;
 
+  -- Static view dependencies on retired columns are already checked above via
+  -- pg_depend. Here only scan for Triad-specific legacy names whose presence
+  -- is unambiguous in a view definition. Do not combine a surviving Triad
+  -- table name with generic column names such as start_time: a canonical view
+  -- can legitimately mention triad_sessions while another UNION branch uses
+  -- sessions.start_time, which is not a retired Triad dependency.
   SELECT string_agg(n.nspname || '.' || c.relname, ', ') INTO offenders
   FROM pg_class c
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind IN ('v', 'm')
-    AND (
-      pg_get_viewdef(c.oid, true) ~
-        '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number'
-      OR (
-        pg_get_viewdef(c.oid, true) ~
-          '\m(triad_groups|triad_sessions|triad_alternative_proposals|triad_reflections)\M'
-        AND pg_get_viewdef(c.oid, true) ~
-          '(^|[^a-z_])(programme_id|name|start_time|proposed_start_time|proposed_end_time|proposed_by)([^a-z_]|$)'
-      )
-    );
+    AND pg_get_viewdef(c.oid, true) ~
+      '(coach|coachee|observer)_enrollment_id|member_[123]_(id|response)|enrollment_[123]_id|participant_id|(learned|will_use)_as_(coach|coachee|observer)|triad_rounds|programme_triad_rounds|triad_round_id|round_number';
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'Triad retirement: views still refer to retired Triad fields: %', offenders;
   END IF;
