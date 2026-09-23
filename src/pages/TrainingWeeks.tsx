@@ -280,6 +280,11 @@ function WeekContentList({
     return `/training/${week.id}`;
   };
 
+  // A content type the week does not carry (none required -- e.g. Daily
+  // Prompts switched off in the Training checklist) is not listed.
+  const shown = items.filter((item) => item.required_units > 0);
+  const hasPrompts = shown.some((item) => item.item_type === "daily_prompts");
+
   return (
     <ul data-testid="week-content" className="mt-3 divide-y divide-[#efeae1] rounded-2xl border border-[#efeae1] bg-[#faf8f4]">
       {items.length === 0 && !week.locked && (
@@ -296,7 +301,7 @@ function WeekContentList({
           </Link>
         </li>
       )}
-      {items.map((item) => {
+      {shown.map((item) => {
         const state = contentState(item, !!week.locked);
         const optional = item.item_type === "daily_prompts";
         // Skill Card, Quiz and Reflection each count toward finishing the week.
@@ -360,9 +365,10 @@ function WeekContentList({
           </li>
         );
       })}
-      {items.length > 0 && (
+      {shown.length > 0 && (
         <li data-testid="week-completion-note" className="px-4 py-2.5 text-[11.5px] text-muted-foreground">
           {t("list.content.completionNote")}
+          {hasPrompts && ` ${t("list.content.completionNotePrompts")}`}
         </li>
       )}
     </ul>

@@ -47,7 +47,8 @@
         "overdue": "Overdue"
       },
       "required": "Required",
-      "completionNote": "Complete Skill Card, Quiz and Reflection to finish this week. Daily Prompts are optional."
+      "completionNote": "Complete Skill Card, Quiz and Reflection to finish this week.",
+      "completionNotePrompts": "Daily Prompts are optional."
     }
   },
   "card": {
@@ -112,10 +113,7 @@
     "noPromptToday": "No prompt for today — check back tomorrow."
   },
   "weekPrompts": {
-    "heading": "Daily Prompts",
     "intro": "Short practices for this week. Optional — they never affect week completion.",
-    "optional": "Optional",
-    "answered": "Done",
     "dayN": "Day {{n}}",
     "placeholder": "What did you try, and what happened? (optional)",
     "markDone": "Mark done",
@@ -282,5 +280,9 @@
       "confidenceNote": "Confidence score (1–10) is always collected automatically — no need to add a question for it."
     },
     "deleteBlockedEvidence": "This week has learner data and cannot be deleted. Hide it instead."
-  }
+  },
+  "dailyPromptsHeading": "Daily Prompts",
+  "dailyPromptsOptional": "Optional",
+  "dailyPromptOptional": "Optional",
+  "dailyPromptAnswered": "Answered"
 }

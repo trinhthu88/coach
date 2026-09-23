@@ -47,7 +47,8 @@
         "overdue": "Quá hạn"
       },
       "required": "Bắt buộc",
-      "completionNote": "Hoàn thành Thẻ kỹ năng, Bài kiểm tra và Suy ngẫm để kết thúc tuần này. Gợi ý hằng ngày là không bắt buộc."
+      "completionNote": "Hoàn thành Thẻ kỹ năng, Bài kiểm tra và Suy ngẫm để kết thúc tuần này.",
+      "completionNotePrompts": "Gợi ý hằng ngày là không bắt buộc."
     }
   },
   "card": {
@@ -112,10 +113,7 @@
     "noPromptToday": "Hôm nay chưa có gợi ý — quay lại vào ngày mai nhé."
   },
   "weekPrompts": {
-    "heading": "Gợi ý hằng ngày",
     "intro": "Các bài thực hành ngắn cho tuần này. Không bắt buộc — không ảnh hưởng đến việc hoàn thành tuần.",
-    "optional": "Không bắt buộc",
-    "answered": "Đã làm",
     "dayN": "Ngày {{n}}",
     "placeholder": "Bạn đã thử điều gì và kết quả ra sao? (không bắt buộc)",
     "markDone": "Đánh dấu đã làm",
@@ -281,5 +279,9 @@
       "confidenceNote": "Điểm tự tin (1–10) luôn được thu thập tự động — không cần thêm câu hỏi cho mục này."
     },
     "deleteBlockedEvidence": "Tuần này đã có dữ liệu của học viên nên không thể xóa. Hãy ẩn tuần này."
-  }
+  },
+  "dailyPromptsHeading": "Gợi ý hằng ngày",
+  "dailyPromptsOptional": "Không bắt buộc",
+  "dailyPromptOptional": "Không bắt buộc",
+  "dailyPromptAnswered": "Đã trả lời"
 }

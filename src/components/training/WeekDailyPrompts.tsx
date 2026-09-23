@@ -112,7 +112,12 @@ export function WeekDailyPrompts({
       <div className="flex items-center gap-2.5">
         <ListChecks className="h-4 w-4 shrink-0 text-primary" />
         <div>
-          <p className="text-sm font-semibold text-foreground">{t("weekPrompts.heading")}</p>
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            {t("dailyPromptsHeading")}
+            <span className="rounded-full bg-[#f2eee6] px-2 py-0.5 text-[10px] font-semibold text-[#8a847d]">
+              {t("dailyPromptsOptional")}
+            </span>
+          </p>
           <p className="text-xs text-muted-foreground">{t("weekPrompts.intro")}</p>
         </div>
       </div>
@@ -164,11 +169,11 @@ function PromptItem({
         </span>
         {prompt.responded ? (
           <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-success">
-            <CheckCircle2 className="h-3.5 w-3.5" /> {t("weekPrompts.answered")}
+            <CheckCircle2 className="h-3.5 w-3.5" /> {t("dailyPromptAnswered")}
           </span>
         ) : (
           <span className="shrink-0 rounded-full bg-[#f2eee6] px-2 py-0.5 text-[10px] font-semibold text-[#8a847d]">
-            {t("weekPrompts.optional")}
+            {t("dailyPromptOptional")}
           </span>
         )}
       </div>

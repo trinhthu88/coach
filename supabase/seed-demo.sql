@@ -308,7 +308,9 @@ INSERT INTO public.programmes (id, name, description, duration_months, color, is
 -- A Skill Card IS training_weeks.skill_card_html. Each Training week also has
 -- a quiz (assignments + quiz_questions), one open reflection question
 -- (programme_reflections + reflection_questions, matched on appears_at_week)
--- and optional daily prompts (never gate the week).
+-- and optional daily prompts (never gate the week). The prompts are written
+-- but switched OFF in both Training checklists (learning_components), so
+-- learners do not see them; tick Daily Prompts there to show them again.
 CREATE TEMP TABLE _weeks (
   prog integer, week_number integer, title text, subtitle text, html text, reflection text
 ) ON COMMIT DROP;
@@ -320,7 +322,6 @@ CREATE TEMP TABLE _prompts (
 ) ON COMMIT DROP;
 -- Sample learner answers (used by the activity sections below).
 CREATE TEMP TABLE _refl_answers (prog integer, week_number integer, variant integer, answer text) ON COMMIT DROP;
-CREATE TEMP TABLE _prompt_responses (variant integer PRIMARY KEY, response text) ON COMMIT DROP;
 CREATE TEMP TABLE _session_reflections (module public.programme_module_type, variant integer, body text) ON COMMIT DROP;
 CREATE TEMP TABLE _coach_notes (variant integer PRIMARY KEY, body text) ON COMMIT DROP;
 CREATE TEMP TABLE _action_titles (module public.programme_module_type, variant integer, title text) ON COMMIT DROP;
@@ -1216,16 +1217,6 @@ INSERT INTO _refl_answers VALUES
   (3, 4, 2, 'The task I postpone is writing clear role descriptions for my team. I will schedule it for Monday afternoon and share a draft at our Wednesday meeting.');
 
 -- ===== What learners wrote ===================================================
-INSERT INTO _prompt_responses VALUES
-  (1, 'Tried it in the morning stand-up. It felt slow at first, but two people spoke who usually stay quiet.'),
-  (2, 'Harder than I expected. I caught myself halfway through giving the answer and turned it into a question.'),
-  (3, 'Noticed the pattern straight away: it happens every time the numbers are late.'),
-  (4, 'Did it with my deputy. She told me something about the project I had not heard in three months.'),
-  (5, 'Only managed it once today, in the afternoon meeting. The silence was uncomfortable and useful.'),
-  (6, 'Wrote it down before the meeting, which made it much easier to follow through.'),
-  (7, 'My first instinct was to explain myself. I stopped, said thank you, and we moved on. Better than I feared.'),
-  (8, 'Skipped it in the morning, came back to it after lunch. Small thing, but the conversation changed tone.');
-
 INSERT INTO _session_reflections VALUES
   ('coaching', 1, 'The most useful moment was when Duc asked what I was protecting by not delegating. The honest answer is my reputation for never being wrong. My experiment for the next two weeks: hand one decision to my team each week and resist checking it before it goes out.'),
   ('coaching', 2, 'I came in wanting advice about a difficult stakeholder and left with a better question: what does he need to be true before he can say yes? I will ask him that directly this week instead of preparing another presentation.'),
@@ -1303,7 +1294,7 @@ FROM _prompts p;
 INSERT INTO public.programme_modules (programme_id, module, enabled, config) VALUES
   ('de100000-0000-4000-8000-000000000001', 'training', true, jsonb_build_object(
      'required', true, 'required_units', 7,
-     'learning_components', jsonb_build_array('skill_cards', 'quizzes', 'reflections', 'daily_prompts'),
+     'learning_components', jsonb_build_array('skill_cards', 'quizzes', 'reflections'),
      'distribution_settings', jsonb_build_object('training_week_ids',
        (SELECT jsonb_agg(pg_temp.uid('week:1:' || w.week_number) ORDER BY w.week_number) FROM _weeks w WHERE w.prog = 1)))),
   ('de100000-0000-4000-8000-000000000001', 'coaching',      true, '{"required": true, "required_units": 3}'),
@@ -1312,7 +1303,7 @@ INSERT INTO public.programme_modules (programme_id, module, enabled, config) VAL
   ('de100000-0000-4000-8000-000000000002', 'coaching',      true, '{"required": true, "required_units": 6}'),
   ('de100000-0000-4000-8000-000000000003', 'training', true, jsonb_build_object(
      'required', true, 'required_units', 4,
-     'learning_components', jsonb_build_array('skill_cards', 'quizzes', 'reflections', 'daily_prompts'),
+     'learning_components', jsonb_build_array('skill_cards', 'quizzes', 'reflections'),
      'distribution_settings', jsonb_build_object('training_week_ids',
        (SELECT jsonb_agg(pg_temp.uid('week:3:' || w.week_number) ORDER BY w.week_number) FROM _weeks w WHERE w.prog = 3)))),
   ('de100000-0000-4000-8000-000000000003', 'coaching',      true, '{"required": true, "required_units": 3}'),
@@ -1789,33 +1780,6 @@ JOIN _refl_answers ra ON ra.prog = t.prog AND ra.week_number = t.week_number
                                                  WHERE x.prog = t.prog AND x.week_number = t.week_number)
 WHERE t.reflection;
 
--- Daily prompts (optional). How many each leader answered:
---   Cohort 1 (30 prompts): Ha 24 (80%), Binh 15 (50%), Lan 21 (70%),
---                          Thao 18 (60%), Nam 12 (40%), Quang 17 (57%)
---   Cohort 3 (weeks 1-2, 6 prompts): Dat 6 (all), Ngoc 3, Yen 2
-CREATE TEMP TABLE _dp_quota (slug text PRIMARY KEY, n integer) ON COMMIT DROP;
-INSERT INTO _dp_quota VALUES ('ha', 24), ('binh', 15), ('lan', 21), ('thao', 18), ('nam', 12), ('quang', 17),
-  ('dat', 6), ('ngoc', 3), ('yen', 2);
-
-INSERT INTO public.daily_prompt_responses (id, daily_prompt_id, user_id, enrollment_id, opened_at,
-  response_text, confidence_score, responded_at, created_at)
-SELECT pg_temp.uid('dpr:' || x.slug || ':' || x.prog || ':' || x.week_number || ':' || x.day_offset),
-  pg_temp.uid('dp:' || x.prog || ':' || x.week_number || ':' || x.day_offset), x.user_id, x.enrollment_id,
-  pg_temp.ict(x.opens + x.day_offset - 1, '07:10'),
-  (SELECT r.response FROM _prompt_responses r
-   WHERE r.variant = 1 + abs(hashtext(x.slug || x.week_number || x.day_offset)) % (SELECT count(*) FROM _prompt_responses)),
-  5 + abs(hashtext(x.slug || x.day_offset)) % 5,
-  pg_temp.ict(x.opens + x.day_offset - 1, '07:40'), pg_temp.ict(x.opens + x.day_offset - 1, '07:10')
-FROM (
-  SELECT t.slug, t.prog, t.week_number, t.opens, pr.day_offset, e.id AS enrollment_id, p.id AS user_id,
-    row_number() OVER (PARTITION BY t.slug ORDER BY md5(t.slug || ':' || t.week_number || ':' || pr.day_offset)) AS rn
-  FROM _tw t
-  JOIN _prompts pr ON pr.prog = t.prog AND pr.week_number = t.week_number
-  JOIN _enr e ON e.slug = t.slug JOIN _people p ON p.slug = t.slug
-) x
-JOIN _dp_quota q ON q.slug = x.slug
-WHERE x.rn <= q.n;
-
 -- ---------------------------------------------------------------------------
 -- 10. After each session: reflection, notes, satisfaction, goal check-in,
 --     follow-up actions
@@ -2273,13 +2237,6 @@ BEGIN
   WHERE e.cohort = 3 AND (t.n, m.n, p.required_units) IS DISTINCT FROM (2::bigint, 2::bigint, 11);
   IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY triads FAILED: %', bad; END IF;
 
-  -- Daily prompts answered (Cohort 1 has 30; Cohort 3 weeks 1-2 have 6).
-  SELECT string_agg(format('%s %s (expected %s)', q.slug, coalesce(c.n, 0), q.n), '; ') INTO bad
-  FROM _dp_quota q JOIN _enr e ON e.slug = q.slug
-  LEFT JOIN LATERAL (SELECT count(*) AS n FROM public.daily_prompt_responses r WHERE r.enrollment_id = e.id) c ON true
-  WHERE coalesce(c.n, 0) <> q.n;
-  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY prompts FAILED: %', bad; END IF;
-
   -- Cohort 1 deliverables: every session has a reflection, check-in and action
   -- (ratings are left out on the sessions Lan and Quang did not rate).
   SELECT string_agg(format('%s %s', e.slug, d.source_table), '; ') INTO bad
@@ -2336,6 +2293,27 @@ BEGIN
     IF n = 0 THEN bad := concat_ws(', ', bad, rec.slug); END IF;
   END LOOP;
   IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY availability FAILED: no slots visible in the first week to %', bad; END IF;
+
+  -- Daily Prompts are switched off: no learner sees one (under RLS), none
+  -- is answered, and the prompt content itself is kept.
+  bad := NULL;
+  FOR rec IN SELECT e.slug, p.id AS user_id FROM _enr e JOIN _people p ON p.slug = e.slug
+             WHERE e.cohort IN (2, 3, 4) ORDER BY e.slug
+  LOOP
+    PERFORM pg_temp.act_as(rec.user_id);
+    PERFORM set_config('role', 'authenticated', true);
+    SELECT count(*) INTO n FROM public.daily_prompts;
+    PERFORM set_config('role', 'none', true);
+    PERFORM pg_temp.act_as_service();
+    IF n <> 0 THEN bad := concat_ws(', ', bad, rec.slug); END IF;
+  END LOOP;
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY prompts FAILED: daily prompts visible to %', bad; END IF;
+  IF EXISTS (SELECT 1 FROM public.daily_prompt_responses r JOIN _enr e ON e.id = r.enrollment_id)
+     OR (SELECT count(*) FROM _prompts) <> (SELECT count(*) FROM public.daily_prompts dp
+                                            JOIN public.training_weeks w ON w.id = dp.training_week_id
+                                            WHERE w.programme_id::text LIKE 'de100000-%') THEN
+    RAISE EXCEPTION 'VERIFY prompts FAILED: demo responses exist, or prompt content is missing';
+  END IF;
 
   RAISE NOTICE 'Demo seed: all verification checks passed.';
 END

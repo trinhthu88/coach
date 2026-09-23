@@ -60,7 +60,7 @@ describe("WeekDailyPrompts — the week's prompts, each optional and answerable"
     expect(items.map((i) => i.getAttribute("data-state"))).toEqual(["done", "open", "open"]);
 
     expect(items[0]).toHaveTextContent("Day 1");
-    expect(items[0]).toHaveTextContent("Done");
+    expect(items[0]).toHaveTextContent("Answered");
     expect(items[0]).toHaveTextContent("Two quiet people spoke.");
     expect(within(items[0]).queryByRole("textbox")).toBeNull();
 

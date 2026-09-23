@@ -40,6 +40,13 @@ vi.mock("@/hooks/dashboard/useProgrammeProgress", () => ({
       quizAssignmentIdByWeek: { w1: "q1", w2: "q2", w3: "q3", w4: "q4" },
       // learner_training_week_items: child evidence per week (counts only).
       itemsByWeek: {
+        // Daily Prompts switched off in the Training checklist: no prompt units.
+        w1: [
+          { item_type: "skill_cards", required_units: 1, completed_units: 1, due_units: 1, overdue_units: 0 },
+          { item_type: "quizzes", required_units: 1, completed_units: 1, due_units: 1, overdue_units: 0 },
+          { item_type: "reflections", required_units: 1, completed_units: 1, due_units: 1, overdue_units: 0 },
+          { item_type: "daily_prompts", required_units: 0, completed_units: 0, due_units: 0, overdue_units: 0 },
+        ],
         w3: [
           { item_type: "skill_cards", required_units: 1, completed_units: 0, due_units: 1, overdue_units: 1 },
           { item_type: "quizzes", required_units: 1, completed_units: 1, due_units: 1, overdue_units: 0 },
@@ -173,5 +180,21 @@ describe("Training & Learning — what finishes a week is clear", () => {
     );
     const prompts = within(expand(cardFor("Week 3 title"))).getByTestId("week-item-daily_prompts");
     expect(within(prompts).getByRole("link", { name: "Daily Prompts" })).toHaveAttribute("href", "/training/w3#daily-prompts");
+  });
+});
+
+describe("Training & Learning — a week without Daily Prompts", () => {
+  it("lists no Daily Prompts row and does not mention them", () => {
+    render(
+      <MemoryRouter>
+        <TrainingWeeks />
+      </MemoryRouter>
+    );
+    const content = expand(cardFor("Week 1 title"));
+    const rows = within(content).getAllByTestId(/^week-item-/).map((r) => r.getAttribute("data-testid"));
+    expect(rows).toEqual(["week-item-skill_cards", "week-item-quizzes", "week-item-reflections"]);
+    const note = within(content).getByTestId("week-completion-note");
+    expect(note).toHaveTextContent("Complete Skill Card, Quiz and Reflection to finish this week.");
+    expect(note).not.toHaveTextContent("Daily Prompts");
   });
 });
