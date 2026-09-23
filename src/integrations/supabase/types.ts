@@ -5699,6 +5699,17 @@ export type Database = {
         Args: { p_meeting_url?: string; p_session_id: string }
         Returns: string
       }
+      create_goal_with_ratings: {
+        Args: {
+          p_description: string
+          p_enrollment_id: string
+          p_start_rating: number
+          p_target_date: string | null
+          p_target_rating: number
+          p_title: string
+        }
+        Returns: string
+      }
       create_programme_enrollment: {
         Args: {
           p_cohort_id: string

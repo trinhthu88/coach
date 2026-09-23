@@ -151,7 +151,8 @@ export function GoalDialog({ onAdd, activeCount }: { onAdd: AddGoalFn; activeCou
         <Button size="sm"><Plus className="mr-1 h-4 w-4" /> {t("goalDialog.newGoal")}</Button>
       </DialogTrigger>
       <DialogContent>
-        <GoalForm heading={t("goalDialog.newGoal")} onSubmit={onAdd} onCancel={() => setOpen(false)} />
+        {/* Without `initial`, GoalForm always submits the Start/Target create payload. */}
+        <GoalForm heading={t("goalDialog.newGoal")} onSubmit={(payload) => onAdd(payload as GoalPayload)} onCancel={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

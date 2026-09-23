@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, Check, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Check, Lock, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,8 +148,10 @@ export function GoalAccordion({
                   onChange={(v) => onRatingChange({ target_rating: v })}
                 />
               </div>
-              <p className="mt-3 text-[10px] text-muted-foreground">
-                {t("goalAccordion.currentRatingPrefix")} <strong>{t("goalAccordion.currentRatingBold")}</strong> {t("goalAccordion.currentRatingSuffix")}
+              {/* Only Current is locked here: it is captured after each session. */}
+              <p className="mt-3 flex items-start gap-1 text-[10px] text-muted-foreground" data-testid="goal-current-locked">
+                <Lock className="mt-px h-3 w-3 shrink-0" aria-hidden />
+                <span>{t("goalAccordion.currentRatingPrefix")} <strong>{t("goalAccordion.currentRatingBold")}</strong> {t("goalAccordion.currentRatingSuffix")}</span>
               </p>
             </div>
           )}

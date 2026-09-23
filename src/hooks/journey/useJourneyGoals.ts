@@ -72,23 +72,16 @@ export function useJourneyGoals(coacheeId: string | undefined, options: JourneyG
   const addGoalMutation = useMutation({
     mutationFn: async (payload: GoalPayload) => {
       if (!enrollmentId) throw new Error("Select an enrollment before adding a goal");
-      const { start_rating, target_rating, ...goalPayload } = payload;
-      const { data: createdGoal, error } = await supabase.from("coachee_goals").insert({
-        coachee_id: coacheeId as string,
-        enrollment_id: enrollmentId,
-        ...goalPayload,
-      }).select("id").single();
+      // The goal and its Start/Target in one transaction (never a goal showing "—").
+      const { error } = await supabase.rpc("create_goal_with_ratings", {
+        p_enrollment_id: enrollmentId,
+        p_title: payload.title,
+        p_description: payload.description ?? "",
+        p_target_date: payload.target_date ?? null,
+        p_start_rating: payload.start_rating,
+        p_target_rating: payload.target_rating,
+      });
       if (error) throw error;
-      const { error: ratingError } = await supabase.from("coachee_goal_ratings").upsert({
-        goal_id: createdGoal.id,
-        coachee_id: coacheeId as string,
-        enrollment_id: enrollmentId,
-        start_rating,
-        current_rating: null,
-        target_rating,
-        current_updated_at: new Date().toISOString(),
-      }, { onConflict: "enrollment_id,goal_id" });
-      if (ratingError) throw ratingError;
     },
     onSuccess: notifyChanged,
     onError: (error) => toast.error(error instanceof Error ? error.message : "Failed"),

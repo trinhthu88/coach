@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   sessionId: string;
+  /** The learner. New goals are created for the signed-in learner (create_goal_with_ratings). */
   coacheeId: string;
   enrollmentId?: string | null;
   sourceActivityType?: "coaching" | "mentoring" | "peer_coaching" | "triad";
@@ -35,7 +36,7 @@ interface RatingRow {
 }
 type GoalCheckinPayload = { goal_id: string; new_rating: number | null; note: string | null };
 
-export function SessionGoalRatings({ sessionId, coacheeId, enrollmentId, sourceActivityType = "coaching", canEdit, canCreateGoal = canEdit, sessionStatus, onSaved }: Props) {
+export function SessionGoalRatings({ sessionId, enrollmentId, sourceActivityType = "coaching", canEdit, canCreateGoal = canEdit, sessionStatus, onSaved }: Props) {
   const { t } = useTranslation("sessions");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -119,23 +120,16 @@ export function SessionGoalRatings({ sessionId, coacheeId, enrollmentId, sourceA
 
   const addGoal: AddGoalFn = async (payload) => {
     if (!canCreateGoal || !enrollmentId) return false;
-    const { start_rating, target_rating, ...goalPayload } = payload;
-    const { data: createdGoal, error } = await supabase
-      .from("coachee_goals")
-      .insert({ ...goalPayload, enrollment_id: enrollmentId, coachee_id: coacheeId })
-      .select("id")
-      .single();
+    // The goal and its Start/Target in one transaction (never a goal showing "—").
+    const { error } = await supabase.rpc("create_goal_with_ratings", {
+      p_enrollment_id: enrollmentId,
+      p_title: payload.title,
+      p_description: payload.description ?? "",
+      p_target_date: payload.target_date ?? null,
+      p_start_rating: payload.start_rating,
+      p_target_rating: payload.target_rating,
+    });
     if (error) { toast.error(error.message); return false; }
-    const { error: ratingError } = await supabase.from("coachee_goal_ratings").upsert({
-      goal_id: createdGoal.id,
-      coachee_id: coacheeId,
-      enrollment_id: enrollmentId,
-      start_rating,
-      current_rating: null,
-      target_rating,
-      current_updated_at: new Date().toISOString(),
-    }, { onConflict: "enrollment_id,goal_id" });
-    if (ratingError) { toast.error(ratingError.message); return false; }
     await load();
     onSaved?.();
     return true;
