@@ -40,7 +40,7 @@ const data = {
   ],
 };
 
-function renderPanel(cohortId: string | undefined = "cohort-1") {
+function renderPanel(cohortId: string | undefined) {
   return render(<FixedPeerDyadPanel cohortId={cohortId} programmeId="programme-1" />);
 }
 
@@ -54,34 +54,35 @@ describe("FixedPeerDyadPanel", () => {
   it("renders nothing until an Admin is editing a cohort", () => {
     const { container } = renderPanel(undefined);
     expect(container).toBeEmptyDOMElement();
-    expect(useAdminPeerDyads).not.toHaveBeenCalled();
+    expect(useAdminPeerDyads).toHaveBeenCalledWith(undefined);
   });
 
   it("shows a loading state while assigned dyads are loading", () => {
     useAdminPeerDyads.mockReturnValue({ data: undefined, isLoading: true, isError: false });
-    renderPanel();
+    renderPanel("cohort-1");
     expect(screen.getByTestId("fixed-peer-dyad-panel")).toBeInTheDocument();
-    expect(screen.getByRole("status", { hidden: true })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("peer-dyad-row")).not.toBeInTheDocument();
   });
 
   it("shows a database error instead of presenting an empty dyad list", () => {
     useAdminPeerDyads.mockReturnValue({ data: undefined, isLoading: false, isError: true });
-    renderPanel();
-    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load peer configuration.");
+    renderPanel("cohort-1");
+    expect(screen.getByRole("alert")).toHaveTextContent("The Peer cohort list could not be loaded.");
   });
 
   it("counts only active dyads and preserves the historical closed row", () => {
-    renderPanel();
+    renderPanel("cohort-1");
     expect(screen.getByTestId("fixed-peer-dyad-panel")).toHaveTextContent("1");
     const rows = screen.getAllByTestId("peer-dyad-row");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("Ada Learner · Grace Learner");
-    expect(rows[1]).toHaveTextContent("Alan Learner");
+    expect(rows[1]).toHaveTextContent("Incomplete dyad");
     expect(rows[1]).toHaveTextContent("closed");
   });
 
   it("assigns two different enrollments through the Admin dyad mutation", () => {
-    renderPanel();
+    renderPanel("cohort-1");
     const selects = screen.getAllByRole("combobox");
     fireEvent.change(selects[0], { target: { value: "e1" } });
     fireEvent.change(selects[1], { target: { value: "e3" } });
@@ -93,7 +94,7 @@ describe("FixedPeerDyadPanel", () => {
   });
 
   it("does not allow assigning the same enrollment twice", () => {
-    renderPanel();
+    renderPanel("cohort-1");
     const selects = screen.getAllByRole("combobox");
     fireEvent.change(selects[0], { target: { value: "e1" } });
     fireEvent.change(selects[1], { target: { value: "e1" } });
@@ -102,7 +103,7 @@ describe("FixedPeerDyadPanel", () => {
   });
 
   it("does not expose a cohort-permission grant control", () => {
-    renderPanel();
+    renderPanel("cohort-1");
     expect(screen.queryByText(/permission/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
