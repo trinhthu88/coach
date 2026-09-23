@@ -286,7 +286,8 @@ WHERE p.role = 'sponsor';
 -- this programme's 12-checkpoint design, and Cohort B's two leaders could
 -- never form a group of three.)
 -- Executive Coaching Sprint: 6 Coaching sessions only.
--- Emerging Leaders: 4 Training weeks, 3 Coaching, 2 Mentoring.
+-- Emerging Leaders: 4 Training weeks, 3 Coaching, 2 Triads, 2 Mentoring --
+-- Cohort 3's three leaders form the one group of three both Triads need.
 INSERT INTO public.programmes (id, name, description, duration_months, color, is_active, created_at) VALUES
   ('de100000-0000-4000-8000-000000000001', 'Leadership Foundations',
    'A 14-week blended programme for managers stepping into senior leadership: seven Training weeks, '
@@ -298,7 +299,7 @@ INSERT INTO public.programmes (id, name, description, duration_months, color, is
    3, '#E8834A', true, TIMESTAMPTZ '2026-02-16 09:00+07'),
   ('de100000-0000-4000-8000-000000000003', 'Emerging Leaders',
    'A 16-week programme for first-time people leaders: four Training weeks on the leadership basics, '
-   || 'three coaching sessions and two mentoring conversations.',
+   || 'three coaching sessions, two triad practice sessions and two mentoring conversations.',
    4, '#6B8E4E', true, TIMESTAMPTZ '2026-02-16 09:00+07');
 
 -- ---------------------------------------------------------------------------
@@ -361,7 +362,7 @@ $html$<div class="skill-content">
   <h3>From expert to leader</h3>
   <p>The hardest identity shift for most new senior leaders is from <em>expert</em> to <em>leader of experts</em>. As an expert, your value was the answer. As a leader, your value is the quality of other people's answers. Leaders who cannot make this shift become bottlenecks: every decision flows through them, their teams stop thinking, and they work longer hours while the organisation slows down. The shift starts with a different question. Instead of "What is the right answer?", ask "What does my team need in order to find the right answer without me?"</p>
 
-  <img src="https://images.unsplash.com/photo-1531545514256-b1400bc00f31?w=800" alt="Two colleagues in a coaching conversation" style="width:100%;border-radius:12px;margin:20px 0;" />
+  <img src="https://images.unsplash.com/photo-1542744095-fcf48d80b0fd?w=800" alt="A leadership team meeting in a glass-walled meeting room" style="width:100%;border-radius:12px;margin:20px 0;" />
 
   <h3>Gathering evidence this week</h3>
   <p>Self-awareness is not introspection alone; it is evidence. This week, collect three kinds:</p>
@@ -417,7 +418,7 @@ $html$<div class="skill-content">
   <p>Most listening in organisations is a polite pause before speaking. We hear enough to recognise the problem, our mind jumps to the solution, and we wait &mdash; not always patiently &mdash; for our turn. For an expert this is efficient. For a leader it is costly, because the person speaking rarely leads with the real issue. The first thing someone says is usually the safest version of the problem. The real one arrives later, if the listener leaves room for it.</p>
   <p>This week is about two skills that separate coaching leaders from directive ones: <strong>listening at depth</strong> and <strong>asking questions that make people think</strong> rather than questions that test whether they agree with you.</p>
 
-  <img src="https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800" alt="Colleagues listening to each other in conversation" style="width:100%;border-radius:12px;margin:20px 0;" />
+  <img src="https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=800" alt="A team in discussion around a meeting table" style="width:100%;border-radius:12px;margin:20px 0;" />
 
   <h3>Three levels of listening</h3>
   <ol>
@@ -458,7 +459,7 @@ $html$<div class="skill-content">
   </ul>
   <p>"And what else?" deserves special mention. The first answer to any question is rarely the best one. Asking "And what else?" two or three times gives people permission to go past the answer they prepared.</p>
 
-  <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800" alt="A leader listening attentively" style="width:100%;border-radius:12px;margin:20px 0;" />
+  <img src="https://images.unsplash.com/photo-1431540015161-0bf868a2d407?w=800" alt="A boardroom set up for the next conversation" style="width:100%;border-radius:12px;margin:20px 0;" />
 
   <h3>When not to ask questions</h3>
   <p>Coaching is not the right response to every situation. In a genuine emergency, when someone lacks information only you have, or when a safety or compliance issue is at stake, tell people what you need. The skill is to choose deliberately &mdash; and to notice how often "there is no time for questions" is a habit rather than a fact.</p>
@@ -548,7 +549,7 @@ $html$<div class="skill-content">
     <li>What happens after the meeting: the real conversation that takes place in the corridor.</li>
   </ul>
 
-  <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800" alt="A leader reflecting before a conversation" style="width:100%;border-radius:12px;margin:20px 0;" />
+  <img src="https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=800" alt="Sketching out a plan on paper before a key conversation" style="width:100%;border-radius:12px;margin:20px 0;" />
 
   <h3>Empathy is not agreement</h3>
   <p>Many leaders avoid empathy because they fear it means agreeing, or lowering the standard. It does not. Empathy means showing that you understand the other person's experience: "I can see this deadline lands on top of the audit, and that is a lot." You can say that and still hold the deadline. What changes is that the person feels understood &mdash; and people who feel understood are far more willing to find a way to deliver.</p>
@@ -601,7 +602,7 @@ $html$<div class="skill-content">
   <h2>Feedback That People Can Use</h2>
   <p>Almost every engagement survey tells the same story: people want more feedback than they get, and leaders believe they give more than they do. The gap is rarely about willingness. It is about skill and about fear &mdash; fear of damaging the relationship, fear of the other person's reaction, fear of being wrong. This week gives you a structure that lowers the risk for both sides, and a way of receiving feedback that makes people more willing to give it.</p>
 
-  <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800" alt="Two colleagues in a candid one-to-one conversation" style="width:100%;border-radius:12px;margin:20px 0;" />
+  <img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?w=800" alt="A team at work in an open-plan office" style="width:100%;border-radius:12px;margin:20px 0;" />
 
   <h3>Why most feedback does not land</h3>
   <ul>
@@ -972,7 +973,7 @@ $html$<div class="skill-content">
   <h3>Leading former peers</h3>
   <p>If you have been promoted inside your own team, the relationships have changed even if the people have not. A few habits help: have a one-to-one with each person in your first month and ask what they need from you; be open that the relationship is different now; and avoid both extremes &mdash; pretending nothing has changed, or suddenly becoming distant and formal.</p>
 
-  <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800" alt="A confident new leader" style="width:100%;border-radius:12px;margin:20px 0;" />
+  <img src="https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=800" alt="A task board: to do, doing, done" style="width:100%;border-radius:12px;margin:20px 0;" />
 
   <h3>Your first 90 days</h3>
   <ul>
@@ -1024,7 +1025,7 @@ $html$<div class="skill-content">
   <h2>Communication That Lands</h2>
   <p>Most problems in teams are not caused by people being unwilling. They are caused by unclear expectations. The leader thought the task was obvious; the team member understood something slightly different; a week later, both are frustrated. Clear communication is the cheapest performance tool a new leader has.</p>
 
-  <img src="https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800" alt="A team leader and colleagues in discussion" style="width:100%;border-radius:12px;margin:20px 0;" />
+  <img src="https://images.unsplash.com/photo-1512758017271-d7b84c2113f1?w=800" alt="A team planning wall covered in sticky notes" style="width:100%;border-radius:12px;margin:20px 0;" />
 
   <h3>Setting clear expectations</h3>
   <p>When you hand over a task, cover four points:</p>
@@ -1106,7 +1107,7 @@ $html$<div class="skill-content">
   <h3>Healthy conflict</h3>
   <p>Disagreement about ideas makes decisions better; disagreement that becomes personal damages the team. Encourage the first: ask the quietest person for their view, ask someone to argue the other side, and thank people who disagree with you in public. Stop the second quickly and privately.</p>
 
-  <img src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800" alt="A team in lively discussion" style="width:100%;border-radius:12px;margin:20px 0;" />
+  <img src="https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800" alt="A team working through ideas at a whiteboard" style="width:100%;border-radius:12px;margin:20px 0;" />
 
   <h3>Commitment and accountability</h3>
   <p>People commit to decisions they helped shape, even when they did not get their way. Close every important discussion by stating the decision, who owns each action, and by when. Then follow up. Accountability is not blame; it is keeping the promises the team made to each other.</p>
@@ -1170,7 +1171,7 @@ $html$<div class="skill-content">
     <li><strong>Batch the small things:</strong> answer messages at set times instead of all day.</li>
   </ul>
 
-  <img src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800" alt="A leader planning the week ahead" style="width:100%;border-radius:12px;margin:20px 0;" />
+  <img src="https://images.unsplash.com/photo-1434626881859-194d67b2b86f?w=800" alt="Charts and notes for planning the week ahead" style="width:100%;border-radius:12px;margin:20px 0;" />
 
   <h3>Managing energy, not only time</h3>
   <p>Your energy sets the tone for the team. Notice when in the day you think most clearly and put your hardest work there. Take real breaks. A tired leader makes slower decisions and has less patience &mdash; and the team feels it.</p>
@@ -1315,6 +1316,7 @@ INSERT INTO public.programme_modules (programme_id, module, enabled, config) VAL
      'distribution_settings', jsonb_build_object('training_week_ids',
        (SELECT jsonb_agg(pg_temp.uid('week:3:' || w.week_number) ORDER BY w.week_number) FROM _weeks w WHERE w.prog = 3)))),
   ('de100000-0000-4000-8000-000000000003', 'coaching',      true, '{"required": true, "required_units": 3}'),
+  ('de100000-0000-4000-8000-000000000003', 'triads',        true, '{"required": true, "required_units": 2}'),
   ('de100000-0000-4000-8000-000000000003', 'mentoring',     true, '{"required": true, "required_units": 2}');
 
 -- ---------------------------------------------------------------------------
@@ -1368,10 +1370,15 @@ INSERT INTO _dates VALUES
   -- Cohort 2: Executive Coaching Sprint -- Cohort A
   (2, 'coaching', 1, NULL, '2026-09-15'), (2, 'coaching', 2, NULL, '2026-09-29'), (2, 'coaching', 3, NULL, '2026-10-13'),
   (2, 'coaching', 4, NULL, '2026-10-27'), (2, 'coaching', 5, NULL, '2026-11-10'), (2, 'coaching', 6, NULL, '2026-11-24'),
-  -- Cohort 3: Emerging Leaders -- Cohort A
-  (3, 'training', 1, 1, '2026-09-22'), (3, 'training', 2, 2, '2026-09-29'), (3, 'coaching', 1, NULL, '2026-10-13'),
-  (3, 'training', 3, 3, '2026-10-20'), (3, 'mentoring', 1, NULL, '2026-10-27'), (3, 'training', 4, 4, '2026-11-10'),
-  (3, 'coaching', 2, NULL, '2026-11-24'), (3, 'mentoring', 2, NULL, '2026-12-08'), (3, 'coaching', 3, NULL, '2026-12-22'),
+  -- Cohort 3: Emerging Leaders -- Cohort A. Each checkpoint is due at the end
+  -- of its programme week (start 2026-09-15 + 7 x week):
+  --   wk 1 Training 1, wk 2 Training 2, wk 3 Coaching 1, wk 4 Triad 1,
+  --   wk 5 Training 3, wk 6 Mentoring 1, wk 8 Training 4, wk 10 Triad 2,
+  --   wk 12 Coaching 2, wk 14 Mentoring 2, wk 16 Coaching 3.
+  (3, 'training', 1, 1, '2026-09-22'), (3, 'training', 2, 2, '2026-09-29'), (3, 'coaching', 1, NULL, '2026-10-06'),
+  (3, 'triads', 1, NULL, '2026-10-13'), (3, 'training', 3, 3, '2026-10-20'), (3, 'mentoring', 1, NULL, '2026-10-27'),
+  (3, 'training', 4, 4, '2026-11-10'), (3, 'triads', 2, NULL, '2026-11-24'), (3, 'coaching', 2, NULL, '2026-12-08'),
+  (3, 'mentoring', 2, NULL, '2026-12-22'), (3, 'coaching', 3, NULL, '2027-01-05'),
   -- Cohort 4: Leadership Foundations -- Cohort B (same weekly spacing as Cohort A)
   (4, 'training', 1, 1, '2026-10-13'), (4, 'training', 2, 2, '2026-10-20'), (4, 'coaching', 1, NULL, '2026-10-27'),
   (4, 'training', 3, 4, '2026-11-03'), (4, 'peer_coaching', 1, NULL, '2026-11-10'), (4, 'training', 4, 6, '2026-11-17'),
@@ -1452,13 +1459,35 @@ JOIN _people p ON p.slug = e.slug
 JOIN _orgs o ON o.code = p.org
 JOIN public.cohorts c ON c.id = ('de300000-0000-4000-8000-00000000000' || e.cohort)::uuid;
 
+-- Triad groups (Cohort 3). A group is assigned for ONE Triad requirement, so
+-- each of the two Triads gets its own group -- the same three leaders, the
+-- cohort's only possible group of three. Created as the Admin does it; no
+-- session is booked yet (Triad 1 is due 2026-10-13, after the story date).
+DO $triad_groups$
+DECLARE r record;
+BEGIN
+  PERFORM pg_temp.act_as((SELECT id FROM _admin));
+  FOR r IN
+    SELECT d.id FROM public.cohort_requirement_dates d
+    WHERE d.cohort_id = 'de300000-0000-4000-8000-000000000003' AND d.module = 'triads'
+    ORDER BY d.ordinal
+  LOOP
+    PERFORM public.admin_triad_create_group(r.id,
+      ARRAY[(SELECT id FROM _enr WHERE slug = 'ngoc'), (SELECT id FROM _enr WHERE slug = 'dat'),
+            (SELECT id FROM _enr WHERE slug = 'yen')], 'en');
+  END LOOP;
+  PERFORM pg_temp.act_as_service();
+END
+$triad_groups$;
+
 -- ---------------------------------------------------------------------------
 -- 7. Goals (0-100 scale) -- set in each cohort's first week
 -- ---------------------------------------------------------------------------
--- start/finish: the baseline and the rating after the last check-in. A NULL
--- start means the goal is set but not yet rated (Cohorts 3 and 4).
+-- start/finish: the baseline and the rating after the last check-in; target
+-- defaults to the finish rating or 80, whichever is higher. A NULL start
+-- means the goal is set but not yet rated.
 CREATE TEMP TABLE _goals (slug text, n integer, title text, description text,
-  start_rating integer, finish_rating integer) ON COMMIT DROP;
+  start_rating integer, finish_rating integer, target_rating integer) ON COMMIT DROP;
 INSERT INTO _goals VALUES
   -- Cohort 1 (completed): primary goal carries the headline growth.
   ('ha', 1, 'Lead operations reviews that end in decisions, not updates',
@@ -1506,7 +1535,8 @@ INSERT INTO _goals VALUES
    'Pipeline reviews ask what the customer is trying to achieve before discussing price.', 30, 40),
   ('tam', 2, 'Rebuild trust with the northern region team',
    'Regular one-to-ones with every northern manager, kept even in closing weeks.', 20, 30),
-  -- Cohort 3 (active, no session yet): set, not yet rated.
+  -- Cohort 3 (active): Yen has rated her baseline and target; Ngoc's and
+  -- Dat's goals are set, not yet rated.
   ('ngoc', 1, 'Hold my first round of one-to-ones with every team member',
    'A 30-minute one-to-one with each of my eight team members by the end of October.', NULL, NULL),
   ('ngoc', 2, 'Give recognition that is specific, not generic',
@@ -1514,9 +1544,9 @@ INSERT INTO _goals VALUES
   ('dat', 1, 'Move from doing the work to leading the shift',
    'Spend at least half of each shift observing and coaching instead of operating the line.', NULL, NULL),
   ('yen', 1, 'Lead my former peers with confidence',
-   'Agree working norms with my team in the first month of the new role.', NULL, NULL),
+   'Agree working norms with my team in the first month of the new role.', 25, 25),
   ('yen', 2, 'Plan the team''s work a week ahead',
-   'A weekly plan shared every Monday, with priorities the team helped set.', NULL, NULL),
+   'A weekly plan shared every Monday, with priorities the team helped set.', 30, 30),
   -- Cohort 4 (starting): set, not yet rated.
   ('anh', 1, 'Delegate daily liquidity reporting to my team',
    'Two analysts produce the daily report; I review exceptions only.', NULL, NULL),
@@ -1524,6 +1554,8 @@ INSERT INTO _goals VALUES
    'One-page summaries the branch network can act on without follow-up questions.', NULL, NULL),
   ('tung', 1, 'Lead the cards squad through the new product launch',
    'The squad owns the launch plan and I remove blockers instead of assigning tasks.', NULL, NULL);
+-- Yen set her own targets.
+UPDATE _goals SET target_rating = CASE n WHEN 1 THEN 75 WHEN 2 THEN 70 END WHERE slug = 'yen';
 
 -- Goals are written as the learner, as in the app.
 DO $goals$
@@ -1546,7 +1578,7 @@ BEGIN
       INSERT INTO public.coachee_goal_ratings (goal_id, coachee_id, enrollment_id, start_rating, current_rating,
         target_rating, current_updated_at, created_at, updated_at)
       VALUES (pg_temp.uid('goal:' || g.slug || ':' || g.n), g.user_id, g.enrollment_id, g.start_rating,
-        g.start_rating, greatest(g.finish_rating, 80), pg_temp.ict(g.start_date + 2, '19:00'),
+        g.start_rating, coalesce(g.target_rating, greatest(g.finish_rating, 80)), pg_temp.ict(g.start_date + 2, '19:00'),
         pg_temp.ict(g.start_date + 2, '19:00'), pg_temp.ict(g.start_date + 2, '19:00'));
     END IF;
   END LOOP;
@@ -1605,7 +1637,10 @@ INSERT INTO _sess VALUES
   ('c2:huy:2',   'huy',   'coaching', 2, '2026-09-17', '10:00', 'Mapping the sponsors for the mobile roadmap', NULL),
   ('c2:khoa:2',  'khoa',  'coaching', 2, '2026-09-22', '09:00', 'Designing the November strategy offsite', NULL),
   -- Coaching 3 (due 2026-10-13, opens 09-29): Huy uses the early window.
-  ('c2:huy:3',   'huy',   'coaching', 3, '2026-10-01', '09:00', 'Rehearsing the CEO conversation', NULL);
+  ('c2:huy:3',   'huy',   'coaching', 3, '2026-10-01', '09:00', 'Rehearsing the CEO conversation', NULL),
+  -- Cohort 3 -- Coaching 1 (due 2026-10-06, opens 09-22): Yen has none.
+  ('c3:ngoc:1',  'ngoc',  'coaching', 1, '2026-09-22', '14:00', 'Leading the team I used to be part of', NULL),
+  ('c3:dat:1',   'dat',   'coaching', 1, '2026-09-23', '08:00', 'From running the line to running the shift', NULL);
 
 -- Peer dyads (the Admin pairs partners inside the cohort; pairs may cross
 -- organisations -- each partner's unit still belongs to their own enrollment).
@@ -1968,13 +2003,22 @@ JOIN _enr e ON e.slug = a.learner JOIN _people p ON p.slug = a.learner
 CROSS JOIN LATERAL public.session_deliverable_source_types(h.source_table) t;
 
 -- ---------------------------------------------------------------------------
--- 11. Duc's availability for booking -- 2026-10-07 .. 2026-12-02
+-- 11. Duc's availability for booking -- 2026-09-24 .. 2027-01-05
 -- ---------------------------------------------------------------------------
 -- coach_availability stores one row per slot: a date and a wall-clock start
 -- and end time (time without time zone), and a slot type. These are written
 -- exactly as the coach's own availability page writes them when Duc enters
--- them in Vietnam: "09:00".."10:00" (ICT). Tuesdays and Thursdays,
--- 09:00-12:00 and 14:00-17:00, one 60-minute Coaching slot per hour.
+-- them in Vietnam: "09:00".."10:00" (ICT). Coaching: Tuesdays and Thursdays,
+-- 09:00-12:00 and 14:00-17:00, one 60-minute slot per hour. Mentoring:
+-- Wednesdays 16:00-17:00. The range starts on the first Thursday after the
+-- seed was written, because the booking page opens on the current week, and
+-- runs to the last Coaching checkpoint (Cohort 3's Coaching 3, 2027-01-05).
+--
+-- A learner reads a coach's slots only through the coach's profile, and the
+-- profile is readable to an allowlisted coachee or a mentee of the cohort's
+-- mentor pool -- never through the cohort's COACH pool. Every learner of an
+-- ongoing cohort is therefore allowlisted with Duc, as an Admin would add
+-- them; without it Cohort 2 (no Mentoring) sees "Coach not found".
 --
 -- KNOWN APP LIMITATION (not a data problem): the booking page treats these
 -- wall-clock times as the BROWSER's local time, while book_coaching_session
@@ -1987,9 +2031,26 @@ INSERT INTO public.coach_availability (id, coach_id, slot_date, start_time, end_
 SELECT pg_temp.uid('slot:' || d::date || ':' || h), 'de000000-0000-4000-8000-000000000001', d::date,
   make_time(h, 0, 0), make_time(h + 1, 0, 0), false, 'coaching'::public.availability_slot_type,
   TIMESTAMPTZ '2026-09-21 09:00+07', TIMESTAMPTZ '2026-09-21 09:00+07'
-FROM generate_series(DATE '2026-10-07', DATE '2026-12-02', interval '1 day') d
+FROM generate_series(DATE '2026-09-24', DATE '2027-01-05', interval '1 day') d
 CROSS JOIN unnest(ARRAY[9, 10, 11, 14, 15, 16]) h
 WHERE extract(isodow FROM d) IN (2, 4);
+
+INSERT INTO public.coach_availability (id, coach_id, slot_date, start_time, end_time, is_booked, slot_type,
+  created_at, updated_at)
+SELECT pg_temp.uid('mslot:' || d::date), 'de000000-0000-4000-8000-000000000001', d::date,
+  TIME '16:00', TIME '17:00', false, 'mentoring'::public.availability_slot_type,
+  TIMESTAMPTZ '2026-09-21 09:00+07', TIMESTAMPTZ '2026-09-21 09:00+07'
+FROM generate_series(DATE '2026-09-30', DATE '2026-12-30', interval '1 day') d
+WHERE extract(isodow FROM d) = 3;
+
+INSERT INTO public.coachee_coach_allowlist (coachee_id, coach_id, created_at, created_by, source)
+SELECT p.id, 'de000000-0000-4000-8000-000000000001', pg_temp.ict(c.start_date - 7, '10:00'),
+  (SELECT id FROM _admin), 'admin_added'
+FROM _enr e
+JOIN _people p ON p.slug = e.slug
+JOIN public.cohorts c ON c.id = ('de300000-0000-4000-8000-00000000000' || e.cohort)::uuid
+WHERE e.cohort IN (2, 3, 4)
+ON CONFLICT (coachee_id, coach_id) DO UPDATE SET removed_at = NULL;
 
 -- ---------------------------------------------------------------------------
 -- 12. Cohort A is over: close its enrollments
@@ -2054,7 +2115,7 @@ BEGIN
            p.overdue_units, p.pace_status, x.done, x.due, x.overdue, x.pace), '; ') INTO bad
   FROM (VALUES
     ('khoa', 2, 2, 0, 'on_track'), ('tam', 1, 2, 1, 'behind'), ('huy', 3, 2, 0, 'ahead'), ('mai', 1, 2, 1, 'behind'),
-    ('ngoc', 2, 2, 0, 'on_track'), ('dat', 2, 2, 0, 'on_track'), ('yen', 1, 2, 1, 'behind')
+    ('ngoc', 3, 3, 0, 'on_track'), ('dat', 3, 3, 0, 'on_track'), ('yen', 1, 3, 2, 'behind')
   ) AS x(slug, done, due, overdue, pace)
   JOIN _enr e ON e.slug = x.slug
   CROSS JOIN LATERAL public.canonical_enrollment_progress(e.id, story) p
@@ -2182,10 +2243,35 @@ BEGIN
   JOIN public.coachee_goal_ratings r ON r.goal_id = pg_temp.uid('goal:' || g.slug || ':' || g.n)
   WHERE (r.start_rating, r.current_rating) IS DISTINCT FROM (g.start_rating, g.finish_rating);
   IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY goals FAILED: %', bad; END IF;
-  SELECT string_agg(e.slug, ', ') INTO bad FROM _enr e
-  WHERE e.cohort IN (3, 4) AND (EXISTS (SELECT 1 FROM public.goal_checkins c WHERE c.enrollment_id = e.id)
-                                OR EXISTS (SELECT 1 FROM public.coachee_goal_ratings c WHERE c.enrollment_id = e.id));
-  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY goals FAILED: unrated goals carry ratings: %', bad; END IF;
+  SELECT string_agg(g.slug || '#' || g.n, ', ') INTO bad
+  FROM _goals g JOIN _enr e ON e.slug = g.slug
+  WHERE e.cohort IN (3, 4)
+    AND (EXISTS (SELECT 1 FROM public.goal_checkins c WHERE c.enrollment_id = e.id)
+         OR (g.start_rating IS NULL) = EXISTS (SELECT 1 FROM public.coachee_goal_ratings c
+                                               WHERE c.goal_id = pg_temp.uid('goal:' || g.slug || ':' || g.n)));
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY goals FAILED: ratings do not match the goals rated: %', bad; END IF;
+  -- Yen's goals show a start and a target.
+  SELECT string_agg(format('#%s %s->%s', g.n, r.start_rating, r.target_rating), '; ') INTO bad
+  FROM _goals g JOIN public.coachee_goal_ratings r ON r.goal_id = pg_temp.uid('goal:' || g.slug || ':' || g.n)
+  WHERE g.slug = 'yen' AND (r.start_rating, r.target_rating) NOT IN ((25, 75), (30, 70));
+  IF bad IS NOT NULL OR (SELECT count(*) FROM _goals g JOIN public.coachee_goal_ratings r
+                         ON r.goal_id = pg_temp.uid('goal:' || g.slug || ':' || g.n) WHERE g.slug = 'yen') <> 2 THEN
+    RAISE EXCEPTION 'VERIFY goals FAILED: Yen''s start/target %', coalesce(bad, 'missing');
+  END IF;
+
+  -- Triads (Cohort 3): two required, one active group of Ngoc, Dat and Yen for
+  -- each, 11 checkpoints in all, and nothing held yet.
+  SELECT string_agg(format('%s triads %s groups %s required %s', e.slug, t.n, m.n, p.required_units), '; ') INTO bad
+  FROM _enr e
+  CROSS JOIN LATERAL (SELECT count(*) AS n FROM public.canonical_triad_requirement_fulfilment(e.id) f
+                      WHERE f.fulfilled_on IS NULL) t
+  CROSS JOIN LATERAL (SELECT count(*) AS n FROM public.triad_group_members gm
+                      JOIN public.triad_groups g ON g.id = gm.triad_group_id AND g.is_active
+                      WHERE gm.enrollment_id = e.id
+                        AND (SELECT count(*) FROM public.triad_group_members x WHERE x.triad_group_id = g.id) = 3) m
+  CROSS JOIN LATERAL public.canonical_enrollment_progress(e.id, story) p
+  WHERE e.cohort = 3 AND (t.n, m.n, p.required_units) IS DISTINCT FROM (2::bigint, 2::bigint, 11);
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY triads FAILED: %', bad; END IF;
 
   -- Daily prompts answered (Cohort 1 has 30; Cohort 3 weeks 1-2 have 6).
   SELECT string_agg(format('%s %s (expected %s)', q.slug, coalesce(c.n, 0), q.n), '; ') INTO bad
@@ -2234,6 +2320,23 @@ BEGIN
   END;
   PERFORM pg_temp.act_as_service();
 
+  -- Every learner of an ongoing cohort can SEE Duc's upcoming Coaching slots,
+  -- read as the booking page reads them: as that learner, under RLS.
+  bad := NULL;
+  FOR rec IN SELECT e.slug, p.id AS user_id FROM _enr e JOIN _people p ON p.slug = e.slug
+             WHERE e.cohort IN (2, 3, 4) ORDER BY e.slug
+  LOOP
+    PERFORM pg_temp.act_as(rec.user_id);
+    PERFORM set_config('role', 'authenticated', true);
+    SELECT count(*) INTO n FROM public.coach_availability a
+    WHERE a.coach_id = 'de000000-0000-4000-8000-000000000001' AND a.slot_type = 'coaching'
+      AND NOT a.is_booked AND a.slot_date BETWEEN DATE '2026-09-24' AND DATE '2026-09-30';
+    PERFORM set_config('role', 'none', true);
+    PERFORM pg_temp.act_as_service();
+    IF n = 0 THEN bad := concat_ws(', ', bad, rec.slug); END IF;
+  END LOOP;
+  IF bad IS NOT NULL THEN RAISE EXCEPTION 'VERIFY availability FAILED: no slots visible in the first week to %', bad; END IF;
+
   RAISE NOTICE 'Demo seed: all verification checks passed.';
 END
 $verify$;
@@ -2262,7 +2365,7 @@ BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '== LOGINS (demo accounts: password demo123456) ==';
   RAISE NOTICE 'trang.tt@erickson.vn     admin    (existing account, untouched)';
-  RAISE NOTICE 'duc.nm@erickson.vn       coach + mentor, ICF PCC; Tue/Thu slots 2026-10-08 .. 2026-12-01';
+  RAISE NOTICE 'duc.nm@erickson.vn       coach + mentor, ICF PCC; Tue/Thu coaching 2026-09-24 .. 2027-01-05, Wed mentoring';
   RAISE NOTICE 'phuong.lt@demo-orgA.vn   sponsor, Organisation A (8 leaders)';
   RAISE NOTICE 'tuan.vt@demo-orgB.vn     sponsor, Organisation B (7 leaders)';
   RAISE NOTICE 'learners: ha.tt, binh.nv, lan.pt, huy.dq, mai.bt, anh.hd, tung.lv, ngoc.vt @demo-orgA.vn;';
