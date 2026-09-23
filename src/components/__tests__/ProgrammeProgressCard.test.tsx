@@ -122,7 +122,7 @@ describe("ProgrammeProgressCard", () => {
     expect(screen.getByText("Coaching")).toBeInTheDocument();
     expect(screen.getByText("Mentoring")).toBeInTheDocument();
     expect(screen.getByText("75%")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "View skill card" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "View content" })).not.toBeInTheDocument();
   });
 
   it("renders all four configured learning categories from the canonical breakdown", () => {

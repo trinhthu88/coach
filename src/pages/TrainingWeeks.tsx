@@ -1,7 +1,20 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { Loader2, Lock, Check } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  Circle,
+  FileText,
+  HelpCircle,
+  Loader2,
+  Lock,
+  MessageSquare,
+  PenLine,
+  type LucideIcon,
+} from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -88,6 +101,7 @@ function WeekTimelineCard({
   const title = (isVi && week.title_vi) || week.title;
   const subtitle = (isVi && week.subtitle_vi) || week.subtitle;
   const status = week.locked ? "locked" : week.completed_at ? "completed" : isCurrent ? "current" : week.viewed_at ? "viewed" : "notStarted";
+  const [expanded, setExpanded] = useState(isCurrent);
 
   return (
     <div className="relative mb-3.5">
@@ -147,31 +161,17 @@ function WeekTimelineCard({
             )}
           </p>
         )}
-        {items.length > 0 && (
-          <div data-testid="week-items" className="mt-2 flex flex-wrap gap-1.5">
-            {items.map((item) => (
-              <span
-                key={item.item_type}
-                data-testid={`week-item-${item.item_type}`}
-                className={cn(
-                  "rounded-full px-2.5 py-1 text-[10.5px] font-semibold",
-                  item.completed_units >= item.required_units
-                    ? "bg-[#e8f5ef] text-success"
-                    : item.overdue_units > 0
-                      ? "bg-[#fdf4ef] text-[#a8341c]"
-                      : "bg-[#f2eee6] text-[#8a847d]"
-                )}
-              >
-                {t(`list.item.${item.item_type}`, { defaultValue: item.item_type })} {item.completed_units}/{item.required_units}
-              </span>
-            ))}
-          </div>
-        )}
-
         {week.locked ? (
-          <p className="mt-2 text-xs font-semibold text-muted-foreground">
-            {week.effective_unlock_date ? t("list.unlockDate", { date: format(new Date(week.effective_unlock_date), "MMM d, yyyy") }) : t("list.locked")}
-          </p>
+          <>
+            <p className="mt-2 text-xs font-semibold text-muted-foreground">
+              {week.effective_unlock_date ? t("list.unlockDate", { date: format(new Date(week.effective_unlock_date), "MMM d, yyyy") }) : t("list.locked")}
+            </p>
+            {items.length > 0 && (
+              <div className="mt-4 border-t border-[#efeae1] pt-4 text-[12.5px]">
+                <ContentToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} t={t} />
+              </div>
+            )}
+          </>
         ) : (
           <>
             {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
@@ -186,20 +186,169 @@ function WeekTimelineCard({
               )}
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-[#efeae1] pt-4 text-[12.5px]">
-              <Link to={`/training/${week.id}`} data-testid="week-skill-card-link" className="font-semibold text-[#2c8fa8] hover:underline">
-                {t("progressCard.viewContent")} &rarr;
-              </Link>
-              {quizAssignmentId && (
-                <Link to={`/training/${week.id}/quiz/${quizAssignmentId}`} className="text-muted-foreground hover:text-[#2c8fa8]">
-                  {quizScore ? t("assignments.quizScored", { score: Math.round(quizScore.scorePct) }) : t("assignments.quizPending")}
-                </Link>
-              )}
+            <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[#efeae1] pt-4 text-[12.5px]">
+              <ContentToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} t={t} />
               {isCurrent && reflectionStreak > 0 && <span className="text-muted-foreground">{t("list.promptStreak", { count: reflectionStreak })}</span>}
             </div>
           </>
         )}
+
+        {expanded && (
+          <WeekContentList
+            week={week}
+            items={items}
+            quizAssignmentId={quizAssignmentId}
+            quizScore={quizScore}
+            t={t}
+          />
+        )}
       </Card>
     </div>
+  );
+}
+
+function ContentToggle({
+  expanded,
+  onToggle,
+  t,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      data-testid="week-content-toggle"
+      className="inline-flex items-center gap-1 font-semibold text-[#2c8fa8] hover:underline"
+    >
+      {t(expanded ? "list.content.hide" : "list.content.show")}
+      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
+    </button>
+  );
+}
+
+const CONTENT_ICON: Record<string, LucideIcon> = {
+  skill_cards: FileText,
+  quizzes: HelpCircle,
+  reflections: PenLine,
+  daily_prompts: MessageSquare,
+};
+
+type ContentState = "completed" | "notStarted" | "upcoming" | "overdue";
+
+/**
+ * A week's content with its own status. Skill Card, Quiz and Reflection make
+ * the week complete; Daily Prompts are optional evidence, so they show a count
+ * and never read as overdue. A locked week's content is Upcoming whatever its
+ * counts say: nothing can be completed before the week opens.
+ */
+function contentState(item: TrainingWeekItem, locked: boolean): ContentState {
+  if (locked) return "upcoming";
+  if (item.required_units > 0 && item.completed_units >= item.required_units) return "completed";
+  if (item.item_type !== "daily_prompts" && item.overdue_units > 0) return "overdue";
+  return "notStarted";
+}
+
+const STATE_ICON: Record<ContentState, LucideIcon> = {
+  completed: Check,
+  notStarted: Circle,
+  upcoming: Lock,
+  overdue: AlertTriangle,
+};
+
+function WeekContentList({
+  week,
+  items,
+  quizAssignmentId,
+  quizScore,
+  t,
+}: {
+  week: RawWeek;
+  items: TrainingWeekItem[];
+  quizAssignmentId: string | null;
+  quizScore: { weekNumber: number; scorePct: number } | undefined;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const hrefFor = (type: string): string | null => {
+    if (week.locked) return null;
+    if (type === "quizzes") return quizAssignmentId ? `/training/${week.id}/quiz/${quizAssignmentId}` : null;
+    if (type === "reflections") return `/training/${week.id}/reflect`;
+    return `/training/${week.id}`;
+  };
+
+  return (
+    <ul data-testid="week-content" className="mt-3 divide-y divide-[#efeae1] rounded-2xl border border-[#efeae1] bg-[#faf8f4]">
+      {items.length === 0 && !week.locked && (
+        <li className="px-4 py-3 text-[12.5px]">
+          <Link to={`/training/${week.id}`} data-testid="week-skill-card-link" className="font-semibold text-[#2c8fa8] hover:underline">
+            {t("list.content.openWeek")} &rarr;
+          </Link>
+        </li>
+      )}
+      {quizAssignmentId && !week.locked && !items.some((i) => i.item_type === "quizzes") && (
+        <li className="px-4 py-3 text-[12.5px]">
+          <Link to={`/training/${week.id}/quiz/${quizAssignmentId}`} className="font-semibold text-[#2c8fa8] hover:underline">
+            {quizScore ? t("assignments.quizScored", { score: Math.round(quizScore.scorePct) }) : t("assignments.takeQuiz")} &rarr;
+          </Link>
+        </li>
+      )}
+      {items.map((item) => {
+        const state = contentState(item, !!week.locked);
+        const optional = item.item_type === "daily_prompts";
+        const Icon = CONTENT_ICON[item.item_type] ?? FileText;
+        const StateIcon = STATE_ICON[state];
+        const href = hrefFor(item.item_type);
+        const label = t(`list.item.${item.item_type}`, { defaultValue: item.item_type });
+        const statusText =
+          optional && state !== "upcoming"
+            ? t("list.content.promptsCount", { done: item.completed_units, total: item.required_units })
+            : state === "completed" && item.item_type === "quizzes" && quizScore
+              ? t("assignments.quizScored", { score: Math.round(quizScore.scorePct) })
+              : t(`list.content.state.${state}`);
+
+        return (
+          <li
+            key={item.item_type}
+            data-testid={`week-item-${item.item_type}`}
+            data-state={state}
+            className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-[12.5px]"
+          >
+            <span className="flex items-center gap-2.5">
+              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              {href ? (
+                <Link
+                  to={href}
+                  data-testid={item.item_type === "skill_cards" ? "week-skill-card-link" : undefined}
+                  className="font-semibold text-[#062f3e] hover:text-[#2c8fa8] hover:underline"
+                >
+                  {label}
+                </Link>
+              ) : (
+                <span className="font-semibold text-[#062f3e]">{label}</span>
+              )}
+              {optional && (
+                <span className="rounded-full bg-[#f2eee6] px-2 py-0.5 text-[10px] font-semibold text-[#8a847d]">
+                  {t("list.content.optional")}
+                </span>
+              )}
+            </span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 text-[11.5px] font-semibold",
+                state === "completed" && "text-success",
+                state === "overdue" && "text-[#a8341c]",
+                (state === "notStarted" || state === "upcoming") && "text-[#8a847d]"
+              )}
+            >
+              <StateIcon className="h-3.5 w-3.5" />
+              {statusText}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -46,6 +46,13 @@ vi.mock("@/hooks/dashboard/useProgrammeProgress", () => ({
           { item_type: "reflections", required_units: 1, completed_units: 0, due_units: 0, overdue_units: 0 },
           { item_type: "daily_prompts", required_units: 2, completed_units: 1, due_units: 2, overdue_units: 1 },
         ],
+        // A future week: whatever the counts say, nothing in it is completable yet.
+        w4: [
+          { item_type: "skill_cards", required_units: 1, completed_units: 1, due_units: 0, overdue_units: 0 },
+          { item_type: "quizzes", required_units: 1, completed_units: 0, due_units: 0, overdue_units: 0 },
+          { item_type: "reflections", required_units: 1, completed_units: 0, due_units: 0, overdue_units: 0 },
+          { item_type: "daily_prompts", required_units: 3, completed_units: 0, due_units: 0, overdue_units: 0 },
+        ],
       },
     },
   }),
@@ -58,34 +65,57 @@ function cardFor(title: string) {
   return screen.getByText(title).closest("div.relative") as HTMLElement;
 }
 
+function expand(card: HTMLElement) {
+  const toggle = within(card).getByTestId("week-content-toggle");
+  if (toggle.getAttribute("aria-expanded") !== "true") fireEvent.click(toggle);
+  return within(card).getByTestId("week-content");
+}
+
 describe("Training & Learning — previous weeks stay open", () => {
-  it("every unlocked week (completed, viewed, current, not started) links to its skill card and quiz", () => {
+  it("every unlocked week (completed, viewed, current, not started) links to its content and quiz", () => {
     render(
       <MemoryRouter>
         <TrainingWeeks />
       </MemoryRouter>
     );
     for (const n of [1, 2, 3]) {
-      const card = cardFor(`Week ${n} title`);
-      expect(within(card).getByTestId("week-skill-card-link")).toHaveAttribute("href", `/training/w${n}`);
-      const quiz = within(card).getAllByRole("link").find((l) => l.getAttribute("href")?.includes("/quiz/"));
+      const content = expand(cardFor(`Week ${n} title`));
+      expect(within(content).getByTestId("week-skill-card-link")).toHaveAttribute("href", `/training/w${n}`);
+      const quiz = within(content).getAllByRole("link").find((l) => l.getAttribute("href")?.includes("/quiz/"));
       expect(quiz).toHaveAttribute("href", `/training/w${n}/quiz/q${n}`);
     }
   });
 
-  it("a locked (future) week has no content links", () => {
+  it("the current week opens expanded; other weeks start collapsed behind View content", () => {
+    render(
+      <MemoryRouter>
+        <TrainingWeeks />
+      </MemoryRouter>
+    );
+    expect(within(cardFor("Week 2 title")).getByTestId("week-content-toggle")).toHaveAttribute("aria-expanded", "true");
+    const week3 = cardFor("Week 3 title");
+    expect(within(week3).getByTestId("week-content-toggle")).toHaveTextContent("View content");
+    expect(within(week3).queryByTestId("week-content")).toBeNull();
+  });
+
+  it("a locked (future) week has no content links; its content reads Upcoming", () => {
     render(
       <MemoryRouter>
         <TrainingWeeks />
       </MemoryRouter>
     );
     const locked = cardFor("Week 4 title");
+    const content = expand(locked);
     expect(within(locked).queryAllByRole("link")).toHaveLength(0);
+    for (const type of ["skill_cards", "quizzes", "reflections", "daily_prompts"]) {
+      expect(within(content).getByTestId(`week-item-${type}`)).toHaveAttribute("data-state", "upcoming");
+    }
+    expect(within(content).getByTestId("week-item-skill_cards")).toHaveTextContent("Upcoming");
   });
 });
 
-describe("Training & Learning — each week shows its programme requirement and child evidence", () => {
-  it("shows the canonical requirement date and state, and every configured child type with its own count", () => {
+describe("Training & Learning — each week shows its programme requirement and all four content types", () => {
+  it("shows the requirement date and state, and Skill Card, Quiz, Reflection and optional Daily Prompts with their own status", () => {
     render(
       <MemoryRouter>
         <TrainingWeeks />
@@ -93,11 +123,21 @@ describe("Training & Learning — each week shows its programme requirement and 
     );
     const week3 = cardFor("Week 3 title");
     expect(within(week3).getByTestId("week-requirement")).toHaveTextContent(/Mar 1, 2026.*Overdue/);
-    expect(within(week3).getByTestId("week-item-skill_cards")).toHaveTextContent("0/1");
-    expect(within(week3).getByTestId("week-item-quizzes")).toHaveTextContent("1/1");
-    expect(within(week3).getByTestId("week-item-reflections")).toHaveTextContent("0/1");
-    // Two prompts exist in this week, so the denominator is two.
-    expect(within(week3).getByTestId("week-item-daily_prompts")).toHaveTextContent("1/2");
+    const content = expand(week3);
+    const rows = within(content).getAllByTestId(/^week-item-/).map((r) => r.getAttribute("data-testid"));
+    expect(rows).toEqual(["week-item-skill_cards", "week-item-quizzes", "week-item-reflections", "week-item-daily_prompts"]);
+
+    expect(within(content).getByTestId("week-item-skill_cards")).toHaveAttribute("data-state", "overdue");
+    expect(within(content).getByTestId("week-item-skill_cards")).toHaveTextContent("Overdue");
+    expect(within(content).getByTestId("week-item-quizzes")).toHaveAttribute("data-state", "completed");
+    expect(within(content).getByTestId("week-item-reflections")).toHaveAttribute("data-state", "notStarted");
+    expect(within(content).getByTestId("week-item-reflections")).toHaveTextContent("Not started");
+    // Daily Prompts are optional: a count, never Overdue, even past their dates.
+    const prompts = within(content).getByTestId("week-item-daily_prompts");
+    expect(prompts).toHaveTextContent("Optional");
+    expect(prompts).toHaveTextContent("1/2 completed");
+    expect(prompts).not.toHaveAttribute("data-state", "overdue");
+
     expect(within(cardFor("Week 1 title")).getByTestId("week-requirement")).toHaveTextContent(/Completed/);
     // A week that is not a requirement carries no requirement line.
     expect(within(cardFor("Week 2 title")).queryByTestId("week-requirement")).toBeNull();

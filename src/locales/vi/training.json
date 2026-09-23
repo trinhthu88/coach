@@ -33,6 +33,19 @@
       "quizzes": "Bài kiểm tra",
       "reflections": "Suy ngẫm",
       "daily_prompts": "Gợi ý hằng ngày"
+    },
+    "content": {
+      "show": "Xem nội dung",
+      "hide": "Ẩn nội dung",
+      "openWeek": "Mở tuần này",
+      "optional": "Không bắt buộc",
+      "promptsCount": "Đã hoàn thành {{done}}/{{total}}",
+      "state": {
+        "completed": "Đã hoàn thành",
+        "notStarted": "Chưa bắt đầu",
+        "upcoming": "Sắp tới",
+        "overdue": "Quá hạn"
+      }
     }
   },
   "card": {

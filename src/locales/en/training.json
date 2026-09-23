@@ -29,10 +29,23 @@
       "completed_late": "Completed late"
     },
     "item": {
-      "skill_cards": "Skill Cards",
+      "skill_cards": "Skill Card",
       "quizzes": "Quiz",
       "reflections": "Reflection",
-      "daily_prompts": "Daily prompts"
+      "daily_prompts": "Daily Prompts"
+    },
+    "content": {
+      "show": "View content",
+      "hide": "Hide content",
+      "openWeek": "Open this week",
+      "optional": "Optional",
+      "promptsCount": "{{done}}/{{total}} completed",
+      "state": {
+        "completed": "Completed",
+        "notStarted": "Not started",
+        "upcoming": "Upcoming",
+        "overdue": "Overdue"
+      }
     }
   },
   "card": {

@@ -177,8 +177,10 @@ export function ProgrammeProgressCard() {
       {(hasTrainingContent || showTriads) && (
         <div className="mt-5 flex flex-wrap gap-2.5">
           {hasTrainingContent && summary.currentWeek && (
-            <GhostAction to={`/training/${summary.currentWeek.id}`} icon={BookOpen}>
-              {t("progressCard.viewSkillCard")}
+            // The week list opens the current week expanded: Skill Card, Quiz,
+            // Reflection and the optional Daily Prompts, each with its status.
+            <GhostAction to="/training" icon={BookOpen}>
+              {t("progressCard.viewContent")}
             </GhostAction>
           )}
           {hasTrainingContent && hasModule("quiz") && summary.currentQuizAssignmentId && summary.currentWeek && (
