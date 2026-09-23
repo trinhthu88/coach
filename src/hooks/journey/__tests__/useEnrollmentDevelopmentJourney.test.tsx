@@ -8,6 +8,11 @@ const { from, rpc } = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { from, rpc },
 }));
+// Whether the programme's Training checklist has Daily Prompts on.
+const modules = vi.hoisted(() => ({ promptsOn: true }));
+vi.mock("@/hooks/useProgrammeModules", () => ({
+  useProgrammeModules: () => ({ hasModule: (m: string) => m !== "daily_prompt" || modules.promptsOn }),
+}));
 
 import { useEnrollmentDevelopmentJourney } from "../useEnrollmentDevelopmentJourney";
 import type { DevelopmentJourneyEvent } from "../developmentJourneyTypes";
@@ -86,6 +91,17 @@ describe("useEnrollmentDevelopmentJourney", () => {
   beforeEach(() => {
     from.mockReset();
     rpc.mockReset();
+    modules.promptsOn = true;
+  });
+
+  it("leaves out earlier Daily Prompt answers when Daily Prompts are off in the Training checklist", async () => {
+    const feed = [
+      { reflection_key: "daily_prompt_response:d1", source_type: "daily_prompt_response", source_table: "daily_prompt_responses", source_id: "d1", occurred_at: "2026-09-16T00:00:00Z", body: "Tried it in stand-up." },
+      { reflection_key: "training_reflection:rs1", source_type: "training_reflection", source_table: "reflection_submissions", source_id: "rs1", occurred_at: "2026-09-17T00:00:00Z", body: "I tried pausing." },
+    ];
+    expect((await load({}, [], feed)).current.events.map((e) => e.subtype)).toEqual(["training_reflection", "daily_prompt_response"]);
+    modules.promptsOn = false;
+    expect((await load({}, [], feed)).current.events.map((e) => e.subtype)).toEqual(["training_reflection"]);
   });
 
   it("returns an empty timeline, not fabricated events, when nothing exists", async () => {

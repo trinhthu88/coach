@@ -6,6 +6,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { from, upsert } = vi.hoisted(() => ({ from: vi.fn(), upsert: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from } }));
+const modules = vi.hoisted(() => ({ promptsOn: true }));
+vi.mock("@/hooks/useProgrammeModules", () => ({
+  useProgrammeModules: () => ({ hasModule: (m: string) => m !== "daily_prompt" || modules.promptsOn }),
+}));
 
 import "@/i18n/config";
 import { WeekDailyPrompts } from "../WeekDailyPrompts";
@@ -46,6 +50,16 @@ describe("WeekDailyPrompts — the week's prompts, each optional and answerable"
     from.mockReset();
     upsert.mockReset();
     upsert.mockResolvedValue({ error: null });
+    modules.promptsOn = true;
+  });
+
+  it("renders nothing, and reads nothing, when Daily Prompts are off in the Training checklist -- even from the #daily-prompts link", async () => {
+    modules.promptsOn = false;
+    mockData([]);
+    renderPrompts("#daily-prompts");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByTestId("week-daily-prompts")).toBeNull();
+    expect(from).not.toHaveBeenCalled();
   });
 
   it("lists every prompt; an answered one shows Done and its answer, the others an input and Optional", async () => {
