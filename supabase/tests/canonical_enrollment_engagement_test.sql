@@ -89,12 +89,17 @@ on conflict (cohort_id, coach_id) do nothing;
 
 -- A held session is trusted fixture data: no client role inserts sessions
 -- (20261005100000_session_write_lockdown).
+-- Trusted fixture rows are written as the lifecycle service: since
+-- 20261005130000 can_book_session asks for a free requirement, the cohort
+-- pool and an active goal, none of which a held historical row is about.
+select set_config('app.session_transition', 'on', true);
 insert into public.sessions (id, coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id, coachee_rating)
 values ('58000000-0000-0000-0000-000000000001',
   'a8000000-0000-0000-0000-000000000002', 'a8000000-0000-0000-0000-000000000001',
   'Engagement recon coaching session', '2026-02-01T10:00:00Z', 60, 'completed',
   'e8000000-0000-0000-0000-000000000001', 4
 );
+select set_config('app.session_transition', 'off', true);
 
 set local role authenticated;
 

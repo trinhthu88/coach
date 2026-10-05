@@ -12,7 +12,8 @@ never a second answer to a business question.
 
 | Business fact | Authoritative source | Read through (all roles) | Notes |
 |---|---|---|---|
-| **Programme required units** (what is required) | `programme_modules.config` (`required`, `required_units`) | `canonical_module_progress` → `canonical_enrollment_progress` | Admin edits the programme template. |
+| **Programme required units** (what is required) | `programme_modules.config` (`required`, `required_units`) | `canonical_module_progress` → `canonical_enrollment_progress`; `programme_required_units`, `enrollment_module_config`, `get_enrollment_programme_modules` | Admin edits the programme template. Every reader takes the template as it is NOW: the enrollment-time `enrollment_module_snapshots.config` is historical and its capture trigger is dropped (`20261005130000`), so raising Coaching from 2 to 3 units changes progress, the calendar and booking eligibility together. |
+| **Booking eligibility** (Coaching, Mentoring) | a free requirement (`next_coaching_requirement` / `next_mentoring_requirement`) + the cohort pool + the goal gate (`enrollment_goal_gate_blocked`) | `can_book_session` → `check_can_book_session`; `can_book_mentoring_session_reason` → `check_can_book_mentoring_session_reason_for_enrollment` | `20261005130000`. No session allowance enters it: `receive_limit`, `monthly_limit`, `give_limit` and `programmes.coachee_session_limit` are not programme quantities, and the coach-as-coachee allowlist path is retired. No screen shows an allowance; booking pages and the Admin Coach lists show the canonical module row (completed / required). A Coaching reschedule is decided by `reschedule_coaching_session`, not by this check. |
 | **Requirement due date** (every module, Training included) | `cohort_requirement_dates.due_on` — one date per requirement instance | `canonical_enrollment_requirement_calendar` | The cohort answers BY WHEN, per unit. A row an Admin dated (`is_overridden`) keeps its date; every other row follows its default. Written by `admin_set_cohort_requirement_dates` (`20260928100000`). `distribution_mode` stays retired: no policy spreads dates. |
 | **Default module deadline** (session modules) | `cohort_module_deadlines.completion_deadline` (one per cohort × module) | `sync_cohort_requirement_dates` | The date new rows start at and non-overridden rows follow; "apply to all" resets rows to it. It never replaces the per-requirement dates. |
 | **Cohort requirement identity** (Coaching / Peer / Mentoring / Triads / Training) | `cohort_requirement_dates` — exactly `required_units` rows per session module (`units = 1`, ordinals 1..N) and exactly one row per selected Training week (`training_week_id`, ordinal = week position) | `canonical_enrollment_requirement_calendar`, `sponsor_canonical_module_schedule` | Materialised in full on cohort creation and reconciled by `sync_cohort_requirement_dates` whenever the programme, the cohort, a training week, a cohort week override or the default deadline changes. **A mismatch is an integrity violation, not an operational state** — see below. |
@@ -303,7 +304,7 @@ Rollups only aggregate canonical rows (sums, counts of effective status and pace
 | every `canonical_*`, `*_internal` and `next_*_requirement` function, `programme_required_units`, `assert_enrollment_scope`, `resolve_current_enrollment` | INTERNAL (no client EXECUTE) | Revoked from PUBLIC, anon and authenticated (`20261005120000`); `service_role` keeps EXECUTE for edge functions. `supabase/tests/grants_and_profile_guard_test.sql` fails if any of them becomes client-executable again, and `src/test/clientRpcGrants.test.ts` fails if app code calls one. |
 | `get_sponsor_programme_progress`, `get_sponsor_programme_journey`, `sponsor_canonical_cohort_progress_one` | INTERNAL | Projections used inside canonical functions; not client-callable |
 | `attribute_activity_to_cadence_milestone`, `generate_enrollment_schedule`, `backfill_enrollment_schedule_snapshots` | INTERNAL / HISTORICAL | Maintain the snapshot history only |
-| `enrollment_module_snapshots`, `enrollment_module_milestones` | HISTORICAL / DERIVED | Enrollment-time record for activity-to-milestone attribution. Never current requirements, dates or completion. |
+| `enrollment_module_snapshots`, `enrollment_module_milestones` | HISTORICAL / DERIVED | Enrollment-time record for activity-to-milestone attribution. Never current requirements, dates or completion. `enrollment_module_snapshots.config` is no longer captured or read (`20261005130000`). |
 | `get_enrollment_progress` | HISTORICAL | Snapshot progress engine; not client-callable |
 | `programme_enrollments.progress_pct` | DEPRECATED | Not maintained (maintenance functions dropped), always NULL. Use `canonical_enrollment_progress.full_completion_pct`. |
 | `sponsor_min_leaders_for_distribution()` | CANONICAL | Single zero-argument signature |
@@ -362,7 +363,8 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
      requirements, Admin = Learner = Sponsor numbers, organisation isolation),
      `supabase/tests/source_of_truth_contract_test.sql`,
      `supabase/tests/grants_and_profile_guard_test.sql` (no client-executable
-     shared construction) and
+     shared construction), `supabase/tests/one_quantity_authority_test.sql`
+     (a raised `required_units` reaches eligibility and progress alike) and
      `supabase/tests/triad_canonical_contract_test.sql` (database);
    - the "Triad source of truth" block in `src/test/programmeProfileArchitecture.test.ts`,
      which also scans `supabase/functions` (no retired Triad field, no Triad round, no

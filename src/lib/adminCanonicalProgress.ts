@@ -30,3 +30,28 @@ export function averageCanonicalCompletion(rows: AdminCanonicalProgressRow[]): n
 export function canonicalAtRisk(rows: AdminCanonicalProgressRow[]): AdminCanonicalProgressRow[] {
   return rows.filter((r) => r.effective_enrollment_status === "at_risk");
 }
+
+/** One module of the canonical enrollment row: units completed of units required. */
+export interface CanonicalModuleUnits {
+  completed: number;
+  required: number;
+}
+
+/**
+ * The canonical row's Coaching or Peer units. Null when the enrollment has no
+ * canonical progress (no enrollment, or progress unavailable) -- never a
+ * default allowance.
+ */
+export function canonicalModuleUnits(
+  row: AdminCanonicalProgressRow | null | undefined,
+  module: "coaching" | "peer",
+): CanonicalModuleUnits | null {
+  if (!row || !row.progress_available) return null;
+  return module === "coaching"
+    ? { completed: row.coaching_completed_units, required: row.coaching_required_units }
+    : { completed: row.peer_completed_units, required: row.peer_required_units };
+}
+
+export function formatModuleUnits(units: CanonicalModuleUnits | null): string {
+  return units ? `${units.completed} / ${units.required}` : "—";
+}

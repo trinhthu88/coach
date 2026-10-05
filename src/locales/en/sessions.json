@@ -25,10 +25,7 @@
       "sessionsLabel": "Sessions",
       "basedIn": "{{nationality}} (Based in {{country}})",
       "verifiedExpert": "Verified expert",
-      "usagePrefix": "You've used",
-      "usageOfYour": "of your",
-      "usageSuffix": "sessions this month.",
-      "unlimited": "unlimited"
+      "requirementProgress": "{{done}} of your {{required}} required coaching sessions are booked or completed."
     },
     "modeWord": {
       "peer": "peer coaching",
@@ -43,11 +40,6 @@
       "coaching": "Select your preferred duration and time to get started."
     },
     "peerBadge": "Peer",
-    "freePlanNotice": {
-      "prefix": "You've used all {{limit}} of your free {{modeWord}} sessions. Paid plans with more sessions are coming soon — reach out to",
-      "suffix": "if you'd like to discuss options."
-    },
-    "limitReached": "Session limit reached ({{used}}/{{limit}} completed). You can't book another session.",
     "ineligible": "You're not currently eligible to book this coach. Your access may have changed — please contact your admin if this seems wrong.",
     "steps": {
       "duration": "Select duration",

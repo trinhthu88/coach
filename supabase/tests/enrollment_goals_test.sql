@@ -39,9 +39,14 @@ join public.programme_enrollments e on e.user_id = a.coachee_id
 where e.cohort_id is not null
 on conflict (cohort_id, coach_id) do nothing;
 
+-- Trusted fixture rows are written as the lifecycle service: since
+-- 20261005130000 can_book_session asks for a free requirement, the cohort
+-- pool and an active goal, none of which a held historical row is about.
+select set_config('app.session_transition', 'on', true);
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status) values
   ('a5000000-0000-0000-0000-000000000041','a5000000-0000-0000-0000-000000000002','a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000031','Action session','2026-02-01',60,'completed'),
   ('a5000000-0000-0000-0000-000000000043','a5000000-0000-0000-0000-000000000002','a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000031','Second completed session','2026-02-03',60,'completed');
+select set_config('app.session_transition', 'off', true);
 select set_config('request.jwt.claim.sub','a5000000-0000-0000-0000-000000000003',true);
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status) values
  ('a5000000-0000-0000-0000-000000000042','a5000000-0000-0000-0000-000000000002','a5000000-0000-0000-0000-000000000003','a5000000-0000-0000-0000-000000000032','Other action session','2026-02-02',60,'confirmed');

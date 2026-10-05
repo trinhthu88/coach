@@ -26,10 +26,7 @@
       "sessionsLabel": "Session",
       "basedIn": "{{nationality}} (Sống tại {{country}})",
       "verifiedExpert": "Chuyên gia đã xác minh",
-      "usagePrefix": "Bạn đã sử dụng",
-      "usageOfYour": "trong tổng số",
-      "usageSuffix": "session của bạn trong tháng này.",
-      "unlimited": "không giới hạn"
+      "requirementProgress": "Đã đặt lịch hoặc hoàn thành {{done}}/{{required}} session coaching bắt buộc của bạn."
     },
     "modeWord": {
       "peer": "peer coaching",
@@ -44,11 +41,6 @@
       "coaching": "Chọn thời lượng và thời gian ưa thích của bạn để bắt đầu."
     },
     "peerBadge": "Đồng cấp",
-    "freePlanNotice": {
-      "prefix": "Bạn đã sử dụng hết {{limit}} session {{modeWord}} miễn phí của mình. Các gói trả phí với nhiều session hơn sắp ra mắt — liên hệ",
-      "suffix": "nếu bạn muốn thảo luận về các lựa chọn."
-    },
-    "limitReached": "Đã đạt giới hạn session ({{used}}/{{limit}} đã hoàn thành). Bạn không thể đặt thêm session.",
     "ineligible": "Bạn hiện không đủ điều kiện để đặt lịch với coach này. Quyền truy cập của bạn có thể đã thay đổi — vui lòng liên hệ quản trị viên nếu điều này có vẻ không đúng.",
     "steps": {
       "duration": "Chọn thời lượng",

@@ -6,6 +6,7 @@ import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as
 import { SLOT_TIME_ZONE, slotInstant } from "@/lib/slotTime";
 import { useAuth } from "@/context/AuthContext";
 import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
+import { useLearnerModuleProgress } from "@/hooks/useLearnerModuleProgress";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +75,10 @@ export default function MentoringBookSession() {
   // mentoring_sessions INSERT RLS policy's boolean wrapper calls.
   const [eligible, setEligible] = useState<boolean | null>(null);
   const [ineligibleReason, setIneligibleReason] = useState<string | null>(null);
-  const [usage, setUsage] = useState<{ limit_count: number | null; used_count: number } | null>(null);
+  // The canonical Mentoring module row (learner_module_progress), never a
+  // session allowance: Mentoring quantity is the programme requirement.
+  const { byModule } = useLearnerModuleProgress(enrollmentId);
+  const mentoringRow = byModule.mentoring;
 
   useEffect(() => {
     if (!mentorId) return;
@@ -161,18 +165,12 @@ export default function MentoringBookSession() {
             });
           setBookerBusy([...toBusy(mySess), ...toBusy(myPeer), ...toBusy(myMentoring)]);
 
-          const [{ data: reason }, { data: usageRows }] = await Promise.all([
-            supabase.rpc("check_can_book_mentoring_session_reason_for_enrollment", {
-              p_mentor_id: mentorId,
-              p_enrollment_id: enrollmentId,
-            }),
-            supabase.rpc("get_mentoring_session_usage_for_enrollment", {
-              p_enrollment_id: enrollmentId,
-            }),
-          ]);
+          const { data: reason } = await supabase.rpc("check_can_book_mentoring_session_reason_for_enrollment", {
+            p_mentor_id: mentorId,
+            p_enrollment_id: enrollmentId,
+          });
           setEligible((reason ?? "forbidden") === "ok");
           setIneligibleReason(reason ?? null);
-          setUsage((usageRows as { limit_count: number | null; used_count: number }[] | null)?.[0] ?? null);
         }
         setLoading(false);
       } catch (err) {
@@ -321,11 +319,12 @@ export default function MentoringBookSession() {
               {t("bookSession.title")}
             </h1>
             <p className="text-sm text-muted-foreground">{t("bookSession.subtitle")}</p>
-            {usage && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {usage.limit_count === null
-                  ? t("bookSession.usage.usedUnlimited", { used: usage.used_count })
-                  : t("bookSession.usage.used", { used: usage.used_count, limit: usage.limit_count })}
+            {mentoringRow && (
+              <p className="mt-1 text-xs text-muted-foreground" data-testid="mentoring-requirement-progress">
+                {t("bookSession.progress", {
+                  done: mentoringRow.completed_units + mentoringRow.booked_units,
+                  required: mentoringRow.required_units,
+                })}
               </p>
             )}
           </div>
@@ -336,8 +335,8 @@ export default function MentoringBookSession() {
           {eligible === false && !isGoalRequiredReason(ineligibleReason) && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
-              {ineligibleReason === "received_limit_reached" || ineligibleReason === "given_limit_reached"
-                ? t(`bookSession.ineligibleReasons.${ineligibleReason}`)
+              {ineligibleReason === "received_limit_reached"
+                ? t("bookSession.ineligibleReasons.received_limit_reached")
                 : t("bookSession.ineligible")}
             </div>
           )}

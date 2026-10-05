@@ -276,3 +276,4 @@
 20261005100000_session_write_lockdown.sql
 20261005110000_admin_session_edits.sql
 20261005120000_grants_and_profile_guard.sql
+20261005130000_one_quantity_authority.sql

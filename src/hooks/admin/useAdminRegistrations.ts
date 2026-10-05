@@ -3,12 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { CoachListRow, CoachOpt, CoacheeRow, Status } from "./types";
 import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
+import { canonicalModuleUnits, fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type CoachProfileRow = Database["public"]["Tables"]["coach_profiles"]["Row"];
 type AllowlistRow = Database["public"]["Tables"]["coachee_coach_allowlist"]["Row"];
 type SessionRow = Database["public"]["Tables"]["sessions"]["Row"];
-type PeerSessionRow = Database["public"]["Tables"]["peer_sessions"]["Row"];
 type CoachAsCoacheeAllowlistRow = Database["public"]["Tables"]["coach_as_coachee_allowlist"]["Row"];
 type UserRoleRow = Database["public"]["Tables"]["user_roles"]["Row"];
 
@@ -38,8 +38,6 @@ export function useAdminRegistrations() {
       { data: sess },
       { data: cps },
       { data: programmeEnrollments },
-      { data: programmeModules },
-      { data: peerSess },
       { data: coachAllow },
     ] = await Promise.all([
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
@@ -47,8 +45,6 @@ export function useAdminRegistrations() {
       supabase.from("sessions").select("id, coach_id, coachee_id, enrollment_id, status"),
       supabase.from("coach_profiles").select("*"),
        supabase.from("programme_enrollments").select("id, user_id, programme_id, status, programmes(name)").in("status", ["active", "at_risk", "paused"]),
-       supabase.from("programme_modules").select("programme_id, module, enabled, config"),
-      supabase.from("peer_sessions").select("id, peer_coach_id, peer_coachee_id, enrollment_id, status"),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
     ]);
 
@@ -59,16 +55,6 @@ export function useAdminRegistrations() {
     const allowlistData = (allowlist || []) as Pick<AllowlistRow, "coachee_id" | "coach_id">[];
     const sessData = (sess || []) as Pick<SessionRow, "id" | "coach_id" | "coachee_id" | "enrollment_id" | "status">[];
     const cpsData = (cps || []) as CoachProfileRow[];
-    const peerSessData = (peerSess || []) as Pick<
-      PeerSessionRow,
-      "id" | "peer_coach_id" | "peer_coachee_id" | "enrollment_id" | "status"
-    >[];
-    const modulesByProgramme = new Map<string, { module: string; enabled: boolean; config: Record<string, unknown> }[]>();
-    (programmeModules || []).forEach((m) => {
-      const list = modulesByProgramme.get(m.programme_id) || [];
-      list.push({ module: m.module, enabled: m.enabled, config: (m.config || {}) as Record<string, unknown> });
-      modulesByProgramme.set(m.programme_id, list);
-    });
     const coachAllowData = (coachAllow || []) as Pick<
       CoachAsCoacheeAllowlistRow,
       "coach_user_id" | "selectable_coach_id"
@@ -146,21 +132,10 @@ export function useAdminRegistrations() {
       if (enrollment) enrollmentByCoach.set(userId, enrollment);
     }
 
-    // Coach-as-coachee usage (completed coaching sessions where coach is the coachee)
-    const coachAsCoacheeDone = new Map<string, number>();
-    sessData.forEach((s) => {
-      if (s.enrollment_id && s.status === "completed" && coachIds.includes(s.coachee_id)) {
-        coachAsCoacheeDone.set(s.coachee_id, (coachAsCoacheeDone.get(s.coachee_id) || 0) + 1);
-      }
-    });
-
-    // Peer-as-receiver usage (completed peer sessions)
-    const peerReceivedDone = new Map<string, number>();
-    peerSessData.forEach((s) => {
-      if (s.enrollment_id && s.status === "completed") {
-        peerReceivedDone.set(s.peer_coachee_id, (peerReceivedDone.get(s.peer_coachee_id) || 0) + 1);
-      }
-    });
+    // Coach as learner: the canonical module rows of their own enrollment --
+    // never a module config allowance or a local session count.
+    const canonical = await fetchAdminCanonicalProgress([...enrollmentByCoach.values()].map((e) => e.id)).catch(() => []);
+    const canonicalByEnrollment = new Map(canonical.map((c) => [c.enrollment_id, c]));
 
     // Assigned coaches (for coach-as-coachee)
     const assignedByCoach = new Map<string, { id: string; name: string }[]>();
@@ -176,14 +151,7 @@ export function useAdminRegistrations() {
         const cp = cpById.get(id);
         if (!p) return null;
         const enr = enrollmentByCoach.get(id);
-        const coaching = enr
-          ? modulesByProgramme.get(enr.programme_id)?.find((m) => m.module === "coaching" && m.enabled)
-          : undefined;
-        const peer = enr
-          ? modulesByProgramme.get(enr.programme_id)?.find((m) => m.module === "peer_coaching" && m.enabled)
-          : undefined;
-        const coachingConfig = coaching?.config as { receive_limit?: number | null } | undefined;
-        const peerConfig = peer?.config as { monthly_limit?: number | null } | undefined;
+        const canonicalRow = enr ? canonicalByEnrollment.get(enr.id) : undefined;
         return {
           id,
           full_name: p.full_name,
@@ -197,10 +165,8 @@ export function useAdminRegistrations() {
           rating_avg: Number(cp?.rating_avg || 0),
           country_based: cp?.country_based || null,
           years_experience: cp?.years_experience || null,
-          coach_limit: enr ? coachingConfig?.receive_limit ?? null : 4,
-          coach_used: coachAsCoacheeDone.get(id) || 0,
-          peer_limit: enr ? peerConfig?.monthly_limit ?? null : 4,
-          peer_used: peerReceivedDone.get(id) || 0,
+          coaching_units: canonicalModuleUnits(canonicalRow, "coaching"),
+          peer_units: canonicalModuleUnits(canonicalRow, "peer"),
           coach_programme_name: (enr as { programmes?: { name?: string } | null } | undefined)?.programmes?.name ?? null,
           assigned_coaches: assignedByCoach.get(id) || [],
         };

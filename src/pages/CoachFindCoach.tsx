@@ -5,17 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Star, Loader2, Info, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
-import { useProgrammeModules } from "@/hooks/useProgrammeModules";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
+import { useLearnerModuleProgress } from "@/hooks/useLearnerModuleProgress";
 import { useCoachAsCoacheeAllowlist } from "@/hooks/coaches/useAllowedCoaches";
 
 export default function CoachFindCoach() {
   const { t } = useTranslation("coaches");
-  const { getConfig, loading: modulesLoading } = useProgrammeModules();
+  const { enrollmentId } = useActiveEnrollment();
   const { coaches, loading, error, reload: load } = useCoachAsCoacheeAllowlist();
 
-  // Coaching module's receive_limit — null/absent = unlimited. Comes from
-  // the coach's active programme's programme_modules config.
-  const receiveLimit = (getConfig("coaching").receive_limit as number | null | undefined) ?? null;
+  // The canonical Coaching module row of the Coach's own enrollment
+  // (learner_module_progress) -- never a module-config allowance.
+  const coachingRow = useLearnerModuleProgress(enrollmentId).byModule.coaching;
 
   return (
     <div className="space-y-6">
@@ -31,11 +32,16 @@ export default function CoachFindCoach() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         <div>
           {t("findCoach.notice")}
-          {!modulesLoading && receiveLimit === null && (
-            <> {t("findCoach.allowancePrefix")} <strong>{t("findCoach.unlimitedValue")}</strong> {t("findCoach.allowanceSuffix")}</>
-          )}
-          {!modulesLoading && typeof receiveLimit === "number" && (
-            <> {t("findCoach.allowancePrefix")} <strong>{receiveLimit}</strong> {t("findCoach.allowanceSuffix")}</>
+          {coachingRow && (
+            <>
+              {" "}
+              <span data-testid="coaching-requirement-progress">
+                {t("findCoach.requirementProgress", {
+                  done: coachingRow.completed_units + coachingRow.booked_units,
+                  required: coachingRow.required_units,
+                })}
+              </span>
+            </>
           )}
         </div>
       </Card>

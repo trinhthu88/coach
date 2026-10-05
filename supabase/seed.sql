@@ -24,6 +24,11 @@ DECLARE
   i int; fixture_email text; nm text; cohort uuid; programme uuid; start_date date; end_date date;
   coaches uuid[];
 BEGIN
+  -- Demo history is trusted seed data, written as the lifecycle service:
+  -- booking eligibility (a free requirement + the cohort pool + the goal gate,
+  -- 20261005130000) judges new bookings, not seeded history. Local to this
+  -- statement's transaction.
+  PERFORM set_config('app.session_transition','on',true);
   INSERT INTO public.organizations(id,name) VALUES(org,'Clariva Erickson Demo Organisation')
     ON CONFLICT(id) DO UPDATE SET name=excluded.name;
   INSERT INTO public.programmes(id,name,description,duration_months,is_active,coachee_session_limit)
@@ -201,6 +206,11 @@ END $seed$;
 DO $coverage$
 DECLARE e uuid; u uuid; coach uuid; i int; n int; sid int;
 BEGIN
+  -- Demo history is trusted seed data, written as the lifecycle service:
+  -- booking eligibility (a free requirement + the cohort pool + the goal gate,
+  -- 20261005130000) judges new bookings, not seeded history. Local to this
+  -- statement's transaction.
+  PERFORM set_config('app.session_transition','on',true);
   SELECT p.id INTO coach FROM profiles p JOIN user_roles r ON r.user_id=p.id WHERE r.role='coach' ORDER BY p.id LIMIT 1;
   FOR i IN 1..5 LOOP
     SELECT pe.id,pe.user_id INTO e,u FROM programme_enrollments pe WHERE pe.cohort_id='11111111-1111-4111-8111-111111111114' ORDER BY pe.id OFFSET (i-1) LIMIT 1;
@@ -236,6 +246,11 @@ DECLARE
   mentor_provider uuid;
   i int;
 BEGIN
+  -- Demo history is trusted seed data, written as the lifecycle service:
+  -- booking eligibility (a free requirement + the cohort pool + the goal gate,
+  -- 20261005130000) judges new bookings, not seeded history. Local to this
+  -- statement's transaction.
+  PERFORM set_config('app.session_transition','on',true);
   SELECT p.id INTO mentor_provider FROM profiles p JOIN user_roles r ON r.user_id=p.id
     WHERE r.role='coach' ORDER BY p.id OFFSET 1 LIMIT 1;
   IF mentor_provider IS NULL THEN RAISE EXCEPTION 'Missing preserved mentor provider'; END IF;
@@ -418,6 +433,11 @@ DECLARE
   uid uuid; eid uuid; coach uuid; mentor uuid; w uuid;
   i int;
 BEGIN
+  -- Demo history is trusted seed data, written as the lifecycle service:
+  -- booking eligibility (a free requirement + the cohort pool + the goal gate,
+  -- 20261005130000) judges new bookings, not seeded history. Local to this
+  -- statement's transaction.
+  PERFORM set_config('app.session_transition','on',true);
   SELECT p.id INTO coach FROM profiles p JOIN user_roles r ON r.user_id=p.id
     WHERE r.role='coach' ORDER BY p.id LIMIT 1;
   SELECT p.id INTO mentor FROM profiles p JOIN user_roles r ON r.user_id=p.id

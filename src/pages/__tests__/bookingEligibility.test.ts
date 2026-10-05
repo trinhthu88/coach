@@ -1,23 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canSubmitBooking, isOverSessionLimit } from "../bookingEligibility";
-
-describe("isOverSessionLimit", () => {
-  it("is false when usage is null (not yet loaded)", () => {
-    expect(isOverSessionLimit(null)).toBe(false);
-  });
-
-  it("is false when used_this_month is below monthly_limit", () => {
-    expect(isOverSessionLimit({ monthly_limit: 4, used_this_month: 3 })).toBe(false);
-  });
-
-  it("is true when used_this_month equals monthly_limit", () => {
-    expect(isOverSessionLimit({ monthly_limit: 4, used_this_month: 4 })).toBe(true);
-  });
-
-  it("is true when used_this_month exceeds monthly_limit", () => {
-    expect(isOverSessionLimit({ monthly_limit: 4, used_this_month: 5 })).toBe(true);
-  });
-});
+import { canSubmitBooking } from "../bookingEligibility";
 
 describe("canSubmitBooking", () => {
   it("allows submission when date, start time, and topic are all set and eligible is true", () => {

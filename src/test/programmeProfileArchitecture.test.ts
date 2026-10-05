@@ -510,10 +510,9 @@ describe("programme profile architecture", () => {
     it("the booking screen renders canonical Coaching quantity, never a per-person cap", () => {
       const book = read("pages/BookSession.tsx");
       expect(book).toMatch(/useCanonicalCoachingProgress\(/);
-      // receive_limit may only survive on the coach-as-coachee path, which
-      // can_book_session() deliberately keeps on the legacy model.
-      const programmeBranch = code(book.slice(0, book.indexOf('if (role === "coach")')));
-      expect(programmeBranch).not.toMatch(/receive_limit/);
+      // No path keeps a per-person cap: the coach-as-coachee legacy path of
+      // can_book_session() is retired (20261005130000).
+      expect(code(book)).not.toMatch(/receive_limit|monthly_limit/);
     });
 
     it("the reflection hooks are reached from a rendered surface, not only exported", () => {

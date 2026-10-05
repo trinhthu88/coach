@@ -39,6 +39,7 @@ import { useAdminRegistrationApprovals } from "@/hooks/admin/useAdminRegistratio
 import { useUpdateCoachAssignment } from "@/hooks/admin/useUpdateCoachAssignment";
 import { AdminImportDialog } from "@/components/admin/AdminImportDialog";
 import { CoachListRow, CoachOpt, CoacheeRow, Status } from "@/hooks/admin/types";
+import { formatModuleUnits } from "@/lib/adminCanonicalProgress";
 import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
 
@@ -49,11 +50,6 @@ const STATUS_TONE: Record<Status, "default" | "secondary" | "destructive" | "out
   suspended: "outline",
   reach_limit: "outline",
 };
-
-// null = unlimited.
-function fmtLimit(n: number | null): string {
-  return n === null ? "∞" : String(n);
-}
 
 export default function AdminRegistrations() {
   const { t } = useTranslation("admin");
@@ -323,9 +319,9 @@ export default function AdminRegistrations() {
                   <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.name")}</th>
                   <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.email")}</th>
                   <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.statusGetCoached")}</th>
-                  <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.coachLimitTotal")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.coachingUnits")}</th>
                   <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.assignedCoaches")}</th>
-                  <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.peerLimitTotal")}</th>
+                  <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.peerUnits")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.given")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.actions")}</th>
                 </tr>
@@ -351,9 +347,7 @@ export default function AdminRegistrations() {
                         <Badge variant={STATUS_TONE[c.status]}>{t(`registrations.statusLabels.${c.status}`)}</Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className={c.coach_limit !== null && c.coach_used >= c.coach_limit ? "font-semibold text-destructive" : ""}>
-                          {c.coach_used} / {fmtLimit(c.coach_limit)}
-                        </span>
+                        <span className="font-mono">{formatModuleUnits(c.coaching_units)}</span>
                       </td>
                       <td className="px-4 py-3">
                         {c.assigned_coaches.length === 0 ? (
@@ -374,9 +368,7 @@ export default function AdminRegistrations() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className={c.peer_limit !== null && c.peer_used >= c.peer_limit ? "font-semibold text-destructive" : ""}>
-                          {c.peer_used} / {fmtLimit(c.peer_limit)}
-                        </span>
+                        <span className="font-mono">{formatModuleUnits(c.peer_units)}</span>
                       </td>
                       <td className="px-4 py-3 text-right text-xs text-muted-foreground">
                         {c.sessions_completed} · {c.coachees_count} · ★ {c.rating_avg.toFixed(1)}
@@ -519,7 +511,7 @@ function EditCoachDialog({
         <div className="space-y-5">
           <div className="rounded-lg border p-3">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("registrations.sessionLimits")}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("registrations.ownProgramme")}</p>
               <Button asChild variant="link" size="sm" className="h-auto p-0 text-[11px]">
                 <Link to="/admin/coach-programmes">{t("registrations.changeCoachProgramme")} →</Link>
               </Button>
@@ -530,11 +522,11 @@ function EditCoachDialog({
             <div className="grid grid-cols-2 gap-3 text-[11px]">
               <div>
                 <p className="text-muted-foreground">{t("registrations.coachingReceived")}</p>
-                <p className="font-mono">{coach.coach_used} / {fmtLimit(coach.coach_limit)}</p>
+                <p className="font-mono">{formatModuleUnits(coach.coaching_units)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">{t("registrations.peerReceived")}</p>
-                <p className="font-mono">{coach.peer_used} / {fmtLimit(coach.peer_limit)}</p>
+                <p className="font-mono">{formatModuleUnits(coach.peer_units)}</p>
               </div>
             </div>
           </div>
