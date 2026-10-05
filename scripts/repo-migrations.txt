@@ -275,3 +275,4 @@
 20261004100000_create_goal_with_start_and_target.sql
 20261005100000_session_write_lockdown.sql
 20261005110000_admin_session_edits.sql
+20261005120000_grants_and_profile_guard.sql

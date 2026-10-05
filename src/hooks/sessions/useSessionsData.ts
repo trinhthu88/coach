@@ -140,6 +140,17 @@ export function normalizeTriadSession(group: TriadGroupEntry, session: TriadSess
   };
 }
 
+/**
+ * The Coaching requirement wrapper for the viewer's role. The Coaching rows of
+ * the list are the viewer's own: as Coach (coach_id) or as learner
+ * (coachee_id). Other roles load no Coaching rows.
+ */
+export function coachingFulfilmentRpc(role: AppRole) {
+  if (role === "coach") return "coach_coaching_requirement_fulfilment" as const;
+  if (role === "coachee") return "learner_coaching_requirement_fulfilment" as const;
+  return null;
+}
+
 async function fetchSessionsData(userId: string, role: AppRole): Promise<SessionRow[]> {
   type Enriched<T extends { id: string; enrollment_id?: string | null }> = T & {
     enrollment_actions: EnrollmentActionItem[];
@@ -266,31 +277,37 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   // Which Coaching requirement each session fulfils, so the Coach can see
   // WHICH programme unit an incoming request is for rather than just a date.
   //
-  // Read through canonical_coaching_requirement_fulfilment rather than
-  // cohort_requirement_dates: the requirement schedule has exactly one table
-  // reader (the Admin schedule hook) so that no surface can reconstruct it,
-  // and this function already maps session -> requirement for us.
+  // Read through the role wrapper of canonical_coaching_requirement_fulfilment
+  // rather than cohort_requirement_dates: the requirement schedule has exactly
+  // one table reader (the Admin schedule hook) so that no surface can
+  // reconstruct it, and the canonical function itself is not client-callable
+  // (20261005120000). A learner reads their own enrollment; a Coach reads only
+  // the units their own sessions fulfil.
   //
   // The requirement label is decoration on top of the session list: if this
   // lookup fails the rows must still render unlabelled, rather than the whole
   // list disappearing over a missing ordinal.
   const requirementBySession: Record<string, CoachingRequirementContext> = {};
-  await Promise.all(
-    enrollmentIds.map(async (enrollmentId) => {
-      try {
-        const { data } = await supabase.rpc("canonical_coaching_requirement_fulfilment", {
-          p_enrollment_id: enrollmentId,
-        });
-        for (const row of data ?? []) {
-          if (row.session_id && row.ordinal != null && row.due_on) {
-            requirementBySession[row.session_id] = { ordinal: row.ordinal, dueOn: row.due_on };
-          }
-        }
-      } catch (error) {
-        console.error("Coaching requirement context failed to load", error);
-      }
-    }),
+  const fulfilmentRpc = coachingFulfilmentRpc(role);
+  const coachingEnrollmentIds = Array.from(
+    new Set(sess.map((row) => row.enrollment_id).filter((id): id is string => Boolean(id))),
   );
+  if (fulfilmentRpc) {
+    await Promise.all(
+      coachingEnrollmentIds.map(async (enrollmentId) => {
+        try {
+          const { data } = await supabase.rpc(fulfilmentRpc, { p_enrollment_id: enrollmentId });
+          for (const row of data ?? []) {
+            if (row.session_id && row.ordinal != null && row.due_on) {
+              requirementBySession[row.session_id] = { ordinal: row.ordinal, dueOn: row.due_on };
+            }
+          }
+        } catch (error) {
+          console.error("Coaching requirement context failed to load", error);
+        }
+      }),
+    );
+  }
 
   const rowsWithContext = attachEnrollmentContext(allRows, enrollmentContexts).map((row) => {
     const req = requirementBySession[row.id];

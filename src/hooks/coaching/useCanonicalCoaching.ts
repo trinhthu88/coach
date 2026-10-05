@@ -134,7 +134,7 @@ export function useNextCoachingRequirement(enrollmentId: string | null | undefin
     queryKey: [COACHING_KEYS.nextRequirement, enrollmentId],
     enabled: !!enrollmentId,
     queryFn: async (): Promise<CoachingRequirement | null> => {
-      const { data, error } = await supabase.rpc("next_coaching_requirement", {
+      const { data, error } = await supabase.rpc("learner_next_coaching_requirement", {
         p_enrollment_id: enrollmentId!,
       });
       if (error) throw error;

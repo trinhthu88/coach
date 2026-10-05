@@ -5559,6 +5559,18 @@ export type Database = {
           used_count: number
         }[]
       }
+      coach_coaching_requirement_fulfilment: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_on: string
+          due_on: string
+          fulfilled_on: string
+          ordinal: number
+          post_session_pending: boolean
+          requirement_id: string
+          session_id: string
+        }[]
+      }
       coach_has_client: {
         Args: { _coach_id: string; _coachee_id: string }
         Returns: boolean
@@ -5803,7 +5815,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
       diag:
         | {
             Args: { msg: unknown }
@@ -6168,6 +6179,18 @@ export type Database = {
           required_units: number
         }[]
       }
+      learner_coaching_requirement_fulfilment: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          booked_on: string
+          due_on: string
+          fulfilled_on: string
+          ordinal: number
+          post_session_pending: boolean
+          requirement_id: string
+          session_id: string
+        }[]
+      }
       learner_enrollment_context: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -6184,6 +6207,14 @@ export type Database = {
           start_date: string
           stored_enrollment_status: Database["public"]["Enums"]["enrollment_status"]
           user_id: string
+        }[]
+      }
+      learner_next_coaching_requirement: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          due_on: string
+          ordinal: number
+          requirement_id: string
         }[]
       }
       learner_requirement_calendar: {

@@ -21,8 +21,9 @@ never a second answer to a business question.
 | **Required vs scheduled (mismatch)** | derived from the two rows above | `cohort_module_schedule_violation`, `cohort_schedule_violations`, `cohort_requirement_schedule_issues` | **Diagnostic only.** "Coaching 5 required / 4 scheduled" is a migration or corruption state that the deferred guards refuse to commit and the booking RPCs refuse to operate against. Nothing is invented, and no projection compensates. |
 | **Enrollment applicability** | `programme_enrollments` (programme, cohort, status) | canonical progress / journey wrappers | *Effective* status (after the programme end date) is computed once in `canonical_enrollment_progress`. |
 | **Activity completion** | the session lifecycle, per requirement (Coaching / Mentoring / Triads); `peer_session_participants` for Peer (`20260921210000`); `session_activity_attributions` for quiz, daily prompt and Training | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. See the operational-vs-evidence rule below. |
+| **Coach approval, invite limit, rating, sessions completed** | `coach_profiles.approval_status` / `max_coachee_invites` / `rating_avg` / `sessions_completed` | `coach_profiles` | Written only by an Admin or trusted SQL (`admin_update_coach`, `recompute_coach_rating`, the service role). `guard_coach_profile_protected_fields` refuses any other UPDATE of these four columns (`20261005120000`); a Coach still edits the rest of their own profile. |
 | **Coaching provider** | `cohort_coach_assignments` | `cohort_coaching_coach_pool` → `enrollment_coaching_coach_pool` | The learner-level allowlists are not programme Coaching authority. |
-| **Coaching requirement link** | `sessions.cohort_requirement_id` (server-assigned) | `canonical_coaching_requirement_fulfilment` | One live session per LEARNER per requirement. Set at booking and moved only by `reschedule_coaching_session`; `guard_session_protected_fields` refuses it (and `cohort_id`) in any app UPDATE (`20261005100000`). |
+| **Coaching requirement link** | `sessions.cohort_requirement_id` (server-assigned) | `canonical_coaching_requirement_fulfilment` → `learner_coaching_requirement_fulfilment`, `coach_coaching_requirement_fulfilment` | One live session per LEARNER per requirement. Set at booking and moved only by `reschedule_coaching_session`; `guard_session_protected_fields` refuses it (and `cohort_id`) in any app UPDATE (`20261005100000`). |
 | **Coaching completion** | a COMPLETED session attributed to a requirement | `canonical_coaching_requirement_fulfilment` → `sponsor_canonical_activity` | Evidence never gates it (`20260921130000`). Only the session's Coach or an Admin marks it held, through `complete_coaching_session`; `transition_session_status` only confirms Coaching (`20261005100000`). |
 | **Mentoring provider** | `cohort_mentors` | `cohort_mentoring_mentor_pool` → `get_mentors_for_enrollment` | The user-global `mentoring_allowlist` is not programme Mentoring authority. |
 | **Mentoring requirement link** | `mentoring_sessions.cohort_requirement_id` (server-assigned) | `canonical_mentoring_requirement_fulfilment` | One live session per LEARNER per requirement. |
@@ -298,6 +299,8 @@ Rollups only aggregate canonical rows (sums, counts of effective status and pace
 | `session_activity_attributions` | CANONICAL | Completion evidence |
 | `canonical_module_progress`, `canonical_enrollment_progress`, `canonical_enrollment_journey`, `canonical_enrollment_experience(_base)`, `canonical_enrollment_engagement`, `canonical_goal_progress`, `canonical_training_learning_items`, `canonical_learning_breakdown`, `sponsor_canonical_module_schedule`, `sponsor_canonical_activity`, `cohort_programme_schedule_state`, `canonical_enrollment_schedule_state`, `sync_cohort_requirement_dates`, `cohort_module_schedule_violation` | CANONICAL (INTERNAL) | Shared constructions. Not client-callable. |
 | `learner_canonical_*`, `sponsor_canonical_*`, `admin_canonical_*` | CANONICAL wrappers | Role eligibility only |
+| `learner_next_coaching_requirement`, `learner_coaching_requirement_fulfilment`, `coach_coaching_requirement_fulfilment` | CANONICAL wrappers | Owner checks over `next_coaching_requirement` / `canonical_coaching_requirement_fulfilment` (`20261005120000`). A learner reads their own enrollment; a Coach reads only the units their own sessions fulfil. |
+| every `canonical_*`, `*_internal` and `next_*_requirement` function, `programme_required_units`, `assert_enrollment_scope`, `resolve_current_enrollment` | INTERNAL (no client EXECUTE) | Revoked from PUBLIC, anon and authenticated (`20261005120000`); `service_role` keeps EXECUTE for edge functions. `supabase/tests/grants_and_profile_guard_test.sql` fails if any of them becomes client-executable again, and `src/test/clientRpcGrants.test.ts` fails if app code calls one. |
 | `get_sponsor_programme_progress`, `get_sponsor_programme_journey`, `sponsor_canonical_cohort_progress_one` | INTERNAL | Projections used inside canonical functions; not client-callable |
 | `attribute_activity_to_cadence_milestone`, `generate_enrollment_schedule`, `backfill_enrollment_schedule_snapshots` | INTERNAL / HISTORICAL | Maintain the snapshot history only |
 | `enrollment_module_snapshots`, `enrollment_module_milestones` | HISTORICAL / DERIVED | Enrollment-time record for activity-to-milestone attribution. Never current requirements, dates or completion. |
@@ -321,6 +324,7 @@ Rollups only aggregate canonical rows (sums, counts of effective status and pace
 | `sponsor_leader_programme_history`* | `sponsor_canonical_leader_progress` |
 | `sponsor_canonical_leader_experience_base`, `sponsor_canonical_leader_experience_legacy`, `learner_canonical_experience_legacy` | `canonical_enrollment_experience` |
 | `get_admin_enrollment_progress` | `admin_canonical_enrollment_progress` |
+| `dashboard_summary` (dropped in `20261005120000`; no caller, anon could execute it) | the role wrappers above |
 | `compute_leader_progress`, `refresh_all_progress_pct`, `trg_update_progress_from_session`, `trg_update_progress_from_training` | none (`progress_pct` is deprecated) |
 
 \* existed only on hosted production (not created by any repository migration).
@@ -338,19 +342,27 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
    the shared construction (`canonical_enrollment_progress`,
    `canonical_enrollment_journey`, `canonical_enrollment_schedule_state`).
    Never write a new aggregation.
-3. **Changing when a requirement is due** goes through the cohort: the
+3. **Granting a new function**: Supabase's default privileges grant EXECUTE
+   on every new public function to anon and authenticated. A new or re-created
+   `canonical_*`, `*_internal` or `next_*_requirement` function must be
+   revoked from `PUBLIC, anon, authenticated` in the same migration;
+   `grants_and_profile_guard_test.sql` fails otherwise. The app calls only a
+   role wrapper with an owner check.
+4. **Changing when a requirement is due** goes through the cohort: the
    module default (`admin_set_cohort_module_deadlines`) or one requirement's
    own date (`admin_set_cohort_requirement_dates`). An Admin-dated requirement
    is never rewritten implicitly.
-4. **Snapshots and caches** must not be read by user-facing current-state
+5. **Snapshots and caches** must not be read by user-facing current-state
    surfaces.
-5. **Guards enforce this contract** and must stay green:
+6. **Guards enforce this contract** and must stay green:
    - `src/test/programmeProfileArchitecture.test.ts` and
      `src/test/migrationChain.test.ts` (frontend and migration chain);
    - `supabase/tests/cohort_requirement_schedule_test.sql`,
      `supabase/tests/requirement_calendar_contract_test.sql` (N units = N dated
      requirements, Admin = Learner = Sponsor numbers, organisation isolation),
-     `supabase/tests/source_of_truth_contract_test.sql` and
+     `supabase/tests/source_of_truth_contract_test.sql`,
+     `supabase/tests/grants_and_profile_guard_test.sql` (no client-executable
+     shared construction) and
      `supabase/tests/triad_canonical_contract_test.sql` (database);
    - the "Triad source of truth" block in `src/test/programmeProfileArchitecture.test.ts`,
      which also scans `supabase/functions` (no retired Triad field, no Triad round, no
