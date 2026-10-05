@@ -240,13 +240,20 @@ INSERT on `sessions`, `mentoring_sessions`, `peer_sessions` or
 Book        book_coaching_session, book_mentoring_session, book_peer_session,
             book_coachee_peer_session, learner_triad_schedule_session
             -> always pending_coach_approval / proposed
-Confirm     Coaching: transition_session_status('confirm') -- Coach or Admin
-            Peer: transition_peer_session_status        -- the provider
+Confirm     Coaching: confirm_coaching_session / transition_session_status('confirm')
+                      -- Coach or Admin
+            Peer: confirm_peer_session / transition_peer_session_status
+                      -- the provider or an Admin
 Complete    Coaching: complete_coaching_session          -- Coach or Admin
             Mentoring: transition_mentoring_session_status
             Peer: transition_peer_session_status
             Triads: learner_triad_complete_session
 Cancel      Coaching: cancel_coaching_session; Peer: transition_peer_session_status
+Admin       admin_reschedule_session (time, duration, topic, link)
+            admin_reopen_session (cancelled -> pending_coach_approval,
+                                  completed -> confirmed: the unit stops counting)
+            -> Admin only, a reason, the booking rules re-run, one row in
+               session_admin_audit (20261005110000)
 ```
 
 A Peer or Triad time is never in the past: booking, scheduling, proposing an
@@ -254,6 +261,12 @@ alternative and accepting one all refuse a start before `now()`. The remaining
 client UPDATE grant covers author-owned fields only (notes, meeting link,
 Mentoring preparation document); `guard_session_protected_fields` refuses
 everything else unless the lifecycle service set `app.session_transition`.
+Admins have no bypass (`20261005110000`): an Admin edit is one of the calls
+above, never a row write, and an Admin does not edit a participant's notes.
+The `confirm-session` and `cancel-session` edge functions call
+`confirm_coaching_session` / `confirm_peer_session` / `cancel_coaching_session`
+/ `transition_peer_session_status` with the caller's JWT; the service role only
+reads and sends email.
 
 ## Canonical chains
 

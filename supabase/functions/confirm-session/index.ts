@@ -4,6 +4,7 @@ import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionConfirmedEmail } from "../_shared/email-templates/session-confirmed.tsx";
+import { decideTransition, httpStatusForRpcError, transitionRpc } from "../_shared/sessionTransitionRules.ts";
 
 function formatWhen(startTimeISO: string, durationMinutes: number): string {
   const start = new Date(startTimeISO);
@@ -127,6 +128,8 @@ Deno.serve(async (req) => {
       .eq("user_id", callerId);
     const isAdmin = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
     const isOwningCoach = row[coachField] === callerId;
+    // Authorisation belongs to the RPC below; this only spares a Zoom meeting
+    // for a caller who could never confirm.
     if (!isAdmin && !isOwningCoach) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
@@ -134,7 +137,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (row.status === "confirmed" && row.meeting_url) {
+    // Refuse a session that can no longer be confirmed BEFORE creating a Zoom
+    // meeting. The RPC below enforces the same rule; this only avoids the side
+    // effect.
+    const decision = decideTransition("confirm", row.status);
+    if (decision.kind === "refuse") {
+      return new Response(JSON.stringify({ error: decision.error }), {
+        status: decision.httpStatus,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (decision.kind === "already_confirmed") {
       return new Response(
         JSON.stringify({ ok: true, meeting_url: row.meeting_url, already_confirmed: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -153,15 +166,21 @@ Deno.serve(async (req) => {
       meetingUrl = meeting.join_url;
     }
 
-    const { error: updateErr } = await admin
-      .from(tableName)
-      .update({
-        status: "confirmed",
-        confirmed_at: new Date().toISOString(),
-        meeting_url: meetingUrl,
-      })
-      .eq("id", session_id);
-    if (updateErr) throw updateErr;
+    // The database owns the transition: confirm_coaching_session() /
+    // confirm_peer_session() run AS THE CALLER, so their own authorisation and
+    // pending -> confirmed rule apply, and set status, confirmed_at and the
+    // meeting link in one step. The service role never writes a status.
+    const asCaller = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const rpc = transitionRpc("confirm", !!is_peer, session_id, { meetingUrl });
+    const { error: rpcErr } = await asCaller.rpc(rpc.fn, rpc.args);
+    if (rpcErr) {
+      return new Response(JSON.stringify({ error: rpcErr.message }), {
+        status: httpStatusForRpcError(rpcErr.code),
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Coaching slots are reserved the moment the learner requests them, by
     // sync_coaching_slot_reservation() on `sessions` -- not here. Re-reserving

@@ -731,7 +731,15 @@
     "cancel": "Hủy",
     "save": "Lưu",
     "unitPostSessionPending": "Chờ theo dõi sau buổi",
-    "evidenceComplete": "Đã hoàn tất theo dõi"
+    "evidenceComplete": "Đã hoàn tất theo dõi",
+    "changeReasonLabel": "Lý do thay đổi (bắt buộc)",
+    "changeReasonPlaceholder": "Được ghi vào nhật ký thay đổi của session…",
+    "reopenAs": "mở lại thành {{status}}",
+    "notesReadOnly": "Ghi chú thuộc về người viết và không thể sửa tại đây.",
+    "errors": {
+      "reasonRequired": "Vui lòng nhập lý do cho thay đổi này.",
+      "detailsLocked": "Không thể đổi thời gian, thời lượng, chủ đề và link cùng với trạng thái này, hoặc khi session đã hoàn thành."
+    }
   },
   "coaches": {
     "eyebrow": "Tổ chức",

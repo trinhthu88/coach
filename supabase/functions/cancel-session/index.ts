@@ -4,6 +4,7 @@ import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionCancelledEmail } from "../_shared/email-templates/session-cancelled.tsx";
+import { decideTransition, httpStatusForRpcError, transitionRpc } from "../_shared/sessionTransitionRules.ts";
 
 function formatWhen(startTimeISO: string, durationMinutes: number): string {
   const start = new Date(startTimeISO);
@@ -77,6 +78,8 @@ Deno.serve(async (req) => {
     const isAdmin = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
     const isOwningCoach = row[coachField] === callerId;
     const isOwningCoachee = row[coacheeField] === callerId;
+    // Authorisation belongs to the RPC below; this only keeps a stranger from
+    // learning the session's status from the 409.
     if (!isAdmin && !isOwningCoach && !isOwningCoachee) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
@@ -84,51 +87,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (row.status === "cancelled") {
-      return new Response(
-        JSON.stringify({ ok: true, already_cancelled: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // A cancelled, completed or rescheduled session cannot be cancelled. The
+    // RPC below enforces the same rule; refusing here keeps the response
+    // explicit and sends no email.
+    const decision = decideTransition("cancel", row.status);
+    if (decision.kind === "refuse") {
+      return new Response(JSON.stringify({ error: decision.error }), {
+        status: decision.httpStatus,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // The database owns the state transition. For Coaching this function calls
-    // cancel_coaching_session(), which records the actor, time and reason,
-    // releases the availability slot and frees the Coaching requirement for
-    // rebooking -- all in one transaction.
-    //
-    // It previously wrote sessions.status and coach_availability itself. That
-    // made it a second lifecycle writer alongside the canonical RPC and the
-    // slot-reservation trigger, and it bypassed the authorisation and
-    // late-cancellation rules the RPC enforces. Notification failures below
-    // can no longer corrupt session state, because the state is already
-    // committed by the time they run.
-    if (is_peer) {
-      const { error: updateErr } = await admin
-        .from(tableName)
-        .update({
-          status: "cancelled",
-          cancelled_at: new Date().toISOString(),
-          cancelled_by: callerId,
-          cancel_reason: reason || null,
-        })
-        .eq("id", session_id);
-      if (updateErr) throw updateErr;
-    } else {
-      // Run as the caller so the RPC's own authorisation applies, rather than
-      // the service role silently passing every check.
-      const asCaller = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
-        global: { headers: { Authorization: authHeader } },
+    // The database owns the state transition, run AS THE CALLER so the RPC's
+    // own authorisation and rules apply: cancel_coaching_session() for Coaching
+    // (records actor, time and reason, releases the slot and the requirement,
+    // the 24-hour reason rule) and transition_peer_session_status() for Peer.
+    // The service role never writes a status. Notification failures below
+    // cannot corrupt session state: it is already committed.
+    const asCaller = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const rpc = transitionRpc("cancel", !!is_peer, session_id, { reason });
+    const { error: rpcErr } = await asCaller.rpc(rpc.fn, rpc.args);
+    if (rpcErr) {
+      return new Response(JSON.stringify({ error: rpcErr.message }), {
+        status: httpStatusForRpcError(rpcErr.code),
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-      const { error: rpcErr } = await asCaller.rpc("cancel_coaching_session", {
-        p_session_id: session_id,
-        p_reason: reason || null,
-      });
-      if (rpcErr) {
-        return new Response(JSON.stringify({ error: rpcErr.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
     }
 
     const { data: participants } = await admin

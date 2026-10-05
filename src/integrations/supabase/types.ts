@@ -3102,6 +3102,42 @@ export type Database = {
           },
         ]
       }
+      session_admin_audit: {
+        Row: {
+          action: string
+          actor_id: string
+          after_state: Json
+          before_state: Json
+          created_at: string
+          id: string
+          reason: string
+          session_id: string
+          session_kind: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          after_state: Json
+          before_state: Json
+          created_at?: string
+          id?: string
+          reason: string
+          session_id: string
+          session_kind: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          after_state?: Json
+          before_state?: Json
+          created_at?: string
+          id?: string
+          reason?: string
+          session_id?: string
+          session_kind?: string
+        }
+        Relationships: []
+      }
       session_attachments: {
         Row: {
           created_at: string
@@ -4882,6 +4918,16 @@ export type Database = {
           total_leaders: number
         }[]
       }
+      admin_reopen_session: {
+        Args: {
+          p_duration_minutes?: number
+          p_kind: string
+          p_reason: string
+          p_session_id: string
+          p_start_time?: string
+        }
+        Returns: Database["public"]["Enums"]["session_status"]
+      }
       admin_requirement_integrity_issues: {
         Args: never
         Returns: {
@@ -4894,6 +4940,18 @@ export type Database = {
           programme_id: string
           programme_name: string
         }[]
+      }
+      admin_reschedule_session: {
+        Args: {
+          p_duration_minutes: number
+          p_kind: string
+          p_meeting_url?: string
+          p_reason: string
+          p_session_id: string
+          p_start_time: string
+          p_topic?: string
+        }
+        Returns: string
       }
       admin_set_cohort_requirement_dates: {
         Args: { p_cohort_id: string; p_items: Json }
@@ -5696,6 +5754,10 @@ export type Database = {
         Returns: string
       }
       confirm_coaching_session: {
+        Args: { p_meeting_url?: string; p_session_id: string }
+        Returns: string
+      }
+      confirm_peer_session: {
         Args: { p_meeting_url?: string; p_session_id: string }
         Returns: string
       }

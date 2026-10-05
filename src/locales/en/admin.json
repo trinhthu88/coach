@@ -740,7 +740,15 @@
     "cancel": "Cancel",
     "save": "Save",
     "unitPostSessionPending": "Follow-up pending",
-    "evidenceComplete": "Follow-up complete"
+    "evidenceComplete": "Follow-up complete",
+    "changeReasonLabel": "Reason for this change (required)",
+    "changeReasonPlaceholder": "Recorded in the session's audit trail…",
+    "reopenAs": "reopen as {{status}}",
+    "notesReadOnly": "Notes belong to the person who wrote them and can't be edited here.",
+    "errors": {
+      "reasonRequired": "Give a reason for this change.",
+      "detailsLocked": "Time, duration, topic and link can't change together with this status, or on a completed session."
+    }
   },
   "coaches": {
     "eyebrow": "Organisation",

@@ -842,6 +842,10 @@ BEGIN
     RAISE EXCEPTION 'seed: a demo Coaching session has no matching cohort requirement';
   END IF;
 
+  -- The seed runs as the demo Admin, who has no bypass of the protected
+  -- session fields (20261005110000): attribution is trusted fixture work, so it
+  -- raises the lifecycle flag like seed-demo.sql does.
+  PERFORM set_config('app.session_transition','on',true);
   UPDATE public.sessions s
   SET
     cohort_requirement_id=req.id,
@@ -875,6 +879,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'seed: canonical Coaching attribution left a demo session unresolved';
   END IF;
+  PERFORM set_config('app.session_transition','off',true);
 END $canonical_coaching_fixture$;
 
 COMMIT;

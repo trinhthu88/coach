@@ -306,7 +306,8 @@ WITH repo(version, name) AS (VALUES
   ('20261002100000', 'training_checklist_grants_quiz_and_prompts'),
   ('20261003100000', 'availability_slots_in_vietnam_time'),
   ('20261004100000', 'create_goal_with_start_and_target'),
-  ('20261005100000', 'session_write_lockdown')
+  ('20261005100000', 'session_write_lockdown'),
+  ('20261005110000', 'admin_session_edits')
 -- END REPO MANIFEST
 ),
 
