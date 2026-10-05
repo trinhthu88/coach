@@ -94,6 +94,7 @@
       "titleEmphasis": "coaching",
       "subtitle": "Coaches who have opted in to peer coaching. Book a session to be coached by a peer."
     },
+    "practiceNotice": "Sessions booked here are practice. They don't count towards your programme's Peer requirements — those are earned in sessions with the Peer partner your Admin assigned.",
     "empty": "No peer coaches available right now. Check back soon.",
     "defaultTitle": "Peer coach",
     "view": "View",

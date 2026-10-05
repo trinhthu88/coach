@@ -309,7 +309,8 @@ WITH repo(version, name) AS (VALUES
   ('20261005100000', 'session_write_lockdown'),
   ('20261005110000', 'admin_session_edits'),
   ('20261005120000', 'grants_and_profile_guard'),
-  ('20261005130000', 'one_quantity_authority')
+  ('20261005130000', 'one_quantity_authority'),
+  ('20261005140000', 'peer_authority')
 -- END REPO MANIFEST
 ),
 

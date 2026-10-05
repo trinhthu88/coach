@@ -124,7 +124,7 @@ select is(
    from public.sponsor_canonical_cohort_progress(
      '11111111-1111-4111-8111-111111111119'::uuid,
      '2026-07-05'::date)),
-  9,
+  10,
   'peer activity is counted once across both peer source tables'
 );
 select is(
@@ -132,7 +132,7 @@ select is(
    from public.sponsor_canonical_cohort_progress(
      '11111111-1111-4111-8111-111111111119'::uuid,
      '2026-07-05'::date)),
-  3,
+  4,
   'peer completion leader counts reconcile after de-duplication'
 );
 select is(
@@ -493,7 +493,7 @@ select is(
    from public.sponsor_canonical_cohort_progress(
      '11111111-1111-4111-8111-111111111119'::uuid,
      '2026-07-05'::date)),
-  73,
+  74,
   'cohort completed total is unchanged by over-requirement activity'
 );
 select ok(
@@ -533,7 +533,7 @@ select is(
    from public.sponsor_canonical_cohort_progress(
      '11111111-1111-4111-8111-111111111119'::uuid,
      '2026-07-05'::date)),
-  9,
+  10,
   'peer coaching remains counted once after raw overutilisation activity'
 );
 

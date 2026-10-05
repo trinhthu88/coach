@@ -36,7 +36,7 @@
       "coaching": "Book your session"
     },
     "subtitle": {
-      "peer": "You're booking a peer session — to be coached by another coach.",
+      "peer": "You're booking peer practice with another coach. Practice doesn't count towards your programme's Peer requirements.",
       "coaching": "Select your preferred duration and time to get started."
     },
     "peerBadge": "Peer",
@@ -143,6 +143,7 @@
     },
     "triadSession": "Triad {{n}}",
     "coachingRequirement": "Coaching {{n}}",
+    "peerPracticeNoCredit": "Practice · earns no Peer requirement",
     "requirementDue": "Due {{date}}",
     "pastProgrammes": {
       "show_one": "Show {{count}} session from past programmes",

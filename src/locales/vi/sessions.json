@@ -37,7 +37,7 @@
       "coaching": "Đặt session của bạn"
     },
     "subtitle": {
-      "peer": "Bạn đang đặt một session đồng cấp — để được coaching bởi một coach khác.",
+      "peer": "Bạn đang đặt lịch thực hành peer coaching với một coach khác. Buổi thực hành không được tính vào yêu cầu peer coaching của chương trình.",
       "coaching": "Chọn thời lượng và thời gian ưa thích của bạn để bắt đầu."
     },
     "peerBadge": "Đồng cấp",
@@ -143,6 +143,7 @@
     },
     "triadSession": "Triad {{n}}",
     "coachingRequirement": "Coaching {{n}}",
+    "peerPracticeNoCredit": "Thực hành · không tính vào yêu cầu peer coaching",
     "requirementDue": "Hạn {{date}}",
     "pastProgrammes": {
       "show_one": "Hiện {{count}} buổi từ chương trình trước",

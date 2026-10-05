@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { getSessionStatusPillMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
-import { useSessionsData } from "@/hooks/sessions/useSessionsData";
+import { isPeerPracticeKind, useSessionsData } from "@/hooks/sessions/useSessionsData";
 import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { scopeLearnerSessions } from "@/lib/learnerSessionScope";
 import { sessionRowDetailPath as sessionDetailPath } from "@/lib/sessionPaths";
@@ -329,6 +329,9 @@ function SessionCard({
     ? [
         session.triad ? t("list.triadSession", { n: session.triad.unitNumber }) : null,
       ].filter(Boolean).join(" · ")
+    // Coach opt-in pool: practice, never Peer programme evidence.
+    : isPeerPracticeKind(session.kind)
+      ? t("list.peerPracticeNoCredit")
     // Which programme unit a Coaching session fulfils. The Coach needs this to
     // judge an incoming request: "Coaching 2, due 5 Jul" is actionable in a way
     // that a bare date is not.

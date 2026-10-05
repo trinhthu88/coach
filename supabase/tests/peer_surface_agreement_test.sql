@@ -10,7 +10,7 @@
 --
 -- Leader C1 of Emerging Leaders – Cohort C: two required Peer units, both
 -- completed (supabase/seed.sql, hand-reconciled in
--- sponsor_cohort_c_reconciliation_test at cohort level as peer 9/24).
+-- sponsor_cohort_c_reconciliation_test at cohort level as peer 10/24).
 begin;
 
 select plan(22);
@@ -90,7 +90,7 @@ select is(
 select is(
   (select peer_completed_units || '/' || peer_required_units
      from public.sponsor_canonical_cohort_progress('11111111-1111-4111-8111-111111111119'::uuid, current_date)),
-  '9/24', 'Sponsor Cohort Detail: the cohort rollup of the same fulfilment');
+  '10/24', 'Sponsor Cohort Detail: the cohort rollup of the same fulfilment');
 
 -- A rollup that exceeded its own entitlement would mean Peer was being counted
 -- somewhere other than requirement fulfilment.
@@ -190,18 +190,18 @@ select is(
 
 reset role;
 
--- The seed's two Coaches deliver peer practice while holding no programme
--- enrollment of their own. That is legitimate -- they have no programme
--- progress to attribute -- and it is REPORTED rather than guessed at.
+-- The seed's Coach-pool practice (Programme B) earns no Peer requirement
+-- (20261005140000). It is REPORTED as practice rather than hidden or credited.
 select cmp_ok(
   (select count(*)::integer from public.peer_participants_without_requirement()
-    where reason = 'participant has no determinable enrollment'),
-  '>', 0, 'participants with no determinable enrollment are reported, not invented');
+    where reason = 'practice session (Coach opt-in pool): earns no Peer requirement'),
+  '>', 0, 'practice participations are reported as practice, not credited');
 
 select ok(
   not exists (
     select 1 from public.peer_participants_without_requirement()
-    where reason not in ('participant has no determinable enrollment',
+    where reason not in ('practice session (Coach opt-in pool): earns no Peer requirement',
+                         'participant has no determinable enrollment',
                          'cohort schedules no Peer requirements',
                          'more Peer participation than requirements (extra activity)',
                          'session is not live, so it holds no requirement')),

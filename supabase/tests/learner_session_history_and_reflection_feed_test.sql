@@ -189,15 +189,15 @@ insert into public.cohort_requirement_dates
   ('d7000000-0000-0000-0000-000000000001', 'c7000000-0000-0000-0000-000000000001',
    'peer_coaching', 2, date '2026-02-20', true, 'manual', 'admin_save');
 
--- Re-attribute the Peer participations now that both requirements exist.
+-- Re-attribute this fixture's Peer participations now that both requirements
+-- exist. Only dyad sessions hold a requirement (20261005140000).
 with ordered as (
   select p.id, p.enrollment_id,
     row_number() over (partition by p.enrollment_id
-      order by coalesce(ps.start_time, cps.start_time), p.peer_session_id) as rn
+      order by cps.start_time, p.peer_session_id) as rn
   from public.peer_session_participants p
-  left join public.peer_sessions ps on p.session_kind = 'peer' and ps.id = p.peer_session_id
-  left join public.coachee_peer_sessions cps on p.session_kind = 'coachee_peer' and cps.id = p.peer_session_id
-  where p.enrollment_id is not null and p.cohort_requirement_id is null
+  join public.coachee_peer_sessions cps on p.session_kind = 'coachee_peer' and cps.id = p.peer_session_id
+  where p.enrollment_id::text like 'e7000000-%' and p.cohort_requirement_id is null
 ), reqs as (
   select e.id as enrollment_id, d.id as requirement_id,
     row_number() over (partition by e.id order by d.ordinal) as rn

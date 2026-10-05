@@ -141,6 +141,15 @@ export function normalizeTriadSession(group: TriadGroupEntry, session: TriadSess
 }
 
 /**
+ * A session booked from the Coach opt-in pool (peer_sessions) is practice: it
+ * earns no Peer requirement. Only an Admin-assigned dyad session
+ * (coachee_peer_sessions) does (20261005140000).
+ */
+export function isPeerPracticeKind(kind: SessionKind): boolean {
+  return kind === "peer-give" || kind === "peer-receive";
+}
+
+/**
  * The Coaching requirement wrapper for the viewer's role. The Coaching rows of
  * the list are the viewer's own: as Coach (coach_id) or as learner
  * (coachee_id). Other roles load no Coaching rows.
