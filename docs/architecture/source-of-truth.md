@@ -22,8 +22,8 @@ never a second answer to a business question.
 | **Enrollment applicability** | `programme_enrollments` (programme, cohort, status) | canonical progress / journey wrappers | *Effective* status (after the programme end date) is computed once in `canonical_enrollment_progress`. |
 | **Activity completion** | the session lifecycle, per requirement (Coaching / Mentoring / Triads); `peer_session_participants` for Peer (`20260921210000`); `session_activity_attributions` for quiz, daily prompt and Training | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. See the operational-vs-evidence rule below. |
 | **Coaching provider** | `cohort_coach_assignments` | `cohort_coaching_coach_pool` → `enrollment_coaching_coach_pool` | The learner-level allowlists are not programme Coaching authority. |
-| **Coaching requirement link** | `sessions.cohort_requirement_id` (server-assigned) | `canonical_coaching_requirement_fulfilment` | One live session per LEARNER per requirement. |
-| **Coaching completion** | a COMPLETED session attributed to a requirement | `canonical_coaching_requirement_fulfilment` → `sponsor_canonical_activity` | Evidence never gates it (`20260921130000`). |
+| **Coaching requirement link** | `sessions.cohort_requirement_id` (server-assigned) | `canonical_coaching_requirement_fulfilment` | One live session per LEARNER per requirement. Set at booking and moved only by `reschedule_coaching_session`; `guard_session_protected_fields` refuses it (and `cohort_id`) in any app UPDATE (`20261005100000`). |
+| **Coaching completion** | a COMPLETED session attributed to a requirement | `canonical_coaching_requirement_fulfilment` → `sponsor_canonical_activity` | Evidence never gates it (`20260921130000`). Only the session's Coach or an Admin marks it held, through `complete_coaching_session`; `transition_session_status` only confirms Coaching (`20261005100000`). |
 | **Mentoring provider** | `cohort_mentors` | `cohort_mentoring_mentor_pool` → `get_mentors_for_enrollment` | The user-global `mentoring_allowlist` is not programme Mentoring authority. |
 | **Mentoring requirement link** | `mentoring_sessions.cohort_requirement_id` (server-assigned) | `canonical_mentoring_requirement_fulfilment` | One live session per LEARNER per requirement. |
 | **Mentoring completion** | a COMPLETED session attributed to a requirement | `canonical_mentoring_requirement_fulfilment` → `sponsor_canonical_activity` | The preparation document is optional and gates nothing. |
@@ -228,6 +228,32 @@ booked once its date had passed, and — because the reflection had no writer
 anywhere in the product — made Coaching completion unreachable for every
 learner. `20260921130000` reverses it and renames `unit_complete` to
 `evidence_complete`, so the two facts cannot be confused again by name.
+
+### Who writes a session
+
+Added by `20261005100000_session_write_lockdown`. A session row and its status
+are written only by SECURITY DEFINER lifecycle functions; no client role holds
+INSERT on `sessions`, `mentoring_sessions`, `peer_sessions` or
+`coachee_peer_sessions`.
+
+```
+Book        book_coaching_session, book_mentoring_session, book_peer_session,
+            book_coachee_peer_session, learner_triad_schedule_session
+            -> always pending_coach_approval / proposed
+Confirm     Coaching: transition_session_status('confirm') -- Coach or Admin
+            Peer: transition_peer_session_status        -- the provider
+Complete    Coaching: complete_coaching_session          -- Coach or Admin
+            Mentoring: transition_mentoring_session_status
+            Peer: transition_peer_session_status
+            Triads: learner_triad_complete_session
+Cancel      Coaching: cancel_coaching_session; Peer: transition_peer_session_status
+```
+
+A Peer or Triad time is never in the past: booking, scheduling, proposing an
+alternative and accepting one all refuse a start before `now()`. The remaining
+client UPDATE grant covers author-owned fields only (notes, meeting link,
+Mentoring preparation document); `guard_session_protected_fields` refuses
+everything else unless the lifecycle service set `app.session_transition`.
 
 ## Canonical chains
 

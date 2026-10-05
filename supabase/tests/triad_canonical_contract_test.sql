@@ -247,11 +247,18 @@ create temporary table ses (name text primary key, id uuid);
 grant select, insert on ses to authenticated;
 
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000004', true);
-select throws_ok($$select public.learner_triad_schedule_session((select id from grp where name = 'G1'), now() - interval '35 days', now() - interval '35 days' + interval '1 hour')$$,
+select throws_ok($$select public.learner_triad_schedule_session((select id from grp where name = 'G1'), now() + interval '1 day', now() + interval '1 day 1 hour')$$,
   '42501', null, '12a. only a member schedules a group''s session');
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000001', true);
 insert into ses values ('G1a', public.learner_triad_schedule_session((select id from grp where name = 'G1'),
-  now() - interval '35 days', now() - interval '35 days' + interval '1 hour'));
+  now() + interval '1 day', now() + interval '1 day 1 hour'));
+-- A session is scheduled in the future (20261005100000); move it to when the
+-- meeting took place, 35 days ago, as trusted SQL.
+reset role;
+update public.triad_sessions set scheduled_start_time = now() - interval '35 days',
+  scheduled_end_time = now() - interval '35 days' + interval '1 hour'
+ where id = (select id from ses where name = 'G1a');
+set local role authenticated;
 select is(
   (select jsonb_array_length(sessions) from public.learner_triad_overview('e8800000-0000-0000-0000-000000000001')
    where triad_group_id = (select id from grp where name = 'G1')), 1,
@@ -304,12 +311,17 @@ set local role authenticated;
 
 -- Triad 1 is fulfilled for G1: the group schedules no further programme session.
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000002', true);
-select throws_ok($$select public.learner_triad_schedule_session((select id from grp where name = 'G1'), now() - interval '3 days', now() - interval '3 days' + interval '1 hour')$$,
+select throws_ok($$select public.learner_triad_schedule_session((select id from grp where name = 'G1'), now() + interval '3 days', now() + interval '3 days' + interval '1 hour')$$,
   '23505', null, '12e. a group whose Triad session is completed schedules no second programme session');
 -- Triad 2 (G3: E1, E4): its own group and session.
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000004', true);
 insert into ses values ('G3a', public.learner_triad_schedule_session((select id from grp where name = 'G3'),
-  now() - interval '3 days', now() - interval '3 days' + interval '1 hour'));
+  now() + interval '1 day', now() + interval '1 day 1 hour'));
+reset role;
+update public.triad_sessions set scheduled_start_time = now() - interval '3 days',
+  scheduled_end_time = now() - interval '3 days' + interval '1 hour'
+ where id = (select id from ses where name = 'G3a');
+set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000001', true);
 select lives_ok($$select public.learner_triad_respond_session((select id from ses where name = 'G3a'), 'accepted')$$, 'E1 accepts G3a');
 select lives_ok($$select public.learner_triad_complete_session((select id from ses where name = 'G3a'))$$, 'E1 completes G3a (Triad 2)');

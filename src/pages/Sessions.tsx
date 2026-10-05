@@ -288,12 +288,17 @@ function SessionCard({
   const markComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setCompleting(true);
-    const { error } = await supabase.rpc("transition_session_status", {
-      p_session_id: session.id,
-      p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
-      p_action: "complete",
-      p_reason: null,
-    });
+    // Coaching completion belongs to complete_coaching_session(): the Coach
+    // marks the session held. transition_session_status() only confirms
+    // Coaching (20261005100000).
+    const { error } = isPeer || isCoacheePeer
+      ? await supabase.rpc("transition_session_status", {
+          p_session_id: session.id,
+          p_kind: isCoacheePeer ? "coachee_peer" : "peer",
+          p_action: "complete",
+          p_reason: null,
+        })
+      : await supabase.rpc("complete_coaching_session", { p_session_id: session.id });
     setCompleting(false);
     if (error) return toast.error(error.message);
     toast.success(t("list.toast.markedComplete"));

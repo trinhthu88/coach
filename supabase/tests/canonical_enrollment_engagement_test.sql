@@ -87,16 +87,16 @@ join public.programme_enrollments e on e.user_id = a.coachee_id
 where e.cohort_id is not null
 on conflict (cohort_id, coach_id) do nothing;
 
-set local role authenticated;
-
-
-
+-- A held session is trusted fixture data: no client role inserts sessions
+-- (20261005100000_session_write_lockdown).
 insert into public.sessions (id, coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id, coachee_rating)
 values ('58000000-0000-0000-0000-000000000001',
   'a8000000-0000-0000-0000-000000000002', 'a8000000-0000-0000-0000-000000000001',
   'Engagement recon coaching session', '2026-02-01T10:00:00Z', 60, 'completed',
   'e8000000-0000-0000-0000-000000000001', 4
 );
+
+set local role authenticated;
 
 
 -- Learner-owned goal/action/rating data (inserted as the learner, under RLS).

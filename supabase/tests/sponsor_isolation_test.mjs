@@ -53,18 +53,12 @@ async function createAuthUser(email) {
   return data.user.id;
 }
 
-async function insertCoachingSessionAsLeader(email, session) {
-  const client = createClient(URL, ANON_KEY, { auth: { persistSession: false } });
-  const { error: signInErr } = await client.auth.signInWithPassword({ email, password: PASSWORD });
-  if (signInErr) throw signInErr;
-
-  try {
-    const { data, error } = await client.from("sessions").insert(session).select().single();
-    if (error) throw error;
-    return data;
-  } finally {
-    await client.auth.signOut();
-  }
+// A held session is trusted fixture data, written with the service role: no
+// client role inserts sessions (20261005100000_session_write_lockdown).
+async function insertCoachingSessionFixture(session) {
+  const { data, error } = await admin.from("sessions").insert(session).select().single();
+  if (error) throw error;
+  return data;
 }
 
 async function makeSponsor(label, programmeId) {
@@ -150,7 +144,7 @@ async function makeLeader(label, orgId, cohortId, programmeId, coachId) {
     );
   if (allowlistErr) throw allowlistErr;
 
-  const session = await insertCoachingSessionAsLeader(email, {
+  const session = await insertCoachingSessionFixture({
     enrollment_id: enrollment.id,
     coach_id: coachId,
     coachee_id: userId,

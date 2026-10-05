@@ -183,7 +183,7 @@ select lives_ok($$
   select public.book_coachee_peer_session(
     'f2000000-0000-0000-0000-000000000003'::uuid,
     'f2000000-0000-0000-0000-0000000000e1'::uuid,
-    'A1 with A3', now() - interval '2 days', 45, null)
+    'A1 with A3', now() + interval '2 days', 45, null)
 $$, 'a learner may book their dyad partner');
 
 select is(
@@ -199,14 +199,14 @@ select throws_ok($$
   select public.book_coachee_peer_session(
     'f2000000-0000-0000-0000-000000000002'::uuid,
     'f2000000-0000-0000-0000-0000000000e1'::uuid,
-    'A1 with A2', now() - interval '2 days', 45, null)
+    'A1 with A2', now() + interval '2 days', 45, null)
 $$, '42501', NULL, 'the booking RPC refuses a same-cohort learner outside the dyad');
 
 select throws_ok($$
   select public.book_coachee_peer_session(
     'f2000000-0000-0000-0000-000000000006'::uuid,
     'f2000000-0000-0000-0000-0000000000e1'::uuid,
-    'A1 with B1', now() - interval '2 days', 45, null)
+    'A1 with B1', now() + interval '2 days', 45, null)
 $$, '42501', NULL, 'the booking RPC refuses a learner of a legacy-granted cohort');
 
 -- The same attempt written straight at the table, with no RPC and no client.
@@ -265,7 +265,7 @@ select set_config('request.jwt.claims',
 select public.book_coachee_peer_session(
   'f2000000-0000-0000-0000-000000000004'::uuid,
   'f2000000-0000-0000-0000-0000000000e2'::uuid,
-  'lifecycle', now() - interval '1 day', 45, null);
+  'lifecycle', now() + interval '2 days', 45, null);
 
 select throws_ok($$
   select public.transition_peer_session_status('coachee_peer',
@@ -281,6 +281,10 @@ select set_config('request.jwt.claims',
   json_build_object('sub', 'f2000000-0000-0000-0000-000000000004')::text, true);
 select public.transition_peer_session_status('coachee_peer',
   (select id from public.coachee_peer_sessions where topic = 'lifecycle'), 'confirmed');
+-- Bookings start in the future (20261005100000); let the meeting take place.
+select set_config('app.session_transition', 'on', true);
+update public.coachee_peer_sessions set start_time = now() - interval '1 day' where topic = 'lifecycle';
+select set_config('app.session_transition', '', true);
 
 select lives_ok($$
   select public.transition_peer_session_status('coachee_peer',
@@ -305,7 +309,7 @@ select set_config('request.jwt.claims',
 select public.book_coachee_peer_session(
   'f2000000-0000-0000-0000-000000000004'::uuid,
   'f2000000-0000-0000-0000-0000000000e2'::uuid,
-  'to cancel', now() - interval '1 day', 45, null);
+  'to cancel', now() + interval '2 days', 45, null);
 
 select is(
   (select ordinal from public.next_peer_requirement('f2000000-0000-0000-0000-0000000000e2'::uuid)),
@@ -387,7 +391,7 @@ select set_config('request.jwt.claims',
 select public.book_coachee_peer_session(
   'f2000000-0000-0000-0000-000000000005'::uuid,
   'f2000000-0000-0000-0000-0000000000e2'::uuid,
-  'A2 with A5', now() - interval '1 day', 45, null);
+  'A2 with A5', now() + interval '2 days', 45, null);
 
 select is(
   (select array_agg(p.enrollment_id::text || ':' || d.ordinal order by p.participant_role)
