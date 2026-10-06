@@ -297,3 +297,4 @@
 20261007000200_final_assessment_results.sql
 20261007000300_assessor_history_after_release.sql
 20261007000400_final_assessment_auto_transcription.sql
+20261007000500_triad_satisfaction_view.sql
