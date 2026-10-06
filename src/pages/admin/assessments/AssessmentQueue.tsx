@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { format, parseISO } from "date-fns";
 import { FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { assessmentLabel, formatAssessmentDate as formatDate } from "@/lib/assessments";
 import {
   ASSESSMENT_STATUSES,
   ASSIGNABLE_STATUSES,
@@ -38,17 +38,6 @@ const STATUS_TONE: Record<AssessmentStatus, "muted" | "primary" | "warning" | "d
   returned: "destructive",
   released: "success",
 };
-
-function formatDate(value: string | null) {
-  return value ? format(parseISO(value), "d MMM yyyy") : "—";
-}
-
-function assessmentLabel(row: Pick<AssessmentQueueRow, "kind" | "requirementOrdinal" | "attemptNo">, t: TFunction) {
-  if (row.kind === "triad") return t("assessments.triadN", { n: row.requirementOrdinal });
-  return row.attemptNo > 1
-    ? t("assessments.finalAttempt", { n: row.attemptNo })
-    : t("assessments.kind.final_assessment");
-}
 
 /** Show a known server refusal in plain words; anything else gets the generic copy. */
 function stepError(e: unknown, t: TFunction) {
@@ -417,7 +406,7 @@ function ReviewDialog({ row, onClose }: { row: AssessmentQueueRow; onClose: () =
 
   const decide = (decision: "approved" | "returned") =>
     validate.mutate(
-      { reviewId: row.reviewId!, decision, reason: decision === "returned" ? reason.trim() : undefined },
+      { reviewId: row.reviewId!, submissionId: row.submissionId, decision, reason: decision === "returned" ? reason.trim() : undefined },
       {
         onSuccess: () => {
           toast.success(decision === "approved" ? t("assessments.approvedToast") : t("assessments.returnedToast"));

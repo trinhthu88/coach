@@ -5656,6 +5656,37 @@ export type Database = {
             Returns: boolean
           }
       check_has_module_access: { Args: { p_module: string }; Returns: boolean }
+      coach_assessment_inbox: {
+        Args: never
+        Returns: {
+          assigned_at: string
+          attempt_no: number
+          cohort_id: string
+          cohort_name: string
+          due_on: string
+          enrollment_id: string
+          inbox_tab: string
+          is_overdue: boolean
+          kind: string
+          learner_files: Json
+          learner_name: string
+          my_latest_feedback_text: string
+          my_latest_outcome: string
+          my_latest_review_version: number
+          quiz_correct: number
+          quiz_score_pct: number
+          quiz_total: number
+          reflection: Json
+          released_at: string
+          requirement_ordinal: number
+          return_reason: string
+          status: string
+          submission_id: string
+          submitted_at: string
+          transcript_text: string
+          triad_reflection_id: string
+        }[]
+      }
       coach_coaching_requirement_fulfilment: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5667,6 +5698,15 @@ export type Database = {
           requirement_id: string
           session_id: string
         }[]
+      }
+      coach_submit_review: {
+        Args: {
+          p_feedback_text?: string
+          p_files?: Json
+          p_outcome?: string
+          p_submission_id: string
+        }
+        Returns: string
       }
       coach_engagement_enrollments: {
         Args: never
@@ -6181,6 +6221,27 @@ export type Database = {
       }
       is_triad_member: { Args: { group_id: string }; Returns: boolean }
       isnt_empty: { Args: { "": string }; Returns: string }
+      learner_assessment_feedback: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          assessor_name: string
+          attempt_no: number
+          feedback_files: Json
+          feedback_text: string
+          kind: string
+          outcome: string
+          quiz_correct: number
+          quiz_score_pct: number
+          quiz_total: number
+          released_at: string
+          requirement_id: string
+          requirement_ordinal: number
+          review_id: string
+          submission_id: string
+          submitted_at: string
+          viewed_at: string
+        }[]
+      }
       learner_canonical_engagement: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -6358,6 +6419,10 @@ export type Database = {
           required_units: number
           training_week_id: string
         }[]
+      }
+      learner_mark_feedback_viewed: {
+        Args: { p_submission_id: string }
+        Returns: string
       }
       learner_triad_session_assessed: {
         Args: { p_session_id: string }

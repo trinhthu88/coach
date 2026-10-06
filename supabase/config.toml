@@ -29,3 +29,5 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.triad-reminders]
     verify_jwt = false
+  [functions.send-assessment-feedback-email]
+    verify_jwt = true

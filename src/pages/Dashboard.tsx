@@ -9,6 +9,7 @@ import { MentoringGiveCard } from "./dashboard/cards/MentoringGiveCard";
 import { MentoringReceiveCard } from "./dashboard/cards/MentoringReceiveCard";
 import { PeerCoachingCard } from "./dashboard/cards/PeerCoachingCard";
 import { TriadsCard } from "./dashboard/cards/TriadsCard";
+import { SubmissionsToAssessCard } from "./dashboard/cards/SubmissionsToAssessCard";
 import { MyGoalCard } from "./dashboard/cards/MyGoalCard";
 import { MyFeedbackCard } from "./dashboard/cards/MyFeedbackCard";
 import { RecentDevelopmentCard } from "./dashboard/cards/RecentDevelopmentCard";
@@ -69,6 +70,7 @@ export default function Dashboard() {
       <ProgrammeProgressCard />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SubmissionsToAssessCard />
         <MyGoalCard />
         <MyCoachCard />
         <MentoringGiveCard />

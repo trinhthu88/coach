@@ -16,6 +16,8 @@ import { deliverableKey, type DeliverableKey } from "@/lib/postSessionDeliverabl
 import { ProfileLoadError } from "@/components/programme/primitives";
 import { TriadSessionCard } from "./components/TriadSessionCard";
 import { TriadAlternativeProposal } from "./components/TriadAlternativeProposal";
+import { AssessmentFeedbackCard } from "@/components/assessments/AssessmentFeedbackCard";
+import { useLearnerAssessmentFeedback, type LearnerAssessmentFeedback } from "@/hooks/assessments/useLearnerAssessmentFeedback";
 
 /**
  * Triads (Coachee prototype → Triads). EVERY REQUIRED TRIAD HAS ITS OWN
@@ -38,6 +40,9 @@ export default function TriadsPage() {
   const ws = useModuleWorkspace("triads");
   const { groups, loading: groupsLoading, error: groupsError, refetch } = useMyTriads(ws.enrollmentId ?? null);
   const { status, loading: statusLoading, error: statusError } = useMyTriadStatus(ws.enrollmentId ?? null);
+  // Released assessor feedback, per Triad requirement (learner_assessment_feedback only).
+  const { feedback } = useLearnerAssessmentFeedback(ws.enrollmentId ?? null);
+  const feedbackFor = (requirementId: string) => feedback.find((f) => f.kind === "triad" && f.requirementId === requirementId) ?? null;
 
   const history = [...ws.sessions].sort((a, b) => new Date(a.startTime ?? 0).getTime() - new Date(b.startTime ?? 0).getTime());
   const reflectionBySession = new Map(
@@ -88,7 +93,7 @@ export default function TriadsPage() {
           </div>
         </ModuleCard>
       ) : (
-        (status?.schedule ?? []).map((m) => <TriadRequirementSection key={m.requirementId} milestone={m} entry={groupFor(m.requirementId)} />)
+        (status?.schedule ?? []).map((m) => <TriadRequirementSection key={m.requirementId} milestone={m} entry={groupFor(m.requirementId)} feedback={feedbackFor(m.requirementId)} />)
       )}
 
       <ModuleCard testId="triad-history">
@@ -127,8 +132,16 @@ export default function TriadsPage() {
   );
 }
 
-/** One required Triad: its deadline, its own group and that group's session. */
-function TriadRequirementSection({ milestone, entry }: { milestone: TriadMilestoneView; entry: TriadGroupEntry | null }) {
+/** One required Triad: its deadline, its own group, that group's session and any released assessor feedback. */
+function TriadRequirementSection({
+  milestone,
+  entry,
+  feedback,
+}: {
+  milestone: TriadMilestoneView;
+  entry: TriadGroupEntry | null;
+  feedback: LearnerAssessmentFeedback | null;
+}) {
   const { t } = useTranslation("triads");
   const n = milestone.milestone;
   const openSession = entry?.isActive && entry.session && (entry.session.status === "proposed" || entry.session.status === "confirmed");
@@ -170,6 +183,8 @@ function TriadRequirementSection({ milestone, entry }: { milestone: TriadMilesto
           <ScheduleNextCard entry={entry} untilDate={milestone.dueOn} />
         )}
       </div>
+      {/* Evidence only: feedback never changes the Triad's completion above. */}
+      {feedback && <AssessmentFeedbackCard item={feedback} />}
     </section>
   );
 }

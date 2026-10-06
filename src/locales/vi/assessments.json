@@ -1,0 +1,111 @@
+{
+  "triadN": "Triad {{n}}",
+  "finalAttempt": "Final Assessment (lần {{n}})",
+  "kind": {
+    "triad": "Triad",
+    "final_assessment": "Final Assessment"
+  },
+  "outcome": {
+    "pass": "Đạt",
+    "not_pass": "Không đạt",
+    "resubmit": "Nộp lại"
+  },
+  "fileError": "Không mở được file.",
+  "dashboardCard": {
+    "title": "Bài nộp cần đánh giá ({{count}})",
+    "pending": "{{count}} bài đang chờ bạn đánh giá",
+    "none": "Không có bài nào đang chờ bạn đánh giá.",
+    "overdue": "{{count}} bài quá hạn",
+    "returned": "{{count}} bài Admin trả lại",
+    "open": "Mở danh sách bài nộp"
+  },
+  "inbox": {
+    "eyebrow": "Người đánh giá",
+    "title": "Bài nộp",
+    "subtitle": "Bài suy ngẫm Triad và Final Assessment Admin đã phân công cho bạn. Nhận xét của bạn chỉ đến học viên sau khi Admin duyệt.",
+    "tabs": {
+      "to_assess": "Cần đánh giá",
+      "returned": "Bị trả lại",
+      "awaiting_validation": "Chờ Admin duyệt",
+      "released": "Đã gửi học viên"
+    },
+    "filters": {
+      "cohort": "Cohort",
+      "kind": "Loại",
+      "allCohorts": "Tất cả cohort",
+      "allKinds": "Tất cả loại"
+    },
+    "loadError": "Không tải được danh sách bài nộp của bạn.",
+    "empty": {
+      "to_assess": "Hiện không có bài nào cần đánh giá.",
+      "returned": "Chưa có nhận xét nào bị trả lại.",
+      "awaiting_validation": "Không có nhận xét nào đang chờ Admin duyệt.",
+      "released": "Chưa có nhận xét nào của bạn được gửi học viên."
+    },
+    "due": "Hạn {{date}}",
+    "overdue": "Quá hạn",
+    "submitted": "Nộp ngày {{date}}",
+    "released": "Gửi ngày {{date}}",
+    "open": "Mở"
+  },
+  "detail": {
+    "back": "Tất cả bài nộp",
+    "notFound": "Bài nộp này không được phân công cho bạn hoặc không còn tồn tại.",
+    "returnReasonTitle": "Admin đã trả lại nhận xét của bạn",
+    "recording": "Bản ghi âm",
+    "noRecording": "Bài nộp này không có bản ghi âm.",
+    "audioUnsupported": "Trình duyệt của bạn không phát được bản ghi âm này.",
+    "transcript": "Bản chép lời",
+    "noTranscript": "Không có bản chép lời.",
+    "transcriptFile": "File chép lời",
+    "reflection": "Câu trả lời suy ngẫm",
+    "reflectionSubmitted": "Nộp ngày {{date}}",
+    "noReflection": "Không có câu trả lời.",
+    "sections": {
+      "coach": "Vai trò Coach",
+      "coachee": "Vai trò Coachee",
+      "observer": "Vai trò Quan sát viên",
+      "general": "Tổng quan"
+    },
+    "quiz": "Điểm quiz",
+    "quizScore": "Đúng {{correct}}/{{total}} câu ({{pct}}%)",
+    "quizReadOnly": "Chấm tự động. Chỉ xem.",
+    "noQuiz": "Không có điểm quiz.",
+    "historyOnly": "Nhận xét này đã được gửi học viên. Bạn không còn xem được nội dung bài nộp.",
+    "yourReview": "Nhận xét của bạn (phiên bản {{version}})",
+    "awaitingValidation": "Admin đang xem nhận xét của bạn trước khi gửi học viên.",
+    "form": {
+      "title": "Nhận xét của bạn",
+      "feedbackLabel": "Nhận xét cho học viên",
+      "feedbackPlaceholder": "Học viên đã làm tốt điều gì, và một điều nên thử tiếp theo là gì?",
+      "outcomeLabel": "Kết quả",
+      "resubmitLastAttempt": "Đây là lần nộp cuối, nên kết quả là Đạt hoặc Không đạt.",
+      "pdfLabel": "File PDF nhận xét (không bắt buộc, tối đa 10 MB)",
+      "pdfChosen": "{{name}} ({{size}})",
+      "removePdf": "Gỡ",
+      "pdfType": "File nhận xét phải là PDF.",
+      "pdfSize": "File PDF nhận xét phải từ 10 MB trở xuống.",
+      "needsContent": "Hãy viết nhận xét hoặc đính kèm file PDF.",
+      "needsOutcome": "Hãy chọn kết quả.",
+      "submit": "Gửi Admin",
+      "resubmit": "Gửi nhận xét đã chỉnh sửa",
+      "submitted": "Đã gửi nhận xét để Admin duyệt.",
+      "hint": "Admin duyệt nhận xét của bạn trước khi học viên xem được."
+    }
+  },
+  "feedback": {
+    "sectionTitle": "Nhận xét & kết quả",
+    "sectionAside": "Chỉ bạn xem được",
+    "sectionSubtitle": "Nhận xét của người đánh giá, được gửi sau khi Admin duyệt.",
+    "loadError": "Không tải được nhận xét đánh giá của bạn.",
+    "triadTitle": "Nhận xét về Triad {{n}}",
+    "finalTitle": "Kết quả Final Assessment",
+    "finalAttemptTitle": "Kết quả Final Assessment (lần {{n}})",
+    "byAssessor": "Từ {{name}} · gửi ngày {{date}}",
+    "new": "Mới",
+    "result": "Kết quả",
+    "quiz": "Quiz",
+    "quizScore": "Đúng {{correct}}/{{total}} câu ({{pct}}%)",
+    "attachment": "File PDF nhận xét"
+  }
+}

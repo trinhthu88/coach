@@ -3,11 +3,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { from, rpc, toastError } = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn(), toastError: vi.fn() }));
+const { from, rpc, invoke, toastError } = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn(), invoke: vi.fn(), toastError: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from,
     rpc,
+    functions: { invoke },
     storage: { from: () => ({ createSignedUrl: () => Promise.resolve({ data: { signedUrl: "https://signed/x.pdf" }, error: null }) }) },
   },
 }));
@@ -114,6 +115,7 @@ describe("AssessmentQueue", () => {
     rpc.mockReset();
     from.mockReset();
     toastError.mockReset();
+    invoke.mockReset().mockResolvedValue({ data: { sent: true }, error: null });
     rpcResult = () => undefined;
     mockBackend();
   });
@@ -187,7 +189,7 @@ describe("AssessmentQueue", () => {
     );
   });
 
-  it("approves a review, which releases it", async () => {
+  it("approves a review, which releases it and emails the learner", async () => {
     renderQueue();
     fireEvent.click(within(await rowFor("Learner Three")).getByTestId("assessment-open-review"));
     const dialog = await screen.findByTestId("assessment-review-dialog");
@@ -197,6 +199,10 @@ describe("AssessmentQueue", () => {
     fireEvent.click(within(dialog).getByTestId("assessment-approve"));
     await waitFor(() =>
       expect(rpc).toHaveBeenCalledWith("admin_validate_review", { p_review_id: "r3", p_decision: "approved", p_reason: undefined }),
+    );
+    // The release email (Resend) is sent once the release has committed.
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith("send-assessment-feedback-email", { body: { submission_id: "s3" } }),
     );
   });
 
@@ -218,6 +224,7 @@ describe("AssessmentQueue", () => {
         p_reason: "Name one behaviour.",
       }),
     );
+    expect(invoke).not.toHaveBeenCalled();
   });
 
   it("only reads a released review: no approve or return", async () => {

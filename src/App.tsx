@@ -58,6 +58,8 @@ const AdminMentoring = lazy(() => import("./pages/admin/AdminMentoring"));
 const AdminTrainingContent = lazy(() => import("./pages/admin/AdminTrainingContent"));
 const AdminTriads = lazy(() => import("./pages/admin/AdminTriads"));
 const AdminAssessments = lazy(() => import("./pages/admin/AdminAssessments"));
+const CoachSubmissions = lazy(() => import("./pages/coach/submissions/CoachSubmissions"));
+const CoachSubmissionDetail = lazy(() => import("./pages/coach/submissions/CoachSubmissionDetail"));
 const AdminCohortTriads = lazy(() => import("./pages/admin/AdminCohortTriads"));
 const TriadsPage = lazy(() => import("./pages/triads/TriadsPage"));
 const TriadSessionDetail = lazy(() => import("./pages/triads/TriadSessionDetail"));
@@ -197,6 +199,9 @@ const App = () => (
                   {/* Kept as an alias — nav now links to the shared /practice-journey route
                       (works for coach and coachee), but old bookmarks/links should still land. */}
                   <Route path="/coach/practice-journey" element={<Navigate to="/practice-journey" replace />} />
+                  {/* Assessor inbox: what Admin assigned this coach to assess (coach_assessment_inbox). */}
+                  <Route path="/coach/submissions" element={<ProtectedRoute role="coach"><CoachSubmissions /></ProtectedRoute>} />
+                  <Route path="/coach/submissions/:submissionId" element={<ProtectedRoute role="coach"><CoachSubmissionDetail /></ProtectedRoute>} />
                   <Route
                     path="/practice-journey"
                     element={

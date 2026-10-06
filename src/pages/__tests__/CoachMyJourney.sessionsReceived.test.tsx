@@ -9,6 +9,8 @@ import { canonicalProgress } from "@/test/fixtures/canonicalEnrollment";
  * Coaching row (learner_canonical_progress), never session rows counted in
  * React over a configured receive_limit (20261006110000).
  */
+// Assessment feedback has its own tests (AssessmentFeedbackSection.test.tsx).
+vi.mock("@/components/assessments/AssessmentFeedbackSection", () => ({ AssessmentFeedbackSection: () => null }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) => (opts?.count !== undefined ? `${key}:${opts.count}` : key),

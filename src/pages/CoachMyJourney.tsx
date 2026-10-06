@@ -34,6 +34,7 @@ import { GoalWheel, GoalScoreCards } from "./journey/GoalWheel";
 import { PageHeader } from "@/components/ui/page-header";
 import { ACCENTS } from "./journey/journeyDisplay";
 import { SectionHeader } from "./journey/SectionHeader";
+import { AssessmentFeedbackSection } from "@/components/assessments/AssessmentFeedbackSection";
 import { EmptyGoals } from "./journey/EmptyGoals";
 import { GoalAccordion } from "./journey/GoalAccordion";
 import { ActionGroups } from "./journey/ActionGroups";
@@ -224,6 +225,7 @@ export default function CoachMyJourney() {
         avgGoalProgress={avgGoalProgress}
       />
       {programme?.enrollmentId && <LearnerProgrammeJourney enrollmentId={programme.enrollmentId} variant="full" />}
+      <AssessmentFeedbackSection enrollmentId={programme?.enrollmentId} />
 
       <div>
         <SectionHeader title={t("developmentJourney.title")} />

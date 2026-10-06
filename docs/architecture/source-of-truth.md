@@ -379,6 +379,8 @@ The app holds no privilege on the six tables (rules 1, 4, 7); every timestamp is
 
 Admin surfaces: Cohort → Assessor pool (`CohortAssessorPanel`, on `admin_cohort_assessors` / `admin_set_cohort_assessor`); Admin → Assessments and Admin → Triads → Submissions (one `AssessmentQueue`, kind locked to Triad on the Triads tab) on `admin_assessment_queue`, assigning through `admin_assign_assessor` and deciding through `admin_validate_review`. `src/test/clientRpcGrants.test.ts` fails if app code names one of the six tables in `.from()`.
 
+Coach and learner surfaces (`20261006230000`): Coach → Submissions (`/coach/submissions`, tabs To assess · Returned to me · Awaiting validation · Released) and the dashboard card read only `coach_assessment_inbox`, which also returns the submission's `enrollment_id` (the feedback PDF path) and, while the assignment is active, the Triad reflection answers (`triad_reflection_answers`; never the satisfaction rating). The assessor uploads the PDF (≤ 10 MB) to `{enrollment}/{submission}/` and `coach_submit_review` registers it. The learner's Triad page and My Journey → Feedback & results (`#feedback-results`; `/coach/my-journey` for a Coach-learner, `assessment_feedback_link_internal`) read only `learner_assessment_feedback`; showing an item calls `learner_mark_feedback_viewed`. After an approval the Admin queue invokes `send-assessment-feedback-email` (Resend, EN or VI by `profiles.preferred_language`), which sends only what `assessment_claim_release_email_internal` hands out: one email per release, stamped in `assessment_submissions.release_emailed_at`. `supabase/tests/assessment_inbox_feedback_test.sql`.
+
 ### Retirement backlog
 
 Kept for now as HISTORICAL; no current-state surface may read them. Retire in a

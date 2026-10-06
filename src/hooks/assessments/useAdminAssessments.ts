@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { parseAssessmentFiles, type AssessmentFile, type AssessmentKind, type AssessmentStatus } from "@/lib/assessments";
+
+export { assessmentFileUrl, ASSESSMENT_FILES_BUCKET } from "@/lib/assessments";
+export type { AssessmentKind, AssessmentStatus } from "@/lib/assessments";
 
 /**
  * Admin side of the assessment review pipeline (20261006210000).
@@ -13,15 +17,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const ADMIN_COHORT_ASSESSORS_KEY = "admin-cohort-assessors";
 export const ADMIN_ASSESSMENT_QUEUE_KEY = "admin-assessment-queue";
-export const ASSESSMENT_FILES_BUCKET = "assessment-files";
-
-export type AssessmentKind = "triad" | "final_assessment";
-export type AssessmentStatus =
-  | "awaiting_assignment"
-  | "with_assessor"
-  | "awaiting_validation"
-  | "returned"
-  | "released";
 
 export const ASSESSMENT_STATUSES: AssessmentStatus[] = [
   "awaiting_assignment",
@@ -137,12 +132,6 @@ export function useCohortAssessorPools(cohortIds: string[]) {
   return { pools, loading: results.some((r) => r.isLoading), error: results.some((r) => r.isError) };
 }
 
-export interface AssessmentReviewFile {
-  storagePath: string;
-  mime: string;
-  sizeBytes: number;
-}
-
 export interface AssessmentQueueRow {
   submissionId: string;
   enrollmentId: string;
@@ -166,7 +155,7 @@ export interface AssessmentQueueRow {
   reviewText: string | null;
   reviewOutcome: "pass" | "not_pass" | "resubmit" | null;
   reviewSubmittedAt: string | null;
-  reviewFiles: AssessmentReviewFile[];
+  reviewFiles: AssessmentFile[];
   /** The decision on the latest review, if any (a return carries its reason). */
   lastDecision: "approved" | "returned" | null;
   lastReason: string | null;
@@ -215,9 +204,7 @@ export function useAdminAssessmentQueue(filters: AssessmentQueueFilters) {
         reviewText: r.review_text ?? null,
         reviewOutcome: (r.review_outcome as AssessmentQueueRow["reviewOutcome"]) ?? null,
         reviewSubmittedAt: r.review_submitted_at ?? null,
-        reviewFiles: ((r.review_files as { storage_path: string; mime: string; size_bytes: number }[] | null) ?? []).map(
-          (f) => ({ storagePath: f.storage_path, mime: f.mime, sizeBytes: f.size_bytes }),
-        ),
+        reviewFiles: parseAssessmentFiles(r.review_files),
         lastDecision: (r.last_decision as AssessmentQueueRow["lastDecision"]) ?? null,
         lastReason: r.last_reason ?? null,
         releasedAt: r.released_at ?? null,
@@ -266,6 +253,7 @@ export function useAdminAssessmentMutations() {
       reason,
     }: {
       reviewId: string;
+      submissionId: string;
       decision: "approved" | "returned";
       reason?: string;
     }) => {
@@ -277,15 +265,18 @@ export function useAdminAssessmentMutations() {
       if (error) throw error;
       return data as string;
     },
+    onSuccess: (decision, { submissionId }) => {
+      if (decision !== "approved") return;
+      // The release and its in-app notification are already committed; the
+      // email is best effort and claimed once per release on the server.
+      supabase.functions
+        .invoke("send-assessment-feedback-email", { body: { submission_id: submissionId } })
+        .then(({ error }) => {
+          if (error) console.error("Failed to send the assessment feedback email", error);
+        });
+    },
     onSettled: refresh,
   });
 
   return { assign, validate };
-}
-
-/** A short-lived link to a review file. The bucket is private; assessment_object_readable lets an Admin read it. */
-export async function assessmentFileUrl(storagePath: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(ASSESSMENT_FILES_BUCKET).createSignedUrl(storagePath, 300);
-  if (error || !data?.signedUrl) throw error ?? new Error("No signed URL");
-  return data.signedUrl;
 }
