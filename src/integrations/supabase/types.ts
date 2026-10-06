@@ -6300,6 +6300,10 @@ export type Database = {
           training_week_id: string
         }[]
       }
+      learner_triad_session_assessed: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
       requirement_integrity_issues: {
         Args: never
         Returns: {

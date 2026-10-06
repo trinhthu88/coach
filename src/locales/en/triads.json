@@ -88,7 +88,8 @@
     "notFound": "This session isn't available.",
     "afterCompletion": "You can reflect on this session once it has been marked as completed.",
     "roleLabel": "Your role in this session",
-    "roleHelp": "Roles rotate between sessions. Choose the role you played this time; you reflect on that role plus the overall questions."
+    "roleHelp": "Roles rotate between sessions. Choose the role you played this time; you reflect on that role plus the overall questions.",
+    "assessedNotice": "An assessor will read this reflection to give you feedback on this Triad."
   },
   "history": {
     "title": "My triad sessions",

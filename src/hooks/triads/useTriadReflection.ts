@@ -113,3 +113,22 @@ export function useTriadReflection() {
   });
   return { submitReflection: submitReflection.mutateAsync, submitting: submitReflection.isPending };
 }
+
+/**
+ * Whether this Triad is assessed (Programme Builder: assessed_units), so the
+ * reflection form tells the learner an assessor will read it (decision 13).
+ * learner_triad_session_assessed, 20261006220000.
+ */
+export function useTriadSessionAssessed(sessionId: string | undefined) {
+  const query = useQuery({
+    queryKey: ["triad-session-assessed", sessionId],
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await supabase.rpc("learner_triad_session_assessed", { p_session_id: sessionId as string });
+      if (error) throw error;
+      return data === true;
+    },
+    enabled: !!sessionId,
+    staleTime: 60_000,
+  });
+  return { assessed: query.data === true, loading: query.isLoading };
+}

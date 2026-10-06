@@ -372,6 +372,8 @@ One pipeline for Triad submissions and the Final Assessment: learner submits →
 | Admin's decision | `assessment_validations` (`admin_validate_review`; return needs a reason; approve releases + notifies in one transaction) | Admin queue; the returned assessor sees the reason |
 | Feedback the learner sees | the latest approved review of a released submission | `learner_assessment_feedback` (`canonical_assessment_feedback_internal`); `learner_mark_feedback_viewed` |
 | Sponsor view | status and Pass / Not pass only | `sponsor_final_assessment_status` |
+| Which Triads are assessed | `programme_modules.config.assessed_units` for `triads` (Programme Builder checkboxes; live, decision 1) | `triad_requirement_is_assessed`, `learner_triad_session_assessed` (the reflection form's notice) |
+| A Triad submission | created by `learner_triad_submit_reflection` through `assessment_create_triad_submission_internal` (one per enrollment and session; evidence only, never read by `canonical_triad_completion`) | the assessment functions above |
 
 The app holds no privilege on the six tables (rules 1, 4, 7); every timestamp is the server's (rule 8); the quiz score is `assignment_submissions.score_pct` (rule 9); type and size are refused by the bucket and again by the step functions (rule 10); foreign keys restrict deletes (rule 12). `supabase/tests/assessment_pipeline_test.sql` has one section per rule.
 

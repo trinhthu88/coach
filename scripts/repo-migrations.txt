@@ -290,3 +290,4 @@
 20261006190000_sponsor_attention.sql
 20261006200000_admin_projections.sql
 20261006210000_assessment_pipeline.sql
+20261006220000_assessment_triad.sql

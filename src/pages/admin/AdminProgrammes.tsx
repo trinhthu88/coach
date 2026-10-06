@@ -184,6 +184,31 @@ export function ModuleConfigRow({
                 onChange={(v) => onConfigChange({ max_triads: v })}
                 t={t}
               />
+              {/* Decision 2: Admin ticks which Triad numbers are assessed; the
+                  reflection of an assessed Triad goes to an assessor. */}
+              {Number(cfg.required_units ?? 0) > 0 && (
+                <div className="col-span-2 sm:col-span-4" data-testid="triad-assessed-units">
+                  <p className="text-[10.5px] text-muted-foreground">{t("programmes.modules.assessedTriads")}</p>
+                  <div className="mt-1 flex flex-wrap gap-3">
+                    {Array.from({ length: Number(cfg.required_units) }, (_, i) => i + 1).map((n) => {
+                      const assessed = Array.isArray(cfg.assessed_units) ? (cfg.assessed_units as number[]) : [];
+                      return (
+                        <label key={n} className="flex items-center gap-1.5 text-[11px]">
+                          <Checkbox
+                            checked={assessed.includes(n)}
+                            onCheckedChange={(v) =>
+                              onConfigChange({
+                                assessed_units: v ? [...assessed.filter((x) => x !== n), n].sort((a, b) => a - b) : assessed.filter((x) => x !== n),
+                              })
+                            }
+                          />
+                          {t("programmes.modules.triadN", { n })}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </>
           )}
           {module === "assessment" && (

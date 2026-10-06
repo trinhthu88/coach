@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import i18n from "@/i18n/config";
 import type { ProgrammeModuleType } from "@/hooks/useProgrammeModules";
@@ -33,5 +33,31 @@ describe("module editor limit fields", () => {
     expect(screen.queryByText(/give limit|receive limit/i)).toBeNull();
     expect(screen.getByDisplayValue("2")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("9")).toBeNull();
+  });
+});
+
+describe("Triads: assessed Triad numbers", () => {
+  it("offers one checkbox per required Triad and writes assessed_units", async () => {
+    const onConfigChange = vi.fn();
+    const row = defaultModuleRows().triads;
+    render(
+      <ModuleConfigRow
+        module="triads"
+        row={{ ...row, enabled: true, config: { ...row.config, required_units: 3, assessed_units: [1] } }}
+        onToggle={vi.fn()}
+        onConfigChange={onConfigChange}
+        t={t}
+        trainingWeeks={[]}
+      />,
+    );
+    const box = screen.getByTestId("triad-assessed-units");
+    const checks = within(box).getAllByRole("checkbox");
+    expect(checks).toHaveLength(3);
+    expect(checks[0]).toBeChecked();
+    expect(checks[2]).not.toBeChecked();
+    fireEvent.click(checks[2]);
+    expect(onConfigChange).toHaveBeenCalledWith({ assessed_units: [1, 3] });
+    fireEvent.click(checks[0]);
+    expect(onConfigChange).toHaveBeenCalledWith({ assessed_units: [] });
   });
 });

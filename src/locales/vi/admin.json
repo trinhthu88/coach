@@ -625,7 +625,9 @@
         "distributionSettingsInvalid": "Cài đặt lịch trình không hợp lệ.",
         "trainingWeekIdsInvalid": "Các tuần đào tạo đã chọn không hợp lệ.",
         "trainingWeeksInsufficient": "Số tuần đào tạo được chọn phải bằng số đơn vị bắt buộc."
-      }
+      },
+      "assessedTriads": "Triad được đánh giá (bài suy ngẫm được gửi tới người đánh giá)",
+      "triadN": "Triad {{n}}"
     }
   },
   "coachProgrammes": {

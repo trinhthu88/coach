@@ -630,7 +630,9 @@
         "distributionSettingsInvalid": "Schedule settings are invalid.",
         "trainingWeekIdsInvalid": "The selected training weeks are invalid.",
         "trainingWeeksInsufficient": "Select exactly as many training weeks as required units."
-      }
+      },
+      "assessedTriads": "Assessed Triads (the reflection goes to an assessor)",
+      "triadN": "Triad {{n}}"
     }
   },
   "coachProgrammes": {
