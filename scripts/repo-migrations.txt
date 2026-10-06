@@ -281,3 +281,5 @@
 20261006100000_admin_peer_revalidation.sql
 20261006110000_retire_session_limits.sql
 20261006120000_peer_booking_rules.sql
+20261006130000_one_overdue_rule.sql
+20261006140000_admin_alerts_current.sql

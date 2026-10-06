@@ -4556,6 +4556,28 @@ export type Database = {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
       }
+      admin_alerts_current: {
+        Args: never
+        Returns: {
+          alert_key: string
+          stored_alert_id: string | null
+          severity: string
+          alert_type: string
+          related_enrollment_id: string | null
+          related_user_id: string | null
+          related_coach_id: string | null
+          subject_name: string | null
+          subject_email: string | null
+          coach_name: string | null
+          count_value: number | null
+          pct_value: number | null
+          occurred_on: string | null
+          note: string | null
+          stored_title: string | null
+          stored_message: string | null
+          created_at: string | null
+        }[]
+      }
       admin_canonical_enrollment_progress: {
         Args: { p_as_of?: string; p_enrollment_ids: string[] }
         Returns: {
@@ -6788,6 +6810,8 @@ export type Database = {
       sponsor_canonical_cohort_progress: {
         Args: { p_as_of?: string; p_cohort_id?: string }
         Returns: {
+          adherence_credited_units: number
+          coverage_credited_units: number
           active_count: number
           ahead_count: number
           at_risk_count: number
@@ -6849,6 +6873,8 @@ export type Database = {
       sponsor_canonical_cohort_progress_one: {
         Args: { p_as_of?: string; p_cohort_id?: string }
         Returns: {
+          adherence_credited_units: number
+          coverage_credited_units: number
           active_count: number
           ahead_count: number
           at_risk_count: number

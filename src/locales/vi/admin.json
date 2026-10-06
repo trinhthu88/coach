@@ -163,7 +163,6 @@
     "scopeCoachRoster": "Danh sách coach",
     "scopeCoachee": "Học viên",
     "scopeAllProgrammes": "Tất cả chương trình",
-    "scanComplete": "Quét hoàn tất · {{count}} cảnh báo đang hoạt động",
     "alertResolved": "Đã xử lý cảnh báo",
     "eyebrow": "Tổ chức",
     "title": "Cảnh báo",
@@ -173,18 +172,70 @@
     "filterWarning": "Cảnh báo",
     "filterInfo": "Thông tin",
     "statOpen": "Đang mở",
-    "statOpenHint": "trên tổng số {{total}} cảnh báo",
     "statCritical": "Nghiêm trọng",
     "statCriticalHint": "doanh thu khóa học có nguy cơ bị ảnh hưởng",
     "statWarning": "Cảnh báo",
     "statWarningHint": "tiêu chuẩn dịch vụ có dấu hiệu không đạt yêu cầu",
-    "statResolvedToday": "Đã xử lý hôm nay",
-    "statResolvedTodayHint": "do bạn xử lý",
-    "runScan": "Quét kiểm tra",
-    "allClear": "Không có cảnh báo nào. Hãy thực hiện quét kiểm tra để cập nhật dữ liệu.",
     "nothingHere": "Hiện chưa có gì ở đây.",
     "resolve": "Xử lý",
-    "resolvedCount": "Đã xử lý ({{count}})"
+    "resolvedCount": "Đã xử lý ({{count}})",
+    "someone": "Một học viên",
+    "aCoach": "Một coach",
+    "statOpenLiveHint": "đúng tại thời điểm này",
+    "statInfo": "Thông tin",
+    "statInfoHint": "nhắc nhở, không chặn việc gì",
+    "refresh": "Làm mới",
+    "allClearLive": "Hiện không có cảnh báo nào.",
+    "severity": {
+      "critical": "Nghiêm trọng",
+      "warning": "Cảnh báo",
+      "info": "Thông tin"
+    },
+    "types": {
+      "programme_at_risk": {
+        "title": "{{name}} — chương trình có nguy cơ",
+        "message": "Chương trình đã kết thúc khi chưa hoàn thành ({{pct}} hoàn thành){{contact}} · cần xem xét."
+      },
+      "needs_attention": {
+        "title": "{{name}} — cần chú ý",
+        "message": "{{count}} hoạt động bắt buộc đã quá hạn{{contact}}.",
+        "messageBehind": "Đang chậm so với tiến độ chương trình{{contact}}."
+      },
+      "overdue_actions": {
+        "title": "{{name}} — {{count}} hành động quá hạn",
+        "message": "{{count}} hành động đã quá hạn{{contact}}."
+      },
+      "reflection_outstanding": {
+        "title": "{{name}} — chưa viết suy ngẫm",
+        "message": "{{count}} buổi đã hoàn thành chưa có suy ngẫm (gần nhất {{date}}){{contact}}. Các buổi này vẫn được tính; đây chỉ là nhắc nhở."
+      },
+      "mentor_feedback_outstanding": {
+        "title": "{{name}} — mentor chưa gửi nhận xét",
+        "message": "Mentor chưa gửi nhận xét cho {{count}} buổi mentoring đã hoàn thành{{contact}}. Các buổi này vẫn được tính; đây chỉ là nhắc nhở."
+      },
+      "prep_file_outstanding": {
+        "title": "{{name}} — chưa có tài liệu chuẩn bị",
+        "message": "{{count}} buổi mentoring đã bắt đầu mà chưa có tài liệu chuẩn bị{{contact}}. Tài liệu này không bắt buộc và không ảnh hưởng đến việc hoàn thành."
+      },
+      "stale_programme_participant": {
+        "title": "{{name}} — không có hoạt động trong 7+ ngày",
+        "message": "Hoạt động gần nhất {{date}}{{contact}}.",
+        "messageNever": "Chưa có hoạt động nào kể từ khi ghi danh{{contact}}."
+      },
+      "low_quiz_scores": {
+        "title": "{{name}} — điểm quiz trung bình {{pct}}",
+        "message": "Trung bình {{pct}} qua {{count}} bài quiz{{contact}} — dưới ngưỡng 50%."
+      },
+      "goal_setup_overdue": {
+        "title": "{{name}} — quá hạn đặt mục tiêu",
+        "message": "Chưa có mục tiêu đang hoạt động từ {{date}}{{contact}} · học viên không thể đặt lịch cho đến khi đặt mục tiêu."
+      },
+      "coach_flagged_session": {
+        "title": "{{coach}} đã gắn cờ một buổi với {{name}}",
+        "message": "{{coach}}: {{note}}",
+        "messageNoNote": "{{coach}} đã gắn cờ buổi này để admin chú ý nhưng không để lại ghi chú."
+      }
+    }
   },
   "coachees": {
     "exported": "Đã xuất",

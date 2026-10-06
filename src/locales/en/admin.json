@@ -166,7 +166,6 @@
     "scopeCoachRoster": "Coach roster",
     "scopeCoachee": "Coachee",
     "scopeAllProgrammes": "All programmes",
-    "scanComplete": "Scan complete · {{count}} active alerts",
     "alertResolved": "Alert resolved",
     "eyebrow": "Organisation",
     "title": "Alerts",
@@ -176,18 +175,70 @@
     "filterWarning": "Warning",
     "filterInfo": "Info",
     "statOpen": "Open",
-    "statOpenHint": "of {{total}} raised",
     "statCritical": "Critical",
     "statCriticalHint": "cohort revenue at risk",
     "statWarning": "Warning",
     "statWarningHint": "service standards slipping",
-    "statResolvedToday": "Resolved today",
-    "statResolvedTodayHint": "by you",
-    "runScan": "Run scan",
-    "allClear": "All clear. Run a scan to refresh.",
     "nothingHere": "Nothing here right now.",
     "resolve": "Resolve",
-    "resolvedCount": "Resolved ({{count}})"
+    "resolvedCount": "Resolved ({{count}})",
+    "someone": "A learner",
+    "aCoach": "A coach",
+    "statOpenLiveHint": "true right now",
+    "statInfo": "Info",
+    "statInfoHint": "reminders, nothing blocked",
+    "refresh": "Refresh",
+    "allClearLive": "All clear right now.",
+    "severity": {
+      "critical": "Critical",
+      "warning": "Warning",
+      "info": "Info"
+    },
+    "types": {
+      "programme_at_risk": {
+        "title": "{{name}} — programme at risk",
+        "message": "The programme has ended incomplete ({{pct}} complete){{contact}} · review needed."
+      },
+      "needs_attention": {
+        "title": "{{name}} — needs attention",
+        "message": "{{count}} required activities are past their due date{{contact}}.",
+        "messageBehind": "Behind the programme's pace{{contact}}."
+      },
+      "overdue_actions": {
+        "title": "{{name}} — {{count}} overdue actions",
+        "message": "{{count}} action items are past their due date{{contact}}."
+      },
+      "reflection_outstanding": {
+        "title": "{{name}} — reflection not written yet",
+        "message": "{{count}} completed sessions have no reflection yet (latest {{date}}){{contact}}. The sessions already count; this is a reminder only."
+      },
+      "mentor_feedback_outstanding": {
+        "title": "{{name}} — mentor feedback not in yet",
+        "message": "The mentor hasn't added feedback for {{count}} completed mentoring sessions{{contact}}. The sessions already count; this is a reminder only."
+      },
+      "prep_file_outstanding": {
+        "title": "{{name}} — no preparation file",
+        "message": "{{count}} mentoring sessions have started without a preparation file{{contact}}. It is optional and does not affect completion."
+      },
+      "stale_programme_participant": {
+        "title": "{{name}} — no programme activity in 7+ days",
+        "message": "Last activity {{date}}{{contact}}.",
+        "messageNever": "No activity recorded since enrolling{{contact}}."
+      },
+      "low_quiz_scores": {
+        "title": "{{name}} — quiz average {{pct}}",
+        "message": "Averaging {{pct}} across {{count}} quizzes{{contact}} — below the 50% threshold."
+      },
+      "goal_setup_overdue": {
+        "title": "{{name}} — goal setup overdue",
+        "message": "No active goal since {{date}}{{contact}} · the learner can't book sessions until they set one."
+      },
+      "coach_flagged_session": {
+        "title": "{{coach}} flagged a session with {{name}}",
+        "message": "{{coach}}: {{note}}",
+        "messageNoNote": "{{coach}} flagged this session for admin attention without a note."
+      }
+    }
   },
   "coachees": {
     "exported": "Exported",

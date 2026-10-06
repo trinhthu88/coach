@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -237,8 +237,8 @@ describe("programme profile architecture", () => {
     expect(read("hooks/sponsor/useSponsorLeaderData.ts")).toMatch(/rpc\("sponsor_canonical_leader_journey"/);
   });
 
-  it("Admin Dashboard, Analytics and Alerts read completion and status from the canonical engine", () => {
-    for (const file of ["pages/admin/AdminDashboard.tsx", "pages/admin/AdminAnalytics.tsx", "pages/admin/AdminAlerts.tsx"]) {
+  it("Admin Dashboard and Analytics read completion and status from the canonical engine", () => {
+    for (const file of ["pages/admin/AdminDashboard.tsx", "pages/admin/AdminAnalytics.tsx"]) {
       const text = read(file);
       expect(text, file).toMatch(/fetchAdminCanonicalProgress\(/);
       // No second Admin completion engine, no stored-status "at risk", no snapshot reads.
@@ -246,9 +246,16 @@ describe("programme profile architecture", () => {
       expect(text, file).not.toMatch(/\.status === "at_risk"/);
     }
     expect(read("lib/adminCanonicalProgress.ts")).toMatch(/rpc\("admin_canonical_enrollment_progress"/);
-    // Alerts count overdue actions from the original action records, not a session subset.
-    expect(read("pages/admin/AdminAlerts.tsx")).toMatch(/from\("enrollment_actions"\)/);
-    expect(read("pages/admin/AdminAlerts.tsx")).not.toMatch(/withEnrollmentActions/);
+  });
+
+  it("Admin alerts are computed on read in SQL; the page derives nothing", () => {
+    // 20261006140000: admin_alerts_current() over canonical rows replaces the
+    // browser scan that re-derived overdue / at-risk / missing evidence.
+    const page = read("pages/admin/AdminAlerts.tsx");
+    expect(page).toMatch(/rpc\("admin_alerts_current"\)/);
+    expect(page).not.toMatch(/from\("(sessions|peer_sessions|coachee_peer_sessions|mentoring_sessions|enrollment_actions|assignment_submissions|programme_enrollments|session_learning_reflections)"\)/);
+    expect(page).not.toMatch(/fetchAdminCanonicalProgress|admin_enrollment_inactivity|\.insert\(/);
+    expect(existsSync(join(SRC, "pages/admin/alertScan.ts"))).toBe(false);
   });
 
   it("every Admin '% complete' is the canonical number the learner sees — never time elapsed", () => {
@@ -421,7 +428,6 @@ describe("programme profile architecture", () => {
       const readers = runtime.filter((f) => /rpc\(\s*"(admin_enrollment_inactivity|canonical_enrollment_inactivity_internal)"/.test(readFileSync(f, "utf8")));
       expect(readers.map(label).sort()).toEqual([
         "src/hooks/admin/useAdminProgrammeEngagement.ts",
-        "src/pages/admin/AdminAlerts.tsx",
         "supabase/functions/send-programme-reminders/index.ts",
         "supabase/functions/send-weekly-admin-summary/index.ts",
       ]);
@@ -444,6 +450,18 @@ describe("programme profile architecture", () => {
       for (const file of ["src/hooks/admin/useAdminProgrammeEngagement.ts", "supabase/functions/send-weekly-admin-summary/index.ts"]) {
         const text = readFileSync(join(process.cwd(), file), "utf8");
         expect(text, file).not.toMatch(/cohort_week_overrides|week_number\s*-\s*1|weekNumber\s*-\s*1|start_date[^\n]*\+|unlock_date/);
+      }
+    });
+
+    it("the reminder and daily-prompt crons read each enrollment's requirement calendar, never training week dates", () => {
+      // 20261006130000: who is overdue on a quiz / reflection, and which prompt
+      // is today's, are decided in SQL over the enrollment's own calendar.
+      const reminders = readFileSync(join(FUNCTIONS, "send-programme-reminders", "index.ts"), "utf8");
+      expect(reminders).toMatch(/rpc\("training_overdue_assignment_targets_internal"/);
+      const prompt = readFileSync(join(FUNCTIONS, "send-daily-prompt", "index.ts"), "utf8");
+      expect(prompt).toMatch(/rpc\("daily_prompt_targets_internal"/);
+      for (const [name, text] of [["send-programme-reminders", reminders], ["send-daily-prompt", prompt]]) {
+        expect(text, name).not.toMatch(/unlock_date|due_offset_days|from\("training_weeks"\)|from\("daily_prompts"\)/);
       }
     });
 
@@ -499,11 +517,12 @@ describe("programme profile architecture", () => {
     // C4/C5: a Coaching reflection lived in two places, so a learner who wrote
     // one was told the other was missing.
     it("there is one Coaching reflection store", () => {
-      // The Admin "missing reflection" alert asks the canonical store.
-      const scan = read("pages/admin/alertScan.ts");
-      expect(scan).toMatch(/reflectedSessionIds/);
-      expect(code(scan)).not.toMatch(/coachee_notes/);
-      expect(read("pages/admin/AdminAlerts.tsx")).toMatch(/session_learning_reflections/);
+      // The Admin "reflection not written yet" alert asks the canonical
+      // deliverable state, in SQL (admin_alerts_current).
+      const sql = readFileSync(join(process.cwd(), "supabase/migrations/20261006140000_admin_alerts_current.sql"), "utf8");
+      expect(sql).toMatch(/canonical_session_deliverable_state/);
+      expect(sql).not.toMatch(/coachee_notes/);
+      expect(code(read("pages/admin/AdminAlerts.tsx"))).not.toMatch(/coachee_notes/);
     });
 
     // C7: programme Coaching quantity is the cohort requirement count.

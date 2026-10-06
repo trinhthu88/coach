@@ -1,335 +1,83 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, RefreshCw, Flag, Users, BarChart3, Calendar as CalendarIcon, PanelsTopLeft, type LucideIcon } from "lucide-react";
+import { Loader2, Check, RefreshCw, Flag, Users, BarChart3, Calendar as CalendarIcon, type LucideIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
-import {
-  buildFeedbackAlerts, buildMentoringPrepFileOverdueAlerts, buildMentoringFeedbackOverdueAlerts,
-  buildStaleProgrammeParticipantAlerts, buildLowQuizScoreAlerts, buildFlaggedSessionAlerts,
-  type ScanQuizSubmissionRow,
-  countOverdueActions,
-  type ScanActionRow,
-} from "./alertScan";
 import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
+import { alertText, type CurrentAlert } from "./alertText";
 
-interface AlertsScanSessionRow {
+interface ResolvedAlert {
   id: string;
-  coach_id: string;
-  coachee_id: string;
-  status: string;
-  enrollment_id: string | null;
-  start_time: string;
-}
-
-interface AlertsScanProfileRow {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-}
-
-interface AlertsScanEnrollmentRow {
-  id: string;
-  user_id: string;
-  status: string;
-  start_date: string;
-}
-
-type NewAlert = {
-  severity: "info" | "warning" | "critical";
-  alert_type: string;
   title: string;
-  message: string;
-  related_coachee_id: string | null;
-  related_enrollment_id?: string | null;
-  related_coach_id?: string | null;
-  resolved: false;
-};
-
-interface Alert {
-  id: string;
-  severity: "info" | "warning" | "critical";
-  alert_type: string;
-  title: string;
-  message: string | null;
-  related_coachee_id: string | null;
-  related_enrollment_id: string | null;
-  related_coach_id: string | null;
-  resolved: boolean;
-  resolved_at: string | null;
-  created_at: string;
 }
 
 const TYPE_ICON: Record<string, LucideIcon> = {
-  overdue_actions: Users,
   programme_at_risk: Flag,
-  cohort_underbooked: Flag,
-  coach_applications: Users,
-  feedback_response: BarChart3,
-  coach_capacity: CalendarIcon,
-  renewal: PanelsTopLeft,
-  mentoring_prep_file: BarChart3,
-  mentoring_feedback: BarChart3,
+  needs_attention: Flag,
+  overdue_actions: Users,
+  reflection_outstanding: BarChart3,
+  mentor_feedback_outstanding: BarChart3,
+  prep_file_outstanding: BarChart3,
   stale_programme_participant: Users,
   low_quiz_scores: BarChart3,
-  triad_not_scheduled: CalendarIcon,
+  goal_setup_overdue: CalendarIcon,
   coach_flagged_session: Flag,
 };
 
-function scopeFor(a: Alert, t: (key: string) => string) {
+function scopeFor(a: CurrentAlert, t: (key: string) => string) {
   if (a.related_coach_id) return t("alerts.scopeCoachRoster");
-  if (a.related_coachee_id) return t("alerts.scopeCoachee");
+  if (a.related_user_id) return t("alerts.scopeCoachee");
   return t("alerts.scopeAllProgrammes");
 }
 
+const ORDER: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+
 export default function AdminAlerts() {
   const { t } = useTranslation("admin");
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<CurrentAlert[]>([]);
+  const [resolved, setResolved] = useState<ResolvedAlert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scanning, setScanning] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<"all" | "critical" | "warning" | "info">("all");
 
   const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from("admin_alerts").select("*").order("created_at", { ascending: false });
-    setAlerts((data || []) as Alert[]);
-    setLoading(false);
+    const [current, done] = await Promise.all([
+      supabase.rpc("admin_alerts_current"),
+      supabase.from("admin_alerts").select("id, title").eq("resolved", true).order("resolved_at", { ascending: false }).limit(10),
+    ]);
+    if (current.error) toast.error(current.error.message);
+    setAlerts((current.data ?? []) as CurrentAlert[]);
+    setResolved((done.data ?? []) as ResolvedAlert[]);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, []);
 
-  // TODO(P3, RULES_AUDIT.md P2 #14): move alert generation into a canonical
-  // database function that returns alerts as a result set (not stored rows).
-  // This scan is a Source of Truth risk:
-  //   - it runs in the admin's browser, reads raw tables (sessions,
-  //     submissions, actions) and re-derives rules the database already owns
-  //     (overdue, missed, at risk), so the two can disagree;
-  //   - its alerts are written into admin_alerts as a snapshot and go stale
-  //     the moment the underlying data changes, until someone scans again;
-  //   - "programme at risk" comes from effective_enrollment_status, which is
-  //     only at_risk after an incomplete programme has ended (20261001110000);
-  //     a leader falling behind mid-programme (pace_status = behind) raises
-  //     no alert here.
-  // The replacement should read canonical_enrollment_requirement_calendar /
-  // canonical_overdue_items for overdue work and canonical session status for
-  // missed sessions.
-  const runScan = async () => {
-    setScanning(true);
-    try {
-      const now = new Date();
-
-      const [
-        { data: sessions },
-        { data: peerSessions },
-        { data: peerFeedback },
-        { data: profiles },
-        { data: enrollments },
-        { data: mentoringSessions },
-        { data: assignments },
-        { data: submissions },
-        { data: inactivity },
-        { data: goalSetupOverdue },
-        { data: flaggedFeedback },
-        { data: actionRows },
-        { data: reflections },
-      ] = await Promise.all([
-        supabase
-          .from("sessions")
-          .select("id, enrollment_id, coach_id, coachee_id, status, start_time"),
-        supabase
-          .from("peer_sessions")
-           .select("id, enrollment_id, peer_coach_id, peer_coachee_id, status, start_time"),
-        supabase.from("peer_session_competency_feedback").select("peer_session_id"),
-        supabase.from("profiles").select("id, full_name, email"),
-         supabase.from("programme_enrollments").select("id, user_id, status, start_date"),
-        supabase
-          .from("mentoring_sessions")
-          .select("id, enrollment_id, mentee_id, status, start_time, prep_file_path, feedback_submitted_at"),
-        supabase.from("assignments").select("id, assignment_type"),
-        supabase.from("assignment_submissions").select("user_id, enrollment_id, assignment_id, score_pct, submitted_at"),
-        // "Inactive 7+ days" has one canonical rule (also used by the daily reminders and the weekly email).
-        supabase.rpc("admin_enrollment_inactivity", { p_programme_id: undefined }),
-        supabase.rpc("admin_goal_setup_overdue"),
-        supabase.from("coach_session_feedback").select("session_id, coach_id, flag_notes").eq("flag_for_admin", true),
-        supabase.from("enrollment_actions").select("enrollment_id, status, due_date").neq("status", "completed"),
-        // Canonical learner reflections. sessions.coachee_notes is no longer a
-        // reflection store for Coaching (20260921190000), so asking it whether
-        // a learner has reflected would give the wrong answer in both
-        // directions.
-        supabase
-          .from("session_learning_reflections")
-          .select("source_activity_id")
-          .eq("source_activity_type", "coaching"),
-      ]);
-
-      const profById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.full_name]));
-      const emailById = new Map((profiles || []).map((p: AlertsScanProfileRow) => [p.id, p.email]));
-      const peerFeedbackSessionIds = new Set(
-        (peerFeedback || []).map((f: { peer_session_id: string }) => f.peer_session_id)
-      );
-      const enrollmentById = new Map((enrollments || []).map((e: AlertsScanEnrollmentRow) => [e.id, e]));
-      const overdueByEnrollment = countOverdueActions((actionRows || []) as ScanActionRow[], now);
-
-      // Programme status and completion come from the canonical engine (the
-      // effective status and completion % Learner and Sponsor see).
-      const progressRows = await fetchAdminCanonicalProgress((enrollments || []).map((e: AlertsScanEnrollmentRow) => e.id));
-      const progressByEnrollment = new Map(progressRows.map((row) => [row.enrollment_id, row]));
-      const effectiveStatus = (e: AlertsScanEnrollmentRow) => progressByEnrollment.get(e.id)?.effective_enrollment_status ?? e.status;
-       const newAlerts: NewAlert[] = [];
-       overdueByEnrollment.forEach((count, enrollmentId) => {
-        if (count >= 3) {
-           const enrollment = enrollmentById.get(enrollmentId);
-           if (!enrollment) return;
-           const coacheeId = enrollment.user_id;
-          newAlerts.push({
-            severity: count >= 5 ? "critical" : "warning",
-            alert_type: "overdue_actions",
-            title: `${profById.get(coacheeId) || "Coachee"} — ${count} overdue actions`,
-            message: count >= 5 ? "Programme at risk · consider intervention" : "Engagement dropping",
-            related_coachee_id: coacheeId,
-            resolved: false,
-          });
-        }
-      });
-
-      (enrollments || []).forEach((e: AlertsScanEnrollmentRow) => {
-        if (effectiveStatus(e) === "at_risk") {
-          newAlerts.push({
-            severity: "critical",
-            alert_type: "programme_at_risk",
-            title: `${profById.get(e.user_id) || "Coachee"} — programme at risk`,
-             message: `Canonical progress ${progressByEnrollment.get(e.id)?.full_completion_pct == null ? "unavailable" : `${Math.round(Number(progressByEnrollment.get(e.id)!.full_completion_pct))}%`} · review needed`,
-            related_coachee_id: e.user_id,
-            related_enrollment_id: e.id,
-            resolved: false,
-          });
-        }
-      });
-
-      // Missing reflection / competency feedback — regular + peer sessions
-      newAlerts.push(
-        ...buildFeedbackAlerts({
-          sessions: sessions || [],
-          peerSessions: peerSessions || [],
-          peerFeedbackSessionIds,
-          reflectedSessionIds: new Set(
-            ((reflections ?? []) as { source_activity_id: string }[]).map((r) => r.source_activity_id),
-          ),
-          nameById: profById,
-          emailById,
-          now,
-        })
-      );
-
-      // Missing prep file / mentor feedback — mentoring sessions
-      newAlerts.push(
-        ...buildMentoringPrepFileOverdueAlerts({
-          mentoringSessions: mentoringSessions || [],
-          nameById: profById,
-          emailById,
-          now,
-        }),
-        ...buildMentoringFeedbackOverdueAlerts({
-          mentoringSessions: mentoringSessions || [],
-          nameById: profById,
-          emailById,
-        })
-      );
-
-      // Goal setup overdue (cohort start + 7 days, no active goal) — an alert
-      // only; booking is governed by check_booking_eligibility().
-      for (const row of goalSetupOverdue || []) {
-        newAlerts.push({
-          severity: "warning",
-          alert_type: "goal_setup_overdue",
-          title: `${row.learner_name || "Learner"} — Goal setup overdue`,
-          message: `No active goal since ${row.goal_setup_deadline} · the learner cannot book sessions until they set one`,
-          related_coachee_id: row.user_id,
-          related_enrollment_id: row.enrollment_id,
-          resolved: false,
-        });
-      }
-
-      // Programme engagement (Phase 4) — stale participants (canonical rule), low quiz scores.
-      newAlerts.push(
-        ...buildStaleProgrammeParticipantAlerts({
-          inactive: (inactivity || [])
-            .filter((row) => row.is_inactive)
-            .map((row) => ({ enrollmentId: row.enrollment_id, userId: row.user_id, lastActivityAt: row.last_activity_at })),
-          nameById: profById,
-          emailById,
-        })
-      );
-
-      const quizAssignmentIds = new Set((assignments || []).filter((a: { id: string; assignment_type: string }) => a.assignment_type === "quiz").map((a) => a.id));
-      const quizSubmissions: ScanQuizSubmissionRow[] = (submissions || [])
-        .filter((s: { assignment_id: string }) => quizAssignmentIds.has(s.assignment_id))
-         .filter((s: { enrollment_id: string | null }) => !!s.enrollment_id)
-         .map((s: { user_id: string; enrollment_id: string; score_pct: number | null }) => ({ userId: s.user_id, enrollmentId: s.enrollment_id, scorePct: s.score_pct }));
-      newAlerts.push(...buildLowQuizScoreAlerts({ submissions: quizSubmissions, nameById: profById, emailById }));
-
-      // Coach-flagged sessions (optional coach_session_feedback.flag_for_admin)
-      const sessionById = new Map(
-        (sessions || []).map((s: AlertsScanSessionRow) => [s.id, { coachee_id: s.coachee_id }])
-      );
-      newAlerts.push(
-        ...buildFlaggedSessionAlerts({
-          flagged: flaggedFeedback || [],
-          sessionById,
-          nameById: profById,
-          emailById,
-        })
-      );
-
-      await supabase
-        .from("admin_alerts")
-        .delete()
-        .in("alert_type", [
-          "overdue_actions",
-          "programme_at_risk",
-          "feedback_response",
-          "mentoring_prep_file",
-          "mentoring_feedback",
-          "stale_programme_participant",
-          "low_quiz_scores",
-          "triad_not_scheduled",
-          "coach_flagged_session",
-          "goal_setup_overdue",
-        ])
-        .eq("resolved", false);
-      if (newAlerts.length) await supabase.from("admin_alerts").insert(newAlerts);
-
-      toast.success(t("alerts.scanComplete", { count: newAlerts.length }));
-      load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    } finally {
-      setScanning(false);
-    }
+  const refresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
   };
 
-  const resolve = async (id: string) => {
-    await supabase.from("admin_alerts").update({ resolved: true, resolved_at: new Date().toISOString() }).eq("id", id);
+  const resolve = async (storedId: string) => {
+    await supabase.from("admin_alerts").update({ resolved: true, resolved_at: new Date().toISOString() }).eq("id", storedId);
     toast.success(t("alerts.alertResolved"));
     load();
   };
 
-  const open = alerts.filter((a) => !a.resolved);
-  const resolved = alerts.filter((a) => a.resolved);
-  const critical = open.filter((a) => a.severity === "critical");
-  const warning = open.filter((a) => a.severity === "warning");
-  const resolvedToday = resolved.filter((a) => a.resolved_at && new Date(a.resolved_at).toDateString() === new Date().toDateString());
+  const critical = alerts.filter((a) => a.severity === "critical");
+  const warning = alerts.filter((a) => a.severity === "warning");
+  const info = alerts.filter((a) => a.severity === "info");
 
   const visible = useMemo(() => {
-    // Sort by severity first (critical > warning > info), then newest
-    const order: Record<string, number> = { critical: 0, warning: 1, info: 2 };
-    const list = filter === "all" ? open : open.filter((a) => a.severity === filter);
-    return [...list].sort((a, b) => order[a.severity] - order[b.severity] || +new Date(b.created_at) - +new Date(a.created_at));
-  }, [open, filter]);
+    const list = filter === "all" ? alerts : alerts.filter((a) => a.severity === filter);
+    return [...list].sort((a, b) => ORDER[a.severity] - ORDER[b.severity] || (a.subject_name ?? "").localeCompare(b.subject_name ?? ""));
+  }, [alerts, filter]);
 
   if (loading) {
     return (
@@ -345,7 +93,7 @@ export default function AdminAlerts() {
         eyebrow={t("alerts.eyebrow")}
         title={t("alerts.title")}
         trailing=""
-        subtitle={t("alerts.subtitle", { count: open.length })}
+        subtitle={t("alerts.subtitle", { count: alerts.length })}
         right={
           <div className="flex items-center gap-2">
             <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>{t("alerts.filterAll")}</FilterChip>
@@ -360,8 +108,8 @@ export default function AdminAlerts() {
         <div className="grid flex-1 gap-3 sm:grid-cols-4">
           <div className="surface-card border-l-4 border-l-accent p-4">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("alerts.statOpen")}</p>
-            <p className="font-display mt-2 text-[2rem] leading-none">{open.length}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">{t("alerts.statOpenHint", { total: alerts.length })}</p>
+            <p className="font-display mt-2 text-[2rem] leading-none">{alerts.length}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("alerts.statOpenLiveHint")}</p>
           </div>
           <div className="surface-card border-l-4 border-l-destructive p-4">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("alerts.statCritical")}</p>
@@ -373,28 +121,29 @@ export default function AdminAlerts() {
             <p className="font-display mt-2 text-[2rem] leading-none text-warning">{warning.length}</p>
             <p className="mt-2 text-[11px] text-muted-foreground">{t("alerts.statWarningHint")}</p>
           </div>
-          <div className="surface-card border-l-4 border-l-success p-4">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("alerts.statResolvedToday")}</p>
-            <p className="font-display mt-2 text-[2rem] leading-none text-success">{resolvedToday.length}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">{t("alerts.statResolvedTodayHint")}</p>
+          <div className="surface-card border-l-4 border-l-primary p-4">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("alerts.statInfo")}</p>
+            <p className="font-display mt-2 text-[2rem] leading-none text-primary">{info.length}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">{t("alerts.statInfoHint")}</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={runScan} disabled={scanning}>
-          {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          {t("alerts.runScan")}
+        <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing}>
+          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {t("alerts.refresh")}
         </Button>
       </div>
 
       <div className="space-y-3">
         {visible.length === 0 ? (
           <div className="surface-card p-10 text-center text-sm text-muted-foreground">
-            {filter === "all" ? t("alerts.allClear") : t("alerts.nothingHere")}
+            {filter === "all" ? t("alerts.allClearLive") : t("alerts.nothingHere")}
           </div>
         ) : (
           visible.map((a) => {
             const Icon = TYPE_ICON[a.alert_type] || Flag;
+            const { title, message } = alertText(a, t);
             return (
-              <div key={a.id} className="surface-card flex items-start gap-4 p-5">
+              <div key={a.alert_key} className="surface-card flex items-start gap-4 p-5" data-testid="alert-row">
                 <span
                   className={cn(
                     "grid h-9 w-9 shrink-0 place-items-center rounded-[10px]",
@@ -406,18 +155,23 @@ export default function AdminAlerts() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                     <Pill tone={a.severity === "critical" ? "destructive" : a.severity === "warning" ? "warning" : "primary"}>
-                      {a.severity}
+                      {t(`alerts.severity.${a.severity}`)}
                     </Pill>
-                    <span>{formatDistanceToNow(new Date(a.created_at))} · {scopeFor(a, t)}</span>
+                    <span>
+                      {a.created_at ? `${formatDistanceToNow(new Date(a.created_at))} · ` : ""}
+                      {scopeFor(a, t)}
+                    </span>
                   </div>
-                  <p className="mt-2 text-[15px] font-semibold text-foreground">{a.title}</p>
-                  {a.message && <p className="mt-1 text-[12.5px] text-muted-foreground">{a.message}</p>}
+                  <p className="mt-2 text-[15px] font-semibold text-foreground">{title}</p>
+                  {message && <p className="mt-1 text-[12.5px] text-muted-foreground">{message}</p>}
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button size="sm" onClick={() => resolve(a.id)}>
-                    <Check className="h-3.5 w-3.5" /> {t("alerts.resolve")}
-                  </Button>
-                </div>
+                {a.stored_alert_id && (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button size="sm" onClick={() => resolve(a.stored_alert_id!)}>
+                      <Check className="h-3.5 w-3.5" /> {t("alerts.resolve")}
+                    </Button>
+                  </div>
+                )}
               </div>
             );
           })
@@ -430,7 +184,7 @@ export default function AdminAlerts() {
             {t("alerts.resolvedCount", { count: resolved.length })}
           </p>
           <ul className="divide-y">
-            {resolved.slice(0, 10).map((a) => (
+            {resolved.map((a) => (
               <li key={a.id} className="flex items-start gap-3 py-2">
                 <Check className="mt-0.5 h-4 w-4 text-success" />
                 <p className="min-w-0 flex-1 text-[12px] font-medium text-muted-foreground line-through">{a.title}</p>

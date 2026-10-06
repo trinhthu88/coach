@@ -147,74 +147,35 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 1. Overdue assignments
+    // 1. Overdue assignments: the quiz / reflection still missing from a
+    //    Training week the enrollment's own requirement calendar calls
+    //    overdue (training_overdue_assignment_targets_internal; "today" in
+    //    the programme time zone).
     // ------------------------------------------------------------------
-    const { data: quizModules } = await admin
-      .from("programme_modules")
-      .select("programme_id")
-      .eq("module", "quiz")
-      .eq("enabled", true);
-    const quizProgrammeIds = new Set((quizModules || []).map((m) => m.programme_id as string));
-
-    if (quizProgrammeIds.size > 0) {
-      const { data: weeks } = await admin
-        .from("training_weeks")
-        .select("id, programme_id, unlock_date")
-        .in("programme_id", [...quizProgrammeIds])
-        .not("unlock_date", "is", null);
-      const weekById = new Map((weeks || []).map((w) => [w.id as string, w]));
-
-      const { data: assignments } = await admin
-        .from("assignments")
-        .select("id, training_week_id, assignment_type, due_offset_days, is_visible")
-        .eq("is_visible", true)
-        .not("due_offset_days", "is", null)
-        .in("training_week_id", [...weekById.keys()]);
-
-      const today = todayISO();
-      for (const a of assignments || []) {
-        const week = weekById.get(a.training_week_id as string);
-        if (!week) continue;
-        const dueDate = new Date(`${week.unlock_date}T00:00:00Z`);
-        dueDate.setUTCDate(dueDate.getUTCDate() + (a.due_offset_days as number));
-        if (dueDate.toISOString().slice(0, 10) >= today) continue; // not yet overdue
-
-        const { data: enrollments } = await admin
-          .from("programme_enrollments")
-          .select("user_id")
-          .eq("programme_id", week.programme_id)
-          .eq("status", "active");
-        const enrolledIds = [...new Set((enrollments || []).map((e) => e.user_id as string))];
-        if (enrolledIds.length === 0) continue;
-
-        const { data: submissions } = await admin
-          .from("assignment_submissions")
-          .select("user_id")
-          .eq("assignment_id", a.id)
-          .in("user_id", enrolledIds);
-        const submittedIds = new Set((submissions || []).map((s) => s.user_id as string));
-        const pendingIds = enrolledIds.filter((id) => !submittedIds.has(id));
-
-        const link =
-          a.assignment_type === "quiz"
-            ? `/training/${a.training_week_id}/quiz/${a.id}`
-            : `/training/${a.training_week_id}/reflect/${a.id}`;
-
-        for (const userId of pendingIds) {
-          const sent = await notifyOnce({
-            userId,
-            link,
-            type: "assignment_overdue",
-            title: "An assignment is overdue",
-            titleVi: "Một bài tập đã quá hạn",
-            body: "You have a training assignment that's now overdue. Take a few minutes to complete it.",
-            bodyVi: "Bạn có một bài tập đào tạo đã quá hạn. Hãy dành vài phút để hoàn thành.",
-            ctaLabel: "Complete assignment",
-            ctaLabelVi: "Hoàn thành bài tập",
-          });
-          if (sent) overdueSent++;
-        }
-      }
+    const { data: overdueTargets, error: overdueErr } = await admin.rpc("training_overdue_assignment_targets_internal");
+    if (overdueErr) throw overdueErr;
+    for (const target of (overdueTargets ?? []) as {
+      user_id: string;
+      assignment_id: string;
+      training_week_id: string;
+      assignment_type: string;
+    }[]) {
+      const link =
+        target.assignment_type === "quiz"
+          ? `/training/${target.training_week_id}/quiz/${target.assignment_id}`
+          : `/training/${target.training_week_id}/reflect/${target.assignment_id}`;
+      const sent = await notifyOnce({
+        userId: target.user_id,
+        link,
+        type: "assignment_overdue",
+        title: "An assignment is overdue",
+        titleVi: "Một bài tập đã quá hạn",
+        body: "You have a training assignment that's now overdue. Take a few minutes to complete it.",
+        bodyVi: "Bạn có một bài tập đào tạo đã quá hạn. Hãy dành vài phút để hoàn thành.",
+        ctaLabel: "Complete assignment",
+        ctaLabelVi: "Hoàn thành bài tập",
+      });
+      if (sent) overdueSent++;
     }
 
     // Triad participants are the group's member enrollments (canonical
