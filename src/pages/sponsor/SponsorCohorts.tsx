@@ -89,7 +89,7 @@ export default function SponsorCohorts() {
           />
           <RollupMetric
             icon={BarChart3}
-            label={t("cohorts.kpis.sessionsUsed")}
+            label={t("shared.unitsCompleted")}
             value={kpis ? `${kpis.completed_units} / ${kpis.required_units}` : "—"}
             sub={t("cohorts.kpis.sessionsSub")}
             tone="blue"

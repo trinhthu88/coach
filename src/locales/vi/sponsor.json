@@ -89,7 +89,6 @@
       "leadersEnrolled": "Lãnh đạo đã đăng ký",
       "onTrack": "Đúng tiến độ",
       "atRisk": "Có nguy cơ",
-      "sessionsUsed": "Đơn vị đã dùng",
       "avgSatisfaction": "Mức hài lòng TB",
       "atRiskInline_other": "{{count}} người có rủi ro cần được chú ý",
       "budgetUsed": "Ngân sách đã dùng",
@@ -104,7 +103,6 @@
         "leaders": "Lãnh đạo",
         "onTrack": "% đúng tiến độ",
         "sessionsPace": "Tốc độ session",
-        "unitsUsed": "Đơn vị đã dùng",
         "avgGoalGrowth": "Tăng trưởng mục tiêu TB",
         "satisfaction": "Mức độ hài lòng",
         "signal": "Tín hiệu"
@@ -219,7 +217,6 @@
       "leadersEnrolled": "Lãnh đạo đã đăng ký",
       "onTrack": "Đúng tiến độ",
       "atRisk": "Có nguy cơ",
-      "sessionsUsed": "Đơn vị đã dùng",
       "avgGoalGrowth": "Tăng trưởng mục tiêu TB"
     },
     "active": "Đang hoạt động",
@@ -251,7 +248,8 @@
       "healthy": "Tốt",
       "watch": "Cần theo dõi",
       "attention": "Cần chú ý"
-    }
+    },
+    "unitsCompleted": "Đơn vị chương trình đã hoàn thành"
   },
   "cohortDetail": {
     "header": {
@@ -386,13 +384,12 @@
       "completed": "Đã hoàn thành",
       "startEnd": "Bắt đầu — kết thúc",
       "currentWeek": "Tuần hiện tại",
-      "requiredUnits": "Đơn vị được cấp",
-      "completedUnits": "Đơn vị đã hoàn thành",
       "dueUnits": "Đơn vị đến hạn",
       "overdueUnits": "Đơn vị quá hạn",
       "completion": "Hoàn thành chương trình",
       "satisfaction": "Mức hài lòng trung bình",
-      "withheld": "Xu hướng hàng tuần, ghi chú riêng tư, phản hồi và nội dung coaching vẫn được ẩn. Các số liệu trên được tính từ snapshot module an toàn và hoạt động tổng hợp được phép hiển thị."
+      "withheld": "Xu hướng hàng tuần, ghi chú riêng tư, phản hồi và nội dung coaching vẫn được ẩn. Các số liệu trên được tính từ snapshot module an toàn và hoạt động tổng hợp được phép hiển thị.",
+      "requiredUnitsCount": "Đơn vị chương trình bắt buộc"
     },
     "filters": {
       "all": "Tất cả lãnh đạo {{count}}",
@@ -432,7 +429,6 @@
     "sameViewNote": "Mỗi lãnh đạo đều thấy chính góc nhìn về bản thân mà bạn đang thấy.",
     "progress": {
       "completion": "Hoàn thành chương trình",
-      "completedRequired": "Hoạt động bắt buộc đã hoàn thành",
       "adherence": "Đúng tiến độ đến hạn",
       "coverage": "Phạm vi lịch",
       "goal": "Tiến độ mục tiêu"

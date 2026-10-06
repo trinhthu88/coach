@@ -268,7 +268,7 @@ function ModuleCard({
 
 function AttentionSection({ kpis, counts, filter, onFilter, t }: { kpis: SponsorCohortSummary | null; counts: Record<FilterKey, number>; filter: FilterKey; onFilter: (filter: FilterKey) => void; t: (key: string) => string }) {
   const cards: { key: FilterKey; count: number; label: string; sub: string; color: string; border: string }[] = [
-    { key: "attention", count: kpis?.at_risk_count ?? counts.attention, label: t("cohortDetail.attention.leaders"), sub: t("cohortDetail.attention.flagged"), color: "#a8341c", border: "#f0d5cc" },
+    { key: "attention", count: kpis?.needs_attention_count ?? counts.attention, label: t("cohortDetail.attention.leaders"), sub: t("cohortDetail.attention.flagged"), color: "#a8341c", border: "#f0d5cc" },
     { key: "pace", count: kpis?.behind_count ?? counts.pace, label: t("cohortDetail.attention.behind"), sub: t("cohortDetail.attention.pace"), color: "#a8341c", border: "#f0d5cc" },
     { key: "coaching", count: counts.coaching, label: t("cohortDetail.attention.coaching"), sub: t("cohortDetail.attention.coachingSub"), color: "#a8541c", border: "#eddcc9" },
     { key: "learning", count: counts.learning, label: t("cohortDetail.attention.learning"), sub: t("cohortDetail.attention.learningSub"), color: "#a8541c", border: "#eddcc9" },
@@ -415,8 +415,8 @@ function ProgrammeDetails({ kpis, t }: { kpis: SponsorCohortSummary | null; t: (
        [t("cohortDetail.modules.triads"), moduleDetail(kpis?.triad_completed_units, kpis?.triad_due_units, kpis?.triad_required_units)],
     ]},
     { title: t("cohortDetail.details.programme"), rows: [
-      [t("cohortDetail.details.requiredUnits"), value(kpis?.required_units)],
-      [t("cohortDetail.details.completedUnits"), value(kpis?.completed_units)],
+      [t("cohortDetail.details.requiredUnitsCount"), value(kpis?.required_units)],
+      [t("shared.unitsCompleted"), value(kpis?.completed_units)],
       [t("cohortDetail.details.dueUnits"), value(kpis?.due_units)],
       [t("cohortDetail.details.overdueUnits"), value(kpis?.overdue_units)],
       [t("cohortDetail.details.completion"), percent(kpis?.full_completion_pct)],
@@ -524,7 +524,8 @@ function moduleMetric(row: SponsorRosterRow, key: SortKey) {
 
 function matchesFilter(row: SponsorRosterRow, filter: FilterKey) {
   if (filter === "all") return true;
-  if (filter === "attention") return effectiveSponsorStatus(row) === "at_risk" || row.pace_status === "behind" || !moduleComplete(row.coaching_completed_units, row.coaching_required_units) || !moduleComplete(row.training_completed_units, row.training_required_units);
+  // decision 8: behind pace OR >= 1 overdue unit, decided by the server.
+  if (filter === "attention") return row.needs_attention === true;
   if (filter === "pace") return row.pace_status === "behind";
   if (filter === "coaching") return !moduleComplete(row.coaching_completed_units, row.coaching_required_units);
   return !moduleComplete(row.training_completed_units, row.training_required_units);

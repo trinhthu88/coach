@@ -15,7 +15,7 @@ import {
   RosterTable,
   HealthSignalPill,
 } from "@/pages/sponsor/_shared";
-import { healthSignal } from "@/pages/sponsor/sponsorUtils";
+import { fromServerHealthSignal } from "@/pages/sponsor/sponsorUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -84,7 +84,6 @@ export default function SponsorDashboard() {
   const cohortHealthRows = useMemo(() => {
     return cohortSummaries.map((summary) => {
       const leaders = summary.enrollment_count ?? 0;
-      const atRisk = summary.at_risk_count ?? 0;
       return {
         cohortName: summary.cohort_label,
         cohortId: summary.cohort_id,
@@ -93,7 +92,8 @@ export default function SponsorDashboard() {
         completedUnits: summary.completed_units,
         requiredUnits: summary.required_units,
         completionPct: canonicalCompletionPct(summary.full_completion_pct) ?? 0,
-        signal: healthSignal(atRisk, leaders),
+        // decision 8, computed by the server (sponsor_health_signal)
+        signal: fromServerHealthSignal(summary.health_signal),
       };
     });
   }, [cohortSummaries]);
@@ -298,7 +298,7 @@ export default function SponsorDashboard() {
             <HeadlineStat label={t("dashboard.kpis.enrolledActive")} value={kpis ? kpis.active_count : "—"} icon={Users} tone="primary" />
             <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis ? kpis.enrollment_count : "—"} icon={Users} tone="primary" />
             <HeadlineStat
-              label={t("dashboard.kpis.sessionsUsed")}
+              label={t("shared.unitsCompleted")}
               value={kpis ? `${kpis.completed_units} / ${kpis.required_units}` : "—"}
               icon={CalendarCheck}
               tone="secondary"
@@ -327,7 +327,7 @@ export default function SponsorDashboard() {
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.cohort")}</th>
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.leaders")}</th>
                     <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.healthMatrix.columns.onTrack")}</th>
-                    <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.healthMatrix.columns.unitsUsed")}</th>
+                    <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("shared.unitsCompleted")}</th>
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.signal")}</th>
                   </tr>
                 </thead>

@@ -6849,6 +6849,8 @@ export type Database = {
       sponsor_canonical_cohort_progress: {
         Args: { p_as_of?: string; p_cohort_id?: string }
         Returns: {
+          health_signal: string | null
+          needs_attention_count: number
           adherence_credited_units: number
           coverage_credited_units: number
           active_count: number
@@ -6912,6 +6914,8 @@ export type Database = {
       sponsor_canonical_cohort_progress_one: {
         Args: { p_as_of?: string; p_cohort_id?: string }
         Returns: {
+          health_signal: string | null
+          needs_attention_count: number
           adherence_credited_units: number
           coverage_credited_units: number
           active_count: number
@@ -6979,6 +6983,7 @@ export type Database = {
           p_enrollment_id?: string
         }
         Returns: {
+          needs_attention: boolean
           action_completion_pct: number
           booked_units: number
           coaching_booked_units: number
@@ -7156,6 +7161,8 @@ export type Database = {
       sponsor_canonical_organisation_progress: {
         Args: { p_as_of?: string }
         Returns: {
+          health_signal: string | null
+          needs_attention_count: number
           active_count: number
           at_risk_count: number
           behind_count: number

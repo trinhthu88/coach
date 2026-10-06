@@ -89,7 +89,6 @@
       "leadersEnrolled": "Leaders enrolled",
       "onTrack": "On track",
       "atRisk": "At risk",
-      "sessionsUsed": "Units used",
       "avgSatisfaction": "Avg satisfaction",
       "atRiskInline_other": "{{count}} leaders at risk and may need attention",
       "atRiskInline_one": "{{count}} leader at risk and may need attention",
@@ -105,7 +104,6 @@
         "leaders": "Leaders",
         "onTrack": "On track %",
         "sessionsPace": "Sessions pace",
-        "unitsUsed": "Units used",
         "avgGoalGrowth": "Avg goal growth",
         "satisfaction": "Satisfaction",
         "signal": "Signal"
@@ -225,7 +223,6 @@
       "leadersEnrolled": "Leaders enrolled",
       "onTrack": "On track",
       "atRisk": "At risk",
-      "sessionsUsed": "Units used",
       "avgGoalGrowth": "Avg goal growth",
       "onTrackSub": "of {{total}} leaders",
       "atRiskSub": "enrollment status",
@@ -269,7 +266,8 @@
       "healthy": "Healthy",
       "watch": "Watch",
       "attention": "Needs attention"
-    }
+    },
+    "unitsCompleted": "Programme units completed"
   },
   "cohortDetail": {
     "header": {
@@ -404,13 +402,12 @@
       "completed": "Completed",
       "startEnd": "Start — end",
       "currentWeek": "Current week",
-      "requiredUnits": "Units entitled",
-      "completedUnits": "Units completed",
       "dueUnits": "Units due so far",
       "overdueUnits": "Units overdue",
       "completion": "Programme completion",
       "satisfaction": "Average satisfaction",
-      "withheld": "Weekly engagement trend, private notes, reflections and coaching content remain withheld. The figures above are derived from sponsor-safe module snapshots and visible aggregate activity."
+      "withheld": "Weekly engagement trend, private notes, reflections and coaching content remain withheld. The figures above are derived from sponsor-safe module snapshots and visible aggregate activity.",
+      "requiredUnitsCount": "Programme units required"
     },
     "filters": {
       "all": "All leaders {{count}}",
@@ -454,7 +451,6 @@
     },
     "progress": {
       "completion": "Programme completion",
-      "completedRequired": "Completed required activities",
       "adherence": "Due-to-date adherence",
       "coverage": "Schedule coverage",
       "goal": "Goal progress"
