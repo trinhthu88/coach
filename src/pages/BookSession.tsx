@@ -346,11 +346,8 @@ export default function BookSession() {
       return toast.error(getFriendlyErrorMessage(error, t));
     }
     // Coaching reschedules are atomic inside reschedule_coaching_session, so
-    // there is no old booking left to close out here. Peer mode keeps the
-    // previous best-effort behaviour because it has no canonical equivalent.
-    if (rescheduleId && mode === "peer") {
-      await supabase.from("sessions").update({ status: "rescheduled" }).eq("id", rescheduleId);
-    }
+    // there is no old booking left to close out here. Peer sessions have no
+    // learner reschedule: the app never writes a session row directly.
     invalidateCoaching();
     toast.success(
       mode === "peer"

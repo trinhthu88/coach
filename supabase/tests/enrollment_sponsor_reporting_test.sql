@@ -81,6 +81,8 @@ select has_function('public', 'book_peer_session', array['uuid','uuid','text','t
 select ok(pg_get_functiondef('public.book_peer_session(uuid,uuid,text,timestamptz,integer,uuid)'::regprocedure)
   ~ 'auth\.uid\(\)', 'peer booking RPC preserves authenticated actor identity');
 select ok(pg_get_functiondef('public.validate_peer_session_enrollment()'::regprocedure)
+  ~ 'assert_peer_session_bookable_internal'
+  and pg_get_functiondef('public.assert_peer_session_bookable_internal(uuid,uuid,uuid,uuid)'::regprocedure)
   ~ 'peer_coaching', 'peer booking trigger checks enabled peer coaching module');
 
 select * from finish();

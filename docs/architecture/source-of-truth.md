@@ -271,6 +271,14 @@ The `confirm-session` and `cancel-session` edge functions call
 / `transition_peer_session_status` with the caller's JWT; the service role only
 reads and sends email.
 
+The Peer booking rules for `peer_sessions` (receiver enrollment ongoing, peer
+coach opted in, Peer coaching enabled, entitlement not exhausted) have one
+owner, `assert_peer_session_bookable_internal` (`20261006100000`). The
+booking trigger `validate_peer_session_enrollment` and the Admin path
+(`assert_admin_session_bookable_internal`, which adds the peer coach's
+eligibility) both call it, so an Admin reschedule or reopen of a Peer session
+re-runs the same rules as a booking.
+
 ## Canonical chains
 
 ```

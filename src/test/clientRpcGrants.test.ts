@@ -36,6 +36,23 @@ describe("client RPC grants", () => {
     expect(offenders).toEqual([]);
   });
 
+  // Bookings, status changes and Admin edits go through SECURITY DEFINER
+  // functions; the four session tables grant no INSERT, and
+  // guard_session_protected_fields() refuses a status written at the table.
+  // Notes, meeting links and the mentoring prep file are still plain UPDATEs.
+  it("no app code inserts, deletes or changes the status of a session row directly", () => {
+    const offenders = sourceFiles().flatMap((file) =>
+      Array.from(
+        readFileSync(file, "utf8").matchAll(
+          /\.from\(\s*["'`](sessions|mentoring_sessions|peer_sessions|coachee_peer_sessions)["'`]\s*\)([^;]*)/g,
+        ),
+      )
+        .filter(([, , chain]) => /\.(insert|upsert|delete)\(/.test(chain) || /\.update\(\s*\{[^}]*\bstatus\b/.test(chain))
+        .map(([, table]) => `${relative(SRC, file)}: ${table}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it("the Sessions list reads Coaching requirements through the viewer's role wrapper", () => {
     expect(coachingFulfilmentRpc("coach")).toBe("coach_coaching_requirement_fulfilment");
     expect(coachingFulfilmentRpc("coachee")).toBe("learner_coaching_requirement_fulfilment");
