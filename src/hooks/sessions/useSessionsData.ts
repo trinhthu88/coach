@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/context/AuthContext";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Database, Tables } from "@/integrations/supabase/types";
 import type { SessionStatus } from "@/lib/sessionStatusMeta";
 import { withEnrollmentActions, type EnrollmentActionItem } from "@/lib/enrollmentActions";
 import { fetchMyTriads, type TriadGroupEntry, type TriadSessionView } from "@/hooks/triads/useMyTriads";
@@ -57,8 +57,14 @@ export interface SessionRow {
    * Null for peer/mentoring/triad rows and for legacy Coaching sessions that
    * predate the requirement link -- attribution is never invented for those.
    */
-  coachingRequirementOrdinal: number | null;
-  coachingRequirementDueOn: string | null;
+  /**
+   * The programme requirement this session is booked against ("Coaching 2",
+   * "Peer 1", "Mentoring 1") and its due date: from learner_session_history for
+   * the viewer's own enrollments, from the Coach wrapper for Coaching the viewer
+   * gives. Null when the session holds none (practice, legacy rows).
+   */
+  requirementUnit: number | null;
+  requirementDueOn: string | null;
   enrollment_actions: import("@/lib/enrollmentActions").EnrollmentActionItem[];
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
@@ -75,7 +81,14 @@ export interface SessionEnrollmentContext {
 
 export interface CoachingRequirementContext {
   ordinal: number;
-  dueOn: string;
+  dueOn: string | null;
+}
+
+/** The next live session of one module of one of the viewer's enrollments (learner_next_session_by_module). */
+export interface NextSessionByModule {
+  enrollmentId: string;
+  module: Database["public"]["Enums"]["programme_module_type"];
+  nextSessionAt: string;
 }
 
 export function attachEnrollmentContext<T extends { enrollment_id?: string | null }>(
@@ -168,7 +181,7 @@ export function coachingFulfilmentRpc(role: AppRole) {
   return null;
 }
 
-async function fetchSessionsData(userId: string, role: AppRole): Promise<SessionRow[]> {
+async function fetchSessionsData(userId: string, role: AppRole): Promise<{ rows: SessionRow[]; nextSessions: NextSessionByModule[] }> {
   type Enriched<T extends { id: string; enrollment_id?: string | null }> = T & {
     enrollment_actions: EnrollmentActionItem[];
   };
@@ -294,35 +307,53 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       enrollmentContexts[row.id] = { programmeName: programme?.name ?? null, cohortName: cohort?.name ?? null };
     }
   }
-  // Which Coaching requirement each session fulfils, so the Coach can see
-  // WHICH programme unit an incoming request is for rather than just a date.
+  // Which programme requirement each session is booked against, so a request
+  // reads "Coaching 2, due 5 Jul" rather than a bare date.
   //
-  // Read through the role wrapper of canonical_coaching_requirement_fulfilment
-  // rather than cohort_requirement_dates: the requirement schedule has exactly
-  // one table reader (the Admin schedule hook) so that no surface can
-  // reconstruct it, and the canonical function itself is not client-callable
-  // (20261005120000). A learner reads their own enrollment; a Coach reads only
-  // the units their own sessions fulfil.
+  // The viewer's OWN enrollments read learner_session_history -- every module,
+  // with the requirement's unit and due date (20261006180000) -- and
+  // learner_next_session_by_module. Coaching the viewer GIVES reads the Coach
+  // wrapper of canonical_coaching_requirement_fulfilment, which returns only the
+  // units the Coach's own sessions fulfil.
   //
-  // The requirement label is decoration on top of the session list: if this
-  // lookup fails the rows must still render unlabelled, rather than the whole
-  // list disappearing over a missing ordinal.
+  // These are decoration on top of the session list: if a lookup fails the rows
+  // still render unlabelled rather than the whole list disappearing.
   const requirementBySession: Record<string, CoachingRequirementContext> = {};
-  const fulfilmentRpc = coachingFulfilmentRpc(role);
-  const coachingEnrollmentIds = Array.from(
-    new Set(sess.map((row) => row.enrollment_id).filter((id): id is string => Boolean(id))),
+  const nextSessions: NextSessionByModule[] = [];
+  const ownEnrollmentIds = Array.from(
+    new Set(allRows.map((row) => row.viewer_enrollment_id).filter((id): id is string => Boolean(id))),
   );
-  // The viewer's OWN enrollments (sessions they receive) read through the
-  // learner wrapper; the enrollments they coach through the Coach wrapper.
-  const ownEnrollmentIds = new Set(sess.filter((row) => row.coachee_id === userId).map((row) => row.enrollment_id));
-  if (fulfilmentRpc) {
+  await Promise.all(
+    ownEnrollmentIds.map(async (enrollmentId) => {
+      try {
+        const [history, next] = await Promise.all([
+          supabase.rpc("learner_session_history", { p_enrollment_id: enrollmentId }),
+          supabase.rpc("learner_next_session_by_module", { p_enrollment_id: enrollmentId }),
+        ]);
+        for (const row of history.data ?? []) {
+          if (row.requirement_unit_number != null) {
+            requirementBySession[row.source_id] = { ordinal: row.requirement_unit_number, dueOn: row.requirement_due_on };
+          }
+        }
+        for (const row of next.data ?? []) {
+          nextSessions.push({ enrollmentId, module: row.module, nextSessionAt: row.next_session_at });
+        }
+      } catch (error) {
+        console.error("Session history context failed to load", error);
+      }
+    }),
+  );
+  const fulfilmentRpc = coachingFulfilmentRpc(role);
+  const coachedEnrollmentIds = Array.from(
+    new Set(sess.filter((row) => row.coach_id === userId).map((row) => row.enrollment_id).filter((id): id is string => Boolean(id))),
+  );
+  if (fulfilmentRpc === "coach_coaching_requirement_fulfilment") {
     await Promise.all(
-      coachingEnrollmentIds.map(async (enrollmentId) => {
+      coachedEnrollmentIds.map(async (enrollmentId) => {
         try {
-          const rpcName = ownEnrollmentIds.has(enrollmentId) ? "learner_coaching_requirement_fulfilment" : fulfilmentRpc;
-          const { data } = await supabase.rpc(rpcName, { p_enrollment_id: enrollmentId });
+          const { data } = await supabase.rpc(fulfilmentRpc, { p_enrollment_id: enrollmentId });
           for (const row of data ?? []) {
-            if (row.session_id && row.ordinal != null && row.due_on) {
+            if (row.session_id && row.ordinal != null) {
               requirementBySession[row.session_id] = { ordinal: row.ordinal, dueOn: row.due_on };
             }
           }
@@ -334,11 +365,11 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   }
 
   const rowsWithContext = attachEnrollmentContext(allRows, enrollmentContexts).map((row) => {
-    const req = requirementBySession[row.id];
+    const req = row.kind === "triad" ? undefined : requirementBySession[row.id];
     return {
       ...row,
-      coachingRequirementOrdinal: req?.ordinal ?? null,
-      coachingRequirementDueOn: req?.dueOn ?? null,
+      requirementUnit: req?.ordinal ?? null,
+      requirementDueOn: req?.dueOn ?? null,
     };
   });
 
@@ -352,13 +383,15 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     byId = new Map((profs || []).map((p) => [p.id, p]));
   }
 
-  return rowsWithContext.map((s) => ({
+  const rows = rowsWithContext.map((s) => ({
     ...s,
     coach: byId.get(s.coach_id) || null,
     coachee: byId.get(s.coachee_id) || null,
     // Triad participant names come from the one canonical Triad member source.
     triad: s.kind === "triad" && "triad" in s ? (s.triad as TriadSessionContext) : null,
   }));
+  nextSessions.sort((a, b) => a.nextSessionAt.localeCompare(b.nextSessionAt));
+  return { rows, nextSessions };
 }
 
 export function useSessionsData(userId: string | undefined, role: AppRole | null) {
@@ -369,5 +402,5 @@ export function useSessionsData(userId: string | undefined, role: AppRole | null
     staleTime: 30_000,
   });
 
-  return { sessions: data ?? [], loading: isLoading, reload: refetch };
+  return { sessions: data?.rows ?? [], nextSessions: data?.nextSessions ?? [], loading: isLoading, reload: refetch };
 }

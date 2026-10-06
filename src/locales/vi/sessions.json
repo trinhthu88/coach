@@ -149,6 +149,15 @@
       "show_one": "Hiện {{count}} buổi từ chương trình trước",
       "show_other": "Hiện {{count}} buổi từ chương trình trước",
       "hide": "Chỉ chương trình hiện tại"
+    },
+    "peerRequirement": "Peer {{n}}",
+    "mentoringRequirement": "Mentoring {{n}}",
+    "nextSessions": "Tiếp theo:",
+    "moduleNames": {
+      "coaching": "Coaching",
+      "mentoring": "Mentoring",
+      "peer_coaching": "Peer",
+      "triads": "Triad"
     }
   },
   "detail": {

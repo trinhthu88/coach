@@ -149,6 +149,15 @@
       "show_one": "Show {{count}} session from past programmes",
       "show_other": "Show {{count}} sessions from past programmes",
       "hide": "Current programme only"
+    },
+    "peerRequirement": "Peer {{n}}",
+    "mentoringRequirement": "Mentoring {{n}}",
+    "nextSessions": "Next:",
+    "moduleNames": {
+      "coaching": "Coaching",
+      "mentoring": "Mentoring",
+      "peer_coaching": "Peer",
+      "triads": "Triad"
     }
   },
   "detail": {

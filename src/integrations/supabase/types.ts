@@ -4912,6 +4912,7 @@ export type Database = {
           is_programme_evidence: boolean
           module: Database["public"]["Enums"]["programme_module_type"]
           participant_role: string
+          requirement_due_on: string | null
           requirement_unit_number: number
           session_key: string
           session_type: string
@@ -6209,6 +6210,14 @@ export type Database = {
           requirement_id: string
         }[]
       }
+      learner_next_session_by_module: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          module: Database["public"]["Enums"]["programme_module_type"]
+          next_session_at: string
+          session_key: string
+        }[]
+      }
       learner_requirement_calendar: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: {
@@ -6502,6 +6511,7 @@ export type Database = {
           is_programme_evidence: boolean
           module: Database["public"]["Enums"]["programme_module_type"]
           participant_role: string
+          requirement_due_on: string | null
           requirement_unit_number: number
           session_key: string
           session_type: string

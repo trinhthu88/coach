@@ -44,7 +44,7 @@ export default function Sessions() {
   const searchTerm = searchParams.get("q") || "";
   const kindFilter = (searchParams.get("kind") as KindFilter) || "all";
 
-  const { sessions: allSessions, loading, reload: load } = useSessionsData(user?.id, role);
+  const { sessions: allSessions, nextSessions, loading, reload: load } = useSessionsData(user?.id, role);
   // A learner's hub follows their ONE active enrollment (useActiveEnrollment);
   // sessions of their own earlier programmes are shown only on request.
   const active = useActiveEnrollment();
@@ -119,6 +119,19 @@ export default function Sessions() {
         }
       />
 
+
+      {/* The next live session of each programme module, from
+          learner_next_session_by_module -- never picked from the rows here. */}
+      {!loading && nextSessions.length > 0 && (
+        <div data-testid="next-sessions" className="flex flex-wrap gap-2 text-[12px]">
+          <span className="font-semibold text-muted-foreground">{t("list.nextSessions")}</span>
+          {nextSessions.map((n) => (
+            <span key={`${n.enrollmentId}:${n.module}`} className="rounded-full border bg-card px-2.5 py-0.5">
+              {t(`list.moduleNames.${n.module}`, { defaultValue: n.module })} · {format(new Date(n.nextSessionAt), "MMM d · HH:mm")}
+            </span>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -337,8 +350,11 @@ function SessionCard({
     // Which programme unit a Coaching session fulfils. The Coach needs this to
     // judge an incoming request: "Coaching 2, due 5 Jul" is actionable in a way
     // that a bare date is not.
-    : session.coachingRequirementOrdinal != null
-      ? t("list.coachingRequirement", { n: session.coachingRequirementOrdinal })
+    : session.requirementUnit != null
+      ? t(
+          isMentoring ? "list.mentoringRequirement" : isCoacheePeer ? "list.peerRequirement" : "list.coachingRequirement",
+          { n: session.requirementUnit },
+        )
       : "";
   const displayTitle = session.topic || t("list.triadSessionTitle");
   const displayDate = start ? format(start, "MMM d · HH:mm") : t("list.noTimeYet");
@@ -347,9 +363,9 @@ function SessionCard({
     session.cohortName ? t("list.cohortLabel", { name: session.cohortName }) : "",
     // A pending request is the moment the deadline matters most, so surface it
     // there rather than on every row.
-    session.status === "pending_coach_approval" && session.coachingRequirementDueOn
+    session.status === "pending_coach_approval" && session.requirementDueOn
       ? t("list.requirementDue", {
-          date: format(new Date(`${session.coachingRequirementDueOn}T00:00:00`), "d MMM yyyy"),
+          date: format(new Date(`${session.requirementDueOn}T00:00:00`), "d MMM yyyy"),
         })
       : "",
   ]

@@ -38,7 +38,12 @@ vi.mock("@/integrations/supabase/client", () => ({
     },
     rpc: (name: string, args: unknown) => {
       rpcCalls.push([name, args]);
-      return Promise.resolve({ data: [], error: null });
+      const data: Record<string, unknown[]> = {
+        learner_session_history: [{ source_id: "received", requirement_unit_number: 2, requirement_due_on: "2026-10-25" }],
+        learner_next_session_by_module: [{ module: "coaching", next_session_at: "2026-10-21T02:00:00Z", session_key: "k" }],
+        coach_coaching_requirement_fulfilment: [{ session_id: "given", ordinal: 1, due_on: "2026-10-22" }],
+      };
+      return Promise.resolve({ data: data[name] ?? [], error: null });
     },
   },
 }));
@@ -66,8 +71,14 @@ describe("Sessions hub for a Coach who is also a learner", () => {
     expect(byId.given).toMatchObject({ viewer_is_coach: true, viewer_enrollment_id: null });
     expect(byId.received).toMatchObject({ viewer_is_coach: false, viewer_enrollment_id: "my-enr" });
 
-    // Requirement context: the learner wrapper for the Coach's own enrollment.
-    expect(rpcCalls).toContainEqual(["learner_coaching_requirement_fulfilment", { p_enrollment_id: "my-enr" }]);
+    // Requirement context: the session history for the Coach's own enrollment
+    // (Prompt 9b), the Coach wrapper for the enrollment they coach.
+    expect(rpcCalls).toContainEqual(["learner_session_history", { p_enrollment_id: "my-enr" }]);
     expect(rpcCalls).toContainEqual(["coach_coaching_requirement_fulfilment", { p_enrollment_id: "client-enr" }]);
+    expect(rpcCalls.map(([name]) => name)).not.toContain("learner_coaching_requirement_fulfilment");
+    expect(byId.received).toMatchObject({ requirementUnit: 2, requirementDueOn: "2026-10-25" });
+    expect(byId.given).toMatchObject({ requirementUnit: 1, requirementDueOn: "2026-10-22" });
+    // Next session per module, from learner_next_session_by_module.
+    expect(result.current.nextSessions).toEqual([{ enrollmentId: "my-enr", module: "coaching", nextSessionAt: "2026-10-21T02:00:00Z" }]);
   });
 });

@@ -42,7 +42,15 @@ const auth = { role: "coach" as "coach" | "coachee" };
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: async () => ({ data: null, error: null }),
+    rpc: async (name: string) => ({
+      data:
+        name === "learner_session_history"
+          ? [{ source_id: "dyad1", requirement_unit_number: 1, requirement_due_on: "2026-11-20" }]
+          : name === "learner_next_session_by_module"
+            ? [{ module: "peer_coaching", next_session_at: "2026-11-10T03:00:00Z", session_key: "k" }]
+            : null,
+      error: null,
+    }),
     from: (table: string) => {
       const query = {
         select: () => query,
@@ -103,6 +111,14 @@ describe("Sessions hub: Peer practice", () => {
     expect(await screen.findByText("Practice with a Coach")).toBeInTheDocument();
     expect(screen.getByText(i18n.t("sessions:list.peerPracticeNoCredit"))).toBeInTheDocument();
     expect(i18n.t("sessions:list.peerPracticeNoCredit")).toMatch(/earns no Peer requirement/);
+  });
+
+  it("labels a dyad session with its Peer requirement and shows the next session per module (Prompt 9b)", async () => {
+    auth.role = "coachee";
+    renderSessions();
+    expect(await screen.findByText("Session with my Peer partner")).toBeInTheDocument();
+    expect(screen.getByText(/Peer 1/)).toBeInTheDocument();
+    expect(screen.getByTestId("next-sessions")).toHaveTextContent("Peer");
   });
 
   it("does not label a dyad session as practice", async () => {
