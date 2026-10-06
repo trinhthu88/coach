@@ -63,11 +63,10 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     supabase.from("enrollment_actions").select("id, title, status, goal_id, milestone_id, created_at, completed_at").eq("enrollment_id", enrollmentId),
     supabase.rpc("learner_session_history", { p_enrollment_id: enrollmentId }),
     supabase.rpc("learner_reflection_feed", { p_enrollment_id: enrollmentId }),
-    supabase
-      .from("training_progress")
-      .select("id, training_week_id, completed_at, training_weeks(title, week_number)")
-      .eq("enrollment_id", enrollmentId)
-      .not("completed_at", "is", null),
+    // Canonical week completion (canonical_training_week_fulfilment via the
+    // learner's week list): a week is complete when all its required parts
+    // are, not when a training_progress row carries a timestamp.
+    supabase.rpc("get_enrollment_training_weeks", { p_enrollment_id: enrollmentId }),
     supabase
       .from("assignment_submissions")
       .select("id, score_pct, submitted_at, assignments(title, assignment_type, training_week_id)")
@@ -85,7 +84,7 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     enrollment_actions: actionsRes,
     learner_session_history: historyRes,
     learner_reflection_feed: reflectionFeedRes,
-    training_progress: trainingRes,
+    get_enrollment_training_weeks: trainingRes,
     assignment_submissions: quizRes,
     reflection_submissions: programmeReflectionRes,
   };
@@ -273,17 +272,17 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
   }
 
   for (const w of trainingRes.data ?? []) {
-    const week = w.training_weeks as { title: string; week_number: number } | null;
+    if (!w.completed_at) continue;
     events.push({
       id: `training-${w.id}`,
       enrollmentId,
-      occurredAt: w.completed_at as string,
+      occurredAt: w.completed_at,
       type: "training",
       subtype: "training_week_completed",
       title: "Training completed",
-      summary: week ? `Week ${week.week_number}: ${week.title}` : null,
+      summary: `Week ${w.week_number}: ${w.title}`,
       sourceId: w.id,
-      sourceType: "training_progress",
+      sourceType: "training_weeks",
     });
   }
 

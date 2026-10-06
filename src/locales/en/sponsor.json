@@ -285,7 +285,13 @@
         "active": "Active",
         "complete": "Complete"
       },
-      "dayOf": "Day {{elapsed}} of {{total}}"
+      "dayOf": "Day {{elapsed}} of {{total}}",
+      "enrollmentStatus": {
+        "active": "Active",
+        "paused": "Paused",
+        "completed": "Completed",
+        "at_risk": "At risk"
+      }
     },
     "programmeEngagement": {
       "lowCompletion": "Week {{week}} completion is under 40% across modules — worth a check-in.",

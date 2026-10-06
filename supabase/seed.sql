@@ -525,7 +525,7 @@ BEGIN
       ON CONFLICT(id) DO UPDATE SET approval_status='active';
     INSERT INTO programme_enrollments(id,user_id,coachee_id,programme_id,cohort_id,organization_id,start_date,end_date,status)
       VALUES(eid,uid,uid,pc,cc,org,'2026-03-01','2026-07-05',
-        'at_risk'::enrollment_status)
+        'active'::enrollment_status)
       ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id,cohort_id=excluded.cohort_id,
         start_date=excluded.start_date,end_date=excluded.end_date,status=excluded.status;
     PERFORM generate_enrollment_schedule(eid);

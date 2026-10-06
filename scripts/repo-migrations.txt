@@ -284,3 +284,4 @@
 20261006130000_one_overdue_rule.sql
 20261006140000_admin_alerts_current.sql
 20261006150000_one_today.sql
+20261006160000_training_availability.sql

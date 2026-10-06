@@ -12,7 +12,7 @@
 --   L2 (R, KR)   completes the one stored Coaching requirement inside its window
 --   L3 (S, KS)   enrollment ended T-5; its Coaching unit done in its window
 --   L4 (S, KS)   enrollment ended T-5; nothing done
---   L5 (P, KP2)  stored status at_risk, ongoing
+--   L5 (P, KP2)  ongoing (at_risk can no longer be stored: 20261006160000)
 --   L6 (W, KW)   Training
 begin;
 select plan(35);
@@ -72,7 +72,7 @@ insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, 
   ('f9940000-0000-4000-8000-000000000012', 'f9910000-0000-4000-8000-00000000000c', 'f9900000-0000-4000-8000-000000000012', 'f9920000-0000-4000-8000-0000000000c1', current_date - 60, null, 'active'),
   ('f9940000-0000-4000-8000-000000000013', 'f9910000-0000-4000-8000-00000000000d', 'f9900000-0000-4000-8000-000000000013', 'f9920000-0000-4000-8000-0000000000d1', current_date - 90, current_date - 5, 'active'),
   ('f9940000-0000-4000-8000-000000000014', 'f9910000-0000-4000-8000-00000000000d', 'f9900000-0000-4000-8000-000000000014', 'f9920000-0000-4000-8000-0000000000d1', current_date - 90, current_date - 5, 'active'),
-  ('f9940000-0000-4000-8000-000000000015', 'f9910000-0000-4000-8000-00000000000a', 'f9900000-0000-4000-8000-000000000015', 'f9920000-0000-4000-8000-0000000000a2', current_date - 60, null, 'at_risk'),
+  ('f9940000-0000-4000-8000-000000000015', 'f9910000-0000-4000-8000-00000000000a', 'f9900000-0000-4000-8000-000000000015', 'f9920000-0000-4000-8000-0000000000a2', current_date - 60, null, 'active'),
   ('f9940000-0000-4000-8000-000000000016', 'f9910000-0000-4000-8000-00000000000e', 'f9900000-0000-4000-8000-000000000016', 'f9920000-0000-4000-8000-0000000000e1', current_date - 14, null, 'active');
 
 insert into public.coachee_goals (id, coachee_id, enrollment_id, title) values
@@ -247,10 +247,10 @@ select is(
   'at_risk', '8b. same, nothing done: at_risk');
 select is(
   (select effective_enrollment_status::text from public.canonical_enrollment_progress('f9940000-0000-4000-8000-000000000015', current_date)),
-  'active', '9a. a stored at_risk on an ongoing enrollment reads as active');
-select is(
-  (select stored_enrollment_status::text from public.canonical_enrollment_progress('f9940000-0000-4000-8000-000000000015', current_date)),
-  'at_risk', '9b. the stored value is still reported as stored');
+  'active', '9a. an ongoing enrollment reads as active');
+select throws_ok(
+  $$update public.programme_enrollments set status = 'at_risk' where id = 'f9940000-0000-4000-8000-000000000015'$$,
+  '23514', null, '9b. at_risk is derived, never stored (20261006160000)');
 
 -- ---------------------------------------------------------------------------
 -- 10. Goal ratings reference their goal; + content deletes

@@ -267,7 +267,13 @@
         "active": "Đang hoạt động",
         "complete": "Đã hoàn thành"
       },
-      "dayOf": "Ngày {{elapsed}} / {{total}}"
+      "dayOf": "Ngày {{elapsed}} / {{total}}",
+      "enrollmentStatus": {
+        "active": "Đang tham gia",
+        "paused": "Tạm dừng",
+        "completed": "Hoàn thành",
+        "at_risk": "Có nguy cơ"
+      }
     },
     "programmeEngagement": {
       "lowCompletion": "Tỷ lệ hoàn thành tuần {{week}} dưới 40% trên các module — nên kiểm tra lại.",
