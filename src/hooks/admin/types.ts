@@ -28,7 +28,7 @@ export interface CoachListRow {
   approval_status: string;
   sessions_completed: number;
   coachees_count: number;
-  rating_avg: number;
+  rating_avg: number | null;
   country_based: string | null;
   years_experience: number | null;
   // Coach as learner: the canonical module rows of their own enrollment

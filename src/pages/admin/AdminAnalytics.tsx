@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { averageCanonicalCompletion, canonicalAtRisk, fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
+import { canonicalAtRisk, fetchAdminCanonicalProgress, fetchAdminCompletionRate } from "@/lib/adminCanonicalProgress";
 import { Loader2, Star, TrendingUp, Award, Users, MessagesSquare, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminPageHeader, Kpi, SectionCard, MiniBar, Pill, Avatar, EngagementCell } from "./_shared";
@@ -82,8 +82,8 @@ interface AnalyticsData {
     totalCoaches: number;
     peerOptIns: number;
   };
-  coachee: { active: number; enrolled: number; progressAvg: number; atRisk: number; totalSessions: number };
-  coach: { topCoaches: { id: string; name: string; delivered: number; coachees: number; rating: number }[] };
+  coachee: { active: number; enrolled: number; progressAvg: number | null; atRisk: number; totalSessions: number };
+  coach: { topCoaches: { id: string; name: string; delivered: number; coachees: number; rating: number | null }[] };
   peer: {
     rows: { id: string; name: string; given: number; received: number; avgComp: number }[];
     totalSessions: number;
@@ -186,10 +186,13 @@ export default function AdminAnalytics() {
       });
       // Programme completion and at-risk status come from the canonical engine
       // (the same numbers and effective status Learner and Sponsor see).
-      const progressRows = await fetchAdminCanonicalProgress((enr || []).map((e: AnalyticsEnrollmentRow) => e.id));
+      const enrollmentIds = (enr || []).map((e: AnalyticsEnrollmentRow) => e.id);
+      const [progressRows, progressAvg] = await Promise.all([
+        fetchAdminCanonicalProgress(enrollmentIds),
+        fetchAdminCompletionRate(enrollmentIds),
+      ]);
       const activeCoachees = coacheeIds.filter(id => profById.get(id)?.status === "active").length;
       const enrolled = new Set((enr || []).map((e: AnalyticsEnrollmentRow) => e.user_id)).size;
-      const progressAvg = averageCanonicalCompletion(progressRows);
       const atRisk = canonicalAtRisk(progressRows).length;
 
       // Coach analytics (delivered)
@@ -210,7 +213,7 @@ export default function AdminAnalytics() {
           id, name: p?.full_name || "—",
           delivered: coachDelivered.get(id) || 0,
           coachees: (coachUnique.get(id) || new Set()).size,
-          rating: Number(cp?.rating_avg || 0),
+          rating: cp?.rating_avg == null ? null : Number(cp.rating_avg),
         };
       }).sort((a, b) => b.delivered - a.delivered).slice(0, 10);
 
@@ -345,8 +348,8 @@ export default function AdminAnalytics() {
           </div>
           <SectionCard label={t("analytics.averageProgrammeProgress")}>
             <div className="flex items-center gap-3">
-              <div className="flex-1"><MiniBar pct={data.coachee.progressAvg} tone={data.coachee.progressAvg >= 70 ? "success" : "primary"} /></div>
-              <span className="text-sm font-semibold">{Math.round(data.coachee.progressAvg)}%</span>
+              <div className="flex-1"><MiniBar pct={data.coachee.progressAvg ?? 0} tone={(data.coachee.progressAvg ?? 0) >= 70 ? "success" : "primary"} /></div>
+              <span className="text-sm font-semibold">{data.coachee.progressAvg == null ? "—" : `${data.coachee.progressAvg}%`}</span>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">{t("analytics.averageAcrossEnrolled")}</p>
           </SectionCard>
@@ -366,7 +369,7 @@ export default function AdminAnalytics() {
                     <span className="font-medium sm:col-span-5">{c.name}</span>
                     <span className="text-muted-foreground sm:col-span-3">{t("analytics.coacheesCount", { count: c.coachees })}</span>
                     <span className="text-muted-foreground sm:col-span-2">{t("analytics.sessionsCount", { count: c.delivered })}</span>
-                    <span className="inline-flex items-center gap-1 text-muted-foreground sm:col-span-2 sm:justify-end sm:text-right"><Star className="h-3 w-3 fill-warning text-warning" /> {c.rating.toFixed(1)}</span>
+                    <span className="inline-flex items-center gap-1 text-muted-foreground sm:col-span-2 sm:justify-end sm:text-right"><Star className="h-3 w-3 fill-warning text-warning" /> {c.rating == null ? "—" : c.rating.toFixed(1)}</span>
                   </div>
                 ))}
               </div>

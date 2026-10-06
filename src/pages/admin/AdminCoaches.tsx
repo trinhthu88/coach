@@ -53,7 +53,8 @@ interface CoachRow {
   status: Status;
   created_at: string;
   approval_status: string;
-  rating_avg: number;
+  /** null until the Coach has a rating -- never shown as 0. */
+  rating_avg: number | null;
   // Coach as learner -- the canonical module rows of their own enrollment
   // (admin_canonical_enrollment_progress). Null when not enrolled.
   coaching_units: CanonicalModuleUnits | null;
@@ -194,7 +195,7 @@ export default function AdminCoaches() {
         status: p.status as Status,
         created_at: p.created_at,
         approval_status: cp?.approval_status || "pending_approval",
-        rating_avg: Number(cp?.rating_avg || 0),
+        rating_avg: cp?.rating_avg == null ? null : Number(cp.rating_avg),
         coaching_units: canonicalModuleUnits(canonicalRow, "coaching"),
         peer_units: canonicalModuleUnits(canonicalRow, "peer"),
         peer_given_used: peerGiven.get(id) || 0,
@@ -248,7 +249,7 @@ export default function AdminCoaches() {
       [t("coaches.export.peerUnits")]: formatModuleUnits(c.peer_units),
       [t("coaches.export.peerGivenUsed")]: c.peer_given_used,
       [t("coaches.export.coacheesCount")]: c.coachees_count,
-      [t("coaches.export.avgRating")]: c.rating_avg.toFixed(2),
+      [t("coaches.export.avgRating")]: c.rating_avg == null ? "" : c.rating_avg.toFixed(2),
       [t("coaches.export.bookedSessions")]: c.booked_sessions,
       [t("coaches.export.completedSessions")]: c.completed_sessions,
       [t("coaches.export.cohort")]: c.cohort_name || "",
@@ -421,7 +422,7 @@ export default function AdminCoaches() {
                   <td className="px-3 py-2.5 text-[11px]">{r.assigned_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : t("coaches.assignedCoachesCount", { count: r.assigned_coaches.length })}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.coachees_count}</td>
                   <td className="px-3 py-2.5 text-[11px]">
-                    <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-warning text-warning" /> {r.rating_avg.toFixed(1)}</span>
+                    <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-warning text-warning" /> {r.rating_avg == null ? "—" : r.rating_avg.toFixed(1)}</span>
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked_sessions}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.completed_sessions}</td>
@@ -575,7 +576,7 @@ export default function AdminCoaches() {
               <div className="rounded-lg bg-muted/40 p-3 text-[11px] text-muted-foreground">
                 <p>{t("coaches.sessionsDeliveredPrefix")} <strong>{editing.completed_sessions}</strong> {t("coaches.completedLabel")} · <strong>{editing.booked_sessions}</strong> {t("coaches.bookedLabel")}</p>
                 <p>{t("coaches.coacheesServedPrefix")} <strong>{editing.coachees_count}</strong></p>
-                <p>{t("coaches.avgRatingPrefix")} <strong>{editing.rating_avg.toFixed(2)}</strong></p>
+                <p>{t("coaches.avgRatingPrefix")} <strong>{editing.rating_avg == null ? "—" : editing.rating_avg.toFixed(2)}</strong></p>
               </div>
             </div>
           )}

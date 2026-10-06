@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 /**
  * Admin's read of THE canonical completion engine
@@ -18,12 +19,17 @@ export async function fetchAdminCanonicalProgress(enrollmentIds: string[]): Prom
   return data ?? [];
 }
 
-/** Mean of the canonical full_completion_pct across enrollments that have progress. */
-export function averageCanonicalCompletion(rows: AdminCanonicalProgressRow[]): number {
-  const values = rows
-    .filter((r) => r.progress_available && r.full_completion_pct != null)
-    .map((r) => Number(r.full_completion_pct));
-  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+/**
+ * Admin's completion rate across enrollments, summed like Sponsor's: completed
+ * units over required units (admin_canonical_completion_rate, 20261006200000).
+ * Never a mean of per-enrollment percentages.
+ */
+export async function fetchAdminCompletionRate(enrollmentIds: string[]): Promise<number | null> {
+  if (enrollmentIds.length === 0) return null;
+  const { data, error } = await supabase.rpc("admin_canonical_completion_rate", { p_enrollment_ids: enrollmentIds });
+  if (error) throw error;
+  // null = nothing required yet: never shown as 0%.
+  return canonicalCompletionPct(data?.[0]?.full_completion_pct);
 }
 
 /** Enrollments at risk by the canonical EFFECTIVE status (the status Learner and Sponsor see). */

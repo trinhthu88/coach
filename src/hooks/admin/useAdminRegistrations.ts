@@ -162,7 +162,7 @@ export function useAdminRegistrations() {
           approval_status: cp?.approval_status || "pending_approval",
           sessions_completed: coachCompletedById.get(id) || 0,
           coachees_count: (coachCoacheesById.get(id) || new Set()).size,
-          rating_avg: Number(cp?.rating_avg || 0),
+          rating_avg: cp?.rating_avg == null ? null : Number(cp.rating_avg),
           country_based: cp?.country_based || null,
           years_experience: cp?.years_experience || null,
           coaching_units: canonicalModuleUnits(canonicalRow, "coaching"),

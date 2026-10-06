@@ -320,7 +320,8 @@ WITH repo(version, name) AS (VALUES
   ('20261006160000', 'training_availability'),
   ('20261006170000', 'coaching_engagements'),
   ('20261006180000', 'sessions_hub_history'),
-  ('20261006190000', 'sponsor_attention')
+  ('20261006190000', 'sponsor_attention'),
+  ('20261006200000', 'admin_projections')
 -- END REPO MANIFEST
 ),
 

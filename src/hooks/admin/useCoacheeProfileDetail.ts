@@ -6,9 +6,10 @@ import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
 export interface ProfileGoal {
   id: string;
   title: string;
-  start_rating: number;
-  current_rating: number;
-  target_rating: number;
+  /** The learner's own ratings; null when not given (never a default). */
+  start_rating: number | null;
+  current_rating: number | null;
+  target_rating: number | null;
 }
 
 export interface ProfileSession {
@@ -85,9 +86,9 @@ export function useCoacheeProfileDetail(coacheeId: string | undefined, enrollmen
           return {
             id: g.id,
             title: g.title,
-            start_rating: r.start_rating ?? 30,
-            current_rating: r.current_rating ?? 30,
-            target_rating: r.target_rating ?? 80,
+            start_rating: r.start_rating ?? null,
+            current_rating: r.current_rating ?? null,
+            target_rating: r.target_rating ?? null,
           };
         })
       );

@@ -288,3 +288,4 @@
 20261006170000_coaching_engagements.sql
 20261006180000_sessions_hub_history.sql
 20261006190000_sponsor_attention.sql
+20261006200000_admin_projections.sql

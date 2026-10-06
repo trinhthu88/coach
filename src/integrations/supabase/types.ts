@@ -4561,6 +4561,15 @@ export type Database = {
       _table_privs: { Args: never; Returns: unknown[] }
       _temptypes: { Args: { "": string }; Returns: string }
       _todo: { Args: never; Returns: string }
+      admin_canonical_completion_rate: {
+        Args: { p_as_of?: string; p_enrollment_ids: string[] }
+        Returns: {
+          completed_units: number
+          enrollment_count: number
+          full_completion_pct: number | null
+          required_units: number
+        }[]
+      }
       admin_canonical_enrollment_journey: {
         Args: { p_as_of?: string; p_enrollment_id: string }
         Returns: Json
@@ -6100,6 +6109,7 @@ export type Database = {
       has_unique: { Args: { "": string }; Returns: string }
       in_todo: { Args: never; Returns: boolean }
       is_active_coach_profile: { Args: { _id: string }; Returns: boolean }
+      is_active_cohort_mentor: { Args: never; Returns: boolean }
       is_allowlisted_pair: {
         Args: { _target: string; _viewer: string }
         Returns: boolean

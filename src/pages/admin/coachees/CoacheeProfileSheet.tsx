@@ -148,13 +148,15 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
                 <div key={g.id} className="rounded-lg border p-2.5">
                   <p className="text-[12px] font-semibold">{g.title}</p>
                   <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
-                    <span>{t("coacheeProfileSheet.start")} <strong className="text-foreground">{g.start_rating}</strong></span>
-                    <span>{t("coacheeProfileSheet.current")} <strong className="text-foreground">{g.current_rating}</strong></span>
-                    <span>{t("coacheeProfileSheet.target")} <strong className="text-foreground">{g.target_rating}</strong></span>
+                    <span>{t("coacheeProfileSheet.start")} <strong className="text-foreground">{g.start_rating ?? "—"}</strong></span>
+                    <span>{t("coacheeProfileSheet.current")} <strong className="text-foreground">{g.current_rating ?? "—"}</strong></span>
+                    <span>{t("coacheeProfileSheet.target")} <strong className="text-foreground">{g.target_rating ?? "—"}</strong></span>
                   </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full bg-primary" style={{ width: `${Math.min(100, g.current_rating)}%` }} />
-                  </div>
+                  {g.current_rating != null && (
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-primary" style={{ width: `${Math.min(100, g.current_rating)}%` }} />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { averageCanonicalCompletion, fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
+import { fetchAdminCompletionRate } from "@/lib/adminCanonicalProgress";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { AdminPageHeader } from "./_shared";
 import { PageSkeleton } from "@/components/PageSkeleton";
@@ -47,7 +47,8 @@ interface DashboardStats {
   newCoachApplications: number;
   newCoacheeApplications: number;
   sessionsThisMonth: number;
-  completionRate: number;
+  /** Programme units completed over required (admin_canonical_completion_rate); null = none required. */
+  completionRate: number | null;
 }
 
 interface AlertItem {
@@ -72,7 +73,7 @@ const EMPTY_STATS: DashboardStats = {
   newCoachApplications: 0,
   newCoacheeApplications: 0,
   sessionsThisMonth: 0,
-  completionRate: 0,
+  completionRate: null,
 };
 
 // Translated strings (sessions-needing-link / new-application banners) are
@@ -120,8 +121,8 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
   ).length;
 
   // Completion comes from the canonical engine Learner and Sponsor use.
-  const progressRows = await fetchAdminCanonicalProgress((enrollments || []).map((e: DashboardEnrollmentRow) => e.id));
-  const avgProgress = averageCanonicalCompletion(progressRows);
+  const enrollmentIds = (enrollments || []).map((e: DashboardEnrollmentRow) => e.id);
+  const avgProgress = await fetchAdminCompletionRate(enrollmentIds);
 
   const stats: DashboardStats = {
     coachees: Array.from(coacheeIds).filter((id) => profById.get(id)?.status === "active").length,
@@ -252,10 +253,10 @@ export default function AdminDashboard() {
         />
         <StatCard
           label={t("dashboard.statCompletionRate")}
-          value={`${Math.round(stats.completionRate)}%`}
+          value={stats.completionRate == null ? "—" : `${stats.completionRate}%`}
           icon={CheckCircle2}
-          tone={stats.completionRate >= 75 ? "success" : "warning"}
-          hint={<span className={stats.completionRate >= 75 ? "text-success" : "text-warning"}>{t("dashboard.targetSuffix")}</span>}
+          tone={(stats.completionRate ?? 0) >= 75 ? "success" : "warning"}
+          hint={<span className={(stats.completionRate ?? 0) >= 75 ? "text-success" : "text-warning"}>{t("dashboard.targetSuffix")}</span>}
         />
       </div>
 

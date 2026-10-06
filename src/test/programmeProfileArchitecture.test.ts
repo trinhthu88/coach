@@ -240,7 +240,8 @@ describe("programme profile architecture", () => {
   it("Admin Dashboard and Analytics read completion and status from the canonical engine", () => {
     for (const file of ["pages/admin/AdminDashboard.tsx", "pages/admin/AdminAnalytics.tsx"]) {
       const text = read(file);
-      expect(text, file).toMatch(/fetchAdminCanonicalProgress\(/);
+      // The canonical rows, or the canonical summed completion rate (20261006200000).
+      expect(text, file).toMatch(/fetchAdminCanonicalProgress\(|fetchAdminCompletionRate\(/);
       // No second Admin completion engine, no stored-status "at risk", no snapshot reads.
       expect(text, file).not.toMatch(/get_admin_enrollment_progress|enrollment_module_(snapshots|milestones)|progress_pct/);
       expect(text, file).not.toMatch(/\.status === "at_risk"/);
@@ -451,6 +452,21 @@ describe("programme profile architecture", () => {
         const text = readFileSync(join(process.cwd(), file), "utf8");
         expect(text, file).not.toMatch(/cohort_week_overrides|week_number\s*-\s*1|weekNumber\s*-\s*1|start_date[^\n]*\+|unlock_date/);
       }
+    });
+
+    it("Admin shows no invented numbers and reads Mentors from cohort pools (Prompt 9d)", () => {
+      const admin = [...files.filter((f) => /src\/(pages\/admin|hooks\/admin|pages\/AdminRegistrations)/.test(f))];
+      // No default goal ratings, no 0 for a Coach with no ratings.
+      expect(admin.filter((f) => /_rating \?\? \d|rating_avg \|\| 0/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+      // Completion rate is the server's sum, never a mean of percentages.
+      expect(read("lib/adminCanonicalProgress.ts")).not.toMatch(/averageCanonicalCompletion/);
+      for (const file of ["pages/admin/AdminDashboard.tsx", "pages/admin/AdminAnalytics.tsx"]) {
+        expect(read(file), file).toMatch(/fetchAdminCompletionRate\(/);
+      }
+      // A learner's Mentors are their cohort's Mentor pool.
+      const mentoring = read("pages/admin/AdminMentoring.tsx");
+      expect(mentoring).not.toMatch(/from\("mentoring_allowlist"\)/);
+      expect(mentoring).toMatch(/from\("cohort_mentors"\)\.select\("cohort_id, mentor_user_id"\)/);
     });
 
     it("a Coach enrolled as a learner sees the Coaching they receive in the Sessions hub and Messages", () => {
