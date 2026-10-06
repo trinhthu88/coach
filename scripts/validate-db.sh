@@ -24,6 +24,28 @@ targeted_pg_output="$(mktemp)"
 deployment2_test_output="$(mktemp)"
 stack_started=false
 
+# Docker can leave this job's stdout non-blocking, and a large `cat` then dies
+# with EAGAIN ("write error: Resource temporarily unavailable"), which under
+# `set -e` exits before the failing tests are printed. Restore blocking mode
+# and copy the file with retries.
+show_output() {
+  python3 - "$1" <<'PY'
+import os, sys, time
+try:
+    os.set_blocking(1, True)
+except OSError:
+    pass
+data = open(sys.argv[1], "rb").read()
+view = memoryview(data)
+while view:
+    try:
+        n = os.write(1, view)
+        view = view[n:]
+    except BlockingIOError:
+        time.sleep(0.05)
+PY
+}
+
 supabase_cli() {
   if [[ -n "$SUPABASE_CLI_BIN" ]]; then
     "$SUPABASE_CLI_BIN" "$@"
@@ -129,7 +151,7 @@ fi
 printf '%s\n' '==> Validating local demo Auth users'
 if ! DEMO_AUTH_TEST_PASSWORD="CI-local-${GITHUB_RUN_ID:-${RANDOM}}-Password!" \
   node scripts/validate-local-auth.mjs >"$targeted_auth_output" 2>&1; then
-  cat "$targeted_auth_output"
+  show_output "$targeted_auth_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -144,7 +166,7 @@ fi
 if [[ "${TARGETED_PGTAP_ONLY:-false}" == true ]]; then
   printf '%s\n' '==> Targeted affected-suite validation only'
   if ! node supabase/tests/sponsor_isolation_test.mjs >"$targeted_isolation_output" 2>&1; then
-    cat "$targeted_isolation_output"
+    show_output "$targeted_isolation_output"
     if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
       while IFS= read -r failure_line; do
         [[ -z "$failure_line" ]] && continue
@@ -160,7 +182,7 @@ if [[ "${TARGETED_PGTAP_ONLY:-false}" == true ]]; then
     supabase/tests/enrollment_actions_test.sql \
     supabase/tests/peer_booking_enrollment_test.sql \
     supabase/tests/enrollment_schedule_backfill_test.sql >"$targeted_pg_output" 2>&1; then
-    cat "$targeted_pg_output"
+    show_output "$targeted_pg_output"
     if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
       while IFS= read -r failure_line; do
         [[ -z "$failure_line" ]] && continue
@@ -177,7 +199,7 @@ fi
 printf '%s\n' '==> Local/test backfill readiness report'
 supabase_cli db query --local --file scripts/enrollment-backfill-readiness.sql
 if ! node supabase/tests/sponsor_isolation_test.mjs >"$isolation_test_output" 2>&1; then
-  cat "$isolation_test_output"
+  show_output "$isolation_test_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -191,7 +213,7 @@ if ! node supabase/tests/sponsor_isolation_test.mjs >"$isolation_test_output" 2>
 fi
 printf '%s\n' '==> Running database tests'
 if ! supabase_cli test db --local supabase/tests >"$database_test_output" 2>&1; then
-  cat "$database_test_output"
+  show_output "$database_test_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       failure_line="${failure_line//'%'/'%25'}"
@@ -203,7 +225,7 @@ if ! supabase_cli test db --local supabase/tests >"$database_test_output" 2>&1; 
   fi
   exit 1
 fi
-cat "$database_test_output"
+show_output "$database_test_output"
 cat > "$snapshot_sql_file" <<'SQL'
 SELECT table_name, row_count, md5(ids) AS id_hash
 FROM (
@@ -236,7 +258,7 @@ FROM (
 ) s GROUP BY table_name, row_count, ids ORDER BY table_name;
 SQL
 if ! supabase_cli db query --local --file "$snapshot_sql_file" >"$snapshot_before" 2>"$snapshot_diff_output"; then
-  cat "$snapshot_diff_output"
+  show_output "$snapshot_diff_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -250,7 +272,7 @@ if ! supabase_cli db query --local --file "$snapshot_sql_file" >"$snapshot_befor
 fi
 printf '%s\n' '==> Re-running the guarded seed for idempotency'
 if ! run_guarded_local_seed >"$second_seed_output" 2>&1; then
-  cat "$second_seed_output"
+  show_output "$second_seed_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -263,7 +285,7 @@ if ! run_guarded_local_seed >"$second_seed_output" 2>&1; then
   exit 1
 fi
 if ! supabase_cli db query --local --file "$snapshot_sql_file" >"$snapshot_after" 2>"$snapshot_diff_output"; then
-  cat "$snapshot_diff_output"
+  show_output "$snapshot_diff_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -276,7 +298,7 @@ if ! supabase_cli db query --local --file "$snapshot_sql_file" >"$snapshot_after
   exit 1
 fi
 if ! diff -u "$snapshot_before" "$snapshot_after" >"$snapshot_diff_output" 2>&1; then
-  cat "$snapshot_diff_output"
+  show_output "$snapshot_diff_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -289,7 +311,7 @@ if ! diff -u "$snapshot_before" "$snapshot_after" >"$snapshot_diff_output" 2>&1;
   exit 1
 fi
 if ! run_guarded_local_seed >"$third_seed_output" 2>&1; then
-  cat "$third_seed_output"
+  show_output "$third_seed_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -302,7 +324,7 @@ if ! run_guarded_local_seed >"$third_seed_output" 2>&1; then
   exit 1
 fi
 if ! supabase_cli test db --local supabase/tests >"$second_database_test_output" 2>&1; then
-  cat "$second_database_test_output"
+  show_output "$second_database_test_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -314,7 +336,7 @@ if ! supabase_cli test db --local supabase/tests >"$second_database_test_output"
   fi
   exit 1
 fi
-cat "$second_database_test_output"
+show_output "$second_database_test_output"
 printf '%s\n' '==> Applying deployment 2 (supabase/deployment-2) and re-running database tests'
 # Deployment 2 retires the legacy Triad storage after deployment 1 is
 # verified in production. It is not in supabase/migrations, so a plain push
@@ -324,13 +346,13 @@ printf '%s\n' '==> Applying deployment 2 (supabase/deployment-2) and re-running 
 for deployment2_migration in supabase/deployment-2/*.sql; do
   if ! psql --no-psqlrc --set=ON_ERROR_STOP=1 --single-transaction \
     --file "$deployment2_migration" "${DB_URL:?local database URL unavailable}" >"$deployment2_test_output" 2>&1; then
-    cat "$deployment2_test_output"
+    show_output "$deployment2_test_output"
     [[ "${GITHUB_ACTIONS:-}" == true ]] && printf '::error title=Deployment 2 migration::%s failed\n' "$deployment2_migration"
     exit 1
   fi
 done
 if ! supabase_cli test db --local supabase/tests >"$deployment2_test_output" 2>&1; then
-  cat "$deployment2_test_output"
+  show_output "$deployment2_test_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -342,21 +364,21 @@ if ! supabase_cli test db --local supabase/tests >"$deployment2_test_output" 2>&
   fi
   exit 1
 fi
-cat "$deployment2_test_output"
+show_output "$deployment2_test_output"
 printf '%s\n' '==> Running Deployment 2 post-retirement verification sequence'
 if ! psql --no-psqlrc --set=ON_ERROR_STOP=1 \
   --file scripts/triad-deployment-2-post-retirement-verification.sql \
   "${DB_URL:?local database URL unavailable}" >"$deployment2_test_output" 2>&1; then
-  cat "$deployment2_test_output"
+  show_output "$deployment2_test_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     printf '::error title=Deployment 2 post-retirement verification::failed\n'
   fi
   exit 1
 fi
-cat "$deployment2_test_output"
+show_output "$deployment2_test_output"
 printf '%s\n' '==> Linting local database'
 if ! supabase_cli db lint --local >"$lint_output" 2>&1; then
-  cat "$lint_output"
+  show_output "$lint_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -368,10 +390,10 @@ if ! supabase_cli db lint --local >"$lint_output" 2>&1; then
   fi
   exit 1
 fi
-cat "$lint_output"
+show_output "$lint_output"
 printf '%s\n' '==> Checking generated Supabase TypeScript types'
 if ! supabase_cli gen types typescript --local --schema public > "$types_output" 2>"$types_check_output"; then
-  cat "$types_check_output"
+  show_output "$types_check_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -387,7 +409,7 @@ if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
   cp "$types_output" "${RUNNER_TEMP}/clariva-generated-types.ts"
 fi
 if ! diff -u src/integrations/supabase/types.ts "$types_output" >"$types_check_output" 2>&1; then
-  cat "$types_check_output"
+  show_output "$types_check_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -401,7 +423,7 @@ if ! diff -u src/integrations/supabase/types.ts "$types_output" >"$types_check_o
 fi
 printf '%s\n' '==> Running TypeScript checks'
 if ! npm run typecheck >"$tsc_output" 2>&1; then
-  cat "$tsc_output"
+  show_output "$tsc_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -413,10 +435,10 @@ if ! npm run typecheck >"$tsc_output" 2>&1; then
   fi
   exit 1
 fi
-cat "$tsc_output"
+show_output "$tsc_output"
 printf '%s\n' '==> Running lint'
 if ! npm run lint >"$tsc_output" 2>&1; then
-  cat "$tsc_output"
+  show_output "$tsc_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -428,10 +450,10 @@ if ! npm run lint >"$tsc_output" 2>&1; then
   fi
   exit 1
 fi
-cat "$tsc_output"
+show_output "$tsc_output"
 printf '%s\n' '==> Running application tests'
 if ! npm run test >"$tsc_output" 2>&1; then
-  cat "$tsc_output"
+  show_output "$tsc_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -443,10 +465,10 @@ if ! npm run test >"$tsc_output" 2>&1; then
   fi
   exit 1
 fi
-cat "$tsc_output"
+show_output "$tsc_output"
 printf '%s\n' '==> Building production frontend'
 if ! npm run build >"$tsc_output" 2>&1; then
-  cat "$tsc_output"
+  show_output "$tsc_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do
       [[ -z "$failure_line" ]] && continue
@@ -458,4 +480,4 @@ if ! npm run build >"$tsc_output" 2>&1; then
   fi
   exit 1
 fi
-cat "$tsc_output"
+show_output "$tsc_output"
