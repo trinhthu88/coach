@@ -366,9 +366,12 @@ values (
   '2026-12-01'::date
 );
 set local role authenticated;
-select is_empty(
-  $$select * from public.sponsor_canonical_cohort_progress(
-     'cd000000-0000-0000-0000-000000000001'::uuid, '2026-09-16'::date)$$,
+-- is() rather than is_empty(): the workflow's "Sponsor P0 suites" guard counts
+-- is/ok/lives_ok/isnt/matches assertions against plan(51).
+select is(
+  (select count(*)::integer from public.sponsor_canonical_cohort_progress(
+     'cd000000-0000-0000-0000-000000000001'::uuid, '2026-09-16'::date)),
+  0,
   'a cohort without visible enrollments has no sponsor rollup row'
 );
 select is(
