@@ -241,7 +241,7 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
     setSaving(true);
     const { error } = await supabase.rpc("transition_session_status", {
       p_session_id: session.id, p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
-      p_action: "confirm", p_reason: null,
+      p_action: "confirm", p_reason: undefined,
     });
     setSaving(false);
     if (error) {
@@ -265,11 +265,11 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
       const { error } = isCoaching
         ? await supabase.rpc("cancel_coaching_session", {
             p_session_id: session.id,
-            p_reason: reason || null,
+            p_reason: reason || undefined,
           })
         : await supabase.rpc("transition_session_status", {
             p_session_id: session.id, p_kind: isCoacheePeer ? "coachee_peer" : "peer",
-            p_action: "cancel", p_reason: reason || null,
+            p_action: "cancel", p_reason: reason || undefined,
           });
       setSaving(false);
       if (error) {
@@ -295,7 +295,7 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
       : await supabase.rpc("transition_session_status", {
           p_session_id: session.id,
           p_kind: isCoacheePeer ? "coachee_peer" : "peer",
-          p_action: "complete", p_reason: null,
+          p_action: "complete", p_reason: undefined,
         });
     setSaving(false);
     if (error) return toast.error(error.message);

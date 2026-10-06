@@ -51,7 +51,7 @@ beforeEach(async () => {
   ];
   responses.sponsor_canonical_enrollment_metadata = responses.sponsor_canonical_enrollment_progress;
   responses.sponsor_canonical_cohort_progress = [{
-    ...responses.sponsor_cohort_summaries[0],
+    ...(responses.sponsor_cohort_summaries as Record<string, unknown>[])[0],
     coaching_required_units: 48, coaching_completed_units: 8, coaching_due_units: 20, coaching_booked_units: 0, coaching_completed_leaders: 2,
     training_required_units: 24, training_completed_units: 0, training_due_units: 12, training_booked_units: 0, training_completed_leaders: 0,
     peer_required_units: 12, peer_completed_units: 0, peer_due_units: 6, peer_booked_units: 0, peer_completed_leaders: 0,

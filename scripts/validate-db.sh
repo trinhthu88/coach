@@ -398,7 +398,7 @@ if ! diff -u src/integrations/supabase/types.ts "$types_output" >"$types_check_o
   exit 1
 fi
 printf '%s\n' '==> Running TypeScript checks'
-if ! npx tsc --noEmit >"$tsc_output" 2>&1; then
+if ! npm run typecheck >"$tsc_output" 2>&1; then
   cat "$tsc_output"
   if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
     while IFS= read -r failure_line; do

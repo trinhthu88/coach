@@ -296,7 +296,7 @@ function SessionCard({
           p_session_id: session.id,
           p_kind: isCoacheePeer ? "coachee_peer" : "peer",
           p_action: "complete",
-          p_reason: null,
+          p_reason: undefined,
         })
       : await supabase.rpc("complete_coaching_session", { p_session_id: session.id });
     setCompleting(false);

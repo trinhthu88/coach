@@ -375,7 +375,7 @@ function CounterTile({
   );
 }
 
-function KindBadge({ kind }: { kind: Entry["kind"] }) {
+function KindBadge({ kind }: { kind: "coached" | "peer-given" | "peer-received" }) {
   const { t } = useTranslation("dashboard");
   const map = {
     coached: { label: t("practiceJourney.kindBadge.coached"), className: "bg-primary/15 text-primary" },

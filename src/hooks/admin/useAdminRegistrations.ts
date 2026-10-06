@@ -44,7 +44,7 @@ export function useAdminRegistrations() {
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
       supabase.from("sessions").select("id, coach_id, coachee_id, enrollment_id, status"),
       supabase.from("coach_profiles").select("*"),
-       supabase.from("programme_enrollments").select("id, user_id, programme_id, status, programmes(name)").in("status", ["active", "at_risk", "paused"]),
+       supabase.from("programme_enrollments").select("id, user_id, programme_id, status, start_date, programmes(name)").in("status", ["active", "at_risk", "paused"]),
       supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
     ]);
 

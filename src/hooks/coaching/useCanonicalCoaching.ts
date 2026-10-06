@@ -218,7 +218,7 @@ export function useRescheduleCoachingSession() {
       const { data, error } = await supabase.rpc("reschedule_coaching_session", {
         p_session_id: sessionId,
         p_new_slot_id: newSlotId,
-        p_reason: reason ?? null,
+        p_reason: reason ?? undefined,
       });
       if (error) throw error;
       return data as string;

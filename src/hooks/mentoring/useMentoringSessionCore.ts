@@ -76,8 +76,8 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
       // guard_session_protected_fields() for anything else on this row.
       const { error } = await supabase.rpc("update_mentoring_session_notes", {
         p_session_id: session.id,
-        p_mentor_notes: opts.includeMentorNotes ? mentorNotes : null,
-        p_mentee_notes: opts.includeMenteeNotes ? menteeNotes : null,
+        p_mentor_notes: opts.includeMentorNotes ? mentorNotes : undefined,
+        p_mentee_notes: opts.includeMenteeNotes ? menteeNotes : undefined,
       });
       setSaving(false);
       if (!error) load();
