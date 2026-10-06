@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, ArrowUpRight, Users, Repeat, GraduationCap, Triangle, BookOpen, HelpCircle, ClipboardCheck, Sparkles, type LucideIcon } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowUpRight, Users, Repeat, GraduationCap, Triangle, BookOpen, HelpCircle, ClipboardCheck, Sparkles, Mic, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import type { ProgrammeModuleType } from "@/hooks/useProgrammeModules";
 import type { Json } from "@/integrations/supabase/types";
 import { ProgrammeModuleScheduleFields, type TrainingWeekOption } from "./ProgrammeModuleScheduleFields";
+import { FinalAssessmentSettings } from "./programmes/FinalAssessmentSettings";
 import { normalizeModuleScheduleConfig, stripRetiredSessionLimits, validateModuleScheduleConfig } from "@/lib/programmeModuleConfig";
 
 const MODULE_ICONS: Record<ProgrammeModuleType, LucideIcon> = {
@@ -31,6 +32,7 @@ const MODULE_ICONS: Record<ProgrammeModuleType, LucideIcon> = {
   quiz: HelpCircle,
   assessment: ClipboardCheck,
   daily_prompt: Sparkles,
+  final_assessment: Mic,
 };
 
 interface Programme {
@@ -62,6 +64,7 @@ export const MODULE_TYPES: ProgrammeModuleType[] = [
   "triads",
   "training",
   "assessment",
+  "final_assessment",
 ];
 
 export interface ModuleRow {
@@ -85,6 +88,15 @@ export function defaultModuleRows(): ModuleRows {
     quiz: { enabled: false, config: {} },
     assessment: { enabled: false, config: { include_direct_reports: false } },
     daily_prompt: { enabled: false, config: {} },
+    // One requirement per cohort when required; MP3 only, 50 MB (fixed, and
+    // normalised by the database: 20261007000100).
+    final_assessment: {
+      enabled: false,
+      config: {
+        required: false, required_units: 0, distribution_settings: {}, quiz_enabled: false, pass_mark_pct: null,
+        accepted_mime: ["audio/mpeg"], max_file_mb: 50, transcript: "optional", instructions: "", instructions_vi: "",
+      },
+    },
   };
 }
 
@@ -120,6 +132,7 @@ export function ModuleConfigRow({
   onConfigChange,
   t,
   trainingWeeks,
+  programmeId,
 }: {
   module: ProgrammeModuleType;
   row: ModuleRow;
@@ -127,6 +140,8 @@ export function ModuleConfigRow({
   onConfigChange: (patch: Record<string, unknown>) => void;
   t: (key: string, opts?: Record<string, unknown>) => string;
   trainingWeeks: TrainingWeekOption[];
+  /** The saved programme, once it exists (the Final Assessment quiz hangs off it). */
+  programmeId?: string;
 }) {
   const cfg = row.config;
   const Icon = MODULE_ICONS[module];
@@ -219,6 +234,9 @@ export function ModuleConfigRow({
               />
               {t("programmes.modules.includeDirectReports")}
             </label>
+          )}
+          {module === "final_assessment" && (
+            <FinalAssessmentSettings programmeId={programmeId} config={cfg} onConfigChange={onConfigChange} />
           )}
           <ProgrammeModuleScheduleFields
             module={module}
@@ -444,6 +462,7 @@ export default function AdminProgrammes() {
                       onConfigChange={(patch) => updateModuleConfig(mod, patch)}
                       t={t}
                       trainingWeeks={trainingWeeks}
+                      programmeId={editing.id}
                     />
                   ))}
                 </div>

@@ -608,7 +608,8 @@
         "training": "Đào tạo",
         "quiz": "Quiz",
         "assessment": "Đánh giá",
-        "daily_prompt": "Nhắc nhở hàng ngày"
+        "daily_prompt": "Nhắc nhở hàng ngày",
+        "final_assessment": "Final Assessment"
       },
       "schedule": {
         "required": "Bắt buộc",
@@ -641,6 +642,25 @@
       },
       "assessedTriads": "Triad được đánh giá (bài suy ngẫm được gửi tới người đánh giá)",
       "triadN": "Triad {{n}}"
+    },
+    "finalAssessment": {
+      "media": "Định dạng chấp nhận",
+      "mediaValue": "Chỉ âm thanh MP3 (audio/mpeg)",
+      "maxSize": "Dung lượng tối đa",
+      "maxSizeValue": "50 MB",
+      "transcript": "Bản chép lời",
+      "transcriptModes": {
+        "none": "Không có",
+        "optional": "Không bắt buộc",
+        "required": "Bắt buộc"
+      },
+      "quiz": "Quiz",
+      "quizHint": "Học viên làm quiz trước; điểm được gửi cùng kết quả.",
+      "passMark": "Ngưỡng đạt (%)",
+      "saveFirst": "Hãy lưu chương trình trước, rồi thêm câu hỏi quiz.",
+      "createQuiz": "Tạo quiz",
+      "instructions": "Hướng dẫn (tiếng Anh)",
+      "instructionsVi": "Hướng dẫn (tiếng Việt)"
     }
   },
   "coachProgrammes": {

@@ -154,6 +154,7 @@ export type Database = {
         Row: {
           answers: Json
           assignment_id: string
+          attempt_no: number
           correct_count: number | null
           enrollment_id: string
           id: string
@@ -166,6 +167,7 @@ export type Database = {
         Insert: {
           answers?: Json
           assignment_id: string
+          attempt_no?: number
           correct_count?: number | null
           enrollment_id: string
           id?: string
@@ -178,6 +180,7 @@ export type Database = {
         Update: {
           answers?: Json
           assignment_id?: string
+          attempt_no?: number
           correct_count?: number | null
           enrollment_id?: string
           id?: string
@@ -216,6 +219,7 @@ export type Database = {
           assignment_type: Database["public"]["Enums"]["assignment_type"]
           created_at: string
           due_offset_days: number | null
+          final_assessment_programme_id: string | null
           id: string
           instructions: string | null
           instructions_vi: string | null
@@ -223,13 +227,14 @@ export type Database = {
           sort_order: number
           title: string
           title_vi: string | null
-          training_week_id: string
+          training_week_id: string | null
           updated_at: string
         }
         Insert: {
           assignment_type: Database["public"]["Enums"]["assignment_type"]
           created_at?: string
           due_offset_days?: number | null
+          final_assessment_programme_id?: string | null
           id?: string
           instructions?: string | null
           instructions_vi?: string | null
@@ -237,13 +242,14 @@ export type Database = {
           sort_order?: number
           title: string
           title_vi?: string | null
-          training_week_id: string
+          training_week_id?: string | null
           updated_at?: string
         }
         Update: {
           assignment_type?: Database["public"]["Enums"]["assignment_type"]
           created_at?: string
           due_offset_days?: number | null
+          final_assessment_programme_id?: string | null
           id?: string
           instructions?: string | null
           instructions_vi?: string | null
@@ -251,7 +257,7 @@ export type Database = {
           sort_order?: number
           title?: string
           title_vi?: string | null
-          training_week_id?: string
+          training_week_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4602,6 +4608,27 @@ export type Database = {
         Args: { p_assessor_id: string; p_submission_ids: string[] }
         Returns: number
       }
+      admin_final_assessment_result: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          attempt_no: number
+          can_resubmit: boolean
+          due_on: string
+          final_result: string
+          outcome: string
+          pass_mark_pct: number
+          quiz_correct: number
+          quiz_passed: boolean
+          quiz_score_pct: number
+          quiz_total: number
+          released_at: string
+          requirement_id: string
+          state: string
+          submission_id: string
+          submission_status: string
+          submitted_at: string
+        }[]
+      }
       admin_canonical_completion_rate: {
         Args: { p_as_of?: string; p_enrollment_ids: string[] }
         Returns: {
@@ -6242,6 +6269,61 @@ export type Database = {
           viewed_at: string
         }[]
       }
+      learner_final_assessment: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          attempt_no: number
+          can_resubmit: boolean
+          due_on: string
+          final_result: string
+          instructions: string
+          instructions_vi: string
+          max_file_mb: number
+          pass_mark_pct: number
+          quiz_correct: number
+          quiz_enabled: boolean
+          quiz_passed: boolean
+          quiz_question_count: number
+          quiz_score_pct: number
+          quiz_submission_id: string
+          quiz_taken: boolean
+          quiz_total: number
+          released_at: string
+          requirement_id: string
+          state: string
+          submission_id: string
+          submitted_at: string
+          transcript_mode: string
+        }[]
+      }
+      learner_final_assessment_quiz: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          options: Json
+          question_id: string
+          question_text: string
+          question_text_vi: string
+          sort_order: number
+        }[]
+      }
+      learner_submit_assessment: {
+        Args: {
+          p_cohort_requirement_id: string
+          p_enrollment_id: string
+          p_files?: Json
+          p_kind: string
+          p_quiz_submission_id?: string
+          p_submission_id: string
+          p_transcript_source?: string
+          p_transcript_text?: string
+          p_triad_reflection_id?: string
+        }
+        Returns: string
+      }
+      learner_submit_final_assessment_quiz: {
+        Args: { p_answers: Json; p_enrollment_id: string }
+        Returns: string
+      }
       learner_canonical_engagement: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -6479,6 +6561,10 @@ export type Database = {
           module: Database["public"]["Enums"]["programme_module_type"]
           reflection_type: string
         }[]
+      }
+      sponsor_final_assessment_status: {
+        Args: { p_enrollment_id: string }
+        Returns: { result: string; status: string }[]
       }
       sponsor_leader_requirement_calendar: {
         Args: { p_as_of?: string; p_enrollment_id: string }
@@ -7633,6 +7719,7 @@ export type Database = {
         | "quiz"
         | "assessment"
         | "daily_prompt"
+        | "final_assessment"
       session_status:
         | "pending_coach_approval"
         | "confirmed"
@@ -7792,6 +7879,7 @@ export const Constants = {
         "quiz",
         "assessment",
         "daily_prompt",
+        "final_assessment",
       ],
       session_status: [
         "pending_coach_approval",

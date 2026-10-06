@@ -109,7 +109,7 @@ async function fetchProgress(enrollmentId: string): Promise<ProgrammeProgressSum
     .map((a) => {
       const sub = submissionByAssignment.get(a.id);
       if (!sub || sub.score_pct == null) return null;
-      return { weekNumber: weekNumberById.get(a.training_week_id) ?? 0, scorePct: sub.score_pct };
+      return { weekNumber: weekNumberById.get(a.training_week_id ?? "") ?? 0, scorePct: sub.score_pct };
     })
     .filter((v): v is { weekNumber: number; scorePct: number } => v != null)
     .sort((a, b) => a.weekNumber - b.weekNumber);

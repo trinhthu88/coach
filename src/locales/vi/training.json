@@ -163,7 +163,8 @@
       "training": "Đào tạo",
       "quiz": "Bài trắc nghiệm",
       "assessment": "Đánh giá",
-      "daily_prompt": "Gợi ý hàng ngày"
+      "daily_prompt": "Gợi ý hàng ngày",
+      "final_assessment": "Final Assessment"
     },
     "pace": {
       "completed": "Đã hoàn thành",

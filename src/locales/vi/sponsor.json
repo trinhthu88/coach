@@ -357,7 +357,8 @@
       "percent": "{{value}}% số đơn vị module được cấu hình đã hoàn thành",
       "notAvailable": "Không có trong bản tóm tắt an toàn cho nhà tài trợ",
       "aggregateOnly": "Chi tiết module không có trong bản tóm tắt an toàn cho nhà tài trợ.",
-      "notApplicable": "Không thuộc cấu hình của chương trình này"
+      "notApplicable": "Không thuộc cấu hình của chương trình này",
+      "final_assessment": "Final Assessment"
     },
     "attention": {
       "label": "Cần chú ý",

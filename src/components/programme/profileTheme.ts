@@ -71,6 +71,7 @@ export function moduleScopeLabelFor(module: string, t: (key: string) => string) 
     peer_coaching: t("cohortDetail.modules.peer"),
     mentoring: t("cohortDetail.modules.mentoring"),
     triads: t("cohortDetail.modules.triads"),
+    final_assessment: t("cohortDetail.modules.final_assessment"),
   };
   return labels[module] ?? humaniseModule(module);
 }
@@ -87,5 +88,6 @@ export const LEARNER_MODULE_PATH: Record<string, string> = {
   peer_coaching: "/coachee/peer-practice",
   mentoring: "/mentoring",
   triads: "/triads",
+  final_assessment: "/final-assessment",
 };
 

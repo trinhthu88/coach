@@ -71,10 +71,14 @@ export function ProgrammeModuleScheduleFields({
         <Switch
           aria-label={t("programmes.modules.schedule.requiredToggle")}
           checked={config.required === true}
-          onCheckedChange={(required) => updateConfig({ required })}
+          // The Final Assessment is one requirement per cohort when required.
+          onCheckedChange={(required) =>
+            updateConfig(module === "final_assessment" ? { required, required_units: required ? 1 : 0 } : { required })
+          }
         />
       </div>
 
+      {module !== "final_assessment" && (
       <div className="grid gap-2.5 sm:grid-cols-3">
         <div>
           <Label htmlFor={`${fieldId}-units`} className="text-[10.5px] text-muted-foreground">
@@ -90,6 +94,7 @@ export function ProgrammeModuleScheduleFields({
           />
         </div>
       </div>
+      )}
 
       <p className="text-[10px] text-muted-foreground" data-testid="module-deadline-note">
         {t("programmes.modules.schedule.deadlineNote")}

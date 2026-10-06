@@ -96,6 +96,7 @@ const NAV: NavItem[] = [
 
   // Coachee — Learning
   { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coachee"], module: "training", groupKey: "navGroups.learning" },
+  { to: "/final-assessment", labelKey: "nav.finalAssessment", icon: ClipboardCheck, roles: ["coachee"], module: "final_assessment", groupKey: "navGroups.learning" },
 
   // Coachee — Communication
   { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coachee"], groupKey: "navGroups.communication" },
@@ -136,6 +137,7 @@ const NAV: NavItem[] = [
   // Learning (coach — coachee has its own entry above)
   { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coach"], module: "training", groupKey: "navGroups.learning" },
   { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coach"], module: "triads", groupKey: "navGroups.learning" },
+  { to: "/final-assessment", labelKey: "nav.finalAssessment", icon: ClipboardCheck, roles: ["coach"], module: "final_assessment", groupKey: "navGroups.learning" },
 
   // Admin — Overview
   { to: "/admin", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["admin"], groupKey: "navGroups.overview" },

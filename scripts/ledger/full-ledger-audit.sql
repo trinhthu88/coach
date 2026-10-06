@@ -324,7 +324,9 @@ WITH repo(version, name) AS (VALUES
   ('20261006200000', 'admin_projections'),
   ('20261006210000', 'assessment_pipeline'),
   ('20261006220000', 'assessment_triad'),
-  ('20261006230000', 'assessment_inbox_feedback')
+  ('20261006230000', 'assessment_inbox_feedback'),
+  ('20261007000000', 'final_assessment_module_type'),
+  ('20261007000100', 'final_assessment')
 -- END REPO MANIFEST
 ),
 

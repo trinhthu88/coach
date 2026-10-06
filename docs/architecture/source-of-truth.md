@@ -381,6 +381,18 @@ Admin surfaces: Cohort → Assessor pool (`CohortAssessorPanel`, on `admin_cohor
 
 Coach and learner surfaces (`20261006230000`): Coach → Submissions (`/coach/submissions`, tabs To assess · Returned to me · Awaiting validation · Released) and the dashboard card read only `coach_assessment_inbox`, which also returns the submission's `enrollment_id` (the feedback PDF path) and, while the assignment is active, the Triad reflection answers (`triad_reflection_answers`; never the satisfaction rating). The assessor uploads the PDF (≤ 10 MB) to `{enrollment}/{submission}/` and `coach_submit_review` registers it. The learner's Triad page and My Journey → Feedback & results (`#feedback-results`; `/coach/my-journey` for a Coach-learner, `assessment_feedback_link_internal`) read only `learner_assessment_feedback`; showing an item calls `learner_mark_feedback_viewed`. After an approval the Admin queue invokes `send-assessment-feedback-email` (Resend, EN or VI by `profiles.preferred_language`), which sends only what `assessment_claim_release_email_internal` hands out: one email per release, stamped in `assessment_submissions.release_emailed_at`. `supabase/tests/assessment_inbox_feedback_test.sql`.
 
+### Final Assessment (`20261007000000`, `20261007000100`)
+
+| Fact | Owner (written by) | Read through |
+|---|---|---|
+| A programme has a Final Assessment, and how | `programme_modules` (`module = 'final_assessment'`, its own enum value, not `assessment`); `config`: `required`, `required_units` (forced to 1 / 0), `quiz_enabled`, `pass_mark_pct`, `accepted_mime` (fixed `['audio/mpeg']`), `max_file_mb` (fixed 50), `transcript` (`none` / `optional` / `required`), `instructions(_vi)`; normalised by `normalise_final_assessment_config` | Programme Builder (`FinalAssessmentSettings`) |
+| The requirement | one `cohort_requirement_dates` row per cohort ("Final assessment"), created by `sync_cohort_requirement_dates` on the session-module path; due by default at the module deadline (the cohort end) | the requirement calendar |
+| Its quiz | `assignments.final_assessment_programme_id` (instead of `training_week_id`; exactly one owner; one per programme); answers in `assignment_submissions` with `attempt_no` (1 or 2; scored by `trg_score_quiz_submission`; no cadence attribution) | `learner_final_assessment_quiz` (never the answer key), `learner_submit_final_assessment_quiz` |
+| Fulfilment | a released final result (Pass or Not pass): `canonical_final_assessment_fulfilment` → `canonical_enrollment_requirement_calendar` → `canonical_module_progress` | the module progress wrappers |
+| State and result | `canonical_final_assessment_result`: state (not submitted · submitted · under review · resubmission requested · completed), quiz score (`score_pct`), above / below the pass mark (SQL), final result = the approved review's outcome; Resubmit opens attempt 2 (max 2); Not pass is final | `learner_final_assessment` (quiz score and result only after release), `admin_final_assessment_result`, `sponsor_final_assessment_status` (status + Pass / Not pass; Resubmit = Under review) |
+
+Submitting (`learner_submit_assessment`, `final_assessment`) needs this attempt's quiz when the programme has one, exactly one MP3 recording, and a transcript when required (none allowed when `none`). The learner page is `/final-assessment` (quiz → MP3 upload with progress → transcript → review & submit). `supabase/tests/assessment_final_test.sql` checks that Learner, Admin and Sponsor show the same state at each step.
+
 ### Retirement backlog
 
 Kept for now as HISTORICAL; no current-state surface may read them. Retire in a

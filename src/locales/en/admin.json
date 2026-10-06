@@ -613,7 +613,8 @@
         "training": "Training",
         "quiz": "Quiz",
         "assessment": "Assessment",
-        "daily_prompt": "Daily prompt"
+        "daily_prompt": "Daily prompt",
+        "final_assessment": "Final Assessment"
       },
       "schedule": {
         "required": "Required",
@@ -646,6 +647,25 @@
       },
       "assessedTriads": "Assessed Triads (the reflection goes to an assessor)",
       "triadN": "Triad {{n}}"
+    },
+    "finalAssessment": {
+      "media": "Accepted media",
+      "mediaValue": "MP3 audio only (audio/mpeg)",
+      "maxSize": "Maximum file size",
+      "maxSizeValue": "50 MB",
+      "transcript": "Transcript",
+      "transcriptModes": {
+        "none": "None",
+        "optional": "Optional",
+        "required": "Required"
+      },
+      "quiz": "Quiz",
+      "quizHint": "The learner answers a quiz first; the score is released with the result.",
+      "passMark": "Pass mark (%)",
+      "saveFirst": "Save the programme first, then add the quiz questions.",
+      "createQuiz": "Create the quiz",
+      "instructions": "Instructions (English)",
+      "instructionsVi": "Instructions (Vietnamese)"
     }
   },
   "coachProgrammes": {

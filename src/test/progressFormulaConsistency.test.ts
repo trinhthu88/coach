@@ -103,7 +103,7 @@ describe("coachee sidebar reads the same module list as progress (spec Part 10)"
   it("gates each coachee module item on the module alone, never on a give/receive direction", () => {
     const moduleItems = coacheeItems.filter((l) => /module: "/.test(l));
     expect(moduleItems.map((l) => l.match(/module: "(\w+)"/)?.[1]).sort()).toEqual(
-      ["coaching", "mentoring", "peer_coaching", "training", "triads"],
+      ["coaching", "final_assessment", "mentoring", "peer_coaching", "training", "triads"],
     );
     expect(moduleItems.filter((l) => /moduleDirection|anyModule/.test(l))).toEqual([]);
   });

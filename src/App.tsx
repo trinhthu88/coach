@@ -59,6 +59,7 @@ const AdminTrainingContent = lazy(() => import("./pages/admin/AdminTrainingConte
 const AdminTriads = lazy(() => import("./pages/admin/AdminTriads"));
 const AdminAssessments = lazy(() => import("./pages/admin/AdminAssessments"));
 const CoachSubmissions = lazy(() => import("./pages/coach/submissions/CoachSubmissions"));
+const FinalAssessmentPage = lazy(() => import("./pages/finalAssessment/FinalAssessmentPage"));
 const CoachSubmissionDetail = lazy(() => import("./pages/coach/submissions/CoachSubmissionDetail"));
 const AdminCohortTriads = lazy(() => import("./pages/admin/AdminCohortTriads"));
 const TriadsPage = lazy(() => import("./pages/triads/TriadsPage"));
@@ -363,6 +364,14 @@ const App = () => (
                     element={
                       <ProtectedRoute roles={["coach", "coachee"]} module="triads">
                         <TriadReflectionPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/final-assessment"
+                    element={
+                      <ProtectedRoute roles={["coach", "coachee"]} module="final_assessment">
+                        <FinalAssessmentPage />
                       </ProtectedRoute>
                     }
                   />
