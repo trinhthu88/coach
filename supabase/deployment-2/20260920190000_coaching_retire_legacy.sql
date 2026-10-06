@@ -104,13 +104,24 @@ COMMENT ON TABLE public.coachee_coach_allowlist IS
 -- Programme Coaching quantity comes from programme_modules.required_units via
 -- the cohort requirement dates, not from a per-person lifetime cap. The cap
 -- tables stay for the non-programme flows that still use them.
+--
+-- 20260927200000_retire_legacy_session_limits later moved session_limits to
+-- legacy_archive, so each comment applies only while its table is in public.
 
-COMMENT ON TABLE public.session_limits IS
-  'HISTORICAL COMPATIBILITY ONLY for programme Coaching as of the 2026 '
-  'Coaching redesign: programme Coaching quantity is the cohort requirement '
-  'count, not a per-person lifetime cap.';
-COMMENT ON TABLE public.coach_session_limits IS
-  'HISTORICAL COMPATIBILITY ONLY for programme Coaching as of the 2026 '
-  'Coaching redesign. See session_limits.';
+DO $cap_comments$
+BEGIN
+  IF to_regclass('public.session_limits') IS NOT NULL THEN
+    COMMENT ON TABLE public.session_limits IS
+      'HISTORICAL COMPATIBILITY ONLY for programme Coaching as of the 2026 '
+      'Coaching redesign: programme Coaching quantity is the cohort requirement '
+      'count, not a per-person lifetime cap.';
+  END IF;
+  IF to_regclass('public.coach_session_limits') IS NOT NULL THEN
+    COMMENT ON TABLE public.coach_session_limits IS
+      'HISTORICAL COMPATIBILITY ONLY for programme Coaching as of the 2026 '
+      'Coaching redesign. See session_limits.';
+  END IF;
+END
+$cap_comments$;
 
 COMMIT;
