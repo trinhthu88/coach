@@ -14,6 +14,7 @@
 // SUPABASE_SERVICE_ROLE_KEY in the environment (already present in this
 // workspace's secrets).
 
+import { execFileSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 
 const URL = process.env.VITE_SUPABASE_URL;
@@ -53,12 +54,31 @@ async function createAuthUser(email) {
   return data.user.id;
 }
 
-// A held session is trusted fixture data, written with the service role: no
-// client role inserts sessions (20261005100000_session_write_lockdown).
+// A held session is trusted fixture data, written as SQL inside the lifecycle
+// flag, exactly like the pgTAP fixtures: no client role inserts sessions
+// (20261005100000_session_write_lockdown), and the coaching cap trigger refuses
+// a service-role insert (it has no auth.uid() to book for). Needs the local
+// database URL (SUPABASE_DB_URL, exported by scripts/validate-db.sh).
 async function insertCoachingSessionFixture(session) {
-  const { data, error } = await admin.from("sessions").insert(session).select().single();
-  if (error) throw error;
-  return data;
+  const dbUrl = process.env.SUPABASE_DB_URL;
+  if (!dbUrl) throw new Error("SUPABASE_DB_URL is required to write the held session fixture");
+  const sql = `
+    begin;
+    select set_config('app.session_transition', 'on', true);
+    insert into public.sessions (enrollment_id, coach_id, coachee_id, topic, start_time, duration_minutes, status, coachee_rating)
+    select (r->>'enrollment_id')::uuid, (r->>'coach_id')::uuid, (r->>'coachee_id')::uuid, r->>'topic',
+      (r->>'start_time')::timestamptz, (r->>'duration_minutes')::int, (r->>'status')::public.session_status, (r->>'coachee_rating')::int
+    from (select :'row'::jsonb as r) x
+    returning id;
+    commit;`;
+  const out = execFileSync(
+    "psql",
+    ["--no-psqlrc", "-v", "ON_ERROR_STOP=1", "-At", "-v", `row=${JSON.stringify(session)}`, dbUrl],
+    { input: sql, encoding: "utf8" },
+  );
+  const id = out.split("\n").map((l) => l.trim()).find((l) => /^[0-9a-f-]{36}$/.test(l));
+  if (!id) throw new Error(`Held session fixture not created: ${out}`);
+  return { id };
 }
 
 async function makeSponsor(label, programmeId) {

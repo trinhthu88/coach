@@ -67,6 +67,8 @@ eval "$(supabase_cli status -o env)"
 export VITE_SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}"
 export VITE_SUPABASE_ANON_KEY="${ANON_KEY:?local anon key unavailable}"
 export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?local service key unavailable}"
+# Trusted SQL fixtures in sponsor_isolation_test.mjs (held sessions).
+export SUPABASE_DB_URL="${DB_URL:?local database URL unavailable}"
 printf '%s\n' '==> Normalizing local Auth fixture fields for GoTrue'
 psql --no-psqlrc --set=ON_ERROR_STOP=1 \
   "${DB_URL:?local database URL unavailable}" <<'SQL'
