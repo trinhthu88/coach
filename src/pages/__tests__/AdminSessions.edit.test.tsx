@@ -19,9 +19,9 @@ const sessionRow = {
   coachee_rating: null,
 };
 
-const rpc = vi.fn(async () => ({ data: [], error: null }));
-const update = vi.fn(() => ({ eq: async () => ({ error: null }) }));
-const invoke = vi.fn(async () => ({ data: { ok: true }, error: null }));
+const rpc = vi.fn(async (..._args: unknown[]) => ({ data: [], error: null }));
+const update = vi.fn((..._args: unknown[]) => ({ eq: async () => ({ error: null }) }));
+const invoke = vi.fn(async (..._args: unknown[]) => ({ data: { ok: true }, error: null }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {

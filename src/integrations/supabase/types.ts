@@ -46,6 +46,8 @@ export type Database = {
           job_title: string | null
           linkedin_url: string | null
           motivation: string | null
+          referred_by_coach_id: string | null
+          suggested_programme_id: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           role: string
@@ -63,6 +65,8 @@ export type Database = {
           job_title?: string | null
           linkedin_url?: string | null
           motivation?: string | null
+          referred_by_coach_id?: string | null
+          suggested_programme_id?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           role: string
@@ -80,6 +84,8 @@ export type Database = {
           job_title?: string | null
           linkedin_url?: string | null
           motivation?: string | null
+          referred_by_coach_id?: string | null
+          suggested_programme_id?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           role?: string
@@ -1398,6 +1404,7 @@ export type Database = {
           goal_setting_due_on: string | null
           goal_setting_opens_on: string | null
           id: string
+          kind: string
           name: string
           organization_id: string | null
           programme_id: string | null
@@ -1412,6 +1419,7 @@ export type Database = {
           goal_setting_due_on?: string | null
           goal_setting_opens_on?: string | null
           id?: string
+          kind?: string
           name: string
           organization_id?: string | null
           programme_id?: string | null
@@ -1426,6 +1434,7 @@ export type Database = {
           goal_setting_due_on?: string | null
           goal_setting_opens_on?: string | null
           id?: string
+          kind?: string
           name?: string
           organization_id?: string | null
           programme_id?: string | null
@@ -4724,6 +4733,17 @@ export type Database = {
           unit_number: number
         }[]
       }
+      admin_create_coaching_engagement: {
+        Args: {
+          p_coach_id: string
+          p_end: string
+          p_learner_id: string
+          p_organization_id?: string
+          p_programme_id: string
+          p_start: string
+        }
+        Returns: string
+      }
       admin_create_programme_enrollment: {
         Args: {
           p_cohort_id: string
@@ -5579,9 +5599,26 @@ export type Database = {
           session_id: string
         }[]
       }
+      coach_engagement_enrollments: {
+        Args: never
+        Returns: {
+          cohort_id: string
+          enrollment_id: string
+          user_id: string
+        }[]
+      }
       coach_has_client: {
         Args: { _coach_id: string; _coachee_id: string }
         Returns: boolean
+      }
+      coach_refer_client: {
+        Args: {
+          p_email: string
+          p_full_name: string
+          p_note?: string
+          p_suggested_programme_id?: string
+        }
+        Returns: string
       }
       coach_visible_to_coachee: {
         Args: { _coach_id: string; _coachee_id: string }
@@ -5982,13 +6019,6 @@ export type Database = {
           unlock_date: string
           viewed_at: string
           week_number: number
-        }[]
-      }
-      get_own_coach_invite_slots: {
-        Args: never
-        Returns: {
-          invite_limit: number
-          used_slots: number
         }[]
       }
       get_peer_session_usage: {
@@ -6766,7 +6796,6 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      remove_own_coachee: { Args: { _coachee_id: string }; Returns: boolean }
       reschedule_coaching_session: {
         Args: { p_new_slot_id: string; p_reason?: string; p_session_id: string }
         Returns: string

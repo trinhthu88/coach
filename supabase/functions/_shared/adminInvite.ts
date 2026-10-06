@@ -244,16 +244,6 @@ async function transitionEnrollment(
   return { enrollment_id: (data as { enrollment_id?: string } | null)?.enrollment_id };
 }
 
-async function applyLearnerExtras(admin: SupabaseClient, userId: string, row: ValidatedInviteRow, callerId: string) {
-  if (row.role !== "coachee") return;
-  if (row.assign_coach_id) {
-    await admin.from("coachee_coach_allowlist").upsert(
-      { coachee_id: userId, coach_id: row.assign_coach_id, created_by: callerId, source: "admin_added" },
-      { onConflict: "coachee_id,coach_id", ignoreDuplicates: true },
-    );
-  }
-}
-
 /** Creates a brand-new account and emails its setup (invite) link. */
 async function createAccount(
   admin: SupabaseClient,
@@ -314,7 +304,7 @@ async function adoptOrphanAuthUser(
 export async function executeInviteRow(
   admin: SupabaseClient,
   row: ValidatedInviteRow,
-  callerId: string,
+  _callerId: string,
 ): Promise<RowResult> {
   const out: RowResult = { row_index: row.row_index, row_id: row.row_id, email: row.email, status: "skipped" };
   try {
@@ -332,7 +322,6 @@ export async function executeInviteRow(
       if (roleErr) problems.push(`Role: ${roleErr}`);
       const enrollment = await createEnrollment(admin, userId, row);
       if (enrollment.error) problems.push(`Enrollment: ${enrollment.error}`);
-      await applyLearnerExtras(admin, userId, row, callerId);
       return {
         ...out,
         status: problems.length ? "partial" : "invited",
@@ -360,7 +349,6 @@ export async function executeInviteRow(
         : await createEnrollment(admin, userId, row);
     if (enrollment.error) return { ...out, status: "failed", message: enrollment.error, user_id: userId };
     await activateIfPending(admin, userId);
-    await applyLearnerExtras(admin, userId, row, callerId);
     return { ...out, status: "enrolled", user_id: userId, enrollment_id: enrollment.enrollment_id };
   } catch (err) {
     return { ...out, status: "failed", message: err instanceof Error ? err.message : String(err) };

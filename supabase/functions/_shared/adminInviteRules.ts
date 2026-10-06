@@ -34,7 +34,11 @@ export interface InviteRowInput {
   /** Sponsor-only profile fields. */
   title?: string;
   department?: string;
-  /** Legacy bulk-invite field (learners only). */
+  /**
+   * Legacy bulk-invite field (learners only). Validated but no longer applied:
+   * the coach allowlist is retired (20261006170000); a learner is paired with a
+   * Coach through an Admin coaching engagement or a cohort's Coach pool.
+   */
   assign_coach_email?: string;
   assign_coach_id?: string;
   /**

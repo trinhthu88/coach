@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, UsersRound, Users } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, UsersRound, Users, UserRound } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
+import { FilterChip } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/use-confirm";
 import { getFriendlyErrorMessage } from "@/lib/errors";
@@ -20,6 +21,7 @@ import { CohortRequirementSchedule } from "./cohorts/CohortRequirementSchedule";
 import { CohortCoachingPanel } from "./cohorts/CohortCoachingPanel";
 import { CohortMentoringPanel } from "./cohorts/CohortMentoringPanel";
 import { FixedPeerDyadPanel } from "./cohorts/FixedPeerDyadPanel";
+import { NewCoachingEngagementDialog } from "./cohorts/NewCoachingEngagementDialog";
 
 interface Cohort {
   id: string;
@@ -30,6 +32,8 @@ interface Cohort {
   end_date: string | null;
   goal_setting_opens_on: string | null;
   goal_setting_due_on: string | null;
+  /** 'group' or 'engagement' (a 1:1 coaching engagement, 20261006170000). */
+  kind?: string;
 }
 
 export default function AdminCohorts() {
@@ -40,6 +44,8 @@ export default function AdminCohorts() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Cohort> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [kindFilter, setKindFilter] = useState<"all" | "group" | "engagement">("all");
+  const [engagementOpen, setEngagementOpen] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
   // The cohort's canonical requirement dates (proposed for a new cohort,
   // saved for an existing one) — see useCohortRequirementSchedule.
@@ -125,16 +131,30 @@ export default function AdminCohorts() {
         title={t("cohorts.title")}
         emphasize={t("cohorts.titleEmphasis")}
         subtitle={t("cohorts.subtitle")}
-        right={<Button onClick={() => setEditing({ name: "" })}><Plus className="h-4 w-4" /> {t("cohorts.newCohort")}</Button>}
+        right={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setEngagementOpen(true)}><UserRound className="h-4 w-4" /> {t("cohorts.engagement.newEngagement")}</Button>
+            <Button onClick={() => setEditing({ name: "" })}><Plus className="h-4 w-4" /> {t("cohorts.newCohort")}</Button>
+          </div>
+        }
       />
 
+      <div className="mb-3 flex flex-wrap gap-2" data-testid="cohort-kind-filter">
+        <FilterChip active={kindFilter === "all"} onClick={() => setKindFilter("all")}>{t("cohorts.kind.all")}</FilterChip>
+        <FilterChip active={kindFilter === "group"} onClick={() => setKindFilter("group")}>{t("cohorts.kind.group")}</FilterChip>
+        <FilterChip active={kindFilter === "engagement"} onClick={() => setKindFilter("engagement")}>{t("cohorts.kind.engagement")}</FilterChip>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {rows.map((c) => {
+        {rows.filter((c) => kindFilter === "all" || (c.kind ?? "group") === kindFilter).map((c) => {
           const prog = progs.find((p) => p.id === c.programme_id);
           return (
             <Card key={c.id} className="p-4">
               <div className="mb-2 flex items-start justify-between gap-2">
-                <h3 className="min-w-0 truncate text-base font-semibold">{c.name}</h3>
+                <h3 className="min-w-0 truncate text-base font-semibold">
+                  {c.kind === "engagement" && <Pill tone="muted" className="mr-1.5 align-middle">{t("cohorts.kind.engagementBadge")}</Pill>}
+                  {c.name}
+                </h3>
                 {prog && <Pill tone="primary" className="shrink-0">{prog.name}</Pill>}
               </div>
               {c.description && <p className="text-[12px] text-muted-foreground">{c.description}</p>}
@@ -156,6 +176,8 @@ export default function AdminCohorts() {
           </Card>
         )}
       </div>
+
+      <NewCoachingEngagementDialog open={engagementOpen} onOpenChange={setEngagementOpen} onCreated={load} />
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">

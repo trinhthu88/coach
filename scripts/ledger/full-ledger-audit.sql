@@ -317,7 +317,8 @@ WITH repo(version, name) AS (VALUES
   ('20261006130000', 'one_overdue_rule'),
   ('20261006140000', 'admin_alerts_current'),
   ('20261006150000', 'one_today'),
-  ('20261006160000', 'training_availability')
+  ('20261006160000', 'training_availability'),
+  ('20261006170000', 'coaching_engagements')
 -- END REPO MANIFEST
 ),
 

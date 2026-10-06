@@ -133,7 +133,30 @@
     "goalSettingOpensLabel": "Goal setting opens",
     "goalSettingDueLabel": "Goals due by",
     "goalSettingHint": "Each learner sets 1–3 goals in this period. Empty = cohort start to start + 7 days. A reminder date only: it never counts as a programme requirement.",
-    "deleteBlockedEnrollments": "This cohort has enrolled leaders and cannot be deleted. Move or end their enrollments first."
+    "deleteBlockedEnrollments": "This cohort has enrolled leaders and cannot be deleted. Move or end their enrollments first.",
+    "kind": {
+      "all": "All",
+      "group": "Group",
+      "engagement": "1:1",
+      "engagementBadge": "1:1"
+    },
+    "engagement": {
+      "newEngagement": "New coaching engagement",
+      "title": "New coaching engagement",
+      "description": "A 1:1 engagement: its own cohort, this coach as the only Coach, Coaching sessions due evenly from start to end.",
+      "learner": "Learner",
+      "coach": "Coach",
+      "programme": "Programme (Coaching only)",
+      "noProgramme": "No active programme has Coaching as its only module.",
+      "organisation": "Organisation",
+      "noOrganisation": "No organisation",
+      "start": "Start",
+      "end": "End",
+      "datesHint": "Coaching requirement dates are spread evenly between these dates.",
+      "choose": "Choose…",
+      "create": "Create engagement",
+      "created": "Coaching engagement created"
+    }
   },
   "dashboard": {
     "eyebrow": "Organisation",

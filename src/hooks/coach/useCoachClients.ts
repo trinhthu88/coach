@@ -7,8 +7,10 @@ import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 /**
  * Loads every coachee this coach has a confirmed or completed session with,
- * aggregated with session/goal/milestone/action-item stats, plus the top-
- * level metrics tiles derived from that list.
+ * plus every learner of a coaching engagement the coach is assigned to
+ * (coach_engagement_enrollments, 20261006170000) -- so an engagement client is
+ * listed before the first session -- aggregated with session/goal/milestone/
+ * action-item stats, plus the top-level metrics tiles derived from that list.
  */
 export function useCoachClients(userId: string | undefined) {
   const [clients, setClients] = useState<Client[]>([]);
@@ -17,17 +19,21 @@ export function useCoachClients(userId: string | undefined) {
   const load = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
-    const { data: ses } = await supabase
-      .from("sessions")
-      .select("id, enrollment_id, coachee_id, status, start_time")
-      .eq("coach_id", userId);
+    const [{ data: ses }, { data: engagements }] = await Promise.all([
+      supabase
+        .from("sessions")
+        .select("id, enrollment_id, coachee_id, status, start_time")
+        .eq("coach_id", userId),
+      supabase.rpc("coach_engagement_enrollments"),
+    ]);
 
     const coacheeIds = Array.from(
-      new Set(
-        (ses || [])
+      new Set([
+        ...(ses || [])
           .filter((s) => ["confirmed", "completed"].includes(s.status))
-          .map((s) => s.coachee_id)
-      )
+          .map((s) => s.coachee_id),
+        ...(engagements || []).map((e) => e.user_id),
+      ])
     );
     if (!coacheeIds.length) {
       setClients([]);
@@ -147,6 +153,8 @@ export function useCoachClients(userId: string | undefined) {
       const prev = latestEnrollment.get(s.coachee_id);
       if (!prev || s.start_time > prev.at) latestEnrollment.set(s.coachee_id, { id: s.enrollment_id, at: s.start_time });
     }
+    // A coaching engagement IS the client's enrollment with this coach.
+    for (const e of engagements || []) latestEnrollment.set(e.user_id, { id: e.enrollment_id, at: "" });
     const enrollmentIds = [...new Set([...latestEnrollment.values()].map((e) => e.id))];
     const { data: canonical, error: canonicalError } = enrollmentIds.length
       ? await supabase.rpc("coach_canonical_enrollment_progress", { p_enrollment_ids: enrollmentIds })

@@ -5,31 +5,21 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Users, Calendar, AlertCircle, Search, TrendingUp, UserPlus, Info } from "lucide-react";
+import { Users, Calendar, AlertCircle, Search, TrendingUp, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { PageHeader, StatCard } from "@/components/ui/page-header";
 import { useCoachClients } from "@/hooks/coach/useCoachClients";
-import { useCoachInviteSlots } from "@/hooks/coach/useCoachInviteSlots";
 import { ClientRow } from "./coach/ClientRow";
 import { ClientDetailDialog } from "./coach/ClientDetailDialog";
-import { InviteClientDialog } from "./coach/InviteClientDialog";
-
-const CONTACT_EMAIL = "contact@clariva.club";
+import { ReferClientDialog } from "./coach/ReferClientDialog";
 
 export default function CoachClients() {
   const { t } = useTranslation("dashboard");
   const { user } = useAuth();
   const { clients, loading, reload, metrics } = useCoachClients(user?.id);
-  const inviteSlots = useCoachInviteSlots(user?.id);
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [inviteOpen, setInviteOpen] = useState(false);
-
-  const refreshAll = () => {
-    reload();
-    inviteSlots.reload();
-  };
-  const atCap = !inviteSlots.loading && inviteSlots.used >= inviteSlots.limit;
+  const [referOpen, setReferOpen] = useState(false);
 
   const filtered = clients.filter((c) => {
     const q = search.toLowerCase();
@@ -45,29 +35,10 @@ export default function CoachClients() {
           emphasis={t("clients.titleEmphasis")}
           subtitle={t("clients.subtitle")}
           actions={
-            atCap ? (
-              <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>
-                  {t("clients.atCapNotice", { used: inviteSlots.used, limit: inviteSlots.limit })}{" "}
-                  <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold underline">
-                    {t("clients.contactUs")}
-                  </a>{" "}
-                  {t("clients.forMore")}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                {!inviteSlots.loading && (
-                  <span className="text-xs text-muted-foreground">
-                    {t("clients.usedOfLimit", { used: inviteSlots.used, limit: inviteSlots.limit })}
-                  </span>
-                )}
-                <Button onClick={() => setInviteOpen(true)}>
-                  <UserPlus className="h-4 w-4" /> {t("clients.inviteAClient")}
-                </Button>
-              </div>
-            )
+            // Coaches refer; Admin creates the coaching engagement (decision 4).
+            <Button onClick={() => setReferOpen(true)}>
+              <UserPlus className="h-4 w-4" /> {t("clients.referAClient")}
+            </Button>
           }
         />
 
@@ -165,21 +136,11 @@ export default function CoachClients() {
           coachId={user!.id}
           completionPct={clients.find((c) => c.id === openId)?.completionPct ?? null}
           onClose={() => setOpenId(null)}
-          onChanged={refreshAll}
-          onRemoved={() => {
-            setOpenId(null);
-            refreshAll();
-          }}
-          removeClient={inviteSlots.removeClient}
+          onChanged={reload}
         />
       )}
 
-      <InviteClientDialog
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        invite={inviteSlots.invite}
-        onInvited={refreshAll}
-      />
+      <ReferClientDialog open={referOpen} onOpenChange={setReferOpen} />
     </div>
   );
 }

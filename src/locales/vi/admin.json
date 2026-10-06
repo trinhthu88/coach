@@ -134,7 +134,30 @@
     "goalSettingOpensLabel": "Bắt đầu đặt mục tiêu",
     "goalSettingDueLabel": "Hạn đặt mục tiêu",
     "goalSettingHint": "Mỗi học viên đặt 1–3 mục tiêu trong giai đoạn này. Để trống = từ ngày bắt đầu khóa đến 7 ngày sau. Chỉ là ngày nhắc nhở, không tính là yêu cầu của chương trình.",
-    "deleteBlockedEnrollments": "Nhóm này đã có học viên ghi danh nên không thể xóa. Hãy chuyển hoặc kết thúc các ghi danh trước."
+    "deleteBlockedEnrollments": "Nhóm này đã có học viên ghi danh nên không thể xóa. Hãy chuyển hoặc kết thúc các ghi danh trước.",
+    "kind": {
+      "all": "Tất cả",
+      "group": "Nhóm",
+      "engagement": "1:1",
+      "engagementBadge": "1:1"
+    },
+    "engagement": {
+      "newEngagement": "Tạo chương trình coaching 1:1",
+      "title": "Chương trình coaching 1:1 mới",
+      "description": "Một chương trình 1:1: khóa riêng, coach này là Coach duy nhất, các buổi Coaching đến hạn đều từ ngày bắt đầu đến ngày kết thúc.",
+      "learner": "Học viên",
+      "coach": "Coach",
+      "programme": "Chương trình (chỉ Coaching)",
+      "noProgramme": "Không có chương trình đang hoạt động nào chỉ gồm Coaching.",
+      "organisation": "Tổ chức",
+      "noOrganisation": "Không có tổ chức",
+      "start": "Bắt đầu",
+      "end": "Kết thúc",
+      "datesHint": "Hạn các buổi Coaching được chia đều giữa hai ngày này.",
+      "choose": "Chọn…",
+      "create": "Tạo chương trình",
+      "created": "Đã tạo chương trình coaching 1:1"
+    }
   },
   "dashboard": {
     "eyebrow": "Tổ chức",

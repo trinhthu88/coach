@@ -20,7 +20,7 @@ const sessionRow = {
   coachee_rating_comment: null,
 };
 
-const rpc = vi.fn(async () => ({ data: null, error: null }));
+const rpc = vi.fn(async (..._args: unknown[]) => ({ data: null, error: null }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {

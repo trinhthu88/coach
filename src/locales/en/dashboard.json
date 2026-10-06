@@ -225,11 +225,6 @@
     "titleLead": "My",
     "titleEmphasis": "clients",
     "subtitle": "All active coachees at a glance — progress, engagement, and private notes.",
-    "atCapNotice": "{{used}} of {{limit}} clients invited.",
-    "contactUs": "Contact us",
-    "forMore": "for more.",
-    "usedOfLimit": "{{used}} of {{limit}} clients invited",
-    "inviteAClient": "Invite a client",
     "stats": {
       "activeClients": "Active clients",
       "activeClientsHint_one": "{{count}} no upcoming",
@@ -272,33 +267,9 @@
         "completed": "Completed"
       }
     },
-    "invite": {
-      "requiredFields": "Full name and email are required",
-      "success": "Invited — pending admin approval",
-      "limitReached": "You've reached your limit of {{limit}} clients invited.",
-      "emailRegistered": "That email is already registered on Clariva.",
-      "dialogTitle": "Invite a client",
-      "dialogDescription": "They'll get an email to set up their account. Their access is pending admin approval.",
-      "fullNameLabel": "Full name",
-      "fullNamePlaceholder": "Jane Doe",
-      "emailLabel": "Email",
-      "emailPlaceholder": "jane@company.com",
-      "sessionLimitLabel": "Monthly session limit (optional)",
-      "sessionLimitPlaceholder": "Uses the platform default if left blank",
-      "atCapPrefix": "Reach out to",
-      "atCapSuffix": "if you'd like to invite more clients.",
-      "cancel": "Cancel",
-      "sendInvite": "Send invite"
-    },
     "detail": {
       "defaultName": "Client",
       "backToOverview": "Back to overview",
-      "removeClient": "Remove client",
-      "removeConfirmTitle": "Remove {{name}}?",
-      "removeConfirmDefaultName": "this client",
-      "removeConfirmBody": "They'll lose access to book new sessions or message you. Past sessions, notes, and history are kept — this isn't a delete, and you can be re-assigned to them again later if needed.",
-      "cancel": "Cancel",
-      "removing": "Removing…",
       "clientAlreadyRemoved": "Client was already removed",
       "clientRemoved": "Client removed",
       "statedGoals": "Stated goals:",
@@ -329,6 +300,21 @@
       "deleteNote": "Delete note",
       "ratedByCoachee": "— rated by coachee",
       "milestonesDone": "{{done}}/{{total}} milestones done"
+    },
+    "referAClient": "Refer a client",
+    "refer": {
+      "dialogTitle": "Refer a client",
+      "dialogDescription": "Tell Admin about someone who would like coaching with you. Admin reviews the request and sets up the coaching engagement.",
+      "fullNameLabel": "Full name",
+      "emailLabel": "Email",
+      "programmeLabel": "Suggested programme",
+      "programmeNone": "No suggestion",
+      "noteLabel": "Note for Admin (optional)",
+      "grantsNothing": "A referral does not create an account or give access. Admin decides and sets up the engagement.",
+      "requiredFields": "Full name and email are required",
+      "success": "Referral sent to Admin",
+      "cancel": "Cancel",
+      "send": "Send referral"
     }
   },
   "availability": {

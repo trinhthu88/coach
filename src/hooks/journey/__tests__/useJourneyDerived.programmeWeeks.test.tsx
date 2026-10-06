@@ -9,7 +9,6 @@ const baseProgramme: ProgrammeInfo = {
   cohortName: null,
   startDate: "2026-03-01",
   endDate: "2026-07-05",
-  sessionsAllowed: 4,
   durationMonths: 5,
 };
 
