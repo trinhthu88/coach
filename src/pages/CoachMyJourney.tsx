@@ -83,7 +83,7 @@ export default function CoachMyJourney() {
   const { ratings, sessionRatings, saveRating } = ratingsApi;
   const { coachingSessions, peerSessions, coachNames, toggleAction: toggleActionRaw } = sessionsApi;
   const { reflections, deleteReflection } = reflectionsApi;
-  const { programme, usage, coaching } = programmeApi;
+  const { programme, coaching } = programmeApi;
 
   const loading =
     goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading || programmeApi.loading;
@@ -172,10 +172,12 @@ export default function CoachMyJourney() {
         <Metric label={t("coachMyJourney.metrics.actionsDone")} value={String(aiDone)} sub={aiOverdue ? t("coachMyJourney.metrics.actionsDoneSubOverdue", { count: aiOverdue }) : t("coachMyJourney.metrics.actionsDoneSubTotal", { count: aiTotal })} subClass={aiOverdue ? "text-destructive" : ""} />
         <Metric
           label={t("coachMyJourney.metrics.sessionsReceived")}
+          // Canonical Coaching units (learner_canonical_progress), never a
+          // count of session rows over a configured limit.
           value={
-            usage
-              ? `${sessions.filter((s) => s.status === "completed").length} / ${usage.monthly_limit}`
-              : `${sessions.filter((s) => s.status === "completed").length}`
+            canonical.progress
+              ? `${canonical.progress.coaching_completed_units} / ${canonical.progress.coaching_required_units}`
+              : "—"
           }
           sub={t("coachMyJourney.metrics.sessionsReceivedSub", { count: upcoming.length })}
         />

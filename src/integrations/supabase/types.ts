@@ -5545,13 +5545,6 @@ export type Database = {
             Returns: boolean
           }
       check_has_module_access: { Args: { p_module: string }; Returns: boolean }
-      check_mentoring_given_usage: {
-        Args: { p_mentor_id: string }
-        Returns: {
-          limit_count: number
-          used_count: number
-        }[]
-      }
       check_mentoring_session_usage: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5904,13 +5897,6 @@ export type Database = {
           used_count: number
         }[]
       }
-      get_coachee_session_usage_for_enrollment: {
-        Args: { p_enrollment_id: string }
-        Returns: {
-          monthly_limit: number
-          used_this_month: number
-        }[]
-      }
       get_enrollment_programme_modules: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5950,17 +5936,6 @@ export type Database = {
           unlock_date: string
           viewed_at: string
           week_number: number
-        }[]
-      }
-      get_mentoring_given_limit: {
-        Args: { p_mentor_id: string }
-        Returns: number
-      }
-      get_mentoring_given_usage: {
-        Args: { p_mentor_id: string }
-        Returns: {
-          limit_count: number
-          used_count: number
         }[]
       }
       get_mentoring_session_usage: {

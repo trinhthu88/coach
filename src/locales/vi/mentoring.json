@@ -16,8 +16,7 @@
     "retry": "Thử lại",
     "empty": "Cohort của bạn chưa có Coach nào được phân công làm Mentor. Hãy liên hệ admin để phân công.",
     "mentorLabel": "Mentor",
-    "book": "Đặt lịch",
-    "mentorFull": "Hiện không nhận thêm buổi mới"
+    "book": "Đặt lịch"
   },
   "bookSession": {
     "backToMentors": "Về danh sách mentor",

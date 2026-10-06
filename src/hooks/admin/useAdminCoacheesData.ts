@@ -8,7 +8,6 @@ import { canonicalCompletionPct } from "@/lib/programmeProfile";
 export interface ProgrammeOpt {
   id: string;
   name: string;
-  coachee_session_limit: number;
   duration_months: number;
 }
 
@@ -52,7 +51,7 @@ export function useAdminCoacheesData() {
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at, spoken_languages"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date, status"),
-      supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
+      supabase.from("programmes").select("id, name, duration_months").eq("is_active", true),
       supabase.from("cohorts").select("id, name, programme_id, organization_id"),
       supabase.from("organizations").select("id, name").order("name"),
       supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),

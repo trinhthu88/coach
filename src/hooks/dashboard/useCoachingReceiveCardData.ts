@@ -51,9 +51,6 @@ async function fetchData(userId: string, role: AppRole, enrollmentId: string): P
     .eq("enrollment_id", enrollmentId)
     .order("start_time", { ascending: false });
   // Programme progress comes from the canonical reader every role shares.
-  // get_coachee_session_usage_for_enrollment() counts raw sessions and is an
-  // operational usage figure, not programme completion -- it is deliberately
-  // no longer consulted here.
   const [progressResult, checklistResult] = await Promise.all([
     supabase.rpc("learner_module_progress", {
       p_enrollment_id: enrollmentId,

@@ -1,16 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
-import type { ProgrammeInfo, SessionUsage } from "./types";
+import type { ProgrammeInfo } from "./types";
 
 interface JourneyProgrammeData {
   programme: ProgrammeInfo | null;
-  /**
-   * Operational session usage only. This counts raw session rows, so it must
-   * never be used as programme progress (a completed session = a fulfilled
-   * requirement unit, counted by the canonical engine). Use `coaching` below.
-   */
-  usage: SessionUsage | null;
   /** Canonical Coaching programme progress, the same reader every role uses. */
   coaching: {
     requiredUnits: number;
@@ -24,17 +18,13 @@ interface JourneyProgrammeData {
 
 async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): Promise<JourneyProgrammeData> {
   const [
-    { data: u, error: usageError },
     { data: e, error: enrollmentError },
     { data: progressRows, error: progressError },
     { data: checklistRows },
   ] = await Promise.all([
-    supabase.rpc("get_coachee_session_usage_for_enrollment", {
-      p_enrollment_id: enrollmentId,
-    }),
     supabase
       .from("programme_enrollments")
-      .select("id, start_date, end_date, programme_id, programmes(name, coachee_session_limit, duration_months), cohorts(name)")
+      .select("id, start_date, end_date, programme_id, programmes(name, duration_months), cohorts(name)")
       .eq("id", enrollmentId)
       .maybeSingle(),
     supabase.rpc("learner_module_progress", {
@@ -43,9 +33,7 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
     }),
     supabase.rpc("coaching_post_session_checklist", { p_enrollment_id: enrollmentId }),
   ]);
-  if (usageError) throw usageError;
   if (enrollmentError) throw enrollmentError;
-  const usageRow = Array.isArray(u) ? u[0] : u;
 
   const programme: ProgrammeInfo | null =
     e && e.programmes
@@ -55,7 +43,6 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
           cohortName: e.cohorts?.name ?? null,
           startDate: e.start_date,
           endDate: e.end_date,
-          sessionsAllowed: e.programmes.coachee_session_limit ?? 0,
           durationMonths: e.programmes.duration_months ?? 0,
         }
       : null;
@@ -74,12 +61,12 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
       }
     : null;
 
-  return { programme, usage: usageRow ?? null, coaching };
+  return { programme, coaching };
 }
 
 /**
- * Owns the active programme enrollment + monthly session usage quota for a
- * coachee. Shared between the coachee and coach "my journey" views.
+ * Owns the active programme enrollment and its canonical Coaching progress for
+ * a coachee. Shared between the coachee and coach "my journey" views.
  */
 export function useJourneyProgramme(coacheeId: string | undefined, initialEnrollmentId?: string | null) {
   const queryClient = useQueryClient();
@@ -96,7 +83,7 @@ export function useJourneyProgramme(coacheeId: string | undefined, initialEnroll
 
   return {
     programme: data?.programme ?? null,
-    usage: data?.usage ?? null,
+    coaching: data?.coaching ?? null,
     loading: enrollmentContext.loading || (!!enrollmentId && isLoading),
     error,
     refresh: () => queryClient.invalidateQueries({ queryKey }),

@@ -88,10 +88,8 @@ export interface CanonicalCoachingProgress {
  * role uses it -- Coachee, Coach, Sponsor, Admin and Journey -- so a number
  * shown on one screen cannot disagree with the same number on another.
  *
- * It is not interchangeable with operational usage readers such as
- * get_coachee_session_usage_for_enrollment: those count raw session rows
- * (any enrollment requirement, uncapped). A completed session = a fulfilled
- * requirement unit (canonical rule), counted by the canonical engine only.
+ * A completed session = a fulfilled requirement unit (canonical rule),
+ * counted by the canonical engine only, never by counting session rows.
  */
 export function useCanonicalCoachingProgress(enrollmentId: string | null | undefined) {
   return useQuery({

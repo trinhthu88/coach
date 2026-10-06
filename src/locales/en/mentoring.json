@@ -16,8 +16,7 @@
     "retry": "Try again",
     "empty": "No Coach is assigned as Mentor for your cohort yet. Ask your admin to assign one.",
     "mentorLabel": "Mentor",
-    "book": "Book a session",
-    "mentorFull": "Not accepting new sessions right now"
+    "book": "Book a session"
   },
   "bookSession": {
     "backToMentors": "Back to mentors",

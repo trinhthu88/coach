@@ -33,6 +33,21 @@ export function normalizeModuleScheduleConfig(config: Record<string, unknown>): 
   };
 }
 
+// Coaching and Mentoring have no session limit: required_units is the whole
+// answer (20261005130000, 20261006110000). A stored give_limit / receive_limit
+// is dropped on the next save. Peer keeps its practice entitlement keys.
+const RETIRED_LIMIT_KEYS = ["give_limit", "receive_limit"] as const;
+
+export function stripRetiredSessionLimits(
+  module: string,
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  if (module !== "coaching" && module !== "mentoring") return config;
+  const rest = { ...config };
+  for (const key of RETIRED_LIMIT_KEYS) delete rest[key];
+  return rest;
+}
+
 export function validateModuleScheduleConfig(
   config: Record<string, unknown>,
   availableTrainingWeekIds?: readonly string[],

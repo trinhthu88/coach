@@ -452,11 +452,9 @@
     "hspGroup": "Nhóm HSP",
     "duration": "Thời lượng",
     "monthsValue_other": "{{count}} tháng",
-    "coachingReceivedCoachee": "Số phiên Coaching đã nhận (Học viên)",
     "coachingReceivedCoach": "Số phiên Coaching đã nhận (Coach)",
     "peerReceived": "Số phiên Coaching đồng cấp đã nhận",
     "peerGiven": "Số phiên Coaching đồng cấp đã thực hiện",
-    "mentoringReceived": "Số phiên Mentoring đã nhận",
     "edit": "Sửa",
     "delete": "Xóa",
     "empty": "Chưa có chương trình nào. Tạo một chương trình để bắt đầu ghi danh học viên.",
@@ -478,12 +476,10 @@
     "nameLabel": "Tên",
     "descriptionLabel": "Mô tả",
     "durationMonthsLabel": "Thời lượng (tháng)",
-    "sessionLimitsHeading": "Giới hạn session (áp dụng mặc định khi ghi danh)",
     "deadLimitsWarning": "Giới hạn session của coach, session đồng cấp đã nhận, và session đồng cấp đã thực hiện bên dưới không còn được áp dụng — các giới hạn này giờ được thiết lập riêng cho từng coach tại trang",
     "deadLimitsWarningLink": "Danh sách coach",
     "peerSessionsReceived": "Session đồng cấp — đã nhận",
     "peerSessionsGiven": "Session đồng cấp — đã thực hiện",
-    "mentoringSessionsReceived": "Session Mentoring — đã nhận",
     "coachesOnly": "Chỉ dành cho coach",
     "activeLabel": "Đang hoạt động",
     "activeHint": "Hiển thị cho các lượt ghi danh mới.",
@@ -557,8 +553,7 @@
         "trainingWeekIdsInvalid": "Các tuần đào tạo đã chọn không hợp lệ.",
         "trainingWeeksInsufficient": "Số tuần đào tạo được chọn phải bằng số đơn vị bắt buộc."
       }
-    },
-    "outsideRequirementsHint": "Số buổi coaching học viên được đặt ngoài yêu cầu chương trình (chỉ áp dụng khi chương trình không yêu cầu Coaching)."
+    }
   },
   "coachProgrammes": {
     "unlimited": "Không giới hạn",
@@ -577,7 +572,6 @@
     "menteeSessionsReceived": "Số phiên Coaching với vai trò Mentee",
     "peerGiven": "Coaching đồng cấp đã thực hiện",
     "peerReceived": "Coaching đồng cấp đã nhận",
-    "mentoringReceived": "Mentoring đã nhận",
     "mentoringGiven": "Mentoring đã thực hiện",
     "edit": "Sửa",
     "delete": "Xóa",
@@ -600,7 +594,6 @@
     "dialogTitleNew": "Chương trình coach mới",
     "nameLabel": "Tên",
     "descriptionLabel": "Mô tả",
-    "sessionLimitsHeading": "Giới hạn session (để trống = không giới hạn)",
     "clientCoachingGivenLabel": "Coaching cho khách hàng — đã cung cấp",
     "menteeSessionsReceivedLabel": "Session mentee — đã nhận",
     "peerSessionsGivenLabel": "Session đồng cấp — đã thực hiện",

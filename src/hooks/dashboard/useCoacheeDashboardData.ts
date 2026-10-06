@@ -27,7 +27,6 @@ interface UseCoacheeDashboardDataResult {
   coachesById: Record<string, ProfileLite>;
   favCoaches: CoachLite[];
   recCoaches: CoachLite[];
-  sessionLimit: number;
 }
 
 const emptyData: UseCoacheeDashboardDataResult = {
@@ -35,7 +34,6 @@ const emptyData: UseCoacheeDashboardDataResult = {
   coachesById: {},
   favCoaches: [],
   recCoaches: [],
-  sessionLimit: 0,
 };
 
 async function fetchCoacheeDashboardData(
@@ -68,12 +66,6 @@ async function fetchCoacheeDashboardData(
     );
   }
 
-  // Session limit (monthly limit acts as the cap shown in the recap)
-  const { data: usage } = await supabase.rpc("get_coachee_session_usage_for_enrollment", {
-    p_enrollment_id: enrollmentId,
-  });
-  const sessionLimit = usage && usage.length > 0 ? usage[0].monthly_limit || 0 : 0;
-
   // Recommended (top-rated active coaches, max 3)
   const { data: recs } = await supabase
     .from("coach_profiles")
@@ -99,7 +91,7 @@ async function fetchCoacheeDashboardData(
     favCoaches = (favs as unknown as CoachLite[]) || [];
   }
 
-  return { sessions: list, coachesById, favCoaches, recCoaches, sessionLimit };
+  return { sessions: list, coachesById, favCoaches, recCoaches };
 }
 
 export function useCoacheeDashboardData(

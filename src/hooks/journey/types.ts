@@ -24,13 +24,7 @@ export interface ProgrammeInfo {
   cohortName: string | null;
   startDate: string | null;
   endDate: string | null;
-  sessionsAllowed: number;
   durationMonths: number;
-}
-
-export interface SessionUsage {
-  monthly_limit: number;
-  used_this_month: number;
 }
 
 export interface RawActionItem {
