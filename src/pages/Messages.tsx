@@ -81,7 +81,7 @@ export default function Messages() {
     async (sess: SessionLite[]) => {
       if (!user || !role) return;
       const otherIds = Array.from(
-        new Set(sess.map((s) => (role === "coach" ? s.coachee_id : s.coach_id)))
+        new Set(sess.map((s) => (s.coach_id === user.id ? s.coachee_id : s.coach_id)))
       );
       const sessionIds = sess.map((s) => s.id);
 
@@ -100,13 +100,13 @@ export default function Messages() {
 
       const profById = new Map((profs || []).map((p) => [p.id, p]));
       const sessionToOther = new Map(
-        sess.map((s) => [s.id, role === "coach" ? s.coachee_id : s.coach_id])
+        sess.map((s) => [s.id, s.coach_id === user.id ? s.coachee_id : s.coach_id])
       );
 
       // Group sessions by counterpart
       const byCounterpart = new Map<string, SessionLite[]>();
       sess.forEach((s) => {
-        const other = role === "coach" ? s.coachee_id : s.coach_id;
+        const other = s.coach_id === user.id ? s.coachee_id : s.coach_id;
         const arr = byCounterpart.get(other) || [];
         arr.push(s);
         byCounterpart.set(other, arr);
@@ -160,11 +160,14 @@ export default function Messages() {
   useEffect(() => {
     if (!user || !role) return;
     (async () => {
-      const filterCol = role === "coach" ? "coach_id" : "coachee_id";
-      const { data: ses } = await supabase
+      // A Coach's threads include the Coaching they RECEIVE as a learner; the
+      // counterpart of each session is whoever the viewer is not.
+      const base = supabase
         .from("sessions")
-        .select("id, topic, start_time, status, coach_id, coachee_id")
-        .eq(filterCol, user.id)
+        .select("id, topic, start_time, status, coach_id, coachee_id");
+      const { data: ses } = await (role === "coach"
+        ? base.or(`coach_id.eq.${user.id},coachee_id.eq.${user.id}`)
+        : base.eq("coachee_id", user.id))
         .in("status", ["confirmed", "completed"])
         .order("start_time", { ascending: false });
 
@@ -263,7 +266,7 @@ export default function Messages() {
           } else {
             // Patch just the affected thread in place instead of re-fetching
             // every session's full message history on every incoming message.
-            const otherId = role === "coach" ? session.coachee_id : session.coach_id;
+            const otherId = session.coach_id === user.id ? session.coachee_id : session.coach_id;
             setThreads((prev) => {
               const idx = prev.findIndex((t) => t.counterpart_id === otherId);
               if (idx === -1) {

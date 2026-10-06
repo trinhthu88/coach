@@ -44,6 +44,12 @@ export interface SessionRow {
    * Null when the viewer has no attributable enrollment (e.g. the coach side).
    */
   viewer_enrollment_id: string | null;
+  /**
+   * Coaching rows: true when the viewer is this session's Coach, false when
+   * they are its learner (a Coach enrolled as a learner receives Coaching too).
+   * Undefined for other kinds.
+   */
+  viewer_is_coach?: boolean;
   programmeName: string | null;
   cohortName: string | null;
   /**
@@ -94,11 +100,13 @@ export type PeerParticipationIndex = Map<string, string | null>;
  *   anything the viewer delivers       -> null (no enrollment of theirs)
  */
 export function viewerEnrollmentFor(
-  row: { kind: SessionKind; id: string; enrollment_id: string | null },
+  row: { kind: SessionKind; id: string; enrollment_id: string | null; viewer_is_coach?: boolean },
   participations: PeerParticipationIndex,
 ): string | null {
   switch (row.kind) {
     case "coaching":
+      // The Coaching enrollment is the learner's: the Coach side has none.
+      return row.viewer_is_coach ? null : row.enrollment_id ?? null;
     case "mentoring-mentee":
     case "triad":
       return row.enrollment_id ?? null;
@@ -171,12 +179,13 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   let triads: ReturnType<typeof normalizeTriadSession>[] = [];
 
   if (role === "coach" || role === "coachee") {
-    const col = role === "coach" ? "coach_id" : "coachee_id";
-    const { data } = await supabase
-      .from("sessions")
-      .select("*")
-      .eq(col, userId)
-      .order("start_time", { ascending: false });
+    // A Coach's own Coaching rows are the sessions they give AND the ones they
+    // receive as a learner (a Coach can be enrolled in a programme too).
+    const query = supabase.from("sessions").select("*");
+    const { data } = await (role === "coach"
+      ? query.or(`coach_id.eq.${userId},coachee_id.eq.${userId}`)
+      : query.eq("coachee_id", userId)
+    ).order("start_time", { ascending: false });
     sess = await withEnrollmentActions(data || [], "coaching");
   }
 
@@ -189,7 +198,9 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     peer = await withEnrollmentActions(data || [], "peer_coaching");
   }
 
-  if (role === "coachee") {
+  // Admin-assigned dyad sessions: a learner's, and a Coach's when the Coach is
+  // enrolled as a learner.
+  if (role === "coach" || role === "coachee") {
     const { data } = await supabase
       .from("coachee_peer_sessions")
       .select("*")
@@ -236,7 +247,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   }
 
   const allRows = [
-    ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
+    ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind, viewer_is_coach: s.coach_id === userId })),
     ...peer.map((s) => ({
       ...s,
       coach_id: s.peer_coach_id,
@@ -301,11 +312,15 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   const coachingEnrollmentIds = Array.from(
     new Set(sess.map((row) => row.enrollment_id).filter((id): id is string => Boolean(id))),
   );
+  // The viewer's OWN enrollments (sessions they receive) read through the
+  // learner wrapper; the enrollments they coach through the Coach wrapper.
+  const ownEnrollmentIds = new Set(sess.filter((row) => row.coachee_id === userId).map((row) => row.enrollment_id));
   if (fulfilmentRpc) {
     await Promise.all(
       coachingEnrollmentIds.map(async (enrollmentId) => {
         try {
-          const { data } = await supabase.rpc(fulfilmentRpc, { p_enrollment_id: enrollmentId });
+          const rpcName = ownEnrollmentIds.has(enrollmentId) ? "learner_coaching_requirement_fulfilment" : fulfilmentRpc;
+          const { data } = await supabase.rpc(rpcName, { p_enrollment_id: enrollmentId });
           for (const row of data ?? []) {
             if (row.session_id && row.ordinal != null && row.due_on) {
               requirementBySession[row.session_id] = { ordinal: row.ordinal, dueOn: row.due_on };

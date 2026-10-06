@@ -83,6 +83,8 @@ export function CoachProgrammeCard({
     bookedUnits: number;
     overdueUnits: number;
     postSessionPending: number;
+    /** learner_canonical_module_progress.full_completion_pct for Coaching. */
+    completionPct?: number | null;
   } | null;
   avgGoalProgress: number | null;
 }) {
@@ -153,11 +155,8 @@ export function CoachProgrammeCard({
                 </span>
               </p>
               <Progress
-                value={
-                  coaching.requiredUnits
-                    ? Math.min(100, (coaching.completedUnits / coaching.requiredUnits) * 100)
-                    : 0
-                }
+                // The canonical module completion %, never a ratio computed here.
+                value={coaching.completionPct == null ? 0 : Number(coaching.completionPct)}
                 className="mt-2 h-1.5"
               />
             </>

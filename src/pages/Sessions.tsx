@@ -251,11 +251,13 @@ function SessionCard({
   // For peer/mentoring sessions: the giver (peer-giver / mentor) acts as
   // "coach", the receiver (peer-receiver / mentee) acts as "coachee".
   const userIsGiver = session.kind === "peer-give" || session.kind === "coachee-peer-give" || session.kind === "mentoring-mentor";
+  // Coaching: whether the viewer coaches THIS session (a Coach can also be its learner).
+  const viewerCoaches = session.viewer_is_coach ?? role === "coach";
   const counterpart = isPeer || isCoacheePeer || isMentoring
     ? userIsGiver
       ? session.coachee
       : session.coach
-    : role === "coach"
+    : viewerCoaches
     ? session.coachee
     : session.coach;
   const startTime = session.start_time ?? session.triad?.scheduledStartTime;
@@ -265,7 +267,7 @@ function SessionCard({
   const showRating =
     !isMentoring &&
     !isTriad &&
-    ((!isPeer && !isCoacheePeer && role === "coachee" && session.status === "completed") ||
+    ((!isPeer && !isCoacheePeer && !viewerCoaches && session.status === "completed") ||
       ((isPeer || isCoacheePeer) && !userIsGiver && session.status === "completed")) &&
     // The rating belongs to the learner's own enrollment (submit_session_satisfaction).
     !!session.enrollment_id;
@@ -276,7 +278,7 @@ function SessionCard({
   // doesn't, so mentoring sessions are completed from there instead.
   const canMarkComplete =
     !isMentoring &&
-    ((isPeer || isCoacheePeer) ? userIsGiver : role === "coach") &&
+    ((isPeer || isCoacheePeer) ? userIsGiver : viewerCoaches) &&
     start != null &&
     start < new Date() &&
     (session.status === "confirmed" ||
@@ -315,7 +317,7 @@ function SessionCard({
     ? userIsGiver
       ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
       : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" }
-    : role === "coach"
+    : viewerCoaches
     ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
     : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" };
   // Triad members rotate through coach / coachee / observer: no fixed role.

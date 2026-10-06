@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { format } from "date-fns";
 import { canonicalProgress } from "@/test/fixtures/canonicalEnrollment";
 
 /**
@@ -19,17 +20,26 @@ vi.mock("@/context/AuthContext", () => ({
 vi.mock("@/hooks/journey/useJourneyProgramme", () => ({
   useJourneyProgramme: () => ({
     programme: { enrollmentId: "enrollment-1", programmeName: "P", cohortName: null, startDate: null, endDate: null, durationMonths: 3 },
-    coaching: null,
+    coaching: { requiredUnits: 3, completedUnits: 1, bookedUnits: 2, dueUnits: 1, overdueUnits: 0, postSessionPending: 0 },
     loading: false,
     error: null,
     refresh: vi.fn(),
   }),
 }));
+const NEXT_AT = "2026-11-03T02:30:00Z";
 vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
   useLearnerCanonicalProgress: () => ({
     progress: { ...canonicalProgress, coaching_required_units: 3, coaching_completed_units: 1 },
-    modules: [], journey: [], loading: false, error: null, retry: vi.fn(),
+    modules: [{ module: "coaching", full_completion_pct: 33.3 }],
+    journey: [],
+    experience: {
+      weeklyParticipation: [], learningBreakdown: [],
+      coachingUtilisation: { required_units: 3, completed_units: 1, due_units: 1, booked_units: 2, utilisation_pct: 100, next_session_at: NEXT_AT },
+    },
+    loading: false, error: null, retry: vi.fn(),
   }),
+  useLearnerCanonicalGoalProgress: () => ({ progressByGoal: {}, loading: false, error: null }),
+  useLearnerCanonicalEngagement: () => ({ engagement: { goal_progress_pct: 40 }, loading: false, error: null }),
 }));
 // Five completed Coaching rows: a React count would say 5.
 const completed = Array.from({ length: 5 }, (_, i) => ({
@@ -57,7 +67,6 @@ vi.mock("@/hooks/journey/useEnrollmentSessions", () => ({
   useEnrollmentSessions: () => ({ sessions: [], loading: false, error: null }),
 }));
 vi.mock("@/hooks/journey/useJourneyDerived", () => ({
-  useGoalRatingRows: () => ({ ratingRows: [], avgGoalProgress: null }),
   useProgrammeWeeks: () => [],
   useSessionRatingSeries: () => [],
   usePendingReflection: () => ({ pendingReflectionSession: null, needsRatingUpdate: false }),
@@ -65,7 +74,11 @@ vi.mock("@/hooks/journey/useJourneyDerived", () => ({
 vi.mock("@/hooks/journey/useCoachSummaries", () => ({ useCoachSummaries: () => [] }));
 // Child sections have their own tests; this page test is about the metric row.
 vi.mock("../journey/ProgrammeTimeline", () => ({ ProgrammeTimeline: () => null }));
-vi.mock("../journey/CoachProgrammeCard", () => ({ CoachProgrammeCard: () => null }));
+vi.mock("../journey/CoachProgrammeCard", () => ({
+  CoachProgrammeCard: (props: { coaching: unknown; avgGoalProgress: unknown }) => (
+    <pre data-testid="programme-card">{JSON.stringify({ coaching: props.coaching, avgGoalProgress: props.avgGoalProgress })}</pre>
+  ),
+}));
 vi.mock("../journey/DevelopmentJourneyTimeline", () => ({ DevelopmentJourneyTimeline: () => null }));
 vi.mock("../journey/DevelopmentSessionsList", () => ({ DevelopmentSessionsList: () => null }));
 vi.mock("../journey/SessionsBlock", () => ({ SessionsBlock: () => null }));
@@ -83,5 +96,17 @@ describe("CoachMyJourney sessions received", () => {
     expect(metric).toHaveTextContent("1 / 3");
     expect(metric).not.toHaveTextContent("5");
     expect(metric).not.toHaveTextContent("null");
+  });
+
+  it("next session, upcoming count, Coaching bar and goal average are the canonical rows' (Prompt 9a)", () => {
+    render(<MemoryRouter><CoachMyJourney /></MemoryRouter>);
+    // "N upcoming" is the canonical booked Coaching units, not a count of rows.
+    expect(screen.getByText("coachMyJourney.metrics.sessionsReceivedSub:2")).toBeInTheDocument();
+    // Next session is coaching_utilisation.next_session_at.
+    const next = screen.getByText("coachMyJourney.metrics.nextSession").parentElement as HTMLElement;
+    expect(next).toHaveTextContent(format(new Date(NEXT_AT), "MMM d"));
+    const card = JSON.parse(screen.getByTestId("programme-card").textContent ?? "{}");
+    expect(card.coaching.completionPct).toBe(33.3);
+    expect(card.avgGoalProgress).toBe(40);
   });
 });

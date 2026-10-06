@@ -453,6 +453,16 @@ describe("programme profile architecture", () => {
       }
     });
 
+    it("a Coach enrolled as a learner sees the Coaching they receive in the Sessions hub and Messages", () => {
+      // Prompt 9a: never one column chosen by the page-wide role.
+      for (const file of ["hooks/sessions/useSessionsData.ts", "pages/Messages.tsx"]) {
+        expect(read(file), file).toMatch(/coach_id\.eq\.\$\{[a-zA-Z.]+\},coachee_id\.eq\.\$\{[a-zA-Z.]+\}/);
+      }
+      expect(read("pages/Messages.tsx")).not.toMatch(/role === "coach" \? s(ession)?\.coachee_id/);
+      expect(read("pages/CoachMyJourney.tsx")).toMatch(/useLearnerCanonicalGoalProgress\(/);
+      expect(read("pages/CoachMyJourney.tsx")).not.toMatch(/useGoalRatingRows|upcoming\[0\]/);
+    });
+
     it("one today: no client sends its own as-of date, and every booking page reads slots as Vietnam time", () => {
       // 20261006150000: the server's default as-of is programme_today().
       expect(runtime.filter((f) => /p_as_of/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
