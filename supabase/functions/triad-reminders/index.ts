@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { programmeToday } from "../_shared/programmeTime.ts";
 
 // Daily cron sweep (CRON_SECRET-gated, same shape as send-daily-prompt /
 // send-programme-reminders) driven by each cohort's Triad REQUIREMENTS
@@ -19,11 +20,6 @@ import { buildCorsHeaders } from "../_shared/cors.ts";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OVERDUE_WINDOW_DAYS = 60;
 
-function todayISO(offsetDays = 0): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
-}
 
 interface Target {
   cohort_id: string;
@@ -114,7 +110,7 @@ Deno.serve(async (req) => {
         .from("cohort_requirement_dates")
         .select("cohort_id, due_on")
         .eq("module", "triads")
-        .or(`due_on.in.(${todayISO(3)},${todayISO(1)}),and(due_on.lt.${todayISO()},due_on.gte.${todayISO(-OVERDUE_WINDOW_DAYS)})`);
+        .or(`due_on.in.(${programmeToday(3)},${programmeToday(1)}),and(due_on.lt.${programmeToday()},due_on.gte.${programmeToday(-OVERDUE_WINDOW_DAYS)})`);
       cohortIds = [...new Set((due ?? []).map((r) => r.cohort_id as string))];
     }
 

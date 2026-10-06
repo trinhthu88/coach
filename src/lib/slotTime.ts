@@ -14,3 +14,9 @@ const SLOT_UTC_OFFSET = "+07:00";
 export function slotInstant(dateKey: string, hhmm: string): Date {
   return new Date(`${dateKey}T${hhmm}:00${SLOT_UTC_OFFSET}`);
 }
+
+/** Today's date key ("yyyy-MM-dd") in Vietnam -- the server's programme_today(). */
+export function slotTodayKey(now: Date = new Date()): string {
+  // en-CA formats as yyyy-MM-dd.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: SLOT_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}

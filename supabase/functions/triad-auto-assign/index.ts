@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { programmeToday } from "../_shared/programmeTime.ts";
 
 import { groupPool } from "./grouping.ts";
 
@@ -135,9 +136,9 @@ Deno.serve(async (req) => {
     // Availability window: from today to this requirement's deadline (or two
     // weeks when the deadline has passed). It only helps propose a first
     // common time; the group can reschedule itself.
-    const today = new Date().toISOString().slice(0, 10);
+    const today = programmeToday();
     const due = requirement.due_on as string;
-    const windowEnd = due >= today ? due : new Date(Date.now() + 14 * 24 * HOUR_MS).toISOString().slice(0, 10);
+    const windowEnd = due >= today ? due : programmeToday(14);
     const { data: availability } = await admin
       .from("coachee_availability")
       .select("coachee_id, slot_date, start_time, end_time")

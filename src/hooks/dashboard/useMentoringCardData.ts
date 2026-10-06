@@ -106,7 +106,6 @@ async function fetchReceive(enrollmentId: string): Promise<MentoringReceiveData>
       .order("start_time", { ascending: false }),
     supabase.rpc("learner_module_progress", {
       p_enrollment_id: enrollmentId,
-      p_as_of: new Date().toISOString().slice(0, 10),
     }),
   ]);
   if (progressError) throw progressError;

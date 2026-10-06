@@ -49,8 +49,9 @@ export interface LearnerCanonicalData {
   retry: () => void;
 }
 
-async function fetchLearnerCanonical(enrollmentId: string, asOf?: string) {
-  const args = asOf ? { p_enrollment_id: enrollmentId, p_as_of: asOf } : { p_enrollment_id: enrollmentId };
+async function fetchLearnerCanonical(enrollmentId: string) {
+  // No as-of from the browser: the server's default is programme_today().
+  const args = { p_enrollment_id: enrollmentId };
   const [progressRes, modulesRes, journeyRes, experienceRes] = await Promise.all([
     supabase.rpc("learner_canonical_progress", args),
     supabase.rpc("learner_canonical_module_progress", args),
@@ -91,10 +92,10 @@ function errorMessage(error: unknown) {
  * values come from the same schedule + activity engine as Sponsor Leader
  * Detail — nothing here is recomputed client-side.
  */
-export function useLearnerCanonicalProgress(enrollmentId: string | undefined, asOf?: string): LearnerCanonicalData {
+export function useLearnerCanonicalProgress(enrollmentId: string | undefined): LearnerCanonicalData {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["learner-canonical-progress", enrollmentId ?? null, asOf ?? null],
-    queryFn: () => fetchLearnerCanonical(enrollmentId as string, asOf),
+    queryKey: ["learner-canonical-progress", enrollmentId ?? null],
+    queryFn: () => fetchLearnerCanonical(enrollmentId as string),
     enabled: !!enrollmentId,
     staleTime: 30_000,
   });

@@ -453,6 +453,21 @@ describe("programme profile architecture", () => {
       }
     });
 
+    it("one today: no client sends its own as-of date, and every booking page reads slots as Vietnam time", () => {
+      // 20261006150000: the server's default as-of is programme_today().
+      expect(runtime.filter((f) => /p_as_of/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+      for (const file of ["pages/BookSession.tsx", "pages/MentoringBookSession.tsx", "pages/CoacheePeerBookSession.tsx"]) {
+        const text = read(file);
+        expect(text, file).toMatch(/slotInstant\(ds, selectedStart\)/);
+        expect(text, file).toMatch(/slotTodayKey\(\)/);
+        // A slot time read in the browser's own zone, or "today" in UTC.
+        expect(text, file).not.toMatch(/new Date\(`\$\{ds\}T|toISOString\(\)\.slice\(0, 10\)/);
+      }
+      // Edge Functions take "today" and day boundaries in Vietnam (_shared/programmeTime.ts).
+      const utcDays = /toISOString\(\)\.slice\(0, 10\)|setUTCDate|T00:00:00Z/;
+      expect(functionFiles().filter((f) => utcDays.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+    });
+
     it("the reminder and daily-prompt crons read each enrollment's requirement calendar, never training week dates", () => {
       // 20261006130000: who is overdue on a quiz / reflection, and which prompt
       // is today's, are decided in SQL over the enrollment's own calendar.

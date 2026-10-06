@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams, useLocation } from "reac
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
-import { SLOT_TIME_ZONE, slotInstant } from "@/lib/slotTime";
+import { SLOT_TIME_ZONE, slotInstant, slotTodayKey } from "@/lib/slotTime";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { Card } from "@/components/ui/card";
@@ -158,7 +158,7 @@ export default function BookSession() {
         return;
       }
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = slotTodayKey();
         const slotQuery = supabase
           .from("coach_availability")
           .select("id, slot_date, start_time, end_time, slot_type")

@@ -315,7 +315,8 @@ WITH repo(version, name) AS (VALUES
   ('20261006110000', 'retire_session_limits'),
   ('20261006120000', 'peer_booking_rules'),
   ('20261006130000', 'one_overdue_rule'),
-  ('20261006140000', 'admin_alerts_current')
+  ('20261006140000', 'admin_alerts_current'),
+  ('20261006150000', 'one_today')
 -- END REPO MANIFEST
 ),
 

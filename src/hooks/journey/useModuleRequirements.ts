@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -63,11 +62,10 @@ export function useModuleRequirements(enrollmentId: string | null | undefined, m
     queryKey: ["module-requirements", enrollmentId, module],
     enabled: !!enrollmentId,
     queryFn: async (): Promise<ModuleRequirementState> => {
-      // The learner's local calendar day, not the UTC one.
-      const today = format(new Date(), "yyyy-MM-dd");
+      // "Today" is the server's: programme_today(), in the programme time zone.
       const [progress, calendar, requirements] = await Promise.all([
-        supabase.rpc("learner_module_progress", { p_enrollment_id: enrollmentId!, p_as_of: today }),
-        supabase.rpc("learner_requirement_calendar", { p_enrollment_id: enrollmentId!, p_as_of: today }),
+        supabase.rpc("learner_module_progress", { p_enrollment_id: enrollmentId! }),
+        supabase.rpc("learner_requirement_calendar", { p_enrollment_id: enrollmentId! }),
         supabase.rpc("learner_module_requirements", { p_enrollment_id: enrollmentId! }),
       ]);
       if (progress.error) throw progress.error;

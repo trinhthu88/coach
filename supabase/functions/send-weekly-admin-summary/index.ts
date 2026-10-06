@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { programmeToday } from "../_shared/programmeTime.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { WeeklyAdminSummaryEmail, type ProgrammeStatRow } from "../_shared/email-templates/weekly-admin-summary.tsx";
 
@@ -48,7 +49,7 @@ Deno.serve(async (req) => {
     const twoWeeksAgo = new Date(now.getTime() - 14 * DAY_MS);
     const weekAgoISO = weekAgo.toISOString();
     const twoWeeksAgoISO = twoWeeksAgo.toISOString();
-    const weekOf = weekAgo.toISOString().slice(0, 10);
+    const weekOf = programmeToday(-7, now);
 
     // ------------------------------------------------------------------
     // Per-programme engagement
@@ -111,8 +112,8 @@ Deno.serve(async (req) => {
       // sessions completed this week. Engagement only, never completion.
       const { data: triadRate } = await admin.rpc("triad_reflection_rate_internal", {
         p_programme_id: programme.id,
-        p_from: weekAgoISO.slice(0, 10),
-        p_to: now.toISOString().slice(0, 10),
+        p_from: programmeToday(-7, now),
+        p_to: programmeToday(0, now),
       });
       const triadTotal = ((triadRate || []) as { is_total: boolean; rate_pct: number | null }[]).find((r) => r.is_total);
       const triadReflectionPct: number | null = triadTotal?.rate_pct ?? null;

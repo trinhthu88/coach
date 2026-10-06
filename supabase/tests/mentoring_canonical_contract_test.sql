@@ -54,14 +54,14 @@ insert into public.cohorts (id, name, programme_id) values
 -- (yesterday as late work); Mentoring 2 (held 2 days ago) is due in 10 days.
 insert into public.cohort_requirement_dates
   (cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via, is_overridden) values
-  ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 200, 'manual', 'admin_save', true),
-  ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date - 100, 'manual', 'admin_save', true),
-  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 1, current_date - 26, 'manual', 'admin_save', true),
-  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 2, current_date + 10, 'manual', 'admin_save', true),
+  ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, public.programme_today() - 200, 'manual', 'admin_save', true),
+  ('d1000000-0000-0000-0000-00000000b1b1'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, public.programme_today() - 100, 'manual', 'admin_save', true),
+  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 1, public.programme_today() - 26, 'manual', 'admin_save', true),
+  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 2, public.programme_today() + 10, 'manual', 'admin_save', true),
   -- A third requirement so the cancelled-session case below has one to occupy.
   -- Quantity is now the cohort requirement count, so a third session against a
   -- two-requirement cohort is correctly refused.
-  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 3, current_date + 90, 'manual', 'admin_save', true);
+  ('d1000000-0000-0000-0000-00000000b2b2'::uuid, 'd1000000-0000-0000-0000-00000000a2a2'::uuid, 'mentoring', 3, public.programme_today() + 90, 'manual', 'admin_save', true);
 
 -- One learner, two enrollments. A is history; B is current.
 -- Enrollment A is opened first so its Mentoring history can be recorded, then
@@ -282,12 +282,12 @@ select is(
 -- Canonical progress (section 13)
 -- ---------------------------------------------------------------------------
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())
     where module = 'mentoring'),
   2, 'two completed sessions give two completed Mentoring units');
 
 select is(
-  (select required_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+  (select required_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())
     where module = 'mentoring'),
   3, 'required units come from the programme module configuration');
 
@@ -296,7 +296,7 @@ update public.mentoring_sessions
   set mentee_notes = 'my reflection', mentor_notes = 'mentor private note'
   where id = 'd1000000-0000-0000-0000-00000000c1c1'::uuid;
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())
     where module = 'mentoring'),
   2, 'mentee reflection and mentor notes do not change completed units');
 
@@ -313,7 +313,7 @@ select public.transition_mentoring_session_status(
   'd1000000-0000-0000-0000-00000000c3c3'::uuid, 'cancelled');
 select set_config('request.jwt.claims', json_build_object('sub', 'd1000000-0000-0000-0000-000000000003')::text, true);
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())
     where module = 'mentoring'),
   2, 'a cancelled session does not count as completed');
 
@@ -321,7 +321,7 @@ select is(
 -- Historical isolation (section 21)
 -- ---------------------------------------------------------------------------
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e1e1'::uuid, public.programme_today())
     where module = 'mentoring'),
   1, 'the historical enrollment shows only its OWN completed session');
 
@@ -331,12 +331,12 @@ select is(
   1, 'the current enrollment activity did not leak onto the historical one');
 
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e1e1'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e1e1'::uuid, public.programme_today())
     where module = 'mentoring'),
   1, 'the historical session counts for its OWN enrollment');
 
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())
     where module = 'mentoring'),
   2, 'the historical session does NOT count toward the current enrollment');
 
@@ -345,9 +345,9 @@ select is(
 -- ---------------------------------------------------------------------------
 select is(
   (select array[mentoring_required_units, mentoring_completed_units, mentoring_booked_units, mentoring_due_units]
-     from public.canonical_enrollment_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)),
+     from public.canonical_enrollment_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())),
   (select array[required_units, completed_units, booked_units, due_units]::int[]
-     from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+     from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())
     where module = 'mentoring'),
   'the Sponsor/Admin progress spine agrees with the canonical Mentoring reader');
 
@@ -443,7 +443,7 @@ values ('d1000000-0000-0000-0000-00000000c5c5'::uuid, 'd1000000-0000-0000-0000-0
         'reflection', 'mentor note', 'prep/x.pdf', now());
 
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())
     where module = 'mentoring'),
   2, 'a confirmed session with all documentation present does not increment completed units');
 
@@ -452,7 +452,7 @@ select is(
 -- sessions exist.
 select ok(
   (select completed_units + booked_units <= required_units
-     from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+     from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())
     where module = 'mentoring'),
   'booked units are capped so completed + booked never exceeds the requirement');
 
@@ -468,7 +468,7 @@ select is(
   (select occurred_on from public.session_activity_attributions
     where source_activity_type = 'mentoring'
       and source_activity_id = 'd1000000-0000-0000-0000-00000000c1c1'::uuid),
-  (current_date - 1),
+  (public.programme_today() - 1),
   'the attribution starts on the session date');
 
 update public.mentoring_sessions
@@ -479,7 +479,7 @@ select is(
   (select occurred_on from public.session_activity_attributions
     where source_activity_type = 'mentoring'
       and source_activity_id = 'd1000000-0000-0000-0000-00000000c1c1'::uuid),
-  (current_date - 40),
+  (public.programme_today() - 40),
   'rescheduling moves occurred_on to the new date');
 
 select is(
@@ -489,7 +489,7 @@ select is(
   1, 'rescheduling leaves exactly one attribution, not a stale duplicate');
 
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e2e2'::uuid, public.programme_today())
     where module = 'mentoring'),
   2, 'rescheduling does not change the completed unit count');
 
@@ -522,9 +522,9 @@ insert into public.cohorts (id, name, programme_id) values
 insert into public.cohort_requirement_dates
   (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via, is_overridden) values
   ('d1000000-0000-0000-0000-0000000000d1'::uuid, 'd1000000-0000-0000-0000-00000000b3b3'::uuid,
-   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 10, 'manual', 'admin_save', true),
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, public.programme_today() - 10, 'manual', 'admin_save', true),
   ('d1000000-0000-0000-0000-0000000000d2'::uuid, 'd1000000-0000-0000-0000-00000000b3b3'::uuid,
-   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date + 5, 'manual', 'admin_save', true);
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, public.programme_today() + 5, 'manual', 'admin_save', true);
 
 insert into public.cohort_mentors (cohort_id, mentor_user_id) values
   ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid);
@@ -572,19 +572,19 @@ select ok(
   'it does not fulfil any other requirement');
 
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, public.programme_today())
     where module = 'mentoring'),
   1, 'one completed session is one completed unit');
 
 select is(
-  (select due_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+  (select due_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, public.programme_today())
     where module = 'mentoring'),
   1, 'only the requirement whose deadline has passed is due');
 
 -- THE regression: without requirement attribution this read 0, because the
 -- early unit satisfied a deadline that had not arrived.
 select is(
-  (select overdue_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+  (select overdue_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, public.programme_today())
     where module = 'mentoring'),
   1, 'an early Mentoring 2 does not hide an overdue Mentoring 1');
 
@@ -597,11 +597,11 @@ select is(
 
 insert into public.coach_availability (id, coach_id, slot_date, start_time, end_time, slot_type) values
   ('d1000000-0000-0000-0000-0000000000f1'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid,
-   current_date + 7, '09:00', '10:00', 'mentoring'),
+   public.programme_today() + 7, '09:00', '10:00', 'mentoring'),
   ('d1000000-0000-0000-0000-0000000000f2'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid,
-   current_date + 8, '09:00', '10:00', 'mentoring'),
+   public.programme_today() + 8, '09:00', '10:00', 'mentoring'),
   ('d1000000-0000-0000-0000-0000000000f3'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid,
-   current_date + 9, '09:00', '10:00', 'mentoring');
+   public.programme_today() + 9, '09:00', '10:00', 'mentoring');
 
 select set_config('request.jwt.claims',
   json_build_object('sub', 'd1000000-0000-0000-0000-000000000005')::text, true);
@@ -734,14 +734,14 @@ insert into public.cohorts (id, name, programme_id) values
 insert into public.cohort_requirement_dates
   (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
   ('d1000000-0000-0000-0000-0000000000d5'::uuid, 'd1000000-0000-0000-0000-00000000b4b4'::uuid,
-   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, current_date - 3, 'manual', 'admin_save'),
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 1, public.programme_today() - 3, 'manual', 'admin_save'),
   -- Programme A requires 2 Mentoring units, so the cohort carries 2. A cohort
   -- holding fewer requirements than its programme requires is an integrity
   -- violation, not a fixture shortcut: since 20260923100000 the booking guard
   -- refuses to operate against one. Unit 2 is not yet due, so due/overdue
   -- below are unchanged.
   ('d1000000-0000-0000-0000-0000000000d6'::uuid, 'd1000000-0000-0000-0000-00000000b4b4'::uuid,
-   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, current_date + 30, 'manual', 'admin_save');
+   'd1000000-0000-0000-0000-00000000a1a1'::uuid, 'mentoring', 2, public.programme_today() + 30, 'manual', 'admin_save');
 insert into public.cohort_mentors (cohort_id, mentor_user_id) values
   ('d1000000-0000-0000-0000-00000000b4b4'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid);
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status) values
@@ -773,7 +773,7 @@ select lives_ok($$
 $$, 'a Mentoring session completes with no preparation document and no evidence');
 
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e4e4'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e4e4'::uuid, public.programme_today())
     where module = 'mentoring'),
   1, 'a bare completed session is one completed programme unit');
 
@@ -794,10 +794,10 @@ insert into public.enrollment_actions
           'd1000000-0000-0000-0000-000000000006'::uuid,
           (select g.id from public.coachee_goals g
             where g.enrollment_id = 'd1000000-0000-0000-0000-00000000e4e4'::uuid and g.status = 'active' limit 1),
-          current_date + 7);
+          public.programme_today() + 7);
 
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e4e4'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e4e4'::uuid, public.programme_today())
     where module = 'mentoring'),
   1, 'adding evidence does not change the completed unit count');
 
@@ -883,9 +883,9 @@ insert into public.programme_modules (programme_id, module, enabled, config) val
 insert into public.cohort_requirement_dates
   (cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
   ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid,
-   'coaching', 1, current_date - 10, 'manual', 'admin_save'),
+   'coaching', 1, public.programme_today() - 10, 'manual', 'admin_save'),
   ('d1000000-0000-0000-0000-00000000b3b3'::uuid, 'd1000000-0000-0000-0000-00000000a1a1'::uuid,
-   'coaching', 2, current_date + 30, 'manual', 'admin_save');
+   'coaching', 2, public.programme_today() + 30, 'manual', 'admin_save');
 
 -- A learner with nothing booked yet. Enrollment C above has already spent both
 -- its Mentoring requirements, so asking it what it may book would report
@@ -943,7 +943,7 @@ select ok(
 
 -- Deactivating an assignment removes future eligibility and nothing else.
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, public.programme_today())
     where module = 'mentoring'),
   1, 'Mentoring progress before the mentor is unassigned');
 
@@ -957,7 +957,7 @@ select ok(
   'an unassigned Coach leaves the Mentoring pool');
 
 select is(
-  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, current_date)
+  (select completed_units from public.canonical_module_progress('d1000000-0000-0000-0000-00000000e3e3'::uuid, public.programme_today())
     where module = 'mentoring'),
   1, 'unassigning a mentor does not change completed Mentoring progress');
 

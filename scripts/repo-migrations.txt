@@ -283,3 +283,4 @@
 20261006120000_peer_booking_rules.sql
 20261006130000_one_overdue_rule.sql
 20261006140000_admin_alerts_current.sql
+20261006150000_one_today.sql

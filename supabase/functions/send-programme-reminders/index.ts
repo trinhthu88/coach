@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { programmeDayStart, programmeToday } from "../_shared/programmeTime.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { ProgrammeReminderEmail } from "../_shared/email-templates/programme-reminder.tsx";
 
@@ -21,11 +22,6 @@ import { ProgrammeReminderEmail } from "../_shared/email-templates/programme-rem
 const SITE_URL = "https://clariva.club";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function todayISO(offsetDays = 0): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
-}
 
 interface ProfileRow {
   id: string;
@@ -201,14 +197,14 @@ Deno.serve(async (req) => {
     // 2. Missed triad reflections (sessions completed in the past 7 days;
     //    a reflection follows completion)
     // ------------------------------------------------------------------
-    const weekAgo = todayISO(-7);
-    const today = todayISO();
+    const weekAgo = programmeToday(-7);
+    const today = programmeToday();
     const { data: pastSessions } = await admin
       .from("triad_sessions")
       .select("id, triad_group_id, scheduled_start_time")
       .eq("status", "completed")
-      .gte("scheduled_start_time", `${weekAgo}T00:00:00Z`)
-      .lt("scheduled_start_time", `${today}T00:00:00Z`);
+      .gte("scheduled_start_time", programmeDayStart(weekAgo))
+      .lt("scheduled_start_time", programmeDayStart(today));
 
     if (pastSessions && pastSessions.length > 0) {
       const membersByGroup = await triadMembersByGroup([...new Set(pastSessions.map((s) => s.triad_group_id as string))]);
@@ -248,13 +244,13 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     // 3. Upcoming triad sessions (tomorrow)
     // ------------------------------------------------------------------
-    const tomorrow = todayISO(1);
-    const dayAfterTomorrow = todayISO(2);
+    const tomorrow = programmeToday(1);
+    const dayAfterTomorrow = programmeToday(2);
     const { data: upcomingSessions } = await admin
       .from("triad_sessions")
       .select("id, triad_group_id")
-      .gte("scheduled_start_time", `${tomorrow}T00:00:00Z`)
-      .lt("scheduled_start_time", `${dayAfterTomorrow}T00:00:00Z`)
+      .gte("scheduled_start_time", programmeDayStart(tomorrow))
+      .lt("scheduled_start_time", programmeDayStart(dayAfterTomorrow))
       .in("status", ["proposed", "confirmed"]);
 
     if (upcomingSessions && upcomingSessions.length > 0) {

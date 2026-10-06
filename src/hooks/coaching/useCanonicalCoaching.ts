@@ -99,7 +99,6 @@ export function useCanonicalCoachingProgress(enrollmentId: string | null | undef
       const [{ data, error }, { data: checklist }] = await Promise.all([
         supabase.rpc("learner_module_progress", {
           p_enrollment_id: enrollmentId!,
-          p_as_of: new Date().toISOString().slice(0, 10),
         }),
         supabase.rpc("coaching_post_session_checklist", { p_enrollment_id: enrollmentId! }),
       ]);

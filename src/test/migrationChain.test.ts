@@ -118,7 +118,9 @@ describe("migration chain — canonical final state", () => {
 
   it("the final sponsor_canonical_module_schedule reads stored cohort dates and interprets no policy", () => {
     const last = lastDefinition("sponsor_canonical_module_schedule");
-    expect(last?.file).toBe(SCHEDULE_MIGRATION);
+    // 20261006150000 re-creates it only to take its default as-of in the
+    // programme time zone; the body is otherwise the schedule migration's.
+    expect([SCHEDULE_MIGRATION, "20261006150000_one_today.sql"]).toContain(last?.file);
     expect(last?.body).toMatch(/cohort_requirement_dates/);
     expect(last?.body).not.toMatch(/evenly_distributed|monthly_frequency|distribution_mode|generate_series/);
   });
@@ -415,7 +417,8 @@ describe("migration chain — canonical final state", () => {
       expect(completion).not.toMatch(/completed_units, 0\) >= d\.ordinal/);
       const sync = lastDefinition("triad_sync_session_attributions")?.body ?? "";
       expect(sync).toMatch(/occurred_on, milestone_id\)[\s\S]*NULL/);
-      expect(sync).toMatch(/s\.scheduled_start_time::date/);
+      // The session's date in the programme time zone (20261006150000).
+      expect(sync).toMatch(/\(s\.scheduled_start_time AT TIME ZONE public\.programme_time_zone\(\)\)::date/);
       // A group whose requirement is fulfilled schedules no more programme sessions.
       expect(lastDefinition("learner_triad_schedule_session")?.body).toMatch(/s\.status = 'completed'/);
     });

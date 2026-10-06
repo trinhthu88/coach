@@ -29,7 +29,6 @@ async function fetchJourneyProgramme(coacheeId: string, enrollmentId: string): P
       .maybeSingle(),
     supabase.rpc("learner_module_progress", {
       p_enrollment_id: enrollmentId,
-      p_as_of: new Date().toISOString().slice(0, 10),
     }),
     supabase.rpc("coaching_post_session_checklist", { p_enrollment_id: enrollmentId }),
   ]);
