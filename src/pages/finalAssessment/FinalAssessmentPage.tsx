@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,9 @@ import { ProfileLoadError } from "@/components/programme/primitives";
 import { useAuth } from "@/context/AuthContext";
 import {
   RecordingFileError,
+  autoTranscribeErrorCode,
   checkRecording,
+  useAutoTranscribe,
   useFinalAssessmentQuiz,
   useLearnerFinalAssessment,
   useSubmitFinalAssessment,
@@ -145,6 +147,8 @@ function FinalAssessmentSteps({ enrollmentId, fa }: { enrollmentId: string; fa: 
   const [recordingPath, setRecordingPath] = useState<string | null>(null);
   const [recordingName, setRecordingName] = useState<string | null>(null);
   const [transcript, setTranscript] = useState("");
+  // The text started as an automatic draft: stored with transcript_source 'auto'.
+  const [transcriptAuto, setTranscriptAuto] = useState(false);
   const submit = useSubmitFinalAssessment(enrollmentId);
 
   const done: Record<StepKey, boolean> = {
@@ -164,6 +168,7 @@ function FinalAssessmentSteps({ enrollmentId, fa }: { enrollmentId: string; fa: 
         quizSubmissionId: fa.quizSubmissionId,
         recordingPath: recordingPath!,
         transcriptText: transcript,
+        transcriptAuto,
       },
       {
         onSuccess: () => toast.success(t("final.submittedToast")),
@@ -218,11 +223,25 @@ function FinalAssessmentSteps({ enrollmentId, fa }: { enrollmentId: string; fa: 
             <p className="text-[11px] text-[#9a938a]">
               {t(fa.transcriptMode === "required" ? "final.transcriptRequired" : "final.transcriptOptional")}
             </p>
+            <AutoTranscribe
+              enrollmentId={enrollmentId}
+              recordingPath={recordingPath}
+              hasText={!!transcript.trim()}
+              isDraft={transcriptAuto && !!transcript.trim()}
+              onDraft={(text) => {
+                setTranscript(text);
+                setTranscriptAuto(true);
+              }}
+            />
             <Textarea
               id="final-transcript"
               rows={10}
               value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
+              onChange={(e) => {
+                setTranscript(e.target.value);
+                // Cleared, then typed or pasted afresh: no longer the automatic draft.
+                if (!e.target.value.trim()) setTranscriptAuto(false);
+              }}
               placeholder={t("final.transcriptPlaceholder")}
               data-testid="final-transcript"
             />
@@ -398,6 +417,65 @@ function RecordingStep({
       {fileError && (
         <p role="alert" className="text-[12px] text-destructive" data-testid="final-recording-error">
           {fileError}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Optional Whisper draft of the uploaded recording; the learner edits it before submitting. */
+function AutoTranscribe({
+  enrollmentId,
+  recordingPath,
+  hasText,
+  isDraft,
+  onDraft,
+}: {
+  enrollmentId: string;
+  recordingPath: string | null;
+  hasText: boolean;
+  isDraft: boolean;
+  onDraft: (text: string) => void;
+}) {
+  const { t } = useTranslation("assessments");
+  const transcribe = useAutoTranscribe();
+  const [failed, setFailed] = useState<string | null>(null);
+
+  if (!recordingPath) {
+    return <p className="text-[11px] text-[#9a938a]" data-testid="final-auto-transcribe-needs-recording">{t("final.auto.needsRecording")}</p>;
+  }
+  const run = () => {
+    setFailed(null);
+    transcribe.mutate(
+      { enrollmentId, storagePath: recordingPath },
+      {
+        onSuccess: (text) => (text.trim() ? onDraft(text) : setFailed(t("final.auto.empty"))),
+        onError: (e) => setFailed(t(`final.auto.errors.${autoTranscribeErrorCode(e)}`)),
+      },
+    );
+  };
+  return (
+    <div className="space-y-1.5">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={run}
+        // Never overwrite what the learner has written: clear the box to draft again.
+        disabled={transcribe.isPending || hasText}
+        data-testid="final-auto-transcribe"
+      >
+        {transcribe.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        {t(transcribe.isPending ? "final.auto.running" : "final.auto.button")}
+      </Button>
+      {isDraft && (
+        <p className="text-[11px] text-[#a8541c]" data-testid="final-auto-transcribe-draft">
+          {t("final.auto.draftNotice")}
+        </p>
+      )}
+      {failed && (
+        <p className="text-[11px] text-[#a8541c]" role="alert" data-testid="final-auto-transcribe-error">
+          {failed}
         </p>
       )}
     </div>

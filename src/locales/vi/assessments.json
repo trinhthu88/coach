@@ -152,6 +152,20 @@
     "transcriptRequired": "Final Assessment này yêu cầu có bản chép lời.",
     "transcriptOptional": "Bản chép lời không bắt buộc, nhưng giúp người đánh giá.",
     "transcriptPlaceholder": "Dán bản chép lời của buổi coaching vào đây.",
+    "auto": {
+      "button": "Tạo bản chép lời tự động",
+      "running": "Đang chép lời… có thể mất một đến hai phút.",
+      "needsRecording": "Hãy tải lên bản ghi âm trước để nhận bản chép lời tự động.",
+      "draftNotice": "Đây là bản nháp tự động. Hãy đọc lại và sửa tên riêng cùng các lỗi trước khi nộp.",
+      "empty": "Không nhận diện được lời nói trong bản ghi âm. Vui lòng nhập hoặc dán bản chép lời.",
+      "errors": {
+        "not_configured": "Chưa có tính năng chép lời tự động. Vui lòng nhập hoặc dán bản chép lời.",
+        "not_open": "Final Assessment này không còn nhận bản chép lời.",
+        "not_found": "Không tìm thấy bản ghi âm. Vui lòng tải lên lại.",
+        "transcription_failed": "Chép lời tự động không thành công. Vui lòng thử lại, hoặc nhập hoặc dán bản chép lời.",
+        "unknown": "Chép lời tự động không thành công. Vui lòng thử lại, hoặc nhập hoặc dán bản chép lời."
+      }
+    },
     "review": {
       "quizDone": "Đã trả lời quiz",
       "quizMissing": "Chưa trả lời quiz",

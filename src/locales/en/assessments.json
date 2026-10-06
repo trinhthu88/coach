@@ -152,6 +152,20 @@
     "transcriptRequired": "A transcript is required for this Final Assessment.",
     "transcriptOptional": "A transcript is optional, but helps your assessor.",
     "transcriptPlaceholder": "Paste the transcript of your session here.",
+    "auto": {
+      "button": "Draft a transcript automatically",
+      "running": "Transcribing… this can take a minute or two.",
+      "needsRecording": "Upload your recording first to get an automatic transcript draft.",
+      "draftNotice": "This is an automatic draft. Read it through and correct names and any mistakes before you submit.",
+      "empty": "No speech was recognised in the recording. Please type or paste the transcript.",
+      "errors": {
+        "not_configured": "Automatic transcription is not available. Please type or paste the transcript.",
+        "not_open": "This Final Assessment can no longer take a transcript.",
+        "not_found": "The recording could not be found. Please upload it again.",
+        "transcription_failed": "Automatic transcription failed. Please try again, or type or paste the transcript.",
+        "unknown": "Automatic transcription failed. Please try again, or type or paste the transcript."
+      }
+    },
     "review": {
       "quizDone": "Quiz answered",
       "quizMissing": "Quiz not answered yet",

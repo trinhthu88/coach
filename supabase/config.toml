@@ -31,3 +31,5 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = false
   [functions.send-assessment-feedback-email]
     verify_jwt = true
+  [functions.transcribe-assessment-recording]
+    verify_jwt = true

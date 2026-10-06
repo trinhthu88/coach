@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { ASSESSMENT_FILES_BUCKET } from "@/lib/assessments";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
+import { extractFunctionError } from "@/lib/errors";
 
 /**
  * The learner's Final Assessment (20261007000100). Everything is read through
@@ -183,12 +184,15 @@ export function useSubmitFinalAssessment(enrollmentId: string | null) {
       quizSubmissionId,
       recordingPath: path,
       transcriptText,
+      transcriptAuto = false,
     }: {
       submissionId: string;
       requirementId: string;
       quizSubmissionId: string | null;
       recordingPath: string;
       transcriptText: string;
+      /** The text started as an automatic draft (the learner may have edited it). */
+      transcriptAuto?: boolean;
     }) => {
       const transcript = transcriptText.trim();
       const { error } = await supabase.rpc("learner_submit_assessment", {
@@ -198,11 +202,35 @@ export function useSubmitFinalAssessment(enrollmentId: string | null) {
         p_kind: "final_assessment",
         p_quiz_submission_id: quizSubmissionId ?? undefined,
         p_transcript_text: transcript || undefined,
-        p_transcript_source: transcript ? "pasted" : "none",
+        p_transcript_source: transcript ? (transcriptAuto ? "auto" : "pasted") : "none",
         p_files: [{ storage_path: path, file_kind: "recording" }],
       });
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [LEARNER_FINAL_ASSESSMENT_KEY] }),
   });
+}
+
+export type AutoTranscribeError = "not_configured" | "not_open" | "not_found" | "transcription_failed" | "unknown";
+
+/**
+ * Automatic transcription draft (transcribe-assessment-recording, Prompt A7):
+ * Whisper on the uploaded, not yet submitted recording. Returns the draft only;
+ * it is stored on submit with transcript_source = 'auto'.
+ */
+export function useAutoTranscribe() {
+  return useMutation({
+    mutationFn: async ({ enrollmentId, storagePath }: { enrollmentId: string; storagePath: string }) => {
+      const { data, error } = await supabase.functions.invoke("transcribe-assessment-recording", {
+        body: { enrollment_id: enrollmentId, storage_path: storagePath },
+      });
+      if (error) throw await extractFunctionError(error);
+      return (data as { text: string }).text ?? "";
+    },
+  });
+}
+
+export function autoTranscribeErrorCode(e: unknown): AutoTranscribeError {
+  const m = e instanceof Error ? e.message : "";
+  return (["not_configured", "not_open", "not_found", "transcription_failed"] as const).find((c) => c === m) ?? "unknown";
 }

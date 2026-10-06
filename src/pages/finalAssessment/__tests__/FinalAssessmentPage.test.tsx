@@ -3,8 +3,8 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { rpc, upload } = vi.hoisted(() => ({ rpc: vi.fn(), upload: vi.fn() }));
-vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc } }));
+const { rpc, upload, invoke } = vi.hoisted(() => ({ rpc: vi.fn(), upload: vi.fn(), invoke: vi.fn() }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, functions: { invoke } } }));
 vi.mock("@/lib/uploadWithProgress", () => ({ uploadWithProgress: upload }));
 vi.mock("@/hooks/useActiveEnrollment", () => ({
   useActiveEnrollment: () => ({ enrollmentId: "enr-1", loading: false }),
@@ -52,6 +52,7 @@ beforeEach(() => {
   state = fa();
   rpc.mockReset();
   upload.mockReset();
+  invoke.mockReset();
   rpc.mockImplementation((name: string, args: Record<string, unknown>) => {
     if (name === "learner_final_assessment") return Promise.resolve({ data: [state], error: null });
     if (name === "learner_final_assessment_quiz") return Promise.resolve({ data: QUESTIONS, error: null });
@@ -180,5 +181,70 @@ describe("Final Assessment (learner)", () => {
     renderPage();
     expect(await screen.findByTestId("final-assessment-resubmit")).toHaveTextContent("attempt 2 of 2");
     expect(screen.getByTestId("final-assessment-steps")).toBeInTheDocument();
+  });
+
+  describe("automatic transcription (A7)", () => {
+    async function uploadRecording() {
+      upload.mockResolvedValue(undefined);
+      renderPage();
+      fireEvent.click(await screen.findByTestId("final-step-recording"));
+      fireEvent.change(screen.getByTestId("final-recording-input"), { target: { files: [mp3()] } });
+      await screen.findByTestId("final-recording-uploaded");
+      return upload.mock.calls[0][0].path as string;
+    }
+
+    it("asks for the recording first", async () => {
+      renderPage();
+      fireEvent.click(await screen.findByTestId("final-step-transcript"));
+      expect(screen.getByTestId("final-auto-transcribe-needs-recording")).toBeInTheDocument();
+      expect(screen.queryByTestId("final-auto-transcribe")).toBeNull();
+    });
+
+    it("drafts the transcript, lets the learner edit it, and submits it as 'auto'", async () => {
+      state = fa({ quiz_taken: true, quiz_submission_id: "quiz-sub-1" });
+      invoke.mockResolvedValue({ data: { text: "Coach: hôm nay bạn muốn gì?", source: "auto" }, error: null });
+      const path = await uploadRecording();
+      fireEvent.click(screen.getByTestId("final-step-transcript"));
+      fireEvent.click(screen.getByTestId("final-auto-transcribe"));
+      await waitFor(() => expect(screen.getByTestId("final-transcript")).toHaveValue("Coach: hôm nay bạn muốn gì?"));
+      expect(invoke).toHaveBeenCalledWith("transcribe-assessment-recording", { body: { enrollment_id: "enr-1", storage_path: path } });
+      expect(screen.getByTestId("final-auto-transcribe-draft")).toHaveTextContent("automatic draft");
+      // Never overwrites what is in the box.
+      expect(screen.getByTestId("final-auto-transcribe")).toBeDisabled();
+
+      fireEvent.change(screen.getByTestId("final-transcript"), { target: { value: "Coach: Hôm nay bạn muốn đạt được gì?" } });
+      fireEvent.click(screen.getByTestId("final-step-review"));
+      fireEvent.click(screen.getByTestId("final-submit"));
+      await waitFor(() => expect(rpc).toHaveBeenCalledWith("learner_submit_assessment", expect.anything()));
+      const submitted = rpc.mock.calls.find(([n]) => n === "learner_submit_assessment")![1];
+      expect(submitted).toMatchObject({ p_transcript_text: "Coach: Hôm nay bạn muốn đạt được gì?", p_transcript_source: "auto" });
+    });
+
+    it("a cleared draft replaced by the learner's own text is 'pasted'", async () => {
+      state = fa({ quiz_taken: true, quiz_submission_id: "quiz-sub-1" });
+      invoke.mockResolvedValue({ data: { text: "draft" }, error: null });
+      await uploadRecording();
+      fireEvent.click(screen.getByTestId("final-step-transcript"));
+      fireEvent.click(screen.getByTestId("final-auto-transcribe"));
+      await waitFor(() => expect(screen.getByTestId("final-transcript")).toHaveValue("draft"));
+      fireEvent.change(screen.getByTestId("final-transcript"), { target: { value: "" } });
+      fireEvent.change(screen.getByTestId("final-transcript"), { target: { value: "My own transcript" } });
+      fireEvent.click(screen.getByTestId("final-step-review"));
+      fireEvent.click(screen.getByTestId("final-submit"));
+      await waitFor(() => expect(rpc).toHaveBeenCalledWith("learner_submit_assessment", expect.anything()));
+      expect(rpc.mock.calls.find(([n]) => n === "learner_submit_assessment")![1]).toMatchObject({ p_transcript_source: "pasted" });
+    });
+
+    it("shows a friendly message when the service is not configured", async () => {
+      invoke.mockResolvedValue({
+        data: null,
+        error: { context: new Response(JSON.stringify({ error: "not_configured" }), { status: 503 }) },
+      });
+      await uploadRecording();
+      fireEvent.click(screen.getByTestId("final-step-transcript"));
+      fireEvent.click(screen.getByTestId("final-auto-transcribe"));
+      expect(await screen.findByTestId("final-auto-transcribe-error")).toHaveTextContent("Automatic transcription is not available");
+      expect(screen.getByTestId("final-transcript")).toHaveValue("");
+    });
   });
 });
