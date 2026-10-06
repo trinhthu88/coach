@@ -393,6 +393,8 @@ Coach and learner surfaces (`20261006230000`): Coach → Submissions (`/coach/su
 
 Submitting (`learner_submit_assessment`, `final_assessment`) needs this attempt's quiz when the programme has one, exactly one MP3 recording, and a transcript when required (none allowed when `none`). The learner page is `/final-assessment` (quiz → MP3 upload with progress → transcript → review & submit). `supabase/tests/assessment_final_test.sql` checks that Learner, Admin and Sponsor show the same state at each step.
 
+Results everywhere (`20261007000200`): `FinalAssessmentResults` shows the Final Assessment on Learner My Journey (`LearnerFinalAssessmentSection`, `learner_final_assessment`: state and result, the quiz score only once released), Admin enrollment detail (`AdminFinalAssessmentDetail`, `admin_final_assessment_result`: attempt, quiz vs pass mark, the assessor's outcome) and Sponsor leader detail (`SponsorFinalAssessmentSection`, `sponsor_final_assessment_status`: Not submitted / Under review / Completed + Pass / Not pass; Resubmit = Under review). A programme without a Final Assessment returns no row and shows no card. `supabase/tests/assessment_results_test.sql`.
+
 ### Retirement backlog
 
 Kept for now as HISTORICAL; no current-state surface may read them. Retire in a

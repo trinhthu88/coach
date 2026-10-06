@@ -27,6 +27,12 @@ const state = vi.hoisted(() => ({
   learnerHookCalls: [] as string[],
 }));
 
+// The Final Assessment card has its own tests (FinalAssessmentResults.test.tsx).
+vi.mock("@/components/assessments/FinalAssessmentResults", () => ({
+  LearnerFinalAssessmentSection: () => null,
+  SponsorFinalAssessmentSection: () => null,
+  AdminFinalAssessmentDetail: () => null,
+}));
 vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ user: { id: "learner-1" }, profile: { full_name: "Jamie Learner" }, role: "coachee" }),
 }));

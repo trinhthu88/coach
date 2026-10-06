@@ -166,5 +166,23 @@
     "submittedToast": "Final Assessment submitted.",
     "back": "Back",
     "next": "Next"
+  },
+  "results": {
+    "title": "Final Assessment",
+    "result": "Result",
+    "quiz": "Quiz",
+    "due": "Due",
+    "attempt": "Attempt",
+    "submitted": "Submitted",
+    "released": "Released",
+    "outcome": "Assessor's outcome",
+    "open": "Go to the Final Assessment",
+    "view": "View the Final Assessment",
+    "sponsorState": {
+      "not_submitted": "Not submitted",
+      "under_review": "Under review",
+      "completed": "Completed"
+    },
+    "sponsorNote": "Sponsors see the status and the Pass / Not pass result only, never the recording, answers or feedback."
   }
 }

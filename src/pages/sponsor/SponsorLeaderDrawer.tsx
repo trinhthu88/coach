@@ -1,5 +1,6 @@
 import { AlertTriangle, ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SponsorFinalAssessmentSection } from "@/components/assessments/FinalAssessmentResults";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 import type {
@@ -89,6 +90,9 @@ export function SponsorLeaderProfile({
           <ProgrammeProgressParticipation facts={leader} journey={journey} coachingUtilisation={experience.coachingUtilisation} viewer="sponsor" />
           <ProgrammeModuleProgress facts={leader} learningBreakdown={experience.learningBreakdown} viewer="sponsor" />
         </div>
+
+        {/* Status and Pass / Not pass only (sponsor_final_assessment_status). */}
+        <SponsorFinalAssessmentSection enrollmentId={leader.enrollment_id} />
 
         <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
           <ProgrammeGoalSummary engagement={leader} viewer="sponsor" />

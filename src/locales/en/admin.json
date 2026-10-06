@@ -1257,7 +1257,8 @@
       "reflections": "Reflections",
       "feedback": "Feedback",
       "satisfaction": "Satisfaction",
-      "calendar": "Requirement calendar"
+      "calendar": "Requirement calendar",
+      "finalAssessment": "Final Assessment"
     },
     "fields": {
       "programme": "Programme",

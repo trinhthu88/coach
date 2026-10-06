@@ -53,8 +53,19 @@ export interface FinalQuizQuestion {
 
 export function useLearnerFinalAssessment() {
   const active = useActiveEnrollment();
-  const enrollmentId = active.enrollmentId;
-  const query = useQuery({
+  const query = useLearnerFinalAssessmentFor(active.enrollmentId);
+  return {
+    enrollmentId: active.enrollmentId,
+    enrollmentLoading: active.loading,
+    data: query.data ?? null,
+    loading: active.loading || query.isLoading,
+    error: query.isError,
+  };
+}
+
+/** The same read for a given enrollment (My Journey pages pass the one they show). */
+export function useLearnerFinalAssessmentFor(enrollmentId: string | null | undefined) {
+  return useQuery({
     queryKey: [LEARNER_FINAL_ASSESSMENT_KEY, enrollmentId],
     enabled: !!enrollmentId,
     queryFn: async (): Promise<LearnerFinalAssessment | null> => {
@@ -88,13 +99,6 @@ export function useLearnerFinalAssessment() {
       };
     },
   });
-  return {
-    enrollmentId,
-    enrollmentLoading: active.loading,
-    data: query.data ?? null,
-    loading: active.loading || query.isLoading,
-    error: query.isError,
-  };
 }
 
 export function useFinalAssessmentQuiz(enrollmentId: string | null, enabled: boolean) {

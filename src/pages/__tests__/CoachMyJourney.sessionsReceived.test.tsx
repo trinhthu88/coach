@@ -10,6 +10,12 @@ import { canonicalProgress } from "@/test/fixtures/canonicalEnrollment";
  * React over a configured receive_limit (20261006110000).
  */
 // Assessment feedback has its own tests (AssessmentFeedbackSection.test.tsx).
+// The Final Assessment card has its own tests (FinalAssessmentResults.test.tsx).
+vi.mock("@/components/assessments/FinalAssessmentResults", () => ({
+  LearnerFinalAssessmentSection: () => null,
+  SponsorFinalAssessmentSection: () => null,
+  AdminFinalAssessmentDetail: () => null,
+}));
 vi.mock("@/components/assessments/AssessmentFeedbackSection", () => ({ AssessmentFeedbackSection: () => null }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({

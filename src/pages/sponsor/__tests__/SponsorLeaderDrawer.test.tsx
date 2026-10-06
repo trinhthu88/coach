@@ -6,6 +6,12 @@ import { SponsorLeaderDrawer, SponsorLeaderProfile } from "../SponsorLeaderDrawe
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 
 // Schedule-mismatch state (cohort_programme_schedule_state) — aligned here.
+// The Final Assessment card has its own tests (FinalAssessmentResults.test.tsx).
+vi.mock("@/components/assessments/FinalAssessmentResults", () => ({
+  LearnerFinalAssessmentSection: () => null,
+  SponsorFinalAssessmentSection: () => null,
+  AdminFinalAssessmentDetail: () => null,
+}));
 vi.mock("@/hooks/useCanonicalScheduleState", () => ({
   useCanonicalScheduleState: () => ({ rows: [], mismatches: [], loading: false, error: null }),
 }));

@@ -166,5 +166,23 @@
     "submittedToast": "Đã nộp Final Assessment.",
     "back": "Quay lại",
     "next": "Tiếp"
+  },
+  "results": {
+    "title": "Final Assessment",
+    "result": "Kết quả",
+    "quiz": "Quiz",
+    "due": "Hạn",
+    "attempt": "Lần nộp",
+    "submitted": "Ngày nộp",
+    "released": "Ngày có kết quả",
+    "outcome": "Đánh giá của người chấm",
+    "open": "Đến Final Assessment",
+    "view": "Xem Final Assessment",
+    "sponsorState": {
+      "not_submitted": "Chưa nộp",
+      "under_review": "Đang đánh giá",
+      "completed": "Hoàn thành"
+    },
+    "sponsorNote": "Nhà tài trợ chỉ thấy trạng thái và kết quả Đạt / Không đạt, không bao giờ thấy bản ghi âm, câu trả lời hay nhận xét."
   }
 }

@@ -309,8 +309,9 @@ select throws_ok($$select public.coach_submit_review('ac400000-0000-4000-8000-00
 select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000006')::text, true);
 select is(pg_get_function_result('public.sponsor_final_assessment_status(uuid)'::regprocedure),
   'TABLE(status text, result text)', 'R11a. the Sponsor reads status and result, nothing else');
-select results_eq($$select status, result from public.sponsor_final_assessment_status('ac300000-0000-4000-8000-000000000001')$$,
-  $$values ('not_submitted'::text, null::text)$$, 'R11b. ... and nothing for Triad reviews');
+-- A programme with Triads only has no Final Assessment: no row (20261007000200).
+select is((select count(*)::int from public.sponsor_final_assessment_status('ac300000-0000-4000-8000-000000000001')),
+  0, 'R11b. ... and nothing for Triad reviews');
 select throws_ok($$select * from public.admin_assessment_queue()$$, '42501', null, 'R11c. the Sponsor cannot read the queue');
 select is((select count(*)::int from public.learner_assessment_feedback('ac300000-0000-4000-8000-000000000001')),
   0, 'R11d. ... nor the learner''s feedback');

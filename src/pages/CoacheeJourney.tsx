@@ -38,6 +38,7 @@ import { PROFILE_COLORS } from "@/components/programme/profileTheme";
 import { useLearnerCanonicalGoalProgress, useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
 import { useHashScroll } from "@/hooks/useHashScroll";
 import { AssessmentFeedbackSection } from "@/components/assessments/AssessmentFeedbackSection";
+import { LearnerFinalAssessmentSection } from "@/components/assessments/FinalAssessmentResults";
 import { useLearnerReflectionFeed } from "@/hooks/journey/useLearnerReflectionFeed";
 import { ReflectionFeedItem } from "@/components/programme/ReflectionFeedItem";
 import { formatProfileDate } from "@/lib/programmeProfile";
@@ -429,6 +430,7 @@ export default function CoacheeJourney() {
         </ProfileSection>
 
         <div className="flex flex-col gap-4">
+          <LearnerFinalAssessmentSection enrollmentId={enrollmentId} />
           <AssessmentFeedbackSection enrollmentId={enrollmentId} />
           <ProfileSection id="feedback" className="scroll-mt-4">
             <ProfileSectionTitle title={t("journeyPage.feedbackCard.title")} aside={tDash("learnerProfile.feedback.aside")} />
