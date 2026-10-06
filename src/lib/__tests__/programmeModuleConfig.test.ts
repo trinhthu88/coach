@@ -98,16 +98,16 @@ describe("normalizeModuleScheduleConfig", () => {
 });
 
 describe("stripRetiredSessionLimits", () => {
-  it("drops give_limit and receive_limit from Coaching and Mentoring", () => {
-    for (const module of ["coaching", "mentoring"]) {
+  it("drops give_limit and receive_limit from Coaching, Mentoring and Peer", () => {
+    for (const module of ["coaching", "mentoring", "peer_coaching"]) {
       expect(stripRetiredSessionLimits(module, { ...validBase, give: true, give_limit: 1, receive_limit: 2 }))
         .toEqual({ ...validBase, give: true });
     }
   });
 
-  it("keeps the Peer practice entitlement and other modules' keys", () => {
+  it("keeps the Peer monthly practice limit and other modules' keys", () => {
     const peer = { ...validBase, give_limit: 1, receive_limit: 2, monthly_limit: 3 };
-    expect(stripRetiredSessionLimits("peer_coaching", peer)).toEqual(peer);
+    expect(stripRetiredSessionLimits("peer_coaching", peer)).toEqual({ ...validBase, monthly_limit: 3 });
     const triads = { ...validBase, max_triads: 2 };
     expect(stripRetiredSessionLimits("triads", triads)).toEqual(triads);
   });

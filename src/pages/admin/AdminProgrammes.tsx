@@ -76,7 +76,7 @@ export type ModuleRows = Record<ProgrammeModuleType, ModuleRow>;
 export function defaultModuleRows(): ModuleRows {
   return {
     coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false } },
-    peer_coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null, monthly_limit: null } },
+    peer_coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, monthly_limit: null } },
     mentoring: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false } },
     triads: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, max_triads: null } },
     // learning_components is always explicit (programme_modules_training_learning_components):
@@ -165,16 +165,13 @@ export function ModuleConfigRow({
                 <Checkbox checked={!!cfg.receive} onCheckedChange={(v) => onConfigChange({ receive: !!v })} />
                 {t("programmes.modules.receive")}
               </label>
+              {/* Practice from the Coach opt-in pool, per calendar month
+                  (Asia/Ho_Chi_Minh). It never caps the Peer requirement,
+                  which dyad sessions earn (20261006120000). */}
               <LimitField
-                label={t("programmes.modules.giveLimit")}
-                value={(cfg.give_limit as number | null) ?? null}
-                onChange={(v) => onConfigChange({ give_limit: v })}
-                t={t}
-              />
-              <LimitField
-                label={t("programmes.modules.receiveLimit")}
-                value={(cfg.receive_limit as number | null) ?? null}
-                onChange={(v) => onConfigChange({ receive_limit: v })}
+                label={t("programmes.modules.monthlyPracticeLimit")}
+                value={(cfg.monthly_limit as number | null) ?? null}
+                onChange={(v) => onConfigChange({ monthly_limit: v })}
                 t={t}
               />
             </>

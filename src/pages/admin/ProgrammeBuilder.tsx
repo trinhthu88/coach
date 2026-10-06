@@ -84,12 +84,9 @@ export default function ProgrammeBuilder() {
       const key = validateModuleScheduleConfig(row.config, weeks.map((w) => w.id));
       if (key) errors.push(`${t(`programmes.modules.types.${module}`)}: ${t(key)}`);
       const target = row.config.required_units;
-      // Coaching and Mentoring have no session limit (20261006110000).
-      const limits = module === "triads"
-        ? [row.config.max_triads]
-        : module === "peer_coaching"
-          ? [row.config.give_limit, row.config.receive_limit]
-          : [];
+      // Only Triads cap the required target; Peer's monthly_limit caps
+      // practice, not requirements (20261006120000).
+      const limits = module === "triads" ? [row.config.max_triads] : [];
       const applicableLimits = limits.filter((limit): limit is number => typeof limit === "number");
       if (row.config.required === true && typeof target === "number" && applicableLimits.some((max) => target > max)) {
         errors.push(t("programmes.builder.targetExceedsMaximum", {

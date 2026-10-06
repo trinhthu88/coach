@@ -280,3 +280,4 @@
 20261005140000_peer_authority.sql
 20261006100000_admin_peer_revalidation.sql
 20261006110000_retire_session_limits.sql
+20261006120000_peer_booking_rules.sql

@@ -418,15 +418,13 @@ select ok(
   'an allowlist-only mentor does not appear in the enrollment mentor list');
 
 -- ---------------------------------------------------------------------------
--- Entitlement is per enrollment, never summed across history (section 3)
+-- No received allowance (section 3): the Mentoring requirement is the only
+-- quantity (20261006120000 dropped the allowance readers).
 -- ---------------------------------------------------------------------------
-select is(
-  (select used_count from public.get_mentoring_session_usage('d1000000-0000-0000-0000-00000000e1e1'::uuid)),
-  1, 'the historical enrollment counts only its own session');
-
-select is(
-  (select used_count from public.get_mentoring_session_usage('d1000000-0000-0000-0000-00000000e2e2'::uuid)),
-  2, 'the current enrollment counts only its own sessions, not the historical one');
+select hasnt_function('public', 'get_mentoring_session_usage', array['uuid'],
+  'no Mentoring received-allowance reader exists');
+select hasnt_function('public', 'get_mentoring_session_usage_for_enrollment', array['uuid'],
+  'no Mentoring received-allowance wrapper exists');
 
 -- ---------------------------------------------------------------------------
 -- Two independent state layers (section 7)

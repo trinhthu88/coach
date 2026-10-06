@@ -5545,13 +5545,6 @@ export type Database = {
             Returns: boolean
           }
       check_has_module_access: { Args: { p_module: string }; Returns: boolean }
-      check_mentoring_session_usage: {
-        Args: { p_enrollment_id: string }
-        Returns: {
-          limit_count: number
-          used_count: number
-        }[]
-      }
       coach_coaching_requirement_fulfilment: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5883,20 +5876,6 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: undefined
       }
-      get_coach_peer_session_usage: {
-        Args: { _coach_id: string }
-        Returns: {
-          peer_monthly_limit: number
-          used_this_month: number
-        }[]
-      }
-      get_coachee_peer_session_usage: {
-        Args: { p_enrollment_id: string }
-        Returns: {
-          receive_limit: number
-          used_count: number
-        }[]
-      }
       get_enrollment_programme_modules: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5936,20 +5915,6 @@ export type Database = {
           unlock_date: string
           viewed_at: string
           week_number: number
-        }[]
-      }
-      get_mentoring_session_usage: {
-        Args: { p_enrollment_id: string }
-        Returns: {
-          limit_count: number
-          used_count: number
-        }[]
-      }
-      get_mentoring_session_usage_for_enrollment: {
-        Args: { p_enrollment_id: string }
-        Returns: {
-          limit_count: number
-          used_count: number
         }[]
       }
       get_mentors_for_enrollment: {

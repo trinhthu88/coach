@@ -155,10 +155,16 @@ values
   ('f7000000-0000-0000-0000-000000000011', 'a7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000001', 'Peer received 1', '2026-02-02T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', 'Peer reflection: open questions helped.', 'PROVIDER SHARED NOTE', 'PROVIDER PRIVATE NOTE'),
   ('f7000000-0000-0000-0000-000000000012', 'a7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000001', 'Peer received 2', '2026-03-02T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', null, null, null);
 select set_config('request.jwt.claim.sub', 'a7000000-0000-0000-0000-000000000002', true);
+-- History, written as it stood: A2's two Peer requirements are already held by
+-- the sessions A2 gave above, so the booking rule (a free requirement,
+-- 20261006120000) would refuse these today. This suite is about the history
+-- feed, not booking, so the booking check is paused for these two rows.
+alter table public.coachee_peer_sessions disable trigger coachee_peer_sessions_validate_cap;
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, provider_notes, provider_private_notes)
 values
   ('f7000000-0000-0000-0000-000000000014', 'a7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000002', 'Peer given 1', '2026-02-09T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000002', null, null, null),
   ('f7000000-0000-0000-0000-000000000015', 'a7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000002', 'Peer given 2', '2099-04-05T10:00:00Z', 60, 'confirmed', 'e7000000-0000-0000-0000-000000000002', null, null, null);
+alter table public.coachee_peer_sessions enable trigger coachee_peer_sessions_validate_cap;
 
 select set_config('request.jwt.claim.sub', 'a7000000-0000-0000-0000-000000000001', true);
 
