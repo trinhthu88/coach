@@ -1846,6 +1846,63 @@ export type Database = {
           },
         ]
       }
+      final_assessment_transcriptions: {
+        Row: {
+          attempt_no: number
+          audio_seconds: number | null
+          consented_at: string
+          draft_text: string | null
+          enrollment_id: string
+          finished_at: string | null
+          id: string
+          learner_id: string
+          started_at: string
+          status: string
+          storage_path: string
+        }
+        Insert: {
+          attempt_no: number
+          audio_seconds?: number | null
+          consented_at: string
+          draft_text?: string | null
+          enrollment_id: string
+          finished_at?: string | null
+          id?: string
+          learner_id: string
+          started_at?: string
+          status?: string
+          storage_path: string
+        }
+        Update: {
+          attempt_no?: number
+          audio_seconds?: number | null
+          consented_at?: string
+          draft_text?: string | null
+          enrollment_id?: string
+          finished_at?: string | null
+          id?: string
+          learner_id?: string
+          started_at?: string
+          status?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "final_assessment_transcriptions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "programme_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "final_assessment_transcriptions_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_checkin_submissions: {
         Row: {
           actor_user_id: string
@@ -4629,6 +4686,20 @@ export type Database = {
           submitted_at: string
         }[]
       }
+      admin_final_assessment_transcriptions: {
+        Args: { p_enrollment_id?: string; p_since?: string }
+        Returns: {
+          attempt_no: number
+          enrollment_id: string
+          finished_at: string
+          learner_id: string
+          learner_name: string
+          status: string
+          started_at: string
+          transcription_id: string
+          audio_minutes: number
+        }[]
+      }
       admin_canonical_completion_rate: {
         Args: { p_as_of?: string; p_enrollment_ids: string[] }
         Returns: {
@@ -6305,6 +6376,39 @@ export type Database = {
           question_text_vi: string
           sort_order: number
         }[]
+      }
+      learner_final_assessment_transcription: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          attempt_no: number
+          cap: number
+          draft_at: string
+          draft_storage_path: string
+          draft_text: string
+          remaining: number
+        }[]
+      }
+      learner_claim_final_assessment_transcription: {
+        Args: { p_consent: boolean; p_enrollment_id: string; p_storage_path: string }
+        Returns: {
+          attempt_no: number
+          remaining: number
+          transcription_id: string
+        }[]
+      }
+      final_assessment_transcription_cap: { Args: never; Returns: number }
+      final_assessment_transcription_finish_internal: {
+        Args: {
+          p_audio_seconds?: number
+          p_draft_text?: string
+          p_succeeded: boolean
+          p_transcription_id: string
+        }
+        Returns: undefined
+      }
+      final_assessment_transcriptions_used_internal: {
+        Args: { p_attempt_no: number; p_enrollment_id: string }
+        Returns: number
       }
       learner_submit_assessment: {
         Args: {

@@ -163,8 +163,13 @@
         "not_open": "Final Assessment này không còn nhận bản chép lời.",
         "not_found": "Không tìm thấy bản ghi âm. Vui lòng tải lên lại.",
         "transcription_failed": "Chép lời tự động không thành công. Vui lòng thử lại, hoặc nhập hoặc dán bản chép lời.",
-        "unknown": "Chép lời tự động không thành công. Vui lòng thử lại, hoặc nhập hoặc dán bản chép lời."
-      }
+        "unknown": "Chép lời tự động không thành công. Vui lòng thử lại, hoặc nhập hoặc dán bản chép lời.",
+        "consent_required": "Vui lòng đánh dấu đồng ý trước khi chép lời tự động.",
+        "limit_reached": "Bạn đã dùng hết lượt chép lời tự động cho lần nộp này."
+      },
+      "consent": "Bản ghi âm của bạn sẽ được gửi đến một dịch vụ chép lời bên ngoài (OpenAI) để tạo bản nháp. OpenAI không dùng bản ghi này để huấn luyện.",
+      "remaining_other": "Còn {{count}}/{{cap}} lượt chép lời tự động cho lần nộp này.",
+      "usedUp": "Bạn đã dùng hết {{cap}} lượt chép lời tự động cho lần nộp này. Vui lòng sửa bản nháp hoặc tự nhập bản chép lời."
     },
     "review": {
       "quizDone": "Đã trả lời quiz",

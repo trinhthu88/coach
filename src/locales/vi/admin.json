@@ -1503,6 +1503,24 @@
       "notInPool": "Coach này không thuộc danh sách người đánh giá của cohort.",
       "stale": "Bài nộp đã thay đổi kể từ khi tải danh sách. Danh sách đã được làm mới.",
       "reasonRequired": "Hãy ghi lý do trước khi trả lại nhận xét."
+    },
+    "transcription": {
+      "title": "Chép lời tự động (Final Assessment)",
+      "thisMonth": "Tháng này",
+      "allTime": "Từ trước đến nay",
+      "totals": "{{calls}} lượt · {{minutes}} phút âm thanh · ≈ ${{usd}}",
+      "estimate": "Ước tính theo giá OpenAI Whisper ${{price}} mỗi phút âm thanh. Mỗi học viên có tối đa 3 bản nháp tự động cho mỗi lần nộp.",
+      "when": "Thời gian",
+      "learner": "Học viên",
+      "attempt": "Lần nộp",
+      "minutes": "Phút âm thanh",
+      "status": "Trạng thái",
+      "statuses": {
+        "pending": "Đang chạy",
+        "succeeded": "Xong",
+        "failed": "Lỗi"
+      },
+      "loadError": "Không tải được chi phí chép lời."
     }
   }
 }

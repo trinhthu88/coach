@@ -163,8 +163,14 @@
         "not_open": "This Final Assessment can no longer take a transcript.",
         "not_found": "The recording could not be found. Please upload it again.",
         "transcription_failed": "Automatic transcription failed. Please try again, or type or paste the transcript.",
-        "unknown": "Automatic transcription failed. Please try again, or type or paste the transcript."
-      }
+        "unknown": "Automatic transcription failed. Please try again, or type or paste the transcript.",
+        "consent_required": "Please tick the box to agree before drafting automatically.",
+        "limit_reached": "You have used all automatic drafts for this attempt."
+      },
+      "consent": "Your recording will be sent to an external transcription service (OpenAI) to create the draft. OpenAI does not use it for training.",
+      "remaining_one": "{{count}} of {{cap}} automatic drafts left for this attempt.",
+      "remaining_other": "{{count}} of {{cap}} automatic drafts left for this attempt.",
+      "usedUp": "You have used all {{cap}} automatic drafts for this attempt. Please edit the draft or type the transcript."
     },
     "review": {
       "quizDone": "Quiz answered",

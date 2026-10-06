@@ -31,6 +31,7 @@ const QUESTIONS = [
 ];
 
 let state = fa();
+let transcription: Record<string, unknown> | null = null;
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -50,6 +51,7 @@ const mp3 = (name = "session.mp3", size = 30 * 1024 * 1024) => {
 
 beforeEach(() => {
   state = fa();
+  transcription = { attempt_no: 1, cap: 3, remaining: 3, draft_text: null, draft_storage_path: null, draft_at: null };
   rpc.mockReset();
   upload.mockReset();
   invoke.mockReset();
@@ -61,6 +63,7 @@ beforeEach(() => {
       return Promise.resolve({ data: "quiz-sub-1", error: null });
     }
     if (name === "learner_submit_assessment") return Promise.resolve({ data: args.p_submission_id, error: null });
+    if (name === "learner_final_assessment_transcription") return Promise.resolve({ data: transcription ? [transcription] : [], error: null });
     throw new Error(`unexpected rpc ${name}`);
   });
 });
@@ -205,9 +208,10 @@ describe("Final Assessment (learner)", () => {
       invoke.mockResolvedValue({ data: { text: "Coach: hôm nay bạn muốn gì?", source: "auto" }, error: null });
       const path = await uploadRecording();
       fireEvent.click(screen.getByTestId("final-step-transcript"));
+      fireEvent.click(screen.getByTestId("final-auto-transcribe-consent"));
       fireEvent.click(screen.getByTestId("final-auto-transcribe"));
       await waitFor(() => expect(screen.getByTestId("final-transcript")).toHaveValue("Coach: hôm nay bạn muốn gì?"));
-      expect(invoke).toHaveBeenCalledWith("transcribe-assessment-recording", { body: { enrollment_id: "enr-1", storage_path: path } });
+      expect(invoke).toHaveBeenCalledWith("transcribe-assessment-recording", { body: { enrollment_id: "enr-1", storage_path: path, consent: true } });
       expect(screen.getByTestId("final-auto-transcribe-draft")).toHaveTextContent("automatic draft");
       // Never overwrites what is in the box.
       expect(screen.getByTestId("final-auto-transcribe")).toBeDisabled();
@@ -225,6 +229,7 @@ describe("Final Assessment (learner)", () => {
       invoke.mockResolvedValue({ data: { text: "draft" }, error: null });
       await uploadRecording();
       fireEvent.click(screen.getByTestId("final-step-transcript"));
+      fireEvent.click(screen.getByTestId("final-auto-transcribe-consent"));
       fireEvent.click(screen.getByTestId("final-auto-transcribe"));
       await waitFor(() => expect(screen.getByTestId("final-transcript")).toHaveValue("draft"));
       fireEvent.change(screen.getByTestId("final-transcript"), { target: { value: "" } });
@@ -242,9 +247,47 @@ describe("Final Assessment (learner)", () => {
       });
       await uploadRecording();
       fireEvent.click(screen.getByTestId("final-step-transcript"));
+      fireEvent.click(screen.getByTestId("final-auto-transcribe-consent"));
       fireEvent.click(screen.getByTestId("final-auto-transcribe"));
       expect(await screen.findByTestId("final-auto-transcribe-error")).toHaveTextContent("Automatic transcription is not available");
       expect(screen.getByTestId("final-transcript")).toHaveValue("");
+    });
+  
+    it("shows the privacy notice, and the button only after the learner ticks consent", async () => {
+      await uploadRecording();
+      fireEvent.click(screen.getByTestId("final-step-transcript"));
+      expect(screen.getByTestId("final-auto-transcribe-panel")).toHaveTextContent(
+        "sent to an external transcription service (OpenAI)",
+      );
+      expect(screen.queryByTestId("final-auto-transcribe")).toBeNull();
+      fireEvent.click(screen.getByTestId("final-auto-transcribe-consent"));
+      expect(screen.getByTestId("final-auto-transcribe")).toBeInTheDocument();
+      expect(invoke).not.toHaveBeenCalled();
+    });
+
+    it("shows how many drafts are left, and no button when all 3 are used", async () => {
+      transcription = { ...transcription, remaining: 2 };
+      await uploadRecording();
+      fireEvent.click(screen.getByTestId("final-step-transcript"));
+      expect(await screen.findByTestId("final-auto-transcribe-remaining")).toHaveTextContent("2 of 3 automatic drafts left");
+
+      transcription = { ...transcription, remaining: 0 };
+      invoke.mockResolvedValue({ data: null, error: { context: new Response(JSON.stringify({ error: "limit_reached" }), { status: 429 }) } });
+      fireEvent.click(screen.getByTestId("final-auto-transcribe-consent"));
+      fireEvent.click(screen.getByTestId("final-auto-transcribe"));
+      expect(await screen.findByTestId("final-auto-transcribe-error")).toHaveTextContent("used all automatic drafts");
+      // The count is re-read after every call.
+      await waitFor(() => expect(screen.getByTestId("final-auto-transcribe-remaining")).toHaveTextContent("used all 3"));
+      expect(screen.queryByTestId("final-auto-transcribe")).toBeNull();
+    });
+
+    it("brings back the saved draft after a reload, as an automatic draft", async () => {
+      transcription = { ...transcription, remaining: 2, draft_text: "Saved draft from before", draft_at: "2026-10-06T10:00:00Z" };
+      renderPage();
+      fireEvent.click(await screen.findByTestId("final-step-transcript"));
+      await waitFor(() => expect(screen.getByTestId("final-transcript")).toHaveValue("Saved draft from before"));
+      expect(screen.getByTestId("final-auto-transcribe-draft")).toBeInTheDocument();
+      expect(invoke).not.toHaveBeenCalled();
     });
   });
 });

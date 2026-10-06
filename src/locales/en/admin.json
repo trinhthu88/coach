@@ -1521,6 +1521,24 @@
       "notInPool": "That Coach is not in the cohort's assessor pool.",
       "stale": "This submission has changed since the queue loaded. The queue has been refreshed.",
       "reasonRequired": "Write a reason before returning the review."
+    },
+    "transcription": {
+      "title": "Automatic transcription (Final Assessment)",
+      "thisMonth": "This month",
+      "allTime": "All time",
+      "totals": "{{calls}} calls · {{minutes}} audio min · ≈ ${{usd}}",
+      "estimate": "Estimated at OpenAI Whisper's ${{price}} per audio minute. Learners get at most 3 automatic drafts per attempt.",
+      "when": "When",
+      "learner": "Learner",
+      "attempt": "Attempt",
+      "minutes": "Audio min",
+      "status": "Status",
+      "statuses": {
+        "pending": "Running",
+        "succeeded": "Done",
+        "failed": "Failed"
+      },
+      "loadError": "The transcription cost could not be loaded."
     }
   }
 }

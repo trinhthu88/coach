@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { AdminPageHeader } from "./_shared";
 import { AssessmentQueue } from "./assessments/AssessmentQueue";
+import { TranscriptionCost } from "./assessments/TranscriptionCost";
 
 /** Admin -> Assessments: every Triad submission and Final Assessment, on admin_assessment_queue. */
 export default function AdminAssessments() {
@@ -8,6 +9,7 @@ export default function AdminAssessments() {
   return (
     <div>
       <AdminPageHeader eyebrow={t("assessments.eyebrow")} title={t("assessments.title")} subtitle={t("assessments.subtitle")} />
+      <TranscriptionCost />
       <AssessmentQueue />
     </div>
   );

@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Circle, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +19,7 @@ import {
   autoTranscribeErrorCode,
   checkRecording,
   useAutoTranscribe,
+  useFinalAssessmentTranscription,
   useFinalAssessmentQuiz,
   useLearnerFinalAssessment,
   useSubmitFinalAssessment,
@@ -149,6 +151,19 @@ function FinalAssessmentSteps({ enrollmentId, fa }: { enrollmentId: string; fa: 
   const [transcript, setTranscript] = useState("");
   // The text started as an automatic draft: stored with transcript_source 'auto'.
   const [transcriptAuto, setTranscriptAuto] = useState(false);
+  const transcription = useFinalAssessmentTranscription(enrollmentId, fa.transcriptMode !== "none");
+  // After a reload, bring back the saved automatic draft once (never over typed text).
+  const draftRestored = useRef(false);
+  const savedDraft = transcription.data?.draftText ?? null;
+  useEffect(() => {
+    if (draftRestored.current || !savedDraft) return;
+    draftRestored.current = true;
+    setTranscript((current) => {
+      if (current.trim()) return current;
+      setTranscriptAuto(true);
+      return savedDraft;
+    });
+  }, [savedDraft]);
   const submit = useSubmitFinalAssessment(enrollmentId);
 
   const done: Record<StepKey, boolean> = {
@@ -227,8 +242,11 @@ function FinalAssessmentSteps({ enrollmentId, fa }: { enrollmentId: string; fa: 
               enrollmentId={enrollmentId}
               recordingPath={recordingPath}
               hasText={!!transcript.trim()}
+              remaining={transcription.data?.remaining ?? null}
+              cap={transcription.data?.cap ?? null}
               isDraft={transcriptAuto && !!transcript.trim()}
               onDraft={(text) => {
+                draftRestored.current = true;
                 setTranscript(text);
                 setTranscriptAuto(true);
               }}
@@ -423,28 +441,36 @@ function RecordingStep({
   );
 }
 
-/** Optional Whisper draft of the uploaded recording; the learner edits it before submitting. */
+/**
+ * Optional Whisper draft of the uploaded recording; the learner edits it before
+ * submitting. The button only appears once the learner has ticked the consent
+ * to the external service, and only while drafts are left (3 per attempt,
+ * enforced in the database).
+ */
 function AutoTranscribe({
   enrollmentId,
   recordingPath,
   hasText,
   isDraft,
+  remaining,
+  cap,
   onDraft,
 }: {
   enrollmentId: string;
   recordingPath: string | null;
   hasText: boolean;
   isDraft: boolean;
+  remaining: number | null;
+  cap: number | null;
   onDraft: (text: string) => void;
 }) {
   const { t } = useTranslation("assessments");
   const transcribe = useAutoTranscribe();
+  const [consent, setConsent] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
 
-  if (!recordingPath) {
-    return <p className="text-[11px] text-[#9a938a]" data-testid="final-auto-transcribe-needs-recording">{t("final.auto.needsRecording")}</p>;
-  }
   const run = () => {
+    if (!recordingPath) return;
     setFailed(null);
     transcribe.mutate(
       { enrollmentId, storagePath: recordingPath },
@@ -454,23 +480,47 @@ function AutoTranscribe({
       },
     );
   };
+  const usedUp = remaining === 0;
+
   return (
-    <div className="space-y-1.5">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={run}
-        // Never overwrite what the learner has written: clear the box to draft again.
-        disabled={transcribe.isPending || hasText}
-        data-testid="final-auto-transcribe"
-      >
-        {transcribe.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-        {t(transcribe.isPending ? "final.auto.running" : "final.auto.button")}
-      </Button>
+    <div className="space-y-1.5" data-testid="final-auto-transcribe-panel">
       {isDraft && (
         <p className="text-[11px] text-[#a8541c]" data-testid="final-auto-transcribe-draft">
           {t("final.auto.draftNotice")}
+        </p>
+      )}
+      {!recordingPath ? (
+        <p className="text-[11px] text-[#9a938a]" data-testid="final-auto-transcribe-needs-recording">{t("final.auto.needsRecording")}</p>
+      ) : (
+        <>
+          <label className="flex items-start gap-2 text-[11.5px] text-[#4a463f]">
+            <Checkbox
+              checked={consent}
+              onCheckedChange={(v) => setConsent(v === true)}
+              className="mt-0.5"
+              data-testid="final-auto-transcribe-consent"
+            />
+            <span>{t("final.auto.consent")}</span>
+          </label>
+          {consent && !usedUp && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={run}
+              // Never overwrite what the learner has written: clear the box to draft again.
+              disabled={transcribe.isPending || hasText}
+              data-testid="final-auto-transcribe"
+            >
+              {transcribe.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {t(transcribe.isPending ? "final.auto.running" : "final.auto.button")}
+            </Button>
+          )}
+        </>
+      )}
+      {remaining != null && cap != null && (
+        <p className="text-[11px] text-[#9a938a]" data-testid="final-auto-transcribe-remaining">
+          {usedUp ? t("final.auto.usedUp", { cap }) : t("final.auto.remaining", { count: remaining, cap })}
         </p>
       )}
       {failed && (

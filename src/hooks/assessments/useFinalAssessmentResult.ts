@@ -65,3 +65,33 @@ export function useSponsorFinalAssessment(enrollmentId: string | null | undefine
     },
   });
 }
+
+export interface TranscriptionCall {
+  id: string;
+  enrollmentId: string;
+  attemptNo: number;
+  learnerName: string | null;
+  status: "pending" | "succeeded" | "failed";
+  audioMinutes: number | null;
+  startedAt: string;
+}
+
+/** Admin: every automatic transcription call (the cost log), newest first. */
+export function useAdminTranscriptionCalls(since: string | null = null) {
+  return useQuery({
+    queryKey: ["admin-final-assessment-transcriptions", since],
+    queryFn: async (): Promise<TranscriptionCall[]> => {
+      const { data, error } = await supabase.rpc("admin_final_assessment_transcriptions", { p_since: since ?? undefined });
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        id: r.transcription_id,
+        enrollmentId: r.enrollment_id,
+        attemptNo: r.attempt_no,
+        learnerName: r.learner_name ?? null,
+        status: r.status as TranscriptionCall["status"],
+        audioMinutes: r.audio_minutes ?? null,
+        startedAt: r.started_at,
+      }));
+    },
+  });
+}

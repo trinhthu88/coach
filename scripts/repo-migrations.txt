@@ -295,3 +295,5 @@
 20261007000000_final_assessment_module_type.sql
 20261007000100_final_assessment.sql
 20261007000200_final_assessment_results.sql
+20261007000300_assessor_history_after_release.sql
+20261007000400_final_assessment_auto_transcription.sql

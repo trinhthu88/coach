@@ -327,7 +327,9 @@ WITH repo(version, name) AS (VALUES
   ('20261006230000', 'assessment_inbox_feedback'),
   ('20261007000000', 'final_assessment_module_type'),
   ('20261007000100', 'final_assessment'),
-  ('20261007000200', 'final_assessment_results')
+  ('20261007000200', 'final_assessment_results'),
+  ('20261007000300', 'assessor_history_after_release'),
+  ('20261007000400', 'final_assessment_auto_transcription')
 -- END REPO MANIFEST
 ),
 

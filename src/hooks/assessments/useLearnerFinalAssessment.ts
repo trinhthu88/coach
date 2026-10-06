@@ -211,26 +211,75 @@ export function useSubmitFinalAssessment(enrollmentId: string | null) {
   });
 }
 
-export type AutoTranscribeError = "not_configured" | "not_open" | "not_found" | "transcription_failed" | "unknown";
+export type AutoTranscribeError =
+  | "consent_required"
+  | "limit_reached"
+  | "not_configured"
+  | "not_open"
+  | "not_found"
+  | "transcription_failed"
+  | "unknown";
+
+export const FINAL_TRANSCRIPTION_KEY = "learner-final-assessment-transcription";
+
+export interface FinalAssessmentTranscription {
+  attemptNo: number;
+  cap: number;
+  remaining: number;
+  /** The latest automatic draft of the open attempt (saved, so a reload keeps it). */
+  draftText: string | null;
+  draftStoragePath: string | null;
+  draftAt: string | null;
+}
+
+/** Drafts left on this attempt and its saved draft; null once the attempt is submitted. */
+export function useFinalAssessmentTranscription(enrollmentId: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: [FINAL_TRANSCRIPTION_KEY, enrollmentId],
+    enabled: !!enrollmentId && enabled,
+    queryFn: async (): Promise<FinalAssessmentTranscription | null> => {
+      const { data, error } = await supabase.rpc("learner_final_assessment_transcription", { p_enrollment_id: enrollmentId! });
+      if (error) throw error;
+      const r = (data ?? [])[0];
+      if (!r) return null;
+      return {
+        attemptNo: r.attempt_no,
+        cap: r.cap,
+        remaining: r.remaining,
+        draftText: r.draft_text ?? null,
+        draftStoragePath: r.draft_storage_path ?? null,
+        draftAt: r.draft_at ?? null,
+      };
+    },
+  });
+}
 
 /**
  * Automatic transcription draft (transcribe-assessment-recording, Prompt A7):
- * Whisper on the uploaded, not yet submitted recording. Returns the draft only;
- * it is stored on submit with transcript_source = 'auto'.
+ * Whisper on the uploaded, not yet submitted recording. At most 3 per attempt
+ * and only with the learner's consent, both enforced in the database; the
+ * draft is saved there too, and stored on submit with transcript_source 'auto'.
  */
 export function useAutoTranscribe() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ enrollmentId, storagePath }: { enrollmentId: string; storagePath: string }) => {
       const { data, error } = await supabase.functions.invoke("transcribe-assessment-recording", {
-        body: { enrollment_id: enrollmentId, storage_path: storagePath },
+        body: { enrollment_id: enrollmentId, storage_path: storagePath, consent: true },
       });
       if (error) throw await extractFunctionError(error);
       return (data as { text: string }).text ?? "";
     },
+    // A use is spent (or given back on failure): refresh what is left.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: [FINAL_TRANSCRIPTION_KEY] }),
   });
 }
 
 export function autoTranscribeErrorCode(e: unknown): AutoTranscribeError {
   const m = e instanceof Error ? e.message : "";
-  return (["not_configured", "not_open", "not_found", "transcription_failed"] as const).find((c) => c === m) ?? "unknown";
+  return (
+    (["consent_required", "limit_reached", "not_configured", "not_open", "not_found", "transcription_failed"] as const).find(
+      (c) => c === m,
+    ) ?? "unknown"
+  );
 }
