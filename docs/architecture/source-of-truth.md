@@ -358,6 +358,23 @@ Rollups only aggregate canonical rows (sums, counts of effective status and pace
 
 The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status` functions and 5 `demo_*` tables) exists only on hosted production. It answers no programme business fact. Only `get_demo_organization_status` is client-callable, and it is Admin/service-role gated. Pending a decision: bring it under migration control, or remove it.
 
+### Assessment review (`20261006210000`)
+
+One pipeline for Triad submissions and the Final Assessment: learner submits → Admin assigns an assessor from the cohort pool → the assessor reviews → Admin approves (releases and notifies) or returns with a reason → only approved, released feedback reaches the learner. A Triad review is evidence: no Triad completion function reads these tables.
+
+| Fact | Single owner | Read through |
+|---|---|---|
+| Who may assess in a cohort | `cohort_assessors` (written by `admin_set_cohort_assessor`) | `admin_cohort_assessors`, `admin_assign_assessor` |
+| What was submitted, and its status | `assessment_submissions` (written by `learner_submit_assessment`, then only by the step functions) | `learner_assessment_status`, `admin_assessment_queue`, `coach_assessment_inbox` |
+| Uploaded media, transcripts, feedback PDFs | `assessment_files` + bucket `assessment-files` (private; MP3 / PDF / txt / docx, 50 MB; paths `{enrollment}/{submission}/…`) | storage policies via `assessment_object_readable` / `_writable` / `_registered` |
+| Who is assessing now | the one open `assessment_assignments` row (due 7 days after assignment) | `coach_assessment_inbox`, `admin_assessment_queue` |
+| Each version of the feedback | `assessment_reviews` (`coach_submit_review`) | Admin queue; the learner only via release |
+| Admin's decision | `assessment_validations` (`admin_validate_review`; return needs a reason; approve releases + notifies in one transaction) | Admin queue; the returned assessor sees the reason |
+| Feedback the learner sees | the latest approved review of a released submission | `learner_assessment_feedback` (`canonical_assessment_feedback_internal`); `learner_mark_feedback_viewed` |
+| Sponsor view | status and Pass / Not pass only | `sponsor_final_assessment_status` |
+
+The app holds no privilege on the six tables (rules 1, 4, 7); every timestamp is the server's (rule 8); the quiz score is `assignment_submissions.score_pct` (rule 9); type and size are refused by the bucket and again by the step functions (rule 10); foreign keys restrict deletes (rule 12). `supabase/tests/assessment_pipeline_test.sql` has one section per rule.
+
 ### Retirement backlog
 
 Kept for now as HISTORICAL; no current-state surface may read them. Retire in a

@@ -289,3 +289,4 @@
 20261006180000_sessions_hub_history.sql
 20261006190000_sponsor_attention.sql
 20261006200000_admin_projections.sql
+20261006210000_assessment_pipeline.sql
