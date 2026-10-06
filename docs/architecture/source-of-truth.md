@@ -377,6 +377,8 @@ One pipeline for Triad submissions and the Final Assessment: learner submits →
 
 The app holds no privilege on the six tables (rules 1, 4, 7); every timestamp is the server's (rule 8); the quiz score is `assignment_submissions.score_pct` (rule 9); type and size are refused by the bucket and again by the step functions (rule 10); foreign keys restrict deletes (rule 12). `supabase/tests/assessment_pipeline_test.sql` has one section per rule.
 
+Admin surfaces: Cohort → Assessor pool (`CohortAssessorPanel`, on `admin_cohort_assessors` / `admin_set_cohort_assessor`); Admin → Assessments and Admin → Triads → Submissions (one `AssessmentQueue`, kind locked to Triad on the Triads tab) on `admin_assessment_queue`, assigning through `admin_assign_assessor` and deciding through `admin_validate_review`. `src/test/clientRpcGrants.test.ts` fails if app code names one of the six tables in `.from()`.
+
 ### Retirement backlog
 
 Kept for now as HISTORICAL; no current-state surface may read them. Retire in a

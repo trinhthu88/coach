@@ -156,6 +156,19 @@
       "choose": "Choose…",
       "create": "Create engagement",
       "created": "Coaching engagement created"
+    },
+    "assessors": {
+      "title": "Assessor pool",
+      "intro": "Choose which Coaches may review this cohort's Triad submissions and Final Assessments. Independent of Coaching and Mentoring.",
+      "assignedCount": "{{count}} in pool",
+      "noCoaches": "No Coaches are available to add as assessors. Add a Coach in Admin → Coaches first.",
+      "loadError": "The Coach list could not be loaded.",
+      "noneAssignedWarning": "No Coach is in this cohort's assessor pool, so no submission here can be assigned.",
+      "inactiveAssignedWarning": "{{count}} Coach account(s) in the pool are inactive and cannot review.",
+      "accountInactive": "account inactive",
+      "assigned": "Coach added to the assessor pool.",
+      "unassigned": "Coach removed from the assessor pool.",
+      "toggleLabel": "Add {{name}} to this cohort's assessor pool"
     }
   },
   "dashboard": {
@@ -1191,7 +1204,11 @@
     "assignmentPending": "Group assignment pending",
     "overdue": "Overdue",
     "priorPartners": "· previously with {{names}}",
-    "repeatedPartnersWarning": "Already grouped together in another Triad: {{pairs}}"
+    "repeatedPartnersWarning": "Already grouped together in another Triad: {{pairs}}",
+    "tabs": {
+      "cohorts": "Cohorts",
+      "submissions": "Submissions"
+    }
   },
   "userDetail": {
     "eyebrow": "Admin · User detail",
@@ -1391,6 +1408,98 @@
       "skipped": "Skipped",
       "failed": "Failed",
       "pending": "Pending"
+    }
+  },
+  "assessments": {
+    "eyebrow": "Programmes",
+    "title": "Assessments",
+    "subtitle": "Triad submissions and Final Assessments: assign an assessor from the cohort's pool, read the review, then approve it to release it to the learner or return it with a reason.",
+    "triadN": "Triad {{n}}",
+    "finalAttempt": "Final Assessment (attempt {{n}})",
+    "kind": {
+      "triad": "Triad",
+      "final_assessment": "Final Assessment"
+    },
+    "status": {
+      "awaiting_assignment": "Awaiting assignment",
+      "with_assessor": "With assessor",
+      "awaiting_validation": "Awaiting validation",
+      "returned": "Returned to assessor",
+      "released": "Released"
+    },
+    "outcome": {
+      "pass": "Pass",
+      "not_pass": "Not pass",
+      "resubmit": "Resubmit"
+    },
+    "filters": {
+      "programme": "Programme",
+      "cohort": "Cohort",
+      "kind": "Kind",
+      "status": "Status",
+      "allProgrammes": "All programmes",
+      "allCohorts": "All cohorts",
+      "allKinds": "All kinds",
+      "allStatuses": "All statuses"
+    },
+    "columns": {
+      "learner": "Learner",
+      "cohort": "Cohort",
+      "assessment": "Assessment",
+      "submitted": "Submitted",
+      "status": "Status",
+      "assessor": "Assessor",
+      "assessorDue": "Assessor due",
+      "learnerViewed": "Learner viewed",
+      "actions": "Actions"
+    },
+    "loadError": "The assessment queue could not be loaded.",
+    "empty": "No submissions match these filters.",
+    "overdue": "Overdue",
+    "notViewed": "Not yet",
+    "selectAll": "Select all assignable submissions",
+    "selectRow": "Select {{name}}",
+    "selectedCount": "{{count}} selected",
+    "assignSelected": "Assign selected",
+    "clearSelection": "Clear",
+    "assign": "Assign",
+    "reassign": "Reassign",
+    "validate": "Validate",
+    "readReview": "Read review",
+    "assignTitleOne": "Assign an assessor: {{name}}, {{assessment}}",
+    "assignTitleMany": "Assign an assessor to {{count}} submissions",
+    "assignHint": "Only Coaches in the cohort's assessor pool are listed. The learner's own programme coach cannot assess them. The assessor has 7 days.",
+    "poolLoadError": "The assessor pool could not be loaded.",
+    "noPool": "This cohort's assessor pool is empty. Add Coaches in Admin → Cohorts → Assessor pool.",
+    "noSharedPool": "No Coach is in the assessor pool of every selected cohort. Select submissions from one cohort, or widen the pools.",
+    "assessorLabel": "Assessor",
+    "assessorPlaceholder": "Choose a Coach",
+    "currentAssessor": "Currently with {{name}}. Reassigning restarts the 7 days.",
+    "assignedToast": "Assessor assigned to {{count}} submission(s).",
+    "reviewTitle": "Review: {{name}}, {{assessment}}",
+    "reviewMeta": "By {{assessor}} · version {{version}} · {{date}}",
+    "outcomeLabel": "Result",
+    "feedbackLabel": "Feedback",
+    "noFeedbackText": "No written feedback; see the attached PDF.",
+    "fileError": "The file could not be opened.",
+    "returnedWith": "Returned with this reason:",
+    "releasedOn": "Released {{date}}.",
+    "viewedOn": "Learner viewed it {{date}}.",
+    "notViewedYet": "The learner has not opened it yet.",
+    "returnReasonLabel": "Reason for returning (the assessor sees this)",
+    "returnReasonPlaceholder": "What should the assessor change?",
+    "approve": "Approve and release",
+    "return": "Return to assessor",
+    "returnToAssessor": "Return with reason",
+    "approvedToast": "Approved. The learner has been notified.",
+    "returnedToast": "Returned to the assessor.",
+    "cancel": "Cancel",
+    "close": "Close",
+    "errors": {
+      "ownCoach": "That Coach is the learner's own programme coach and cannot assess them.",
+      "notInPool": "That Coach is not in the cohort's assessor pool.",
+      "stale": "This submission has changed since the queue loaded. The queue has been refreshed.",
+      "reasonRequired": "Write a reason before returning the review."
     }
   }
 }

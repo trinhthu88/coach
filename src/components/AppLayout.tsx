@@ -11,6 +11,7 @@ import {
   ChevronsRight,
   IdCard,
   CalendarClock,
+  ClipboardCheck,
   ClipboardList,
   Compass,
   UsersRound,
@@ -152,6 +153,7 @@ const NAV: NavItem[] = [
   { to: "/admin/cohorts", labelKey: "nav.cohorts", icon: Network, roles: ["admin"], groupKey: "navGroups.programmes" },
   { to: "/admin/training-content", labelKey: "nav.trainingContent", icon: FileText, roles: ["admin"], groupKey: "navGroups.programmes" },
   { to: "/admin/triads", labelKey: "nav.triads", icon: Users, roles: ["admin"], groupKey: "navGroups.programmes" },
+  { to: "/admin/assessments", labelKey: "nav.assessments", icon: ClipboardCheck, roles: ["admin"], groupKey: "navGroups.programmes" },
 
   // Admin — Operations
   { to: "/admin/sponsor-reports", labelKey: "nav.sponsorReports", icon: FileText, roles: ["admin"], groupKey: "navGroups.operations" },

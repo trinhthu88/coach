@@ -57,6 +57,7 @@ const AdminSponsorReports = lazy(() => import("./pages/admin/AdminSponsorReports
 const AdminMentoring = lazy(() => import("./pages/admin/AdminMentoring"));
 const AdminTrainingContent = lazy(() => import("./pages/admin/AdminTrainingContent"));
 const AdminTriads = lazy(() => import("./pages/admin/AdminTriads"));
+const AdminAssessments = lazy(() => import("./pages/admin/AdminAssessments"));
 const AdminCohortTriads = lazy(() => import("./pages/admin/AdminCohortTriads"));
 const TriadsPage = lazy(() => import("./pages/triads/TriadsPage"));
 const TriadSessionDetail = lazy(() => import("./pages/triads/TriadSessionDetail"));
@@ -368,6 +369,7 @@ const App = () => (
                       </ProtectedRoute>
                     }
                   />
+                  <Route path="/admin/assessments" element={<ProtectedRoute role="admin"><AdminAssessments /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
                   <Route path="/admin/coachees" element={<ProtectedRoute role="admin"><AdminCoachees /></ProtectedRoute>} />
                   <Route path="/admin/coachees/:userId" element={<ProtectedRoute role="admin"><AdminUserDetail /></ProtectedRoute>} />

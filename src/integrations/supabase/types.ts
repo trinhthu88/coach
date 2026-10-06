@@ -4561,6 +4561,47 @@ export type Database = {
       _table_privs: { Args: never; Returns: unknown[] }
       _temptypes: { Args: { "": string }; Returns: string }
       _todo: { Args: never; Returns: string }
+      admin_assessment_queue: {
+        Args: {
+          p_cohort_id?: string
+          p_kind?: string
+          p_programme_id?: string
+          p_status?: string
+        }
+        Returns: {
+          assessor_id: string
+          assessor_name: string
+          assigned_at: string
+          attempt_no: number
+          cohort_id: string
+          cohort_name: string
+          due_on: string
+          enrollment_id: string
+          kind: string
+          last_decision: string
+          last_reason: string
+          learner_name: string
+          programme_id: string
+          programme_name: string
+          released_at: string
+          requirement_ordinal: number
+          review_files: Json
+          review_id: string
+          review_outcome: string
+          review_overdue: boolean
+          review_submitted_at: string
+          review_text: string
+          review_version: number
+          status: string
+          submission_id: string
+          submitted_at: string
+          viewed_at: string
+        }[]
+      }
+      admin_assign_assessor: {
+        Args: { p_assessor_id: string; p_submission_ids: string[] }
+        Returns: number
+      }
       admin_canonical_completion_rate: {
         Args: { p_as_of?: string; p_enrollment_ids: string[] }
         Returns: {
@@ -4650,6 +4691,16 @@ export type Database = {
           required_units: number
           scheduled_units: number
           state: string
+        }[]
+      }
+      admin_cohort_assessors: {
+        Args: { p_cohort_id: string }
+        Returns: {
+          assigned_at: string
+          coach_id: string
+          email: string
+          full_name: string
+          is_active: boolean
         }[]
       }
       admin_cohort_module_deadlines: {
@@ -5059,6 +5110,10 @@ export type Database = {
           training_week_id: string
         }[]
       }
+      admin_set_cohort_assessor: {
+        Args: { p_active?: boolean; p_coach_id: string; p_cohort_id: string }
+        Returns: string
+      }
       admin_set_cohort_module_deadlines: {
         Args: { p_cohort_id: string; p_items: Json }
         Returns: number
@@ -5103,6 +5158,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      admin_validate_review: {
+        Args: { p_decision: string; p_reason?: string; p_review_id: string }
+        Returns: string
       }
       admin_update_coach_configuration: {
         Args: {

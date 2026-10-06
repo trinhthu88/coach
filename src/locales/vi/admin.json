@@ -157,6 +157,19 @@
       "choose": "Chọn…",
       "create": "Tạo chương trình",
       "created": "Đã tạo chương trình coaching 1:1"
+    },
+    "assessors": {
+      "title": "Danh sách người đánh giá",
+      "intro": "Chọn các Coach được đánh giá bài nộp Triad và Final Assessment của cohort này. Độc lập với Coaching và Mentoring.",
+      "assignedCount": "{{count}} người",
+      "noCoaches": "Chưa có Coach nào để thêm làm người đánh giá. Hãy thêm Coach trong Admin → Coaches trước.",
+      "loadError": "Không tải được danh sách Coach.",
+      "noneAssignedWarning": "Cohort này chưa có người đánh giá nào, nên chưa thể phân công bài nộp nào.",
+      "inactiveAssignedWarning": "{{count}} tài khoản Coach trong danh sách đang ngừng hoạt động và không thể đánh giá.",
+      "accountInactive": "tài khoản ngừng hoạt động",
+      "assigned": "Đã thêm Coach vào danh sách người đánh giá.",
+      "unassigned": "Đã gỡ Coach khỏi danh sách người đánh giá.",
+      "toggleLabel": "Thêm {{name}} vào danh sách người đánh giá của cohort này"
     }
   },
   "dashboard": {
@@ -1173,7 +1186,11 @@
     "assignmentPending": "Đang chờ xếp nhóm",
     "overdue": "Quá hạn",
     "priorPartners": "· từng cùng nhóm với {{names}}",
-    "repeatedPartnersWarning": "Đã từng cùng nhóm ở Triad khác: {{pairs}}"
+    "repeatedPartnersWarning": "Đã từng cùng nhóm ở Triad khác: {{pairs}}",
+    "tabs": {
+      "cohorts": "Cohort",
+      "submissions": "Bài nộp"
+    }
   },
   "userDetail": {
     "eyebrow": "Admin · Chi tiết người dùng",
@@ -1373,6 +1390,98 @@
       "skipped": "Bỏ qua",
       "failed": "Thất bại",
       "pending": "Đang chờ"
+    }
+  },
+  "assessments": {
+    "eyebrow": "Chương trình",
+    "title": "Đánh giá",
+    "subtitle": "Bài nộp Triad và Final Assessment: phân công người đánh giá từ danh sách người đánh giá của cohort, đọc nhận xét, rồi duyệt để gửi cho học viên hoặc trả lại kèm lý do.",
+    "triadN": "Triad {{n}}",
+    "finalAttempt": "Final Assessment (lần {{n}})",
+    "kind": {
+      "triad": "Triad",
+      "final_assessment": "Final Assessment"
+    },
+    "status": {
+      "awaiting_assignment": "Chờ phân công",
+      "with_assessor": "Người đánh giá đang xử lý",
+      "awaiting_validation": "Chờ duyệt",
+      "returned": "Đã trả lại người đánh giá",
+      "released": "Đã gửi học viên"
+    },
+    "outcome": {
+      "pass": "Đạt",
+      "not_pass": "Không đạt",
+      "resubmit": "Nộp lại"
+    },
+    "filters": {
+      "programme": "Chương trình",
+      "cohort": "Cohort",
+      "kind": "Loại",
+      "status": "Trạng thái",
+      "allProgrammes": "Tất cả chương trình",
+      "allCohorts": "Tất cả cohort",
+      "allKinds": "Tất cả loại",
+      "allStatuses": "Tất cả trạng thái"
+    },
+    "columns": {
+      "learner": "Học viên",
+      "cohort": "Cohort",
+      "assessment": "Bài đánh giá",
+      "submitted": "Ngày nộp",
+      "status": "Trạng thái",
+      "assessor": "Người đánh giá",
+      "assessorDue": "Hạn đánh giá",
+      "learnerViewed": "Học viên đã xem",
+      "actions": "Thao tác"
+    },
+    "loadError": "Không tải được danh sách bài đánh giá.",
+    "empty": "Không có bài nộp nào khớp với bộ lọc.",
+    "overdue": "Quá hạn",
+    "notViewed": "Chưa xem",
+    "selectAll": "Chọn tất cả bài nộp có thể phân công",
+    "selectRow": "Chọn {{name}}",
+    "selectedCount": "Đã chọn {{count}}",
+    "assignSelected": "Phân công bài đã chọn",
+    "clearSelection": "Bỏ chọn",
+    "assign": "Phân công",
+    "reassign": "Phân công lại",
+    "validate": "Duyệt",
+    "readReview": "Xem nhận xét",
+    "assignTitleOne": "Phân công người đánh giá: {{name}}, {{assessment}}",
+    "assignTitleMany": "Phân công người đánh giá cho {{count}} bài nộp",
+    "assignHint": "Chỉ hiển thị các Coach trong danh sách người đánh giá của cohort. Coach phụ trách chương trình của học viên không được đánh giá học viên đó. Người đánh giá có 7 ngày.",
+    "poolLoadError": "Không tải được danh sách người đánh giá.",
+    "noPool": "Danh sách người đánh giá của cohort này đang trống. Hãy thêm Coach trong Admin → Cohorts → Danh sách người đánh giá.",
+    "noSharedPool": "Không có Coach nào thuộc danh sách người đánh giá của tất cả cohort đã chọn. Hãy chọn bài nộp của một cohort, hoặc bổ sung danh sách người đánh giá.",
+    "assessorLabel": "Người đánh giá",
+    "assessorPlaceholder": "Chọn một Coach",
+    "currentAssessor": "Hiện do {{name}} đánh giá. Phân công lại sẽ tính lại 7 ngày.",
+    "assignedToast": "Đã phân công người đánh giá cho {{count}} bài nộp.",
+    "reviewTitle": "Nhận xét: {{name}}, {{assessment}}",
+    "reviewMeta": "Của {{assessor}} · phiên bản {{version}} · {{date}}",
+    "outcomeLabel": "Kết quả",
+    "feedbackLabel": "Nhận xét",
+    "noFeedbackText": "Không có nhận xét bằng văn bản; xem file PDF đính kèm.",
+    "fileError": "Không mở được file.",
+    "returnedWith": "Đã trả lại với lý do:",
+    "releasedOn": "Đã gửi ngày {{date}}.",
+    "viewedOn": "Học viên đã xem ngày {{date}}.",
+    "notViewedYet": "Học viên chưa mở.",
+    "returnReasonLabel": "Lý do trả lại (người đánh giá sẽ thấy)",
+    "returnReasonPlaceholder": "Người đánh giá cần chỉnh sửa gì?",
+    "approve": "Duyệt và gửi học viên",
+    "return": "Trả lại người đánh giá",
+    "returnToAssessor": "Trả lại kèm lý do",
+    "approvedToast": "Đã duyệt. Học viên đã được thông báo.",
+    "returnedToast": "Đã trả lại người đánh giá.",
+    "cancel": "Hủy",
+    "close": "Đóng",
+    "errors": {
+      "ownCoach": "Coach này là Coach phụ trách chương trình của học viên nên không được đánh giá học viên đó.",
+      "notInPool": "Coach này không thuộc danh sách người đánh giá của cohort.",
+      "stale": "Bài nộp đã thay đổi kể từ khi tải danh sách. Danh sách đã được làm mới.",
+      "reasonRequired": "Hãy ghi lý do trước khi trả lại nhận xét."
     }
   }
 }

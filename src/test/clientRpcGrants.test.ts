@@ -53,6 +53,19 @@ describe("client RPC grants", () => {
     expect(offenders).toEqual([]);
   });
 
+  // The assessment pipeline (20261006210000) grants the app nothing on its six
+  // tables: every read is a role function and every change a step function.
+  it("no app code reads or writes the assessment tables directly", () => {
+    const offenders = sourceFiles().flatMap((file) =>
+      Array.from(
+        readFileSync(file, "utf8").matchAll(
+          /\.from\(\s*["'`](cohort_assessors|assessment_submissions|assessment_files|assessment_assignments|assessment_reviews|assessment_validations)["'`]/g,
+        ),
+      ).map(([, table]) => `${relative(SRC, file)}: ${table}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it("the Sessions list reads Coaching requirements through the viewer's role wrapper", () => {
     expect(coachingFulfilmentRpc("coach")).toBe("coach_coaching_requirement_fulfilment");
     expect(coachingFulfilmentRpc("coachee")).toBe("learner_coaching_requirement_fulfilment");

@@ -20,6 +20,7 @@ import { useCohortRequirementSchedule } from "@/hooks/admin/useCohortRequirement
 import { CohortRequirementSchedule } from "./cohorts/CohortRequirementSchedule";
 import { CohortCoachingPanel } from "./cohorts/CohortCoachingPanel";
 import { CohortMentoringPanel } from "./cohorts/CohortMentoringPanel";
+import { CohortAssessorPanel } from "./cohorts/CohortAssessorPanel";
 import { FixedPeerDyadPanel } from "./cohorts/FixedPeerDyadPanel";
 import { NewCoachingEngagementDialog } from "./cohorts/NewCoachingEngagementDialog";
 
@@ -219,6 +220,7 @@ export default function AdminCohorts() {
                   deliver them. */}
               <CohortCoachingPanel cohortId={savedCohort?.id} />
               <CohortMentoringPanel cohortId={savedCohort?.id} />
+              <CohortAssessorPanel cohortId={savedCohort?.id} />
               <FixedPeerDyadPanel cohortId={savedCohort?.id} programmeId={editing.programme_id} />
             </div>
           )}
