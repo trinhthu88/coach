@@ -5,6 +5,7 @@ import { buildCorsHeaders } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionConfirmedEmail } from "../_shared/email-templates/session-confirmed.tsx";
 import { getGoogleBusyIntervals, syncGoogleCalendarEvent } from "../_shared/googleCalendar.ts";
+import { tryGoogleCalendarCheck } from "../_shared/googleCalendarPolicy.ts";
 
 // Mirrors supabase/functions/confirm-session/index.ts exactly, but hardcoded
 // to mentoring_sessions/mentor_id/mentee_id — no is_peer-style branching
@@ -180,14 +181,24 @@ Deno.serve(async (req) => {
     const sessionEnd = new Date(
       calendarWindowStart.getTime() + (Number(row.duration_minutes) || 45) * 60_000,
     );
-    const calendarAvailability = await getGoogleBusyIntervals(
-      admin,
-      row.mentor_id,
-      calendarWindowStart.toISOString(),
-      sessionEnd.toISOString(),
-    );
+    // Calendar availability is advisory. Do not let an API/token outage stop
+    // a confirmation, and let an Admin override a real Google busy interval.
+    const calendarAvailability = isAdmin
+      ? null
+      : await tryGoogleCalendarCheck(
+          () => getGoogleBusyIntervals(
+            admin,
+            row.mentor_id,
+            calendarWindowStart.toISOString(),
+            sessionEnd.toISOString(),
+          ),
+          (error) => console.error(
+            "Could not check Google Calendar before mentoring confirmation",
+            error instanceof Error ? error.message : "unknown error",
+          ),
+        );
     if (
-      calendarAvailability.connected &&
+      calendarAvailability?.connected &&
       calendarAvailability.busy.some((interval) =>
         new Date(interval.start).getTime() < sessionEnd.getTime() &&
         new Date(interval.end).getTime() > calendarWindowStart.getTime()

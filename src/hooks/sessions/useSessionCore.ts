@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { extractFunctionError } from "@/lib/errors";
 import { getSessionFieldMap, type SessionTableKind } from "@/lib/sessionTableHelper";
 import { withEnrollmentActions, saveEnrollmentActions, type EnrollmentActionSource } from "@/lib/enrollmentActions";
-import { removeCancelledCalendarEvent } from "@/lib/googleCalendar";
 import {
   ActionItem,
   MilestoneLite,
@@ -271,15 +270,13 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
       // requirement for rebooking. transition_session_status() refuses any
       // cancellation inside 24 hours, which cannot make a session happen --
       // it only leaves the record disagreeing with reality.
-      const isCoaching = !isPeer && !isCoacheePeer;
-      const { error } = isCoaching
-        ? await supabase.rpc("cancel_coaching_session", {
-            p_session_id: session.id,
-            p_reason: reason || undefined,
-          })
-        : await supabase.rpc("transition_session_status", {
+      const { data, error } = isCoacheePeer
+        ? await supabase.rpc("transition_session_status", {
             p_session_id: session.id, p_kind: isCoacheePeer ? "coachee_peer" : "peer",
             p_action: "cancel", p_reason: reason || undefined,
+          })
+        : await supabase.functions.invoke("cancel-session", {
+            body: { session_id: session.id, is_peer: isPeer, reason: reason || undefined },
           });
       setSaving(false);
       if (error) {
@@ -287,13 +284,8 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
         toast.error(friendly.message);
         return;
       }
-      if (!isCoacheePeer) {
-        try {
-          await removeCancelledCalendarEvent(isPeer ? "peer" : "coaching", session.id);
-        } catch (removeError) {
-          console.error("Could not remove cancelled session from Google Calendar:", removeError);
-          toast.warning(t("detail.toast.calendarRemovalFailed"));
-        }
+      if (!isCoacheePeer && data?.calendar_sync === "failed") {
+        toast.warning(t("detail.toast.calendarRemovalFailed"));
       }
       toast.success(t("detail.toast.sessionCancelled"));
       onDone();

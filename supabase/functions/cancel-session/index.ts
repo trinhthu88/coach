@@ -47,7 +47,18 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { session_id, is_peer, reason } = body as { session_id?: string; is_peer?: boolean; reason?: string };
+    const { session_id, is_peer, is_mentoring, reason } = body as {
+      session_id?: string;
+      is_peer?: boolean;
+      is_mentoring?: boolean;
+      reason?: string;
+    };
+    if (is_peer && is_mentoring) {
+      return new Response(JSON.stringify({ error: "A session can have only one type" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!session_id) {
       return new Response(JSON.stringify({ error: "session_id required" }), {
         status: 400,
@@ -56,9 +67,9 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-    const tableName = is_peer ? "peer_sessions" : "sessions";
-    const coachField = is_peer ? "peer_coach_id" : "coach_id";
-    const coacheeField = is_peer ? "peer_coachee_id" : "coachee_id";
+    const tableName = is_mentoring ? "mentoring_sessions" : is_peer ? "peer_sessions" : "sessions";
+    const coachField = is_mentoring ? "mentor_id" : is_peer ? "peer_coach_id" : "coach_id";
+    const coacheeField = is_mentoring ? "mentee_id" : is_peer ? "peer_coachee_id" : "coachee_id";
 
     const { data: row, error: rowErr } = await admin
       .from(tableName)
@@ -72,10 +83,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: roleRows } = await admin
+    const { data: roleRows, error: rolesError } = await admin
       .from("user_roles")
       .select("role")
       .eq("user_id", callerId);
+    if (rolesError) throw new Error("Could not verify session cancellation permissions");
     const isAdmin = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
     const isOwningCoach = row[coachField] === callerId;
     const isOwningCoachee = row[coacheeField] === callerId;
@@ -108,7 +120,16 @@ Deno.serve(async (req) => {
     const asCaller = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const rpc = transitionRpc("cancel", !!is_peer, session_id, { reason });
+    const rpc = is_mentoring
+      ? {
+          fn: "transition_mentoring_session_status",
+          args: {
+            p_session_id: session_id,
+            p_status: "cancelled",
+            p_reason: reason || null,
+          },
+        }
+      : transitionRpc("cancel", !!is_peer, session_id, { reason });
     const { error: rpcErr } = await asCaller.rpc(rpc.fn, rpc.args);
     if (rpcErr) {
       return new Response(JSON.stringify({ error: rpcErr.message }), {
@@ -122,7 +143,7 @@ Deno.serve(async (req) => {
       const result = await deleteGoogleCalendarEvent(
         admin,
         row[coachField] as string,
-        is_peer ? "peer" : "coaching",
+        is_mentoring ? "mentoring" : is_peer ? "peer" : "coaching",
         session_id,
       );
       if (result.connected && result.removed) calendarSync = "removed";

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CalendarDays, ExternalLink, Loader2, RefreshCw, Unlink } from "lucide-react";
@@ -23,17 +23,21 @@ interface CalendarStatus {
   configured: boolean;
   connected: boolean;
   email: string | null;
+  needs_reconnect: boolean;
 }
 
 export function CoachGoogleCalendarCard() {
   const { t } = useTranslation("dashboard");
   const [searchParams, setSearchParams] = useSearchParams();
   const callbackResult = searchParams.get("calendar");
+  const callbackCode = searchParams.get("code");
+  const callbackState = searchParams.get("state");
   const [status, setStatus] = useState<CalendarStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const completingState = useRef<string | null>(null);
 
   const refreshStatus = useCallback(async () => {
     setLoading(true);
@@ -77,21 +81,44 @@ export function CoachGoogleCalendarCard() {
 
   useEffect(() => {
     if (!callbackResult) return;
-    if (callbackResult === "connected") {
-      toast.success(t("availability.googleCalendar.connectedToast"));
-      void syncUpcomingSessions();
-    } else if (callbackResult === "denied") {
-      toast.message(t("availability.googleCalendar.deniedToast"));
-    } else {
-      toast.error(t("availability.googleCalendar.connectFailed"));
-    }
-    void refreshStatus();
-    setSearchParams((current) => {
+    const clearCallbackParams = () => setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.delete("calendar");
+      next.delete("code");
+      next.delete("state");
       return next;
     }, { replace: true });
-  }, [callbackResult, refreshStatus, setSearchParams, syncUpcomingSessions, t]);
+
+    if (callbackResult === "complete") {
+      if (!callbackCode || !callbackState) {
+        toast.error(t("availability.googleCalendar.connectFailed"));
+        clearCallbackParams();
+        return;
+      }
+      if (completingState.current === callbackState) return;
+      completingState.current = callbackState;
+      clearCallbackParams();
+      void (async () => {
+        const { data, error } = await supabase.functions.invoke("google-calendar-oauth-complete", {
+          body: { code: callbackCode, state: callbackState },
+        });
+        if (error || data?.ok !== true) {
+          console.error("Could not complete Google Calendar authorization:", error);
+          toast.error(t("availability.googleCalendar.connectFailed"));
+        } else {
+          toast.success(t("availability.googleCalendar.connectedToast"));
+          await syncUpcomingSessions();
+        }
+        await refreshStatus();
+      })();
+      return;
+    }
+
+    if (callbackResult === "denied") toast.message(t("availability.googleCalendar.deniedToast"));
+    else toast.error(t("availability.googleCalendar.connectFailed"));
+    void refreshStatus();
+    clearCallbackParams();
+  }, [callbackCode, callbackResult, callbackState, refreshStatus, setSearchParams, syncUpcomingSessions, t]);
 
   const connect = async () => {
     setConnecting(true);
@@ -128,7 +155,11 @@ export function CoachGoogleCalendarCard() {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-semibold">{t("availability.googleCalendar.title")}</h2>
             {!loading && status?.connected && (
-              <Badge variant="secondary">{t("availability.googleCalendar.connectedStatus")}</Badge>
+              <Badge variant={status.needs_reconnect ? "destructive" : "secondary"}>
+                {t(status.needs_reconnect
+                  ? "availability.googleCalendar.needsReconnectStatus"
+                  : "availability.googleCalendar.connectedStatus")}
+              </Badge>
             )}
             {!loading && status && !status.connected && (
               <Badge variant="outline">{t("availability.googleCalendar.disconnectedStatus")}</Badge>
@@ -139,6 +170,8 @@ export function CoachGoogleCalendarCard() {
               ? t("availability.googleCalendar.loading")
               : !status
                 ? t("availability.googleCalendar.statusFailed")
+              : status?.needs_reconnect
+                ? t("availability.googleCalendar.reconnectDescription")
               : status?.connected
                 ? t("availability.googleCalendar.connectedAs", { email: status.email ?? "" })
                 : t("availability.googleCalendar.description")}
@@ -160,7 +193,7 @@ export function CoachGoogleCalendarCard() {
             {t("availability.googleCalendar.retry")}
           </Button>
         ) : null}
-        {status?.connected && status.configured ? (
+        {status?.connected && status.configured && !status.needs_reconnect ? (
           <>
             <Button variant="outline" onClick={() => void syncUpcomingSessions()} disabled={syncing || loading}>
               {syncing
@@ -201,7 +234,9 @@ export function CoachGoogleCalendarCard() {
             {connecting
               ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               : <ExternalLink className="mr-2 h-4 w-4" />}
-            {t("availability.googleCalendar.connect")}
+              {t(status?.needs_reconnect
+                ? "availability.googleCalendar.reconnect"
+                : "availability.googleCalendar.connect")}
           </Button>
         )}
       </div>

@@ -28,7 +28,7 @@ import { computeStartOptions } from "./bookingSlots";
 import { BookingGoalGate } from "@/components/goals/BookingGoalGate";
 import { useBookingGoalGate } from "@/components/goals/useBookingGoalGate";
 import { isGoalRequiredReason } from "@/lib/goalGate";
-import { getCoachCalendarBusy, overlapsCalendarBusy } from "@/lib/googleCalendar";
+import { getCoachCalendarBusyFailOpen, overlapsCalendarBusy } from "@/lib/googleCalendar";
 
 /**
  * A Mentor is a Coach with a cohort Mentoring assignment, so their details
@@ -210,24 +210,19 @@ export default function MentoringBookSession() {
     const dayBounds = slotDayBounds(day);
     setCoachCalendarLoading(true);
     setCoachCalendarError(false);
-    void getCoachCalendarBusy(
+    void getCoachCalendarBusyFailOpen(
       mentorId,
       dayBounds.start,
       dayBounds.end,
-    )
-      .then((result) => {
-        if (!cancelled) setCoachCalendarBusy(result.busy);
-      })
-      .catch((error) => {
-        console.error("Could not check mentor Google Calendar:", error);
-        if (!cancelled) {
-          setCoachCalendarError(true);
-          setCoachCalendarBusy([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setCoachCalendarLoading(false);
-      });
+      (error) => console.error("Could not check mentor Google Calendar:", error),
+    ).then((result) => {
+      if (!cancelled) {
+        setCoachCalendarBusy(result.busy);
+        setCoachCalendarError(result.failed);
+      }
+    }).finally(() => {
+      if (!cancelled) setCoachCalendarLoading(false);
+    });
     return () => {
       cancelled = true;
     };
@@ -251,19 +246,15 @@ export default function MentoringBookSession() {
     // The slot's time is Vietnam time, whatever the browser's zone (see slotTime.ts).
     const startISO = slotInstant(ds, selectedStart).toISOString();
 
-    let latestCalendarBusy: { start: number; end: number }[];
-    try {
-      const fresh = await getCoachCalendarBusy(
-        mentor.coach_user_id,
-        startISO,
-        new Date(new Date(startISO).getTime() + duration * 60_000).toISOString(),
-      );
-      latestCalendarBusy = fresh.busy;
-    } catch (calendarError) {
-      console.error("Could not recheck mentor Google Calendar:", calendarError);
-      setSubmitting(false);
-      return toast.error(t("bookSession.toast.calendarCheckFailed"));
-    }
+    const latestCalendar = await getCoachCalendarBusyFailOpen(
+      mentor.coach_user_id,
+      startISO,
+      new Date(new Date(startISO).getTime() + duration * 60_000).toISOString(),
+      (error) => console.error("Could not recheck mentor Google Calendar:", error),
+    );
+    const latestCalendarBusy = latestCalendar.busy;
+    setCoachCalendarError(latestCalendar.failed);
+    if (latestCalendar.failed) toast.warning(t("bookSession.toast.calendarCheckFailed"));
     setCoachCalendarBusy(latestCalendarBusy);
     if (overlapsCalendarBusy(startISO, duration, latestCalendarBusy)) {
       setSelectedStart(null);
@@ -484,38 +475,45 @@ export default function MentoringBookSession() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {t("bookSession.checkingCalendar")}
               </p>
-            ) : coachCalendarError ? (
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-destructive">
-                <span>{t("bookSession.toast.calendarCheckFailed")}</span>
-                <Button type="button" variant="outline" size="sm" onClick={() => setRetryKey((key) => key + 1)}>
-                  {t("bookSession.loadError.retry")}
-                </Button>
-              </div>
-            ) : startOptions.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">{t("bookSession.noWindowAvailable", { duration })}</p>
             ) : (
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {startOptions.map((o) => (
-                  <button
-                    key={`${o.slotId}-${o.start}`}
-                    type="button"
-                    aria-pressed={selectedStart === o.start}
-                    aria-label={t("bookSession.slotAriaLabel", {
-                      date: format(selectedDate, "EEEE, MMMM d"),
-                      time: fmtTime(o.start),
-                    })}
-                    onClick={() => setSelectedStart(o.start)}
-                    className={cn(
-                      "rounded-2xl border py-3 text-sm font-semibold transition-colors",
-                      selectedStart === o.start
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card hover:border-primary/40"
-                    )}
-                  >
-                    {fmtTime(o.start)}
-                  </button>
-                ))}
-              </div>
+              <>
+                {coachCalendarError && (
+                  <div role="alert" className="mt-3 flex flex-wrap items-center gap-3 text-sm text-warning">
+                    <span>{t("bookSession.toast.calendarCheckFailed")}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setRetryKey((key) => key + 1)}>
+                      {t("bookSession.loadError.retry")}
+                    </Button>
+                  </div>
+                )}
+                {startOptions.length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {t("bookSession.noWindowAvailable", { duration })}
+                  </p>
+                ) : (
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {startOptions.map((o) => (
+                      <button
+                        key={`${o.slotId}-${o.start}`}
+                        type="button"
+                        aria-pressed={selectedStart === o.start}
+                        aria-label={t("bookSession.slotAriaLabel", {
+                          date: format(selectedDate, "EEEE, MMMM d"),
+                          time: fmtTime(o.start),
+                        })}
+                        onClick={() => setSelectedStart(o.start)}
+                        className={cn(
+                          "rounded-2xl border py-3 text-sm font-semibold transition-colors",
+                          selectedStart === o.start
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card hover:border-primary/40"
+                        )}
+                      >
+                        {fmtTime(o.start)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </Step>
 
@@ -547,7 +545,7 @@ export default function MentoringBookSession() {
                 </span>
               </p>
             </div>
-            <Button onClick={handleBook} disabled={!canSubmit || submitting || coachCalendarLoading || coachCalendarError} size="lg" className="shadow-glow">
+            <Button onClick={handleBook} disabled={!canSubmit || submitting || coachCalendarLoading} size="lg" className="shadow-glow">
               {submitting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ChevronRightCircle className="mr-1 h-4 w-4" />}
               {t("bookSession.confirmButton")}
             </Button>

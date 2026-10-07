@@ -63,7 +63,7 @@
       "successPeer": "Peer session requested. Awaiting peer coach confirmation.",
       "successCoaching": "Session requested. Awaiting coach confirmation.",
       "noRequirement": "No Coaching requirement is available to book.",
-      "calendarCheckFailed": "We couldn't check the coach's calendar. Please retry before booking.",
+      "calendarCheckFailed": "We couldn't check the coach's Google Calendar. You can still book, but confirm the time with the coach.",
       "calendarConflict": "That time is no longer available. Please choose another slot.",
       "calendarRemovalFailed": "The old session may still appear in the coach's Google Calendar."
     },

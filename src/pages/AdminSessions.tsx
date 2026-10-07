@@ -223,9 +223,16 @@ export default function AdminSessions() {
           }
           calendarSyncFailed ||= data?.calendar_sync === "failed";
         } else {
-          // The planner only names lifecycle RPCs from the generated types.
-          const { error } = await supabase.rpc(step.fn as "admin_reschedule_session", step.args as never);
-          if (error) throw error;
+          if (step.fn === "admin_reschedule_session" || step.fn === "admin_reopen_session") {
+            const { data, error } = await supabase.functions.invoke("admin-session-edit", {
+              body: { function_name: step.fn, args: step.args },
+            });
+            if (error) throw error;
+            calendarSyncFailed ||= data?.calendar_sync === "failed";
+          } else {
+            const { error } = await supabase.rpc(step.fn as "admin_reschedule_session", step.args as never);
+            if (error) throw error;
+          }
         }
       }
       if (calendarConflict) {
@@ -237,21 +244,6 @@ export default function AdminSessions() {
         return;
       }
 
-      const confirmedSessionChanged = editing.status === "confirmed" && plan.steps.some((step) =>
-        step.type === "rpc" && ["admin_reschedule_session", "admin_reopen_session"].includes(step.fn),
-      );
-      if (confirmedSessionChanged) {
-        const { data: status, error: statusError } = await supabase.functions.invoke("google-calendar-status");
-        if (statusError) {
-          console.error("Could not check Google Calendar before reconciling an Admin session edit:", statusError);
-          calendarSyncFailed = true;
-        } else if (status?.connected && status.configured) {
-          const { data, error } = await supabase.functions.invoke("google-calendar-sync-sessions");
-          calendarSyncFailed ||= !!error || (data?.failed ?? 0) > 0;
-        } else if (status?.connected && !status.configured) {
-          calendarSyncFailed = true;
-        }
-      }
       toast(calendarSyncFailed
         ? {
             title: t("sessions.calendarSyncFailed"),

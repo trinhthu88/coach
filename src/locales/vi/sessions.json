@@ -64,7 +64,7 @@
       "successPeer": "Đã yêu cầu session đồng cấp. Đang chờ coach đồng cấp xác nhận.",
       "successCoaching": "Đã yêu cầu session. Đang chờ coach xác nhận.",
       "noRequirement": "Không có yêu cầu Coaching nào để đặt lịch.",
-      "calendarCheckFailed": "Không thể kiểm tra lịch của coach. Vui lòng thử lại trước khi đặt.",
+      "calendarCheckFailed": "Không thể kiểm tra Google Calendar của coach. Bạn vẫn có thể đặt lịch, nhưng hãy xác nhận thời gian với coach.",
       "calendarConflict": "Khung giờ này không còn trống. Vui lòng chọn khung giờ khác.",
       "calendarRemovalFailed": "Session cũ có thể vẫn còn trong Google Calendar của coach."
     },

@@ -6,6 +6,7 @@ import { sendEmail } from "../_shared/send-email.ts";
 import { SessionConfirmedEmail } from "../_shared/email-templates/session-confirmed.tsx";
 import { decideTransition, httpStatusForRpcError, transitionRpc } from "../_shared/sessionTransitionRules.ts";
 import { getGoogleBusyIntervals, syncGoogleCalendarEvent } from "../_shared/googleCalendar.ts";
+import { tryGoogleCalendarCheck } from "../_shared/googleCalendarPolicy.ts";
 
 function formatWhen(startTimeISO: string, durationMinutes: number): string {
   const start = new Date(startTimeISO);
@@ -192,14 +193,25 @@ Deno.serve(async (req) => {
     const sessionEnd = new Date(
       calendarWindowStart.getTime() + (Number(row.duration_minutes) || 45) * 60_000,
     );
-    const calendarAvailability = await getGoogleBusyIntervals(
-      admin,
-      row[coachField] as string,
-      calendarWindowStart.toISOString(),
-      sessionEnd.toISOString(),
-    );
+    // Calendar availability is advisory: a provider outage, revoked token, or
+    // invalid API response must not prevent a valid database confirmation.
+    // Admins can confirm despite a real Google busy interval as well.
+    const calendarAvailability = isAdmin
+      ? null
+      : await tryGoogleCalendarCheck(
+          () => getGoogleBusyIntervals(
+            admin,
+            row[coachField] as string,
+            calendarWindowStart.toISOString(),
+            sessionEnd.toISOString(),
+          ),
+          (error) => console.error(
+            "Could not check Google Calendar before confirmation",
+            error instanceof Error ? error.message : "unknown error",
+          ),
+        );
     if (
-      calendarAvailability.connected &&
+      calendarAvailability?.connected &&
       calendarAvailability.busy.some((interval) =>
         new Date(interval.start).getTime() < sessionEnd.getTime() &&
         new Date(interval.end).getTime() > calendarWindowStart.getTime()

@@ -31,6 +31,21 @@ export async function getCoachCalendarBusy(
   return { busy };
 }
 
+export async function getCoachCalendarBusyFailOpen(
+  coachId: string,
+  timeMin: string,
+  timeMax: string,
+  onError: (error: unknown) => void = () => {},
+): Promise<{ busy: CoachCalendarBusyInterval[]; failed: boolean }> {
+  try {
+    const result = await getCoachCalendarBusy(coachId, timeMin, timeMax);
+    return { busy: result.busy, failed: false };
+  } catch (error) {
+    onError(error);
+    return { busy: [], failed: true };
+  }
+}
+
 export function overlapsCalendarBusy(
   startTime: string,
   durationMinutes: number,
@@ -39,16 +54,4 @@ export function overlapsCalendarBusy(
   const start = new Date(startTime).getTime();
   const end = start + durationMinutes * 60_000;
   return busy.some((interval) => interval.start < end && interval.end > start);
-}
-
-export async function removeCancelledCalendarEvent(
-  source: "coaching" | "peer" | "mentoring",
-  sessionId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase.functions.invoke("google-calendar-remove-session", {
-    body: { source, session_id: sessionId },
-  });
-  if (error) throw error;
-  if (!data || data.ok !== true) throw new Error("Google Calendar event removal was unsuccessful");
-  return data.connected === true && data.removed === true;
 }

@@ -215,13 +215,17 @@ export function useRescheduleCoachingSession() {
       newSlotId,
       reason,
     }: { sessionId: string; newSlotId: string; reason?: string }) => {
-      const { data, error } = await supabase.rpc("reschedule_coaching_session", {
-        p_session_id: sessionId,
-        p_new_slot_id: newSlotId,
-        p_reason: reason ?? undefined,
+      const { data, error } = await supabase.functions.invoke("reschedule-session", {
+        body: { session_id: sessionId, new_slot_id: newSlotId, reason: reason ?? null },
       });
       if (error) throw error;
-      return data as string;
+      if (!data?.session_id || typeof data.session_id !== "string") {
+        throw new Error("The reschedule completed without returning a session ID");
+      }
+      return {
+        sessionId: data.session_id as string,
+        calendarSync: data.calendar_sync as "removed" | "not_connected" | "failed",
+      };
     },
     onSuccess: invalidate,
   });

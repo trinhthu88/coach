@@ -1,4 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  createOAuthCodeChallenge,
+  createOAuthCodeVerifier,
+  createOAuthState,
+  hashOAuthState,
+} from "./googleCalendarOAuth.ts";
+
+export {
+  createOAuthCodeChallenge,
+  createOAuthCodeVerifier,
+  createOAuthState,
+  hashOAuthState,
+};
 
 type AdminClient = ReturnType<typeof createClient>;
 
@@ -9,6 +22,8 @@ type ConnectionRow = {
   coach_id: string;
   google_email: string;
   refresh_token_ciphertext: string;
+  consecutive_error_count: number;
+  needs_reconnect: boolean;
 };
 
 const accessTokenCache = new Map<string, { token: string; expiresAt: number }>();
@@ -47,20 +62,6 @@ function bytesToBase64(bytes: Uint8Array): string {
 function base64ToBytes(value: string): Uint8Array {
   const binary = atob(value);
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
-function base64Url(bytes: Uint8Array): string {
-  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-export async function hashOAuthState(state: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(state));
-  return base64Url(new Uint8Array(digest));
-}
-
-export function createOAuthState(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return base64Url(bytes);
 }
 
 function encryptionKeyBytes(): Uint8Array {
@@ -150,7 +151,7 @@ export async function userHasCoachRole(admin: AdminClient, userId: string): Prom
 async function getConnection(admin: AdminClient, coachId: string): Promise<ConnectionRow | null> {
   const { data, error } = await admin
     .from("google_calendar_connections")
-    .select("coach_id, google_email, refresh_token_ciphertext")
+    .select("coach_id, google_email, refresh_token_ciphertext, consecutive_error_count, needs_reconnect")
     .eq("coach_id", coachId)
     .maybeSingle();
   if (error) throw new Error("Could not load Google Calendar connection");
@@ -163,12 +164,18 @@ export async function getCalendarConnectionStatus(admin: AdminClient, coachId: s
     configured: isGoogleCalendarConfigured(),
     connected: !!connection,
     email: connection?.google_email ?? null,
+    needs_reconnect: connection?.needs_reconnect ?? false,
   };
 }
+
+class GoogleCalendarReconnectRequiredError extends Error {}
 
 async function accessTokenForCoach(admin: AdminClient, coachId: string): Promise<string | null> {
   const connection = await getConnection(admin, coachId);
   if (!connection) return null;
+  if (connection.needs_reconnect) {
+    throw new GoogleCalendarReconnectRequiredError("Reconnect Google Calendar to continue syncing");
+  }
   if (!isGoogleCalendarConfigured()) throw new Error("Google Calendar is not configured");
   const cached = accessTokenCache.get(coachId);
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
@@ -203,6 +210,32 @@ async function accessTokenForCoach(admin: AdminClient, coachId: string): Promise
   return accessToken;
 }
 
+async function trackCalendarOperation<T extends { connected: boolean }>(
+  admin: AdminClient,
+  coachId: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    const result = await operation();
+    if (result.connected) {
+      const { error } = await admin
+        .from("google_calendar_connections")
+        .update({ consecutive_error_count: 0, needs_reconnect: false, updated_at: new Date().toISOString() })
+        .eq("coach_id", coachId);
+      if (error) console.error("Could not reset Google Calendar error state", error.message);
+    }
+    return result;
+  } catch (error) {
+    if (isGoogleCalendarConfigured() && !(error instanceof GoogleCalendarReconnectRequiredError)) {
+      const { error: recordError } = await admin.rpc("record_google_calendar_failure", {
+        p_coach_id: coachId,
+      });
+      if (recordError) console.error("Could not record Google Calendar failure", recordError.message);
+    }
+    throw error;
+  }
+}
+
 async function googleCalendarFetch(
   accessToken: string,
   path: string,
@@ -217,7 +250,7 @@ async function googleCalendarFetch(
   });
 }
 
-export async function getGoogleBusyIntervals(
+async function readGoogleBusyIntervals(
   admin: AdminClient,
   coachId: string,
   timeMin: string,
@@ -250,6 +283,17 @@ export async function getGoogleBusyIntervals(
   return { connected: true, busy };
 }
 
+export function getGoogleBusyIntervals(
+  admin: AdminClient,
+  coachId: string,
+  timeMin: string,
+  timeMax: string,
+): Promise<{ connected: boolean; busy: CalendarBusyInterval[] }> {
+  return trackCalendarOperation(admin, coachId, () =>
+    readGoogleBusyIntervals(admin, coachId, timeMin, timeMax),
+  );
+}
+
 function calendarEventId(source: CalendarSource, sessionId: string): string {
   const code: Record<CalendarSource, string> = { coaching: "c", peer: "p", mentoring: "m" };
   const id = sessionId.replaceAll("-", "").toLowerCase();
@@ -258,7 +302,7 @@ function calendarEventId(source: CalendarSource, sessionId: string): string {
   return `clariva${code[source]}${id}`;
 }
 
-export async function syncGoogleCalendarEvent(
+async function writeGoogleCalendarEvent(
   admin: AdminClient,
   input: {
     coachId: string;
@@ -319,7 +363,24 @@ export async function syncGoogleCalendarEvent(
   throw new Error("Could not add the confirmed session to Google Calendar");
 }
 
-export async function deleteGoogleCalendarEvent(
+export function syncGoogleCalendarEvent(
+  admin: AdminClient,
+  input: {
+    coachId: string;
+    source: CalendarSource;
+    sessionId: string;
+    topic: string | null;
+    startTime: string;
+    durationMinutes: number;
+    meetingUrl: string | null;
+  },
+): Promise<{ connected: boolean; synced: boolean }> {
+  return trackCalendarOperation(admin, input.coachId, () =>
+    writeGoogleCalendarEvent(admin, input),
+  );
+}
+
+async function removeGoogleCalendarEvent(
   admin: AdminClient,
   coachId: string,
   source: CalendarSource,
@@ -337,6 +398,17 @@ export async function deleteGoogleCalendarEvent(
     return { connected: true, removed: true };
   }
   throw new Error("Could not remove the cancelled session from Google Calendar");
+}
+
+export function deleteGoogleCalendarEvent(
+  admin: AdminClient,
+  coachId: string,
+  source: CalendarSource,
+  sessionId: string,
+): Promise<{ connected: boolean; removed: boolean }> {
+  return trackCalendarOperation(admin, coachId, () =>
+    removeGoogleCalendarEvent(admin, coachId, source, sessionId),
+  );
 }
 
 export function validBusyWindow(timeMin: unknown, timeMax: unknown): timeMin is string {

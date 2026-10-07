@@ -1,6 +1,8 @@
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import {
   createOAuthState,
+  createOAuthCodeChallenge,
+  createOAuthCodeVerifier,
   googleCalendarRedirectUri,
   hashOAuthState,
   isAllowedCalendarReturnOrigin,
@@ -55,11 +57,14 @@ Deno.serve(async (req) => {
 
     const state = createOAuthState();
     const stateHash = await hashOAuthState(state);
+    const codeVerifier = createOAuthCodeVerifier();
+    const codeChallenge = await createOAuthCodeChallenge(codeVerifier);
     const { error: stateError } = await admin.from("google_calendar_oauth_states").insert({
       state_hash: stateHash,
       coach_id: user.id,
       return_origin: origin,
       expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+      code_verifier: codeVerifier,
     });
     if (stateError) throw new Error("Could not start Google Calendar authorization");
 
@@ -79,6 +84,8 @@ Deno.serve(async (req) => {
       prompt: "consent",
       include_granted_scopes: "true",
       state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
     }).toString();
 
     return new Response(JSON.stringify({ authorization_url: authorizeUrl.toString() }), {
