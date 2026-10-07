@@ -33,3 +33,13 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = false
   [functions.transcribe-assessment-recording]
     verify_jwt = true
+  [functions.google-calendar-oauth-start]
+    verify_jwt = true
+  [functions.google-calendar-oauth-callback]
+    verify_jwt = false
+  [functions.google-calendar-status]
+    verify_jwt = true
+  [functions.google-calendar-disconnect]
+    verify_jwt = true
+  [functions.google-calendar-busy]
+    verify_jwt = true
