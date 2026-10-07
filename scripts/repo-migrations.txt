@@ -299,3 +299,4 @@
 20261007000400_final_assessment_auto_transcription.sql
 20261007000500_triad_satisfaction_view.sql
 20261007000600_assessment_review_fixes.sql
+20261007000700_session_write_gaps.sql

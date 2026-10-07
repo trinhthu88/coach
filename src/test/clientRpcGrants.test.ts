@@ -39,7 +39,8 @@ describe("client RPC grants", () => {
   // Bookings, status changes and Admin edits go through SECURITY DEFINER
   // functions; the four session tables grant no INSERT, and
   // guard_session_protected_fields() refuses a status written at the table.
-  // Notes, meeting links and the mentoring prep file are still plain UPDATEs.
+  // Notes and meeting links are still plain UPDATEs; the mentoring prep file
+  // is learner_submit_mentoring_prep_file (20261007000700).
   it("no app code inserts, deletes or changes the status of a session row directly", () => {
     const offenders = sourceFiles().flatMap((file) =>
       Array.from(

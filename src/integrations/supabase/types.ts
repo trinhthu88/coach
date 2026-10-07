@@ -7417,6 +7417,10 @@ export type Database = {
         Args: { p_answers: Json; p_enrollment_id: string }
         Returns: string
       }
+      learner_submit_mentoring_prep_file: {
+        Args: { p_notes?: string; p_path: string; p_session_id: string }
+        Returns: string
+      }
       learner_training_evidence_allowed: {
         Args: {
           p_assignment_id?: string

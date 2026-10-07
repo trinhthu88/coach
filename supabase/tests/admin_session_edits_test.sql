@@ -104,21 +104,33 @@ values ('f9b40000-0000-4000-8000-0000000000a1', 'f9b00000-0000-4000-8000-0000000
 select set_config('app.session_transition', '', true);
 
 -- ---------------------------------------------------------------------------
--- g. No Admin bypass of the protected fields
+-- g. No Admin bypass of the protected fields. Since 20261007000700 the
+--    "admin manage" policies read only, so an Admin's UPDATE at the table
+--    reaches no row at all: every row stays exactly as it was.
 -- ---------------------------------------------------------------------------
+create temporary table before_g as
+select id, to_jsonb(s) as row from public.sessions s where id in ('f9b40000-0000-4000-8000-000000000001', 'f9b40000-0000-4000-8000-000000000002')
+union all
+select id, to_jsonb(p) from public.peer_sessions p where id = 'f9b40000-0000-4000-8000-0000000000a1';
+grant select on before_g to authenticated;
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', 'f9b00000-0000-4000-8000-000000000004')::text, true);
 
-select throws_ok($$update public.sessions set status = 'completed' where id = 'f9b40000-0000-4000-8000-000000000002'$$,
-  '42501', null, 'g1. an Admin cannot write a Coaching status at the table');
-select throws_ok($$update public.sessions set start_time = now() + interval '20 days' where id = 'f9b40000-0000-4000-8000-000000000001'$$,
-  '42501', null, 'g2. an Admin cannot move a Coaching session at the table');
-select throws_ok($$update public.sessions set coach_notes = 'Admin wrote this' where id = 'f9b40000-0000-4000-8000-000000000001'$$,
-  '42501', null, 'g3. an Admin cannot write the Coach''s notes');
-select throws_ok($$update public.peer_sessions set status = 'confirmed' where id = 'f9b40000-0000-4000-8000-0000000000a1'$$,
-  '42501', null, 'g4. an Admin cannot write a Peer status at the table');
-select throws_ok($$update public.sessions set cohort_requirement_id = (select id from req where ordinal = 3) where id = 'f9b40000-0000-4000-8000-000000000001'$$,
-  '42501', null, 'g5. an Admin cannot move a session to another requirement');
+update public.sessions set status = 'completed' where id = 'f9b40000-0000-4000-8000-000000000002';
+select is((select to_jsonb(t) from public.sessions t where id = 'f9b40000-0000-4000-8000-000000000002'), (select row from before_g where id = 'f9b40000-0000-4000-8000-000000000002'),
+  'g1. an Admin cannot write a Coaching status at the table');
+update public.sessions set start_time = now() + interval '20 days' where id = 'f9b40000-0000-4000-8000-000000000001';
+select is((select to_jsonb(t) from public.sessions t where id = 'f9b40000-0000-4000-8000-000000000001'), (select row from before_g where id = 'f9b40000-0000-4000-8000-000000000001'),
+  'g2. an Admin cannot move a Coaching session at the table');
+update public.sessions set coach_notes = 'Admin wrote this' where id = 'f9b40000-0000-4000-8000-000000000001';
+select is((select to_jsonb(t) from public.sessions t where id = 'f9b40000-0000-4000-8000-000000000001'), (select row from before_g where id = 'f9b40000-0000-4000-8000-000000000001'),
+  'g3. an Admin cannot write the Coach''s notes');
+update public.peer_sessions set status = 'confirmed' where id = 'f9b40000-0000-4000-8000-0000000000a1';
+select is((select to_jsonb(t) from public.peer_sessions t where id = 'f9b40000-0000-4000-8000-0000000000a1'), (select row from before_g where id = 'f9b40000-0000-4000-8000-0000000000a1'),
+  'g4. an Admin cannot write a Peer status at the table');
+update public.sessions set cohort_requirement_id = (select id from req where ordinal = 3) where id = 'f9b40000-0000-4000-8000-000000000001';
+select is((select to_jsonb(t) from public.sessions t where id = 'f9b40000-0000-4000-8000-000000000001'), (select row from before_g where id = 'f9b40000-0000-4000-8000-000000000001'),
+  'g5. an Admin cannot move a session to another requirement');
 
 -- ---------------------------------------------------------------------------
 -- r. admin_reschedule_session

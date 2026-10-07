@@ -16,12 +16,10 @@ interface UseMentoringPrepFileOptions {
 }
 
 /**
- * Handles the mentee's one-time preparation file upload (hard-gated at the
- * DB level — see enforce_mentoring_prep_file_before_completion() /
- * enforce_mentoring_feedback_requires_prep_file() in
- * 20260818140400_mentoring_sessions.sql and 20260818140500_mentoring_feedback.sql).
- * Client-side .docx/.pdf validation here is a UX nicety; the storage RLS
- * policy's filename-suffix check is the real backstop.
+ * Handles the mentee's preparation file: upload to mentoring-prep-files under
+ * {session_id}/, then learner_submit_mentoring_prep_file records it with the
+ * server's time. Client-side .docx/.pdf validation here is a UX nicety; the
+ * storage RLS policy's filename-suffix check is the real backstop.
  */
 export function useMentoringPrepFile({ sessionId, onSubmitted }: UseMentoringPrepFileOptions) {
   const { t } = useTranslation("mentoring");
@@ -43,14 +41,13 @@ export function useMentoringPrepFile({ sessionId, onSubmitted }: UseMentoringPre
       toast.error(upErr.message);
       return;
     }
-    const { error: updateErr } = await supabase
-      .from("mentoring_sessions")
-      .update({
-        prep_file_path: path,
-        prep_file_notes: notes.trim() || null,
-        prep_file_submitted_at: new Date().toISOString(),
-      })
-      .eq("id", sessionId);
+    // Recorded by the server, which checks the upload and stamps the time
+    // (20261007000700); the prep file is not writable at the table.
+    const { error: updateErr } = await supabase.rpc("learner_submit_mentoring_prep_file", {
+      p_session_id: sessionId,
+      p_path: path,
+      p_notes: notes.trim() || undefined,
+    });
     setUploading(false);
     if (updateErr) {
       toast.error(updateErr.message);

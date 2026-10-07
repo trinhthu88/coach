@@ -284,8 +284,8 @@ select throws_ok($$select public.learner_triad_complete_session((select id from 
 select is((select count(*)::integer from public.triad_sessions where id = (select id from ses where name = 'G1a')), 0,
   '27a. a learner cannot read another group''s session');
 select set_config('request.jwt.claim.sub', 'a8800000-0000-0000-0000-000000000001', true);
-update public.triad_sessions set status = 'completed' where id = (select id from ses where name = 'G1a');
-select is((select status from public.triad_sessions where id = (select id from ses where name = 'G1a')), 'confirmed',
+select throws_ok($$update public.triad_sessions set status = 'completed' where id = (select id from ses where name = 'G1a')$$,
+  '42501', 'permission denied for table triad_sessions',
   '16c. learners cannot write session state directly (only through validated functions)');
 select lives_ok($$select public.learner_triad_complete_session((select id from ses where name = 'G1a'))$$, 'E1 completes G1a');
 select is((select status from public.triad_sessions where id = (select id from ses where name = 'G1a')), 'completed',

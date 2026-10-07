@@ -22,7 +22,7 @@ never a second answer to a business question.
 | **Required vs scheduled (mismatch)** | derived from the two rows above | `cohort_module_schedule_violation`, `cohort_schedule_violations`, `cohort_requirement_schedule_issues` | **Diagnostic only.** "Coaching 5 required / 4 scheduled" is a migration or corruption state that the deferred guards refuse to commit and the booking RPCs refuse to operate against. Nothing is invented, and no projection compensates. |
 | **Enrollment applicability** | `programme_enrollments` (programme, cohort, status) | canonical progress / journey wrappers | *Effective* status (after the programme end date) is computed once in `canonical_enrollment_progress`. |
 | **Activity completion** | the session lifecycle, per requirement (Coaching / Mentoring / Triads); `peer_session_participants` for Peer (`20260921210000`; dyad sessions only since `20261005140000`); `session_activity_attributions` for quiz, daily prompt and Training | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. See the operational-vs-evidence rule below. |
-| **Coach approval, invite limit, rating, sessions completed** | `coach_profiles.approval_status` / `max_coachee_invites` / `rating_avg` / `sessions_completed` | `coach_profiles` | Written only by an Admin or trusted SQL (`admin_update_coach`, `recompute_coach_rating`, the service role). `guard_coach_profile_protected_fields` refuses any other UPDATE of these four columns (`20261005120000`); a Coach still edits the rest of their own profile. |
+| **Coach approval, invite limit, rating, sessions completed, featured** | `coach_profiles.approval_status` / `max_coachee_invites` / `rating_avg` / `sessions_completed` / `is_featured` / `last_approved_at` | `coach_profiles` | Written only by an Admin or trusted SQL (`admin_update_coach`, `recompute_coach_rating`, the service role). `guard_coach_profile_protected_fields` refuses any other write of these six columns (`20261005120000`; `20261007000700` added the last two and runs it BEFORE INSERT OR UPDATE, so a Coach's own new profile starts from the defaults); a Coach still edits the rest of their own profile. |
 | **Coaching provider** | `cohort_coach_assignments` | `cohort_coaching_coach_pool` → `enrollment_coaching_coach_pool` | The learner-level allowlists are not programme Coaching authority. |
 | **Coaching requirement link** | `sessions.cohort_requirement_id` (server-assigned) | `canonical_coaching_requirement_fulfilment` → `learner_coaching_requirement_fulfilment`, `coach_coaching_requirement_fulfilment` | One live session per LEARNER per requirement. Set at booking and moved only by `reschedule_coaching_session`; `guard_session_protected_fields` refuses it (and `cohort_id`) in any app UPDATE (`20261005100000`). |
 | **Coaching completion** | a COMPLETED session attributed to a requirement | `canonical_coaching_requirement_fulfilment` → `sponsor_canonical_activity` | Evidence never gates it (`20260921130000`). Only the session's Coach or an Admin marks it held, through `complete_coaching_session`; `transition_session_status` only confirms Coaching (`20261005100000`). |
@@ -243,8 +243,10 @@ learner. `20260921130000` reverses it and renames `unit_complete` to
 
 Added by `20261005100000_session_write_lockdown`. A session row and its status
 are written only by SECURITY DEFINER lifecycle functions; no client role holds
-INSERT on `sessions`, `mentoring_sessions`, `peer_sessions` or
-`coachee_peer_sessions`.
+INSERT or DELETE on `sessions`, `mentoring_sessions`, `peer_sessions` or
+`coachee_peer_sessions`, nor INSERT, UPDATE or DELETE on `triad_sessions`, nor
+TRUNCATE on any of the five; their "admin manage" policies read only
+(`20261007000700`).
 
 ```
 Book        book_coaching_session, book_mentoring_session, book_peer_session,
@@ -268,9 +270,15 @@ Admin       admin_reschedule_session (time, duration, topic, link)
 
 A Peer or Triad time is never in the past: booking, scheduling, proposing an
 alternative and accepting one all refuse a start before `now()`. The remaining
-client UPDATE grant covers author-owned fields only (notes, meeting link,
-Mentoring preparation document); `guard_session_protected_fields` refuses
-everything else unless the lifecycle service set `app.session_transition`.
+client UPDATE grant covers author-owned fields only (notes, meeting link);
+`guard_session_protected_fields` refuses everything else, `slot_id` included,
+unless the lifecycle service set `app.session_transition`. The Mentoring
+preparation document is recorded by `learner_submit_mentoring_prep_file` (the
+mentee's own upload under `{session_id}/`, stamped with `now()`;
+`20261007000700`). A session holds only a slot of its own Coach or Mentor
+(`sync_coaching_slot_reservation`, `sync_mentoring_slot_reservation`), and
+`book_peer_session` takes only the peer Coach's free Peer slot, with the booked
+time inside it -- the Coaching and Mentoring slot rule.
 Admins have no bypass (`20261005110000`): an Admin edit is one of the calls
 above, never a row write, and an Admin does not edit a participant's notes.
 The `confirm-session` and `cancel-session` edge functions call

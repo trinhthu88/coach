@@ -600,12 +600,10 @@ describe("programme profile architecture", () => {
 
     // The lifecycle had three writers: a raw client INSERT, a service-role
     // UPDATE in an Edge Function, and a raw client UPDATE for completion.
-    //
-    // prep_file_* is deliberately excluded: the preparation document is the
-    // learner's own optional evidence, it is not a protected lifecycle field,
-    // and useMentoringPrepFile writes it directly by design.
+    // The prep file joined them in 20261007000700: learner_submit_mentoring_prep_file
+    // records it with the server's time.
     const LIFECYCLE_FIELDS =
-      /\b(status|enrollment_id|cohort_requirement_id|cohort_id|mentor_id|mentee_id|confirmed_at|cancelled_at|cancelled_by|cancel_reason|start_time|duration_minutes)\s*:/;
+      /\b(status|enrollment_id|cohort_requirement_id|cohort_id|slot_id|mentor_id|mentee_id|confirmed_at|cancelled_at|cancelled_by|cancel_reason|start_time|duration_minutes|prep_file_path|prep_file_notes|prep_file_submitted_at)\s*:/;
 
     it("no runtime code creates or mutates a Mentoring session's lifecycle directly", () => {
       for (const file of [...files, ...edgeFunctionFiles()]) {
@@ -623,6 +621,7 @@ describe("programme profile architecture", () => {
       const core = read("hooks/mentoring/useMentoringSessionCore.ts");
       expect(core).toMatch(/"transition_mentoring_session_status"/);
       expect(core).toMatch(/"update_mentoring_session_notes"/);
+      expect(read("hooks/mentoring/useMentoringPrepFile.ts")).toMatch(/"learner_submit_mentoring_prep_file"/);
       const confirm = readFileSync(
         join(process.cwd(), "supabase/functions/confirm-mentoring-session/index.ts"), "utf8");
       expect(confirm).toMatch(/"transition_mentoring_session_status"/);
