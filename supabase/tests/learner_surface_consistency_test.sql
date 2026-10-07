@@ -30,13 +30,13 @@ insert into public.programmes (id, name, duration_months) values ('c9910000-0000
 insert into public.programme_modules (programme_id, module, enabled, config) values
   ('c9910000-0000-4000-8000-000000000001', 'coaching', true, '{"required": true, "required_units": 2}');
 insert into public.cohorts (id, name, programme_id, start_date, end_date) values
-  ('d9910000-0000-4000-8000-00000000000a', 'Surface Cohort A', 'c9910000-0000-4000-8000-000000000001', current_date - 300, current_date - 120),
-  ('d9910000-0000-4000-8000-00000000000b', 'Surface Cohort B', 'c9910000-0000-4000-8000-000000000001', current_date - 20, current_date + 160);
+  ('d9910000-0000-4000-8000-00000000000a', 'Surface Cohort A', 'c9910000-0000-4000-8000-000000000001', public.programme_today() - 300, public.programme_today() - 120),
+  ('d9910000-0000-4000-8000-00000000000b', 'Surface Cohort B', 'c9910000-0000-4000-8000-000000000001', public.programme_today() - 20, public.programme_today() + 160);
 
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status, start_date, end_date)
 values
   ('e9910000-0000-4000-8000-00000000000a', 'c9910000-0000-4000-8000-000000000001', 'a9910000-0000-4000-8000-000000000001',
-   'd9910000-0000-4000-8000-00000000000a', 'b9910000-0000-4000-8000-00000000000a', 'active', current_date - 300, current_date - 120);
+   'd9910000-0000-4000-8000-00000000000a', 'b9910000-0000-4000-8000-00000000000a', 'active', public.programme_today() - 300, public.programme_today() - 120);
 -- A peer session the learner PROVIDED during cohort A (created while cohort A
 -- ran; both cohort A enrollments are closed afterwards). The session row
 -- names the RECEIVER's (partner's) enrollment; the learner's participation
@@ -47,7 +47,7 @@ insert into public.programme_modules (programme_id, module, enabled, config) val
   ('c9910000-0000-4000-8000-000000000001', 'peer_coaching', true, '{"required": true, "required_units": 1, "monthly_limit": 20}');
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status, start_date, end_date)
 values ('e9910000-0000-4000-8000-00000000002a', 'c9910000-0000-4000-8000-000000000001', 'a9910000-0000-4000-8000-000000000002',
-   'd9910000-0000-4000-8000-00000000000a', 'b9910000-0000-4000-8000-00000000000a', 'active', current_date - 300, current_date - 120);
+   'd9910000-0000-4000-8000-00000000000a', 'b9910000-0000-4000-8000-00000000000a', 'active', public.programme_today() - 300, public.programme_today() - 120);
 insert into public.coachee_goals (coachee_id, enrollment_id, title, status) values
   ('a9910000-0000-4000-8000-000000000002', 'e9910000-0000-4000-8000-00000000002a', 'Partner goal', 'active'),
   ('a9910000-0000-4000-8000-000000000001', 'e9910000-0000-4000-8000-00000000000a', 'Cohort A goal', 'active');
@@ -71,7 +71,7 @@ update public.programme_enrollments set status = 'completed' where id = 'e991000
 -- The ACTIVE enrollment carries no end date of its own (as every seeded ongoing enrollment).
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status, start_date)
 values ('e9910000-0000-4000-8000-00000000000b', 'c9910000-0000-4000-8000-000000000001', 'a9910000-0000-4000-8000-000000000001',
-   'd9910000-0000-4000-8000-00000000000b', 'b9910000-0000-4000-8000-00000000000a', 'active', current_date - 20);
+   'd9910000-0000-4000-8000-00000000000b', 'b9910000-0000-4000-8000-00000000000a', 'active', public.programme_today() - 20);
 
 -- Training is added to the programme only now: no enrollment has a Training snapshot.
 insert into public.training_weeks (id, programme_id, week_number, title, is_visible, skill_card_visible)
@@ -124,11 +124,11 @@ select is(
   'the learner context names the active enrollment''s cohort and organisation');
 select is(
   (select array[start_date, end_date] from public.learner_enrollment_context('e9910000-0000-4000-8000-00000000000b')),
-  array[current_date - 20, current_date + 160],
+  array[public.programme_today() - 20, public.programme_today() + 160],
   'effective dates: an ongoing enrollment without its own end date ends with its cohort');
 select is(
-  (select array[enrollment_start_date, enrollment_end_date] from public.learner_canonical_progress('e9910000-0000-4000-8000-00000000000b', current_date)),
-  array[current_date - 20, current_date + 160],
+  (select array[enrollment_start_date, enrollment_end_date] from public.learner_canonical_progress('e9910000-0000-4000-8000-00000000000b', public.programme_today())),
+  array[public.programme_today() - 20, public.programme_today() + 160],
   'the Dashboard header dates are the same effective dates (never "start - ")');
 
 -- Training page: the programme's selected weeks, with their canonical requirement.
@@ -151,15 +151,15 @@ select is(
   '{"skill_cards": "1/1", "quizzes": "1/1", "reflections": "0/0", "daily_prompts": "0/0"}'::jsonb, 'per-week child evidence counts every configured child type');
 select is(
   (select sum(required_units)::int from public.learner_training_week_items('e9910000-0000-4000-8000-00000000000b') where item_type = 'skill_cards'),
-  (select training_required_units from public.learner_canonical_progress('e9910000-0000-4000-8000-00000000000b', current_date)),
+  (select training_required_units from public.learner_canonical_progress('e9910000-0000-4000-8000-00000000000b', public.programme_today())),
   'Training page weeks reconcile with the Dashboard Training requirement');
 
 -- Module totals reconcile with the enrollment aggregate.
 select is(
   (select array[sum(required_units), sum(completed_units), sum(due_units), sum(overdue_units)]::int[]
-   from public.learner_module_progress('e9910000-0000-4000-8000-00000000000b', current_date)),
+   from public.learner_module_progress('e9910000-0000-4000-8000-00000000000b', public.programme_today())),
   (select array[required_units, completed_units, due_units, overdue_units]
-   from public.learner_canonical_progress('e9910000-0000-4000-8000-00000000000b', current_date)),
+   from public.learner_canonical_progress('e9910000-0000-4000-8000-00000000000b', public.programme_today())),
   'module pages (learner_module_progress) sum to the Dashboard aggregate');
 select is(
   (select array_agg(module::text order by module::text) from public.get_enrollment_programme_modules('e9910000-0000-4000-8000-00000000000b')),
@@ -167,9 +167,9 @@ select is(
 
 -- Dashboard and My Journey read the same checkpoint source.
 create temp table learner_journey on commit drop as
-select public.learner_canonical_journey('e9910000-0000-4000-8000-00000000000b', current_date) as j;
+select public.learner_canonical_journey('e9910000-0000-4000-8000-00000000000b', public.programme_today()) as j;
 select is((select j from learner_journey),
-  public.canonical_enrollment_journey('e9910000-0000-4000-8000-00000000000b', current_date),
+  public.canonical_enrollment_journey('e9910000-0000-4000-8000-00000000000b', public.programme_today()),
   'the learner journey is the canonical journey');
 
 -- Reflections, goals and history never cross enrollments.
@@ -218,14 +218,14 @@ select is((select count(*)::int from public.learner_training_week_items('e991000
   'another learner cannot read this learner''s training evidence');
 
 select set_config('request.jwt.claim.sub', 'a9910000-0000-4000-8000-000000000003', true);
-select is(public.sponsor_canonical_leader_journey('e9910000-0000-4000-8000-00000000000b', current_date),
+select is(public.sponsor_canonical_leader_journey('e9910000-0000-4000-8000-00000000000b', public.programme_today()),
   (select j from learner_journey), 'the sponsor sees the same checkpoints as the learner');
 select is(
-  (select goal_count::int from public.sponsor_canonical_enrollment_metadata(null, 'e9910000-0000-4000-8000-00000000000b', current_date)),
+  (select goal_count::int from public.sponsor_canonical_enrollment_metadata(null, 'e9910000-0000-4000-8000-00000000000b', public.programme_today())),
   1, 'the sponsor goal aggregate counts the same single active-enrollment goal');
 
 select set_config('request.jwt.claim.sub', 'a9910000-0000-4000-8000-000000000004', true);
-select is(public.admin_canonical_enrollment_journey('e9910000-0000-4000-8000-00000000000b', current_date),
+select is(public.admin_canonical_enrollment_journey('e9910000-0000-4000-8000-00000000000b', public.programme_today()),
   (select j from learner_journey), 'the admin sees the same checkpoints as the learner');
 
 -- Schedule state and uniqueness.
