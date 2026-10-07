@@ -14,6 +14,15 @@ import {
   createOAuthCodeChallenge,
   createOAuthCodeVerifier,
 } from "../../../supabase/functions/_shared/googleCalendarOAuth";
+import {
+  adminSessionCalendarColumns,
+  syncAdminEditedCalendarSession,
+} from "../../../supabase/functions/_shared/adminSessionCalendarSync";
+import {
+  createTokenRefreshFailure,
+  GoogleCalendarReconnectRequiredError,
+  trackGoogleCalendarOperation,
+} from "../../../supabase/functions/_shared/googleCalendarFailurePolicy";
 
 const projectFile = (...parts: string[]) => readFileSync(path.resolve(__dirname, ...parts), "utf8");
 
@@ -130,5 +139,144 @@ describe("reconnect threshold and server-side event handling", () => {
     expect(adminEdit).toContain("syncGoogleCalendarEvent");
     expect(adminUi).toContain('"admin-session-edit"');
     expect(adminUi).not.toContain("google-calendar-sync-sessions");
+  });
+
+  it("selects only the session table's coach column", () => {
+    const coachingColumns = adminSessionCalendarColumns("coach_id").split(", ");
+    const peerColumns = adminSessionCalendarColumns("peer_coach_id").split(", ");
+
+    expect(coachingColumns).toContain("coach_id");
+    expect(coachingColumns).not.toContain("peer_coach_id");
+    expect(peerColumns).toContain("peer_coach_id");
+    expect(peerColumns).not.toContain("coach_id");
+
+    const adminEdit = projectFile("../../../supabase/functions/admin-session-edit/index.ts");
+    expect(adminEdit).toContain("adminSessionCalendarColumns(coachField)");
+    expect(adminEdit).toContain("syncAdminEditedCalendarSession(");
+  });
+
+  it("moves the confirmed Google event for the coach when an Admin reschedules", async () => {
+    const sessionId = "session-1";
+    const oldStartTime = "2026-10-15T09:00:00.000Z";
+    const newStartTime = "2026-10-16T11:30:00.000Z";
+    const eventKey = `coaching:${sessionId}`;
+    const events = new Map([[eventKey, { coachId: "coach-1", startTime: oldStartTime }]]);
+    const syncEvent = vi.fn(async (input: {
+      coachId: string;
+      source: "coaching" | "peer";
+      sessionId: string;
+      topic: string | null;
+      startTime: string;
+      durationMinutes: number;
+      meetingUrl: string | null;
+    }) => {
+      events.set(`${input.source}:${input.sessionId}`, input);
+      return { connected: true, synced: true };
+    });
+    const removeEvent = vi.fn(async () => ({ connected: true, removed: true }));
+    const session = {
+      status: "confirmed",
+      coach_id: "coach-1",
+      peer_coach_id: "wrong-coach",
+      topic: "Updated coaching session",
+      start_time: newStartTime,
+      duration_minutes: 60,
+      meeting_url: "https://meet.example/rescheduled",
+    };
+
+    const result = await syncAdminEditedCalendarSession("coaching", sessionId, session, {
+      syncEvent,
+      removeEvent,
+    });
+
+    expect(result).toBe("synced");
+    expect(syncEvent).toHaveBeenCalledWith({
+      coachId: "coach-1",
+      source: "coaching",
+      sessionId,
+      topic: "Updated coaching session",
+      startTime: newStartTime,
+      durationMinutes: 60,
+      meetingUrl: "https://meet.example/rescheduled",
+    });
+    expect(events.get(eventKey)).toMatchObject({ coachId: "coach-1", startTime: newStartTime });
+    expect(removeEvent).not.toHaveBeenCalled();
+
+    const googleCalendar = projectFile("../../../supabase/functions/_shared/googleCalendar.ts");
+    expect(googleCalendar).toContain("if (insert.status === 409)");
+    expect(googleCalendar).toContain("method: \"PATCH\", body: JSON.stringify(event)");
+  });
+});
+
+describe("Google Calendar token-refresh failure policy", () => {
+  it("classifies invalid_grant and token-refresh 401/403 as reconnect failures", () => {
+    expect(createTokenRefreshFailure(400, "invalid_grant"))
+      .toBeInstanceOf(GoogleCalendarReconnectRequiredError);
+    expect(createTokenRefreshFailure(401, "unauthorized_client"))
+      .toBeInstanceOf(GoogleCalendarReconnectRequiredError);
+    expect(createTokenRefreshFailure(403, null))
+      .toBeInstanceOf(GoogleCalendarReconnectRequiredError);
+
+    for (const [status, errorCode] of [
+      [400, "invalid_client"],
+      [429, "temporarily_unavailable"],
+      [500, "backend_error"],
+      [503, null],
+    ] as const) {
+      expect(createTokenRefreshFailure(status, errorCode))
+        .not.toBeInstanceOf(GoogleCalendarReconnectRequiredError);
+    }
+  });
+
+  it("does not count transient or Calendar API failures and clears reconnect after success", async () => {
+    let needsReconnect = false;
+    const recordReconnectFailure = vi.fn(async () => { needsReconnect = true; });
+    const clearReconnectState = vi.fn(async () => { needsReconnect = false; });
+
+    for (const failure of [
+      new TypeError("request timed out"),
+      createTokenRefreshFailure(429, "temporarily_unavailable"),
+      createTokenRefreshFailure(500, "server_error"),
+      createTokenRefreshFailure(502, "server_error"),
+      createTokenRefreshFailure(503, "backend_error"),
+      createTokenRefreshFailure(504, "gateway_timeout"),
+      new Error("Calendar API returned 403"),
+    ]) {
+      await expect(trackGoogleCalendarOperation(
+        async () => { throw failure; },
+        clearReconnectState,
+        recordReconnectFailure,
+      )).rejects.toBe(failure);
+    }
+    expect(recordReconnectFailure).not.toHaveBeenCalled();
+    expect(clearReconnectState).not.toHaveBeenCalled();
+
+    const reconnectFailures = [
+      createTokenRefreshFailure(400, "invalid_grant"),
+      createTokenRefreshFailure(401, "unauthorized_client"),
+      createTokenRefreshFailure(403, null),
+    ];
+    for (const failure of reconnectFailures) {
+      await expect(trackGoogleCalendarOperation(
+        async () => { throw failure; },
+        clearReconnectState,
+        recordReconnectFailure,
+      )).rejects.toBe(failure);
+    }
+    expect(recordReconnectFailure).toHaveBeenCalledTimes(3);
+    expect(needsReconnect).toBe(true);
+
+    await expect(trackGoogleCalendarOperation(
+      async () => ({ connected: true }),
+      clearReconnectState,
+      recordReconnectFailure,
+    )).resolves.toEqual({ connected: true });
+    expect(clearReconnectState).toHaveBeenCalledOnce();
+    expect(needsReconnect).toBe(false);
+
+    const implementation = projectFile("../../../supabase/functions/_shared/googleCalendar.ts");
+    expect(implementation).toContain("throw createTokenRefreshFailure(response.status, result.error)");
+    expect(implementation).toContain("needs_reconnect: false");
+    expect(implementation).not.toContain("if (connection.needs_reconnect)");
   });
 });

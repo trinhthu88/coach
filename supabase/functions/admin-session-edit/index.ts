@@ -7,6 +7,11 @@ import {
   requestUser,
   syncGoogleCalendarEvent,
 } from "../_shared/googleCalendar.ts";
+import {
+  adminSessionCalendarColumns,
+  syncAdminEditedCalendarSession,
+  type AdminSessionCalendarRow,
+} from "../_shared/adminSessionCalendarSync.ts";
 
 type AdminEditFunction = "admin_reschedule_session" | "admin_reopen_session";
 type SessionKind = "coaching" | "peer";
@@ -80,27 +85,21 @@ Deno.serve(async (req) => {
     try {
       const { data: row, error: rowError } = await admin
         .from(table)
-        .select("id, status, topic, start_time, duration_minutes, meeting_url, peer_coach_id, coach_id")
+        .select(adminSessionCalendarColumns(coachField))
         .eq("id", sessionId)
         .maybeSingle();
       if (rowError || !row) throw new Error("Could not load the edited session for Calendar sync");
 
-      const coachId = row[coachField] as string;
-      if (row.status === "confirmed") {
-        const result = await syncGoogleCalendarEvent(admin, {
-          coachId,
-          source,
-          sessionId,
-          topic: typeof row.topic === "string" ? row.topic : null,
-          startTime: String(row.start_time),
-          durationMinutes: Number(row.duration_minutes) || 45,
-          meetingUrl: typeof row.meeting_url === "string" ? row.meeting_url : null,
-        });
-        if (result.connected && result.synced) calendarSync = "synced";
-      } else if (row.status !== "completed") {
-        const result = await deleteGoogleCalendarEvent(admin, coachId, source, sessionId);
-        if (result.connected && result.removed) calendarSync = "removed";
-      }
+      calendarSync = await syncAdminEditedCalendarSession(
+        source,
+        sessionId,
+        row as AdminSessionCalendarRow,
+        {
+          syncEvent: (input) => syncGoogleCalendarEvent(admin, input),
+          removeEvent: (coachId, eventSource, eventSessionId) =>
+            deleteGoogleCalendarEvent(admin, coachId, eventSource, eventSessionId),
+        },
+      );
     } catch (error) {
       calendarSync = "failed";
       console.error(

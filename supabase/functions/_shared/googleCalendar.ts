@@ -5,6 +5,10 @@ import {
   createOAuthState,
   hashOAuthState,
 } from "./googleCalendarOAuth.ts";
+import {
+  createTokenRefreshFailure,
+  trackGoogleCalendarOperation,
+} from "./googleCalendarFailurePolicy.ts";
 
 export {
   createOAuthCodeChallenge,
@@ -168,14 +172,9 @@ export async function getCalendarConnectionStatus(admin: AdminClient, coachId: s
   };
 }
 
-class GoogleCalendarReconnectRequiredError extends Error {}
-
 async function accessTokenForCoach(admin: AdminClient, coachId: string): Promise<string | null> {
   const connection = await getConnection(admin, coachId);
   if (!connection) return null;
-  if (connection.needs_reconnect) {
-    throw new GoogleCalendarReconnectRequiredError("Reconnect Google Calendar to continue syncing");
-  }
   if (!isGoogleCalendarConfigured()) throw new Error("Google Calendar is not configured");
   const cached = accessTokenCache.get(coachId);
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
@@ -194,10 +193,11 @@ async function accessTokenForCoach(admin: AdminClient, coachId: string): Promise
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
+  const result = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error("Google Calendar authorization expired or was revoked; reconnect the account");
+    accessTokenCache.delete(coachId);
+    throw createTokenRefreshFailure(response.status, result.error);
   }
-  const result = await response.json();
   if (typeof result.access_token !== "string") {
     throw new Error("Google Calendar did not return an access token");
   }
@@ -215,25 +215,36 @@ async function trackCalendarOperation<T extends { connected: boolean }>(
   coachId: string,
   operation: () => Promise<T>,
 ): Promise<T> {
-  try {
-    const result = await operation();
-    if (result.connected) {
-      const { error } = await admin
-        .from("google_calendar_connections")
-        .update({ consecutive_error_count: 0, needs_reconnect: false, updated_at: new Date().toISOString() })
-        .eq("coach_id", coachId);
-      if (error) console.error("Could not reset Google Calendar error state", error.message);
-    }
-    return result;
-  } catch (error) {
-    if (isGoogleCalendarConfigured() && !(error instanceof GoogleCalendarReconnectRequiredError)) {
-      const { error: recordError } = await admin.rpc("record_google_calendar_failure", {
-        p_coach_id: coachId,
-      });
-      if (recordError) console.error("Could not record Google Calendar failure", recordError.message);
-    }
-    throw error;
-  }
+  return trackGoogleCalendarOperation(
+    operation,
+    async () => {
+      try {
+        const { error } = await admin
+          .from("google_calendar_connections")
+          .update({ consecutive_error_count: 0, needs_reconnect: false, updated_at: new Date().toISOString() })
+          .eq("coach_id", coachId);
+        if (error) console.error("Could not reset Google Calendar error state", error.message);
+      } catch (error) {
+        console.error(
+          "Could not reset Google Calendar error state",
+          error instanceof Error ? error.message : "unknown error",
+        );
+      }
+    },
+    async () => {
+      try {
+        const { error: recordError } = await admin.rpc("record_google_calendar_failure", {
+          p_coach_id: coachId,
+        });
+        if (recordError) console.error("Could not record Google Calendar failure", recordError.message);
+      } catch (error) {
+        console.error(
+          "Could not record Google Calendar failure",
+          error instanceof Error ? error.message : "unknown error",
+        );
+      }
+    },
+  );
 }
 
 async function googleCalendarFetch(
