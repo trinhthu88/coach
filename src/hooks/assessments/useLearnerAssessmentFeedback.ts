@@ -28,6 +28,9 @@ export interface LearnerAssessmentFeedback {
   quizCorrect: number | null;
   quizTotal: number | null;
   quizScorePct: number | null;
+  /** The pass mark and whether the score reached it, both decided in SQL. */
+  passMarkPct: number | null;
+  quizPassed: boolean | null;
 }
 
 export function useLearnerAssessmentFeedback(enrollmentId: string | null | undefined) {
@@ -53,6 +56,8 @@ export function useLearnerAssessmentFeedback(enrollmentId: string | null | undef
         quizCorrect: r.quiz_correct ?? null,
         quizTotal: r.quiz_total ?? null,
         quizScorePct: r.quiz_score_pct ?? null,
+        passMarkPct: r.pass_mark_pct ?? null,
+        quizPassed: r.quiz_passed ?? null,
       }));
     },
   });

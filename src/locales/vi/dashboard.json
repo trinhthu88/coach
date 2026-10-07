@@ -19,7 +19,8 @@
         "overdue_action": "Hành động quá hạn",
         "current_requirement": "Hiện tại",
         "upcoming_session": "Session sắp tới",
-        "upcoming_requirement": "Sắp tới"
+        "upcoming_requirement": "Sắp tới",
+        "new_feedback": "Nhận xét mới"
       },
       "overdueCount_one": "{{count}} quá hạn",
       "overdueCount_other": "{{count}} quá hạn",

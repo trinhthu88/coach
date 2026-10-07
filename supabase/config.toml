@@ -30,6 +30,6 @@ project_id = "ygufjhhpguauwwmfvczy"
   [functions.triad-reminders]
     verify_jwt = false
   [functions.send-assessment-feedback-email]
-    verify_jwt = true
+    verify_jwt = false
   [functions.transcribe-assessment-recording]
     verify_jwt = true

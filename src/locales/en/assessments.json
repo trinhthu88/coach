@@ -106,7 +106,9 @@
     "result": "Result",
     "quiz": "Quiz",
     "quizScore": "{{correct}} of {{total}} correct ({{pct}}%)",
-    "attachment": "Feedback PDF"
+    "attachment": "Feedback PDF",
+    "open": "Open feedback",
+    "hide": "Hide feedback"
   },
   "final": {
     "title": "Final Assessment",

@@ -37,7 +37,7 @@ function row(over: Record<string, unknown>) {
     status: "awaiting_assignment", submitted_at: "2026-10-01T09:00:00Z", assessor_id: null, assessor_name: null,
     assigned_at: null, due_on: null, review_overdue: false, review_id: null, review_version: null, review_text: null,
     review_outcome: null, review_submitted_at: null, review_files: [], last_decision: null, last_reason: null,
-    released_at: null, viewed_at: null,
+    released_at: null, viewed_at: null, release_emailed_at: null,
     ...over,
   };
 }
@@ -58,7 +58,7 @@ const QUEUE = [
   row({ submission_id: "s4", learner_name: "Learner Four", status: "released", review_id: "r4", released_at: "2026-10-04T10:00:00Z" }),
   row({
     submission_id: "s5", learner_name: "Learner Five", status: "released", review_id: "r5",
-    released_at: "2026-10-04T10:00:00Z", viewed_at: "2026-10-05T08:00:00Z",
+    released_at: "2026-10-04T10:00:00Z", viewed_at: "2026-10-05T08:00:00Z", release_emailed_at: "2026-10-04T10:05:00Z",
   }),
 ];
 
@@ -189,7 +189,7 @@ describe("AssessmentQueue", () => {
     );
   });
 
-  it("approves a review, which releases it and emails the learner", async () => {
+  it("approves a review, which releases it; the email is the server's, never sent from the browser", async () => {
     renderQueue();
     fireEvent.click(within(await rowFor("Learner Three")).getByTestId("assessment-open-review"));
     const dialog = await screen.findByTestId("assessment-review-dialog");
@@ -200,10 +200,15 @@ describe("AssessmentQueue", () => {
     await waitFor(() =>
       expect(rpc).toHaveBeenCalledWith("admin_validate_review", { p_review_id: "r3", p_decision: "approved", p_reason: undefined }),
     );
-    // The release email (Resend) is sent once the release has committed.
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith("send-assessment-feedback-email", { body: { submission_id: "s3" } }),
-    );
+    // The release email is sent by the scheduled server function
+    // (send-assessment-feedback-email, 20261007001200), not by this page.
+    expect(invoke).not.toHaveBeenCalledWith("send-assessment-feedback-email", expect.anything());
+  });
+
+  it("shows 'Email not sent' on a released row until the server has emailed the learner", async () => {
+    renderQueue();
+    expect(within(await rowFor("Learner Four")).getByTestId("assessment-email-not-sent")).toHaveTextContent("Email not sent");
+    expect(within(await rowFor("Learner Five")).queryByTestId("assessment-email-not-sent")).toBeNull();
   });
 
   it("returns a review only with a reason", async () => {

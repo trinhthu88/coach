@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
   development: {} as Record<string, unknown>,
   sessions: {} as Record<string, unknown>,
   reflections: {} as Record<string, unknown>,
+  assessmentFeedback: [] as Array<Record<string, unknown>>,
   reflectionFeedCalls: [] as Array<string | undefined>,
   learnerHookCalls: [] as string[],
 }));
@@ -97,6 +98,9 @@ vi.mock("@/hooks/journey/useEnrollmentSessions", () => ({
 }));
 
 // Schedule-mismatch state (cohort_programme_schedule_state) — aligned here.
+vi.mock("@/hooks/assessments/useLearnerAssessmentFeedback", () => ({
+  useLearnerAssessmentFeedback: () => ({ feedback: state.assessmentFeedback, loading: false, error: false }),
+}));
 vi.mock("@/hooks/useCanonicalScheduleState", () => ({
   useCanonicalScheduleState: () => ({ rows: [], mismatches: [], loading: false, error: null }),
 }));
@@ -196,6 +200,7 @@ function seedPopulated() {
     error: null,
   };
   state.reflectionFeedCalls = [];
+  state.assessmentFeedback = [];
 }
 
 function renderDashboard() {
@@ -304,6 +309,21 @@ describe("Learner Dashboard — canonical programme profile", () => {
     expect(screen.getByTestId("learner-attention-overdue-count")).toHaveTextContent(/^1 overdue$/i);
     expect(within(attention).getByRole("link", { name: /coaching/i })).toHaveAttribute("href", "/coaches");
     expect(within(attention).getByRole("link", { name: new RegExp(PRIVATE_ACTION) })).toHaveAttribute("href", "/coachee/journey#goals");
+  });
+
+  it("lists released feedback under Needs attention until the learner has opened it", () => {
+    state.assessmentFeedback = [
+      { submissionId: "s-new", kind: "triad", requirementOrdinal: 2, attemptNo: 1, releasedAt: "2026-10-02T09:00:00Z", viewedAt: null },
+      { submissionId: "s-seen", kind: "triad", requirementOrdinal: 1, attemptNo: 1, releasedAt: "2026-09-02T09:00:00Z", viewedAt: "2026-09-03T09:00:00Z" },
+    ];
+    renderDashboard();
+    const attention = screen.getByTestId("learner-attention");
+    const item = within(attention).getByRole("link", { name: /Feedback on Triad 2/ });
+    expect(item).toHaveAttribute("href", "/coachee/journey#feedback-results");
+    expect(item).toHaveTextContent("New feedback");
+    expect(within(attention).queryByText(/Feedback on Triad 1/)).toBeNull();
+    // Feedback is not overdue work: the overdue count is unchanged.
+    expect(screen.getByTestId("learner-attention-overdue-count")).toHaveTextContent(/^1 overdue$/i);
   });
 
   it("shows learner-visible feedback and the learner's own reflections", () => {

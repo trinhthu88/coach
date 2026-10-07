@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { getFriendlyErrorMessage } from "@/lib/errors";
-import { assessmentLabel, formatAssessmentDate, type AssessmentOutcome } from "@/lib/assessments";
+import { assessmentLabel, formatAssessmentDate, recordingUrlSeconds, type AssessmentFile, type AssessmentOutcome } from "@/lib/assessments";
 import { AssessmentFileLink } from "@/components/assessments/AssessmentFileLink";
 import { useAssessmentFileUrl } from "@/hooks/assessments/useAssessmentFileUrl";
 import {
@@ -94,7 +94,7 @@ export default function CoachSubmissionDetail() {
           {row.kind === "final_assessment" && (
             <Card className="space-y-2 p-4">
               <h2 className="text-sm font-semibold">{t("detail.recording")}</h2>
-              {recording ? <RecordingPlayer path={recording.storagePath} /> : <p className="text-sm text-muted-foreground">{t("detail.noRecording")}</p>}
+              {recording ? <RecordingPlayer file={recording} /> : <p className="text-sm text-muted-foreground">{t("detail.noRecording")}</p>}
             </Card>
           )}
 
@@ -152,9 +152,10 @@ export default function CoachSubmissionDetail() {
   );
 }
 
-function RecordingPlayer({ path }: { path: string }) {
+/** Signed for the recording's length plus a margin, so a full listen never hits an expired link. */
+function RecordingPlayer({ file }: { file: AssessmentFile }) {
   const { t } = useTranslation("assessments");
-  const { data: url, isError } = useAssessmentFileUrl(path);
+  const { data: url, isError } = useAssessmentFileUrl(file.storagePath, recordingUrlSeconds(file.durationSeconds));
   if (isError) return <p className="text-sm text-destructive">{t("fileError")}</p>;
   if (!url) return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
   return (

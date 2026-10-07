@@ -1535,6 +1535,9 @@
         "failed": "Failed"
       },
       "loadError": "The transcription cost could not be loaded."
-    }
+    },
+    "emailNotSent": "Email not sent",
+    "emailNotSentYet": "The release email has not been sent yet; it is retried automatically.",
+    "emailedOn": "Emailed {{date}}."
   }
 }

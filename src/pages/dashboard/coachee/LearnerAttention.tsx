@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, ArrowRight, Calendar, CheckCircle2, Clock } from "lucide-react";
-import { deriveAttentionList, overdueUnitCount, type AttentionItem } from "@/lib/nextUp";
+import { AlertTriangle, ArrowRight, Calendar, CheckCircle2, Clock, MessageSquare } from "lucide-react";
+import { deriveAttentionList, overdueUnitCount, type AttentionInputs, type AttentionItem } from "@/lib/nextUp";
+import { feedbackTitle } from "@/lib/assessments";
 import type { EnrollmentActionRow } from "@/hooks/dashboard/useEnrollmentActionsSummary";
 import type { LearnerOverdueItem } from "@/hooks/useLearnerCanonicalProgress";
 import { formatProfileDate, type ProgrammeJourneyPoint } from "@/lib/programmeProfile";
@@ -14,6 +15,7 @@ const ICON_BY_KIND: Record<AttentionItem["kind"], typeof AlertTriangle> = {
   current_requirement: Clock,
   upcoming_session: Calendar,
   upcoming_requirement: Calendar,
+  new_feedback: MessageSquare,
 };
 
 /** Where each item is actioned — every item is a real link. */
@@ -25,6 +27,9 @@ function attentionPath(item: AttentionItem): string {
       return "/coachee/journey#goals";
     case "upcoming_session":
       return "/sessions";
+    case "new_feedback":
+      // Opening the card there is what records the view and clears this item.
+      return "/coachee/journey#feedback-results";
     default:
       return "/coachee/journey#programme-journey";
   }
@@ -36,13 +41,15 @@ function attentionPath(item: AttentionItem): string {
  * (canonical_module_progress across every module), so the overdue count
  * shown here is the dashboard's Overdue KPI; nothing is capped, and nothing
  * is invented when nothing is due. Each item links to where the learner can
- * act on it.
+ * act on it. Released feedback stays here until the learner opens it
+ * (learner_assessment_feedback.viewed_at).
  */
 export function LearnerAttention({
   overdueModules,
   journey,
   overdueActions,
   nextSessionAt,
+  newFeedback = [],
   loading,
   error,
 }: {
@@ -50,12 +57,14 @@ export function LearnerAttention({
   journey: ProgrammeJourneyPoint[];
   overdueActions: EnrollmentActionRow[];
   nextSessionAt: string | null;
+  newFeedback?: AttentionInputs["newFeedback"];
   loading: boolean;
   error: string | null;
 }) {
   const { t } = useTranslation("dashboard");
+  const { t: tAssessments } = useTranslation("assessments");
   const moduleLabel = useModuleScopeLabel();
-  const items = loading || error ? [] : deriveAttentionList({ overdueModules, overdueActions, journey, nextSessionAt });
+  const items = loading || error ? [] : deriveAttentionList({ overdueModules, overdueActions, journey, nextSessionAt, newFeedback });
   const overdue = overdueUnitCount(items);
 
   const labelFor = (item: AttentionItem) => {
@@ -64,6 +73,8 @@ export function LearnerAttention({
         return moduleLabel(item.module);
       case "upcoming_session":
         return t("coacheeDashboard.nextUp.nextSession");
+      case "new_feedback":
+        return feedbackTitle(tAssessments, { kind: item.feedbackKind, requirementOrdinal: item.ordinal, attemptNo: item.attemptNo });
       default:
         return item.label;
     }

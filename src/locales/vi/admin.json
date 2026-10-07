@@ -1521,6 +1521,9 @@
         "failed": "Lỗi"
       },
       "loadError": "Không tải được chi phí chép lời."
-    }
+    },
+    "emailNotSent": "Chưa gửi email",
+    "emailNotSentYet": "Email thông báo chưa được gửi; hệ thống sẽ tự gửi lại.",
+    "emailedOn": "Đã gửi email {{date}}."
   }
 }

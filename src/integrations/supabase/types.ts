@@ -198,6 +198,7 @@ export type Database = {
       assessment_files: {
         Row: {
           created_at: string
+          duration_seconds: number | null
           file_kind: string
           id: string
           mime: string
@@ -210,6 +211,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          duration_seconds?: number | null
           file_kind: string
           id?: string
           mime: string
@@ -222,6 +224,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          duration_seconds?: number | null
           file_kind?: string
           id?: string
           mime?: string
@@ -310,6 +313,7 @@ export type Database = {
           id: string
           kind: string
           quiz_submission_id: string | null
+          release_email_attempted_at: string | null
           release_emailed_at: string | null
           released_at: string | null
           status: string
@@ -327,6 +331,7 @@ export type Database = {
           id: string
           kind: string
           quiz_submission_id?: string | null
+          release_email_attempted_at?: string | null
           release_emailed_at?: string | null
           released_at?: string | null
           status: string
@@ -344,6 +349,7 @@ export type Database = {
           id?: string
           kind?: string
           quiz_submission_id?: string | null
+          release_email_attempted_at?: string | null
           release_emailed_at?: string | null
           released_at?: string | null
           status?: string
@@ -4950,6 +4956,7 @@ export type Database = {
           learner_name: string
           programme_id: string
           programme_name: string
+          release_emailed_at: string
           released_at: string
           requirement_ordinal: number
           review_files: Json
@@ -7137,7 +7144,9 @@ export type Database = {
           feedback_text: string
           kind: string
           outcome: string
+          pass_mark_pct: number
           quiz_correct: number
+          quiz_passed: boolean
           quiz_score_pct: number
           quiz_total: number
           released_at: string

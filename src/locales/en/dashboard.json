@@ -19,7 +19,8 @@
         "overdue_action": "Overdue action",
         "current_requirement": "Current",
         "upcoming_session": "Upcoming session",
-        "upcoming_requirement": "Upcoming"
+        "upcoming_requirement": "Upcoming",
+        "new_feedback": "New feedback"
       },
       "overdueCount_one": "{{count}} overdue",
       "overdueCount_other": "{{count}} overdue",

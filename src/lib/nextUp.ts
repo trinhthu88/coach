@@ -85,7 +85,8 @@ export type AttentionItem =
   | { kind: "overdue_module"; module: string; overdueUnits: number; dueOn: string | null }
   | { kind: "overdue_action"; label: string; dueOn: string | null }
   | { kind: "current_requirement" | "upcoming_requirement"; label: string; dueOn: string | null }
-  | { kind: "upcoming_session"; dueOn: string };
+  | { kind: "upcoming_session"; dueOn: string }
+  | { kind: "new_feedback"; feedbackKind: string; ordinal: number | null; attemptNo: number; dueOn: string };
 
 export interface AttentionInputs {
   /** learner_canonical_overdue_items — one row per module with overdue required units. */
@@ -93,12 +94,15 @@ export interface AttentionInputs {
   overdueActions: EnrollmentActionRow[];
   journey: LearnerJourneyPoint[];
   nextSessionAt: string | null;
+  /** Released assessment feedback the learner has not opened yet (viewed_at IS NULL). */
+  newFeedback?: { kind: string; requirementOrdinal: number | null; attemptNo: number; releasedAt: string }[];
 }
 
 /**
  * "Needs your attention": every overdue required activity (all modules,
- * uncapped, oldest first), every overdue action, then the current
- * requirement, the next session and the next upcoming checkpoint.
+ * uncapped, oldest first), every overdue action, each piece of released
+ * feedback not yet opened, then the current requirement, the next session
+ * and the next upcoming checkpoint.
  *
  * The overdue part comes only from canonical_module_progress (via
  * learner_canonical_overdue_items), so overdueUnitCount(items) is exactly the
@@ -107,7 +111,7 @@ export interface AttentionInputs {
  * is the same overdue units summed by date, and listing it too would count
  * them twice.
  */
-export function deriveAttentionList({ overdueModules, overdueActions, journey, nextSessionAt }: AttentionInputs): AttentionItem[] {
+export function deriveAttentionList({ overdueModules, overdueActions, journey, nextSessionAt, newFeedback = [] }: AttentionInputs): AttentionItem[] {
   const items: AttentionItem[] = [];
   const byOldest = (a: string | null, b: string | null) => (a ?? "9999-12-31").localeCompare(b ?? "9999-12-31");
 
@@ -118,6 +122,9 @@ export function deriveAttentionList({ overdueModules, overdueActions, journey, n
   }
   for (const action of [...overdueActions].sort((a, b) => byOldest(a.due_date, b.due_date))) {
     items.push({ kind: "overdue_action", label: action.title, dueOn: action.due_date });
+  }
+  for (const f of newFeedback) {
+    items.push({ kind: "new_feedback", feedbackKind: f.kind, ordinal: f.requirementOrdinal, attemptNo: f.attemptNo, dueOn: f.releasedAt });
   }
 
   const checkpointLabel = (point: LearnerJourneyPoint) => point.label ?? `Checkpoint ${point.checkpoint_number}`;

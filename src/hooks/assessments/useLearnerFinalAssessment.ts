@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { ASSESSMENT_FILES_BUCKET } from "@/lib/assessments";
 import { uploadWithProgress } from "@/lib/uploadWithProgress";
+import { measureAudioDuration } from "@/lib/audioDuration";
 import { extractFunctionError } from "@/lib/errors";
 
 /**
@@ -168,9 +169,14 @@ export function useUploadRecording() {
     }) => {
       checkRecording(file, maxFileMb);
       const path = recordingPath(enrollmentId, submissionId);
-      // Stored as audio/mpeg whatever the browser called it.
-      await uploadWithProgress({ bucket: ASSESSMENT_FILES_BUCKET, path, file, contentType: RECORDING_MIME, onProgress });
-      return path;
+      // Stored as audio/mpeg whatever the browser called it. The length is
+      // read alongside and sent with the submission (it sizes the assessor's
+      // signed URL).
+      const [, durationSeconds] = await Promise.all([
+        uploadWithProgress({ bucket: ASSESSMENT_FILES_BUCKET, path, file, contentType: RECORDING_MIME, onProgress }),
+        measureAudioDuration(file),
+      ]);
+      return { path, durationSeconds };
     },
   });
 }
@@ -183,6 +189,7 @@ export function useSubmitFinalAssessment(enrollmentId: string | null) {
       requirementId,
       quizSubmissionId,
       recordingPath: path,
+      recordingSeconds = null,
       transcriptText,
       transcriptAuto = false,
     }: {
@@ -190,6 +197,8 @@ export function useSubmitFinalAssessment(enrollmentId: string | null) {
       requirementId: string;
       quizSubmissionId: string | null;
       recordingPath: string;
+      /** The recording's length as measured at upload; omitted when unknown. */
+      recordingSeconds?: number | null;
       transcriptText: string;
       /** The text started as an automatic draft (the learner may have edited it). */
       transcriptAuto?: boolean;
@@ -203,7 +212,9 @@ export function useSubmitFinalAssessment(enrollmentId: string | null) {
         p_quiz_submission_id: quizSubmissionId ?? undefined,
         p_transcript_text: transcript || undefined,
         p_transcript_source: transcript ? (transcriptAuto ? "auto" : "pasted") : "none",
-        p_files: [{ storage_path: path, file_kind: "recording" }],
+        p_files: [
+          recordingSeconds ? { storage_path: path, file_kind: "recording", duration_seconds: recordingSeconds } : { storage_path: path, file_kind: "recording" },
+        ],
       });
       if (error) throw error;
     },

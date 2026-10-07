@@ -11,6 +11,8 @@ const { rpc, upload, remove, toastError, toastSuccess } = vi.hoisted(() => ({
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }));
+// Signed URL lifetimes, by storage path.
+const signedFor = vi.hoisted(() => new Map<string, number>());
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc,
@@ -18,7 +20,10 @@ vi.mock("@/integrations/supabase/client", () => ({
       from: () => ({
         upload,
         remove,
-        createSignedUrl: (path: string) => Promise.resolve({ data: { signedUrl: `https://signed/${path}` }, error: null }),
+        createSignedUrl: (path: string, expiresIn: number) => {
+          signedFor.set(path, expiresIn);
+          return Promise.resolve({ data: { signedUrl: `https://signed/${path}` }, error: null });
+        },
       }),
     },
   },
@@ -65,7 +70,7 @@ const FINAL_RETURNED = inboxRow({
   inbox_tab: "returned", status: "returned", attempt_no: 2, is_overdue: true, due_on: "2026-10-01",
   transcript_text: "Coach: What would make today useful?",
   quiz_correct: 7, quiz_total: 10, quiz_score_pct: 70,
-  learner_files: [{ storage_path: "enr-2/s-final/session.mp3", file_kind: "recording", mime: "audio/mpeg", size_bytes: 40000000 }],
+  learner_files: [{ storage_path: "enr-2/s-final/session.mp3", file_kind: "recording", mime: "audio/mpeg", size_bytes: 40000000, duration_seconds: 1500 }],
   return_reason: "Please reference one ICF competency.",
   my_latest_review_version: 1, my_latest_feedback_text: "Solid session.", my_latest_outcome: "pass",
   enrollment_id: "enr-2",
@@ -156,6 +161,8 @@ describe("Coach -> Submission detail", () => {
     renderAt("/coach/submissions/s-final", null);
     expect(await screen.findByTestId("coach-submission-return-reason")).toHaveTextContent("Please reference one ICF competency.");
     expect(await screen.findByTestId("coach-submission-audio")).toHaveAttribute("src", "https://signed/enr-2/s-final/session.mp3");
+    // The link lasts the 25-minute recording plus a 30-minute margin, not five minutes.
+    expect(signedFor.get("enr-2/s-final/session.mp3")).toBe(1500 + 30 * 60);
     expect(screen.getByTestId("coach-submission-transcript")).toHaveTextContent("What would make today useful?");
     expect(screen.getByTestId("coach-submission-quiz")).toHaveTextContent("7 of 10 correct (70%)");
     expect(within(screen.getByTestId("coach-submission-quiz")).queryByRole("textbox")).toBeNull();

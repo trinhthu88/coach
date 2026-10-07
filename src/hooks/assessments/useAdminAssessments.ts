@@ -161,6 +161,8 @@ export interface AssessmentQueueRow {
   lastReason: string | null;
   releasedAt: string | null;
   viewedAt: string | null;
+  /** When the release email went (send-assessment-feedback-email, after Resend accepted it); null = not sent yet. */
+  releaseEmailedAt: string | null;
 }
 
 export interface AssessmentQueueFilters {
@@ -209,6 +211,7 @@ export function useAdminAssessmentQueue(filters: AssessmentQueueFilters) {
         lastReason: r.last_reason ?? null,
         releasedAt: r.released_at ?? null,
         viewedAt: r.viewed_at ?? null,
+        releaseEmailedAt: r.release_emailed_at ?? null,
       }));
     },
   });
@@ -265,16 +268,10 @@ export function useAdminAssessmentMutations() {
       if (error) throw error;
       return data as string;
     },
-    onSuccess: (decision, { submissionId }) => {
-      if (decision !== "approved") return;
-      // The release and its in-app notification are already committed; the
-      // email is best effort and claimed once per release on the server.
-      supabase.functions
-        .invoke("send-assessment-feedback-email", { body: { submission_id: submissionId } })
-        .then(({ error }) => {
-          if (error) console.error("Failed to send the assessment feedback email", error);
-        });
-    },
+    // The release and its in-app notification are committed by
+    // admin_validate_review; the email is the server's scheduled sender
+    // (send-assessment-feedback-email, 20261007001200), stamped only after
+    // Resend accepts it. Nothing is sent from the browser.
     onSettled: refresh,
   });
 

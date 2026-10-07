@@ -148,6 +148,7 @@ function FinalAssessmentSteps({ enrollmentId, fa }: { enrollmentId: string; fa: 
   const [step, setStep] = useState<StepKey>(steps[0]);
   const [recordingPath, setRecordingPath] = useState<string | null>(null);
   const [recordingName, setRecordingName] = useState<string | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState<number | null>(null);
   const [transcript, setTranscript] = useState("");
   // The text started as an automatic draft: stored with transcript_source 'auto'.
   const [transcriptAuto, setTranscriptAuto] = useState(false);
@@ -182,6 +183,7 @@ function FinalAssessmentSteps({ enrollmentId, fa }: { enrollmentId: string; fa: 
         requirementId: fa.requirementId,
         quizSubmissionId: fa.quizSubmissionId,
         recordingPath: recordingPath!,
+        recordingSeconds,
         transcriptText: transcript,
         transcriptAuto,
       },
@@ -226,9 +228,10 @@ function FinalAssessmentSteps({ enrollmentId, fa }: { enrollmentId: string; fa: 
             submissionId={submissionId}
             maxFileMb={fa.maxFileMb}
             uploadedName={recordingName}
-            onUploaded={(path, name) => {
+            onUploaded={(path, name, seconds) => {
               setRecordingPath(path);
               setRecordingName(name);
+              setRecordingSeconds(seconds);
             }}
           />
         )}
@@ -373,7 +376,7 @@ function RecordingStep({
   submissionId: string;
   maxFileMb: number;
   uploadedName: string | null;
-  onUploaded: (path: string, name: string) => void;
+  onUploaded: (path: string, name: string, durationSeconds: number | null) => void;
 }) {
   const { t } = useTranslation("assessments");
   const upload = useUploadRecording();
@@ -399,7 +402,7 @@ function RecordingStep({
     upload.mutate(
       { enrollmentId, submissionId, file, maxFileMb, onProgress: setProgress },
       {
-        onSuccess: (path) => onUploaded(path, file.name),
+        onSuccess: ({ path, durationSeconds }) => onUploaded(path, file.name, durationSeconds),
         onError: (e) => setFileError(e instanceof Error ? e.message : t("final.uploadFailed")),
       },
     );

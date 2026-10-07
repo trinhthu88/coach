@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { rpc, upload, invoke } = vi.hoisted(() => ({ rpc: vi.fn(), upload: vi.fn(), invoke: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, functions: { invoke } } }));
 vi.mock("@/lib/uploadWithProgress", () => ({ uploadWithProgress: upload }));
+// The browser reads the MP3's length at upload; it travels with the submission.
+vi.mock("@/lib/audioDuration", () => ({ measureAudioDuration: () => Promise.resolve(1520.4) }));
 vi.mock("@/hooks/useActiveEnrollment", () => ({
   useActiveEnrollment: () => ({ enrollmentId: "enr-1", loading: false }),
 }));
@@ -148,7 +150,7 @@ describe("Final Assessment (learner)", () => {
       p_quiz_submission_id: "quiz-sub-1",
       p_transcript_text: "Coach: what would make today useful?",
       p_transcript_source: "pasted",
-      p_files: [{ storage_path: call.path, file_kind: "recording" }],
+      p_files: [{ storage_path: call.path, file_kind: "recording", duration_seconds: 1520.4 }],
     });
   });
 

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TriadGroupEntry, TriadSessionView, TriadStatusView } from "@/hooks/triads/useMyTriads";
@@ -16,7 +16,7 @@ vi.mock("@/hooks/useEnrollmentContext", () => ({
 vi.mock("@/hooks/assessments/useLearnerAssessmentFeedback", () => ({
   // Released assessor feedback (learner_assessment_feedback only).
   useLearnerAssessmentFeedback: (enrollmentId: string | null) => assessmentFeedback(enrollmentId),
-  useMarkFeedbackViewed: () => ({ mutate: markViewed }),
+  useMarkFeedbackViewed: () => ({ mutate: markViewed, isIdle: true }),
 }));
 vi.mock("@/hooks/triads/useMyTriads", () => ({
   // The one learner Triad read model (learner_triad_overview + canonical members)
@@ -327,12 +327,16 @@ describe("TriadsPage", () => {
     expect(within(section(1)).queryByTestId("assessment-feedback-card")).toBeNull();
     const card = within(section(2)).getByTestId("assessment-feedback-card");
     expect(card).toHaveTextContent("Feedback on Triad 2");
-    expect(card).toHaveTextContent("A clear contracting question.");
     expect(card).toHaveTextContent("Coach Anh");
+    // Rendering is not viewing: nothing is recorded until the learner opens it.
+    expect(card).not.toHaveTextContent("A clear contracting question.");
+    expect(markViewed).not.toHaveBeenCalled();
+    fireEvent.click(within(card).getByRole("button", { name: "Open feedback" }));
+    expect(card).toHaveTextContent("A clear contracting question.");
     // Evidence only: Triad 2 is still the assigned, not completed, requirement.
     expect(section(2)).toHaveAttribute("data-state", "assigned");
     expect(screen.getByTestId("triad-progress-pill")).toHaveTextContent("1/2 completed");
-    // Seeing it records the first view.
+    // Opening it records the first view.
     expect(markViewed).toHaveBeenCalledWith("sub-2");
   });
 });

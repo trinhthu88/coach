@@ -1,6 +1,6 @@
 -- Final Assessment module (20261007000000 + 20261007000100; Prompt A5).
 begin;
-select plan(33);
+select plan(36);
 
 -- 01 learner L   02 assessor A   03 Admin   04 Sponsor S
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -120,11 +120,17 @@ select throws_ok($$select public.learner_submit_assessment('af400000-0000-4000-8
   null, 'none',
   '[{"storage_path": "af300000-0000-4000-8000-000000000001/af400000-0000-4000-8000-000000000001/recording.mp3", "file_kind": "recording"}]')$$,
   '22023', 'This Final Assessment needs a transcript', '15. the programme requires a transcript');
+select throws_ok($$select public.learner_submit_assessment('af400000-0000-4000-8000-000000000001', 'af300000-0000-4000-8000-000000000001',
+  (select id from ids where name = 'req'), 'final_assessment', null,
+  (select id from ids where name = 'quiz1'),
+  'Coach: what would make today useful?', 'pasted',
+  '[{"storage_path": "af300000-0000-4000-8000-000000000001/af400000-0000-4000-8000-000000000001/recording.mp3", "file_kind": "recording", "duration_seconds": 0}]')$$,
+  '22023', 'The recording length must be between 1 second and 24 hours', '15b. a recording length, when given, must be a real length');
 select lives_ok($$select public.learner_submit_assessment('af400000-0000-4000-8000-000000000001', 'af300000-0000-4000-8000-000000000001',
   (select id from ids where name = 'req'), 'final_assessment', null,
   (select id from ids where name = 'quiz1'),
   'Coach: what would make today useful?', 'pasted',
-  '[{"storage_path": "af300000-0000-4000-8000-000000000001/af400000-0000-4000-8000-000000000001/recording.mp3", "file_kind": "recording"}]')$$,
+  '[{"storage_path": "af300000-0000-4000-8000-000000000001/af400000-0000-4000-8000-000000000001/recording.mp3", "file_kind": "recording", "duration_seconds": 1520.4}]')$$,
   '16. L submits attempt 1');
 
 -- 17. Learner, Admin and Sponsor show the same state.
@@ -148,6 +154,9 @@ select public.admin_assign_assessor(array['af400000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claims', json_build_object('sub', 'af000000-0000-4000-8000-000000000002')::text, true);
 select is((select quiz_score_pct from public.coach_assessment_inbox()), 50.0::numeric,
   '18. the assessor sees the quiz score, from assignment_submissions.score_pct');
+select is((select (f->>'duration_seconds')::int from public.coach_assessment_inbox() i, jsonb_array_elements(i.learner_files) f
+            where f->>'file_kind' = 'recording'), 1520,
+  '18b. the assessor''s inbox carries the recording length, which sizes its signed URL (Prompt 15 item 15)');
 select public.coach_submit_review('af400000-0000-4000-8000-000000000001', 'Please record a full session.', 'resubmit');
 select set_config('request.jwt.claims', json_build_object('sub', 'af000000-0000-4000-8000-000000000003')::text, true);
 select public.admin_validate_review((select review_id from public.admin_assessment_queue()
@@ -210,6 +219,9 @@ select results_eq($$select role, state, result from views where step = 'pass' or
   '28. released Pass: Learner, Admin and Sponsor all show Completed - Pass');
 select results_eq($$select quiz_score_pct, pass_mark_pct, quiz_passed, can_resubmit from public.learner_final_assessment('af300000-0000-4000-8000-000000000001')$$,
   $$values (100.0::numeric, 70::numeric, true, false)$$, '29. after release the learner sees the attempt-2 quiz score, above the 70% pass mark (decided in SQL)');
+select results_eq($$select quiz_score_pct, pass_mark_pct, quiz_passed from public.learner_assessment_feedback('af300000-0000-4000-8000-000000000001')
+                      where submission_id = 'af400000-0000-4000-8000-000000000002'$$,
+  $$values (100.0::numeric, 70::numeric, true)$$, '29b. the released feedback says the quiz is above the pass mark (Prompt 15 item 14)');
 select results_eq($$select required_units, completed_units, pace_status from public.learner_module_progress('af300000-0000-4000-8000-000000000001') where module = 'final_assessment'$$,
   $$values (1, 1, 'completed'::text)$$, '30. canonical_module_progress counts the Final Assessment as completed');
 select throws_ok($$select public.learner_submit_assessment(gen_random_uuid(), 'af300000-0000-4000-8000-000000000001',

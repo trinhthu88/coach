@@ -1,6 +1,6 @@
 -- Assessment inbox and feedback release (20261006230000_assessment_inbox_feedback; Prompt A4).
 begin;
-select plan(11);
+select plan(12);
 
 -- 01 learner L   02 assessor A   03 coach X (no assignment)   04 Admin   05 Coach-learner K
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -93,22 +93,30 @@ select is((select link from public.notifications where user_id = 'ae000000-0000-
 select is(public.assessment_feedback_link_internal('ae000000-0000-4000-8000-000000000005'),
   '/coach/my-journey#feedback-results', '7. a Coach-learner''s opens their own journey page');
 
--- 8-10. The release email is claimed once.
+-- 8-11. The release email (20261007001200): the scheduled sender leases the
+-- release, Resend sends, and only then is it stamped.
 set local role service_role;
 select results_eq($$select email, preferred_language, kind, requirement_ordinal
-                      from public.assessment_claim_release_email_internal('ae400000-0000-4000-8000-000000000001')$$,
+                      from public.assessment_release_emails_due_internal() where submission_id = 'ae400000-0000-4000-8000-000000000001'$$,
   $$values ('ainbox-1@example.test'::text, 'vi'::text, 'triad'::text, 1)$$,
-  '8. the first claim returns the recipient, language and Triad');
-select is((select count(*)::int from public.assessment_claim_release_email_internal('ae400000-0000-4000-8000-000000000001')),
-  0, '9. a second claim returns nothing: one email per release');
+  '8. a released submission is due: its recipient, language and Triad');
+select is((select count(*)::int from public.assessment_release_emails_due_internal() where submission_id = 'ae400000-0000-4000-8000-000000000001'),
+  0, '9. leased for 15 minutes: a second run does not send it again');
 reset role;
-select ok((select release_emailed_at is not null from public.assessment_submissions where id = 'ae400000-0000-4000-8000-000000000001'),
-  '10. the claim is stamped from the server clock');
+select ok((select release_emailed_at is null and release_email_attempted_at is not null
+             from public.assessment_submissions where id = 'ae400000-0000-4000-8000-000000000001'),
+  '10. nothing is stamped as emailed before Resend accepts it (a failed send is retried)');
+set local role service_role;
+select results_eq($$select public.assessment_mark_release_emailed_internal('ae400000-0000-4000-8000-000000000001'),
+                           public.assessment_mark_release_emailed_internal('ae400000-0000-4000-8000-000000000001')$$,
+  $$values (true, false)$$, '11. after the send it is stamped once, from the server clock');
+reset role;
 
 select ok(
-  not has_function_privilege('authenticated', 'public.assessment_claim_release_email_internal(uuid)', 'EXECUTE')
+  not has_function_privilege('authenticated', 'public.assessment_release_emails_due_internal(integer)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.assessment_mark_release_emailed_internal(uuid)', 'EXECUTE')
   and not has_function_privilege('authenticated', 'public.assessment_feedback_link_internal(uuid)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.coach_assessment_inbox()', 'EXECUTE'),
-  '11. the email claim and link helper are not client-callable; the inbox is');
+  '12. the email lease and stamp and the link helper are not client-callable; the inbox is');
 select * from finish();
 rollback;

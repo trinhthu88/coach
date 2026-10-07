@@ -106,7 +106,9 @@
     "result": "Kết quả",
     "quiz": "Quiz",
     "quizScore": "Đúng {{correct}}/{{total}} câu ({{pct}}%)",
-    "attachment": "File PDF nhận xét"
+    "attachment": "File PDF nhận xét",
+    "open": "Mở nhận xét",
+    "hide": "Ẩn nhận xét"
   },
   "final": {
     "title": "Final Assessment",

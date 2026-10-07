@@ -33,4 +33,16 @@ describe("deriveAttentionList", () => {
     expect(items.map((i) => i.kind)).toEqual(["overdue_action", "upcoming_session", "upcoming_requirement"]);
     expect(overdueUnitCount(items)).toBe(0);
   });
+
+  it("lists unopened released feedback after the overdue work and before the current requirement, without counting it as overdue", () => {
+    const items = deriveAttentionList({
+      overdueModules: [{ module: "coaching", overdue_units: 1, oldest_due_on: "2026-07-01" }],
+      overdueActions: [],
+      journey: [{ checkpoint_number: 2, due_on: "2026-10-30", state: "current", label: null, required_units: 1, completed_units: 0, module_scope: [] }] as never,
+      nextSessionAt: null,
+      newFeedback: [{ kind: "final_assessment", requirementOrdinal: 1, attemptNo: 1, releasedAt: "2026-10-02T09:00:00Z" }],
+    });
+    expect(items.map((i) => i.kind)).toEqual(["overdue_module", "new_feedback", "current_requirement"]);
+    expect(overdueUnitCount(items)).toBe(1);
+  });
 });

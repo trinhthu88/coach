@@ -223,6 +223,11 @@ export function AssessmentQueue({ lockedKind }: { lockedKind?: AssessmentKind })
                     </TableCell>
                     <TableCell data-testid="assessment-viewed">
                       {r.status !== "released" ? "—" : r.viewedAt ? formatDate(r.viewedAt) : t("assessments.notViewed")}
+                      {r.status === "released" && !r.releaseEmailedAt && (
+                        <span className="ml-1.5" data-testid="assessment-email-not-sent">
+                          <Pill tone="warning">{t("assessments.emailNotSent")}</Pill>
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1.5">
@@ -466,7 +471,10 @@ function ReviewDialog({ row, onClose }: { row: AssessmentQueueRow; onClose: () =
           {row.status === "released" && (
             <p className="text-sm text-muted-foreground">
               {t("assessments.releasedOn", { date: formatDate(row.releasedAt) })}{" "}
-              {row.viewedAt ? t("assessments.viewedOn", { date: formatDate(row.viewedAt) }) : t("assessments.notViewedYet")}
+              {row.viewedAt ? t("assessments.viewedOn", { date: formatDate(row.viewedAt) }) : t("assessments.notViewedYet")}{" "}
+              {row.releaseEmailedAt
+                ? t("assessments.emailedOn", { date: formatDate(row.releaseEmailedAt) })
+                : t("assessments.emailNotSentYet")}
             </p>
           )}
           {canDecide && returning && (

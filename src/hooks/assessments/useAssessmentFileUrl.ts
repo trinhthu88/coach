@@ -1,12 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { assessmentFileUrl } from "@/lib/assessments";
+import { ASSESSMENT_FILE_URL_SECONDS, assessmentFileUrl } from "@/lib/assessments";
 
-/** A short-lived signed URL for a file in the private assessment bucket (signed for five minutes). */
-export function useAssessmentFileUrl(path: string | null | undefined) {
+/**
+ * A signed URL for a file in the private assessment bucket. Documents are
+ * signed for five minutes; a recording passes recordingUrlSeconds(length) so
+ * the link outlives the listening. The cached URL is refreshed a minute
+ * before it would expire.
+ */
+export function useAssessmentFileUrl(path: string | null | undefined, expiresIn = ASSESSMENT_FILE_URL_SECONDS) {
   return useQuery({
-    queryKey: ["assessment-file-url", path],
+    queryKey: ["assessment-file-url", path, expiresIn],
     enabled: !!path,
-    queryFn: () => assessmentFileUrl(path!),
-    staleTime: 4 * 60 * 1000,
+    queryFn: () => assessmentFileUrl(path!, expiresIn),
+    staleTime: Math.max(expiresIn - 60, 30) * 1000,
   });
 }
