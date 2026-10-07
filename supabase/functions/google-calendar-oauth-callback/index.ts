@@ -4,6 +4,7 @@ import {
   encryptRefreshToken,
   googleCalendarRedirectUri,
   hashOAuthState,
+  invalidateGoogleCalendarAccessToken,
   makeAdminClient,
 } from "../_shared/googleCalendar.ts";
 
@@ -102,6 +103,7 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     });
     if (saveError) return redirectToApp(returnOrigin, "error");
+    invalidateGoogleCalendarAccessToken(stateRow.coach_id as string);
     return redirectToApp(returnOrigin, "connected");
   } catch (error) {
     console.error("Google Calendar OAuth callback failed", error instanceof Error ? error.message : "unknown error");

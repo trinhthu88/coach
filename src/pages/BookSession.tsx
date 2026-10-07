@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams, useLocation } from "reac
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
-import { SLOT_TIME_ZONE, slotInstant, slotTodayKey } from "@/lib/slotTime";
+import { SLOT_TIME_ZONE, slotDayBounds, slotInstant, slotTodayKey } from "@/lib/slotTime";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { Card } from "@/components/ui/card";
@@ -29,6 +29,7 @@ import { getFriendlyErrorMessage } from "@/lib/errors";
 import { trackEvent } from "@/lib/analytics";
 import { canSubmitBooking } from "./bookingEligibility";
 import { computeStartOptions } from "./bookingSlots";
+import { getCoachCalendarBusy, overlapsCalendarBusy, removeCancelledCalendarEvent } from "@/lib/googleCalendar";
 import {
   useNextCoachingRequirement,
   useCohortCoachPool,
@@ -90,6 +91,9 @@ export default function BookSession() {
   const [topic, setTopic] = useState(rescheduleTopic || "");
   const [submitting, setSubmitting] = useState(false);
   const [bookerBusy, setBookerBusy] = useState<{ start: number; end: number }[]>([]);
+  const [coachCalendarBusy, setCoachCalendarBusy] = useState<{ start: number; end: number }[]>([]);
+  const [coachCalendarLoading, setCoachCalendarLoading] = useState(false);
+  const [coachCalendarError, setCoachCalendarError] = useState(false);
   // Authoritative "can I book this coach" answer: can_book_session() for a new
   // Coaching booking (a free requirement + the cohort pool + the goal gate,
   // 20261005130000), can_book_peer_session() in peer mode. null = not checked
@@ -253,9 +257,44 @@ export default function BookSession() {
       dateKey: dateKey(selectedDate),
       slots,
       durationMinutes: duration,
-      busy: bookerBusy,
+      busy: [...bookerBusy, ...coachCalendarBusy],
     });
-  }, [selectedDate, slots, duration, bookerBusy]);
+  }, [selectedDate, slots, duration, bookerBusy, coachCalendarBusy]);
+
+  useEffect(() => {
+    if (!coachId || !selectedDate) {
+      setCoachCalendarBusy([]);
+      setCoachCalendarLoading(false);
+      setCoachCalendarError(false);
+      return;
+    }
+    let cancelled = false;
+    const day = dateKey(selectedDate);
+    const dayBounds = slotDayBounds(day);
+    setCoachCalendarLoading(true);
+    setCoachCalendarError(false);
+    void getCoachCalendarBusy(
+      coachId,
+      dayBounds.start,
+      dayBounds.end,
+    )
+      .then((result) => {
+        if (!cancelled) setCoachCalendarBusy(result.busy);
+      })
+      .catch((error) => {
+        console.error("Could not check coach Google Calendar:", error);
+        if (!cancelled) {
+          setCoachCalendarError(true);
+          setCoachCalendarBusy([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCoachCalendarLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [coachId, selectedDate, retryKey]);
 
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
 
@@ -279,6 +318,26 @@ export default function BookSession() {
     const startISO = slotInstant(ds, selectedStart).toISOString();
     const selectedHour = Number(selectedStart.split(":")[0]);
     const timeBucket = selectedHour < 12 ? "morning" : selectedHour < 17 ? "afternoon" : "evening";
+
+    let latestCalendarBusy: { start: number; end: number }[];
+    try {
+      const fresh = await getCoachCalendarBusy(
+        coach.id,
+        startISO,
+        new Date(new Date(startISO).getTime() + duration * 60_000).toISOString(),
+      );
+      latestCalendarBusy = fresh.busy;
+    } catch (error) {
+      console.error("Could not recheck coach Google Calendar:", error);
+      setSubmitting(false);
+      return toast.error(t("bookSession.toast.calendarCheckFailed"));
+    }
+    setCoachCalendarBusy(latestCalendarBusy);
+    if (overlapsCalendarBusy(startISO, duration, latestCalendarBusy)) {
+      setSelectedStart(null);
+      setSubmitting(false);
+      return toast.error(t("bookSession.toast.calendarConflict"));
+    }
 
     trackEvent("booking_initiated", {
       mode,
@@ -306,6 +365,14 @@ export default function BookSession() {
         .mutateAsync({ sessionId: rescheduleId, newSlotId: opt.slotId })
         .then(() => null)
         .catch((e) => e as { code?: string; message: string });
+      if (!error) {
+        try {
+          await removeCancelledCalendarEvent("coaching", rescheduleId);
+        } catch (removeError) {
+          console.error("Could not remove the old rescheduled session from Google Calendar:", removeError);
+          toast.warning(t("bookSession.toast.calendarRemovalFailed"));
+        }
+      }
     } else {
       // Canonical atomic booking. The server owns enrollment validation, Coach
       // eligibility, requirement availability, entitlement, slot reservation
@@ -632,6 +699,18 @@ export default function BookSession() {
           >
             {!selectedDate ? (
               <p className="mt-3 text-sm text-muted-foreground">{t("bookSession.pickDatePrompt")}</p>
+            ) : coachCalendarLoading ? (
+              <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("bookSession.checkingCalendar")}
+              </p>
+            ) : coachCalendarError ? (
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-destructive">
+                <span>{t("bookSession.toast.calendarCheckFailed")}</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => setRetryKey((key) => key + 1)}>
+                  {t("bookSession.loadError.retry")}
+                </Button>
+              </div>
             ) : startOptions.length === 0 ? (
               <p className="mt-3 text-sm text-muted-foreground">
                 {t("bookSession.noWindowAvailable", { duration })}
@@ -697,7 +776,7 @@ export default function BookSession() {
             </div>
             <Button
               onClick={handleBook}
-              disabled={!canSubmit || submitting}
+              disabled={!canSubmit || submitting || coachCalendarLoading || coachCalendarError}
               size="lg"
               className="shadow-glow"
             >

@@ -43,3 +43,7 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.google-calendar-busy]
     verify_jwt = true
+  [functions.google-calendar-remove-session]
+    verify_jwt = true
+  [functions.google-calendar-sync-sessions]
+    verify_jwt = true

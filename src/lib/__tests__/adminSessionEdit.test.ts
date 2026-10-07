@@ -81,10 +81,10 @@ describe("planAdminSessionSave", () => {
       .toEqual({ ok: false, error: "detailsLocked" });
   });
 
-  it("confirms a pending Peer session through confirm_peer_session", () => {
+  it("confirms a pending Peer session through the authorized confirmation function", () => {
     const pending = { ...base, kind: "peer" as const, status: "pending_coach_approval" };
     expect(planAdminSessionSave(pending, { ...pending, status: "confirmed" }, { reason: "" }))
-      .toEqual({ ok: true, steps: [{ type: "rpc", fn: "confirm_peer_session",
-        args: { p_session_id: "s1", p_meeting_url: null } }] });
+      .toEqual({ ok: true, steps: [{ type: "confirm",
+        body: { session_id: "s1", is_peer: true } }] });
   });
 });

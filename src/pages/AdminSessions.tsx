@@ -207,14 +207,58 @@ export default function AdminSessions() {
     }
     setSaving(true);
     try {
+      let calendarConflict = false;
+      let calendarSyncFailed = false;
       for (const step of plan.steps) {
-        const { error } = step.type === "cancel"
-          ? await supabase.functions.invoke("cancel-session", { body: step.body })
+        if (step.type === "cancel") {
+          const { data, error } = await supabase.functions.invoke("cancel-session", { body: step.body });
+          if (error) throw error;
+          calendarSyncFailed ||= data?.calendar_sync === "failed";
+        } else if (step.type === "confirm") {
+          const { data, error } = await supabase.functions.invoke("confirm-session", { body: step.body });
+          if (error) throw error;
+          if (data?.calendar_conflict) {
+            calendarConflict = true;
+            break;
+          }
+          calendarSyncFailed ||= data?.calendar_sync === "failed";
+        } else {
           // The planner only names lifecycle RPCs from the generated types.
-          : await supabase.rpc(step.fn as "admin_reschedule_session", step.args as never);
-        if (error) throw error;
+          const { error } = await supabase.rpc(step.fn as "admin_reschedule_session", step.args as never);
+          if (error) throw error;
+        }
       }
-      toast({ title: t("sessions.sessionUpdated") });
+      if (calendarConflict) {
+        toast({ title: t("sessions.calendarConflict"), variant: "destructive" });
+        setEditing(null);
+        setCancelReason("");
+        setChangeReason("");
+        await load();
+        return;
+      }
+
+      const confirmedSessionChanged = editing.status === "confirmed" && plan.steps.some((step) =>
+        step.type === "rpc" && ["admin_reschedule_session", "admin_reopen_session"].includes(step.fn),
+      );
+      if (confirmedSessionChanged) {
+        const { data: status, error: statusError } = await supabase.functions.invoke("google-calendar-status");
+        if (statusError) {
+          console.error("Could not check Google Calendar before reconciling an Admin session edit:", statusError);
+          calendarSyncFailed = true;
+        } else if (status?.connected && status.configured) {
+          const { data, error } = await supabase.functions.invoke("google-calendar-sync-sessions");
+          calendarSyncFailed ||= !!error || (data?.failed ?? 0) > 0;
+        } else if (status?.connected && !status.configured) {
+          calendarSyncFailed = true;
+        }
+      }
+      toast(calendarSyncFailed
+        ? {
+            title: t("sessions.calendarSyncFailed"),
+            description: t("sessions.sessionUpdated"),
+            variant: "destructive",
+          }
+        : { title: t("sessions.sessionUpdated") });
       setEditing(null);
       setCancelReason("");
       setChangeReason("");

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { extractFunctionError } from "@/lib/errors";
 import { getSessionFieldMap, type SessionTableKind } from "@/lib/sessionTableHelper";
 import { withEnrollmentActions, saveEnrollmentActions, type EnrollmentActionSource } from "@/lib/enrollmentActions";
+import { removeCancelledCalendarEvent } from "@/lib/googleCalendar";
 import {
   ActionItem,
   MilestoneLite,
@@ -239,16 +240,25 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
   const confirmSession = useCallback(async () => {
     if (!session) return;
     setSaving(true);
-    const { error } = await supabase.rpc("transition_session_status", {
-      p_session_id: session.id, p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
-      p_action: "confirm", p_reason: undefined,
-    });
+    const { data, error } = isCoacheePeer
+      ? await supabase.rpc("transition_session_status", {
+          p_session_id: session.id, p_kind: "coachee_peer", p_action: "confirm", p_reason: undefined,
+        })
+      : await supabase.functions.invoke("confirm-session", {
+          body: { session_id: session.id, is_peer: isPeer },
+        });
     setSaving(false);
     if (error) {
       const friendly = await extractFunctionError(error);
       return toast.error(friendly.message);
     }
+    if (!isCoacheePeer && data?.calendar_conflict) {
+      return toast.error(t("detail.toast.calendarConflict"));
+    }
     toast.success(t("detail.toast.sessionConfirmed"));
+    if (!isCoacheePeer && data?.calendar_sync === "failed") {
+      toast.warning(t("detail.toast.calendarSyncFailed"));
+    }
     load();
   }, [session, isPeer, isCoacheePeer, load, t]);
 
@@ -276,6 +286,14 @@ export function useSessionCore({ sessionId, isPeer, isCoacheePeer }: UseSessionC
         const friendly = await extractFunctionError(error);
         toast.error(friendly.message);
         return;
+      }
+      if (!isCoacheePeer) {
+        try {
+          await removeCancelledCalendarEvent(isPeer ? "peer" : "coaching", session.id);
+        } catch (removeError) {
+          console.error("Could not remove cancelled session from Google Calendar:", removeError);
+          toast.warning(t("detail.toast.calendarRemovalFailed"));
+        }
       }
       toast.success(t("detail.toast.sessionCancelled"));
       onDone();

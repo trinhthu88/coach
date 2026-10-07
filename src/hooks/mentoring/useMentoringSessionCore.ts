@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MentoringSessionRow, ProfileLite } from "./types";
+import { removeCancelledCalendarEvent } from "@/lib/googleCalendar";
 
 interface UseMentoringSessionCoreOptions {
   sessionId: string | undefined;
@@ -89,12 +90,17 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
   const confirmSession = useCallback(async () => {
     if (!session) return { error: null };
     setSaving(true);
-    const { error } = await supabase.functions.invoke("confirm-mentoring-session", {
+    const { data, error } = await supabase.functions.invoke("confirm-mentoring-session", {
       body: { session_id: session.id },
     });
     setSaving(false);
     if (error) return { error };
+    if (data?.calendar_conflict) {
+      toast.error(t("sessionDetail.calendarConflict"));
+      return { error: null };
+    }
     toast.success(t("sessionDetail.sessionConfirmed"));
+    if (data?.calendar_sync === "failed") toast.warning(t("sessionDetail.calendarSyncFailed"));
     load();
     return { error: null };
   }, [session, load, t]);
@@ -127,6 +133,12 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
     setSaving(false);
     if (!error) {
       toast.success(t("sessionDetail.cancel.done"));
+      try {
+        await removeCancelledCalendarEvent("mentoring", session.id);
+      } catch (removeError) {
+        console.error("Could not remove cancelled mentoring session from Google Calendar:", removeError);
+        toast.warning(t("sessionDetail.calendarRemovalFailed"));
+      }
       load();
     }
     return { error };

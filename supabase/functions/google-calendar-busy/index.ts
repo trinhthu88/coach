@@ -69,7 +69,9 @@ Deno.serve(async (req) => {
     }
 
     const result = await getGoogleBusyIntervals(makeAdminClient(), coach_id, time_min, time_max);
-    return new Response(JSON.stringify(result), {
+    // Learners need only busy intervals; connection status stays private to the
+    // coach-facing status endpoint.
+    return new Response(JSON.stringify({ busy: result.busy }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

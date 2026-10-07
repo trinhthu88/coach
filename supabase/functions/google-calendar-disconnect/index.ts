@@ -1,6 +1,7 @@
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import {
   decryptRefreshToken,
+  invalidateGoogleCalendarAccessToken,
   makeAdminClient,
   requestUser,
   userHasCoachRole,
@@ -62,6 +63,7 @@ Deno.serve(async (req) => {
       .delete()
       .eq("coach_id", user.id);
     if (deleteError) throw new Error("Could not remove Google Calendar connection");
+    invalidateGoogleCalendarAccessToken(user.id);
 
     return new Response(JSON.stringify({ disconnected: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

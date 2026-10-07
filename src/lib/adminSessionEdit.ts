@@ -29,7 +29,8 @@ export interface AdminSessionSnapshot {
 
 export type AdminSessionStep =
   | { type: "rpc"; fn: string; args: Record<string, unknown> }
-  | { type: "cancel"; body: { session_id: string; is_peer: boolean; reason?: string } };
+  | { type: "cancel"; body: { session_id: string; is_peer: boolean; reason?: string } }
+  | { type: "confirm"; body: { session_id: string; is_peer: boolean } };
 
 export type AdminSessionPlan =
   | { ok: true; steps: AdminSessionStep[] }
@@ -131,9 +132,8 @@ export function planAdminSessionSave(
   } else if (from === "pending_coach_approval" && to === "confirmed") {
     if (detailsChanged) steps.push(reschedule());
     steps.push({
-      type: "rpc",
-      fn: isPeer ? "confirm_peer_session" : "confirm_coaching_session",
-      args: { p_session_id: original.id, p_meeting_url: null },
+      type: "confirm",
+      body: { session_id: original.id, is_peer: isPeer },
     });
   }
 

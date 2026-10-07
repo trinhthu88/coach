@@ -11,6 +11,12 @@ type ConnectionRow = {
   refresh_token_ciphertext: string;
 };
 
+const accessTokenCache = new Map<string, { token: string; expiresAt: number }>();
+
+export function invalidateGoogleCalendarAccessToken(coachId: string): void {
+  accessTokenCache.delete(coachId);
+}
+
 export function makeAdminClient(): AdminClient {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -123,10 +129,10 @@ export async function requestUser(req: Request) {
   const url = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   if (!authorization || !url || !anonKey) return null;
-  const client = createClient(url, anonKey, {
-    global: { headers: { Authorization: authorization } },
-  });
-  const { data, error } = await client.auth.getUser();
+  const token = authorization.replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const client = createClient(url, anonKey);
+  const { data, error } = await client.auth.getUser(token);
   return error ? null : data.user;
 }
 
@@ -164,6 +170,8 @@ async function accessTokenForCoach(admin: AdminClient, coachId: string): Promise
   const connection = await getConnection(admin, coachId);
   if (!connection) return null;
   if (!isGoogleCalendarConfigured()) throw new Error("Google Calendar is not configured");
+  const cached = accessTokenCache.get(coachId);
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
 
   const clientId = Deno.env.get("GOOGLE_CALENDAR_CLIENT_ID")!;
   const clientSecret = Deno.env.get("GOOGLE_CALENDAR_CLIENT_SECRET")!;
@@ -186,7 +194,13 @@ async function accessTokenForCoach(admin: AdminClient, coachId: string): Promise
   if (typeof result.access_token !== "string") {
     throw new Error("Google Calendar did not return an access token");
   }
-  return result.access_token as string;
+  const accessToken = result.access_token as string;
+  const lifetimeSeconds = Number(result.expires_in) || 3600;
+  accessTokenCache.set(coachId, {
+    token: accessToken,
+    expiresAt: Date.now() + lifetimeSeconds * 1000,
+  });
+  return accessToken;
 }
 
 async function googleCalendarFetch(

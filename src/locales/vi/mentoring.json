@@ -45,6 +45,7 @@
       "time": "Chọn giờ ({{timezone}})"
     },
     "pickDatePrompt": "Chọn một ngày ở trên để xem giờ trống.",
+    "checkingCalendar": "Đang kiểm tra lịch của mentor…",
     "noWindowAvailable": "Không có khung giờ {{duration}} phút khả dụng vào ngày này.",
     "slotAriaLabel": "Đặt lịch {{date}} lúc {{time}}",
     "topicLabel": "Bạn muốn tập trung vào điều gì?",
@@ -56,6 +57,8 @@
     "toast": {
       "slotTaken": "Khung giờ đó vừa được người khác đặt. Vui lòng chọn khung giờ khác.",
       "notEligible": "Bạn hiện không thể đặt lịch với mentor này — quyền truy cập của bạn có thể đã thay đổi. Vui lòng làm mới và thử lại.",
+      "calendarCheckFailed": "Không thể kiểm tra lịch của mentor. Vui lòng thử lại trước khi đặt.",
+      "calendarConflict": "Khung giờ này không còn trống. Vui lòng chọn khung giờ khác.",
       "success": "Đã yêu cầu buổi mentoring. Đang chờ mentor xác nhận."
     }
   },
@@ -80,6 +83,9 @@
     "joinLockedPrepFile": "Chỉ có thể tham gia sau khi đã nộp tệp chuẩn bị",
     "confirmSession": "Xác nhận buổi mentoring",
     "sessionConfirmed": "Session đã được xác nhận. Zoom meeting đã sẵn sàng.",
+    "calendarConflict": "Lịch Google Calendar của mentor đang bận vào khung giờ này. Session chưa được xác nhận.",
+    "calendarSyncFailed": "Session đã được xác nhận nhưng không thể thêm sự kiện vào Google Calendar.",
+    "calendarRemovalFailed": "Session đã bị hủy nhưng sự kiện có thể vẫn còn trong Google Calendar.",
     "markComplete": "Đánh dấu hoàn thành",
     "markedComplete": "Đã đánh dấu hoàn thành",
     "prepFileRequiredToComplete": "Hãy tải lên tệp chuẩn bị trước khi đánh dấu buổi này là hoàn thành.",

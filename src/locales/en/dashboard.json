@@ -200,7 +200,10 @@
       "decline": "Decline",
       "toast": {
         "confirmed": "Session confirmed. Zoom meeting is ready.",
-        "declined": "Request declined"
+        "declined": "Request declined",
+        "calendarConflict": "The coach's Google Calendar is busy at this time. The request was not confirmed.",
+        "calendarSyncFailed": "The session was confirmed, but its Google Calendar event could not be added.",
+        "calendarRemovalFailed": "The request was declined, but its Google Calendar event may still be there."
       }
     },
     "upcomingSessions": {
@@ -319,6 +322,32 @@
     }
   },
   "availability": {
+    "googleCalendar": {
+      "title": "Google Calendar sync",
+      "description": "Connect your calendar to hide busy times and add confirmed Clariva sessions.",
+      "privacy": "Clariva reads only busy intervals, not event details. Disconnecting does not remove events already added.",
+      "loading": "Loading Google Calendar connection…",
+      "statusFailed": "Could not load the Google Calendar connection.",
+      "retry": "Retry",
+      "connectedStatus": "Connected",
+      "disconnectedStatus": "Not connected",
+      "connectedAs": "Connected as {{email}}",
+      "notConfigured": "Google Calendar needs to be configured by an administrator before coaches can connect.",
+      "connect": "Connect Google Calendar",
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect Google Calendar?",
+      "disconnectDescription": "Clariva will revoke and remove its saved access. Existing Clariva events will stay in your Google Calendar.",
+      "keepConnected": "Keep connected",
+      "connectedToast": "Google Calendar connected.",
+      "deniedToast": "Google Calendar access was not granted.",
+      "connectFailed": "Could not connect Google Calendar. Please try again.",
+      "disconnectedToast": "Google Calendar disconnected.",
+      "disconnectFailed": "Could not disconnect Google Calendar. Please try again.",
+      "sync": "Sync upcoming sessions",
+      "syncDone": "Google Calendar updated: {{synced}} sessions added or refreshed; {{removed}} cancelled sessions removed.",
+      "syncPartial": "Google Calendar sync partly failed: {{synced}} sessions updated, {{removed}} removed, {{failed}} failed.",
+      "syncFailed": "Could not sync sessions to Google Calendar. Please try again."
+    },
     "toast": {
       "loadFailedTitle": "Failed to load",
       "updateFailedTitle": "Update failed",

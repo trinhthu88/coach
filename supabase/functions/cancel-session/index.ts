@@ -5,6 +5,7 @@ import { buildCorsHeaders } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionCancelledEmail } from "../_shared/email-templates/session-cancelled.tsx";
 import { decideTransition, httpStatusForRpcError, transitionRpc } from "../_shared/sessionTransitionRules.ts";
+import { deleteGoogleCalendarEvent } from "../_shared/googleCalendar.ts";
 
 function formatWhen(startTimeISO: string, durationMinutes: number): string {
   const start = new Date(startTimeISO);
@@ -116,6 +117,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    let calendarSync: "not_connected" | "removed" | "failed" = "not_connected";
+    try {
+      const result = await deleteGoogleCalendarEvent(
+        admin,
+        row[coachField] as string,
+        is_peer ? "peer" : "coaching",
+        session_id,
+      );
+      if (result.connected && result.removed) calendarSync = "removed";
+    } catch (error) {
+      calendarSync = "failed";
+      console.error("Cancelled session Google Calendar cleanup failed", error instanceof Error ? error.message : "unknown error");
+    }
+
     const { data: participants } = await admin
       .from("profiles")
       .select("id, full_name, email")
@@ -160,7 +175,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify({ ok: true, calendar_sync: calendarSync }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
